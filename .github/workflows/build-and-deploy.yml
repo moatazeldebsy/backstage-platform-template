@@ -90,7 +90,7 @@ jobs:
   # ─── Build and push to ECR ──────────────────────────────────────────────────
   build-and-push:
     needs: [detect-changes, test]
-    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' && secrets.AWS_ROLE_ARN != '' }}
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' }}
     strategy:
       matrix:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
@@ -151,7 +151,7 @@ jobs:
   # Promotion to staging/prod is done by opening a PR that updates those files.
   update-image-tag:
     needs: [detect-changes, build-and-push]
-    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' && secrets.AWS_ROLE_ARN != '' }}
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' }}
     strategy:
       matrix:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
