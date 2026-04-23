@@ -80,6 +80,24 @@ docker compose -f local/backstage/docker-compose.yml up -d
 # Open http://localhost:3000
 ```
 
+### Local Access URLs
+
+After `bootstrap-local.sh` completes and Backstage is running, everything is reachable via `/etc/hosts` entries (written automatically by the script):
+
+| Service | URL | Default credentials |
+|---|---|---|
+| **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
+| **hello-service** | http://hello-service.idp.local | — |
+| **Grafana** | http://grafana.idp.local | `admin` / `admin` |
+| **ArgoCD** | http://argocd.idp.local | `admin` / *(run `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" \| base64 -d`)* |
+| **Prometheus** | http://prometheus.idp.local | — |
+| **OpenCost** | http://opencost.idp.local | — |
+| **MLflow** | http://mlflow.idp.local | — |
+| **Argo Workflows** | http://argo-workflows.idp.local | — |
+| **Local registry** | localhost:5003 | — (no auth) |
+
+> `/etc/hosts` entries are added to `127.0.0.1` by `bootstrap-local.sh`. You may need `sudo` on first run.
+
 ### AWS
 
 ```bash
