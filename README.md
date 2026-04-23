@@ -70,8 +70,12 @@ curl http://hello-service.idp.local   # after adding /etc/hosts entry
 # First time: build the backend bundle
 cd backstage/app && yarn install && yarn build:backend && cd ../..
 
+# Set up environment files (both are required before starting)
+cp local/.env.example local/.env                        # shared tokens (GitHub, AWS, cluster name)
+cp local/backstage/.env.example local/backstage/.env    # Backstage-specific tokens (OAuth, K8s, Snyk)
+# Edit both files and fill in your values
+
 # Start Backstage + Postgres
-cp local/backstage/.env.example local/backstage/.env  # add GITHUB_TOKEN
 docker compose -f local/backstage/docker-compose.yml build backstage
 docker compose -f local/backstage/docker-compose.yml up -d
 
