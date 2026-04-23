@@ -353,16 +353,40 @@ fi
 
 # ── Step 7: /etc/hosts ───────────────────────────────────────────────────────
 HOSTS_FILE="${ROOT_DIR}/local/hosts-append.txt"
-if grep -qF "mlflow.idp.local" /etc/hosts 2>/dev/null; then
-  log "Step 7: /etc/hosts entries already present — skipping."
-else
-  log "Step 7: Adding local hostnames to /etc/hosts (requires sudo)..."
-  if sudo tee -a /etc/hosts < "${HOSTS_FILE}" > /dev/null; then
-    log "  /etc/hosts updated. All *.idp.local hostnames are now resolvable."
-  else
-    warn "  Could not update /etc/hosts automatically. Add entries manually:"
-    warn "  sudo sh -c \"cat ${HOSTS_FILE} >> /etc/hosts\""
+log "Step 7: Checking /etc/hosts entries..."
+
+# Add any hostname from hosts-append.txt that isn't already present.
+# Doing it line-by-line avoids duplicates even when the file has grown.
+HOSTS_ADDED=false
+while IFS= read -r line; do
+  # Skip blank lines and comments
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  # Extract the hostname (second field)
+  hostname=$(awk '{print $2}' <<< "$line")
+  [[ -z "$hostname" ]] && continue
+  if ! grep -qF "$hostname" /etc/hosts 2>/dev/null; then
+    if sudo sh -c "echo '$line' >> /etc/hosts"; then
+      log "  Added: $hostname"
+      HOSTS_ADDED=true
+    else
+      warn "  Could not add '$hostname' to /etc/hosts. Add it manually:"
+      warn "  echo '$line' | sudo tee -a /etc/hosts"
+    fi
   fi
+done < "$HOSTS_FILE"
+
+if $HOSTS_ADDED; then
+  # Flush DNS cache so curl/browser picks up new entries immediately.
+  if [[ "$(uname)" == "Darwin" ]]; then
+    sudo dscacheutil -flushcache 2>/dev/null || true
+    sudo killall -HUP mDNSResponder 2>/dev/null || true
+    log "  macOS DNS cache flushed."
+  elif command -v resolvectl &>/dev/null; then
+    sudo resolvectl flush-caches 2>/dev/null || true
+  fi
+  log "  /etc/hosts updated. All *.idp.local hostnames are now resolvable."
+else
+  log "  /etc/hosts already up to date — no changes needed."
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
