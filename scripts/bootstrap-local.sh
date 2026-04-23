@@ -226,7 +226,7 @@ if ! $SKIP_POLICIES; then
     requirehealthprobes.constraints.gatekeeper.sh \
     requireresourcelimits.constraints.gatekeeper.sh \
     requirelabels.constraints.gatekeeper.sh \
-    denylatestimgtags.constraints.gatekeeper.sh \
+    denylatestimgtag.constraints.gatekeeper.sh \
     requirecosttags.constraints.gatekeeper.sh \
     --for=condition=Established \
     --timeout=120s
