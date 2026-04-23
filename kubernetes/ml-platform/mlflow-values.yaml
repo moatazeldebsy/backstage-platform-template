@@ -35,7 +35,26 @@ backendStore:
     path: /mlflow/db/mlflow.db
 
 # ── Artifact store (local: shared PV; AWS: s3://<bucket>/mlflow) ─────────────
-artifactRoot: /mlflow/artifacts
+# NOTE: newer community-charts/mlflow expects artifactRoot to be a map, not a string.
+artifactRoot:
+  defaultArtifactRoot: /mlflow/artifacts
+  s3:
+    enabled: false
+    bucket: ""
+    path: ""
+    awsAccessKeyId: ""
+    awsSecretAccessKey: ""
+    s3EndpointUrl: ""
+  azureBlob:
+    enabled: false
+    connectionString: ""
+    storageContainer: ""
+    storageAccount: ""
+  gcs:
+    enabled: false
+    bucket: ""
+    path: ""
+    keyPrefix: ""
 
 # ── Persistent volume for DB + artifacts ─────────────────────────────────────
 persistence:
