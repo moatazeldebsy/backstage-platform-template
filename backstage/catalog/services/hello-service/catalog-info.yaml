@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: hello-service
+  description: Reference Go service
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=hello-service
+    backstage.io/kubernetes-namespace: services
+    backstage.io/techdocs-ref: dir:../../../services/hello-service
+    backstage.io/runbook-url: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/index.md
+    github.com/project-slug: YOUR_GITHUB_ORG/idp-mvp
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: internal-developer-platform

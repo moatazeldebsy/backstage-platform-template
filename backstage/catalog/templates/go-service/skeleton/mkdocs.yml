@@ -1,0 +1,14 @@
+site_name: ${{ values.name }}
+site_description: ${{ values.description }}
+docs_dir: docs
+repo_url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}
+
+nav:
+  - Home: index.md
+  - ADRs:
+    - Initial Decisions: adr/0001-initial-decisions.md
+  - Runbooks:
+    - Service Runbook: runbooks/service.md
+
+plugins:
+  - techdocs-core

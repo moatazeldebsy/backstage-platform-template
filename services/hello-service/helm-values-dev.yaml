@@ -1,0 +1,35 @@
+# Helm overrides for hello-service — dev environment (local Kind)
+# image.tag is updated by building locally: docker build + docker push localhost:5003/hello-service:local
+image:
+  repository: localhost:5003/hello-service
+  tag: local   # build with: docker build -t localhost:5003/hello-service:local services/hello-service && docker push localhost:5003/hello-service:local
+
+replicaCount: 1
+
+service:
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: hello-service-dev.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: dev

@@ -1,0 +1,9 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+prometheus-client>=0.20.0
+mlflow-skinny>=2.13.0
+{% if values.modelFramework == "sklearn" %}scikit-learn>=1.5.0
+{% elif values.modelFramework == "pytorch" %}torch>=2.2.0
+{% elif values.modelFramework == "tensorflow" %}tensorflow-cpu>=2.16.0
+{% elif values.modelFramework == "xgboost" %}xgboost>=2.0.0
+{% endif %}numpy>=1.26.0

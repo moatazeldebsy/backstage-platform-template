@@ -1,0 +1,10 @@
+# ServiceAccount for DB-init Jobs — annotated with IRSA role so pods can
+# read RDS master credentials from Secrets Manager without static keys.
+# The role ARN is set by bootstrap.sh after terraform apply.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: db-init-sa
+  namespace: services
+  annotations:
+    eks.amazonaws.com/role-arn: REPLACE_WITH_DB_INIT_ROLE_ARN   # set by bootstrap.sh

@@ -1,0 +1,117 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: llm-gateway-api
+  title: LLM Gateway API
+  description: >
+    OpenAI-compatible chat completions API. Backed by Ollama locally (Kind)
+    and OpenAI in production. All AI agent services depend on this resource.
+  tags:
+    - ai
+    - llm
+    - openai-compatible
+  links:
+    - url: http://localhost:11434
+      title: Ollama (local)
+      icon: chat
+spec:
+  type: openapi
+  lifecycle: production
+  owner: ml-team
+  system: internal-developer-platform
+  definition: |
+    openapi: "3.0.0"
+    info:
+      title: LLM Gateway API
+      version: "1.0.0"
+      description: OpenAI-compatible LLM gateway — Ollama locally, OpenAI in prod
+    servers:
+      - url: http://localhost:11434/v1
+        description: Local Ollama
+    paths:
+      /chat/completions:
+        post:
+          summary: Create chat completion
+          operationId: createChatCompletion
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [model, messages]
+                  properties:
+                    model:
+                      type: string
+                      example: llama3.2
+                    messages:
+                      type: array
+                      items:
+                        type: object
+                        required: [role, content]
+                        properties:
+                          role:
+                            type: string
+                            enum: [system, user, assistant]
+                          content:
+                            type: string
+                    temperature:
+                      type: number
+                      default: 0.7
+                    stream:
+                      type: boolean
+                      default: false
+          responses:
+            "200":
+              description: Chat completion response
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      choices:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            message:
+                              type: object
+                              properties:
+                                role:
+                                  type: string
+                                content:
+                                  type: string
+                            finish_reason:
+                              type: string
+                      usage:
+                        type: object
+                        properties:
+                          prompt_tokens:
+                            type: integer
+                          completion_tokens:
+                            type: integer
+                          total_tokens:
+                            type: integer
+      /models:
+        get:
+          summary: List available models
+          operationId: listModels
+          responses:
+            "200":
+              description: List of available models
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            object:
+                              type: string

@@ -1,0 +1,31 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/kubernetes-namespace: services
+    cost-center: ${{ values.costCenter }}
+    ai/llm-provider: ${{ values.llmProvider }}
+    ai/llm-model: ${{ values.llmModel }}
+  links:
+    - title: Grafana — Agent Dashboard
+      url: http://grafana.idp.local/d/idp-ai-agent
+      icon: dashboard
+    - title: MLflow Traces
+      url: http://mlflow.idp.local
+      icon: dashboard
+    - title: API Docs
+      url: http://${{ values.name }}.idp.local/docs
+      icon: code
+spec:
+  type: ai-agent
+  lifecycle: development
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependsOn:
+    - resource:default/llm-gateway
+    - resource:default/mlflow

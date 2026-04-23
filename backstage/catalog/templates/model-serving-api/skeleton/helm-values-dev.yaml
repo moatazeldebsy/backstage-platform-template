@@ -1,0 +1,46 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/${{ values.githubOrg }}/${{ values.name }}
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "${{ values.port }}"
+  prometheus.io/path: "/metrics"
+
+service:
+  port: 80
+  targetPort: ${{ values.port }}
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: dev
+  - name: MLFLOW_TRACKING_URI
+    value: "http://mlflow.ml-platform.svc.cluster.local:5000"
+  - name: MODEL_URI
+    value: ""  # Set to models:/<name>/Production after registering a model

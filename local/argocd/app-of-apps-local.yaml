@@ -1,0 +1,57 @@
+# ArgoCD ApplicationSet — local Kind variant
+# Creates one Application per service per environment (local/dev/staging/prod).
+# AWS equivalent: kubernetes/argocd/app-of-apps.yaml
+#
+# Apply: kubectl apply -f local/argocd/app-of-apps-local.yaml -n argocd
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: idp-services
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          # Generator 1: discover services from the platform repo
+          - git:
+              repoURL: https://github.com/YOUR_GITHUB_ORG/idp-mvp.git
+              revision: HEAD
+              directories:
+                - path: services/*
+          # Generator 2: one entry per environment
+          - list:
+              elements:
+                - env: dev
+                  namespace: services-dev
+                  valuesFile: helm-values-dev.yaml
+  template:
+    metadata:
+      name: "{{path.basename}}-{{env}}"
+      labels:
+        environment: "{{env}}"
+        service: "{{path.basename}}"
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/YOUR_GITHUB_ORG/idp-mvp.git
+          targetRevision: HEAD
+          path: helm/service-template
+          helm:
+            parameters:
+              - name: backstage.kubernetesId
+                value: "{{path.basename}}"
+            valueFiles:
+              - $values/services/{{path.basename}}/{{valuesFile}}
+        - repoURL: https://github.com/YOUR_GITHUB_ORG/idp-mvp.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

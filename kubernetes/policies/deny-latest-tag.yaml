@@ -1,0 +1,46 @@
+---
+# ConstraintTemplate: block the :latest image tag in production.
+# :latest is non-deterministic — it makes rollbacks impossible and causes
+# unpredictable behavior when nodes restart and pull a different image version.
+# Applies only to services-prod; dev/staging allow :latest for faster iteration.
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: denylatestimgtag
+  annotations:
+    description: "Images using :latest tag are not allowed in production namespaces."
+spec:
+  crd:
+    spec:
+      names:
+        kind: DenyLatestImgTag
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package denylatestimgtag
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          endswith(container.image, ":latest")
+          msg := sprintf("Container '%v' uses ':latest' image tag. Specify an immutable tag (e.g. git SHA) for production deployments.", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not contains(container.image, ":")
+          msg := sprintf("Container '%v' has no image tag. Specify an immutable tag (e.g. git SHA) for production deployments.", [container.name])
+        }
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: DenyLatestImgTag
+metadata:
+  name: deny-latest-tag-prod
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+    namespaces:
+      - services-prod   # only enforce in production; dev/staging allow :latest

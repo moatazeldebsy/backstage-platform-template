@@ -1,0 +1,20 @@
+aws_region              = "us-east-1"
+environment             = "dev"
+cluster_name            = "idp-mvp"
+cluster_version         = "1.32"
+vpc_cidr                = "10.0.0.0/16"
+node_instance_types     = ["t3.medium"]
+node_group_min_size     = 2
+node_group_max_size     = 5
+node_group_desired_size = 2
+ecr_repositories        = ["hello-service"]
+
+# ── FinOps ────────────────────────────────────────────────────────────────────
+budget_monthly_limit_usd = "500"
+budget_alert_email       = "platform-team@example.com"
+
+# ── Cost Optimizer (overnight node scale-down + RDS stop) ────────────────────
+# Saves ~$33/month. Lambdas fire on schedule; nodes go to 0, RDS stops at night.
+enable_cost_optimizer          = false   # set to true to activate
+# cost_optimizer_scale_down_cron = "cron(0 20 * * ? *)"  # 8 pm UTC
+# cost_optimizer_scale_up_cron   = "cron(0 7  * * ? *)"  # 7 am UTC

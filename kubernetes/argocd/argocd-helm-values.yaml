@@ -1,0 +1,58 @@
+# Helm values for ArgoCD install on EKS
+# Install: helm upgrade --install argocd argo/argo-cd \
+#   --namespace argocd --create-namespace \
+#   --values kubernetes/argocd/argocd-helm-values.yaml
+
+global:
+  # Single-replica install — scale up for production HA
+  replicaCount: 1
+
+server:
+  replicas: 1
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    hosts: []   # Empty = match any hostname via ALB DNS; set to real domain when DNS is configured
+    tls: []
+  extraArgs:
+    - --insecure   # Remove when TLS is terminated at ALB
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+configs:
+  params:
+    server.insecure: true   # ALB terminates TLS; ArgoCD server listens on HTTP internally
+
+  # Local user for Backstage (read-only API access)
+  cm:
+    accounts.backstage: apiKey
+
+  # RBAC: admin can do everything; backstage gets read-only across all apps
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, get, *, allow
+      p, role:admin, repositories, *, *, allow
+      g, argocd-admins, role:admin
+      p, role:backstage-read, applications, get, */*, allow
+      p, role:backstage-read, clusters, get, *, allow
+      p, role:backstage-read, repositories, get, *, allow
+      g, backstage, role:backstage-read
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

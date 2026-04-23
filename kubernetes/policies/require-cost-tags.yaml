@@ -1,0 +1,64 @@
+---
+# ConstraintTemplate: Deployments and Namespaces in services-* namespaces must carry
+# cost allocation labels (cost-center, team, environment).
+# These labels are used by OpenCost for cost attribution and FinOps reporting.
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: requirecosttags
+  annotations:
+    description: "Workloads and namespaces must carry cost-center, team, and environment labels for FinOps attribution."
+spec:
+  crd:
+    spec:
+      names:
+        kind: RequireCostTags
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            requiredLabels:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package requirecosttags
+
+        violation[{"msg": msg}] {
+          required := input.parameters.requiredLabels[_]
+          not input.review.object.metadata.labels[required]
+          msg := sprintf("Missing required cost label '%v'. Add it to enable FinOps cost attribution.", [required])
+        }
+
+        # For Deployments: also enforce on pod template labels so cost metrics are propagated to pods
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Deployment"
+          required := input.parameters.requiredLabels[_]
+          not input.review.object.spec.template.metadata.labels[required]
+          msg := sprintf("Pod template is missing required cost label '%v'. OpenCost uses pod labels for cost attribution.", [required])
+        }
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: RequireCostTags
+metadata:
+  name: require-cost-allocation-labels
+spec:
+  enforcementAction: warn   # Start with warn; switch to deny once teams have added labels
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+      - apiGroups: [""]
+        kinds: ["Namespace"]
+    namespaces:
+      - services-dev
+      - services-staging
+      - services-prod
+  parameters:
+    requiredLabels:
+      - "cost-center"
+      - "team"
+      - "environment"

@@ -1,0 +1,40 @@
+---
+# Kubernetes Service + Endpoints that allow in-cluster pods to reach the Backstage
+# Docker Compose container over the shared "kind" Docker network.
+#
+# How to update after Kind cluster recreation (IP may change):
+#   1. docker inspect backstage-backstage-1 | python3 -c \
+#        "import sys,json; c=json.load(sys.stdin)[0]; \
+#         print(c['NetworkSettings']['Networks']['kind']['IPAddress'])"
+#   2. Update the 'ip' field in the Endpoints below
+#   3. kubectl apply -f local/backstage/backstage-k8s-endpoints.yaml --context kind-idp-mvp
+#
+# Current Backstage container IP on 'kind' network: 172.21.0.6 (port 7007)
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: backstage
+  namespace: default
+subsets:
+  - addresses:
+      - ip: "172.21.0.6"
+    ports:
+      - port: 7007
+        protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: default
+  labels:
+    app.kubernetes.io/name: backstage
+    app.kubernetes.io/component: platform
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7007
+      targetPort: 7007
+      protocol: TCP
+  # No selector — traffic is routed via the manual Endpoints above

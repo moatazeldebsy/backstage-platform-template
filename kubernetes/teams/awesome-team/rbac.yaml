@@ -1,0 +1,54 @@
+# ServiceAccount and Role for awesome-team team deployments
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: team-awesome-team
+  labels:
+    team: awesome-team
+---
+# Token secret for the deployer SA (for CI/CD systems that need a static token)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: team-awesome-team-deployer-token
+  namespace: team-awesome-team
+  annotations:
+    kubernetes.io/service-account.name: deployer
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-deployer
+  namespace: team-awesome-team
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "serviceaccounts", "pods", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-deployer
+  namespace: team-awesome-team
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: team-deployer
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: team-awesome-team

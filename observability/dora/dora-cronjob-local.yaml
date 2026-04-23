@@ -1,0 +1,122 @@
+---
+# ServiceAccount — plain (no IRSA needed locally; no AWS IAM roles in Kind)
+# AWS equivalent uses an IRSA annotation for CloudWatch PutMetricData access
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dora-exporter-sa
+  namespace: monitoring
+
+---
+# The GITHUB_TOKEN is stored as a plain K8s Secret.
+# Create it before applying this file:
+#   kubectl create secret generic dora-exporter-secret \
+#     --from-literal=GITHUB_TOKEN="<your-github-pat>" -n monitoring
+# AWS equivalent: ExternalSecret that syncs from Secrets Manager
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dora-exporter-secret
+  namespace: monitoring
+  annotations:
+    # Placeholder — kubectl create secret (above) will populate the real value.
+    # Do not store real tokens in this file.
+    note: "Populate with: kubectl create secret generic dora-exporter-secret --from-literal=GITHUB_TOKEN=<pat> -n monitoring"
+type: Opaque
+
+---
+# The Python script is stored in a ConfigMap so updates don't require an image rebuild.
+# To update: edit observability/dora/dora-exporter-local.py, then:
+#   kubectl create configmap dora-exporter-script \
+#     --from-file=dora-exporter.py=observability/dora/dora-exporter-local.py \
+#     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dora-exporter-script
+  namespace: monitoring
+binaryData: {}  # populated by the kubectl create configmap command above
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dora-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: dora-exporter
+    app.kubernetes.io/component: observability
+spec:
+  schedule: "*/15 * * * *"   # every 15 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: dora-exporter
+        spec:
+          serviceAccountName: dora-exporter-sa
+          restartPolicy: OnFailure
+          initContainers:
+            - name: install-deps
+              image: python:3.13-slim
+              command:
+                - pip
+                - install
+                - --quiet
+                - --target=/deps
+                - prometheus_client
+                - requests
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: deps
+                  mountPath: /deps
+          containers:
+            - name: dora-exporter
+              image: python:3.13-slim
+              command:
+                - python
+                - /scripts/dora-exporter.py
+              env:
+                - name: PYTHONPATH
+                  value: "/deps"
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: dora-exporter-secret
+                      key: GITHUB_TOKEN
+                - name: GITHUB_ORG
+                  value: "YOUR_GITHUB_ORG"
+                - name: LOOKBACK_HOURS
+                  value: "24"
+                - name: PUSHGATEWAY_URL
+                  value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                - name: deps
+                  mountPath: /deps
+          volumes:
+            - name: script
+              configMap:
+                name: dora-exporter-script
+            - name: deps
+              emptyDir: {}

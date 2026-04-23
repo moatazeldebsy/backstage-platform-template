@@ -1,0 +1,29 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: idp-mvp
+
+# Mount a local registry into the cluster
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5003"]
+      endpoint = ["http://registry:5000"]
+
+# Pin to K8s 1.31 — tested stable on macOS ARM64 with Docker Desktop
+# K8s 1.35 (kind default) has kubelet cgroup issues on macOS ARM64
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.31.6@sha256:28b7cbb993dfe093c76641a0c95807637213c9109b761f1d422c2400e22b8e87
+    # node-labels via kind native label (kubelet flag removed in K8s 1.27)
+    labels:
+      ingress-ready: "true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+  - role: worker
+    image: kindest/node:v1.31.6@sha256:28b7cbb993dfe093c76641a0c95807637213c9109b761f1d422c2400e22b8e87
+  - role: worker
+    image: kindest/node:v1.31.6@sha256:28b7cbb993dfe093c76641a0c95807637213c9109b761f1d422c2400e22b8e87

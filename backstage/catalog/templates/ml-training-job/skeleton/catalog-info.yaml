@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/kubernetes-namespace: ml-platform
+    cost-center: ${{ values.costCenter }}
+    ml/framework: ${{ values.modelFramework }}
+    ml/mlflow-experiment: "${{ values.mlflowExperiment }}"
+  links:
+    - title: MLflow Experiment
+      url: http://mlflow.idp.local/#/experiments
+      icon: dashboard
+    - title: Argo Workflows
+      url: http://argo-workflows.idp.local
+      icon: dashboard
+spec:
+  type: ml-training-job
+  lifecycle: development
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependsOn:
+    - resource:default/mlflow
+    - resource:default/argo-workflows

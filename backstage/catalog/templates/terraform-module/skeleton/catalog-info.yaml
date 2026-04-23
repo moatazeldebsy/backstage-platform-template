@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/adr-location: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/tree/main/docs/adr
+    backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbooks/service.md
+spec:
+  type: infrastructure
+  lifecycle: development
+  owner: ${{ values.owner }}
+  system: internal-developer-platform

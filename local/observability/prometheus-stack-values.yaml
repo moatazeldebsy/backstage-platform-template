@@ -1,0 +1,112 @@
+# Lightweight kube-prometheus-stack for local Kind
+# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+#   -n monitoring --create-namespace -f local/observability/prometheus-stack-values.yaml
+
+# Reduce resource footprint for local dev
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+
+alertmanager:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - alertmanager.idp.local
+  alertmanagerSpec:
+    externalUrl: http://alertmanager.idp.local
+    # Pick up the alertmanager-config Secret created in observability/alertmanager/alertmanager-config.yaml
+    alertmanagerConfigSelector:
+      matchLabels:
+        app.kubernetes.io/part-of: kube-prometheus-stack
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+grafana:
+  adminPassword: "admin"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.idp.local
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: idp
+          folder: IDP Services
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/idp
+        - name: dora
+          folder: DORA Metrics
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/dora
+        - name: ai-agent
+          folder: AI Agent
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/ai-agent
+        - name: qa
+          folder: QA Platform
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/qa
+  dashboardsConfigMaps:
+    idp: grafana-dashboards-idp
+    dora: grafana-dashboards-dora
+    ai-agent: grafana-dashboards-ai-agent
+    qa: grafana-qa-dashboard
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+kubeStateMetrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+nodeExporter:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Note: Prometheus Pushgateway is installed as a separate Helm release (not a subchart of kube-prometheus-stack):
+#   helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+#     --namespace monitoring --set serviceMonitor.enabled=true \
+#     --set resources.requests.cpu=10m --set resources.requests.memory=32Mi \
+#     --set resources.limits.cpu=100m --set resources.limits.memory=64Mi

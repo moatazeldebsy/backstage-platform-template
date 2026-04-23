@@ -1,0 +1,133 @@
+---
+# ServiceAccount with IRSA annotation so the pod can call cloudwatch:PutMetricData
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dora-exporter-sa
+  namespace: monitoring
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/idp-mvp-dora-exporter"
+
+---
+# ExternalSecret syncs GITHUB_TOKEN from Secrets Manager key: idp-mvp/dora-exporter
+# Pre-requisite: create the secret manually first:
+#   aws secretsmanager create-secret --name idp-mvp/dora-exporter \
+#     --secret-string '{"GITHUB_TOKEN":"<your-github-pat>"}'
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: dora-exporter-secret
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: dora-exporter-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: GITHUB_TOKEN
+      remoteRef:
+        key: idp-mvp/dora-exporter
+        property: GITHUB_TOKEN
+
+---
+# The Python script is stored in a ConfigMap so updates don't require an image rebuild.
+# To update the script: edit observability/dora/dora-exporter.py, then:
+#   kubectl create configmap dora-exporter-script \
+#     --from-file=dora-exporter.py=observability/dora/dora-exporter.py \
+#     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dora-exporter-script
+  namespace: monitoring
+binaryData: {}  # populated by the kubectl create configmap command above
+# data.dora-exporter.py: <script contents — do not edit here, use the command above>
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dora-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: dora-exporter
+    app.kubernetes.io/component: observability
+spec:
+  schedule: "*/15 * * * *"   # every 15 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600   # 10 min hard limit per run
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: dora-exporter
+        spec:
+          serviceAccountName: dora-exporter-sa
+          restartPolicy: OnFailure
+          initContainers:
+            - name: install-deps
+              image: python:3.13-slim
+              command:
+                - pip
+                - install
+                - --quiet
+                - --target=/deps
+                - boto3
+                - requests
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: deps
+                  mountPath: /deps
+          containers:
+            - name: dora-exporter
+              image: python:3.13-slim
+              command:
+                - python
+                - /scripts/dora-exporter.py
+              env:
+                - name: PYTHONPATH
+                  value: "/deps"
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: dora-exporter-secret
+                      key: GITHUB_TOKEN
+                - name: GITHUB_ORG
+                  value: "YOUR_GITHUB_ORG"
+                - name: AWS_REGION
+                  value: "us-east-1"
+                - name: LOOKBACK_HOURS
+                  value: "24"
+                - name: CLOUDWATCH_NS
+                  value: "IDP/DORA"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                - name: deps
+                  mountPath: /deps
+          volumes:
+            - name: script
+              configMap:
+                name: dora-exporter-script
+            - name: deps
+              emptyDir: {}

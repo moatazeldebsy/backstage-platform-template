@@ -1,0 +1,58 @@
+# Helm values for ArgoCD on local Kind cluster
+# Install: helm upgrade --install argocd argo/argo-cd \
+#   --namespace argocd --create-namespace --version 7.7.16 \
+#   --values local/argocd/argocd-helm-values-local.yaml
+#
+# AWS equivalent: kubernetes/argocd/argocd-helm-values.yaml
+
+global:
+  replicaCount: 1
+  domain: argocd.idp.local
+
+server:
+  replicas: 1
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    hostname: argocd.idp.local
+    tls: false
+  extraArgs:
+    - --insecure   # nginx does not terminate TLS locally; ArgoCD listens on plain HTTP
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+configs:
+  params:
+    server.insecure: true
+
+  # Local user for Backstage (read-only API access)
+  cm:
+    accounts.backstage: apiKey
+
+  # RBAC: admin can do everything; backstage gets read-only across all apps
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, get, *, allow
+      p, role:admin, repositories, *, *, allow
+      g, argocd-admins, role:admin
+      p, role:backstage-read, applications, get, */*, allow
+      p, role:backstage-read, clusters, get, *, allow
+      p, role:backstage-read, repositories, get, *, allow
+      g, backstage, role:backstage-read
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

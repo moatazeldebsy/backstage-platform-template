@@ -1,0 +1,49 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${{ values.name }}-api
+  title: ${{ values.name }} API
+  description: ${{ values.description }}
+  tags:
+    - rest
+    - nodejs
+spec:
+  type: openapi
+  lifecycle: development
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  definition: |
+    openapi: "3.0.3"
+    info:
+      title: ${{ values.name }}
+      version: "0.1.0"
+      description: ${{ values.description }}
+    paths:
+      /:
+        get:
+          summary: Service info
+          operationId: getRoot
+          responses:
+            "200":
+              description: OK
+      /healthz:
+        get:
+          summary: Liveness probe
+          operationId: healthz
+          responses:
+            "200":
+              description: OK
+      /ready:
+        get:
+          summary: Readiness probe
+          operationId: ready
+          responses:
+            "200":
+              description: OK
+      /metrics:
+        get:
+          summary: Prometheus metrics
+          operationId: metrics
+          responses:
+            "200":
+              description: Prometheus text format

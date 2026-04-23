@@ -1,0 +1,32 @@
+site_name: Internal Developer Platform
+site_description: Golden-path platform for building and deploying services on EKS
+repo_url: https://github.com/YOUR_GITHUB_ORG/idp-mvp
+repo_name: YOUR_GITHUB_ORG/idp-mvp
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+
+plugins:
+  - techdocs-core
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture: architecture.md
+  - Golden Path: golden-path.md
+  - Local Setup: local-setup.md
+  - Roadmap: roadmap.md
+  - Runbooks:
+    - Overview: runbooks/index.md
+    - Deployment Rollback: runbooks/deployment-rollback.md
+    - Pod Crash Loop: runbooks/pod-crash-loop.md
+    - High Memory: runbooks/high-memory.md
+    - High CPU: runbooks/high-cpu.md
+    - Database Recovery: runbooks/db-recovery.md

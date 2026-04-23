@@ -1,0 +1,25 @@
+{% if values.language == 'javascript' %}
+{
+  "name": "${{ values.name }}",
+  "version": "1.0.0",
+  "description": "${{ values.description }}",
+  "scripts": {
+    "test": "jest --forceExit",
+    "test:consumer": "jest --testPathPattern=consumer --forceExit",
+    "test:provider": "jest --testPathPattern=provider --forceExit"
+  },
+  "devDependencies": {
+    "@pact-foundation/pact": "^12.0.0",
+    "@pact-foundation/pact-node": "^10.18.0",
+    "jest": "^29.0.0",
+    "jest-pact": "^0.11.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  }
+}
+{% endif %}
+{% if values.language == 'python' %}
+{}
+{% endif %}

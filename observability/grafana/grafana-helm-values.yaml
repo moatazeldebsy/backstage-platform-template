@@ -1,0 +1,86 @@
+# Grafana Helm values for IDP deployment
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm upgrade --install grafana grafana/grafana -n monitoring -f grafana-helm-values.yaml
+
+adminPassword: "${GRAFANA_ADMIN_PASSWORD}"
+
+serviceAccount:
+  annotations:
+    # Get the ARN from: cd terraform && terraform output grafana_role_arn
+    eks.amazonaws.com/role-arn: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/idp-mvp-grafana"
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    deleteDatasources:
+      - name: CloudWatch
+        orgId: 1
+      - name: Prometheus
+        orgId: 1
+      - name: AlertManager
+        orgId: 1
+    datasources:
+      - name: CloudWatch
+        uid: cloudwatch
+        type: cloudwatch
+        access: proxy
+        jsonData:
+          authType: default
+          defaultRegion: us-east-1
+        isDefault: true
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-operated.monitoring:9090
+      - name: AlertManager
+        uid: alertmanager
+        type: alertmanager
+        access: proxy
+        url: http://alertmanager-operated.monitoring:9093
+        jsonData:
+          implementation: prometheus
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: idp
+        folder: IDP Services
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards/idp
+      - name: dora
+        folder: DORA Metrics
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards/dora
+      - name: ai-agent
+        folder: AI Agent
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards/ai-agent
+      - name: qa
+        folder: QA Platform
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards/qa
+dashboardsConfigMaps:
+  idp: grafana-dashboards-idp
+  dora: grafana-dashboards-dora
+  ai-agent: grafana-dashboards-ai-agent
+  qa: grafana-qa-dashboard
+
+persistence:
+  enabled: true
+  storageClassName: gp2
+  size: 5Gi
+
+ingress:
+  enabled: true
+  ingressClassName: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - ""   # empty = match any hostname (use ALB DNS directly); replace with real domain when DNS is set up

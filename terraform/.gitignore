@@ -1,0 +1,5 @@
+# Terraform plan output files
+*.tfplan
+
+# Local .terraform directory and lock files are intentionally tracked via .terraform.lock.hcl
+.terraform/

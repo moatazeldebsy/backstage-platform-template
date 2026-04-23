@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/${{ values.name }}
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: ${{ values.name }}.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 64Mi
+
+env:
+  - name: ENVIRONMENT
+    value: local
+
+labels:
+  backstage.io/kubernetes-id: ${{ values.name }}

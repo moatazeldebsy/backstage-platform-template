@@ -1,0 +1,5 @@
+{% if values.language == 'python' %}
+pytest>=7.4
+pact-python>=2.2
+requests>=2.31
+{% endif %}

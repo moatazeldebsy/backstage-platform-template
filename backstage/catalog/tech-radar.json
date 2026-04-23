@@ -1,0 +1,893 @@
+{
+  "title": "IDP Tech Radar",
+  "quadrants": [
+    {
+      "id": "languages",
+      "name": "Languages & Frameworks"
+    },
+    {
+      "id": "platforms",
+      "name": "Platforms & Infrastructure"
+    },
+    {
+      "id": "tools",
+      "name": "Tools & Utilities"
+    },
+    {
+      "id": "techniques",
+      "name": "Techniques & Practices"
+    }
+  ],
+  "rings": [
+    {
+      "id": "adopt",
+      "name": "ADOPT",
+      "color": "#27ae60",
+      "description": "Proven in production \u2014 default choice."
+    },
+    {
+      "id": "trial",
+      "name": "TRIAL",
+      "color": "#2980b9",
+      "description": "Worth pursuing \u2014 limited production use."
+    },
+    {
+      "id": "assess",
+      "name": "ASSESS",
+      "color": "#f39c12",
+      "description": "Explore with caution \u2014 not yet recommended."
+    },
+    {
+      "id": "hold",
+      "name": "HOLD",
+      "color": "#e74c3c",
+      "description": "Avoid new projects \u2014 consider migrating away."
+    }
+  ],
+  "entries": [
+    {
+      "key": "go",
+      "title": "Go",
+      "quadrant": "languages",
+      "description": "Default language for backend services on the platform.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "go"
+    },
+    {
+      "key": "python",
+      "title": "Python",
+      "quadrant": "languages",
+      "description": "Default for data, ML, and scripting services.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "python"
+    },
+    {
+      "key": "nodejs",
+      "title": "Node.js",
+      "quadrant": "languages",
+      "description": "Default for lightweight REST APIs and BFF services.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "nodejs"
+    },
+    {
+      "key": "typescript",
+      "title": "TypeScript",
+      "quadrant": "languages",
+      "description": "Required for all frontend and Node.js services.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "typescript"
+    },
+    {
+      "key": "react",
+      "title": "React",
+      "quadrant": "languages",
+      "description": "Default frontend framework.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "react"
+    },
+    {
+      "key": "java",
+      "title": "Java / Spring",
+      "quadrant": "languages",
+      "description": "No new services. Migrate to Go or Node.js.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "hold",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "java"
+    },
+    {
+      "key": "ruby",
+      "title": "Ruby on Rails",
+      "quadrant": "languages",
+      "description": "Legacy only. No new services.",
+      "timeline": [
+        {
+          "moved": -1,
+          "ringId": "hold",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "ruby"
+    },
+    {
+      "key": "fastapi",
+      "title": "FastAPI",
+      "quadrant": "languages",
+      "description": "Default Python API framework.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "fastapi"
+    },
+    {
+      "key": "eks",
+      "title": "AWS EKS",
+      "quadrant": "platforms",
+      "description": "Primary Kubernetes platform for all workloads.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "eks"
+    },
+    {
+      "key": "ecr",
+      "title": "AWS ECR",
+      "quadrant": "platforms",
+      "description": "Container registry for all service images.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "ecr"
+    },
+    {
+      "key": "rds-postgres",
+      "title": "RDS PostgreSQL",
+      "quadrant": "platforms",
+      "description": "Default relational database for services.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "rds-postgres"
+    },
+    {
+      "key": "s3",
+      "title": "AWS S3",
+      "quadrant": "platforms",
+      "description": "Default object storage \u2014 TechDocs, artefacts.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "s3"
+    },
+    {
+      "key": "kind",
+      "title": "Kind (local)",
+      "quadrant": "platforms",
+      "description": "Local Kubernetes cluster for development.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "kind"
+    },
+    {
+      "key": "lambda",
+      "title": "AWS Lambda",
+      "quadrant": "platforms",
+      "description": "Use for async event processing and scheduled jobs.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "lambda"
+    },
+    {
+      "key": "dynamodb",
+      "title": "DynamoDB",
+      "quadrant": "platforms",
+      "description": "Evaluate for high-scale key-value workloads.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "dynamodb"
+    },
+    {
+      "key": "backstage",
+      "title": "Backstage",
+      "quadrant": "tools",
+      "description": "Internal Developer Portal \u2014 service catalog, templates, TechDocs.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "backstage"
+    },
+    {
+      "key": "argocd",
+      "title": "ArgoCD",
+      "quadrant": "tools",
+      "description": "GitOps continuous delivery \u2014 app-of-apps pattern.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "argocd"
+    },
+    {
+      "key": "helm",
+      "title": "Helm",
+      "quadrant": "tools",
+      "description": "Package manager for all Kubernetes deployments.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "helm"
+    },
+    {
+      "key": "terraform",
+      "title": "Terraform",
+      "quadrant": "tools",
+      "description": "IaC standard for all AWS infrastructure.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "terraform"
+    },
+    {
+      "key": "prometheus",
+      "title": "Prometheus",
+      "quadrant": "tools",
+      "description": "Metrics collection for all Kubernetes workloads.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "prometheus"
+    },
+    {
+      "key": "grafana",
+      "title": "Grafana",
+      "quadrant": "tools",
+      "description": "Default dashboarding and alerting platform.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "grafana"
+    },
+    {
+      "key": "github-actions",
+      "title": "GitHub Actions",
+      "quadrant": "tools",
+      "description": "CI/CD for all service pipelines.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "github-actions"
+    },
+    {
+      "key": "snyk",
+      "title": "Snyk",
+      "quadrant": "tools",
+      "description": "Dependency vulnerability scanning in CI.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "snyk"
+    },
+    {
+      "key": "eso",
+      "title": "External Secrets Operator",
+      "quadrant": "tools",
+      "description": "Syncs AWS Secrets Manager secrets into Kubernetes.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "eso"
+    },
+    {
+      "key": "trivy",
+      "title": "Trivy",
+      "quadrant": "tools",
+      "description": "Container image vulnerability scanner in CI.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "trivy"
+    },
+    {
+      "key": "tilt",
+      "title": "Tilt",
+      "quadrant": "tools",
+      "description": "Hot-reload dev loop for local Kubernetes development. Auto-discovers services via helm-values-local.yaml.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "tilt"
+    },
+    {
+      "key": "opentelemetry",
+      "title": "OpenTelemetry",
+      "quadrant": "tools",
+      "description": "Vendor-neutral observability \u2014 traces + metrics.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "opentelemetry"
+    },
+    {
+      "key": "mlflow",
+      "title": "MLflow",
+      "quadrant": "tools",
+      "description": "ML experiment tracking, model registry, and trace logging for AI agent services.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "mlflow"
+    },
+    {
+      "key": "argo-workflows",
+      "title": "Argo Workflows",
+      "quadrant": "tools",
+      "description": "Kubernetes-native workflow engine for ML training jobs and batch pipelines.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "argo-workflows"
+    },
+    {
+      "key": "langgraph",
+      "title": "LangGraph",
+      "quadrant": "tools",
+      "description": "Graph-based AI agent framework \u2014 golden path template for agentic services.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "langgraph"
+    },
+    {
+      "key": "ollama",
+      "title": "Ollama",
+      "quadrant": "tools",
+      "description": "Local LLM inference server \u2014 default LLM_PROVIDER for dev/local environments.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "ollama"
+    },
+    {
+      "key": "openai",
+      "title": "OpenAI API",
+      "quadrant": "tools",
+      "description": "Managed LLM provider for production AI agent services via LLM_API_KEY.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "openai"
+    },
+    {
+      "key": "pulumi",
+      "title": "Pulumi",
+      "quadrant": "tools",
+      "description": "Evaluate as Terraform alternative for teams preferring code-first IaC.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "pulumi"
+    },
+    {
+      "key": "argo-rollouts",
+      "title": "Argo Rollouts",
+      "quadrant": "tools",
+      "description": "Progressive delivery on Kubernetes \u2014 canary and blue-green rollout strategies.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "argo-rollouts"
+    },
+    {
+      "key": "opa-gatekeeper",
+      "title": "OPA / Gatekeeper",
+      "quadrant": "tools",
+      "description": "Admission controller that enforces platform policies defined as Rego rules.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "opa-gatekeeper"
+    },
+    {
+      "key": "cert-manager",
+      "title": "cert-manager",
+      "quadrant": "tools",
+      "description": "Automated TLS certificate lifecycle for all Kubernetes ingress endpoints.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "cert-manager"
+    },
+    {
+      "key": "loki",
+      "title": "Loki",
+      "quadrant": "tools",
+      "description": "Log aggregation layer alongside Prometheus \u2014 query logs from Grafana.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "loki"
+    },
+    {
+      "key": "falco",
+      "title": "Falco",
+      "quadrant": "tools",
+      "description": "Runtime security threat detection for Kubernetes workloads.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "falco"
+    },
+    {
+      "key": "spiffe-spire",
+      "title": "SPIFFE / SPIRE",
+      "quadrant": "tools",
+      "description": "Workload identity framework \u2014 evaluated in idp-platform M3 runtime security module.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "spiffe-spire"
+    },
+    {
+      "key": "cosign",
+      "title": "Cosign",
+      "quadrant": "tools",
+      "description": "Container image signing and verification integrated into CI after Trivy scan.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "cosign"
+    },
+    {
+      "key": "chaos-mesh",
+      "title": "Chaos Mesh",
+      "quadrant": "tools",
+      "description": "Kubernetes-native chaos engineering \u2014 inject faults to validate service resilience.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "chaos-mesh"
+    },
+    {
+      "key": "nginx-ingress",
+      "title": "nginx Ingress",
+      "quadrant": "tools",
+      "description": "Default ingress controller for Kind local clusters and all golden-path service templates.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "nginx-ingress"
+    },
+    {
+      "key": "playwright",
+      "title": "Playwright",
+      "quadrant": "tools",
+      "description": "E2E browser testing \u2014 used in e2e/ test suite and cloudnative-master workshop.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "playwright"
+    },
+    {
+      "key": "cypress",
+      "title": "Cypress",
+      "quadrant": "tools",
+      "description": "Component and E2E testing for frontend services.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "cypress"
+    },
+    {
+      "key": "checkly",
+      "title": "Checkly",
+      "quadrant": "tools",
+      "description": "Synthetic monitoring and API checks \u2014 __checks__/ deployed against production endpoints.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "checkly"
+    },
+    {
+      "key": "jest",
+      "title": "Jest",
+      "quadrant": "tools",
+      "description": "Unit and integration testing standard for all Node.js / TypeScript services.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "jest"
+    },
+    {
+      "key": "appium",
+      "title": "Appium",
+      "quadrant": "tools",
+      "description": "Mobile automation framework \u2014 evaluate for mobile platform testing coverage.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "appium"
+    },
+    {
+      "key": "selenium",
+      "title": "Selenium",
+      "quadrant": "tools",
+      "description": "Legacy browser automation. Use Playwright or Cypress for new test suites.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "hold",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "selenium"
+    },
+    {
+      "key": "pact",
+      "title": "Pact",
+      "quadrant": "tools",
+      "description": "Consumer-driven contract testing \u2014 evaluate for service API compatibility guarantees.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "pact"
+    },
+    {
+      "key": "bitrise",
+      "title": "Bitrise",
+      "quadrant": "tools",
+      "description": "Mobile CI/CD platform \u2014 assess for iOS/Android build and test pipelines.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "bitrise"
+    },
+    {
+      "key": "golden-path",
+      "title": "Golden Paths",
+      "quadrant": "techniques",
+      "description": "Opinionated templates that pave the road for developers.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "golden-path"
+    },
+    {
+      "key": "gitops",
+      "title": "GitOps",
+      "quadrant": "techniques",
+      "description": "Git as single source of truth for all deployments.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "gitops"
+    },
+    {
+      "key": "12factor",
+      "title": "12-Factor App",
+      "quadrant": "techniques",
+      "description": "All services must follow 12-factor principles.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "12factor"
+    },
+    {
+      "key": "dora",
+      "title": "DORA Metrics",
+      "quadrant": "techniques",
+      "description": "Deploy freq, lead time, CFR, MTTR \u2014 platform success KPIs.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "dora"
+    },
+    {
+      "key": "policy-as-code",
+      "title": "Policy as Code",
+      "quadrant": "techniques",
+      "description": "OPA/Gatekeeper to enforce platform conventions at admission.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "policy-as-code"
+    },
+    {
+      "key": "sre-slo",
+      "title": "SLOs / Error Budgets",
+      "quadrant": "techniques",
+      "description": "Define reliability targets per service.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "sre-slo"
+    },
+    {
+      "key": "mono-repo",
+      "title": "Monorepo",
+      "quadrant": "techniques",
+      "description": "Avoid for new projects \u2014 prefer independent service repos.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "hold",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "mono-repo"
+    },
+    {
+      "key": "agentic-ai",
+      "title": "Agentic AI Services",
+      "quadrant": "techniques",
+      "description": "LangGraph + FastAPI pattern for deploying AI agents on the platform golden path.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "agentic-ai"
+    },
+    {
+      "key": "ml-golden-path",
+      "title": "ML Golden Path",
+      "quadrant": "techniques",
+      "description": "Opinionated templates for ML training jobs, model serving APIs, and MLflow experiments.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "ml-golden-path"
+    },
+    {
+      "key": "prompt-engineering",
+      "title": "Prompt Engineering",
+      "quadrant": "techniques",
+      "description": "Structured prompt design for LLM-backed services \u2014 evaluate tooling (DSPy, PromptFlow).",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "assess",
+          "date": "2025-01-01"
+        }
+      ],
+      "id": "prompt-engineering"
+    },
+    { "key": "sonarcloud",  "id": "sonarcloud",  "title": "SonarCloud",    "quadrant": "tools",      "description": "SAST, code-smell detection, and CI quality gate — required for every service pipeline.", "timeline": [{ "moved": 0, "ringId": "adopt",  "date": "2026-01-01" }] },
+    { "key": "lambdatest",  "id": "lambdatest",  "title": "LambdaTest",    "quadrant": "tools",      "description": "Cross-browser cloud testing grid — evaluate for Playwright/Cypress at scale.",           "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] },
+    { "key": "xray-jira",   "id": "xray-jira",   "title": "Xray (Jira)",   "quadrant": "tools",      "description": "Test case management with Jira traceability — assess before adopting.",                   "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] },
+    { "key": "mailtrap",    "id": "mailtrap",    "title": "Mailtrap",      "quadrant": "tools",      "description": "Email sandbox for transactional email testing in CI and staging environments.",           "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] }
+  ]
+}

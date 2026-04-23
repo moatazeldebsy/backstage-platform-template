@@ -1,0 +1,65 @@
+# Argo Workflows Helm values for local Kind deployment
+# Chart: argo/argo-workflows  (helm repo add argo https://argoproj.github.io/argo-helm)
+
+crds:
+  install: true
+  keep: true
+
+workflow:
+  serviceAccount:
+    create: true
+    name: argo-workflow
+  rbac:
+    create: true
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+server:
+  enabled: true
+  extraArgs:
+    - --auth-mode=server  # no login required locally
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - argo-workflows.idp.local
+    paths:
+      - /
+    pathType: Prefix
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+executor:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Use emissary executor (does not require Docker socket; works in Kind)
+useStatefulSetExecutor: false
+containerRuntimeExecutor: emissary
+
+# Artifact repository — use MLflow artifact root via env; no built-in artifact repo needed
+artifactRepository:
+  archiveLogs: false
+
+# Keep completed/failed workflows for debugging (local only)
+retentionPolicy:
+  completed: 5
+  failed: 3

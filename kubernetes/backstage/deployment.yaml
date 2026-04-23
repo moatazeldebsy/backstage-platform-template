@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      serviceAccountName: backstage
+      containers:
+        - name: backstage
+          image: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/backstage:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7007
+          command: ["node", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.production.yaml"]
+          env:
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: POSTGRES_PORT
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: POSTGRES_PASSWORD
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: GITHUB_TOKEN
+            - name: K8S_CLUSTER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: K8S_CLUSTER_URL
+            - name: K8S_SERVICE_ACCOUNT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: K8S_SERVICE_ACCOUNT_TOKEN
+            - name: TECHDOCS_S3_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: TECHDOCS_S3_BUCKET_NAME
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: AWS_REGION
+            - name: AUTH_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: AUTH_GITHUB_CLIENT_ID
+            - name: AUTH_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: AUTH_GITHUB_CLIENT_SECRET
+            - name: SNYK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: SNYK_TOKEN
+                  optional: true
+            - name: PGSSLMODE
+              value: require
+            - name: NODE_ENV
+              value: production
+          volumeMounts:
+            - name: base-config
+              mountPath: /config/app-config.yaml
+              subPath: app-config.yaml
+            - name: prod-config
+              mountPath: /config/app-config.production.yaml
+              subPath: app-config.production.yaml
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: base-config
+          configMap:
+            name: backstage-base-config
+        - name: prod-config
+          configMap:
+            name: backstage-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: backstage
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+spec:
+  type: LoadBalancer
+  selector:
+    app: backstage
+  ports:
+    - port: 80
+      targetPort: 7007

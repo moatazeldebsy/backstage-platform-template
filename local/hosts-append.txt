@@ -1,0 +1,24 @@
+# Add these lines to /etc/hosts for local IDP ingress
+# sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
+
+127.0.0.1  hello-service.idp.local
+127.0.0.1  grafana.idp.local
+127.0.0.1  prometheus.idp.local
+127.0.0.1  alertmanager.idp.local
+127.0.0.1  backstage.idp.local
+127.0.0.1  my-svc.idp.local
+127.0.0.1  argocd.idp.local
+127.0.0.1  opencost.idp.local
+127.0.0.1  hello-service-dev.idp.local
+127.0.0.1  hello-service-staging.idp.local
+127.0.0.1  hello-service-prod.idp.local
+
+# ML Platform
+127.0.0.1  mlflow.idp.local
+127.0.0.1  argo-workflows.idp.local
+
+# QA / Observability
+127.0.0.1  pushgateway.idp.local
+
+# Scaffolded services
+127.0.0.1  mo-node.idp.local

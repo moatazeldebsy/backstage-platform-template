@@ -1,0 +1,23 @@
+# nginx Ingress for OpenCost UI — local Kind only
+# AWS equivalent: OpenCost was accessible via ALB on EKS; no Ingress manifest was needed there.
+# Apply: kubectl apply -f local/opencost/opencost-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opencost
+  namespace: finops
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: opencost.idp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opencost
+                port:
+                  number: 9003

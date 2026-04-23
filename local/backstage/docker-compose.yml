@@ -1,0 +1,89 @@
+# Local Backstage + Postgres stack
+# Usage: docker compose -f local/backstage/docker-compose.yml up -d
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: backstage
+      POSTGRES_PASSWORD: backstage
+      POSTGRES_DB: backstage
+    volumes:
+      - backstage-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U backstage"]
+      interval: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  backstage:
+    build:
+      context: ../../backstage/app
+      dockerfile: ../Dockerfile
+    image: backstage:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_OPTIONS: "--no-node-snapshot"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: backstage
+      POSTGRES_PASSWORD: backstage
+      # Set these in a .env file (not committed)
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AUTH_GITHUB_CLIENT_ID: ${AUTH_GITHUB_CLIENT_ID:-}
+      AUTH_GITHUB_CLIENT_SECRET: ${AUTH_GITHUB_CLIENT_SECRET:-}
+      # Local K8s — reads from in-cluster if running in Kind, else skip
+      K8S_CLUSTER_URL: ${K8S_CLUSTER_URL:-https://kubernetes.default.svc}
+      K8S_SERVICE_ACCOUNT_TOKEN: ${K8S_SERVICE_ACCOUNT_TOKEN:-}
+      K8S_CLUSTER_CA_DATA: ${K8S_CLUSTER_CA_DATA:-}
+      # kubeconfig for idp:deploy-local action
+      # host.docker.internal resolves to the Mac host — replaces 127.0.0.1 at startup
+      KUBECONFIG: /tmp/kubeconfig
+      SNYK_TOKEN: ${SNYK_TOKEN:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      TECHDOCS_S3_BUCKET_NAME: ${TECHDOCS_S3_BUCKET_NAME:-}
+      CATALOG_EXPORTER_TOKEN: ${CATALOG_EXPORTER_TOKEN:-local-catalog-exporter-token}
+    ports:
+      - "3000:7007"   # frontend + backend both served from 7007 inside the container
+    extra_hosts:
+      - "backstage.idp.local:host-gateway"
+      - "hello-service.idp.local:host-gateway"
+      - "grafana.idp.local:host-gateway"
+      - "prometheus.idp.local:host-gateway"
+      - "opencost.idp.local:host-gateway"
+    volumes:
+      - ../../backstage/app-config.yaml:/app/app-config.yaml:ro
+      - ../../backstage/app-config.local.yaml:/app/app-config.local.yaml:ro
+      - ../../backstage/catalog:/catalog:ro
+      # repo root catalog-info.yaml — System entity with dir:. for techdocs
+      - ../../catalog-info.yaml:/catalog-info.yaml:ro
+      # repo root mkdocs.yml + docs/ — needed by internal-developer-platform System entity (dir:.)
+      - ../../mkdocs.yml:/mkdocs.yml:ro
+      - ../../docs:/docs:ro
+      # services/ — needed so TechDocs can resolve dir: refs in entity files
+      - ../../services:/services:ro
+      # idp:deploy-local — helm chart and kubeconfig
+      - ../../helm/service-template:/helm/service-template:ro
+      - ~/.kube/config:/home/node/.kube/config:ro
+      # Docker socket — required for idp:seed-image action to tag & push
+      # placeholder images to the local Kind registry (localhost:5003)
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Rewrite 127.0.0.1 → host.docker.internal in kubeconfig so kubectl can
+    # reach the Kind API server running on the Mac host from inside Docker.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        sed \
+          -e 's/127\.0\.0\.1/host.docker.internal/g' \
+          -e 's/certificate-authority-data:.*/insecure-skip-tls-verify: true/' \
+          /home/node/.kube/config > /tmp/kubeconfig &&
+        node packages/backend \
+          --config app-config.yaml \
+          --config app-config.local.yaml
+
+volumes:
+  backstage-postgres:

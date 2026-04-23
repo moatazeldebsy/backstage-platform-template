@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: internal-developer-platform
+  title: Internal Developer Platform
+  description: Golden-path platform for building and deploying services on EKS
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - platform
+    - aws
+    - kubernetes
+spec:
+  owner: platform-team

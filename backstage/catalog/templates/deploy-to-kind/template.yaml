@@ -1,0 +1,77 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: deploy-to-kind
+  title: Deploy Service to local Kind cluster
+  description: Build and deploy an existing service to the local Kind cluster via Helm. Run this anytime after scaffolding.
+  tags:
+    - deploy
+    - local
+    - kind
+    - golden-path
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service
+      required:
+        - serviceName
+      properties:
+        serviceName:
+          title: Service Name
+          type: string
+          description: Name of the scaffolded service to deploy (must match catalog component name)
+          ui:autofocus: true
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.lifecycle: development
+        imageTag:
+          title: Image Tag
+          type: string
+          default: latest
+          description: "Tag of the image already present in the local registry (localhost:5003)"
+
+    - title: Deployment options
+      properties:
+        namespace:
+          title: Kubernetes Namespace
+          type: string
+          default: services
+        registry:
+          title: Local Registry
+          type: string
+          default: localhost:5003
+          description: Local container registry address reachable from inside the Kind cluster
+
+  steps:
+    - id: deploy-local
+      name: Deploy to Kind cluster via Helm
+      action: idp:deploy-local
+      input:
+        serviceName: ${{ parameters.serviceName | parseEntityRef | pick('name') }}
+        namespace: ${{ parameters.namespace }}
+        imageTag: ${{ parameters.imageTag }}
+        helmChartPath: /helm/service-template
+        registry: ${{ parameters.registry }}
+
+  output:
+    links:
+      - title: Service URL
+        url: ${{ steps['deploy-local'].output.serviceUrl }}
+        icon: web
+    text:
+      - title: Deploy result
+        content: |
+          **${{ parameters.serviceName | parseEntityRef | pick('name') }}** deployed to Kind.
+
+          Access at: `${{ steps['deploy-local'].output.serviceUrl }}`
+
+          Add to `/etc/hosts` if not already present:
+          ```
+          127.0.0.1   ${{ parameters.serviceName | parseEntityRef | pick('name') }}.idp.local
+          ```

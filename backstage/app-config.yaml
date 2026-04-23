@@ -1,0 +1,237 @@
+app:
+  title: IDP Developer Portal
+  baseUrl: http://localhost:3000
+
+  # Auto-discover all frontend plugins listed in packages/app/package.json
+  packages: all
+
+  extensions:
+    # Catalog is the home page
+    - page:catalog:
+        config:
+          path: /
+
+organization:
+  name: My Organization
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+    upgrade-insecure-requests: false
+  cors:
+    origin: http://localhost:3000
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      ssl:
+        rejectUnauthorized: false
+
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+
+techdocs:
+  builder: 'local'
+  generator:
+    runIn: 'docker'
+  publisher:
+    type: 'awsS3'
+    awsS3:
+      bucketName: ${TECHDOCS_S3_BUCKET_NAME}
+      region: ${AWS_REGION}
+
+auth:
+  environment: development
+  providers:
+    guest:
+      dangerouslyAllowOutsideDevelopment: true
+    github:
+      development:
+        clientId: ${AUTH_GITHUB_CLIENT_ID}
+        clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+        signIn:
+          resolvers:
+            - resolver: usernameMatchingUserEntityName
+              dangerouslyAllowSignInWithoutUserInCatalog: true
+            - resolver: emailMatchingUserEntityProfileEmail
+              dangerouslyAllowSignInWithoutUserInCatalog: true
+
+scaffolder:
+  defaultAuthor:
+    name: IDP Bot
+    email: idp-bot@example.com
+  defaultCommitMessage: "chore: scaffold service via IDP"
+
+catalog:
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Resource, Location, Template, User, Group]
+  locations:
+    # Platform-owned templates (paths are absolute inside the container)
+    - type: file
+      target: /catalog/templates/nodejs-service/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/python-service/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/deploy-to-kind/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/react-frontend/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/go-service/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/terraform-module/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/team-namespace/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/add-secret/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/rds-database/template.yaml
+      rules:
+        - allow: [Template]
+    # ML Platform templates
+    - type: file
+      target: /catalog/templates/model-serving-api/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/ml-training-job/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mlflow-experiment/template.yaml
+      rules:
+        - allow: [Template]
+    # AI Agent golden-path template
+    - type: file
+      target: /catalog/templates/ai-agent-service/template.yaml
+      rules:
+        - allow: [Template]
+    # Platform entities: users, groups (system moved to root catalog-info.yaml)
+    - type: file
+      target: /catalog/catalog-info.yaml
+      rules:
+        - allow: [User, Group]
+    - type: file
+      target: /catalog/templates/playwright-e2e-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/k6-performance-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/pact-contract-suite/template.yaml
+      rules:
+        - allow: [Template]
+    # Testing addon templates — inject tests into existing service repos via PR
+    - type: file
+      target: /catalog/templates/add-unit-tests/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/add-e2e-tests/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/add-k6-tests/template.yaml
+      rules:
+        - allow: [Template]
+    # QA Platform capability: qa-team, qa-engineer, qa-platform, sonarcloud, lambdatest, mailtrap
+    - type: file
+      target: /catalog/qa-catalog.yaml
+      rules:
+        - allow: [User, Group, Component, Resource]
+    # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
+    - type: file
+      target: /catalog-info.yaml
+      rules:
+        - allow: [System]
+    # API definitions
+    - type: file
+      target: /catalog/apis/hello-service-api.yaml
+      rules:
+        - allow: [API]
+    - type: file
+      target: /catalog/apis/llm-gateway.yaml
+      rules:
+        - allow: [API]
+    # Registered services (co-located catalog-info uses dir:. for techdocs)
+    - type: file
+      target: /services/hello-service/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # AI/ML infrastructure resources
+    - type: file
+      target: /catalog/services/llm-gateway.yaml
+      rules:
+        - allow: [Resource]
+
+kubernetes:
+  serviceLocatorMethod:
+    type: 'multiTenant'
+  clusterLocatorMethods:
+    - type: 'config'
+      clusters:
+        - url: ${K8S_CLUSTER_URL}
+          name: idp-mvp
+          authProvider: 'serviceAccount'
+          skipTLSVerify: true
+          skipMetricsLookup: false
+          serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
+
+techRadar:
+  url: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/tech-radar.json
+
+proxy:
+  endpoints:
+    /snyk:
+      target: https://api.snyk.io/
+      allowedHeaders: ['Authorization']
+      headers:
+        Authorization: token ${SNYK_TOKEN}
+    # OpenCost — in-cluster cost visibility for the Cost Insights plugin
+    /opencost:
+      target: http://opencost.finops.svc.cluster.local:9003
+      allowedMethods: ['GET']
+      changeOrigin: true
+
+# Tech Insights — developer scorecard fact collection
+techInsights:
+  factRetrievers:
+    entityMetadataFactRetriever:
+      cadence: '*/30 * * * *'
+    entityOwnershipFactRetriever:
+      cadence: '*/30 * * * *'
+
+snyk:
+  appHost: app.snyk.io
+  mocked: false
+  showResolvedInGraphs: false

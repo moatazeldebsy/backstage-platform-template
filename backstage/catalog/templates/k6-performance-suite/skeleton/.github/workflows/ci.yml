@@ -1,0 +1,85 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '${{ values.runSchedule }}'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Override target URL (default: ${{ values.targetServiceUrl }})"
+        required: false
+        default: ""
+      scenario:
+        description: "Test scenario to run"
+        required: false
+        default: "load"
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+
+concurrency:
+  group: perf-${{ '${{ github.ref }}' }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    name: k6 Performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          curl -s https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz | tar xz
+          sudo mv k6-v0.52.0-linux-amd64/k6 /usr/local/bin/k6
+
+      - name: Run smoke test
+        if: github.event_name == 'pull_request'
+        run: k6 run tests/smoke.js
+        env:
+          BASE_URL: ${{ '${{ inputs.base_url }}' }}
+
+      - name: Run load test
+        if: github.event_name != 'pull_request'
+        run: |
+          SCENARIO=${{ '${{ inputs.scenario || \'load\' }}' }}
+          k6 run --out json=k6-results.json tests/${SCENARIO}.js
+        env:
+          BASE_URL: ${{ '${{ inputs.base_url }}' }}
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results-${{ '${{ github.run_number }}' }}
+          path: |
+            k6-results.json
+            k6-summary.json
+          retention-days: 30
+
+      - name: Push performance metrics to Prometheus Pushgateway
+        if: always()
+        env:
+          PUSHGATEWAY_URL: ${{ '${{ secrets.PUSHGATEWAY_URL }}' }}
+          SUITE_NAME: '${{ values.name }}'
+        run: |
+          if [ -z "$PUSHGATEWAY_URL" ] || [ ! -f k6-summary.json ]; then exit 0; fi
+          P95=$(python3 -c "import json,sys; d=json.load(open('k6-summary.json')); print(d.get('metrics',{}).get('http_req_duration',{}).get('values',{}).get('p(95)',0))" 2>/dev/null || echo 0)
+          ERR=$(python3 -c "import json,sys; d=json.load(open('k6-summary.json')); print(d.get('metrics',{}).get('http_req_failed',{}).get('values',{}).get('rate',0))" 2>/dev/null || echo 0)
+          REQS=$(python3 -c "import json,sys; d=json.load(open('k6-summary.json')); print(d.get('metrics',{}).get('http_reqs',{}).get('values',{}).get('count',0))" 2>/dev/null || echo 0)
+          cat <<EOF | curl --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/performance/suite/${SUITE_NAME}"
+          # TYPE perf_http_req_duration_p95_ms gauge
+          perf_http_req_duration_p95_ms{suite="${SUITE_NAME}"} ${P95}
+          # TYPE perf_http_error_rate gauge
+          perf_http_error_rate{suite="${SUITE_NAME}"} ${ERR}
+          # TYPE perf_http_requests_total gauge
+          perf_http_requests_total{suite="${SUITE_NAME}"} ${REQS}
+          EOF

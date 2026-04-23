@@ -1,0 +1,82 @@
+# SLO definitions for hello-service using Sloth (https://sloth.dev)
+#
+# Generate PrometheusRule from this file:
+#   docker run --rm -v $(pwd):/workspace slok/sloth:latest generate \
+#     -i /workspace/observability/slo/hello-service-slos.yaml \
+#     -o /workspace/observability/slo/generated/
+#
+# Apply the generated rules:
+#   kubectl apply -f observability/slo/generated/hello-service-slo-rules.yaml
+---
+version: "prometheus/v1"
+service: hello-service
+labels:
+  owner: platform-team
+  system: internal-developer-platform
+slos:
+  # ── Availability SLO ────────────────────────────────────────────────────────
+  # 99.5% of HTTP requests succeed over a 30-day rolling window.
+  # Error budget: 0.5% = ~3.6 hours of downtime per month.
+  - name: requests-availability
+    objective: 99.5
+    description: "99.5% of hello-service HTTP requests must succeed (non-5xx)"
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_requests_total{
+            namespace="services",
+            service="hello-service",
+            status=~"5.."
+          }[{{.window}}]))
+        total_query: |
+          sum(rate(http_requests_total{
+            namespace="services",
+            service="hello-service"
+          }[{{.window}}]))
+    alerting:
+      name: HelloServiceAvailability
+      labels:
+        severity: critical
+        team: platform-team
+      annotations:
+        runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/deployment-rollback.md"
+        summary: "hello-service availability SLO is at risk"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning
+
+  # ── Latency SLO ─────────────────────────────────────────────────────────────
+  # 99% of HTTP requests complete within 500ms over a 30-day rolling window.
+  - name: requests-latency
+    objective: 99
+    description: "99% of hello-service requests must complete within 500ms"
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_request_duration_seconds_bucket{
+            namespace="services",
+            service="hello-service",
+            le="0.5"
+          }[{{.window}}]))
+        total_query: |
+          sum(rate(http_request_duration_seconds_count{
+            namespace="services",
+            service="hello-service"
+          }[{{.window}}]))
+    alerting:
+      name: HelloServiceLatency
+      labels:
+        severity: warning
+        team: platform-team
+      annotations:
+        runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-cpu.md"
+        summary: "hello-service latency SLO is at risk (p99 > 500ms)"
+      page_alert:
+        labels:
+          severity: warning
+      ticket_alert:
+        labels:
+          severity: info

@@ -1,0 +1,153 @@
+# Prometheus alert rules for IDP platform services
+# Applies to all workloads in services, services-dev, services-staging, services-prod namespaces.
+#
+# Deploy:
+#   kubectl apply -f observability/alertmanager/prometheus-rules.yaml
+#
+# Verify rules are loaded:
+#   kubectl get prometheusrules -n monitoring
+#   # Port-forward and check: http://localhost:9090/rules
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: idp-platform-rules
+  namespace: monitoring
+  labels:
+    # Must match the ruleSelector in kube-prometheus-stack (release=prometheus by default)
+    release: prometheus
+    app.kubernetes.io/part-of: kube-prometheus-stack
+spec:
+  groups:
+    # ── Pod health ────────────────────────────────────────────────────────────
+    - name: pod-health
+      interval: 30s
+      rules:
+        - alert: PodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace=~"services.*"
+            }[5m]) > 3
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} ({{ $labels.namespace }}) is crash-looping"
+            description: "Container {{ $labels.container }} restarted {{ $value | humanize }} times in the last 5 minutes."
+            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/pod-crash-loop.md"
+
+    # ── Resource usage ────────────────────────────────────────────────────────
+    - name: resource-usage
+      interval: 60s
+      rules:
+        - alert: HighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{
+                namespace=~"services.*",
+                container!=""
+              }
+              /
+              container_spec_memory_limit_bytes{
+                namespace=~"services.*",
+                container!=""
+              }
+            ) > 0.80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage in {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Container {{ $labels.container }} is using {{ $value | humanizePercentage }} of its memory limit."
+            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-memory.md"
+
+        - alert: HighMemoryUsageCritical
+          expr: |
+            (
+              container_memory_working_set_bytes{
+                namespace=~"services.*",
+                container!=""
+              }
+              /
+              container_spec_memory_limit_bytes{
+                namespace=~"services.*",
+                container!=""
+              }
+            ) > 0.95
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Critical memory usage in {{ $labels.namespace }}/{{ $labels.pod }} — OOMKill imminent"
+            description: "Container {{ $labels.container }} is at {{ $value | humanizePercentage }} of its memory limit."
+            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-memory.md"
+
+        - alert: HighCPUUsage
+          expr: |
+            (
+              rate(container_cpu_usage_seconds_total{
+                namespace=~"services.*",
+                container!=""
+              }[5m])
+              /
+              container_spec_cpu_quota{
+                namespace=~"services.*",
+                container!=""
+              }
+              * container_spec_cpu_period{
+                namespace=~"services.*",
+                container!=""
+              }
+            ) > 0.80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage in {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Container {{ $labels.container }} is using {{ $value | humanizePercentage }} of its CPU limit."
+            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-cpu.md"
+
+    # ── Deployment health ──────────────────────────────────────────────────────
+    - name: deployment-health
+      interval: 60s
+      rules:
+        - alert: DeploymentReplicasMismatch
+          expr: |
+            kube_deployment_spec_replicas{namespace=~"services.*"}
+            !=
+            kube_deployment_status_replicas_available{namespace=~"services.*"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has mismatched replicas"
+            description: "Desired {{ $value }} replicas but not all are available. A deploy may be stuck."
+            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/deployment-rollback.md"
+
+    # ── HTTP error rate ────────────────────────────────────────────────────────
+    - name: http-errors
+      interval: 30s
+      rules:
+        - alert: HighHTTP5xxRate
+          expr: |
+            (
+              sum by (namespace, service) (
+                rate(http_requests_total{
+                  namespace=~"services.*",
+                  status=~"5.."
+                }[5m])
+              )
+              /
+              sum by (namespace, service) (
+                rate(http_requests_total{
+                  namespace=~"services.*"
+                }[5m])
+              )
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High 5xx error rate on {{ $labels.namespace }}/{{ $labels.service }}"
+            description: "{{ $value | humanizePercentage }} of requests are returning 5xx errors."
+            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/deployment-rollback.md"

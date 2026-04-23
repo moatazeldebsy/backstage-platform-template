@@ -1,0 +1,118 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: playwright-e2e-suite
+  title: Playwright E2E Test Suite
+  description: >
+    Golden Path for a standalone Playwright E2E test suite targeting any deployed service.
+    Scaffolds smoke tests, API contract tests, a CI workflow with HTML + Allure reports,
+    and registers the suite in the service catalog under the QA team.
+  tags:
+    - qa
+    - playwright
+    - e2e
+    - testing
+    - golden-path
+  links:
+    - title: Playwright Docs
+      url: https://playwright.dev
+      icon: docs
+spec:
+  owner: qa-team
+  type: e2e-test-suite
+
+  parameters:
+    - title: Suite details
+      required:
+        - name
+        - targetServiceUrl
+        - description
+      properties:
+        name:
+          title: Suite name
+          type: string
+          description: Slug used for the repo name and catalog entry (e.g. my-service-e2e)
+          pattern: '^[a-z0-9-]+$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: What service / user flows does this suite cover?
+        targetServiceUrl:
+          title: Target service base URL
+          type: string
+          description: Base URL Playwright will hit (e.g. https://my-service.example.com or http://hello-service.idp.local)
+          default: http://hello-service.idp.local
+        runSchedule:
+          title: Scheduled run (cron)
+          type: string
+          description: When to run tests automatically (UTC cron expression)
+          default: '0 6 * * *'
+          enum:
+            - '0 6 * * *'
+            - '0 6 * * 1-5'
+            - '0 */6 * * *'
+          enumNames:
+            - Daily at 06:00 UTC
+            - Weekdays at 06:00 UTC
+            - Every 6 hours
+
+    - title: Ownership & publication
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+        owner:
+          title: Owner
+          type: string
+          description: Backstage group or user that owns this suite
+          default: qa-team
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+  steps:
+    - id: fetch-template
+      name: Fetch skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          targetServiceUrl: ${{ parameters.targetServiceUrl }}
+          runSchedule: ${{ parameters.runSchedule }}
+          owner: ${{ parameters.owner }}
+          repoUrl: ${{ parameters.repoUrl }}
+          githubOrg: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: private
+
+    - id: register
+      name: Register in catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

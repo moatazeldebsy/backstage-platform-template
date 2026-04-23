@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: hello-service
+  description: Reference Go service
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=hello-service
+    backstage.io/kubernetes-namespace: services
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: internal-developer-platform

@@ -1,0 +1,66 @@
+# AlertManager configuration for the IDP platform.
+# Uses the AlertmanagerConfig CRD, which kube-prometheus-stack picks up via
+# alertmanagerConfigSelector matching label app.kubernetes.io/part-of: kube-prometheus-stack
+#
+# Prerequisites — create the webhook secret BEFORE applying this file:
+#   kubectl create secret generic alertmanager-slack-webhook \
+#     --from-literal=webhook-url='https://hooks.slack.com/services/...' \
+#     -n monitoring
+#
+# (bootstrap-local.sh does this automatically when SLACK_WEBHOOK_URL is set)
+#
+# Then apply only this file (the Secret is managed separately):
+#   kubectl apply -f observability/alertmanager/alertmanager-config.yaml
+---
+# AlertmanagerConfig CRD — defines routes and receivers.
+# Picked up automatically by the Prometheus Operator when alertmanagerConfigSelector: {}.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: idp-slack-routing
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: kube-prometheus-stack
+spec:
+  route:
+    groupBy: ['alertname', 'namespace', 'service']
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    receiver: slack-platform
+    routes:
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: slack-platform
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: slack-platform
+
+  receivers:
+    - name: slack-platform
+      slackConfigs:
+        - apiURL:
+            name: alertmanager-slack-webhook
+            key: webhook-url
+          channel: '#platform-alerts'
+          sendResolved: true
+          title: '{{ if eq .Status "firing" }}:red_circle:{{ else }}:white_check_mark:{{ end }} [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+          text: |
+            *Severity:* {{ .CommonLabels.severity }}
+            *Namespace:* {{ .CommonLabels.namespace }}
+            {{ range .Alerts }}
+            *Summary:* {{ .Annotations.summary }}
+            *Runbook:* <{{ .Annotations.runbook_url }}|View Runbook>
+            {{ end }}
+          footer: 'IDP Platform'
+
+  inhibitRules:
+    - sourceMatch:
+        - name: severity
+          value: critical
+      targetMatch:
+        - name: severity
+          value: warning
+      equal: ['alertname', 'namespace']

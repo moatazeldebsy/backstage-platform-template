@@ -1,0 +1,93 @@
+# One-time Kubernetes Job that creates the Postgres database and user
+# on the shared RDS instance. Runs to completion then is retained for audit.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-init-${{ values.serviceName }}
+  namespace: services
+  labels:
+    app.kubernetes.io/component: db-init
+    app.kubernetes.io/managed-by: idp-backstage
+    service: ${{ values.serviceName }}
+spec:
+  ttlSecondsAfterFinished: 86400   # retain logs for 24h then auto-delete
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: db-init-${{ values.serviceName }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: db-init-sa   # IRSA: read idp-mvp/backstage secret for master RDS creds
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: db-init
+          image: postgres:16-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              echo "Connecting to RDS at ${RDS_HOST}:${RDS_PORT} as admin..."
+              PGPASSWORD="${RDS_MASTER_PASSWORD}" psql \
+                -h "${RDS_HOST}" \
+                -p "${RDS_PORT}" \
+                -U "${RDS_MASTER_USER}" \
+                -d postgres \
+                -c "
+                  DO \$\$
+                  BEGIN
+                    -- Create role if it does not exist
+                    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${{ values.serviceName }}') THEN
+                      CREATE ROLE \"${{ values.serviceName }}\" LOGIN PASSWORD '${DB_PASSWORD}';
+                      RAISE NOTICE 'Role ${{ values.serviceName }} created.';
+                    ELSE
+                      RAISE NOTICE 'Role ${{ values.serviceName }} already exists.';
+                    END IF;
+
+                    -- Create database if it does not exist
+                    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '${{ values.databaseName }}') THEN
+                      PERFORM dblink_exec('', 'CREATE DATABASE \"${{ values.databaseName }}\" OWNER \"${{ values.serviceName }}\"');
+                      RAISE NOTICE 'Database ${{ values.databaseName }} created.';
+                    ELSE
+                      RAISE NOTICE 'Database ${{ values.databaseName }} already exists.';
+                    END IF;
+                  END
+                  \$\$;
+                  GRANT ALL PRIVILEGES ON DATABASE \"${{ values.databaseName }}\" TO \"${{ values.serviceName }}\";
+                "
+              echo "Done."
+          env:
+            - name: RDS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: rds-master-credentials
+                  key: host
+            - name: RDS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: rds-master-credentials
+                  key: port
+            - name: RDS_MASTER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rds-master-credentials
+                  key: username
+            - name: RDS_MASTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rds-master-credentials
+                  key: password
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ${{ values.serviceName }}-db-init-password
+                  key: password

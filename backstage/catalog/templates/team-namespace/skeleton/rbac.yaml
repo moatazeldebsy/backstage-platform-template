@@ -1,0 +1,54 @@
+# ServiceAccount and Role for ${{ values.teamName }} team deployments
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: team-${{ values.teamName }}
+  labels:
+    team: ${{ values.teamName }}
+---
+# Token secret for the deployer SA (for CI/CD systems that need a static token)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: team-${{ values.teamName }}-deployer-token
+  namespace: team-${{ values.teamName }}
+  annotations:
+    kubernetes.io/service-account.name: deployer
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-deployer
+  namespace: team-${{ values.teamName }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "serviceaccounts", "pods", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-deployer
+  namespace: team-${{ values.teamName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: team-deployer
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: team-${{ values.teamName }}

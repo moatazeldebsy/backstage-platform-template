@@ -1,0 +1,46 @@
+---
+# ConstraintTemplate: every Deployment container must have liveness + readiness probes.
+# Applies to: services-dev, services-staging, services-prod namespaces.
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: requirehealthprobes
+  annotations:
+    description: "All container specs must define livenessProbe and readinessProbe."
+spec:
+  crd:
+    spec:
+      names:
+        kind: RequireHealthProbes
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package requirehealthprobes
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.livenessProbe
+          msg := sprintf("Container '%v' is missing livenessProbe. Add a /healthz probe.", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.readinessProbe
+          msg := sprintf("Container '%v' is missing readinessProbe. Add a /ready probe.", [container.name])
+        }
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: RequireHealthProbes
+metadata:
+  name: require-health-probes
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+    namespaces:
+      - services-dev
+      - services-staging
+      - services-prod

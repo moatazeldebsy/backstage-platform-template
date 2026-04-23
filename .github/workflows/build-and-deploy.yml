@@ -1,0 +1,219 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+      - '.github/workflows/build-and-deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: idp-mvp
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  # ─── Detect which service changed ───────────────────────────────────────────
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # required by dorny/paths-filter@v3 on PRs
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            hello-service:
+              - 'services/hello-service/**'
+
+  # ─── Lint and test ──────────────────────────────────────────────────────────
+  test:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect runtime
+        id: runtime
+        run: |
+          if [ -f "go.mod" ]; then echo "runtime=go" >> "$GITHUB_OUTPUT"
+          elif [ -f "package.json" ]; then echo "runtime=node" >> "$GITHUB_OUTPUT"
+          elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then echo "runtime=python" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@v5
+        if: steps.runtime.outputs.runtime == 'go'
+        with:
+          go-version-file: services/${{ matrix.service }}/go.mod
+
+      - uses: actions/setup-node@v4
+        if: steps.runtime.outputs.runtime == 'node'
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - uses: actions/setup-python@v5
+        if: steps.runtime.outputs.runtime == 'python'
+        with:
+          python-version: '3.12'
+
+      - name: Run tests (Go)
+        if: steps.runtime.outputs.runtime == 'go'
+        run: go test ./... -coverprofile=coverage.out
+
+      - name: Run tests (Node)
+        if: steps.runtime.outputs.runtime == 'node'
+        run: npm ci && npm test
+
+      - name: Run tests (Python)
+        if: steps.runtime.outputs.runtime == 'python'
+        run: pip install -r requirements.txt && pytest
+
+  # ─── Build and push to ECR ──────────────────────────────────────────────────
+  build-and-push:
+    needs: [detect-changes, test]
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' && secrets.AWS_ROLE_ARN != '' }}
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for OIDC
+      contents: read
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories \
+            --repository-names "${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}" \
+            --region "${{ env.AWS_REGION }}" 2>/dev/null || \
+          aws ecr create-repository \
+            --repository-name "${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --image-scanning-configuration scanOnPush=true
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── GitOps: write image tag to git, ArgoCD deploys ────────────────────────
+  # CI no longer calls helm directly. It commits the new image tag into
+  # services/<name>/helm-values-dev.yaml. ArgoCD detects the change and syncs.
+  # Promotion to staging/prod is done by opening a PR that updates those files.
+  update-image-tag:
+    needs: [detect-changes, build-and-push]
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' && secrets.AWS_ROLE_ARN != '' }}
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write   # needed to push the image tag commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.IDP_PLATFORM_TOKEN }}   # push back to repo
+          fetch-depth: 0
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Update image tag in helm-values-dev.yaml
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          IMAGE_REPO: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
+        run: |
+          yq -i ".image.repository = \"${IMAGE_REPO}\"" \
+            services/${{ matrix.service }}/helm-values-dev.yaml
+          yq -i ".image.tag = \"${IMAGE_TAG}\"" \
+            services/${{ matrix.service }}/helm-values-dev.yaml
+
+      - name: Commit and push image tag
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          git config user.name "idp-bot"
+          git config user.email "idp-bot@platform"
+          git add services/${{ matrix.service }}/helm-values-dev.yaml
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore(gitops): ${{ matrix.service }} → ${IMAGE_TAG} [dev] [skip ci]"
+          git push
+
+      - name: Notify Slack on success
+        if: success()
+        continue-on-error: true   # non-blocking until SLACK_BOT_TOKEN is configured
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
+            text: ":arrows_counterclockwise: *`${{ matrix.service }}`* image tag updated to `${{ needs.build-and-push.outputs.image_tag }}` — ArgoCD syncing dev\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+
+      - name: Notify Slack on failure
+        if: failure()
+        continue-on-error: true   # non-blocking until SLACK_BOT_TOKEN is configured
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
+            text: ":x: *GitOps tag update failed for `${{ matrix.service }}`*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"

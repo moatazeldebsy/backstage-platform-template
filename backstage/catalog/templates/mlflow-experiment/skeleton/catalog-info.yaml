@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    cost-center: ${{ values.costCenter }}
+  links:
+    - title: MLflow Experiment
+      url: http://mlflow.idp.local/#/experiments
+      icon: dashboard
+  tags:
+    - ml
+    - mlflow
+    - experiment-tracking
+spec:
+  type: ml-experiment
+  owner: ${{ values.owner }}
+  lifecycle: ${{ values.lifecycle }}
+  system: internal-developer-platform
+  dependsOn:
+    - resource:default/mlflow

@@ -1,0 +1,160 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: python-fastapi-service
+  title: Python FastAPI Service
+  description: Scaffold a Python FastAPI service with CI/CD and Helm deployment
+  tags:
+    - python
+    - fastapi
+    - golden-path
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service Details
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Service Name
+          type: string
+          description: Unique service name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Infrastructure
+      properties:
+        port:
+          title: Container Port
+          type: integer
+          default: 8000
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Team cost center code for OpenCost attribution (e.g. eng-platform, eng-product)"
+          default: eng-platform
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - YOUR_GITHUB_ORG
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          port: ${{ parameters.port }}
+          costCenter: ${{ parameters.costCenter }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - python
+          - fastapi
+          - idp-service
+
+    - id: set-repo-secrets
+      name: Configure CI/CD Secrets
+      action: idp:repo:set-secrets
+      input:
+        repoUrl: ${{ steps.publish.output.remoteUrl }}
+        secrets:
+          AWS_ROLE_ARN: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/idp-mvp-github-actions"
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    - id: register-api
+      name: Register API in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/api-info.yaml'
+
+    - id: fetch-platform-values
+      name: Prepare Platform GitOps Values
+      action: fetch:template
+      input:
+        url: ./platform-values
+        targetPath: ./platform-values
+        values:
+          name: ${{ parameters.name }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          port: ${{ parameters.port }}
+          owner: ${{ parameters.owner }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: platform-pr
+      name: Open Platform GitOps PR
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=idp-mvp&owner=YOUR_GITHUB_ORG
+        title: "feat: onboard ${{ parameters.name }} to GitOps"
+        branchName: feat/onboard-${{ parameters.name }}
+        description: |
+          Adds `services/${{ parameters.name }}/` to the platform repo.
+
+          ArgoCD ApplicationSet will auto-discover and deploy this service
+          to `services-dev` namespace once merged.
+        sourcePath: ./platform-values
+        targetPath: services/${{ parameters.name }}
+
+    - id: seed-image
+      name: Seed placeholder image in local registry
+      action: idp:seed-image
+      input:
+        serviceName: ${{ parameters.name }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+      - title: Open API
+        icon: code
+        entityRef: ${{ steps.register-api.output.entityRef }}
+      - title: Open Platform GitOps PR
+        url: ${{ steps['platform-pr'].output.remoteUrl }}

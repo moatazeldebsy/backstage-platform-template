@@ -1,0 +1,27 @@
+# Default deny-all ingress; allow only intra-namespace and monitoring scraping
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: team-awesome-team
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow pods within the same namespace to talk to each other
+    - from:
+        - podSelector: {}
+    # Allow Prometheus (in monitoring namespace) to scrape /metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow ingress controller (in ingress-nginx / kube-system) to forward traffic
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system

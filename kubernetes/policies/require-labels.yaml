@@ -1,0 +1,59 @@
+---
+# ConstraintTemplate: all Deployments must carry the app.kubernetes.io/instance label.
+# This label is how the platform's ServiceMonitor, rollout verify commands, and
+# RBAC policies select workloads. Missing it breaks observability and deploy checks.
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: requirelabels
+  annotations:
+    description: "Deployments must carry required app.kubernetes.io labels."
+spec:
+  crd:
+    spec:
+      names:
+        kind: RequireLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            labels:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package requirelabels
+
+        violation[{"msg": msg}] {
+          required := input.parameters.labels[_]
+          not input.review.object.metadata.labels[required]
+          msg := sprintf("Deployment is missing required label: '%v'.", [required])
+        }
+
+        violation[{"msg": msg}] {
+          required := input.parameters.labels[_]
+          not input.review.object.spec.template.metadata.labels[required]
+          msg := sprintf("Pod template is missing required label: '%v'. Prometheus ServiceMonitor won't scrape this pod.", [required])
+        }
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: RequireLabels
+metadata:
+  name: require-standard-labels
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+    namespaces:
+      - services-dev
+      - services-staging
+      - services-prod
+  parameters:
+    labels:
+      - "app.kubernetes.io/instance"
+      - "app.kubernetes.io/name"

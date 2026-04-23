@@ -1,0 +1,25 @@
+# nginx Ingress for Prometheus Pushgateway — local Kind only
+# Allows CI workflows and seed scripts to push metrics via http://pushgateway.idp.local
+# Apply: kubectl apply -f local/observability/pushgateway-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pushgateway
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # Allow large metric payloads
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: pushgateway.idp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-pushgateway
+                port:
+                  number: 9091

@@ -1,0 +1,9 @@
+site_name: Deploy Service to local Kind cluster
+site_description: Backstage scaffolder template for deploying an existing service to the local Kind cluster via Helm
+docs_dir: docs
+
+nav:
+  - Overview: index.md
+
+plugins:
+  - techdocs-core

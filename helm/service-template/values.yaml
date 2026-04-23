@@ -1,0 +1,104 @@
+# Default values for service-template.
+# Override in your service's values.yaml.
+
+replicaCount: 2
+
+image:
+  repository: ""   # Set to your ECR repository URL
+  tag: "local"     # Never use "latest" — blocked by deny-latest-tag policy in services-prod
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""   # "alb" for AWS, "nginx" for local — set in service's helm-values.yaml
+  annotations: {}  # set per environment; do not mix alb + nginx annotations
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Health check endpoints (convention)
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+# Additional labels applied to every pod — use for cost attribution and team ownership.
+# Example:
+#   team: platform-team
+#   cost-center: eng-platform
+#   environment: dev
+podLabels: {}
+
+backstage:
+  # Override the backstage.io/kubernetes-id pod label.
+  # Defaults to .Release.Name if empty. Set to the service name (without env suffix)
+  # so Backstage K8s plugin can match pods to the component by name.
+  kubernetesId: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+env: []
+  # - name: LOG_LEVEL
+  #   value: info
+
+envFrom: []
+  # - secretRef:
+  #     name: my-service-secrets
+
+nodeSelector: {}
+tolerations: []
+# affinity is built by the chart template using selectorLabels — override here if needed
+affinity: {}

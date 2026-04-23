@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-quota
+  namespace: team-${{ values.teamName }}
+spec:
+  hard:
+    requests.cpu: "${{ values.maxCPU }}"
+    requests.memory: ${{ values.maxMemory }}
+    limits.cpu: "${{ values.maxCPU * 2 }}"
+    limits.memory: "${{ values.maxMemory }}"
+    pods: "${{ values.maxPods }}"
+    services: "10"
+    persistentvolumeclaims: "5"
+    secrets: "20"
+    configmaps: "20"

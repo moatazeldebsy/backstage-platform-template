@@ -1,0 +1,138 @@
+name: Contract Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 4 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      run_provider_verify:
+        description: "Run provider verification"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+concurrency:
+  group: contracts-${{ '${{ github.ref }}' }}
+  cancel-in-progress: true
+
+jobs:
+  contract-tests:
+    name: Consumer Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+{% if values.language == 'javascript' %}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run consumer contract tests
+        run: npx jest --testPathPattern=consumer --forceExit
+
+      - name: Publish pacts to broker
+        env:
+          PACT_BROKER_URL: ${{ '${{ secrets.PACT_BROKER_URL }}' }}
+          PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
+          CONSUMER_VERSION: ${{ '${{ github.sha }}' }}
+          VERSION_TAG: ${{ '${{ github.ref_name }}' }}
+        run: |
+          if [ -z "$PACT_BROKER_URL" ]; then echo "No Pact Broker configured, skipping publish"; exit 0; fi
+          npx pact-broker publish ./pacts \
+            --broker-base-url "$PACT_BROKER_URL" \
+            --broker-token "$PACT_BROKER_TOKEN" \
+            --consumer-app-version "$CONSUMER_VERSION" \
+            --tag "$VERSION_TAG"
+{% endif %}
+{% if values.language == 'python' %}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run consumer contract tests
+        run: pytest src/test_consumer.py -v
+
+      - name: Publish pacts to broker
+        env:
+          PACT_BROKER_URL: ${{ '${{ secrets.PACT_BROKER_URL }}' }}
+          PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
+          CONSUMER_VERSION: ${{ '${{ github.sha }}' }}
+          VERSION_TAG: ${{ '${{ github.ref_name }}' }}
+        run: |
+          if [ -z "$PACT_BROKER_URL" ]; then echo "No Pact Broker configured, skipping publish"; exit 0; fi
+          pact-broker publish ./pacts \
+            --broker-base-url "$PACT_BROKER_URL" \
+            --broker-token "$PACT_BROKER_TOKEN" \
+            --consumer-app-version "$CONSUMER_VERSION" \
+            --tag "$VERSION_TAG"
+{% endif %}
+
+      - name: Upload pact files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacts-${{ '${{ github.run_number }}' }}
+          path: pacts/
+          retention-days: 14
+
+  provider-verify:
+    name: Provider Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ '${{ github.event_name == \'schedule\' || github.event.inputs.run_provider_verify == \'true\' }}' }}
+    needs: contract-tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+{% if values.language == 'javascript' %}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify provider
+        run: npx jest --testPathPattern=provider --forceExit
+        env:
+          PROVIDER_BASE_URL: '${{ values.providerBaseUrl }}'
+          PACT_BROKER_URL: ${{ '${{ secrets.PACT_BROKER_URL }}' }}
+          PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
+{% endif %}
+{% if values.language == 'python' %}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify provider
+        run: pytest src/test_provider.py -v
+        env:
+          PROVIDER_BASE_URL: '${{ values.providerBaseUrl }}'
+          PACT_BROKER_URL: ${{ '${{ secrets.PACT_BROKER_URL }}' }}
+          PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
+{% endif %}

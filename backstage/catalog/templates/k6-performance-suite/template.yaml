@@ -1,0 +1,136 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: k6-performance-suite
+  title: k6 Performance Test Suite
+  description: >
+    Golden Path for a standalone k6 load/performance test suite targeting any deployed service.
+    Scaffolds smoke, load, and stress test scenarios with Prometheus remote-write integration,
+    CI workflow with threshold enforcement, and catalog registration under the QA team.
+  tags:
+    - qa
+    - k6
+    - performance
+    - load-testing
+    - golden-path
+  links:
+    - title: k6 Docs
+      url: https://k6.io/docs
+      icon: docs
+spec:
+  owner: qa-team
+  type: performance-test-suite
+
+  parameters:
+    - title: Suite details
+      required:
+        - name
+        - targetServiceUrl
+        - description
+      properties:
+        name:
+          title: Suite name
+          type: string
+          description: Slug for repo and catalog entry (e.g. my-service-perf)
+          pattern: '^[a-z0-9-]+$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: What service and performance scenario does this suite cover?
+        targetServiceUrl:
+          title: Target service base URL
+          type: string
+          description: Service base URL k6 will target (e.g. http://hello-service.idp.local)
+          default: http://hello-service.idp.local
+        p95LatencyThresholdMs:
+          title: p95 latency threshold (ms)
+          type: integer
+          description: Test fails if p95 response time exceeds this value
+          default: 500
+        errorRateThreshold:
+          title: Error rate threshold (%)
+          type: number
+          description: Test fails if HTTP error rate exceeds this percentage
+          default: 1
+        virtualUsers:
+          title: Peak virtual users
+          type: integer
+          description: Number of concurrent virtual users at peak load
+          default: 20
+        runSchedule:
+          title: Scheduled run (cron)
+          type: string
+          description: When to run performance tests automatically (UTC)
+          default: '0 3 * * 1-5'
+          enum:
+            - '0 3 * * 1-5'
+            - '0 3 * * *'
+            - '0 */12 * * *'
+          enumNames:
+            - Weekdays at 03:00 UTC
+            - Daily at 03:00 UTC
+            - Every 12 hours
+
+    - title: Ownership & publication
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+        owner:
+          title: Owner
+          type: string
+          description: Backstage group or user that owns this suite
+          default: qa-team
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+  steps:
+    - id: fetch-template
+      name: Fetch skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          targetServiceUrl: ${{ parameters.targetServiceUrl }}
+          p95LatencyThresholdMs: ${{ parameters.p95LatencyThresholdMs }}
+          errorRateThreshold: ${{ parameters.errorRateThreshold }}
+          virtualUsers: ${{ parameters.virtualUsers }}
+          runSchedule: ${{ parameters.runSchedule }}
+          owner: ${{ parameters.owner }}
+          repoUrl: ${{ parameters.repoUrl }}
+          githubOrg: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: private
+
+    - id: register
+      name: Register in catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

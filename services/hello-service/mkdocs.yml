@@ -1,0 +1,9 @@
+site_name: hello-service
+site_description: Reference Go service deployed via the IDP golden path
+
+nav:
+  - Home: index.md
+  - API: api.md
+
+plugins:
+  - techdocs-core

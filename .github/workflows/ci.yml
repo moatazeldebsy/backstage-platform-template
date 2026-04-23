@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'services/**'
+      - 'helm/**'
+      - 'kubernetes/**'
+      - 'terraform/**'
+      - 'backstage/app/**'
+      - 'backstage/Dockerfile'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'helm/**'
+      - 'kubernetes/**'
+      - 'terraform/**'
+      - 'backstage/app/**'
+      - 'backstage/Dockerfile'
+      - '.github/workflows/ci.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-hello-service:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: services/hello-service/go.mod
+
+      - name: Run tests with coverage
+        working-directory: services/hello-service
+        run: go test ./... -coverprofile=coverage.out -covermode=atomic
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: services/hello-service/coverage.out
+          retention-days: 1
+
+  sonarcloud:
+    name: SonarCloud analysis
+    if: false  # disabled until SONAR_TOKEN secret is configured
+    runs-on: ubuntu-latest
+    needs: test-hello-service
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # SonarCloud needs full git history for blame/new-code
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: go-coverage
+          path: services/hello-service
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  helm-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.0
+
+      - name: Lint service-template chart
+        run: helm lint helm/service-template
+
+      - name: Lint with required values
+        run: helm lint helm/service-template --set image.repository=test --set image.tag=abc1234
+
+  k8s-dry-run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          curl -L "https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz && sudo mv kubeconform /usr/local/bin/
+
+      - name: Validate namespace manifests
+        run: kubeconform -strict -summary kubernetes/namespaces/
+
+      - name: Validate RBAC manifests
+        run: kubeconform -strict -summary kubernetes/rbac/
+
+  backstage-compile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: backstage/app
+        run: yarn install --immutable
+
+      - name: Build backend bundle
+        working-directory: backstage/app
+        run: yarn build:backend
+
+      - name: Build Docker image (local, no push)
+        run: docker build -t backstage:ci -f backstage/Dockerfile backstage/app
+
+  terraform-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: terraform/.terraform
+          key: terraform-${{ hashFiles('terraform/.terraform.lock.hcl') }}
+          restore-keys: terraform-
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.10.5'
+
+      - name: terraform fmt check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      - name: terraform init (no backend)
+        working-directory: terraform
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        working-directory: terraform
+        run: terraform validate

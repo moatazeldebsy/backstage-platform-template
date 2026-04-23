@@ -1,0 +1,63 @@
+# Helm overrides for ai-agent-demo — dev environment (local Kind)
+# image.tag is updated after building locally:
+#   docker build -t localhost:5003/ai-agent-demo:local ~/ai-agent-demo
+#   docker push localhost:5003/ai-agent-demo:local
+image:
+  repository: localhost:5003/ai-agent-demo
+  tag: local
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+  hosts:
+    - host: ai-agent-demo.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: local
+  - name: LLM_PROVIDER
+    value: "ollama"
+  - name: LLM_MODEL
+    value: "llama3"
+  - name: MLFLOW_TRACKING_URI
+    value: "http://mlflow.ml-platform.svc.cluster.local:5000"
+  - name: MLFLOW_EXPERIMENT
+    value: "ai-agent-demo"
+  - name: OLLAMA_BASE_URL
+    value: "http://host.docker.internal:11434"
