@@ -1,8 +1,6 @@
 # backstage-idp-starter
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/YOUR_GITHUB_ORG/backstage-idp-starter?style=social)](https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/stargazers)
-[![Last commit](https://img.shields.io/github/last-commit/YOUR_GITHUB_ORG/backstage-idp-starter)](https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/commits/main)
 
 **A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 19 software templates, Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 
