@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: my-svc
+  description: Auto-scaffolded service
+  annotations:
+    github.com/project-slug: moatazeldebsy/my-svc
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=my-svc
+    backstage.io/kubernetes-namespace: services
+    backstage.io/adr-location: https://github.com/moatazeldebsy/my-svc/tree/main/docs/adr
+spec:
+  type: service
+  lifecycle: development
+  owner: platform-team
+  system: internal-developer-platform
