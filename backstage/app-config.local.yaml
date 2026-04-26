@@ -3,13 +3,13 @@
 # To enable a feature, set the relevant env vars in local/backstage/.env
 
 app:
-  baseUrl: http://localhost:3000
+  baseUrl: http://backstage.idp.local
 
 backend:
   # All traffic (frontend + API) is served through port 3000 → 7007 in container
-  baseUrl: http://localhost:3000
+  baseUrl: http://backstage.idp.local
   cors:
-    origin: http://localhost:3000
+    origin: http://backstage.idp.local
   database:
     connection:
       ssl: false   # local Postgres container has no SSL; override the production default
@@ -34,6 +34,7 @@ auth:
           resolvers:
             # Match GitHub login against entity name (works with private/no email)
             - resolver: usernameMatchingUserEntityName
+              dangerouslyAllowSignInWithoutUserInCatalog: true
 
 integrations:
   github:

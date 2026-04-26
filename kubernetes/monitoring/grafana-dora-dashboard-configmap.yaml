@@ -1,6 +1,8 @@
 # Grafana dashboard ConfigMap for DORA metrics.
-# Apply this ConfigMap and Grafana will pick it up automatically via the "dora" provider
-# defined in local/observability/prometheus-stack-values.yaml (dashboardsConfigMaps.dora: grafana-dashboards-dora).
+# Provisioned via dashboardsConfigMaps.dora in prometheus-stack-values.yaml.
+#
+# NOTE: Do NOT add the grafana_dashboard: "1" label here — see grafana-qa-dashboard-configmap.yaml
+# for explanation of the dual-provisioning conflict in Grafana 11.
 #
 # To apply: kubectl apply -f kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml
 apiVersion: v1
@@ -9,7 +11,7 @@ metadata:
   name: grafana-dashboards-dora
   namespace: monitoring
   labels:
-    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: kube-prometheus-stack
 data:
   dora-metrics.json: |
     {

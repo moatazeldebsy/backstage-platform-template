@@ -14,16 +14,16 @@ spec:
         generators:
           # Generator 1: discover services from the platform repo
           - git:
-              repoURL: https://github.com/YOUR_GITHUB_ORG/idp-mvp.git
+              repoURL: https://github.com/moatazeldebsy/backstage-idp-starter.git
               revision: HEAD
               directories:
                 - path: services/*
           # Generator 2: one entry per environment
           - list:
               elements:
-                - env: dev
+                - env: local
                   namespace: services-dev
-                  valuesFile: helm-values-dev.yaml
+                  valuesFile: helm-values-local.yaml
   template:
     metadata:
       name: "{{path.basename}}-{{env}}"
@@ -33,7 +33,7 @@ spec:
     spec:
       project: default
       sources:
-        - repoURL: https://github.com/YOUR_GITHUB_ORG/idp-mvp.git
+        - repoURL: https://github.com/moatazeldebsy/backstage-idp-starter.git
           targetRevision: HEAD
           path: helm/service-template
           helm:
@@ -42,7 +42,7 @@ spec:
                 value: "{{path.basename}}"
             valueFiles:
               - $values/services/{{path.basename}}/{{valuesFile}}
-        - repoURL: https://github.com/YOUR_GITHUB_ORG/idp-mvp.git
+        - repoURL: https://github.com/moatazeldebsy/backstage-idp-starter.git
           targetRevision: HEAD
           ref: values
       destination:

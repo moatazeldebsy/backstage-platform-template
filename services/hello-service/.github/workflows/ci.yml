@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  APP_NAME: ${{ values.name }}
+  SERVICE_NAME: hello-service
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
@@ -19,32 +19,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          node-version: "22"
+          go-version-file: 'go.mod'
+          cache: true
 
-      - name: Install dependencies
-        run: npm install
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
 
-      - name: Run tests
-        run: npm test -- --passWithNoTests
-
-      - name: Build
-        run: npm run build
+      - name: Run tests with coverage
+        run: go test ./src/... -coverprofile=coverage.out -covermode=atomic
 
       - name: Build Docker image (smoke check)
-        run: docker build -t ${{ '${{ env.APP_NAME }}' }}:ci .
+        run: docker build -t hello-service:ci .
 
       - name: Smoke-test container
         run: |
-          docker run -d --name app -p 8080:80 ${{ '${{ env.APP_NAME }}' }}:ci
+          docker run -d --name svc -p 8080:8080 -e PORT=8080 hello-service:ci
           sleep 3
-          curl -sf --retry 5 --retry-delay 2 --retry-connrefused \
-            http://localhost:8080/healthz
-          curl -sf --retry 5 --retry-delay 2 --retry-connrefused \
-            http://localhost:8080/ready
-          docker stop app && docker rm app
+          curl -sf --retry 5 --retry-delay 2 --retry-connrefused http://localhost:8080/healthz
+          curl -sf --retry 5 --retry-delay 2 --retry-connrefused http://localhost:8080/ready
+          docker stop svc && docker rm svc
 
   publish:
     needs: test
@@ -60,14 +58,14 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ '${{ github.actor }}' }}
-          password: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
         id: build
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
-          IMAGE=ghcr.io/${{ values.githubOrg }}/${{ values.name }}
+          IMAGE=ghcr.io/moatazeldebsy/hello-service
           docker build -t ${IMAGE}:${SHORT_SHA} -t ${IMAGE}:latest .
           docker push ${IMAGE}:${SHORT_SHA}
           docker push ${IMAGE}:latest
@@ -75,22 +73,21 @@ jobs:
 
       - name: Update image tag in platform repo
         env:
-          GH_TOKEN: ${{ '${{ secrets.GH_PAT }}' }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
             echo "GH_PAT not set — platform repo image tag update skipped"
-            exit 0
+            exit 1
           fi
           git config --global user.email "ci@idp.platform"
           git config --global user.name "IDP CI Bot"
-          PLATFORM_DIR=$(mktemp -d)
-          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ values.githubOrg }}/idp-mvp.git "$PLATFORM_DIR"
-          cd "$PLATFORM_DIR"
-          VALUES_FILE="services/${{ values.name }}/helm-values-dev.yaml"
+          git clone https://x-access-token:${GH_TOKEN}@github.com/moatazeldebsy/backstage-idp-starter.git /tmp/platform
+          cd /tmp/platform
+          VALUES_FILE="services/hello-service/helm-values-dev.yaml"
           if [ -f "${VALUES_FILE}" ]; then
             sed -i "s|^  tag: .*|  tag: \"${SHORT_SHA}\"|" "${VALUES_FILE}"
             git add "${VALUES_FILE}"
-            git diff --cached --quiet || git commit -m "chore: bump ${{ values.name }} image to ${SHORT_SHA} [skip ci]"
+            git diff --cached --quiet || git commit -m "chore: bump hello-service image to ${SHORT_SHA} [skip ci]"
             git push
           else
             echo "Values file not found at ${VALUES_FILE} — merge the Platform GitOps PR first"

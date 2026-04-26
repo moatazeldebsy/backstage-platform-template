@@ -56,11 +56,12 @@ spec:
           title: GitHub Repository
           type: string
           ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub. If you get a 'name already exists' error, choose a different name."
           ui:options:
             allowedHosts:
               - github.com
             allowedOwners:
-              - YOUR_GITHUB_ORG
+              - moatazeldebsy
 
   steps:
     - id: fetch-template
@@ -129,7 +130,7 @@ spec:
       name: Open Platform GitOps PR
       action: publish:github:pull-request
       input:
-        repoUrl: github.com?repo=idp-mvp&owner=YOUR_GITHUB_ORG
+        repoUrl: github.com?repo=backstage-idp-starter&owner=moatazeldebsy
         title: "feat: onboard ${{ parameters.name }} to GitOps"
         branchName: feat/onboard-${{ parameters.name }}
         description: |

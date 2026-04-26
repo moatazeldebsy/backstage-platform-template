@@ -1,4 +1,23 @@
 replicaCount: 1
+
+image:
+  repository: localhost:5003/my-svc
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+podLabels:
+  team: platform-team
+  cost-center: eng-platform
+  environment: local
+
+metrics:
+  enabled: true
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: "/metrics"
+
 service:
   port: 80
   targetPort: 3000

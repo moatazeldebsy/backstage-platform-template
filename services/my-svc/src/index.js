@@ -1,9 +1,41 @@
 const express = require('express');
+const client = require('prom-client');
+
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.json({ service: 'my-svc', status: 'ok' }));
-app.get('/healthz', (req, res) => res.json({ status: 'ok' }));
-app.get('/ready', (req, res) => res.json({ status: 'ready' }));
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
 
-app.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })));
+const httpRequests = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'endpoint'],
+  registers: [register],
+});
+
+app.get('/healthz', (req, res) => {
+  httpRequests.labels('GET', '/healthz').inc();
+  res.json({ status: 'ok' });
+});
+
+app.get('/ready', (req, res) => {
+  httpRequests.labels('GET', '/ready').inc();
+  res.json({ status: 'ready' });
+});
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+app.get('/', (req, res) => {
+  httpRequests.labels('GET', '/').inc();
+  res.json({ service: 'my-svc', status: 'running' });
+});
+
+app.listen(PORT, () => {
+  console.log(JSON.stringify({ msg: 'my-svc listening', port: PORT }));
+});
+
+module.exports = app;

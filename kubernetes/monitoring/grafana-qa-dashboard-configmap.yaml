@@ -1,6 +1,10 @@
 # Grafana dashboard ConfigMap for the QA Platform.
-# Apply this ConfigMap and Grafana will pick it up automatically via the "qa" provider
-# defined in local/observability/prometheus-stack-values.yaml (dashboardsConfigMaps.qa: grafana-qa-dashboard).
+# Provisioned via dashboardsConfigMaps.qa in prometheus-stack-values.yaml, which mounts this
+# ConfigMap to /var/lib/grafana/dashboards/qa and the "qa" file provider serves it.
+#
+# NOTE: Do NOT add the grafana_dashboard: "1" label here. That label causes the Grafana sidecar
+# to ALSO load the file to /tmp/dashboards — dual provisioning in Grafana 11 results in:
+#   "Cannot change resource manager; remove the existing manager first, then add the new one"
 #
 # To apply: kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml
 apiVersion: v1
@@ -9,7 +13,7 @@ metadata:
   name: grafana-qa-dashboard
   namespace: monitoring
   labels:
-    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: kube-prometheus-stack
 data:
   qa-metrics.json: |
     {

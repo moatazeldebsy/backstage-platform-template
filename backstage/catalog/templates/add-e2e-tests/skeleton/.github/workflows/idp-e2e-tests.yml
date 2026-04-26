@@ -42,8 +42,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npx playwright test
+        run: npx playwright test --reporter=list,json
         env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/results.json
           BASE_URL: ${{ '${{ inputs.base_url }}' }}
           CI: 'true'
 
@@ -62,8 +63,8 @@ jobs:
           SUITE_NAME: '${{ values.repoName }}-e2e'
         run: |
           if [ -z "$PUSHGATEWAY_URL" ]; then exit 0; fi
-          PASS=$(grep -c '"status":"passed"' test-results/.last-run.json 2>/dev/null || echo 0)
-          FAIL=$(grep -c '"status":"failed"' test-results/.last-run.json 2>/dev/null || echo 0)
+          PASS=$(grep -c '"status":"passed"' test-results/results.json 2>/dev/null || echo 0)
+          FAIL=$(grep -c '"status":"failed"' test-results/results.json 2>/dev/null || echo 0)
           TOTAL=$((PASS + FAIL))
           RATE=$([ "$TOTAL" -gt 0 ] && echo "scale=4; $PASS / $TOTAL" | bc || echo 0)
           cat <<EOF | curl --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/e2e/suite/${SUITE_NAME}"

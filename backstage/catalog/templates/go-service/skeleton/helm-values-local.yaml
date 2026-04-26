@@ -12,6 +12,9 @@ service:
 ingress:
   enabled: true
   className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   hosts:
     - host: ${{ values.name }}.idp.local
       paths:
@@ -31,6 +34,14 @@ podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "${{ values.port }}"
   prometheus.io/path: "/metrics"
+
+podLabels:
+  team: ${{ values.owner }}
+  cost-center: ${{ values.costCenter }}
+  environment: local
+
+metrics:
+  enabled: true
 
 env:
   - name: LOG_LEVEL

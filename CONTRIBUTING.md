@@ -14,9 +14,9 @@ Thank you for your interest in contributing! This project is a community-maintai
 1. Clone the repo and run the one-time setup:
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter.git
+git clone https://github.com/moatazeldebsy/backstage-idp-starter.git
 cd backstage-idp-starter
-./setup.sh
+./scripts/setup.sh
 ```
 
 2. Start the local platform:

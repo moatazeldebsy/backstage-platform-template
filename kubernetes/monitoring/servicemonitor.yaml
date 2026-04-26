@@ -16,7 +16,6 @@ spec:
       - services-dev
       - services-staging
       - services-prod
-      - ml-platform
   selector:
     matchLabels: {}   # match all services in the namespace
   endpoints:

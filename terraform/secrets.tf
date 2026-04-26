@@ -19,7 +19,6 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     K8S_SERVICE_ACCOUNT_TOKEN = "REPLACE_ME"
     TECHDOCS_S3_BUCKET_NAME   = aws_s3_bucket.techdocs.id
     AWS_REGION                = var.aws_region
-    SNYK_TOKEN                = "REPLACE_ME" # optional
   })
 }
 

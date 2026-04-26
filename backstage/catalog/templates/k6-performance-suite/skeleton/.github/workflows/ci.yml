@@ -37,9 +37,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install k6
-        run: |
-          curl -s https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz | tar xz
-          sudo mv k6-v0.52.0-linux-amd64/k6 /usr/local/bin/k6
+        uses: grafana/setup-k6-action@v1
 
       - name: Run smoke test
         if: github.event_name == 'pull_request'

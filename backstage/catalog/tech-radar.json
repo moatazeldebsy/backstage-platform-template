@@ -354,20 +354,6 @@
       "id": "github-actions"
     },
     {
-      "key": "snyk",
-      "title": "Snyk",
-      "quadrant": "tools",
-      "description": "Dependency vulnerability scanning in CI.",
-      "timeline": [
-        {
-          "moved": 1,
-          "ringId": "trial",
-          "date": "2025-01-01"
-        }
-      ],
-      "id": "snyk"
-    },
-    {
       "key": "eso",
       "title": "External Secrets Operator",
       "quadrant": "tools",
@@ -885,7 +871,6 @@
       ],
       "id": "prompt-engineering"
     },
-    { "key": "sonarcloud",  "id": "sonarcloud",  "title": "SonarCloud",    "quadrant": "tools",      "description": "SAST, code-smell detection, and CI quality gate — required for every service pipeline.", "timeline": [{ "moved": 0, "ringId": "adopt",  "date": "2026-01-01" }] },
     { "key": "lambdatest",  "id": "lambdatest",  "title": "LambdaTest",    "quadrant": "tools",      "description": "Cross-browser cloud testing grid — evaluate for Playwright/Cypress at scale.",           "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] },
     { "key": "xray-jira",   "id": "xray-jira",   "title": "Xray (Jira)",   "quadrant": "tools",      "description": "Test case management with Jira traceability — assess before adopting.",                   "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] },
     { "key": "mailtrap",    "id": "mailtrap",    "title": "Mailtrap",      "quadrant": "tools",      "description": "Email sandbox for transactional email testing in CI and staging environments.",           "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] }

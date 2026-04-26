@@ -37,7 +37,7 @@ datasources:
         uid: alertmanager
         type: alertmanager
         access: proxy
-        url: http://alertmanager-operated.monitoring:9093
+        url: http://prometheus-kube-prometheus-alertmanagertheus-alertmanager.monitoring:9093
         jsonData:
           implementation: prometheus
 
@@ -55,11 +55,6 @@ dashboardProviders:
         type: file
         options:
           path: /var/lib/grafana/dashboards/dora
-      - name: ai-agent
-        folder: AI Agent
-        type: file
-        options:
-          path: /var/lib/grafana/dashboards/ai-agent
       - name: qa
         folder: QA Platform
         type: file
@@ -68,7 +63,6 @@ dashboardProviders:
 dashboardsConfigMaps:
   idp: grafana-dashboards-idp
   dora: grafana-dashboards-dora
-  ai-agent: grafana-dashboards-ai-agent
   qa: grafana-qa-dashboard
 
 persistence:
@@ -82,5 +76,6 @@ ingress:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
   hosts:
     - ""   # empty = match any hostname (use ALB DNS directly); replace with real domain when DNS is set up

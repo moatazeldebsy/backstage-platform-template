@@ -11,12 +11,17 @@
 
 set -euo pipefail
 
-GITHUB_OWNER="YOUR_GITHUB_ORG"
 RUNNERS_BASE="${HOME}/actions-runners"
 RUNNER_VERSION=""
 
 # Resolve the IDP platform root now, before any cd changes the working dir
 IDP_PLATFORM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Source local/.env so GITHUB_ORG set by setup.sh is available
+[[ -f "${IDP_PLATFORM_DIR}/local/.env" ]] && \
+  set -o allexport && source "${IDP_PLATFORM_DIR}/local/.env" && set +o allexport || true
+
+GITHUB_OWNER="${GITHUB_ORG:-moatazeldebsy}"
 
 # ── parse args ────────────────────────────────────────────────────────────────
 REPO_NAME=""

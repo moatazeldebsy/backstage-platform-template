@@ -6,7 +6,14 @@ set -euo pipefail
 SERVICE_NAME=""
 SERVICE_TYPE="nodejs"
 NAMESPACE="services"
-GH_ORG="${GH_ORG:-YOUR_GITHUB_ORG}"
+
+# Source local/.env so GITHUB_ORG and PLATFORM_REPO set by setup.sh are available
+_ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+[[ -f "${_ROOT_DIR}/local/.env" ]] && \
+  set -o allexport && source "${_ROOT_DIR}/local/.env" && set +o allexport || true
+
+GH_ORG="${GH_ORG:-${GITHUB_ORG:-moatazeldebsy}}"
+PLATFORM_REPO="${PLATFORM_REPO:-backstage-idp-starter}"
 
 log() { echo "[$(date +%T)] $*"; }
 err() { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
@@ -197,8 +204,10 @@ EOF
   *) err "Unknown service type '${SERVICE_TYPE}'. Supported: nodejs, python, go" ;;
 esac
 
-# Dockerfile
-cat > "${TARGET_DIR}/Dockerfile" <<EOF
+# Dockerfile — type-specific
+case "$SERVICE_TYPE" in
+  nodejs)
+    cat > "${TARGET_DIR}/Dockerfile" <<EOF
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json ./
@@ -210,6 +219,128 @@ WORKDIR /app
 COPY --from=builder /app .
 EXPOSE 3000
 CMD ["src/index.js"]
+EOF
+    ;;
+  python)
+    cat > "${TARGET_DIR}/Dockerfile" <<EOF
+FROM python:3.12-slim AS builder
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+FROM gcr.io/distroless/python3-debian12:nonroot
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY src/ ./src/
+ENV PATH=/root/.local/bin:\$PATH
+EXPOSE 8000
+CMD ["src/main.py"]
+EOF
+    ;;
+  go)
+    cat > "${TARGET_DIR}/Dockerfile" <<EOF
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY src/ ./src/
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /service ./src/...
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /service /service
+EXPOSE 8080
+ENTRYPOINT ["/service"]
+EOF
+    ;;
+esac
+
+# GitHub Actions CI workflow
+mkdir -p "${TARGET_DIR}/.github/workflows"
+
+# Determine port and build/test commands per type
+case "$SERVICE_TYPE" in
+  nodejs) SVC_PORT=3000; TEST_CMD="npm test"; BUILD_SMOKE="docker build -t \${SERVICE_NAME}:ci ." ;;
+  python) SVC_PORT=8000; TEST_CMD="pip install -r requirements.txt && pytest src/ -q"; BUILD_SMOKE="docker build -t \${SERVICE_NAME}:ci ." ;;
+  go)     SVC_PORT=8080; TEST_CMD="go test ./src/... -coverprofile=coverage.out -covermode=atomic"; BUILD_SMOKE="docker build -t \${SERVICE_NAME}:ci ." ;;
+esac
+
+cat > "${TARGET_DIR}/.github/workflows/ci.yml" <<EOF
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: ${SERVICE_NAME}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: ${TEST_CMD}
+      - name: Build Docker image (smoke check)
+        run: docker build -t ${SERVICE_NAME}:ci .
+      - name: Smoke-test container
+        run: |
+          docker run -d --name svc -p ${SVC_PORT}:${SVC_PORT} -e PORT=${SVC_PORT} ${SERVICE_NAME}:ci
+          sleep 3
+          curl -sf --retry 5 --retry-delay 2 --retry-connrefused http://localhost:${SVC_PORT}/healthz
+          docker stop svc && docker rm svc
+
+  publish:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: \${{ github.actor }}
+          password: \${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        id: build
+        run: |
+          SHORT_SHA=\$(git rev-parse --short HEAD)
+          IMAGE=ghcr.io/${GH_ORG}/${SERVICE_NAME}
+          docker build -t \${IMAGE}:\${SHORT_SHA} -t \${IMAGE}:latest .
+          docker push \${IMAGE}:\${SHORT_SHA}
+          docker push \${IMAGE}:latest
+          echo "SHORT_SHA=\${SHORT_SHA}" >> "\$GITHUB_ENV"
+      - name: Update image tag in platform repo
+        env:
+          GH_TOKEN: \${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "\$GH_TOKEN" ]; then
+            echo "GH_PAT not set — platform repo image tag update skipped"
+            exit 1
+          fi
+          git config --global user.email "ci@idp.platform"
+          git config --global user.name "IDP CI Bot"
+          git clone https://x-access-token:\${GH_TOKEN}@github.com/${GH_ORG}/${PLATFORM_REPO}.git /tmp/platform
+          cd /tmp/platform
+          VALUES_FILE="services/${SERVICE_NAME}/helm-values-dev.yaml"
+          if [ -f "\${VALUES_FILE}" ]; then
+            sed -i "s|^  tag: .*|  tag: \\"\${SHORT_SHA}\\"|" "\${VALUES_FILE}"
+            git add "\${VALUES_FILE}"
+            git diff --cached --quiet || git commit -m "chore: bump ${SERVICE_NAME} image to \${SHORT_SHA} [skip ci]"
+            git push
+          else
+            echo "Values file not found — merge the Platform GitOps PR first"
+          fi
 EOF
 
 # Helm values
@@ -354,11 +485,11 @@ metadata:
   name: ${SERVICE_NAME}
   description: Auto-scaffolded service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/${SERVICE_NAME}
+    github.com/project-slug: ${GH_ORG}/${SERVICE_NAME}
     backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=${SERVICE_NAME}
     backstage.io/kubernetes-namespace: ${NAMESPACE}
-    backstage.io/adr-location: https://github.com/YOUR_GITHUB_ORG/${SERVICE_NAME}/tree/main/docs/adr
+    backstage.io/adr-location: https://github.com/${GH_ORG}/${SERVICE_NAME}/tree/main/docs/adr
 spec:
   type: service
   lifecycle: development
@@ -387,7 +518,7 @@ fi
 RUNNER_SCRIPT="${ROOT_DIR}/scripts/setup-runner.sh"
 if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
   # Only register if the repo exists on GitHub
-  if gh repo view "YOUR_GITHUB_ORG/${SERVICE_NAME}" &>/dev/null 2>&1; then
+  if gh repo view "${GH_ORG}/${SERVICE_NAME}" &>/dev/null 2>&1; then
     log "Registering self-hosted runner for ${SERVICE_NAME}..."
     bash "${RUNNER_SCRIPT}" --repo "${SERVICE_NAME}" && \
       log "Runner registered — pushes to main will auto-deploy to Kind." || \

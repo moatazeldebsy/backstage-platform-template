@@ -30,6 +30,14 @@ resources:
     cpu: 100m
     memory: 64Mi
 
+podLabels:
+  team: ${{ values.owner }}
+  cost-center: ${{ values.costCenter }}
+  environment: dev
+
+metrics:
+  enabled: true
+
 env:
   - name: LOG_LEVEL
     value: debug

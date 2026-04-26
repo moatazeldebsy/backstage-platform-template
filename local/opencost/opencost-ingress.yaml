@@ -1,5 +1,7 @@
-# nginx Ingress for OpenCost UI — local Kind only
-# AWS equivalent: OpenCost was accessible via ALB on EKS; no Ingress manifest was needed there.
+# nginx Ingress for OpenCost — local Kind only
+# Port 9003 = OpenCost API  (Backstage proxy calls /allocation/compute, /model/*)
+# Port 9090 = OpenCost UI   (browser dashboard at /)
+# More-specific /allocation path routes API traffic to port 9003 first.
 # Apply: kubectl apply -f local/opencost/opencost-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -8,16 +10,33 @@ metadata:
   namespace: finops
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
   rules:
     - host: opencost.idp.local
       http:
         paths:
-          - path: /
+          # API paths → port 9003 (must be listed before the catch-all /)
+          - path: /allocation
             pathType: Prefix
             backend:
               service:
                 name: opencost
                 port:
                   number: 9003
+          - path: /model
+            pathType: Prefix
+            backend:
+              service:
+                name: opencost
+                port:
+                  number: 9003
+          # UI catch-all → port 9090
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opencost
+                port:
+                  number: 9090

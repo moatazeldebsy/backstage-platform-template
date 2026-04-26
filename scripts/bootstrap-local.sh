@@ -5,18 +5,22 @@
 # Usage:
 #   ./scripts/bootstrap-local.sh              # full setup
 #   ./scripts/bootstrap-local.sh --skip-obs  # skip observability (faster)
+#   ./scripts/bootstrap-local.sh --update-backstage-ip  # refresh Backstage endpoint IP after compose up
 #   ./scripts/bootstrap-local.sh --destroy   # tear everything down
 set -euo pipefail
 
-CLUSTER_NAME="idp-mvp"
+CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 REGISTRY_NAME="registry"
 REGISTRY_PORT="5003"
 SKIP_OBS=false
 SKIP_GITOPS=false
 SKIP_POLICIES=false
 SKIP_DORA=false
-SKIP_ML=false
 DESTROY=false
+UPDATE_BACKSTAGE_IP=false
+
+# Resolved once here so every step and the early-exit paths can use it.
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 log()  { echo "[$(date +%T)] INFO  $*"; }
 warn() { echo "[$(date +%T)] WARN  $*"; }
@@ -28,8 +32,8 @@ while [[ $# -gt 0 ]]; do
     --skip-gitops)   SKIP_GITOPS=true;   shift ;;
     --skip-policies) SKIP_POLICIES=true; shift ;;
     --skip-dora)     SKIP_DORA=true;     shift ;;
-    --skip-ml)       SKIP_ML=true;       shift ;;
-    --destroy)       DESTROY=true;       shift ;;
+    --destroy)             DESTROY=true;            shift ;;
+    --update-backstage-ip) UPDATE_BACKSTAGE_IP=true;  shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -44,6 +48,41 @@ if $DESTROY; then
   docker stop "$REGISTRY_NAME" 2>/dev/null || true
   docker rm   "$REGISTRY_NAME" 2>/dev/null || true
   log "Done. Remove /etc/hosts entries manually if added."
+  exit 0
+fi
+
+# ── Helper: apply Backstage K8s Service, Endpoints, and nginx Ingress ────────
+# Auto-detects the live container IP on the 'kind' Docker network so nginx can
+# proxy to the Docker Compose Backstage container. Falls back to the hardcoded
+# default (172.21.0.6) when the container is not yet running.
+apply_backstage_k8s_objects() {
+  local endpoints_file="${ROOT_DIR}/local/backstage/backstage-k8s-endpoints.yaml"
+  local ingress_file="${ROOT_DIR}/local/backstage/backstage-ingress.yaml"
+
+  local bs_ip
+  bs_ip=$(docker inspect backstage-backstage-1 \
+    --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
+
+  if [[ -n "$bs_ip" && "$bs_ip" != "<no value>" ]]; then
+    log "  Backstage container IP on kind network: ${bs_ip}"
+    sed "s/ip: \"[0-9.]*\"/ip: \"${bs_ip}\"/" "$endpoints_file" | kubectl apply -f -
+  else
+    warn "  Backstage container not running — applying with default IP (172.21.0.6)."
+    warn "  After 'docker compose up -d', run: ./scripts/bootstrap-local.sh --update-backstage-ip"
+    kubectl apply -f "$endpoints_file"
+  fi
+
+  kubectl apply -f "$ingress_file"
+  log "  Backstage Service, Endpoints, and nginx Ingress applied."
+}
+
+# ── --update-backstage-ip fast path ──────────────────────────────────────────
+# Run after 'docker compose up' to refresh the Backstage Endpoints IP.
+if $UPDATE_BACKSTAGE_IP; then
+  kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+  log "Re-applying Backstage K8s objects with updated container IP..."
+  apply_backstage_k8s_objects
+  log "Done. Test with: curl -sv http://backstage.idp.local"
   exit 0
 fi
 
@@ -120,6 +159,12 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set "controller.tolerations[0].effect=NoSchedule" \
   --wait --timeout 5m
 
+# ── Step 4c: Backstage K8s Service, Endpoints, and nginx Ingress ─────────────
+# Wires the nginx controller to the Backstage Docker Compose container so that
+# http://backstage.idp.local routes correctly through the Kind cluster ingress.
+log "Step 4c: Applying Backstage K8s Service + Endpoints + nginx Ingress..."
+apply_backstage_k8s_objects
+
 # ── Step 4b: metrics-server ───────────────────────────────────────────────────
 log "Step 4b: Installing metrics-server (required for CPU/memory in Backstage)..."
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -139,7 +184,6 @@ if ! $SKIP_OBS; then
     --from-file="$(dirname "$0")/../observability/grafana/dashboards/" \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml"
-  kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-ai-agent-dashboard-configmap.yaml"
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml"
 
   helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
@@ -152,7 +196,6 @@ fi
 
 # ── Step 6: Build and deploy hello-service ────────────────────────────────────
 log "Step 6: Building and deploying hello-service..."
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="localhost:${REGISTRY_PORT}/hello-service:local"
 
 docker build \
@@ -317,40 +360,6 @@ if ! $SKIP_GITOPS; then
   log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
 fi
 
-# ── Step 14: ML Platform (MLflow + Argo Workflows) ──────────────────────────
-if ! $SKIP_ML; then
-  log "Step 14: Deploying ML Platform (MLflow + Argo Workflows)..."
-
-  # Create namespace
-  kubectl apply -f "${ROOT_DIR}/kubernetes/namespaces/namespaces.yaml"
-
-  # Argo Workflows
-  if ! helm repo list | grep -q '^argo'; then
-    helm repo add argo https://argoproj.github.io/argo-helm
-  fi
-  helm repo update argo
-  helm upgrade --install argo-workflows argo/argo-workflows \
-    --namespace ml-platform \
-    --version 0.44.0 \
-    --values "${ROOT_DIR}/kubernetes/ml-platform/argo-workflows-values.yaml" \
-    --wait --timeout 5m
-  log "Argo Workflows deployed. UI: http://argo-workflows.idp.local"
-
-  # MLflow
-  if ! helm repo list | grep -q '^community-charts'; then
-    helm repo add community-charts https://community-charts.github.io/helm-charts
-  fi
-  helm repo update community-charts
-  helm upgrade --install mlflow community-charts/mlflow \
-    --namespace ml-platform \
-    --version 0.7.19 \
-    --values "${ROOT_DIR}/kubernetes/ml-platform/mlflow-values.yaml" \
-    --wait --timeout 5m
-  log "MLflow deployed. UI: http://mlflow.idp.local"
-else
-  log "Step 14: Skipping ML Platform (--skip-ml)."
-fi
-
 # ── Step 7: /etc/hosts ───────────────────────────────────────────────────────
 HOSTS_FILE="${ROOT_DIR}/local/hosts-append.txt"
 log "Step 7: Checking /etc/hosts entries..."
@@ -400,11 +409,10 @@ if ! $SKIP_GITOPS; then
 log "  ArgoCD:         http://argocd.idp.local"
 fi
 log "  OpenCost:       http://opencost.idp.local"
-if ! $SKIP_ML; then
-log "  MLflow:         http://mlflow.idp.local"
-log "  Argo Workflows: http://argo-workflows.idp.local"
-fi
-log "  Backstage:      cd local/backstage && docker compose up -d"
+log "  Backstage:      cd backstage/app && yarn install && yarn build:backend && cd ../.."
+log "                  docker compose -f local/backstage/docker-compose.yml build backstage"
+log "                  docker compose -f local/backstage/docker-compose.yml up -d"
+log "                  # Then update the nginx endpoint IP:"
+log "                  # ./scripts/bootstrap-local.sh --update-backstage-ip"
 log ""
-log "For hot-reload dev:  tilt up"
 log "Teardown:            ./scripts/bootstrap-local.sh --destroy"

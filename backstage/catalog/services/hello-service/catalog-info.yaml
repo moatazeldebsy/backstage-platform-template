@@ -7,8 +7,8 @@ metadata:
     backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=hello-service
     backstage.io/kubernetes-namespace: services
     backstage.io/techdocs-ref: dir:../../../services/hello-service
-    backstage.io/runbook-url: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/index.md
-    github.com/project-slug: YOUR_GITHUB_ORG/idp-mvp
+    backstage.io/runbook-url: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/index.md
+    github.com/project-slug: moatazeldebsy/backstage-idp-starter
 spec:
   type: service
   lifecycle: production

@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: localhost:5003/${{ values.name }}
+  repository: ghcr.io/${{ values.githubOrg }}/${{ values.name }}
   tag: "latest"
   pullPolicy: IfNotPresent
 

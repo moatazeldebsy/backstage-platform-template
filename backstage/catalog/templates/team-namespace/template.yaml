@@ -61,7 +61,7 @@ spec:
         githubOrg:
           title: GitHub organisation
           type: string
-          default: YOUR_GITHUB_ORG
+          default: moatazeldebsy
         platformRepo:
           title: Platform repo
           type: string

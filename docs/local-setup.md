@@ -7,7 +7,6 @@ Run the full IDP platform on your laptop — no AWS account required.
 ```bash
 # macOS
 brew install kind kubectl helm docker
-brew install tilt  # optional — only needed for hot-reload dev loop
 
 # Verify
 kind version    # >= 0.22
@@ -19,76 +18,127 @@ docker info     # Docker running
 > **macOS ARM64 note**: The cluster is pinned to K8s **1.31.6** (`kindest/node:v1.31.6`).
 > K8s 1.35 (Kind's current default) has kubelet cgroup issues with Docker Desktop on Apple Silicon.
 
-## Bootstrap (~5 min)
+## Bootstrap (~10–15 min)
+
+> **First time?** Run `./scripts/setup.sh` from the repo root — it handles placeholder personalisation and then calls `bootstrap-local.sh` automatically (choose "local" when prompted).
+
+To run the bootstrap directly (e.g. day-2 cluster recreation):
 
 ```bash
 ./scripts/bootstrap-local.sh
 ```
 
-What it does:
-1. Starts a local container registry on `localhost:5003`
-2. Creates a 3-node Kind cluster (`kind-idp-mvp`) with the registry wired in
-3. Installs nginx ingress controller on the control-plane node (port 80/443)
-4. Installs Prometheus + Grafana via `kube-prometheus-stack`
-5. Builds and deploys `hello-service` using the golden-path Helm chart
+What it does (in order):
 
-To skip observability for a faster startup:
+| Step | What |
+|------|------|
+| 1 | Starts a local container registry on `localhost:5003` |
+| 2 | Creates a Kind cluster (`kind-idp-mvp`) with the registry wired in |
+| 3 | Creates platform namespaces and RBAC |
+| 4 | Installs nginx ingress controller (host ports 80/443) |
+| 4b | Installs metrics-server (required for CPU/memory in Backstage) |
+| 4c | Wires Backstage K8s Service + nginx Ingress |
+| 5 | Installs Prometheus + Grafana (`kube-prometheus-stack`) |
+| 6 | Builds and deploys `hello-service` via the golden-path Helm chart |
+| 7 | Writes `/etc/hosts` entries for `*.idp.local` and flushes DNS cache |
+| 8 | Installs ArgoCD |
+| 9 | Installs OPA/Gatekeeper and applies all policy constraints |
+| 10 | Deploys OpenCost |
+| 11 | Installs Prometheus Pushgateway + DORA exporter CronJob |
+| 12 | Wires AlertManager Slack webhook (if `SLACK_WEBHOOK_URL` is set) |
+| 13 | Applies ArgoCD ApplicationSet (hello-service → local/dev/staging/prod) |
+
+### Faster startup flags
+
 ```bash
-./scripts/bootstrap-local.sh --skip-obs
+./scripts/bootstrap-local.sh --skip-obs       # skip Prometheus + Grafana
+./scripts/bootstrap-local.sh --skip-gitops    # skip ArgoCD
+./scripts/bootstrap-local.sh --skip-policies  # skip OPA/Gatekeeper
+./scripts/bootstrap-local.sh --skip-dora      # skip DORA exporter
 ```
+
+Flags can be combined: `--skip-obs --skip-gitops` cuts bootstrap time roughly in half.
 
 ## Access services
 
-Add to `/etc/hosts`:
+`/etc/hosts` entries are written automatically by `bootstrap-local.sh`. If you need to add them manually:
+
 ```bash
 sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 ```
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| hello-service | http://hello-service.idp.local | — |
-| Grafana | http://grafana.idp.local | admin / admin |
-| Backstage | http://localhost:3000 (after step below) | — |
+| **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
+| **hello-service** | http://hello-service.idp.local | — |
+| **Grafana** | http://grafana.idp.local | `admin` / `admin` |
+| **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |
+| **Prometheus** | http://prometheus.idp.local | — |
+| **OpenCost** | http://opencost.idp.local | — |
+| **Pushgateway** | http://pushgateway.idp.local | — |
+| **Local registry** | localhost:5003 | — (no auth) |
 
-Alternatively, use `kubectl port-forward`:
+ArgoCD initial admin password:
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d
+```
+
+Alternatively, use `kubectl port-forward` for any service:
 ```bash
 kubectl port-forward svc/hello-service 8080:80 -n services
 ```
 
-## Hot-reload development with Tilt
+## Start Backstage (required after every bootstrap)
 
-Once the cluster is running:
+`bootstrap-local.sh` only wires the nginx ingress for Backstage on the Kind side. It does **not** build or start the Docker Compose stack. You will see a **502 Bad Gateway** at `http://backstage.idp.local` until the containers are running.
+
+### Environment files (first time only)
+
 ```bash
-tilt up
+cp local/.env.example local/.env
+cp local/backstage/.env.example local/backstage/.env
+# Edit both and fill in:
+#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION
+#   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,
+#                          BACKSTAGE_AUTH_SECRET (any string locally),
+#                          K8s credentials (run get-k8s-credentials.sh, see below)
 ```
 
-Tilt watches your source files. When you edit `services/hello-service/src/main.go`, it rebuilds the image, pushes to the local registry, and Helm-upgrades the deployment — usually in under 10 seconds.
-
-Open the Tilt UI at http://localhost:10350 to see build logs and pod status.
-
-## Run Backstage locally
-
-Backstage requires a pre-built backend bundle before the Docker image can be built.
+### Build and start
 
 ```bash
-# 1. Install dependencies and build the backend
-cd backstage/app
-yarn install
-yarn build:backend
-cd ../..
+# 1. Build the backend bundle (required before docker build, and after any backend code change)
+cd backstage/app && yarn install && yarn build:backend && cd ../..
 
-# 2. Configure environment
-cp local/backstage/.env.example local/backstage/.env
-# Edit .env — set GITHUB_TOKEN (needs repo scope to publish scaffolded repos)
-
-# 3. Build and start
+# 2. Build the Docker image and start the stack
 docker compose -f local/backstage/docker-compose.yml build backstage
 docker compose -f local/backstage/docker-compose.yml up -d
 
-# Backstage UI: http://localhost:3000
+# Backstage is now at http://localhost:3000
 ```
 
-> After any change to `backstage/app/packages/backend/src/`, repeat steps 1 (`yarn build:backend`) and 3 (`docker compose build + up`).
+### Fix 502 on backstage.idp.local
+
+nginx proxies to the Backstage container's IP on the `kind` Docker network. After `docker compose up -d`, update the K8s endpoint to match the live container IP:
+
+```bash
+./scripts/bootstrap-local.sh --update-backstage-ip
+```
+
+The `docker-compose.yml` declares the `kind` network so the container is automatically reachable from inside the cluster. No manual `docker network connect` is needed.
+
+### Wire K8s credentials into Backstage
+
+Needed for the Kubernetes tab and `idp:deploy-local` action:
+
+```bash
+./scripts/get-k8s-credentials.sh
+# Writes K8S_CLUSTER_URL, K8S_SERVICE_ACCOUNT_TOKEN, K8S_CLUSTER_CA_DATA to local/backstage/.env
+# Then restart: docker compose -f local/backstage/docker-compose.yml restart backstage
+```
+
+> `setup.sh` runs both `get-k8s-credentials.sh` and `update-backstage-ip` automatically. These manual steps are only needed when using `bootstrap-local.sh` directly.
 
 ## Deploy a service via Backstage
 
@@ -137,10 +187,19 @@ helm upgrade --install <name> ./helm/service-template \
 # 1. Scaffold
 ./scripts/create-service.sh --name my-svc --type nodejs
 
-# 2. Add to Tiltfile (snippet printed by the script), then:
-tilt up
+# 2. Build and push the image
+cd services/my-svc
+docker build -t localhost:5003/my-svc:latest .
+docker push localhost:5003/my-svc:latest
 
-# 3. Access
+# 3. Deploy
+helm upgrade --install my-svc ./helm/service-template \
+  --namespace services --create-namespace \
+  --set image.repository=localhost:5003/my-svc \
+  --set image.tag=latest \
+  --values services/my-svc/helm-values-local.yaml
+
+# 4. Access
 # http://my-svc.idp.local  (after /etc/hosts entry)
 ```
 

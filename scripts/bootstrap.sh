@@ -161,7 +161,6 @@ kubectl create configmap grafana-dashboards-dora \
   --from-file=dora-metrics.json=observability/grafana/dashboards/dora-metrics.json \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -f kubernetes/monitoring/grafana-ai-agent-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml
 
 helm upgrade --install grafana grafana/grafana \

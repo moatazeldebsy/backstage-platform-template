@@ -15,8 +15,10 @@ service:
 
 ingress:
   enabled: false
-  className: ""   # "alb" for AWS, "nginx" for local — set in service's helm-values.yaml
-  annotations: {}  # set per environment; do not mix alb + nginx annotations
+  className: "nginx"   # "alb" for AWS, "nginx" for local — override in service's helm-values.yaml
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   hosts:
     - host: ""
       paths:
@@ -102,3 +104,10 @@ nodeSelector: {}
 tolerations: []
 # affinity is built by the chart template using selectorLabels — override here if needed
 affinity: {}
+
+# Prometheus ServiceMonitor — enable to have prometheus-operator scrape this service
+metrics:
+  enabled: true
+  path: /metrics
+  interval: 30s
+  scrapeTimeout: 10s

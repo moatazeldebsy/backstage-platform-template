@@ -6,16 +6,11 @@
 127.0.0.1  prometheus.idp.local
 127.0.0.1  alertmanager.idp.local
 127.0.0.1  backstage.idp.local
-127.0.0.1  my-svc.idp.local
 127.0.0.1  argocd.idp.local
 127.0.0.1  opencost.idp.local
 127.0.0.1  hello-service-dev.idp.local
 127.0.0.1  hello-service-staging.idp.local
 127.0.0.1  hello-service-prod.idp.local
-
-# ML Platform
-127.0.0.1  mlflow.idp.local
-127.0.0.1  argo-workflows.idp.local
 
 # QA / Observability
 127.0.0.1  pushgateway.idp.local

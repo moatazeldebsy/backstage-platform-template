@@ -25,6 +25,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - default
+      - kind
     environment:
       NODE_OPTIONS: "--no-node-snapshot"
       POSTGRES_HOST: postgres
@@ -35,6 +38,8 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       AUTH_GITHUB_CLIENT_ID: ${AUTH_GITHUB_CLIENT_ID:-}
       AUTH_GITHUB_CLIENT_SECRET: ${AUTH_GITHUB_CLIENT_SECRET:-}
+      # Backstage token service — signs session cookies (required in v1.29+)
+      BACKSTAGE_AUTH_SECRET: ${BACKSTAGE_AUTH_SECRET:-dev-secret-change-in-production}
       # Local K8s — reads from in-cluster if running in Kind, else skip
       K8S_CLUSTER_URL: ${K8S_CLUSTER_URL:-https://kubernetes.default.svc}
       K8S_SERVICE_ACCOUNT_TOKEN: ${K8S_SERVICE_ACCOUNT_TOKEN:-}
@@ -42,7 +47,6 @@ services:
       # kubeconfig for idp:deploy-local action
       # host.docker.internal resolves to the Mac host — replaces 127.0.0.1 at startup
       KUBECONFIG: /tmp/kubeconfig
-      SNYK_TOKEN: ${SNYK_TOKEN:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       TECHDOCS_S3_BUCKET_NAME: ${TECHDOCS_S3_BUCKET_NAME:-}
       CATALOG_EXPORTER_TOKEN: ${CATALOG_EXPORTER_TOKEN:-local-catalog-exporter-token}
@@ -87,3 +91,8 @@ services:
 
 volumes:
   backstage-postgres:
+
+networks:
+  default: {}
+  kind:
+    external: true

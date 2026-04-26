@@ -14,7 +14,7 @@ metadata:
     - addon
   links:
     - title: Testing Golden Path Docs
-      url: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/testing.md
+      url: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/testing.md
       icon: docs
 spec:
   owner: qa-team
@@ -41,7 +41,7 @@ spec:
         githubOrg:
           title: GitHub organisation
           type: string
-          default: YOUR_GITHUB_ORG
+          default: moatazeldebsy
           description: GitHub org that owns the service repo
         language:
           title: Service language
@@ -115,7 +115,6 @@ spec:
 
           1. Replace the placeholder test(s) with real assertions.
           2. Ensure `${{ parameters.coverageThreshold }}%` line coverage is maintained (Python).
-          3. Optionally add `SONAR_TOKEN` as a GitHub secret to enable SonarCloud analysis.
         commitMessage: "test: add unit test scaffolding (IDP golden path)"
 
   output:

@@ -34,7 +34,7 @@ spec:
           annotations:
             summary: "Pod {{ $labels.pod }} ({{ $labels.namespace }}) is crash-looping"
             description: "Container {{ $labels.container }} restarted {{ $value | humanize }} times in the last 5 minutes."
-            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/pod-crash-loop.md"
+            runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/pod-crash-loop.md"
 
     # ── Resource usage ────────────────────────────────────────────────────────
     - name: resource-usage
@@ -59,7 +59,7 @@ spec:
           annotations:
             summary: "High memory usage in {{ $labels.namespace }}/{{ $labels.pod }}"
             description: "Container {{ $labels.container }} is using {{ $value | humanizePercentage }} of its memory limit."
-            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-memory.md"
+            runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/high-memory.md"
 
         - alert: HighMemoryUsageCritical
           expr: |
@@ -80,7 +80,7 @@ spec:
           annotations:
             summary: "Critical memory usage in {{ $labels.namespace }}/{{ $labels.pod }} — OOMKill imminent"
             description: "Container {{ $labels.container }} is at {{ $value | humanizePercentage }} of its memory limit."
-            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-memory.md"
+            runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/high-memory.md"
 
         - alert: HighCPUUsage
           expr: |
@@ -105,7 +105,7 @@ spec:
           annotations:
             summary: "High CPU usage in {{ $labels.namespace }}/{{ $labels.pod }}"
             description: "Container {{ $labels.container }} is using {{ $value | humanizePercentage }} of its CPU limit."
-            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-cpu.md"
+            runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/high-cpu.md"
 
     # ── Deployment health ──────────────────────────────────────────────────────
     - name: deployment-health
@@ -122,7 +122,7 @@ spec:
           annotations:
             summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has mismatched replicas"
             description: "Desired {{ $value }} replicas but not all are available. A deploy may be stuck."
-            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/deployment-rollback.md"
+            runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/deployment-rollback.md"
 
     # ── HTTP error rate ────────────────────────────────────────────────────────
     - name: http-errors
@@ -150,4 +150,4 @@ spec:
           annotations:
             summary: "High 5xx error rate on {{ $labels.namespace }}/{{ $labels.service }}"
             description: "{{ $value | humanizePercentage }} of requests are returning 5xx errors."
-            runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/deployment-rollback.md"
+            runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/deployment-rollback.md"

@@ -30,13 +30,16 @@ aws sts get-caller-identity  # verify
 git clone https://github.com/YOUR_ORG/idp-mvp
 cd idp-mvp
 
-# Copy and edit Terraform variables
+# Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)
+./scripts/setup.sh
+# → Choose "aws" when prompted for environment
+```
+
+Or, if you have already run `setup.sh` for personalisation and want to re-run the AWS bootstrap directly:
+
+```bash
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 # Edit terraform/terraform.tfvars — update cluster_name, region if needed
-
-# Update YOUR_GITHUB_ORG in terraform/iam.tf before running
-
-# Run bootstrap
 ./scripts/bootstrap.sh
 ```
 

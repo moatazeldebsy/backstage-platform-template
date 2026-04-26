@@ -53,31 +53,6 @@ jobs:
           path: services/hello-service/coverage.out
           retention-days: 1
 
-  sonarcloud:
-    name: SonarCloud analysis
-    if: false  # disabled until SONAR_TOKEN secret is configured
-    runs-on: ubuntu-latest
-    needs: test-hello-service
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # SonarCloud needs full git history for blame/new-code
-
-      - name: Download coverage report
-        uses: actions/download-artifact@v4
-        with:
-          name: go-coverage
-          path: services/hello-service
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   helm-lint:
     runs-on: ubuntu-latest
     permissions:
@@ -105,8 +80,10 @@ jobs:
 
       - name: Install kubeconform
         run: |
-          curl -L "https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz" \
-            | tar -xz && sudo mv kubeconform /usr/local/bin/
+          curl -sSLO "https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz"
+          curl -sSLO "https://github.com/yannh/kubeconform/releases/download/v0.6.7/CHECKSUMS"
+          grep "kubeconform-linux-amd64.tar.gz" CHECKSUMS | sha256sum -c
+          tar -xz -f kubeconform-linux-amd64.tar.gz && sudo mv kubeconform /usr/local/bin/
 
       - name: Validate namespace manifests
         run: kubeconform -strict -summary kubernetes/namespaces/

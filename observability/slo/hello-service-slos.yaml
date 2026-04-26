@@ -39,7 +39,7 @@ slos:
         severity: critical
         team: platform-team
       annotations:
-        runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/deployment-rollback.md"
+        runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/deployment-rollback.md"
         summary: "hello-service availability SLO is at risk"
       page_alert:
         labels:
@@ -72,7 +72,7 @@ slos:
         severity: warning
         team: platform-team
       annotations:
-        runbook_url: "https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/docs/runbooks/high-cpu.md"
+        runbook_url: "https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/docs/runbooks/high-cpu.md"
         summary: "hello-service latency SLO is at risk (p99 > 500ms)"
       page_alert:
         labels:

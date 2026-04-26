@@ -63,7 +63,7 @@ jobs:
           fi
           git config --global user.email "ci@idp.platform"
           git config --global user.name "IDP CI Bot"
-          git clone https://x-access-token:${GH_TOKEN}@github.com/moatazeldebsy/idp-mvp.git /tmp/platform
+          git clone https://x-access-token:${GH_TOKEN}@github.com/moatazeldebsy/backstage-idp-starter.git /tmp/platform
           cd /tmp/platform
           VALUES_FILE="services/my-svc/helm-values-dev.yaml"
           if [ -f "${VALUES_FILE}" ]; then

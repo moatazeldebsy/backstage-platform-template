@@ -89,19 +89,6 @@ data:
               skipTLSVerify: true
               skipMetricsLookup: false
               serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
-
-    proxy:
-      endpoints:
-        /snyk:
-          target: https://api.snyk.io/
-          allowedHeaders: ['Authorization']
-          headers:
-            Authorization: token ${SNYK_TOKEN}
-
-    snyk:
-      appHost: app.snyk.io
-      mocked: false
-      showResolvedInGraphs: false
 ---
 # ── backstage-config (production overrides) ───────────────────────────────────
 # Sets the real ALB URL and all catalog locations as GitHub URLs.
@@ -124,7 +111,7 @@ data:
         origin: http://BACKSTAGE_ALB_URL
 
     techRadar:
-      url: https://raw.githubusercontent.com/YOUR_GITHUB_ORG/idp-mvp/main/backstage/catalog/tech-radar.json
+      url: https://raw.githubusercontent.com/moatazeldebsy/backstage-idp-starter/main/backstage/catalog/tech-radar.json
 
     catalog:
       import:
@@ -135,112 +122,85 @@ data:
       locations:
         # ── Service templates ────────────────────────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/nodejs-service/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/nodejs-service/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/python-service/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/python-service/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/go-service/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/go-service/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/react-frontend/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/react-frontend/template.yaml
           rules:
             - allow: [Template]
         # ── Infrastructure templates ─────────────────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/terraform-module/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/terraform-module/template.yaml
           rules:
             - allow: [Template]
         # ── Platform self-service templates ──────────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/team-namespace/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/team-namespace/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/add-secret/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/add-secret/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/rds-database/template.yaml
-          rules:
-            - allow: [Template]
-        # ── ML Platform templates ────────────────────────────────────────────
-        - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/model-serving-api/template.yaml
-          rules:
-            - allow: [Template]
-        - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/ml-training-job/template.yaml
-          rules:
-            - allow: [Template]
-        - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/mlflow-experiment/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/rds-database/template.yaml
           rules:
             - allow: [Template]
         # ── Local deploy template (Kind only — still visible for reference) ──
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/deploy-to-kind/template.yaml
-          rules:
-            - allow: [Template]
-        # ── AI Agent template ────────────────────────────────────────────────
-        - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/ai-agent-service/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/deploy-to-kind/template.yaml
           rules:
             - allow: [Template]
         # ── QA Platform golden-path templates ───────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/playwright-e2e-suite/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/playwright-e2e-suite/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/k6-performance-suite/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/k6-performance-suite/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/pact-contract-suite/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/pact-contract-suite/template.yaml
           rules:
             - allow: [Template]
         # ── QA addon templates ───────────────────────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/add-unit-tests/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/add-unit-tests/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/add-e2e-tests/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/add-e2e-tests/template.yaml
           rules:
             - allow: [Template]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/templates/add-k6-tests/template.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/templates/add-k6-tests/template.yaml
           rules:
             - allow: [Template]
         # ── Platform entities ────────────────────────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/catalog-info.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/catalog-info.yaml
           rules:
             - allow: [Component, System, User, Group]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/apis/hello-service-api.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/apis/hello-service-api.yaml
           rules:
             - allow: [API]
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/services/hello-service/catalog-info.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/services/hello-service/catalog-info.yaml
           rules:
             - allow: [Component]
         # ── QA Platform catalog ──────────────────────────────────────────────
         - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/qa-catalog.yaml
+          target: https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/backstage/catalog/qa-catalog.yaml
           rules:
             - allow: [Component, Group, User, Resource]
-        # ── LLM Gateway ──────────────────────────────────────────────────────
-        - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/apis/llm-gateway-api.yaml
-          rules:
-            - allow: [API]
-        - type: url
-          target: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/services/llm-gateway.yaml
-          rules:
-            - allow: [Resource]

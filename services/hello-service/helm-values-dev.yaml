@@ -1,8 +1,8 @@
-# Helm overrides for hello-service — dev environment (local Kind)
-# image.tag is updated by building locally: docker build + docker push localhost:5003/hello-service:local
+# Helm overrides for hello-service — dev environment
+# image.tag is updated automatically by CI when pushed to main
 image:
-  repository: localhost:5003/hello-service
-  tag: local   # build with: docker build -t localhost:5003/hello-service:local services/hello-service && docker push localhost:5003/hello-service:local
+  repository: ghcr.io/moatazeldebsy/hello-service
+  tag: "latest"
 
 replicaCount: 1
 
@@ -13,7 +13,9 @@ service:
 ingress:
   enabled: true
   className: "nginx"
-  annotations: {}
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   hosts:
     - host: hello-service-dev.idp.local
       paths:

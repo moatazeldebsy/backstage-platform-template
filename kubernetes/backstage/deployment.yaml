@@ -77,12 +77,6 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: AUTH_GITHUB_CLIENT_SECRET
-            - name: SNYK_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: backstage-secrets
-                  key: SNYK_TOKEN
-                  optional: true
             - name: PGSSLMODE
               value: require
             - name: NODE_ENV

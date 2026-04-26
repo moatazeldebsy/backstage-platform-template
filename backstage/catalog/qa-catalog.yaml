@@ -5,8 +5,6 @@ metadata:
   name: qa-team
   title: QA Platform Team
   description: Owns the QA Platform & Quality Enablement capability — test tooling, quality gates, and E2E scaffolds.
-  annotations:
-    backstage.io/techdocs-ref: dir:.
 spec:
   type: team
   profile:
@@ -36,24 +34,20 @@ metadata:
   title: QA Platform & Quality Enablement
   description: |
     Platform capability that provides golden-path testing scaffolds, CI quality gates,
-    SAST via SonarCloud, cross-browser E2E via LambdaTest, and QA KPI dashboards.
+    cross-browser E2E via LambdaTest, and QA KPI dashboards.
   annotations:
     backstage.io/techdocs-ref: dir:.
   tags:
     - qa
     - quality-gates
     - playwright
-    - sonarcloud
     - testing
   links:
-    - title: SonarCloud Dashboard
-      url: https://sonarcloud.io/organizations/YOUR_GITHUB_ORG/projects
-      icon: dashboard
     - title: QA Metrics (Grafana)
       url: http://grafana.idp.local/d/qa-metrics/qa-metrics
       icon: dashboard
     - title: Playwright E2E Reports
-      url: https://github.com/YOUR_GITHUB_ORG/idp-mvp/actions
+      url: https://github.com/moatazeldebsy/backstage-idp-starter/actions
       icon: github
 spec:
   type: platform-capability
@@ -61,32 +55,8 @@ spec:
   owner: qa-team
   system: internal-developer-platform
   dependsOn:
-    - resource:sonarcloud
     - resource:lambdatest
     - resource:mailtrap
----
-apiVersion: backstage.io/v1alpha1
-kind: Resource
-metadata:
-  name: sonarcloud
-  title: SonarCloud
-  description: |
-    Cloud-based SAST and code-quality platform. Enforces quality gates in every
-    service CI pipeline — blocks merges on blocker/critical issues or coverage regression.
-  annotations:
-    backstage.io/techdocs-ref: dir:.
-  tags:
-    - sast
-    - quality-gate
-    - security
-  links:
-    - title: SonarCloud Org Dashboard
-      url: https://sonarcloud.io/organizations/YOUR_GITHUB_ORG/projects
-      icon: dashboard
-spec:
-  type: quality-gate
-  owner: qa-team
-  system: internal-developer-platform
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Resource

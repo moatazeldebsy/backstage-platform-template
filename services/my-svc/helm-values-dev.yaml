@@ -26,6 +26,14 @@ resources:
     cpu: 100m
     memory: 64Mi
 
+podLabels:
+  team: platform-team
+  cost-center: eng-platform
+  environment: dev
+
+metrics:
+  enabled: true
+
 env:
   - name: ENVIRONMENT
     value: dev
