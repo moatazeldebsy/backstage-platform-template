@@ -9,40 +9,19 @@ spec:
     displayName: Platform Team
     email: platform@idp.local
   children:
-    - ml-team
     - data-team
     - qa-team
   members:
-    - YOUR_GITHUB_ORG
+    - moatazeldebsy
     - guest
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
-  name: ml-team
-  description: Machine Learning & AI team — model serving, training jobs, AI agents
-  tags:
-    - ml
-    - ai
-spec:
-  type: team
-  profile:
-    displayName: ML Team
-    email: ml-team@idp.local
-  parent: platform-team
-  children: []
-  members:
-    - ml-engineer
-    - ai-researcher
----
-apiVersion: backstage.io/v1alpha1
-kind: Group
-metadata:
   name: data-team
-  description: Data Engineering team — experiment tracking, data pipelines, MLflow
+  description: Data Engineering team — data pipelines and analytics
   tags:
     - data
-    - mlflow
 spec:
   type: team
   profile:
@@ -67,10 +46,10 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: User
 metadata:
-  name: YOUR_GITHUB_ORG
+  name: moatazeldebsy
   description: Platform owner
   annotations:
-    github.com/user-login: YOUR_GITHUB_ORG
+    github.com/user-login: moatazeldebsy
 spec:
   profile:
     displayName: Moataz El-Debsy
@@ -115,52 +94,3 @@ spec:
     - data-team
 # System entity is registered via /catalog-info.yaml (repo root, uses dir:.)
 # hello-service is registered via /services/hello-service/catalog-info.yaml (co-located, uses dir:.)
----
-# ── ML Platform Resources ─────────────────────────────────────────────────────
-apiVersion: backstage.io/v1alpha1
-kind: Resource
-metadata:
-  name: mlflow
-  title: MLflow Experiment Tracker
-  description: >
-    Tracks ML experiments, parameters, metrics, and model artifacts.
-    Local: http://mlflow.idp.local  |  Chart: community-charts/mlflow v2.13.0
-  annotations:
-    backstage.io/techdocs-ref: dir:.
-  tags:
-    - ml-platform
-    - mlflow
-    - experiment-tracking
-  links:
-    - url: http://mlflow.idp.local
-      title: MLflow UI (local)
-      icon: dashboard
-spec:
-  type: ml-platform
-  lifecycle: production
-  owner: platform-team
-  system: internal-developer-platform
----
-apiVersion: backstage.io/v1alpha1
-kind: Resource
-metadata:
-  name: argo-workflows
-  title: Argo Workflows Orchestrator
-  description: >
-    Kubernetes-native workflow engine for ML training jobs and data pipelines.
-    Local: http://argo-workflows.idp.local  |  Chart: argo/argo-workflows
-  annotations:
-    backstage.io/techdocs-ref: dir:.
-  tags:
-    - ml-platform
-    - argo-workflows
-    - orchestration
-  links:
-    - url: http://argo-workflows.idp.local
-      title: Argo Workflows UI (local)
-      icon: dashboard
-spec:
-  type: ml-platform
-  lifecycle: production
-  owner: platform-team
-  system: internal-developer-platform

@@ -25,6 +25,12 @@ backend:
     origin: http://localhost:3000
     methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
     credentials: true
+  # Required for Backstage v1.29+ token-based auth system.
+  # Without this key, the guest auth backend cannot sign session cookies and
+  # the UI shows "Failed to sign in as a guest using the auth backend" on load.
+  auth:
+    keys:
+      - secret: ${BACKSTAGE_AUTH_SECRET:-dev-secret-change-in-production}
   database:
     client: pg
     connection:
@@ -57,8 +63,12 @@ auth:
       dangerouslyAllowOutsideDevelopment: true
     github:
       development:
-        clientId: ${AUTH_GITHUB_CLIENT_ID}
-        clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+        # Use a non-empty placeholder so the backend starts even without real OAuth creds.
+        # GitHub login will fail at the OAuth handshake (not at startup) when these are unset.
+        # Set AUTH_GITHUB_CLIENT_ID and AUTH_GITHUB_CLIENT_SECRET in local/backstage/.env
+        # to enable real GitHub sign-in.
+        clientId: ${AUTH_GITHUB_CLIENT_ID:-not-configured}
+        clientSecret: ${AUTH_GITHUB_CLIENT_SECRET:-not-configured}
         signIn:
           resolvers:
             - resolver: usernameMatchingUserEntityName
@@ -116,24 +126,6 @@ catalog:
       target: /catalog/templates/rds-database/template.yaml
       rules:
         - allow: [Template]
-    # ML Platform templates
-    - type: file
-      target: /catalog/templates/model-serving-api/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/ml-training-job/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/mlflow-experiment/template.yaml
-      rules:
-        - allow: [Template]
-    # AI Agent golden-path template
-    - type: file
-      target: /catalog/templates/ai-agent-service/template.yaml
-      rules:
-        - allow: [Template]
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml
@@ -164,7 +156,7 @@ catalog:
       target: /catalog/templates/add-k6-tests/template.yaml
       rules:
         - allow: [Template]
-    # QA Platform capability: qa-team, qa-engineer, qa-platform, sonarcloud, lambdatest, mailtrap
+    # QA Platform capability: qa-team, qa-engineer, qa-platform, lambdatest, mailtrap
     - type: file
       target: /catalog/qa-catalog.yaml
       rules:
@@ -179,20 +171,11 @@ catalog:
       target: /catalog/apis/hello-service-api.yaml
       rules:
         - allow: [API]
-    - type: file
-      target: /catalog/apis/llm-gateway.yaml
-      rules:
-        - allow: [API]
     # Registered services (co-located catalog-info uses dir:. for techdocs)
     - type: file
       target: /services/hello-service/catalog-info.yaml
       rules:
         - allow: [Component]
-    # AI/ML infrastructure resources
-    - type: file
-      target: /catalog/services/llm-gateway.yaml
-      rules:
-        - allow: [Resource]
 
 kubernetes:
   serviceLocatorMethod:
@@ -208,15 +191,10 @@ kubernetes:
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
 
 techRadar:
-  url: https://github.com/YOUR_GITHUB_ORG/idp-mvp/blob/main/backstage/catalog/tech-radar.json
+  url: https://raw.githubusercontent.com/moatazeldebsy/backstage-idp-starter/main/backstage/catalog/tech-radar.json
 
 proxy:
   endpoints:
-    /snyk:
-      target: https://api.snyk.io/
-      allowedHeaders: ['Authorization']
-      headers:
-        Authorization: token ${SNYK_TOKEN}
     # OpenCost — in-cluster cost visibility for the Cost Insights plugin
     /opencost:
       target: http://opencost.finops.svc.cluster.local:9003
@@ -230,8 +208,45 @@ techInsights:
       cadence: '*/30 * * * *'
     entityOwnershipFactRetriever:
       cadence: '*/30 * * * *'
+  scorecards:
+    - id: golden-path-scorecard
+      name: Golden Path Scorecard
+      description: Checks that a service follows the IDP golden path
+      checks:
+        - id: has-owner
+          name: Has Owner
+          description: Component must have an owner group defined
+          factRef: entityMetadataFactRetriever:default/hasOwner
+          successCriteria:
+            - factOperator: IS_GREATER_THAN
+              value: 0
+        - id: has-lifecycle
+          name: Has Lifecycle
+          description: Component must have a lifecycle (development, production, deprecated)
+          factRef: entityMetadataFactRetriever:default/hasLifecycle
+          successCriteria:
+            - factOperator: IS_GREATER_THAN
+              value: 0
+        - id: has-techdocs
+          name: Has TechDocs
+          description: Component must have a backstage.io/techdocs-ref annotation
+          factRef: entityMetadataFactRetriever:default/hasTechDocs
+          successCriteria:
+            - factOperator: IS_GREATER_THAN
+              value: 0
+        - id: has-kubernetes-id
+          name: Has Kubernetes ID
+          description: Component must have backstage.io/kubernetes-id annotation for K8s plugin
+          factRef: entityMetadataFactRetriever:default/hasAnnotation/backstage.io/kubernetes-id
+          successCriteria:
+            - factOperator: IS_GREATER_THAN
+              value: 0
+        - id: has-grafana-link
+          name: Has Grafana Link
+          description: Component should have a Grafana dashboard link in metadata.links
+          factRef: entityMetadataFactRetriever:default/hasLinks
+          successCriteria:
+            - factOperator: IS_GREATER_THAN
+              value: 0
 
-snyk:
-  appHost: app.snyk.io
-  mocked: false
-  showResolvedInGraphs: false
+
