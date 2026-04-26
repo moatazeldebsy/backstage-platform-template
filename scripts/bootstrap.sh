@@ -147,9 +147,6 @@ fi
 
 # ── Phase 4: Observability ────────────────────────────────────────────────────
 log "Phase 4: Installing observability stack..."
-kubectl create namespace amazon-cloudwatch --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f observability/cloudwatch/cloudwatch-agent.yaml
-
 helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
 helm repo update
 

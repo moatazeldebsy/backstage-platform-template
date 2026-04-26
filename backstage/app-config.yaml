@@ -118,49 +118,11 @@ catalog:
       target: /catalog/templates/team-namespace/template.yaml
       rules:
         - allow: [Template]
-    - type: file
-      target: /catalog/templates/add-secret/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/rds-database/template.yaml
-      rules:
-        - allow: [Template]
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml
       rules:
         - allow: [User, Group]
-    - type: file
-      target: /catalog/templates/playwright-e2e-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/k6-performance-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/pact-contract-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # Testing addon templates — inject tests into existing service repos via PR
-    - type: file
-      target: /catalog/templates/add-unit-tests/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/add-e2e-tests/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/add-k6-tests/template.yaml
-      rules:
-        - allow: [Template]
-    # QA Platform capability: qa-team, qa-engineer, qa-platform, lambdatest, mailtrap
-    - type: file
-      target: /catalog/qa-catalog.yaml
-      rules:
-        - allow: [User, Group, Component, Resource]
     # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
     - type: file
       target: /catalog-info.yaml
@@ -192,14 +154,6 @@ kubernetes:
 
 techRadar:
   url: https://raw.githubusercontent.com/moatazeldebsy/backstage-idp-starter/main/backstage/catalog/tech-radar.json
-
-proxy:
-  endpoints:
-    # OpenCost — in-cluster cost visibility for the Cost Insights plugin
-    /opencost:
-      target: http://opencost.finops.svc.cluster.local:9003
-      allowedMethods: ['GET']
-      changeOrigin: true
 
 # Tech Insights — developer scorecard fact collection
 techInsights:

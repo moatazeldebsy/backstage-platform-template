@@ -43,7 +43,7 @@ if $DESTROY; then
   log "Destroying local IDP platform..."
   helm uninstall argocd       -n argocd           2>/dev/null || true
   helm uninstall gatekeeper   -n gatekeeper-system 2>/dev/null || true
-  kubectl delete namespace argocd gatekeeper-system finops 2>/dev/null || true
+  kubectl delete namespace argocd gatekeeper-system 2>/dev/null || true
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
   docker stop "$REGISTRY_NAME" 2>/dev/null || true
   docker rm   "$REGISTRY_NAME" 2>/dev/null || true
@@ -288,18 +288,10 @@ else
   log "Step 9: Skipping OPA/Gatekeeper (--skip-policies)."
 fi
 
-# ── Step 10: OpenCost ─────────────────────────────────────────────────────────
-log "Step 10: Deploying OpenCost..."
-kubectl apply -f "${ROOT_DIR}/kubernetes/finops/opencost.yaml"
-kubectl apply -f "${ROOT_DIR}/local/opencost/opencost-ingress.yaml"
-# OpenCost needs baseline PSS (requires readOnlyRootFilesystem: false)
-kubectl label namespace finops pod-security.kubernetes.io/enforce=baseline --overwrite
-log "OpenCost deployed. UI: http://opencost.idp.local"
-
-# ── Step 11: DORA Exporter (Pushgateway) ─────────────────────────────────────
+# ── Step 10: DORA Exporter (Pushgateway) ─────────────────────────────────────
 if ! $SKIP_DORA; then
   if ! $SKIP_OBS; then
-    log "Step 11: Installing Prometheus Pushgateway (separate release)..."
+    log "Step 10: Installing Prometheus Pushgateway (separate release)..."
     helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
       --namespace monitoring \
       --set resources.requests.cpu=10m \
@@ -314,7 +306,7 @@ if ! $SKIP_DORA; then
     log "Pushgateway ingress: http://pushgateway.idp.local"
   fi
 
-  log "Step 11b: Applying DORA exporter (Pushgateway variant)..."
+  log "Step 10b: Applying DORA exporter (Pushgateway variant)..."
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     kubectl create secret generic dora-exporter-secret \
       --from-literal=GITHUB_TOKEN="${GITHUB_TOKEN}" \
@@ -333,7 +325,7 @@ if ! $SKIP_DORA; then
   kubectl apply -f "${ROOT_DIR}/observability/dora/dora-cronjob-local.yaml"
   log "DORA exporter deployed (pushes to Prometheus Pushgateway every 15m)."
 else
-  log "Step 11: Skipping DORA exporter (--skip-dora)."
+  log "Step 10: Skipping DORA exporter (--skip-dora)."
 fi
 
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
@@ -408,7 +400,6 @@ fi
 if ! $SKIP_GITOPS; then
 log "  ArgoCD:         http://argocd.idp.local"
 fi
-log "  OpenCost:       http://opencost.idp.local"
 log "  Backstage:      cd backstage/app && yarn install && yarn build:backend && cd ../.."
 log "                  docker compose -f local/backstage/docker-compose.yml build backstage"
 log "                  docker compose -f local/backstage/docker-compose.yml up -d"

@@ -3,6 +3,7 @@ terraform/.terraform/
 terraform/.terraform.lock.hcl
 terraform/terraform.tfvars
 terraform/tfplan
+terraform/*.tfplan
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/override.tf
