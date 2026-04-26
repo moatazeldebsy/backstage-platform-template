@@ -36,11 +36,27 @@ The service listens on port `${{ values.port }}` by default (override with the `
 npm test
 ```
 
+## Docker
+
+```bash
+docker build -t ${{ values.name }}:local .
+docker run -p ${{ values.port }}:${{ values.port }} ${{ values.name }}:local
+```
+
 ## Local Development (Kind)
 
 ```bash
-# From the repo root — hot-reload dev loop
-tilt up
+# Build and push to the local registry
+docker build -t localhost:5003/${{ values.name }}:latest .
+docker push localhost:5003/${{ values.name }}:latest
+
+# Deploy with Helm (run from inside the service directory)
+helm upgrade --install ${{ values.name }} ../../helm/service-template \
+  --namespace services \
+  --create-namespace \
+  --set image.repository=localhost:5003/${{ values.name }} \
+  --set image.tag=latest \
+  --values helm-values-local.yaml
 
 # Access the service
 http://${{ values.name }}.idp.local
@@ -53,9 +69,10 @@ Add `${{ values.name }}.idp.local` to `/etc/hosts` pointing to `127.0.0.1` if no
 CI/CD is wired via GitHub Actions (`.github/workflows/build-and-deploy.yml`). Push to `main` to trigger a build and deploy.
 
 ```bash
-# Manual Helm deploy (local)
+# Manual Helm deploy (local) — run from inside the service directory
 helm upgrade --install ${{ values.name }} ../../helm/service-template \
   --namespace services \
+  --create-namespace \
   --set image.repository=localhost:5003/${{ values.name }} \
   --set image.tag=latest \
   --values helm-values-local.yaml
@@ -99,5 +116,5 @@ Without `GH_PAT` the `update-image-tag` CI step will be skipped and ArgoCD won't
 
 ## Links
 
-- [Backstage catalog entry](https://backstage.${{ values.githubOrg }}.internal/catalog/default/component/${{ values.name }})
+- [Backstage catalog entry](http://backstage.idp.local/catalog/default/component/${{ values.name }})
 - [GitHub repository](https://github.com/${{ values.githubOrg }}/${{ values.repoName }})

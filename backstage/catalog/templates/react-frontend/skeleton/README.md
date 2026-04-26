@@ -43,15 +43,19 @@ Without `GH_PAT` the `update-image-tag` CI step will be skipped and ArgoCD won't
 
 ## Helm
 
+Run from inside the service directory (`cd services/${{ values.name }}`):
+
 ```bash
 # Local Kind cluster
-helm upgrade --install ${{ values.name }} <idp-platform>/helm/service-template \
+helm upgrade --install ${{ values.name }} ../../helm/service-template \
   --namespace services \
+  --create-namespace \
   --values helm-values-local.yaml
 
 # AWS EKS
-helm upgrade --install ${{ values.name }} <idp-platform>/helm/service-template \
+helm upgrade --install ${{ values.name }} ../../helm/service-template \
   --namespace services \
+  --create-namespace \
   --values helm-values.yaml \
   --set image.repository=<ecr-url>/${{ values.name }} \
   --set image.tag=<git-sha>
