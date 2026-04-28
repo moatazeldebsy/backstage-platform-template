@@ -21,7 +21,7 @@ IDP_PLATFORM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [[ -f "${IDP_PLATFORM_DIR}/local/.env" ]] && \
   set -o allexport && source "${IDP_PLATFORM_DIR}/local/.env" && set +o allexport || true
 
-GITHUB_OWNER="${GITHUB_ORG:-moatazeldebsy}"
+GITHUB_OWNER="${GITHUB_ORG:-YOUR_GITHUB_ORG}"
 
 # ── parse args ────────────────────────────────────────────────────────────────
 REPO_NAME=""

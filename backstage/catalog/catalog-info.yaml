@@ -12,7 +12,7 @@ spec:
     - data-team
     - qa-team
   members:
-    - moatazeldebsy
+    - YOUR_GITHUB_ORG
     - guest
 ---
 apiVersion: backstage.io/v1alpha1
@@ -46,10 +46,10 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: User
 metadata:
-  name: moatazeldebsy
+  name: YOUR_GITHUB_ORG
   description: Platform owner
   annotations:
-    github.com/user-login: moatazeldebsy
+    github.com/user-login: YOUR_GITHUB_ORG
 spec:
   profile:
     displayName: Moataz El-Debsy

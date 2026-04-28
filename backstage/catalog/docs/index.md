@@ -20,4 +20,4 @@ This capability provides the golden-path tooling for test quality across all ser
 ## Links
 
 - [QA Metrics Dashboard](http://grafana.idp.local/d/qa-metrics/qa-metrics)
-- [Playwright E2E Reports](https://github.com/moatazeldebsy/idp-mvp/actions)
+- [Playwright E2E Reports](https://github.com/YOUR_GITHUB_ORG/idp-mvp/actions)

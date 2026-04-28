@@ -97,7 +97,7 @@ After `bootstrap-local.sh` completes and Backstage is running, everything is rea
 
 ```bash
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform/terraform.tfvars and terraform/iam.tf (set moatazeldebsy)
+# Edit terraform/terraform.tfvars — set github_org, aws_region, cluster_name
 ./scripts/bootstrap.sh
 ```
 

@@ -97,7 +97,7 @@ spec:
                       name: dora-exporter-secret
                       key: GITHUB_TOKEN
                 - name: GITHUB_ORG
-                  value: "moatazeldebsy"
+                  value: "YOUR_GITHUB_ORG"
                 - name: LOOKBACK_HOURS
                   value: "24"
                 - name: PUSHGATEWAY_URL

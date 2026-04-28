@@ -1,4 +1,5 @@
 aws_region              = "us-east-1"
+github_org              = "your-github-org"   # GitHub org or username (e.g. acme-corp)
 environment             = "dev"
 cluster_name            = "idp-mvp"
 cluster_version         = "1.32"

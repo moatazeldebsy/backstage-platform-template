@@ -12,7 +12,7 @@ _ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 [[ -f "${_ROOT_DIR}/local/.env" ]] && \
   set -o allexport && source "${_ROOT_DIR}/local/.env" && set +o allexport || true
 
-GH_ORG="${GH_ORG:-${GITHUB_ORG:-moatazeldebsy}}"
+GH_ORG="${GH_ORG:-${GITHUB_ORG:-YOUR_GITHUB_ORG}}"
 PLATFORM_REPO="${PLATFORM_REPO:-backstage-idp-starter}"
 
 log() { echo "[$(date +%T)] $*"; }

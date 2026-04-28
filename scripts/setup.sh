@@ -296,7 +296,8 @@ step "Phase 0 — Personalisation"
 # ── Gather inputs ────────────────────────────────────────────────────────────
 
 read -rp "$(echo -e "${CYAN}GitHub org or username${RESET} (e.g. acme-corp): ")" GITHUB_ORG
-GITHUB_ORG="${GITHUB_ORG:-moatazeldebsy}"
+[[ -z "${GITHUB_ORG}" ]] && { echo "GitHub org is required."; exit 1; }
+GITHUB_ORG="${GITHUB_ORG}"
 
 read -rp "$(echo -e "${CYAN}AWS Account ID${RESET} (12 digits, leave blank to skip): ")" AWS_ACCOUNT_ID
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-YOUR_AWS_ACCOUNT_ID}"
