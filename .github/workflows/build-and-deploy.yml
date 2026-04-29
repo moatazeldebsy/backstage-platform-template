@@ -131,7 +131,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.guard.outputs.has_aws == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Ensure ECR repository exists
         if: steps.guard.outputs.has_aws == 'true'
