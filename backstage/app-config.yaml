@@ -118,6 +118,14 @@ catalog:
       target: /catalog/templates/team-namespace/template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: /catalog/templates/add-secret/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/rds-database/template.yaml
+      rules:
+        - allow: [Template]
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml
@@ -138,6 +146,21 @@ catalog:
       target: /services/hello-service/catalog-info.yaml
       rules:
         - allow: [Component]
+
+  # GitHub org auto-discovery — finds all repos with a catalog-info.yaml in
+  # YOUR_GITHUB_ORG automatically. New scaffolded services appear within 15 min.
+  # Requires GITHUB_TOKEN with read:org + repo scopes in local/.env.
+  providers:
+    github:
+      idpOrg:
+        organization: YOUR_GITHUB_ORG
+        catalogPath: /catalog-info.yaml
+        filters:
+          branch: main
+          repository: '.*'
+        schedule:
+          frequency: { minutes: 15 }
+          timeout: { minutes: 3 }
 
 kubernetes:
   serviceLocatorMethod:

@@ -96,8 +96,9 @@ jobs:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # Required for OIDC
+      id-token: write      # Required for OIDC and Cosign keyless signing
       contents: read
+      security-events: write  # Required for uploading Trivy SARIF results
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
     steps:
@@ -155,6 +156,7 @@ jobs:
 
       - name: Build and push
         if: steps.guard.outputs.has_aws == 'true'
+        id: build-push
         uses: docker/build-push-action@v6
         with:
           context: services/${{ matrix.service }}
@@ -163,6 +165,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # ── Trivy vulnerability scan ──────────────────────────────────────────
+      - name: Run Trivy vulnerability scan
+        if: steps.guard.outputs.has_aws == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: steps.guard.outputs.has_aws == 'true' && !cancelled()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      # ── Cosign keyless image signing ──────────────────────────────────────
+      - name: Install Cosign
+        if: steps.guard.outputs.has_aws == 'true'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image with Cosign (keyless via OIDC)
+        if: steps.guard.outputs.has_aws == 'true'
+        env:
+          DIGEST: ${{ steps.build-push.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}"
+          cosign sign --yes "${IMAGE}@${DIGEST}"
 
   # ─── GitOps: write image tag to git, ArgoCD deploys ────────────────────────
   # CI no longer calls helm directly. It commits the new image tag into

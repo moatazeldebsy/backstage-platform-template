@@ -1,0 +1,112 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: add-secret
+  title: Add Secret to a Service
+  description: Provision a secret in AWS Secrets Manager and wire it into your service via External Secrets Operator
+  tags:
+    - secrets
+    - aws
+    - security
+    - golden-path
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Secret Details
+      required:
+        - serviceName
+        - secretKey
+        - secretValue
+        - owner
+      properties:
+        serviceName:
+          title: Service Name
+          type: string
+          description: Name of the service this secret belongs to (must match the catalog entry)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        secretKey:
+          title: Secret Key Name
+          type: string
+          description: Environment variable name the secret will be injected as (e.g. DATABASE_URL)
+          pattern: '^[A-Z][A-Z0-9_]*$'
+        secretValue:
+          title: Secret Value
+          type: string
+          description: The secret value — stored in AWS Secrets Manager, never committed to Git
+          ui:widget: password
+        description:
+          title: Description
+          type: string
+          description: What this secret is used for
+          default: ''
+        owner:
+          title: Owner
+          type: string
+          description: Team that owns this secret
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Infrastructure
+      properties:
+        awsRegion:
+          title: AWS Region
+          type: string
+          default: us-east-1
+        secretPathPrefix:
+          title: Secret Path Prefix
+          type: string
+          description: Secrets Manager path prefix (default matches cluster name)
+          default: idp-mvp
+
+  steps:
+    - id: provision-secret
+      name: Create Secret in AWS Secrets Manager
+      action: idp:provision-secret
+      input:
+        serviceName: ${{ parameters.serviceName }}
+        secretKey: ${{ parameters.secretKey }}
+        secretValue: ${{ parameters.secretValue }}
+        awsRegion: ${{ parameters.awsRegion }}
+        secretPathPrefix: ${{ parameters.secretPathPrefix }}
+
+    - id: fetch-template
+      name: Generate ExternalSecret manifest
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          secretKey: ${{ parameters.secretKey }}
+          secretPathPrefix: ${{ parameters.secretPathPrefix }}
+          awsRegion: ${{ parameters.awsRegion }}
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+
+    - id: open-pr
+      name: Open PR to apply ExternalSecret
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-idp-starter&owner=YOUR_GITHUB_ORG
+        title: "feat(${{ parameters.serviceName }}): add ${{ parameters.secretKey }} secret"
+        branchName: secret/${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}
+        description: |
+          Adds an ExternalSecret CRD that syncs `${{ parameters.secretKey }}` from AWS Secrets Manager
+          into the `services` namespace for `${{ parameters.serviceName }}`.
+
+          **After merging:**
+          ```bash
+          kubectl rollout restart deployment/${{ parameters.serviceName }} -n services
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}
+      - title: Secrets Manager path
+        url: https://console.aws.amazon.com/secretsmanager/home?region=${{ parameters.awsRegion }}

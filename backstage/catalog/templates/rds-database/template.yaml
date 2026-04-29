@@ -1,0 +1,136 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: rds-database
+  title: Provision RDS Database
+  description: Provision an AWS RDS PostgreSQL instance for a service and wire credentials via External Secrets Operator
+  tags:
+    - database
+    - aws
+    - rds
+    - postgresql
+    - golden-path
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Database Details
+      required:
+        - serviceName
+        - dbName
+        - owner
+      properties:
+        serviceName:
+          title: Service Name
+          type: string
+          description: The service this database belongs to (e.g. my-api)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        dbName:
+          title: Database Name
+          type: string
+          description: PostgreSQL database name (lowercase, underscores only)
+          pattern: '^[a-z][a-z0-9_]*$'
+        dbUsername:
+          title: Master Username
+          type: string
+          default: appuser
+          pattern: '^[a-z][a-z0-9_]*$'
+        owner:
+          title: Owner
+          type: string
+          description: Team that owns this database
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Infrastructure
+      properties:
+        instanceClass:
+          title: Instance Class
+          type: string
+          default: db.t3.micro
+          enum:
+            - db.t3.micro
+            - db.t3.small
+            - db.t3.medium
+            - db.r6g.large
+          enumNames:
+            - 'db.t3.micro (dev/test — 1 vCPU, 1 GB)'
+            - 'db.t3.small (small workloads — 1 vCPU, 2 GB)'
+            - 'db.t3.medium (moderate load — 2 vCPU, 4 GB)'
+            - 'db.r6g.large (production — 2 vCPU, 16 GB)'
+        awsRegion:
+          title: AWS Region
+          type: string
+          default: us-east-1
+        multiAz:
+          title: Multi-AZ (production HA)
+          type: boolean
+          default: false
+        storageGb:
+          title: Storage (GB)
+          type: integer
+          default: 20
+          minimum: 20
+          maximum: 1000
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Platform Repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - YOUR_GITHUB_ORG
+            allowedRepos:
+              - backstage-idp-starter
+
+  steps:
+    - id: fetch-template
+      name: Generate database manifests
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          dbName: ${{ parameters.dbName }}
+          dbUsername: ${{ parameters.dbUsername }}
+          instanceClass: ${{ parameters.instanceClass }}
+          awsRegion: ${{ parameters.awsRegion }}
+          multiAz: ${{ parameters.multiAz }}
+          storageGb: ${{ parameters.storageGb }}
+          owner: ${{ parameters.owner }}
+
+    - id: open-pr
+      name: Open PR to provision database
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(${{ parameters.serviceName }}): provision RDS PostgreSQL database"
+        branchName: database/${{ parameters.serviceName }}-${{ parameters.dbName }}
+        description: |
+          Provisions an RDS PostgreSQL instance for `${{ parameters.serviceName }}`.
+
+          **Resources created:**
+          - RDS instance: `${{ parameters.serviceName }}-db` (${{ parameters.instanceClass }})
+          - Secrets Manager secret: `idp-mvp/${{ parameters.serviceName }}/db-credentials`
+          - ExternalSecret CRD syncing `DATABASE_URL` into the `services` namespace
+
+          **After merging:**
+          1. Apply the Terraform: `cd terraform && terraform apply -var "cluster_name=idp-mvp"`
+          2. Apply K8s manifests: `kubectl apply -f services/${{ parameters.serviceName }}/k8s/database/`
+          3. Restart your service: `kubectl rollout restart deployment/${{ parameters.serviceName }} -n services`
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

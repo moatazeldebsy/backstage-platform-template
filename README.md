@@ -1,10 +1,31 @@
 # backstage-idp-starter
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-idp-starter/)
+[![CI](https://github.com/moatazeldebsy/backstage-idp-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-idp-starter/actions/workflows/ci.yml)
 
 **A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 7 software templates (more in progress), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
+
+<!-- demo-gif: replace the image below with an animated GIF showing the golden path
+     (scaffold service in Backstage → CI runs → service live with metrics).
+     Suggested tool: peek, kooha, or asciinema + svg-term.
+     Host in docs/assets/demo.gif and update the path below. -->
+> **Golden path in 60 seconds:** scaffold a service → CI runs tests + builds image → ArgoCD deploys to Kind → Backstage shows health + metrics.
+
+## Compatibility
+
+| Component | Tested version |
+|-----------|---------------|
+| Backstage | v1.49.1 |
+| Kubernetes | 1.29 (EKS), 1.32 (Kind) |
+| Helm | 3.x |
+| Kind | 0.24 |
+| ArgoCD | v2.12 |
+| Terraform | ≥ 1.5 |
+| Go (hello-service) | 1.22 |
+| Node.js (Backstage) | 20 LTS |
 
 ---
 
