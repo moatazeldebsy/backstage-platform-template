@@ -70,7 +70,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/${{ matrix.service }}/package-lock.json
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.runtime.outputs.runtime == 'python'
         with:
           python-version: '3.12'
