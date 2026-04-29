@@ -268,7 +268,7 @@ jobs:
       - name: Notify Slack on success
         if: success()
         continue-on-error: true   # non-blocking until SLACK_BOT_TOKEN is configured
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@v3
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -279,7 +279,7 @@ jobs:
       - name: Notify Slack on failure
         if: failure()
         continue-on-error: true   # non-blocking until SLACK_BOT_TOKEN is configured
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@v3
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
