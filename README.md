@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 19 software templates, Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 7 software templates (more in progress), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -13,7 +13,7 @@
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, and custom scaffolder actions |
-| **Software templates** | 16 golden-path templates (Node.js, Python, Go, React, Terraform, testing) |
+| **Software templates** | 7 golden-path templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace) — expanding to 16+ on the roadmap |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter |
 | **Infrastructure** | Terraform modules for EKS, VPC, ECR, IAM (OIDC + IRSA), RDS, S3, Secrets Manager |

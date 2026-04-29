@@ -52,7 +52,7 @@ metadata:
     github.com/user-login: YOUR_GITHUB_ORG
 spec:
   profile:
-    displayName: Moataz El-Debsy
+    displayName: YOUR_DISPLAY_NAME
   memberOf:
     - platform-team
 ---

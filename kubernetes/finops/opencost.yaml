@@ -1,0 +1,53 @@
+# OpenCost deployment for in-cluster cost visibility
+# Applied by bootstrap-local.sh and bootstrap.sh
+# Docs: https://www.opencost.io/docs/installation/helm
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opencost
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+---
+# OpenCost is deployed via Helm in bootstrap scripts:
+#
+#   helm repo add opencost https://opencost.github.io/opencost-helm-chart
+#   helm upgrade --install opencost opencost/opencost \
+#     --namespace opencost \
+#     --values kubernetes/finops/opencost-values.yaml
+#
+# The ConfigMap below provides the Prometheus datasource so OpenCost
+# can read cluster metrics for cost attribution.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencost-config
+  namespace: opencost
+data:
+  # Override via helm --set or opencost-values.yaml
+  PROMETHEUS_SERVER_ENDPOINT: "http://prometheus-operated.monitoring.svc.cluster.local:9090"
+  CLOUD_PROVIDER_API_KEY: ""
+  # AWS cost data requires IRSA — see terraform/iam.tf for the role
+  AWS_CLUSTER_ID: "idp-mvp"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opencost
+  namespace: opencost
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: opencost.idp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opencost
+                port:
+                  number: 9090

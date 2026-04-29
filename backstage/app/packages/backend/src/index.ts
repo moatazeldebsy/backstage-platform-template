@@ -10,6 +10,7 @@ import { createBackend } from '@backstage/backend-defaults';
 import { idpLocalDeployModule } from './modules/idpLocalDeploy';
 import { idpProvisionSecretModule } from './modules/idpProvisionSecret';
 import { idpSetRepoSecretsModule } from './modules/idpSetRepoSecrets';
+import { idpTechInsightsModule } from './modules/idpTechInsights';
 
 
 const backend = createBackend();
@@ -23,6 +24,7 @@ backend.add(import('@backstage/plugin-scaffolder-backend-module-github'));
 backend.add(idpLocalDeployModule);
 backend.add(idpProvisionSecretModule);
 backend.add(idpSetRepoSecretsModule);
+backend.add(idpTechInsightsModule);
 
 // techdocs plugin
 backend.add(import('@backstage/plugin-techdocs-backend'));

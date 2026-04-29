@@ -386,6 +386,14 @@ if [[ "${PLATFORM_REPO}" != "backstage-idp-starter" ]]; then
     {} 2>/dev/null || true
 fi
 
+# Replace YOUR_ORG / YOUR_REPO used in documentation code blocks
+echo "$TARGETS" | xargs -I{} _sed \
+  "s/YOUR_ORG/${GITHUB_ORG}/g" \
+  {} 2>/dev/null || true
+echo "$TARGETS" | xargs -I{} _sed \
+  "s/YOUR_REPO/${PLATFORM_REPO}/g" \
+  {} 2>/dev/null || true
+
 log "Substitutions applied."
 
 # ── Bootstrap env files ───────────────────────────────────────────────────────

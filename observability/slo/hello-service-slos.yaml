@@ -1,0 +1,62 @@
+# Sloth SLO definitions for hello-service
+# Apply with: sloth generate -i observability/slo/hello-service-slos.yaml | kubectl apply -f -
+# Requires: https://github.com/slok/sloth installed and Prometheus Operator running
+
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: hello-service
+  namespace: monitoring
+  labels:
+    app: hello-service
+    team: platform-team
+spec:
+  service: hello-service
+  labels:
+    team: platform-team
+    env: production
+
+  slos:
+    - name: requests-availability
+      objective: 99.5
+      description: "99.5% of hello-service HTTP requests must succeed (non-5xx)"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(http_requests_total{job="hello-service", code=~"5.."}[{{.window}}]))
+          totalQuery: |
+            sum(rate(http_requests_total{job="hello-service"}[{{.window}}]))
+      alerting:
+        name: HelloServiceHighErrorRate
+        labels:
+          category: availability
+        annotations:
+          runbook: "https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/blob/main/docs/runbooks/deployment-rollback.md"
+        pageAlert:
+          labels:
+            severity: critical
+        ticketAlert:
+          labels:
+            severity: warning
+
+    - name: requests-latency
+      objective: 99.0
+      description: "99% of hello-service requests must complete within 500ms (p99 < 500ms)"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(http_request_duration_seconds_bucket{job="hello-service", le="0.5"}[{{.window}}]))
+          totalQuery: |
+            sum(rate(http_request_duration_seconds_count{job="hello-service"}[{{.window}}]))
+      alerting:
+        name: HelloServiceHighLatency
+        labels:
+          category: latency
+        annotations:
+          runbook: "https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/blob/main/docs/runbooks/high-cpu.md"
+        pageAlert:
+          labels:
+            severity: critical
+        ticketAlert:
+          labels:
+            severity: warning
