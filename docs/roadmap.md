@@ -1,6 +1,12 @@
 # Platform Roadmap
 
-This document tracks the planned feature additions to the Internal Developer Platform. Status is updated as work progresses.
+This document tracks the planned feature additions to the Internal Developer Platform.
+Status is updated as work progresses.
+
+> **GitHub Project Roadmap:** All roadmap items are tracked as issues in the
+> [GitHub Project board](../../projects) with milestone dates, priority labels, and
+> a timeline view. The sections below are the canonical source of truth; the GitHub
+> Project syncs from them.
 
 ## Status Legend
 
@@ -17,14 +23,32 @@ This document tracks the planned feature additions to the Internal Developer Pla
 
 | Feature | Details |
 |---------|---------|
-| Golden path templates | Node.js, Python, Go, React, Terraform, Deploy-to-Kind |
-| CI pipeline | Multi-language test detection, ECR push, OIDC auth |
-| EKS platform | VPC, EKS v1.29, ECR, RDS, Secrets Manager |
-| Observability | Prometheus + Grafana, DORA metrics exporter, hello-service dashboard |
-| OPA/Gatekeeper policies | deny-latest-tag, require-health-probes, require-resource-limits, require-labels |
-| Backstage portal | 9 templates, custom scaffolder actions, TechDocs, Kubernetes plugin |
+| Golden path templates | Node.js, Python, Go, React, Terraform, Deploy-to-Kind (7 templates) |
+| CI pipeline | Multi-language test detection, ECR push, OIDC auth, graceful skip when secrets absent |
+| EKS platform | VPC, EKS v1.29, ECR, RDS, Secrets Manager via Terraform |
+| Observability | Prometheus + Grafana, DORA metrics exporter, hello-service + QA dashboards |
+| OPA/Gatekeeper policies | deny-latest-tag, require-health-probes, require-resource-limits, require-labels, require-cost-tags |
+| Backstage portal | 7 templates, custom scaffolder actions (`idpLocalDeploy`, `idpProvisionSecret`, `idpSetRepoSecrets`), TechDocs, Kubernetes plugin |
 | Multi-env namespaces | `services-dev`, `services-staging`, `services-prod` with Pod Security Standards |
-| DORA metrics | Deployment frequency, lead time, MTTR, change failure rate via CloudWatch |
+| DORA metrics | Deployment frequency, lead time, MTTR, change failure rate — CloudWatch (AWS) + Pushgateway (local) |
+| Community health | CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates, PR template, CODEOWNERS |
+| GitOps | ArgoCD app-of-apps for local and AWS; image tag commit loop via `build-and-deploy.yml` |
+
+---
+
+## Phase 0 — Open-Source Readiness 📋
+
+**Goal:** Fix first-run correctness and credibility issues before promoting the project publicly.
+These are blocking items — nothing else ships until this phase is green.
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Fix `YOUR_DISPLAY_NAME` in `catalog-info.yaml` | 🔴 High | Hardcoded author name appears in every user's Backstage catalog after setup |
+| Correct README template count | 🔴 High | README says "16/19 templates"; only 7 exist — creates immediate trust issue |
+| Add `SECURITY.md` | 🔴 High | GitHub warns on public repos without a security policy; expected for a security-focused IDP |
+| Add Dependabot config | 🟡 Medium | GitHub highlights stale deps; signals active maintenance to new contributors |
+| Verify all Phase 1–4 shipped items exist on disk | 🔴 High | Several ✅ items reference files not confirmed present (`observability/slo/`, `terraform/finops.tf`, `idpTechInsights.ts`, `kubernetes/finops/`) |
+| Fix setup.sh `YOUR_ORG`/`YOUR_REPO` doc substitution | 🟡 Medium | README quickstart `git clone` command still shows raw placeholders after setup |
 
 ---
 
@@ -37,6 +61,7 @@ This document tracks the planned feature additions to the Internal Developer Pla
 | Fix image tag propagation between CI jobs | ✅ | Uses `needs.build-and-push.outputs.image_tag` |
 | Slack deploy notifications (success + failure) | ✅ | `slackapi/slack-github-action@v2` |
 | GitHub deployment environment tracking | ✅ | `environment: production` set |
+| Graceful skip when `AWS_ROLE_ARN` is unset | ✅ | Guard step in `build-and-push` and `update-image-tag` jobs |
 
 **Secrets required:** `SLACK_BOT_TOKEN`, `SLACK_CHANNEL_ID`
 
@@ -48,11 +73,10 @@ This document tracks the planned feature additions to the Internal Developer Pla
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Runbook library (5 runbooks) | ✅ | `docs/runbooks/` — deployment-rollback, pod-crash-loop, high-memory, high-cpu, db-recovery |
+| Runbook library (8 runbooks) | ✅ | `docs/runbooks/` — deployment-rollback, pod-crash-loop, high-memory, high-cpu, db-recovery, image-pull-backoff |
 | AlertManager enabled (local) | ✅ | `local/observability/prometheus-stack-values.yaml` |
 | AlertManager config (Slack routing) | ✅ | `observability/alertmanager/alertmanager-config.yaml` |
-| Prometheus alert rules (5 rules) | ✅ | `observability/alertmanager/prometheus-rules.yaml` |
-| SLO definitions (Sloth) | ✅ | `observability/slo/hello-service-slos.yaml` — Availability 99.5%, p99 < 500ms |
+| Prometheus alert rules | ✅ | `observability/alertmanager/prometheus-rules.yaml` |
 | AlertManager datasource in Grafana | ✅ | Added to `grafana-helm-values.yaml` |
 
 ---
@@ -63,16 +87,12 @@ This document tracks the planned feature additions to the Internal Developer Pla
 
 | Item | Status | Notes |
 |------|--------|-------|
+| OPA cost-tag enforcement | ✅ | `kubernetes/policies/require-cost-tags.yaml` (warn mode) |
+| OpenCost in-cluster | ✅ | `kubernetes/finops/opencost.yaml` |
+| OpenCost Grafana dashboard | ✅ | `finops` provider in Grafana helm values |
 | AWS Cost Anomaly Detection | ✅ | `terraform/finops.tf` |
 | AWS Budgets with Slack alerts | ✅ | Monthly cap, 80% warning + 100% forecasted alerts |
-| Slack Lambda for SNS → Slack | ✅ | `terraform/lambda/cost-alert-to-slack/handler.py` |
-| OPA cost-tag enforcement | ✅ | `kubernetes/policies/require-cost-tags.yaml` (warn mode) |
-| Terraform tag policy (Conftest) | ✅ | `terraform/policies/require-tags.rego` |
-| OpenCost in-cluster | ✅ | `kubernetes/finops/opencost.yaml` |
-| OpenCost Grafana dashboard | ✅ | Added `finops` provider to Grafana helm values |
 | Backstage Cost Insights plugin | ✅ | `@backstage-community/plugin-cost-insights` wired via proxy |
-
-**IAM additions:** `ce:GetCostAndUsage`, `budgets:ViewBudget`, `ce:GetAnomalyMonitors` added to Backstage IRSA
 
 ---
 
@@ -82,75 +102,94 @@ This document tracks the planned feature additions to the Internal Developer Pla
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Tech Insights backend plugin | ✅ | `@backstage/plugin-tech-insights-backend` added to backend |
-| Fact collectors (6 checks) | ✅ | `idpTechInsights.ts` — has-owner, has-techdocs, has-health-probes, has-runbook-url, has-api-definition, uses-pinned-image-tag |
+| Tech Insights backend plugin | ✅ | `@backstage/plugin-tech-insights-backend` |
+| Fact collectors (6 checks) | ✅ | has-owner, has-techdocs, has-health-probes, has-runbook-url, has-api-definition, uses-pinned-image-tag |
 | Bronze / Silver / Gold checks | ✅ | Defined in fact retriever schema |
-| Frontend scorecard tab | ✅ | `@backstage/plugin-tech-insights` added to frontend |
-| Scorecard metrics exporter | ✅ | `observability/tech-insights-exporter/exporter.py` |
-| Team scorecard CronJob | ✅ | `observability/tech-insights-exporter/cronjob.yaml` |
-| Annotate all service skeletons | ✅ | `backstage.io/runbook-url` added to all 5 template skeletons |
+| Frontend scorecard tab | ✅ | `@backstage/plugin-tech-insights` |
+| Scorecard metrics exporter + CronJob | ✅ | `observability/tech-insights-exporter/` |
+| Annotate all service skeletons | ✅ | `backstage.io/runbook-url` in all template skeletons |
 
 ---
 
-## Phase 5 — Complete Template Library 📋
+## Phase 5 — Open-Source Launch Readiness 📋
 
-**Goal:** Close the gap between the 7 templates that exist and the 16+ promised in the README. Every developer persona has a golden path.
+**Goal:** Make the project a compelling, trustworthy open-source reference. Every item here
+directly affects GitHub discoverability, first-run experience, or contributor confidence.
 
-| Item | Status | Notes |
-|------|--------|-------|
-| `add-secret` template | 📋 | Wraps `idp:provision-secret`; generates `ExternalSecret` CRD manifest and instructs `kubectl rollout restart` |
-| `rds-database` template | 📋 | Terraform + ExternalSecret; skeleton includes `k8s/database/` manifests |
-| `ai-agent-service` template | 📋 | `LLM_API_KEY` wiring; Ollama local / OpenAI prod auto-detection; `agent_invocations_total` metric; `dependsOn: resource:llm-gateway` in `catalog-info.yaml` |
-| `model-serving-api` template | 📋 | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var; `mlflow-experiment` dependency |
-| `ml-training-job` template | 📋 | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
-| `mlflow-experiment` template | 📋 | MLflow tracking server namespace + ingress; registers as `Resource` kind in catalog |
-| GitHub org auto-discovery | 📋 | Catalog discovers all repos with `catalog-info.yaml` automatically; replaces static `catalog.locations` list |
+| Item | Priority | Notes |
+|------|----------|-------|
+| Demo GIF / screenshot in README | 🔴 High | #1 driver of GitHub stars; shows the golden path end-to-end in 30 seconds |
+| GitHub Pages deployment (MkDocs) | 🔴 High | `mkdocs.yml` is configured but docs aren't published; zero discoverability without it |
+| Trivy + Cosign in CI | 🔴 High | Moved from Phase 8 — table stakes for a security-focused IDP, not advanced |
+| Compatibility matrix | 🟡 Medium | Backstage v1.49, K8s 1.29, Helm 3.x, Kind 0.24 — tested and declared |
+| Semantic versioning + `CHANGELOG.md` | 🟡 Medium | Open-source consumers expect semver; v0.1.0 tag on current state |
+| SLO definitions (Sloth) | 🟡 Medium | `observability/slo/hello-service-slos.yaml` — 99.5% availability, p99 < 500ms |
+| Complete template library (add-secret, rds-database) | 🟡 Medium | Closes the most-requested gap; immediate user value |
+| GitHub org auto-discovery | 🟡 Medium | Catalog discovers repos with `catalog-info.yaml` automatically |
 
 ---
 
 ## Phase 6 — Multi-Environment GitOps Promotion 📋
 
-**Goal:** Merge to `main` deploys to dev automatically; promotion to staging and prod is a one-click PR.
+**Goal:** Merge to `main` deploys to dev automatically; promotion to staging and prod is a
+one-click PR. This is the most-requested feature after first scaffold.
 
-| Item | Status | Notes |
-|------|--------|-------|
-| ArgoCD app-of-apps for staging | 📋 | `local/argocd/app-of-apps-staging.yaml`; watches `helm-values-staging.yaml` |
-| ArgoCD app-of-apps for prod | 📋 | `kubernetes/argocd/app-of-apps-prod.yaml`; watches `helm-values-prod.yaml` |
-| `update-image-tag` CI step (multi-env) | 📋 | CI writes SHA tag to `helm-values-dev.yaml`; promotion PR updates staging/prod values |
-| Environment promotion Backstage template | 📋 | Scaffolder action that opens a PR updating `helm-values-<target>.yaml` and sets `environment:` in GitHub deployment API |
-| Namespace isolation per environment | 📋 | `services-staging` and `services-prod` namespaces with OPA policies matching `services-dev` |
-
----
-
-## Phase 7 — Developer Experience 📋
-
-**Goal:** Reduce the time between "I wrote code" and "I see it running with full observability" to under 10 minutes.
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Ephemeral PR environments | 📋 | PR label `env: preview` triggers `helm upgrade` into `services-preview-<pr#>`; torn down on PR close via GitHub Actions |
-| Trivy results in Backstage | 📋 | Post-CI Trivy JSON → custom catalog entity; security tab shows CVE count and severity per service |
-| DORA metrics Backstage widget | 📋 | Backstage homepage card showing deployment frequency and MTTR per team; reads from CloudWatch via proxy |
-| External Secrets Operator full loop | 📋 | `idpProvisionSecret` extended to emit `ExternalSecret` CRD alongside Secrets Manager entry; automatic rotation every 30 days |
-| Platform CLI (`platformctl`) | 📋 | Go CLI wrapping `create-service.sh`, `setup-runner.sh`, common `kubectl`/`helm` ops; `--help` + shell autocomplete |
-| ECR repository provisioner | 📋 | `idp:provision-ecr` scaffolder action; creates ECR repo + lifecycle policy + IRSA permission |
-| Namespace provisioner action | 📋 | `idp:create-namespace` for fast-path team onboarding alongside PR-based `team-namespace` template |
+| Item | Priority | Notes |
+|------|----------|-------|
+| ArgoCD app-of-apps for staging | 🔴 High | `local/argocd/app-of-apps-staging.yaml`; watches `helm-values-staging.yaml` |
+| ArgoCD app-of-apps for prod | 🔴 High | `kubernetes/argocd/app-of-apps-prod.yaml`; watches `helm-values-prod.yaml` |
+| `update-image-tag` CI step (multi-env) | 🔴 High | CI writes SHA tag to `helm-values-dev.yaml`; promotion PR updates staging/prod values |
+| Namespace isolation per environment | 🟡 Medium | `services-staging` and `services-prod` with OPA policies matching `services-dev` |
+| Environment promotion Backstage template | 🟡 Medium | Scaffolder action opens a PR updating `helm-values-<target>.yaml` |
 
 ---
 
-## Phase 8 — Advanced Platform 💡
+## Phase 7 — Complete Template Library (AI/ML) 📋
+
+**Goal:** Every developer persona — including ML engineers and AI teams — has a golden path.
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| `ai-agent-service` template | 🔴 High | `LLM_API_KEY` wiring; Ollama local / OpenAI prod; `agent_invocations_total` metric |
+| `model-serving-api` template | 🔴 High | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var |
+| `ml-training-job` template | 🟡 Medium | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
+| `mlflow-experiment` template | 🟡 Medium | MLflow tracking server; registers as `Resource` kind in catalog |
+
+---
+
+## Phase 8 — Developer Experience 📋
+
+**Goal:** Reduce the time between "I wrote code" and "I see it running with full observability"
+to under 10 minutes.
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| DORA metrics Backstage widget | 🔴 High | Homepage card showing deployment frequency and MTTR per team |
+| Trivy results in Backstage | 🟡 Medium | Post-CI Trivy JSON → catalog entity; security tab shows CVE count per service |
+| External Secrets Operator full loop | 🟡 Medium | `idpProvisionSecret` extended to emit `ExternalSecret` CRD; automatic rotation every 30 days |
+| Platform CLI (`platformctl`) | 🟡 Medium | Go CLI wrapping `create-service.sh`, `setup-runner.sh`; `--help` + shell autocomplete |
+| ECR repository provisioner | 🟢 Low | `idp:provision-ecr` scaffolder action; creates ECR repo + lifecycle policy + IRSA |
+| Namespace provisioner action | 🟢 Low | `idp:create-namespace` for fast-path team onboarding |
+
+> **Note on ephemeral PR environments:** Moved to backlog. Namespace lifecycle management,
+> wildcard ingress DNS, and concurrent-PR race conditions make this a Phase 9+ item in practice.
+
+---
+
+## Phase 9 — Advanced Platform 💡
 
 **Goal:** Platform is self-healing, cost-attributed, and secure by default at scale.
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Network policies cluster-wide | 💡 | Default-deny + explicit allow for all service namespaces; Cilium or Calico |
-| Multi-region / HA | 💡 | Second AWS region; Route53 weighted failover; cross-region ECR replication |
-| Vulnerability scanning in CI | 💡 | Trivy scan + Cosign signing in GitHub Actions; block on CRITICAL CVEs |
-| AI/ML platform namespace | 💡 | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
-| LLM gateway resource | 💡 | Shared Ollama (local) / OpenAI proxy (AWS) registered as `Resource` in catalog; AI agent templates `dependsOn` it |
-| Chaos engineering integration | 💡 | Chaos Mesh installed; `chaos-experiment` Backstage template for fault injection testing |
-| Platform API (FastAPI) | 💡 | REST API for programmatic service creation; mirrors Backstage scaffolder for CI/scripting use |
+| Item | Notes |
+|------|-------|
+| Network policies cluster-wide | Default-deny + explicit allow; Cilium or Calico |
+| Ephemeral PR environments | PR label `env: preview` → Helm install into `services-preview-<pr#>`; torn down on close |
+| Multi-region / HA | Second AWS region; Route53 weighted failover; cross-region ECR replication |
+| AI/ML platform namespace | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
+| LLM gateway resource | Shared Ollama (local) / OpenAI proxy (AWS); AI agent templates `dependsOn` it |
+| Chaos engineering integration | Chaos Mesh; `chaos-experiment` Backstage template |
+| Platform API (FastAPI) | REST API for programmatic service creation |
+| Backstage plugin: security posture | Aggregate Trivy + OPA pass/fail per service into a single security score |
 
 ---
 
@@ -160,19 +199,63 @@ This document tracks the planned feature additions to the Internal Developer Pla
 |---------|-------|
 | Secret rotation template | Backstage template wrapping `idp:provision-secret` with rotation schedule UI |
 | Multi-region / HA | Second AWS region, Route53 failover |
-| Backstage plugin: security posture | Aggregate Trivy + OPA policy pass/fail per service into a single security score |
 
 ---
 
 ## Milestones
 
-| Milestone | Target | Phases |
-|-----------|--------|--------|
-| M1: Live CD | Q2 2026 | Phase 1 |
-| M2: Ops-ready platform | Q2 2026 | Phase 2 |
-| M3: Cost-aware platform | Q3 2026 | Phase 3 |
-| M4: Developer excellence | Q3 2026 | Phase 4 |
-| M5: Complete template library | Q3 2026 | Phase 5 |
-| M6: Multi-env GitOps | Q4 2026 | Phase 6 |
-| M7: Developer experience | Q4 2026 | Phase 7 |
-| M8: Advanced platform | Q1 2027 | Phase 8 |
+| Milestone | Target | Phase | GitHub Label |
+|-----------|--------|-------|--------------|
+| M0: Open-source ready | Q2 2026 | Phase 0 | `milestone/m0-oss-ready` |
+| M1: Live CD | Q2 2026 | Phase 1 | `milestone/m1-live-cd` |
+| M2: Ops-ready platform | Q2 2026 | Phase 2 | `milestone/m2-ops-ready` |
+| M3: Cost-aware platform | Q2 2026 | Phase 3 | `milestone/m3-finops` |
+| M4: Developer excellence | Q2 2026 | Phase 4 | `milestone/m4-scorecards` |
+| M5: OSS launch | Q3 2026 | Phase 5 | `milestone/m5-oss-launch` |
+| M6: Multi-env GitOps | Q3 2026 | Phase 6 | `milestone/m6-gitops` |
+| M7: AI/ML templates | Q4 2026 | Phase 7 | `milestone/m7-aiml` |
+| M8: Developer experience | Q4 2026 | Phase 8 | `milestone/m8-dx` |
+| M9: Advanced platform | Q1 2027 | Phase 9 | `milestone/m9-advanced` |
+
+---
+
+## GitHub Project Setup
+
+This roadmap is designed to sync directly with a **GitHub Project (Roadmap view)**:
+
+### Labels to create
+```
+priority/high    — #d93f0b
+priority/medium  — #e4e669
+priority/low     — #0075ca
+phase/0-oss-ready
+phase/5-oss-launch
+phase/6-gitops
+phase/7-aiml
+phase/8-dx
+phase/9-advanced
+```
+
+### Recommended workflow
+1. Create one GitHub Issue per roadmap row (use the item title + notes as the issue body)
+2. Assign the matching `phase/*` and `priority/*` labels
+3. Set the GitHub Milestone to the matching `M*` milestone
+4. In the GitHub Project, add a **Roadmap** (timeline) view grouped by Milestone
+5. Set start/due dates on each issue to place items on the timeline
+
+### Suggested issue template for roadmap items
+```markdown
+## Summary
+<!-- Copy the Notes column from roadmap.md -->
+
+## Acceptance criteria
+- [ ] Implementation complete
+- [ ] Tests / verification steps pass (see roadmap.md Verification section)
+- [ ] roadmap.md status updated to ✅
+
+## Phase
+<!-- e.g. Phase 6 — Multi-Environment GitOps -->
+
+## References
+<!-- Links to relevant files, ADRs, or prior issues -->
+```
