@@ -4912,18 +4912,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/plugin-search-backend-module-pg@npm:^0.5.53":
-  version: 0.5.53
-  resolution: "@backstage/plugin-search-backend-module-pg@npm:0.5.53"
+"@backstage/plugin-search-backend-module-pg@npm:^0.5.54":
+  version: 0.5.54
+  resolution: "@backstage/plugin-search-backend-module-pg@npm:0.5.54"
   dependencies:
-    "@backstage/backend-plugin-api": "npm:^1.8.0"
-    "@backstage/config": "npm:^1.3.6"
-    "@backstage/plugin-search-backend-node": "npm:^1.4.2"
-    "@backstage/plugin-search-common": "npm:^1.2.22"
+    "@backstage/backend-plugin-api": "npm:^1.9.0"
+    "@backstage/config": "npm:^1.3.7"
+    "@backstage/plugin-search-backend-node": "npm:^1.4.3"
+    "@backstage/plugin-search-common": "npm:^1.2.23"
     knex: "npm:^3.0.0"
     lodash: "npm:^4.17.21"
     uuid: "npm:^11.0.0"
-  checksum: 10c0/0c3edb70d97b8f63ffeed87575adfe7f0cd42bdb0d6d0003f25bf4b5620ea6881b2f38380303ba214a3b7d268701db51d77809547864a668a3d41f34abacd7be
+  checksum: 10c0/20cbb0bb7f30b4245a6d94cbeb401472eba00f06786bae3d35b27b92acfc34d34ede9fd698e65809a3896b3a7b4405bb08ab50a4557c322028f1fc9dd48748bd
   languageName: node
   linkType: hard
 
@@ -4962,6 +4962,24 @@ __metadata:
     ndjson: "npm:^2.0.0"
     uuid: "npm:^11.0.0"
   checksum: 10c0/8971101f5ef2789328531e8a3c8f215a65e8d45f03d7229343d9c50df577b636105e933d511da44f470c77162b0d0838933f40f08e60cc036ce4a98213d53e96
+  languageName: node
+  linkType: hard
+
+"@backstage/plugin-search-backend-node@npm:^1.4.3":
+  version: 1.4.3
+  resolution: "@backstage/plugin-search-backend-node@npm:1.4.3"
+  dependencies:
+    "@backstage/backend-plugin-api": "npm:^1.9.0"
+    "@backstage/config": "npm:^1.3.7"
+    "@backstage/errors": "npm:^1.3.0"
+    "@backstage/plugin-permission-common": "npm:^0.9.8"
+    "@backstage/plugin-search-common": "npm:^1.2.23"
+    "@types/lunr": "npm:^2.3.3"
+    lodash: "npm:^4.17.21"
+    lunr: "npm:^2.3.9"
+    ndjson: "npm:^2.0.0"
+    uuid: "npm:^11.0.0"
+  checksum: 10c0/3fd1a0d9f2564e55c59c998ca5aa5102ac2508b3a68832125328f2f9c1dd48bbd8c57235880e864a3339dc1439ddfc3322ec06bd0a6dad9a3b81aa8a69e92029
   languageName: node
   linkType: hard
 
@@ -16849,7 +16867,7 @@ __metadata:
     "@backstage/plugin-scaffolder-node": "npm:^0.9.0"
     "@backstage/plugin-search-backend": "npm:^2.1.0"
     "@backstage/plugin-search-backend-module-catalog": "npm:^0.3.13"
-    "@backstage/plugin-search-backend-module-pg": "npm:^0.5.53"
+    "@backstage/plugin-search-backend-module-pg": "npm:^0.5.54"
     "@backstage/plugin-search-backend-module-techdocs": "npm:^0.4.12"
     "@backstage/plugin-search-backend-node": "npm:^1.4.2"
     "@backstage/plugin-signals-backend": "npm:^0.3.13"

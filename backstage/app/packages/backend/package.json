@@ -43,7 +43,7 @@
     "@backstage/plugin-scaffolder-node": "^0.9.0",
     "@backstage/plugin-search-backend": "^2.1.0",
     "@backstage/plugin-search-backend-module-catalog": "^0.3.13",
-    "@backstage/plugin-search-backend-module-pg": "^0.5.53",
+    "@backstage/plugin-search-backend-module-pg": "^0.5.54",
     "@backstage/plugin-search-backend-module-techdocs": "^0.4.12",
     "@backstage/plugin-search-backend-node": "^1.4.2",
     "@backstage/plugin-signals-backend": "^0.3.13",
