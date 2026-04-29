@@ -3,7 +3,7 @@
 
 locals {
   budget_monthly_limit_usd = var.budget_monthly_limit_usd
-  budget_alert_threshold   = 80  # percent — warning at 80%, critical at 100%
+  budget_alert_threshold   = 80 # percent — warning at 80%, critical at 100%
 }
 
 # ── SNS topic for budget and anomaly alerts ───────────────────────────────────
@@ -12,9 +12,9 @@ resource "aws_sns_topic" "cost_alerts" {
   name = "${var.cluster_name}-cost-alerts"
 
   tags = {
-    Project     = var.cluster_name
-    ManagedBy   = "terraform"
-    CostCenter  = "platform"
+    Project    = var.cluster_name
+    ManagedBy  = "terraform"
+    CostCenter = "platform"
   }
 }
 
@@ -89,19 +89,19 @@ resource "aws_budgets_budget" "monthly" {
   time_unit    = "MONTHLY"
 
   notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = local.budget_alert_threshold
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "ACTUAL"
-    subscriber_sns_topic_arns  = [aws_sns_topic.cost_alerts.arn]
+    comparison_operator       = "GREATER_THAN"
+    threshold                 = local.budget_alert_threshold
+    threshold_type            = "PERCENTAGE"
+    notification_type         = "ACTUAL"
+    subscriber_sns_topic_arns = [aws_sns_topic.cost_alerts.arn]
   }
 
   notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = 100
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "FORECASTED"
-    subscriber_sns_topic_arns  = [aws_sns_topic.cost_alerts.arn]
+    comparison_operator       = "GREATER_THAN"
+    threshold                 = 100
+    threshold_type            = "PERCENTAGE"
+    notification_type         = "FORECASTED"
+    subscriber_sns_topic_arns = [aws_sns_topic.cost_alerts.arn]
   }
 }
 
