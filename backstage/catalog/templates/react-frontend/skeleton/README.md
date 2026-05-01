@@ -7,6 +7,9 @@ Scaffolded via the IDP golden path — React + Vite + TypeScript, served by ngin
 ## Local development
 
 ```bash
+> **Set `PLATFORM_REPO`** to your local `backstage-idp-starter` clone path, e.g.
+> `export PLATFORM_REPO=~/projects/backstage-idp-starter`
+
 npm install
 npm run dev        # Vite dev server → http://localhost:5173
 npm test           # Vitest
@@ -43,17 +46,24 @@ Without `GH_PAT` the `update-image-tag` CI step will be skipped and ArgoCD won't
 
 ## Helm
 
-Run from inside the service directory (`cd services/${{ values.name }}`):
+Set `PLATFORM_REPO` to your local `backstage-idp-starter` clone before running:
+
+```bash
+export PLATFORM_REPO=~/projects/backstage-idp-starter
+```
+
+
+
 
 ```bash
 # Local Kind cluster
-helm upgrade --install ${{ values.name }} ../../helm/service-template \
+helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --create-namespace \
   --values helm-values-local.yaml
 
 # AWS EKS
-helm upgrade --install ${{ values.name }} ../../helm/service-template \
+helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --create-namespace \
   --values helm-values.yaml \

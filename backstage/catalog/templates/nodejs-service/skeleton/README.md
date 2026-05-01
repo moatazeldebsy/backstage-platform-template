@@ -15,6 +15,7 @@ This service was scaffolded via the IDP golden path (Node.js/Express template).
 ## Getting Started
 
 ```bash
+
 npm install
 npm start
 ```
@@ -45,13 +46,20 @@ docker run -p ${{ values.port }}:${{ values.port }} ${{ values.name }}:local
 
 ## Local Development (Kind)
 
+Set `PLATFORM_REPO` to your local `backstage-idp-starter` clone before running Helm:
+
+```bash
+export PLATFORM_REPO=~/projects/backstage-idp-starter
+```
+
+
 ```bash
 # Build and push to the local registry
 docker build -t localhost:5003/${{ values.name }}:latest .
 docker push localhost:5003/${{ values.name }}:latest
 
-# Deploy with Helm (run from inside the service directory)
-helm upgrade --install ${{ values.name }} ../../helm/service-template \
+# Deploy with Helm
+helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --create-namespace \
   --set image.repository=localhost:5003/${{ values.name }} \
@@ -69,8 +77,8 @@ Add `${{ values.name }}.idp.local` to `/etc/hosts` pointing to `127.0.0.1` if no
 CI/CD is wired via GitHub Actions (`.github/workflows/build-and-deploy.yml`). Push to `main` to trigger a build and deploy.
 
 ```bash
-# Manual Helm deploy (local) — run from inside the service directory
-helm upgrade --install ${{ values.name }} ../../helm/service-template \
+# Manual Helm deploy (local)
+helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --create-namespace \
   --set image.repository=localhost:5003/${{ values.name }} \
@@ -78,7 +86,7 @@ helm upgrade --install ${{ values.name }} ../../helm/service-template \
   --values helm-values-local.yaml
 
 # Manual Helm deploy (AWS)
-helm upgrade --install ${{ values.name }} ../../helm/service-template \
+helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --set image.repository=<ECR_URI>/${{ values.name }} \
   --set image.tag=<git-sha> \
