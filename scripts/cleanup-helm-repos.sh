@@ -26,7 +26,6 @@ log()  { echo -e "[$(date +%T)] $*"; }
 warn() { echo -e "[$(date +%T)] ${YELLOW}WARN${RESET}  $*"; }
 
 # ── Repos that are NOT used by any script in this project ────────────────────
-# opencost         — OpenCost is deployed via kubectl apply, not helm
 # backstage        — Backstage runs via Docker Compose (local) or k8s manifests (AWS)
 # chaos-mesh       — not used anywhere in the platform
 # jetstack         — cert-manager is not installed
@@ -37,7 +36,6 @@ warn() { echo -e "[$(date +%T)] ${YELLOW}WARN${RESET}  $*"; }
 # fairwinds-stable  — not used
 # community-charts — not referenced by any bootstrap-local.sh or bootstrap.sh install
 UNUSED_REPOS=(
-  opencost
   backstage
   chaos-mesh
   jetstack

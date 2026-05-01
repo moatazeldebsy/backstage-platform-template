@@ -11,6 +11,7 @@ spec:
   children:
     - data-team
     - qa-team
+    - ml-team
   members:
     - YOUR_GITHUB_ORG
     - guest
@@ -31,6 +32,25 @@ spec:
   children: []
   members:
     - data-engineer
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: ml-team
+  description: Machine Learning team — ML models, AI research, and MLOps
+  tags:
+    - ml
+    - ai
+spec:
+  type: team
+  profile:
+    displayName: ML Team
+    email: ml-team@idp.local
+  parent: platform-team
+  children: []
+  members:
+    - ml-engineer
+    - ai-researcher
 ---
 apiVersion: backstage.io/v1alpha1
 kind: User

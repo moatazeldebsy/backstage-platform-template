@@ -8,12 +8,5 @@
 127.0.0.1  backstage.idp.local
 127.0.0.1  argocd.idp.local
 127.0.0.1  opencost.idp.local
-127.0.0.1  hello-service-dev.idp.local
-127.0.0.1  hello-service-staging.idp.local
-127.0.0.1  hello-service-prod.idp.local
-
 # QA / Observability
 127.0.0.1  pushgateway.idp.local
-
-# Scaffolded services
-127.0.0.1  mo-node.idp.local

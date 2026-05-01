@@ -64,6 +64,9 @@ backend.add(import('@backstage/plugin-search-backend-module-techdocs'));
 // kubernetes plugin
 backend.add(import('@backstage/plugin-kubernetes-backend'));
 
+// tech insights plugin
+backend.add(import('@backstage-community/plugin-tech-insights-backend'));
+
 // announcements plugin
 backend.add(import('@backstage-community/plugin-announcements-backend'));
 

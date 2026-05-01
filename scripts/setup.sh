@@ -174,9 +174,29 @@ Install them and re-run this script, or run manually:
     docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
       up -d
     log "Backstage is starting at http://localhost:3000 (allow ~30s)"
+
+    log "Refreshing nginx → Backstage endpoint IP..."
+    "${ROOT_DIR}/scripts/bootstrap-local.sh" --update-backstage-ip \
+      || warn "Could not update Backstage IP — run manually: ./scripts/bootstrap-local.sh --update-backstage-ip"
+
+    log "Seeding sample QA metrics into Pushgateway..."
+    kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &>/dev/null &
+    PFORWARD_PID=$!
+    sleep 3
+    PUSHGATEWAY_URL=http://localhost:9091 "${ROOT_DIR}/scripts/seed-qa-metrics.sh" \
+      || warn "Could not seed QA metrics — run manually: kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring & PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
+    kill "${PFORWARD_PID}" 2>/dev/null || true
+
+    log "Triggering an immediate catalog export..."
+    kubectl create job catalog-exporter-now \
+      --from=cronjob/catalog-exporter -n monitoring 2>/dev/null \
+      || warn "Could not trigger catalog export — run manually: kubectl create job catalog-exporter-now --from=cronjob/catalog-exporter -n monitoring"
   else
     log "Skipped. Start manually:"
     log "  docker compose -f local/backstage/docker-compose.yml up -d"
+    log "  ./scripts/bootstrap-local.sh --update-backstage-ip"
+    log "  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &"
+    log "  PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
   fi
 
   # ── Step 5: Summary ──────────────────────────────────────────────────────────

@@ -1,7 +1,6 @@
 import { createBackendModule } from '@backstage/backend-plugin-api';
-import { techInsightsFactRetrieversExtensionPoint } from '@backstage/plugin-tech-insights-backend/alpha';
 import {
-  createFactRetrieverRegistration,
+  techInsightsFactRetrieversExtensionPoint,
   type TechInsightFact,
   type FactRetriever,
 } from '@backstage/plugin-tech-insights-node';
@@ -94,13 +93,9 @@ export const idpTechInsightsModule = createBackendModule({
         factRetrievers: techInsightsFactRetrieversExtensionPoint,
       },
       async init({ factRetrievers }) {
-        factRetrievers.addFactRetriever(
-          createFactRetrieverRegistration({
-            cadence: '*/15 * * * *',
-            factRetriever: entityFactRetriever,
-            lifecycle: { timeToLive: { weeks: 2 } },
-          }),
-        );
+        factRetrievers.addFactRetrievers({
+          [entityFactRetriever.id]: entityFactRetriever,
+        });
       },
     });
   },

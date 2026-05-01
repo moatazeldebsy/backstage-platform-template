@@ -65,4 +65,14 @@ metadata:
     pod-security.kubernetes.io/warn: restricted
     team: platform-team
     purpose: finops
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opencost
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    team: platform-team
+    purpose: finops
 

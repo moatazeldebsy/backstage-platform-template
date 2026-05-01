@@ -79,29 +79,50 @@ while [[ $# -gt 0 ]]; do
     --skip-policies) SKIP_POLICIES=true; shift ;;
     --skip-dora)     SKIP_DORA=true;     shift ;;
     --destroy)             DESTROY=true;            shift ;;
+    --clean-docker)        CLEAN_DOCKER=true;       shift ;;
     --update-backstage-ip) UPDATE_BACKSTAGE_IP=true;  shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
 
+# ── Docker deep-clean helper ──────────────────────────────────────────────────
+_clean_docker() {
+  log "Stopping Backstage Docker Compose stack..."
+  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
+    down --volumes --remove-orphans --rmi all 2>/dev/null || true
+
+  log "Stopping and removing local registry container..."
+  docker stop "$REGISTRY_NAME" 2>/dev/null || true
+  docker rm   "$REGISTRY_NAME" 2>/dev/null || true
+
+  log "Removing all unused Docker images..."
+  docker image prune -a --force 2>/dev/null || true
+
+  log "Removing all unused Docker volumes..."
+  docker volume prune --force 2>/dev/null || true
+
+  log "Pruning Docker build cache (all builders)..."
+  docker buildx prune --all --force 2>/dev/null || true
+  docker buildx prune --all --force --builder desktop-linux 2>/dev/null || true
+
+  log "Docker clean complete."
+}
+
+# ── --clean-docker fast path ──────────────────────────────────────────────────
+if ${CLEAN_DOCKER:-false}; then
+  _clean_docker
+  exit 0
+fi
+
 # ── Teardown path ─────────────────────────────────────────────────────────────
 if $DESTROY; then
   log "Destroying local IDP platform..."
-  helm uninstall argocd       -n argocd           2>/dev/null || true
+  helm uninstall argocd       -n argocd            2>/dev/null || true
   helm uninstall gatekeeper   -n gatekeeper-system 2>/dev/null || true
-  helm uninstall opencost     -n opencost          2>/dev/null || true
+  helm uninstall opencost     -n opencost           2>/dev/null || true
   kubectl delete namespace argocd gatekeeper-system opencost 2>/dev/null || true
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
-  docker stop "$REGISTRY_NAME" 2>/dev/null || true
-  docker rm   "$REGISTRY_NAME" 2>/dev/null || true
-  log "Stopping Backstage Docker Compose stack and removing volumes..."
-  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" down --volumes --remove-orphans --rmi local 2>/dev/null || true
-  log "Removing dangling Docker volumes created by this stack..."
-  docker volume ls --quiet --filter "label=com.docker.compose.project=backstage" \
-    | xargs -r docker volume rm 2>/dev/null || true
-  log "Pruning Docker build cache and build history..."
-  docker buildx prune --all --force 2>/dev/null || true
-  docker buildx prune --all --force --builder desktop-linux 2>/dev/null || true
+  _clean_docker
   log "Done. Remove /etc/hosts entries manually if added."
   exit 0
 fi

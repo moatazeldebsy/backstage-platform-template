@@ -22,6 +22,10 @@ backend:
         options:
           token: "local-catalog-exporter-token"
           subject: catalog-exporter
+  reading:
+    allow:
+      - host: raw.githubusercontent.com  # used when GITHUB_TOKEN is set (production)
+      - host: localhost                   # allows reading tech-radar.json from local static assets
 
 # Auth — enable guest provider so the UI works without GitHub OAuth credentials.
 auth:
@@ -49,6 +53,17 @@ proxy:
       target: http://opencost.idp.local
       allowedMethods: ['GET']
       changeOrigin: true
+    /grafana/api:
+      target: http://grafana.idp.local
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${GRAFANA_TOKEN}
+
+# Serve tech radar from the locally mounted catalog volume instead of GitHub raw URL.
+# This avoids the YOUR_GITHUB_ORG placeholder issue and works without a GitHub token.
+techRadar:
+  url: http://localhost:7007/tech-radar.json
 
 techdocs:
   builder: 'local'
