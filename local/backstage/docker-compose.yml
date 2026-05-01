@@ -50,6 +50,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       TECHDOCS_S3_BUCKET_NAME: ${TECHDOCS_S3_BUCKET_NAME:-}
       CATALOG_EXPORTER_TOKEN: ${CATALOG_EXPORTER_TOKEN:-local-catalog-exporter-token}
+      GITHUB_ORG: ${GITHUB_ORG:-YOUR_GITHUB_ORG}
     ports:
       - "3000:7007"   # frontend + backend both served from 7007 inside the container
     extra_hosts:
@@ -61,7 +62,10 @@ services:
     volumes:
       - ../../backstage/app-config.yaml:/app/app-config.yaml:ro
       - ../../backstage/app-config.local.yaml:/app/app-config.local.yaml:ro
-      - ../../backstage/catalog:/catalog:ro
+      - ../../backstage/catalog:/catalog
+      # tech-radar.json served as a static asset so the tech-radar backend can read it
+      # via http://localhost:7007/tech-radar.json without needing a GitHub token
+      - ../../backstage/catalog/tech-radar.json:/app/packages/app/dist/tech-radar.json:ro
       # repo root catalog-info.yaml — System entity with dir:. for techdocs
       - ../../catalog-info.yaml:/catalog-info.yaml:ro
       # repo root mkdocs.yml + docs/ — needed by internal-developer-platform System entity (dir:.)
@@ -85,6 +89,10 @@ services:
           -e 's/127\.0\.0\.1/host.docker.internal/g' \
           -e 's/certificate-authority-data:.*/insecure-skip-tls-verify: true/' \
           /home/node/.kube/config > /tmp/kubeconfig &&
+        if [ -n "${GITHUB_ORG}" ] && [ "${GITHUB_ORG}" != "YOUR_GITHUB_ORG" ]; then
+          find /catalog -name "*.yaml" \
+            -exec sed -i "s/YOUR_GITHUB_ORG/${GITHUB_ORG}/g" {} \;
+        fi &&
         node packages/backend \
           --config app-config.yaml \
           --config app-config.local.yaml

@@ -26,6 +26,52 @@ log()  { echo "[$(date +%T)] INFO  $*"; }
 warn() { echo "[$(date +%T)] WARN  $*"; }
 err()  { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
 
+# ── Cross-platform sed helper (macOS BSD vs GNU) ──────────────────────────────
+_sed() {
+  if sed --version 2>&1 | grep -q GNU; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
+
+# ── Source local/.env to pick up GITHUB_ORG and PLATFORM_REPO ────────────────
+# Then apply any remaining YOUR_GITHUB_ORG / YOUR_PLATFORM_REPO placeholders
+# so that templates and catalog files are always personalised on every bootstrap.
+_apply_personalization() {
+  local env_file="${ROOT_DIR}/local/.env"
+  if [[ ! -f "$env_file" ]]; then
+    warn "local/.env not found — skipping placeholder substitution."
+    warn "Run ./scripts/setup.sh first, or create local/.env from local/.env.example."
+    return
+  fi
+
+  local github_org platform_repo
+  github_org=$(grep -E '^GITHUB_ORG=' "$env_file" | cut -d= -f2- | tr -d '"' || true)
+  platform_repo=$(grep -E '^PLATFORM_REPO=' "$env_file" | cut -d= -f2- | tr -d '"' || true)
+
+  if [[ -z "$github_org" || "$github_org" == "YOUR_GITHUB_ORG" ]]; then
+    warn "GITHUB_ORG is not set in local/.env — skipping placeholder substitution."
+    return
+  fi
+
+  log "Applying personalisation: YOUR_GITHUB_ORG → ${github_org}"
+
+  local targets
+  targets=$(LC_ALL=C find "${ROOT_DIR}/backstage/catalog" "${ROOT_DIR}/backstage/app-config.yaml" \
+    -type f \
+    ! -name '*.png' ! -name '*.jpg' ! -name '*.ico' \
+    2>/dev/null)
+
+  echo "$targets" | xargs -I{} _sed "s/YOUR_GITHUB_ORG/${github_org}/g" {} 2>/dev/null || true
+
+  if [[ -n "$platform_repo" && "$platform_repo" != "YOUR_PLATFORM_REPO" && "$platform_repo" != "backstage-idp-starter" ]]; then
+    echo "$targets" | xargs -I{} _sed "s/backstage-idp-starter/${platform_repo}/g" {} 2>/dev/null || true
+  fi
+
+  log "Personalisation applied."
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --skip-obs)      SKIP_OBS=true;      shift ;;
@@ -43,10 +89,19 @@ if $DESTROY; then
   log "Destroying local IDP platform..."
   helm uninstall argocd       -n argocd           2>/dev/null || true
   helm uninstall gatekeeper   -n gatekeeper-system 2>/dev/null || true
-  kubectl delete namespace argocd gatekeeper-system 2>/dev/null || true
+  helm uninstall opencost     -n opencost          2>/dev/null || true
+  kubectl delete namespace argocd gatekeeper-system opencost 2>/dev/null || true
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
   docker stop "$REGISTRY_NAME" 2>/dev/null || true
   docker rm   "$REGISTRY_NAME" 2>/dev/null || true
+  log "Stopping Backstage Docker Compose stack and removing volumes..."
+  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" down --volumes --remove-orphans --rmi local 2>/dev/null || true
+  log "Removing dangling Docker volumes created by this stack..."
+  docker volume ls --quiet --filter "label=com.docker.compose.project=backstage" \
+    | xargs -r docker volume rm 2>/dev/null || true
+  log "Pruning Docker build cache and build history..."
+  docker buildx prune --all --force 2>/dev/null || true
+  docker buildx prune --all --force --builder desktop-linux 2>/dev/null || true
   log "Done. Remove /etc/hosts entries manually if added."
   exit 0
 fi
@@ -90,6 +145,9 @@ fi
 for cmd in kind kubectl helm docker; do
   command -v "$cmd" &>/dev/null || err "'$cmd' not found. Install it first."
 done
+
+# ── Personalisation: replace any remaining YOUR_GITHUB_ORG placeholders ──────
+_apply_personalization
 
 log "Starting local IDP MVP bootstrap (cluster=$CLUSTER_NAME)"
 
@@ -165,6 +223,11 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 log "Step 4c: Applying Backstage K8s Service + Endpoints + nginx Ingress..."
 apply_backstage_k8s_objects
 
+# ── Step 4d: Backstage K8s credentials ───────────────────────────────────────
+log "Step 4d: Extracting K8s credentials for Backstage plugin..."
+"${ROOT_DIR}/scripts/get-k8s-credentials.sh"
+log "  K8s credentials written to local/backstage/.env"
+
 # ── Step 4b: metrics-server ───────────────────────────────────────────────────
 log "Step 4b: Installing metrics-server (required for CPU/memory in Backstage)..."
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -190,8 +253,56 @@ if ! $SKIP_OBS; then
     --namespace monitoring \
     --values "$(dirname "$0")/../local/observability/prometheus-stack-values.yaml" \
     --wait --timeout 10m
+
+  log "  Provisioning Grafana Viewer token for Backstage proxy..."
+  GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
+    curl -sf -u admin:admin -X POST http://localhost:3000/api/serviceaccounts \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"backstage","role":"Viewer"}' 2>/dev/null \
+    | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || echo "")
+  if [[ -n "$GRAFANA_SA_ID" ]]; then
+    GRAFANA_TOKEN=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
+      curl -sf -u admin:admin -X POST "http://localhost:3000/api/serviceaccounts/${GRAFANA_SA_ID}/tokens" \
+      -H 'Content-Type: application/json' \
+      -d '{"name":"backstage-token"}' 2>/dev/null \
+      | grep -o '"key":"[^"]*"' | cut -d'"' -f4 || echo "")
+    if [[ -n "$GRAFANA_TOKEN" ]]; then
+      local_env="${ROOT_DIR}/local/backstage/.env"
+      if grep -q "^GRAFANA_TOKEN=" "$local_env" 2>/dev/null; then
+        sed -i.bak "s|^GRAFANA_TOKEN=.*|GRAFANA_TOKEN=${GRAFANA_TOKEN}|" "$local_env" && rm -f "${local_env}.bak"
+      else
+        echo "GRAFANA_TOKEN=${GRAFANA_TOKEN}" >> "$local_env"
+      fi
+      log "  Grafana token written to local/backstage/.env (GRAFANA_TOKEN)"
+    else
+      warn "  Could not extract Grafana token — set GRAFANA_TOKEN manually in local/backstage/.env"
+    fi
+  else
+    warn "  Could not create Grafana service account — set GRAFANA_TOKEN manually in local/backstage/.env"
+  fi
 else
   log "Step 5: Skipping observability (--skip-obs)."
+fi
+
+# ── Step 5b: OpenCost ────────────────────────────────────────────────────────
+if ! $SKIP_OBS; then
+  log "Step 5b: Installing OpenCost (cluster cost visibility)..."
+  helm repo add opencost https://opencost.github.io/opencost-helm-chart 2>/dev/null || true
+  helm repo update
+
+  kubectl apply -f "${ROOT_DIR}/kubernetes/finops/opencost.yaml"
+
+  helm upgrade --install opencost opencost/opencost \
+    --namespace opencost \
+    --set opencost.prometheus.internal.enabled=false \
+    --set opencost.prometheus.external.enabled=true \
+    --set "opencost.prometheus.external.url=http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090" \
+    --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
+    --wait --timeout 5m
+
+  log "OpenCost installed. UI: http://opencost.idp.local"
+else
+  log "Step 5b: Skipping OpenCost (--skip-obs)."
 fi
 
 # ── Step 6: Build and deploy hello-service ────────────────────────────────────
@@ -226,8 +337,18 @@ if ! $SKIP_GITOPS; then
     --wait --timeout 10m
 
   ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "(not yet available)")
-  log "ArgoCD installed. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS})"
+    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
+  log "ArgoCD installed. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
+
+  if [[ -n "$ARGOCD_PASS" ]]; then
+    local_env="${ROOT_DIR}/local/backstage/.env"
+    if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
+      sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}|" "$local_env" && rm -f "${local_env}.bak"
+    else
+      echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
+    fi
+    log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
+  fi
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
 fi
@@ -324,6 +445,13 @@ if ! $SKIP_DORA; then
 
   kubectl apply -f "${ROOT_DIR}/observability/dora/dora-cronjob-local.yaml"
   log "DORA exporter deployed (pushes to Prometheus Pushgateway every 15m)."
+
+  # ── Step 10c: Catalog exporter CronJob ─────────────────────────────────────
+  if ! $SKIP_OBS; then
+    log "Step 10c: Deploying Backstage catalog exporter CronJob..."
+    "${ROOT_DIR}/scripts/apply-catalog-exporter.sh"
+    log "  Catalog exporter deployed (pushes entity counts to Pushgateway every 15m)."
+  fi
 else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
 fi
@@ -396,6 +524,7 @@ log ""
 log "  hello-service:  http://hello-service.idp.local  (or http://localhost/)"
 if ! $SKIP_OBS; then
 log "  Grafana:        http://grafana.idp.local  (admin / admin)"
+log "  OpenCost:       http://opencost.idp.local"
 fi
 if ! $SKIP_GITOPS; then
 log "  ArgoCD:         http://argocd.idp.local"

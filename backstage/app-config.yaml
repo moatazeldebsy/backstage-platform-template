@@ -131,6 +131,16 @@ catalog:
       target: /catalog/catalog-info.yaml
       rules:
         - allow: [User, Group]
+    # Auto-discover team Group entities created by the team-namespace template
+    - type: file
+      target: /catalog/groups/*.yaml
+      rules:
+        - allow: [Group]
+    # QA team, qa-engineer user, and QA platform component
+    - type: file
+      target: /catalog/qa-catalog.yaml
+      rules:
+        - allow: [User, Group, Component]
     # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
     - type: file
       target: /catalog-info.yaml

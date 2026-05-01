@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: ${{ values.teamName }}
+  description: Team ${{ values.teamName }} — provisioned via IDP team-namespace template
+  annotations:
+    backstage.io/managed-by-location: "url:https://github.com/${{ values.githubOrg }}/${{ values.platformRepo }}/blob/main/backstage/catalog/groups/${{ values.teamName }}.yaml"
+spec:
+  type: team
+  parent: ${{ values.ownerGroup }}
+  children: []
+  members: []

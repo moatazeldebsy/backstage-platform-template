@@ -43,10 +43,17 @@ jobs:
           echo "All changed files are safe GitOps values files."
 
       - name: Approve PR
+        # GITHUB_TOKEN cannot approve its own PR (GitHub blocks self-approval).
+        # Set GH_PAT to a PAT from a different account with repo scope.
+        # If GH_PAT is absent this step is skipped; the PR requires manual approval.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "GH_PAT not configured — skipping auto-approval. Merge the PR manually or set the GH_PAT secret."
+            exit 0
+          fi
           gh pr review "$PR_NUMBER" --approve \
             --body "Auto-approved: PR only adds Helm values under \`services/\`. ArgoCD ApplicationSet will discover and deploy the service once this merges."
 
