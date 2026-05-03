@@ -51,7 +51,7 @@ spec:
               service:
                 name: opencost
                 port:
-                  number: 9003
+                  number: 9090
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
