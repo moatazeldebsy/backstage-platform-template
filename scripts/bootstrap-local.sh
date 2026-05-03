@@ -350,6 +350,20 @@ helm upgrade --install hello-service "${ROOT_DIR}/helm/service-template" \
   --values "${ROOT_DIR}/services/hello-service/helm-values-local.yaml" \
   --wait
 
+# Seed placeholder image for hello-react-srv so ArgoCD can deploy it locally.
+# Uses nginx-unprivileged (non-root, port 8080) to satisfy the Helm chart's
+# security context (readOnlyRootFilesystem + capabilities: drop: ALL).
+REACT_IMAGE="localhost:${REGISTRY_PORT}/hello-react-srv:local"
+if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/hello-react-srv/tags/list" | grep -q '"local"'; then
+  log "Step 6b: Seeding hello-react-srv placeholder image..."
+  docker pull nginxinc/nginx-unprivileged:alpine --quiet
+  docker tag nginxinc/nginx-unprivileged:alpine "${REACT_IMAGE}"
+  docker push "${REACT_IMAGE}"
+  log "  Pushed ${REACT_IMAGE}"
+else
+  log "Step 6b: hello-react-srv:local already in registry — skipping."
+fi
+
 # ── Step 8: ArgoCD ────────────────────────────────────────────────────────────
 if ! $SKIP_GITOPS; then
   log "Step 8: Installing ArgoCD..."
@@ -375,6 +389,30 @@ if ! $SKIP_GITOPS; then
       echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
     fi
     log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
+  fi
+
+  # Register GitHub credentials so ArgoCD can read the private platform repo.
+  # Reads GITHUB_TOKEN and GITHUB_ORG from local/.env (set by setup.sh).
+  _github_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+  _github_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+  if [[ -n "$_github_token" && -n "$_github_org" && "$_github_org" != "YOUR_GITHUB_ORG" ]]; then
+    kubectl create secret generic argocd-github-creds \
+      -n argocd \
+      --from-literal=type=git \
+      --from-literal=url="https://github.com/${_github_org}" \
+      --from-literal=username="${_github_org}" \
+      --from-literal=password="${_github_token}" \
+      --dry-run=client -o yaml \
+      | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
+      | kubectl apply -f -
+    log "  ArgoCD GitHub credentials registered for https://github.com/${_github_org}"
+  else
+    warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
+    warn "  Set both and re-run, or create the secret manually:"
+    warn "  kubectl create secret generic argocd-github-creds -n argocd \\"
+    warn "    --from-literal=type=git --from-literal=url=https://github.com/<org> \\"
+    warn "    --from-literal=username=<org> --from-literal=password=<token>"
+    warn "  kubectl label secret argocd-github-creds -n argocd argocd.argoproj.io/secret-type=repo-creds"
   fi
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
