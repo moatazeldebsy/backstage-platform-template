@@ -350,17 +350,32 @@ helm upgrade --install hello-service "${ROOT_DIR}/helm/service-template" \
   --values "${ROOT_DIR}/services/hello-service/helm-values-local.yaml" \
   --wait
 
+# Pre-load the nginx-prometheus-exporter sidecar image into the local registry.
+# Kind nodes pull from localhost:5003 to avoid Docker Hub rate limits and to
+# work fully offline after the first bootstrap.
+NGINX_EXPORTER_IMG="nginx/nginx-prometheus-exporter:1.3.0"
+NGINX_EXPORTER_LOCAL="localhost:${REGISTRY_PORT}/nginx-prometheus-exporter:1.3.0"
+if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/nginx-prometheus-exporter/tags/list" | grep -q '"1.3.0"'; then
+  log "Step 6b: Seeding nginx-prometheus-exporter into local registry..."
+  docker pull "${NGINX_EXPORTER_IMG}" --quiet
+  docker tag  "${NGINX_EXPORTER_IMG}" "${NGINX_EXPORTER_LOCAL}"
+  docker push "${NGINX_EXPORTER_LOCAL}"
+  log "  Pushed ${NGINX_EXPORTER_LOCAL}"
+else
+  log "Step 6b: nginx-prometheus-exporter:1.3.0 already in registry — skipping."
+fi
+
 # Build and seed hello-react-srv from services/hello-react-srv/Dockerfile.
 # That image includes a custom nginx.conf with stub_status enabled so the
 # nginx-prometheus-exporter sidecar can scrape Prometheus metrics.
 REACT_IMAGE="localhost:${REGISTRY_PORT}/hello-react-srv:local"
 if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/hello-react-srv/tags/list" | grep -q '"local"'; then
-  log "Step 6b: Building hello-react-srv image..."
+  log "Step 6c: Building hello-react-srv image..."
   docker build -t "${REACT_IMAGE}" "${ROOT_DIR}/services/hello-react-srv/" --quiet
   docker push "${REACT_IMAGE}"
   log "  Pushed ${REACT_IMAGE}"
 else
-  log "Step 6b: hello-react-srv:local already in registry — skipping."
+  log "Step 6c: hello-react-srv:local already in registry — skipping."
 fi
 
 # Build and seed images for any service in services/ that has both a
@@ -376,10 +391,10 @@ for svc_dir in "${ROOT_DIR}/services"/*/; do
   svc_name=$(basename "$img_repo")
   if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/${svc_name}/tags/list" | grep -q "\"${img_tag}\""; then
     if [[ -f "${svc_dir}/Dockerfile" ]]; then
-      log "Step 6c: Building ${svc_name} from services/${svc}/Dockerfile..."
+      log "Step 6d: Building ${svc_name} from services/${svc}/Dockerfile..."
       docker build -t "${img_repo}:${img_tag}" "${svc_dir}" --quiet
     else
-      log "Step 6c: Seeding ${img_repo}:${img_tag} stub (no Dockerfile found)..."
+      log "Step 6d: Seeding ${img_repo}:${img_tag} stub (no Dockerfile found)..."
       docker build -t "${img_repo}:${img_tag}" -f - . <<'DOCKERFILE'
 FROM python:3.13-slim
 EXPOSE 8080
