@@ -2,8 +2,6 @@
 
 ${{ values.description }}
 
-## Overview
-
 This service was scaffolded via the IDP golden path (Python/FastAPI template).
 
 | Property | Value |
@@ -11,16 +9,6 @@ This service was scaffolded via the IDP golden path (Python/FastAPI template).
 | Owner | `${{ values.owner }}` |
 | Port | `${{ values.port }}` |
 | Language | Python / FastAPI |
-
-## Getting Started
-
-```bash
-
-pip install -r requirements.txt
-uvicorn src.main:app --host 0.0.0.0 --port ${{ values.port }} --reload
-```
-
-The service listens on port `${{ values.port }}` by default.
 
 ## Endpoints
 
@@ -33,55 +21,116 @@ The service listens on port `${{ values.port }}` by default.
 | `GET /docs` | Auto-generated Swagger UI |
 | `GET /openapi.json` | OpenAPI schema |
 
-## Docker
+---
+
+## Local Development
+
+> **Run these commands inside your cloned service repo:**
+> `git clone https://github.com/${{ values.githubOrg }}/${{ values.repoName }} && cd ${{ values.repoName }}`
+
+```bash
+pip install -r requirements.txt
+uvicorn src.main:app --host 0.0.0.0 --port ${{ values.port }} --reload
+# → http://localhost:${{ values.port }}
+```
+
+### Docker (optional — test the container locally)
+
+> **Run in your cloned service repo.**
 
 ```bash
 docker build -t ${{ values.name }}:local .
 docker run -p ${{ values.port }}:${{ values.port }} ${{ values.name }}:local
 ```
 
+---
+
 ## Local Development (Kind)
 
-Set `PLATFORM_REPO` to your local `backstage-idp-starter` clone before running Helm:
+This deploys your service into the local Kind cluster managed by the platform.
+
+**Two repos are involved — be clear about which terminal you are in:**
+
+| Repo | Purpose |
+|------|---------|
+| **This repo** (`${{ values.repoName }}/`) | Your service code, `Dockerfile`, `helm-values-local.yaml` |
+| **Platform repo** (`backstage-idp-starter/`) | Shared Helm chart (`helm/service-template/`) used by all services |
+
+### Step 1 — In your cloned service repo: build and push the image
 
 ```bash
+# cd ${{ values.repoName }}
+docker build -t localhost:5003/${{ values.name }}:local .
+docker push localhost:5003/${{ values.name }}:local
+```
+
+### Step 2 — In your cloned service repo: deploy with Helm
+
+Point `PLATFORM_REPO` at your local `backstage-idp-starter` clone, then run `helm upgrade` from **this repo** (so Helm can find `helm-values-local.yaml`):
+
+```bash
+# cd ${{ values.repoName }}
+export PLATFORM_REPO=~/projects/backstage-idp-starter   # adjust path if needed
+
+helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
+  --namespace services \
+  --create-namespace \
+  --set image.repository=localhost:5003/${{ values.name }} \
+  --set image.tag=local \
+  --values helm-values-local.yaml
+```
+
+### Step 3 — Add the hostname to `/etc/hosts` (once)
+
+```bash
+echo "127.0.0.1  ${{ values.name }}.idp.local" | sudo tee -a /etc/hosts
+```
+
+Your service is now live at **http://${{ values.name }}.idp.local**
+
+---
+
+## Deploying (CI/CD + GitOps)
+
+Everything below is **fully automated** once you push to `main`. You do not need to run Helm manually for CI/CD deployments.
+
+### How it works
+
+```
+Push to main (this repo)
+  └─▶ GitHub Actions (.github/workflows/build-and-deploy.yml)
+        ├─ pytest
+        ├─ docker build + smoke-test /healthz
+        ├─ docker push → GHCR (ghcr.io/${{ values.githubOrg }}/${{ values.name }})
+        └─ updates helm-values-dev.yaml in backstage-idp-starter  ← platform repo
+              └─▶ ArgoCD detects the change and deploys to the Kind/EKS cluster
+```
+
+### Required GitHub Secrets
+
+Set these in **this repo's** Settings → Secrets and variables → Actions:
+
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `GH_PAT` | Yes | Allows CI to commit the new image tag to `backstage-idp-starter` |
+| `AWS_ROLE_ARN` | AWS only | IAM role for ECR push (`terraform output github_actions_role_arn` in platform repo) |
+
+Without `GH_PAT` the `update-image-tag` step is skipped and ArgoCD won't auto-deploy.
+
+### Manual Helm deploy (escape hatch)
+
+Only needed if CI is broken or you want to deploy a specific image by hand.
+
+```bash
+# Local Kind — run from your cloned service repo
 export PLATFORM_REPO=~/projects/backstage-idp-starter
-```
-
-
-```bash
-# Build and push to the local registry
-docker build -t localhost:5003/${{ values.name }}:latest .
-docker push localhost:5003/${{ values.name }}:latest
-
-# Deploy with Helm
 helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
-  --create-namespace \
   --set image.repository=localhost:5003/${{ values.name }} \
-  --set image.tag=latest \
+  --set image.tag=local \
   --values helm-values-local.yaml
 
-# Access the service
-http://${{ values.name }}.idp.local
-```
-
-Add `${{ values.name }}.idp.local` to `/etc/hosts` pointing to `127.0.0.1` if not already present.
-
-## Deploying
-
-CI/CD is wired via GitHub Actions (`.github/workflows/build-and-deploy.yml`). Push to `main` to trigger a build and deploy.
-
-```bash
-# Manual Helm deploy (local)
-helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
-  --namespace services \
-  --create-namespace \
-  --set image.repository=localhost:5003/${{ values.name }} \
-  --set image.tag=latest \
-  --values helm-values-local.yaml
-
-# Manual Helm deploy (AWS)
+# AWS EKS — run from your cloned service repo
 helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --set image.repository=<ECR_URI>/${{ values.name }} \
@@ -89,37 +138,29 @@ helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template
   --values helm-values.yaml
 ```
 
+---
+
 ## Project Structure
 
 ```
-${{ values.name }}/
+${{ values.name }}/              ← this repo (your service)
 ├── src/
 │   ├── __init__.py
-│   └── main.py             # Application entry point
+│   └── main.py
 ├── Dockerfile
 ├── requirements.txt
-├── helm-values.yaml        # AWS / ALB overrides
-├── helm-values-local.yaml  # Kind / nginx overrides
-├── catalog-info.yaml       # Backstage component descriptor
-├── api-info.yaml           # Backstage API descriptor
+├── helm-values.yaml             # AWS / ALB overrides (referenced by CI)
+├── helm-values-local.yaml       # Kind / nginx overrides (referenced by local Helm)
+├── catalog-info.yaml            # Backstage component descriptor
+├── api-info.yaml                # Backstage API descriptor
 └── docs/
-    ├── index.md
-    └── adr/
-        └── 0001-initial-decisions.md
+
+backstage-idp-starter/           ← platform repo (separate clone)
+└── helm/service-template/       # Shared Helm chart used by ALL services
 ```
-
-## Required GitHub Secrets
-
-Set these in your repository's **Settings → Secrets and variables → Actions**:
-
-| Secret | Required | Purpose |
-|--------|----------|---------|
-| `GH_PAT` | Yes | Personal access token (`repo` scope) — CI pushes the updated image tag back to the platform repo to trigger GitOps |
-| `AWS_ROLE_ARN` | AWS only | IAM role ARN for ECR push (`terraform output github_actions_role_arn`) |
-
-Without `GH_PAT` the `update-image-tag` CI step will be skipped and ArgoCD won't pick up new builds automatically.
 
 ## Links
 
 - [Backstage catalog entry](http://backstage.idp.local/catalog/default/component/${{ values.name }})
 - [GitHub repository](https://github.com/${{ values.githubOrg }}/${{ values.repoName }})
+- [ArgoCD app](http://argocd.idp.local)
