@@ -519,15 +519,21 @@ if ! $SKIP_DORA; then
   fi
 
   log "Step 10b: Applying DORA exporter (Pushgateway variant)..."
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  # Prefer shell-env GITHUB_TOKEN; fall back to local/.env so bootstrap is
+  # idempotent without needing the caller to export the variable first.
+  _dora_token="${GITHUB_TOKEN:-}"
+  if [[ -z "$_dora_token" ]]; then
+    _dora_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+  fi
+  if [[ -n "$_dora_token" ]]; then
     kubectl create secret generic dora-exporter-secret \
-      --from-literal=GITHUB_TOKEN="${GITHUB_TOKEN}" \
+      --from-literal=GITHUB_TOKEN="${_dora_token}" \
       -n monitoring \
       --dry-run=client -o yaml | kubectl apply -f -
+    log "  dora-exporter-secret populated from local/.env."
   else
-    warn "GITHUB_TOKEN not set — DORA exporter will fail at runtime."
-    warn "Run: kubectl create secret generic dora-exporter-secret \\"
-    warn "  --from-literal=GITHUB_TOKEN='<your-pat>' -n monitoring"
+    warn "GITHUB_TOKEN not set in environment or local/.env — DORA exporter will fail."
+    warn "Add GITHUB_TOKEN=<your-pat> to local/.env and re-run bootstrap."
   fi
 
   kubectl create configmap dora-exporter-script \
