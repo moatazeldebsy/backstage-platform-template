@@ -45,6 +45,16 @@ spec:
     - host: opencost.idp.local
       http:
         paths:
+          # Cost model API — used by the Backstage FinOps plugin proxy.
+          # Must be listed before / so nginx matches it first.
+          - path: /allocation
+            pathType: Prefix
+            backend:
+              service:
+                name: opencost
+                port:
+                  number: 9003
+          # UI — React frontend served on port 9090 for browser access.
           - path: /
             pathType: Prefix
             backend:
