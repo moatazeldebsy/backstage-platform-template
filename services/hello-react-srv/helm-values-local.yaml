@@ -28,6 +28,13 @@ resources:
     cpu: 100m
     memory: 64Mi
 
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
 env:
   - name: ENVIRONMENT
     value: local
