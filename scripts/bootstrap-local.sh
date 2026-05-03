@@ -364,6 +364,32 @@ else
   log "Step 6b: hello-react-srv:local already in registry — skipping."
 fi
 
+# Seed placeholder for any service in services/ that has helm-values-local.yaml
+# but no source code (scaffolded-only services). Discovers them dynamically so
+# new scaffolded services are covered without editing this script.
+for svc_dir in "${ROOT_DIR}/services"/*/; do
+  svc=$(basename "$svc_dir")
+  [[ "$svc" == "hello-service" || "$svc" == "hello-react-srv" ]] && continue
+  [[ ! -f "${svc_dir}/helm-values-local.yaml" ]] && continue
+  img_repo=$(grep -E '^\s+repository:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}')
+  img_tag=$(grep -E '^\s+tag:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}' | tr -d '"')
+  [[ "$img_repo" != localhost:* ]] && continue
+  svc_name=$(basename "$img_repo")
+  if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/${svc_name}/tags/list" | grep -q "\"${img_tag}\""; then
+    log "Step 6c: Seeding ${img_repo}:${img_tag} placeholder..."
+    docker pull python:3.13-slim --quiet
+    docker build -t "${img_repo}:${img_tag}" -f - . <<'DOCKERFILE'
+FROM python:3.13-slim
+EXPOSE 8005
+CMD ["python3", "-c", "import http.server, socketserver; socketserver.TCPServer(('',8005), http.server.SimpleHTTPRequestHandler).serve_forever()"]
+DOCKERFILE
+    docker push "${img_repo}:${img_tag}"
+    log "  Pushed ${img_repo}:${img_tag}"
+  else
+    log "Step 6c: ${img_repo}:${img_tag} already in registry — skipping."
+  fi
+done
+
 # ── Step 8: ArgoCD ────────────────────────────────────────────────────────────
 if ! $SKIP_GITOPS; then
   log "Step 8: Installing ArgoCD..."

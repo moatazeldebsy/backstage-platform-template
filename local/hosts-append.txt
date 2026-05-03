@@ -2,6 +2,8 @@
 # sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 
 127.0.0.1  hello-service.idp.local
+127.0.0.1  hello-service-dev.idp.local
+127.0.0.1  hello-react-srv.idp.local
 127.0.0.1  grafana.idp.local
 127.0.0.1  prometheus.idp.local
 127.0.0.1  alertmanager.idp.local
