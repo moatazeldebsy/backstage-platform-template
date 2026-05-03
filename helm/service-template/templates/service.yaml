@@ -11,5 +11,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+  {{- range .Values.extraPorts }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: {{ .protocol | default "TCP" }}
+      name: {{ .name }}
+  {{- end }}
   selector:
     {{- include "service-template.selectorLabels" . | nindent 4 }}

@@ -109,5 +109,19 @@ affinity: {}
 metrics:
   enabled: true
   path: /metrics
+  # Named port the ServiceMonitor scrapes. Use "http" for services that expose
+  # /metrics on their main port. Set to "metrics" for sidecar exporters (e.g.
+  # nginx-prometheus-exporter on :9113) that add an extraPort named "metrics".
+  port: http
   interval: 30s
   scrapeTimeout: 10s
+
+# Additional sidecar containers injected into the Pod alongside the main container.
+# Useful for metrics exporters, log shippers, etc.
+# Each entry is a full Kubernetes container spec.
+extraContainers: []
+
+# Additional ports added to the Service (and the corresponding container ports
+# should be declared inside extraContainers). Used when a sidecar exposes a
+# metrics port that needs to be reachable by the ServiceMonitor.
+extraPorts: []

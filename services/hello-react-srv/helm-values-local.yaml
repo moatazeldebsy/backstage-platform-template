@@ -58,3 +58,48 @@ podLabels:
   cost-center: "eng-platform"
   environment: local
   app.kubernetes.io/part-of: internal-developer-platform
+
+metrics:
+  enabled: true
+  port: metrics
+  path: /metrics
+
+extraPorts:
+  - name: metrics
+    port: 9113
+    targetPort: 9113
+
+extraContainers:
+  - name: nginx-exporter
+    image: localhost:5003/nginx-prometheus-exporter:1.3.0
+    args:
+      - --nginx.scrape-uri=http://localhost:8080/nginx_status
+    ports:
+      - name: metrics
+        containerPort: 9113
+    livenessProbe:
+      httpGet:
+        path: /metrics
+        port: 9113
+      initialDelaySeconds: 5
+      periodSeconds: 15
+    readinessProbe:
+      httpGet:
+        path: /metrics
+        port: 9113
+      initialDelaySeconds: 3
+      periodSeconds: 10
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 50m
+        memory: 32Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 65534
+      capabilities:
+        drop: [ALL]

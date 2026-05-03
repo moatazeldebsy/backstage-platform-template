@@ -350,23 +350,22 @@ helm upgrade --install hello-service "${ROOT_DIR}/helm/service-template" \
   --values "${ROOT_DIR}/services/hello-service/helm-values-local.yaml" \
   --wait
 
-# Seed placeholder image for hello-react-srv so ArgoCD can deploy it locally.
-# Uses nginx-unprivileged (non-root, port 8080) to satisfy the Helm chart's
-# security context (readOnlyRootFilesystem + capabilities: drop: ALL).
+# Build and seed hello-react-srv from services/hello-react-srv/Dockerfile.
+# That image includes a custom nginx.conf with stub_status enabled so the
+# nginx-prometheus-exporter sidecar can scrape Prometheus metrics.
 REACT_IMAGE="localhost:${REGISTRY_PORT}/hello-react-srv:local"
 if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/hello-react-srv/tags/list" | grep -q '"local"'; then
-  log "Step 6b: Seeding hello-react-srv placeholder image..."
-  docker pull nginxinc/nginx-unprivileged:alpine --quiet
-  docker tag nginxinc/nginx-unprivileged:alpine "${REACT_IMAGE}"
+  log "Step 6b: Building hello-react-srv image..."
+  docker build -t "${REACT_IMAGE}" "${ROOT_DIR}/services/hello-react-srv/" --quiet
   docker push "${REACT_IMAGE}"
   log "  Pushed ${REACT_IMAGE}"
 else
   log "Step 6b: hello-react-srv:local already in registry — skipping."
 fi
 
-# Seed placeholder for any service in services/ that has helm-values-local.yaml
-# but no source code (scaffolded-only services). Discovers them dynamically so
-# new scaffolded services are covered without editing this script.
+# Build and seed images for any service in services/ that has both a
+# helm-values-local.yaml and a Dockerfile. Services with only helm-values-local.yaml
+# but no Dockerfile get an inline stub (backward-compat for scaffolded-only services).
 for svc_dir in "${ROOT_DIR}/services"/*/; do
   svc=$(basename "$svc_dir")
   [[ "$svc" == "hello-service" || "$svc" == "hello-react-srv" ]] && continue
@@ -376,13 +375,17 @@ for svc_dir in "${ROOT_DIR}/services"/*/; do
   [[ "$img_repo" != localhost:* ]] && continue
   svc_name=$(basename "$img_repo")
   if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/${svc_name}/tags/list" | grep -q "\"${img_tag}\""; then
-    log "Step 6c: Seeding ${img_repo}:${img_tag} placeholder..."
-    docker pull python:3.13-slim --quiet
-    docker build -t "${img_repo}:${img_tag}" -f - . <<'DOCKERFILE'
+    if [[ -f "${svc_dir}/Dockerfile" ]]; then
+      log "Step 6c: Building ${svc_name} from services/${svc}/Dockerfile..."
+      docker build -t "${img_repo}:${img_tag}" "${svc_dir}" --quiet
+    else
+      log "Step 6c: Seeding ${img_repo}:${img_tag} stub (no Dockerfile found)..."
+      docker build -t "${img_repo}:${img_tag}" -f - . <<'DOCKERFILE'
 FROM python:3.13-slim
-EXPOSE 8005
-CMD ["python3", "-c", "import http.server, socketserver; socketserver.TCPServer(('',8005), http.server.SimpleHTTPRequestHandler).serve_forever()"]
+EXPOSE 8080
+CMD ["python3", "-c", "import http.server, socketserver; socketserver.TCPServer(('',8080), http.server.SimpleHTTPRequestHandler).serve_forever()"]
 DOCKERFILE
+    fi
     docker push "${img_repo}:${img_tag}"
     log "  Pushed ${img_repo}:${img_tag}"
   else
