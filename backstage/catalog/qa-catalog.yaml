@@ -47,7 +47,7 @@ metadata:
       url: http://grafana.idp.local/d/qa-metrics/qa-metrics
       icon: dashboard
     - title: Playwright E2E Reports
-      url: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/actions
+      url: https://github.com/moatazeldebsy/backstage-idp-starter/actions
       icon: github
 spec:
   type: platform-capability
