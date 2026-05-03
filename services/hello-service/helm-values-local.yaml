@@ -16,7 +16,7 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   hosts:
-    - host: hello-service.idp.local
+    - host: hello-service-dev.idp.local
       paths:
         - path: /
           pathType: Prefix
