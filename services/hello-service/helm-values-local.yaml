@@ -1,6 +1,9 @@
 # Helm overrides for hello-service — local Kind cluster
-# image.repository and image.tag are injected by bootstrap-local.sh via --set
 replicaCount: 1
+
+image:
+  repository: localhost:5003/hello-service
+  tag: local
 
 service:
   port: 80

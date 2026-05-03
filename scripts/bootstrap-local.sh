@@ -58,7 +58,13 @@ _apply_personalization() {
   log "Applying personalisation: YOUR_GITHUB_ORG → ${github_org}"
 
   local targets
-  targets=$(LC_ALL=C find "${ROOT_DIR}/backstage/catalog" "${ROOT_DIR}/backstage/app-config.yaml" \
+  targets=$(LC_ALL=C find \
+    "${ROOT_DIR}/backstage/catalog" \
+    "${ROOT_DIR}/backstage/app-config.yaml" \
+    "${ROOT_DIR}/kubernetes" \
+    "${ROOT_DIR}/local/argocd" \
+    "${ROOT_DIR}/observability" \
+    "${ROOT_DIR}/services" \
     -type f \
     ! -name '*.png' ! -name '*.jpg' ! -name '*.ico' \
     2>/dev/null)

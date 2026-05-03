@@ -1,0 +1,39 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/hello-react-srv
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: hello-react-srv.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+env:
+  - name: ENVIRONMENT
+    value: local
+
+podLabels:
+  team: "qa-team"
+  cost-center: "eng-platform"
+  environment: local
+  app.kubernetes.io/part-of: internal-developer-platform
