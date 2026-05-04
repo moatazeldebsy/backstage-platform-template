@@ -25,7 +25,7 @@ backend:
   reading:
     allow:
       - host: raw.githubusercontent.com  # used when GITHUB_TOKEN is set (production)
-      - host: localhost                   # allows reading tech-radar.json from local static assets
+      - host: localhost:7007              # allows reading tech-radar.json from local static assets
 
 # Auth — enable guest provider so the UI works without GitHub OAuth credentials.
 auth:

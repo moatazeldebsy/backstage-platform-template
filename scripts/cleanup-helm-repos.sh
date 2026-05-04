@@ -54,6 +54,7 @@ REQUIRED_REPOS=(
   "prometheus-community|https://prometheus-community.github.io/helm-charts"
   "argo|https://argoproj.github.io/argo-helm"
   "gatekeeper|https://open-policy-agent.github.io/gatekeeper/charts"
+  "opencost|https://opencost.github.io/opencost-helm-chart"
   "external-secrets|https://charts.external-secrets.io"
   "grafana|https://grafana.github.io/helm-charts"
 )

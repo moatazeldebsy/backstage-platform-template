@@ -4,7 +4,7 @@
 # Phases:
 #   0. Personalise placeholders (GitHub org, AWS account, region, cluster name)
 #   1. Ask which environment to start: local | aws | skip
-#   2A. Local — pre-flight → bootstrap-local.sh → k8s credentials → catalog exporter → Backstage
+#   2A. Local — pre-flight → bootstrap-local.sh (includes k8s credentials + catalog exporter) → Backstage
 #   2B. AWS   — pre-flight → bootstrap.sh
 #
 # Individual scripts in scripts/ remain fully standalone for day-2 use.
@@ -39,9 +39,7 @@ _print_skip_summary() {
   echo -e "${BOLD}Next steps (manual):${RESET}"
   echo "  1. Fill in secrets in local/.env and local/backstage/.env"
   echo "  2. Local platform:"
-  echo "       ./scripts/bootstrap-local.sh"
-  echo "       ./scripts/get-k8s-credentials.sh     # write K8s creds to local/backstage/.env"
-  echo "       ./scripts/apply-catalog-exporter.sh  # deploy catalog CronJob"
+  echo "       ./scripts/bootstrap-local.sh          # cluster + platform (includes K8s creds + catalog exporter)"
   echo "       docker compose -f local/backstage/docker-compose.yml up -d"
   echo "  3. AWS platform:"
   echo "       cd terraform && cp terraform.tfvars.example terraform.tfvars"
@@ -132,7 +130,9 @@ Install them and re-run this script, or run manually:
   fi
 
   # ── Step 1: Bootstrap the Kind cluster and platform ─────────────────────────
-  step "Step 1/5 — Bootstrapping Kind cluster and platform..."
+  # bootstrap-local.sh is idempotent and handles everything: cluster creation,
+  # observability, ArgoCD, OPA, DORA exporter, K8s credentials, and catalog exporter.
+  step "Step 1/3 — Bootstrapping Kind cluster and platform..."
 
   # Clean up any stale/unused Helm repos before installing charts
   log "Cleaning up unused Helm repositories..."
@@ -141,29 +141,8 @@ Install them and re-run this script, or run manually:
   log "Running scripts/bootstrap-local.sh (this takes several minutes)..."
   "${ROOT_DIR}/scripts/bootstrap-local.sh"
 
-  # ── Step 2: Write K8s credentials to local/backstage/.env ───────────────────
-  step "Step 2/5 — Writing K8s credentials for Backstage..."
-  if kubectl config get-contexts "kind-${CLUSTER_NAME}" &>/dev/null; then
-    kubectl config use-context "kind-${CLUSTER_NAME}"
-    "${ROOT_DIR}/scripts/get-k8s-credentials.sh"
-    log "K8s credentials written to local/backstage/.env"
-  else
-    warn "kubectl context 'kind-${CLUSTER_NAME}' not found — skipping K8s credential setup."
-    warn "Run manually after the cluster is ready: ./scripts/get-k8s-credentials.sh"
-  fi
-
-  # ── Step 3: Deploy catalog exporter ─────────────────────────────────────────
-  step "Step 3/5 — Deploying Backstage catalog exporter..."
-  if kubectl get namespace monitoring &>/dev/null; then
-    "${ROOT_DIR}/scripts/apply-catalog-exporter.sh"
-    log "Catalog exporter CronJob deployed."
-  else
-    warn "Namespace 'monitoring' not found — skipping catalog exporter."
-    warn "Run manually once observability is up: ./scripts/apply-catalog-exporter.sh"
-  fi
-
-  # ── Step 4: Start Backstage ──────────────────────────────────────────────────
-  step "Step 4/5 — Backstage"
+  # ── Step 2: Start Backstage ──────────────────────────────────────────────────
+  step "Step 2/3 — Backstage"
   echo ""
   read -rp "$(echo -e "${CYAN}Start Backstage (Docker Compose) now?${RESET} [Y/n] ")" START_BS
   START_BS="${START_BS:-Y}"
@@ -199,8 +178,8 @@ Install them and re-run this script, or run manually:
     log "  PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
   fi
 
-  # ── Step 5: Summary ──────────────────────────────────────────────────────────
-  step "Step 5/5 — Done!"
+  # ── Step 3: Summary ──────────────────────────────────────────────────────────
+  step "Step 3/3 — Done!"
   echo ""
   echo -e "${GREEN}✓ Local IDP platform is up.${RESET}"
   echo ""

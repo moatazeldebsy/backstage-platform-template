@@ -6,7 +6,12 @@
 #   ./scripts/bootstrap-local.sh              # full setup
 #   ./scripts/bootstrap-local.sh --skip-obs  # skip observability (faster)
 #   ./scripts/bootstrap-local.sh --update-backstage-ip  # refresh Backstage endpoint IP after compose up
-#   ./scripts/bootstrap-local.sh --destroy   # tear everything down
+#   ./scripts/bootstrap-local.sh --destroy              # tear everything down
+#   ./scripts/bootstrap-local.sh --clean-docker         # stop Backstage + prune all Docker resources
+#
+# Scope: cluster creation, ingress, observability, ArgoCD, OPA, DORA exporter,
+#        K8s credentials (local/backstage/.env), and catalog exporter CronJob.
+# Called by setup.sh (first-time) and usable standalone for day-2 cluster recreates.
 set -euo pipefail
 
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
@@ -123,13 +128,30 @@ fi
 # ── Teardown path ─────────────────────────────────────────────────────────────
 if $DESTROY; then
   log "Destroying local IDP platform..."
-  helm uninstall argocd       -n argocd            2>/dev/null || true
-  helm uninstall gatekeeper   -n gatekeeper-system 2>/dev/null || true
-  helm uninstall opencost     -n opencost           2>/dev/null || true
-  kubectl delete namespace argocd gatekeeper-system opencost 2>/dev/null || true
+  # Uninstall all Helm releases so helm's local state is clean.
+  # kind delete cluster would remove them too, but this ensures a consistent helm list.
+  helm uninstall hello-service          -n services          2>/dev/null || true
+  helm uninstall prometheus-pushgateway -n monitoring        2>/dev/null || true
+  helm uninstall prometheus             -n monitoring        2>/dev/null || true
+  helm uninstall argocd                 -n argocd            2>/dev/null || true
+  helm uninstall gatekeeper             -n gatekeeper-system 2>/dev/null || true
+  helm uninstall opencost               -n opencost          2>/dev/null || true
+  helm uninstall ingress-nginx          -n ingress-nginx     2>/dev/null || true
+  kubectl delete namespace \
+    services monitoring argocd gatekeeper-system opencost ingress-nginx \
+    2>/dev/null || true
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
   _clean_docker
-  log "Done. Remove /etc/hosts entries manually if added."
+  log "Done."
+  log ""
+  log "Remove these /etc/hosts entries manually (or run the command below):"
+  grep -v '^#' "${ROOT_DIR}/local/hosts-append.txt" | grep -v '^$' | while IFS= read -r entry; do
+    log "  ${entry}"
+  done
+  log ""
+  log "  One-liner (macOS/Linux):"
+  _destroy_hostnames=$(grep -v '^#' "${ROOT_DIR}/local/hosts-append.txt" | grep -v '^$' | awk '{print $2}' | tr '\n' '|' | sed 's/|$//')
+  log "  sudo sed -i.bak -E '/($_destroy_hostnames)/d' /etc/hosts"
   exit 0
 fi
 
@@ -530,10 +552,21 @@ if ! $SKIP_DORA; then
       --set resources.limits.memory=64Mi \
       --set serviceMonitor.enabled=true \
       --set serviceMonitor.additionalLabels.release=prometheus \
+      --set "extraArgs[0]=--web.enable-admin-api" \
       --wait --timeout 5m
 
     kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
     log "Pushgateway ingress: http://pushgateway.idp.local"
+
+    log "  Wiping stale Pushgateway metrics for a clean slate..."
+    kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
+    if ! kubectl exec -n monitoring deploy/prometheus-pushgateway -- \
+        wget -q -O- --method=DELETE http://localhost:9091/api/v1/admin/wipe 2>/dev/null; then
+      warn "  Pushgateway admin wipe failed — restarting pod to clear in-memory state."
+      kubectl rollout restart deployment/prometheus-pushgateway -n monitoring
+      kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
+    fi
+    log "  Pushgateway reset complete."
   fi
 
   log "Step 10b: Applying DORA exporter (Pushgateway variant)..."
@@ -561,11 +594,30 @@ if ! $SKIP_DORA; then
   kubectl apply -f "${ROOT_DIR}/observability/dora/dora-cronjob-local.yaml"
   log "DORA exporter deployed (pushes to Prometheus Pushgateway every 15m)."
 
+  log "  Triggering immediate DORA exporter run (seed data without waiting 15m)..."
+  kubectl create job "dora-exporter-init-$(date +%s)" \
+    --from=cronjob/dora-exporter \
+    -n monitoring \
+    --dry-run=client -o yaml | kubectl apply -f - || \
+    warn "  Could not trigger immediate DORA job — data will appear after first scheduled run."
+
   # ── Step 10c: Catalog exporter CronJob ─────────────────────────────────────
   if ! $SKIP_OBS; then
     log "Step 10c: Deploying Backstage catalog exporter CronJob..."
     "${ROOT_DIR}/scripts/apply-catalog-exporter.sh"
     log "  Catalog exporter deployed (pushes entity counts to Pushgateway every 15m)."
+
+    log "  Triggering immediate catalog exporter run (seed data without waiting 15m)..."
+    CATALOG_CRONJOB=$(kubectl get cronjobs -n monitoring -o jsonpath='{.items[?(@.metadata.name!="dora-exporter")].metadata.name}' 2>/dev/null | tr ' ' '\n' | head -1)
+    if [[ -n "$CATALOG_CRONJOB" ]]; then
+      kubectl create job "catalog-exporter-init-$(date +%s)" \
+        --from="cronjob/${CATALOG_CRONJOB}" \
+        -n monitoring \
+        --dry-run=client -o yaml | kubectl apply -f - || \
+        warn "  Could not trigger immediate catalog job — data will appear after first scheduled run."
+    else
+      warn "  Could not detect catalog exporter cronjob name — data will appear after first scheduled run."
+    fi
   fi
 else
   log "Step 10: Skipping DORA exporter (--skip-dora)."

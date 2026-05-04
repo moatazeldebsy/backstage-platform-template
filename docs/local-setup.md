@@ -138,7 +138,7 @@ Needed for the Kubernetes tab and `idp:deploy-local` action:
 # Then restart: docker compose -f local/backstage/docker-compose.yml restart backstage
 ```
 
-> `setup.sh` runs both `get-k8s-credentials.sh` and `update-backstage-ip` automatically. These manual steps are only needed when using `bootstrap-local.sh` directly.
+> `bootstrap-local.sh` (and therefore `setup.sh`) runs `get-k8s-credentials.sh` automatically. The manual step above is only needed if you provisioned the cluster without `bootstrap-local.sh`. `--update-backstage-ip` is still required manually after `docker compose up -d`.
 
 ## Deploy a service via Backstage
 

@@ -147,7 +147,7 @@ idp-mvp/
 
 ## Scripts Reference
 
-All scripts live in `scripts/`. They can be run standalone (day-2) or are called automatically by `setup.sh`.
+All scripts live in `scripts/`. They can be run standalone (day-2) or are called automatically by `setup.sh` / `bootstrap-local.sh`.
 
 ### Day-0 / Day-1 — Platform setup
 
@@ -156,15 +156,15 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | `setup.sh` | **Entry point.** Interactive: replaces placeholders (org, AWS account, region, cluster name), creates `.env` files, then dispatches to local or AWS bootstrap. | You (once) |
 | `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. Pass `--destroy` to tear down. | `setup.sh` → local path, or standalone |
 | `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components, and pushes `hello-service` to ECR. | `setup.sh` → AWS path, or standalone |
-| `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `bootstrap-local.sh` (auto) |
-| `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `setup.sh` after cluster is up, or standalone |
-| `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `setup.sh` after observability is up, or standalone |
+| `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
+| `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
+| `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
 
 ### Day-2 — Per-service operations
 
 | Script | Purpose | When to run |
 |---|---|---|
-| `create-service.sh` | CLI golden path: scaffold a new service repo (Node.js / Python / Go / React / Terraform). Mirrors the Backstage template flow. | Each time you add a new service |
+| `create-service.sh` | CLI golden path: scaffold a new service repo (Node.js / Python / Go). Mirrors the Backstage template flow. | Each time you add a new service |
 | `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner for a scaffolded service repo so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
 | `seed-qa-metrics.sh` | Push synthetic QA metrics so the Grafana QA dashboard shows data immediately. | Optional — demo / dev only |
 
@@ -176,11 +176,11 @@ scripts/setup.sh
   └─ Phase 0: replace placeholders in all files
   └─ Phase 1: choose local | aws | skip
        │
-       ├─ local path ──► bootstrap-local.sh
-       │                    └─ cleanup-helm-repos.sh   (auto)
-       │                 ► get-k8s-credentials.sh      (auto)
-       │                 ► apply-catalog-exporter.sh   (auto)
-       │                 ► docker compose up (Backstage)
+       ├─ local path ──► cleanup-helm-repos.sh          (auto)
+       │                ► bootstrap-local.sh
+       │                    ├─ get-k8s-credentials.sh  (auto)
+       │                    └─ apply-catalog-exporter.sh (auto)
+       │                ► docker compose up (Backstage)
        │
        └─ AWS path  ──► bootstrap.sh
                           └─ terraform init/apply

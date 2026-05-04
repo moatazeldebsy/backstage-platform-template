@@ -68,7 +68,7 @@ helm lint helm/service-template --set image.repository=test --set image.tag=abc1
 
 ```bash
 ./scripts/create-service.sh --name my-svc --type nodejs
-# types: nodejs | python | go | react | terraform
+# types: nodejs | python | go
 
 # Wire a self-hosted GitHub Actions runner for local CD
 ./scripts/setup-runner.sh --repo my-svc
