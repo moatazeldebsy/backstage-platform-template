@@ -128,20 +128,16 @@ fi
 # ── Teardown path ─────────────────────────────────────────────────────────────
 if $DESTROY; then
   log "Destroying local IDP platform..."
-  # Uninstall all Helm releases so helm's local state is clean.
-  # kind delete cluster would remove them too, but this ensures a consistent helm list.
-  helm uninstall hello-service          -n services          2>/dev/null || true
-  helm uninstall prometheus-pushgateway -n monitoring        2>/dev/null || true
-  helm uninstall prometheus             -n monitoring        2>/dev/null || true
-  helm uninstall argocd                 -n argocd            2>/dev/null || true
-  helm uninstall gatekeeper             -n gatekeeper-system 2>/dev/null || true
-  helm uninstall opencost               -n opencost          2>/dev/null || true
-  helm uninstall ingress-nginx          -n ingress-nginx     2>/dev/null || true
-  kubectl delete namespace \
-    services monitoring argocd gatekeeper-system opencost ingress-nginx \
-    2>/dev/null || true
+  # Delete the Kind cluster first — this removes all namespaces, Helm release
+  # state (stored as k8s secrets), and workloads in one shot. No need to
+  # helm uninstall each release individually before cluster deletion.
   kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
-  _clean_docker
+  # Stop the Backstage Docker Compose stack and remove the local registry.
+  # Skip the full docker prune — use --clean-docker separately if needed.
+  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
+    down --volumes --remove-orphans 2>/dev/null || true
+  docker stop "$REGISTRY_NAME" 2>/dev/null || true
+  docker rm   "$REGISTRY_NAME" 2>/dev/null || true
   log "Done."
   log ""
   log "Remove these /etc/hosts entries manually (or run the command below):"
