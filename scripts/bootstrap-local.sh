@@ -140,14 +140,33 @@ if $DESTROY; then
   docker rm   "$REGISTRY_NAME" 2>/dev/null || true
   log "Done."
   log ""
-  log "Remove these /etc/hosts entries manually (or run the command below):"
-  grep -v '^#' "${ROOT_DIR}/local/hosts-append.txt" | grep -v '^$' | while IFS= read -r entry; do
-    log "  ${entry}"
-  done
-  log ""
-  log "  One-liner (macOS/Linux):"
-  _destroy_hostnames=$(grep -v '^#' "${ROOT_DIR}/local/hosts-append.txt" | grep -v '^$' | awk '{print $2}' | tr '\n' '|' | sed 's/|$//')
-  log "  sudo sed -i.bak -E '/($_destroy_hostnames)/d' /etc/hosts"
+  log "Cleaning up /etc/hosts entries..."
+  HOSTS_REMOVED=false
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    hostname=$(awk '{print $2}' <<< "$line")
+    [[ -z "$hostname" ]] && continue
+    if grep -qF "$hostname" /etc/hosts 2>/dev/null; then
+      if sudo sed -i.bak "/$(echo "$hostname" | sed 's/\./\\./g')/d" /etc/hosts; then
+        log "  Removed: $hostname"
+        HOSTS_REMOVED=true
+      else
+        warn "  Could not remove '$hostname' from /etc/hosts — remove it manually."
+      fi
+    fi
+  done < "${ROOT_DIR}/local/hosts-append.txt"
+  if $HOSTS_REMOVED; then
+    sudo rm -f /etc/hosts.bak
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sudo dscacheutil -flushcache 2>/dev/null || true
+      sudo killall -HUP mDNSResponder 2>/dev/null || true
+      log "  macOS DNS cache flushed."
+    elif command -v resolvectl &>/dev/null; then
+      sudo resolvectl flush-caches 2>/dev/null || true
+    fi
+  else
+    log "  No matching /etc/hosts entries found — nothing to remove."
+  fi
   exit 0
 fi
 
