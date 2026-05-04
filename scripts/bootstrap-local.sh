@@ -715,20 +715,53 @@ else
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-log "Bootstrap complete!"
-log ""
-log "  hello-service:  http://hello-service.idp.local  (or http://localhost/)"
+ARGOCD_PASS=""
+if ! $SKIP_GITOPS; then
+  ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
+fi
+
+echo ""
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║                  Bootstrap complete!                            ║"
+echo "╠══════════════════════════════════════════════════════════════════╣"
+echo "║  Service          URL                              Credentials  ║"
+echo "╠══════════════════════════════════════════════════════════════════╣"
+echo "║  hello-service    http://hello-service.idp.local               ║"
 if ! $SKIP_OBS; then
-log "  Grafana:        http://grafana.idp.local  (admin / admin)"
-log "  OpenCost:       http://opencost.idp.local"
+echo "║  Grafana          http://grafana.idp.local          admin/admin ║"
+echo "║  Prometheus       http://prometheus.idp.local                   ║"
+echo "║  AlertManager     http://alertmanager.idp.local                 ║"
+echo "║  Pushgateway      http://pushgateway.idp.local                  ║"
+echo "║  OpenCost         http://opencost.idp.local                     ║"
 fi
 if ! $SKIP_GITOPS; then
-log "  ArgoCD:         http://argocd.idp.local"
+if [[ -n "$ARGOCD_PASS" ]]; then
+echo "║  ArgoCD           http://argocd.idp.local           admin/${ARGOCD_PASS} ║"
+else
+echo "║  ArgoCD           http://argocd.idp.local                       ║"
 fi
-log "  Backstage:      cd backstage/app && yarn install && yarn build:backend && cd ../.."
-log "                  docker compose -f local/backstage/docker-compose.yml build backstage"
-log "                  docker compose -f local/backstage/docker-compose.yml up -d"
-log "                  # Then update the nginx endpoint IP:"
-log "                  # ./scripts/bootstrap-local.sh --update-backstage-ip"
-log ""
-log "Teardown:            ./scripts/bootstrap-local.sh --destroy"
+fi
+echo "║  Backstage        http://localhost:3000  (start separately ↓)  ║"
+echo "╠══════════════════════════════════════════════════════════════════╣"
+echo "║  Local registry   localhost:5003                                ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+if ! $SKIP_GITOPS && [[ -n "$ARGOCD_PASS" ]]; then
+echo "  ArgoCD password:  ${ARGOCD_PASS}"
+echo "  (also saved in local/backstage/.env as ARGOCD_AUTH_TOKEN)"
+echo ""
+echo "  Retrieve any time:"
+echo "    kubectl -n argocd get secret argocd-initial-admin-secret \\"
+echo "      -o jsonpath='{.data.password}' | base64 -d && echo"
+echo ""
+fi
+echo "  Start Backstage:"
+echo "    docker compose -f local/backstage/docker-compose.yml up -d"
+echo "    ./scripts/bootstrap-local.sh --update-backstage-ip"
+echo ""
+echo "  Day-2:"
+echo "    Scaffold service:  ./scripts/create-service.sh --name my-svc --type nodejs"
+echo "    Seed QA metrics:   ./scripts/seed-qa-metrics.sh"
+echo "    Teardown:          ./scripts/bootstrap-local.sh --destroy"
+echo ""
