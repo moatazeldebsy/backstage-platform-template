@@ -4,7 +4,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-idp-starter/)
 [![CI](https://github.com/moatazeldebsy/backstage-idp-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-idp-starter/actions/workflows/ci.yml)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 7 software templates (more in progress), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 9 software templates + 13 QA testing scaffold templates, Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -34,9 +34,10 @@
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, and custom scaffolder actions |
-| **Software templates** | 7 golden-path templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace) — expanding to 16+ on the roadmap |
+| **Software templates** | 9 golden-path service templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace, RDS, Add-secret) |
+| **QA templates** | 13 testing scaffold templates — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual, a11y, Cucumber, Appium, Chaos Mesh, Stryker, Testcontainers |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
-| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter |
+| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
 | **Infrastructure** | Terraform modules for EKS, VPC, ECR, IAM (OIDC + IRSA), RDS, S3, Secrets Manager |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
@@ -165,6 +166,7 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | Script | Purpose | When to run |
 |---|---|---|
 | `create-service.sh` | CLI golden path: scaffold a new service repo (Node.js / Python / Go). Mirrors the Backstage template flow. | Each time you add a new service |
+| `create-test-suite.sh` | CLI golden path: scaffold a QA test suite (13 types: playwright, k6, pact, newman, zap, datadog, visual, accessibility, cucumber, appium, chaos, mutation, testcontainers). | Each time you add a test suite |
 | `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner for a scaffolded service repo so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
 | `seed-qa-metrics.sh` | Push synthetic QA metrics so the Grafana QA dashboard shows data immediately. | Optional — demo / dev only |
 
@@ -190,6 +192,11 @@ scripts/setup.sh
 scripts/create-service.sh --name my-svc --type nodejs
 scripts/setup-runner.sh   --repo my-svc
 
+# Per new QA test suite (day-2)
+scripts/create-test-suite.sh --name my-e2e  --type playwright    --service my-svc
+scripts/create-test-suite.sh --name my-perf --type k6            --service my-svc --vus 20
+scripts/create-test-suite.sh --name my-a11y --type accessibility --service my-svc
+
 # Optional
 scripts/seed-qa-metrics.sh
 ```
@@ -207,18 +214,36 @@ Backstage → scaffold repo → push code
 ### Scaffold a new service
 
 **Via Backstage** (http://localhost:3000 → Create):
+
+*Service templates:*
 - Node.js Service
 - Python FastAPI Service
 - Go Service
 - React Frontend
 - Terraform Module
+- Team Namespace
+- Deploy to Kind
+- RDS Database
+- Add Secret
+
+*QA testing templates (13):*
+- Playwright E2E, Visual Regression, Accessibility (axe-core)
+- k6 Performance, Chaos Mesh, Testcontainers
+- Newman API, Pact Contract
+- OWASP ZAP DAST, Datadog Synthetics
+- BDD Cucumber, Appium Mobile, Stryker Mutation
 
 **Via CLI:**
 ```bash
+# New service
 ./scripts/create-service.sh --name my-svc --type nodejs
+
+# New test suite
+./scripts/create-test-suite.sh --name my-e2e --type playwright --service my-svc
+./scripts/create-test-suite.sh --help   # show all types and flags
 ```
 
-Both paths generate: source code, `Dockerfile`, Helm values, `catalog-info.yaml`, GitHub Actions CI, and a service `README.md`.
+Both paths generate: source/test code, `catalog-info.yaml`, GitHub Actions CI, TechDocs, and a `README.md`.
 
 ### Deploy to local Kind
 

@@ -126,6 +126,59 @@ catalog:
       target: /catalog/templates/rds-database/template.yaml
       rules:
         - allow: [Template]
+    # QA golden-path testing scaffolds
+    - type: file
+      target: /catalog/templates/playwright-e2e-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/k6-performance-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/pact-contract-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/newman-api-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/zap-dast-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/datadog-synthetic-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/visual-regression-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/accessibility-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/bdd-cucumber-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/appium-mobile-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/chaos-mesh-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mutation-testing-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/testcontainers-suite/template.yaml
+      rules:
+        - allow: [Template]
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml

@@ -1,0 +1,7 @@
+# ZAP false-positive suppression rules
+# Format: <ruleId>\t<action>\t<url>\t<parameter>\t<attack>\t<evidence>\t<comment>
+# Actions: IGNORE, WARN
+#
+# Example — suppress "X-Content-Type-Options Header Missing" for all URLs:
+# 10021	IGNORE	.*	.*	.*	.*	Known false positive — header set via CDN
+

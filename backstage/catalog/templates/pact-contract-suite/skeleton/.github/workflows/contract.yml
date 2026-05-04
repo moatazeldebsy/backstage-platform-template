@@ -1,0 +1,68 @@
+name: Contract Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CONSUMER_NAME: '${{ values.consumerName }}'
+  PROVIDER_NAME: '${{ values.providerName }}'
+  PACT_BROKER_URL: '${{ values.pactBrokerUrl }}'
+  PROVIDER_BASE_URL: '${{ values.providerBaseUrl }}'
+
+jobs:
+  consumer:
+    name: Consumer Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run consumer Pact tests
+        run: npm test
+
+      - name: Publish pacts to broker
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
+        run: |
+          if [ -z "${PACT_BROKER_TOKEN}" ]; then
+            echo "PACT_BROKER_TOKEN not set — skipping publish"
+            exit 0
+          fi
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          npx pact-broker publish ./pacts \
+            --consumer-app-version="${SHORT_SHA}" \
+            --broker-base-url="${PACT_BROKER_URL}" \
+            --broker-token="${PACT_BROKER_TOKEN}" \
+            --tag=main
+
+  provider-verify:
+    name: Provider Verification
+    runs-on: ubuntu-latest
+    needs: consumer
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify provider against published pact
+        env:
+          PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
+        run: npm run verify

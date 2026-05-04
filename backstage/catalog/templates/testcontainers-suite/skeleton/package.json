@@ -1,0 +1,16 @@
+{
+  "name": "${{ values.name }}",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "${{ values.testRunner }} --config jest.config.js"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "testcontainers": "^10.9.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.4.0"
+  }
+}

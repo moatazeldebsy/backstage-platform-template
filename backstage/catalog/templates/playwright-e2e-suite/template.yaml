@@ -1,0 +1,128 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: playwright-e2e-suite
+  title: Playwright E2E Test Suite
+  description: Scaffold a Playwright TypeScript E2E test suite targeting an existing service
+  tags:
+    - playwright
+    - e2e
+    - testing
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          description: Unique name for this test suite (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this test suite
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          description: The service this test suite targets
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Configuration
+      properties:
+        baseUrl:
+          title: Base URL
+          type: string
+          description: Base URL of the service under test
+          default: 'http://localhost:3000'
+        browsers:
+          title: Browsers
+          type: array
+          description: Browsers to include in the test run
+          items:
+            type: string
+            enum:
+              - chromium
+              - firefox
+              - webkit
+          default:
+            - chromium
+          ui:widget: checkboxes
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          baseUrl: ${{ parameters.baseUrl }}
+          browsers: ${{ parameters.browsers }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - playwright
+          - e2e-testing
+          - qa
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

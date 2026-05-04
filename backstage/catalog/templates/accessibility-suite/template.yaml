@@ -1,0 +1,125 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: accessibility-suite
+  title: Accessibility (a11y) Test Suite
+  description: Scaffold an axe-core + Playwright accessibility test suite enforcing WCAG compliance on every PR
+  tags:
+    - accessibility
+    - a11y
+    - axe-core
+    - playwright
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Configuration
+      properties:
+        baseUrl:
+          title: Base URL
+          type: string
+          default: 'http://localhost:3000'
+        wcagLevel:
+          title: WCAG Conformance Level
+          type: string
+          default: wcag2aa
+          enum:
+            - wcag2a
+            - wcag2aa
+            - wcag2aaa
+            - wcag21aa
+          enumNames:
+            - 'WCAG 2.0 Level A'
+            - 'WCAG 2.0 Level AA (recommended)'
+            - 'WCAG 2.0 Level AAA'
+            - 'WCAG 2.1 Level AA'
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          baseUrl: ${{ parameters.baseUrl }}
+          wcagLevel: ${{ parameters.wcagLevel }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - accessibility
+          - a11y
+          - qa
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

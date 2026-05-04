@@ -1,7 +1,7 @@
 site_name: QA Platform & Quality Enablement
 site_description: >
-  Platform capability that provides golden-path testing scaffolds, CI quality gates,
-  SAST via SonarCloud, cross-browser E2E, and QA KPI dashboards.
+  Platform capability that provides golden-path testing scaffolds, CI quality
+  gates, SAST via SonarCloud, cross-browser E2E, and QA KPI dashboards.
 docs_dir: docs
 nav:
   - Overview: index.md

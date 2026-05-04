@@ -74,6 +74,19 @@ helm lint helm/service-template --set image.repository=test --set image.tag=abc1
 ./scripts/setup-runner.sh --repo my-svc
 ```
 
+### Scaffold a QA test suite (CLI golden path)
+
+```bash
+./scripts/create-test-suite.sh --name my-e2e  --type playwright    --service my-svc
+./scripts/create-test-suite.sh --name my-perf --type k6            --service my-svc --vus 20 --duration 2m
+./scripts/create-test-suite.sh --name my-a11y --type accessibility --service my-svc --wcag wcag2aa
+./scripts/create-test-suite.sh --help   # all types and flags
+
+# types: playwright | k6 | pact | newman | zap | datadog | visual |
+#        accessibility | cucumber | appium | chaos | mutation | testcontainers
+# Output: test-suites/<name>/ with catalog-info.yaml, test files, CI workflow
+```
+
 ## Architecture Overview
 
 ### Deployment layers

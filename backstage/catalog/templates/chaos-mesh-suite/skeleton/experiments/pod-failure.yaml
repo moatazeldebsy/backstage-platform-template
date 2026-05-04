@@ -1,0 +1,14 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: ${{ values.name }}-pod-failure
+  namespace: ${{ values.namespace }}
+spec:
+  action: pod-failure
+  mode: one
+  duration: '${{ values.duration }}'
+  selector:
+    namespaces:
+      - ${{ values.namespace }}
+    labelSelectors:
+      app.kubernetes.io/name: ${{ values.name | replace('-chaos', '') | replace('-resilience', '') }}

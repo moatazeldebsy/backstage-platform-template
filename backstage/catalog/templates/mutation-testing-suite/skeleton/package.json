@@ -1,0 +1,13 @@
+{
+  "name": "${{ values.name }}",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "stryker run"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^8.2.0",
+    "@stryker-mutator/${{ values.testRunner }}-runner": "^8.2.0",
+    "typescript": "^5.4.0"
+  }
+}

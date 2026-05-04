@@ -1,0 +1,58 @@
+name: Playwright E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npx playwright test
+        env:
+          BASE_URL: '${{ values.baseUrl }}'
+          CI: 'true'
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  # Uncomment to run on LambdaTest cloud grid
+  # Set LT_USERNAME and LT_ACCESS_KEY as repository secrets first.
+  # e2e-lambdatest:
+  #   runs-on: ubuntu-latest
+  #   needs: e2e
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #     - run: npm ci
+  #     - name: Run on LambdaTest
+  #       run: npx playwright test
+  #       env:
+  #         LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+  #         LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}

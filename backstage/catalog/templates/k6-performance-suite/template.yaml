@@ -1,0 +1,132 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: k6-performance-suite
+  title: k6 Performance Test Suite
+  description: Scaffold a k6 JavaScript performance test suite with smoke, load, and stress scenarios
+  tags:
+    - k6
+    - performance
+    - load-testing
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          description: Unique name for this test suite (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this test suite
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          description: The service this performance suite targets
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Configuration
+      properties:
+        targetUrl:
+          title: Target URL
+          type: string
+          description: Base URL of the service under test
+          default: 'http://localhost:8080'
+        vus:
+          title: Virtual Users (load test)
+          type: integer
+          description: Number of concurrent virtual users for the load scenario
+          default: 10
+        duration:
+          title: Load Test Duration
+          type: string
+          description: Duration of the load test (e.g. 30s, 1m, 5m)
+          default: '30s'
+        p95Threshold:
+          title: p95 Latency Threshold (ms)
+          type: integer
+          description: Maximum acceptable p95 response time in milliseconds
+          default: 500
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          targetUrl: ${{ parameters.targetUrl }}
+          vus: ${{ parameters.vus }}
+          duration: ${{ parameters.duration }}
+          p95Threshold: ${{ parameters.p95Threshold }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - k6
+          - performance-testing
+          - qa
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

@@ -1,0 +1,115 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: visual-regression-suite
+  title: Visual Regression Test Suite
+  description: Scaffold a Playwright visual regression suite with pixel-diff screenshot comparison on every PR
+  tags:
+    - playwright
+    - visual-regression
+    - testing
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Configuration
+      properties:
+        baseUrl:
+          title: Base URL
+          type: string
+          default: 'http://localhost:3000'
+        diffThreshold:
+          title: Pixel Diff Threshold (%)
+          type: number
+          description: Maximum allowed pixel difference before a test fails
+          default: 0.2
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          baseUrl: ${{ parameters.baseUrl }}
+          diffThreshold: ${{ parameters.diffThreshold }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - visual-regression
+          - playwright
+          - qa
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

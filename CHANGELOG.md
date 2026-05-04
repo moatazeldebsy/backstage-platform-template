@@ -9,6 +9,31 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+
+#### QA Platform — 13 golden-path testing scaffold templates
+- `playwright-e2e-suite` — Playwright TypeScript E2E with LambdaTest cloud option and HTML report upload
+- `k6-performance-suite` — k6 smoke/load/stress scenarios with configurable VUs, duration, p95 threshold, and Prometheus Pushgateway push
+- `pact-contract-suite` — Pact consumer-driven contracts with PactFlow broker publishing and provider verification CI
+- `newman-api-suite` — Postman/Newman API test collections with JUnit + HTMLextra reporting
+- `zap-dast-suite` — OWASP ZAP dynamic security scanning (baseline / full / API modes) with weekly schedule and false-positive suppression
+- `datadog-synthetic-suite` — Datadog API and browser synthetics via `@datadog/datadog-ci`, multi-region, live and paused test definitions
+- `visual-regression-suite` — Playwright screenshot pixel-diff with configurable threshold; diff artifacts uploaded on failure
+- `accessibility-suite` — axe-core + Playwright enforcing WCAG 2.0/2.1 A / AA / AAA
+- `bdd-cucumber-suite` — Cucumber.js Gherkin feature files with TypeScript step definitions and JUnit reporting
+- `appium-mobile-suite` — Appium 2 + WebdriverIO for iOS and Android with configurable platform
+- `chaos-mesh-suite` — Chaos Mesh pod failure, network latency, CPU stress, and memory stress experiments; manual trigger + weekly schedule
+- `mutation-testing-suite` — Stryker mutation testing with configurable score threshold, per-test coverage analysis, HTML + JSON reports; weekly CI schedule
+- `testcontainers-suite` — Testcontainers integration tests spinning up real Postgres, Redis, Kafka, etc. in CI with no mocks
+
+#### CLI golden path for QA
+- `scripts/create-test-suite.sh` — Mirrors all 13 Backstage QA templates from the terminal; supports all type-specific flags (`--vus`, `--duration`, `--wcag`, `--scan-type`, `--score`, `--containers`, etc.); generates files in `test-suites/<name>/`, writes `catalog-info.yaml`, and commits to git
+
+#### Documentation
+- QA Platform TechDocs (`backstage/catalog/docs/index.md`) updated with full template table and CLI usage guide
+- `README.md` updated: template count, Scripts Reference, Golden Path section
+- `CLAUDE.md` updated: `create-test-suite.sh` added to day-2 commands
+
+### Planned
 - Phase 6: Multi-environment GitOps promotion (staging + prod ArgoCD app-of-apps)
 - Phase 7: AI/ML templates (ai-agent-service, model-serving-api, ml-training-job, mlflow-experiment)
 - Phase 8: DORA metrics Backstage homepage widget, platform CLI

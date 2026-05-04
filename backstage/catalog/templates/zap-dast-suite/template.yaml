@@ -1,0 +1,146 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: zap-dast-suite
+  title: OWASP ZAP DAST Security Scan
+  description: Scaffold an OWASP ZAP dynamic application security test suite with baseline and full-scan modes
+  tags:
+    - zap
+    - dast
+    - security
+    - owasp
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          description: Unique name for this scan suite (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this scan
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          description: The service to scan
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Scan Configuration
+      properties:
+        targetUrl:
+          title: Target URL
+          type: string
+          description: URL of the service to scan
+          default: 'http://localhost:8080'
+        scanType:
+          title: Default Scan Type
+          type: string
+          description: ZAP scan mode to run in CI
+          default: baseline
+          enum:
+            - baseline
+            - full
+            - api
+          enumNames:
+            - 'Baseline (fast, passive rules only)'
+            - 'Full (active attack simulation)'
+            - 'API (OpenAPI/Swagger spec scan)'
+        openApiUrl:
+          title: OpenAPI Spec URL
+          type: string
+          description: URL of the OpenAPI spec (required for api scan type)
+          default: 'http://localhost:8080/openapi.json'
+        failOnRiskLevel:
+          title: Fail on Risk Level
+          type: string
+          description: Minimum alert risk level that causes CI to fail
+          default: High
+          enum:
+            - Informational
+            - Low
+            - Medium
+            - High
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          targetUrl: ${{ parameters.targetUrl }}
+          scanType: ${{ parameters.scanType }}
+          openApiUrl: ${{ parameters.openApiUrl }}
+          failOnRiskLevel: ${{ parameters.failOnRiskLevel }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - owasp-zap
+          - dast
+          - security
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

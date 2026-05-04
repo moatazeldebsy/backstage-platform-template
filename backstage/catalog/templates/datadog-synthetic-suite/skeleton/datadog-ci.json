@@ -1,0 +1,8 @@
+{
+  "datadogSite": "${{ values.datadogSite }}",
+  "files": ["synthetics/**/*.json"],
+  "failOnCriticalErrors": true,
+  "failOnMissingTests": true,
+  "failOnTimeout": true,
+  "runName": "${{ values.name }} - CI run"
+}

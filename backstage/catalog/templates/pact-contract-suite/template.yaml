@@ -1,0 +1,133 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: pact-contract-suite
+  title: Pact Contract Test Suite
+  description: Scaffold a Pact consumer-driven contract test suite with PactFlow broker publishing
+  tags:
+    - pact
+    - contract-testing
+    - testing
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          description: Unique name for this test suite (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this test suite
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Provider Service
+          type: string
+          description: The provider service this consumer contract targets
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Pact Configuration
+      required:
+        - consumerName
+        - providerName
+      properties:
+        consumerName:
+          title: Consumer Name
+          type: string
+          description: Name of the consumer (the service that calls the provider API)
+        providerName:
+          title: Provider Name
+          type: string
+          description: Name of the provider service being contracted
+        pactBrokerUrl:
+          title: Pact Broker URL
+          type: string
+          description: URL of your PactFlow broker (leave blank to skip publishing)
+          default: 'https://YOUR_ORG.pactflow.io'
+        providerBaseUrl:
+          title: Provider Base URL
+          type: string
+          description: Base URL for provider verification runs
+          default: 'http://localhost:8080'
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          consumerName: ${{ parameters.consumerName }}
+          providerName: ${{ parameters.providerName }}
+          pactBrokerUrl: ${{ parameters.pactBrokerUrl }}
+          providerBaseUrl: ${{ parameters.providerBaseUrl }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - pact
+          - contract-testing
+          - qa
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

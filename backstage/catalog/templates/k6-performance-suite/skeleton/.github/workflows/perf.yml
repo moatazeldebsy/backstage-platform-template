@@ -1,0 +1,45 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  TARGET_URL: '${{ values.targetUrl }}'
+  SUITE_NAME: '${{ values.name }}'
+
+jobs:
+  smoke:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run k6 smoke test
+        uses: grafana/k6-action@v0.3.0
+        with:
+          filename: tests/smoke.js
+
+  load:
+    name: Load Test
+    runs-on: ubuntu-latest
+    needs: smoke
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.3.0
+        with:
+          filename: tests/load.js
+
+      - name: Push timestamp metric to Prometheus Pushgateway
+        if: always()
+        env:
+          PUSHGW: ${{ '${{ secrets.PUSHGATEWAY_URL }}' }}
+        run: |
+          ADDR="${PUSHGW:-http://localhost:9091}"
+          printf 'k6_suite_last_run_timestamp %s\n' "$(date +%s)" | \
+            curl -s --data-binary @- "${ADDR}/metrics/job/k6/suite/${SUITE_NAME}" || true

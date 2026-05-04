@@ -1,0 +1,139 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mutation-testing-suite
+  title: Mutation Testing Suite (Stryker)
+  description: Scaffold a Stryker mutation testing configuration to measure test suite quality beyond code coverage
+  tags:
+    - stryker
+    - mutation-testing
+    - testing
+    - qa
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+        - targetService
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          description: The service whose tests will be mutated
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+
+    - title: Configuration
+      properties:
+        mutationScore:
+          title: Minimum Mutation Score (%)
+          type: integer
+          description: CI fails if mutation score drops below this threshold
+          default: 70
+        testRunner:
+          title: Test Runner
+          type: string
+          default: jest
+          enum:
+            - jest
+            - mocha
+            - jasmine
+          enumNames:
+            - 'Jest'
+            - 'Mocha'
+            - 'Jasmine'
+        reporters:
+          title: Reporters
+          type: array
+          items:
+            type: string
+            enum:
+              - progress
+              - html
+              - json
+              - clear-text
+          default:
+            - progress
+            - html
+          ui:widget: checkboxes
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          mutationScore: ${{ parameters.mutationScore }}
+          testRunner: ${{ parameters.testRunner }}
+          reporters: ${{ parameters.reporters }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - stryker
+          - mutation-testing
+          - qa
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

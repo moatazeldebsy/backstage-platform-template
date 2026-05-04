@@ -1,0 +1,14 @@
+{
+  "name": "${{ values.name }}",
+  "version": "0.1.0",
+  "description": "${{ values.description }}",
+  "private": true,
+  "scripts": {
+    "test": "newman run collections/${{ values.name }}.postman_collection.json -e environments/dev.postman_environment.json --reporters cli,junit --reporter-junit-export reports/results.xml",
+    "report": "newman run collections/${{ values.name }}.postman_collection.json -e environments/dev.postman_environment.json --reporters htmlextra --reporter-htmlextra-export reports/report.html && open reports/report.html"
+  },
+  "devDependencies": {
+    "newman": "^6.1.0",
+    "newman-reporter-htmlextra": "^1.23.0"
+  }
+}

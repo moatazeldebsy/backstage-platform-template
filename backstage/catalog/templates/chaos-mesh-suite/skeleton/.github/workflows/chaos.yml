@@ -1,0 +1,46 @@
+name: Chaos Engineering Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: 'Experiment to run (pod-failure|network-latency|cpu-stress|memory-stress|all)'
+        required: true
+        default: pod-failure
+  schedule:
+    - cron: '0 3 * * 3'
+
+env:
+  TARGET_NAMESPACE: '${{ values.namespace }}'
+  TARGET_SERVICE: '${{ values.name }}'
+
+jobs:
+  chaos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ '${{ secrets.KUBECONFIG }}' }}
+        run: |
+          mkdir -p ~/.kube
+          echo "${KUBECONFIG_DATA}" | base64 -d > ~/.kube/config
+
+      - name: Apply chaos experiment
+        run: |
+          EXPERIMENT="${{ '${{ github.event.inputs.experiment || ' }}'pod-failure'${{ ' }}' }}"
+          case "${EXPERIMENT}" in
+            pod-failure)       kubectl apply -f experiments/pod-failure.yaml ;;
+            network-latency)   kubectl apply -f experiments/network-latency.yaml ;;
+            cpu-stress)        kubectl apply -f experiments/cpu-stress.yaml ;;
+            memory-stress)     kubectl apply -f experiments/memory-stress.yaml ;;
+            all)               kubectl apply -f experiments/ ;;
+          esac
+
+      - name: Wait for experiment duration
+        run: sleep 90
+
+      - name: Cleanup experiments
+        if: always()
+        run: kubectl delete -f experiments/ --ignore-not-found

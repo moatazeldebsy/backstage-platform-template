@@ -1,0 +1,17 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: ${{ values.name }}-cpu-stress
+  namespace: ${{ values.namespace }}
+spec:
+  mode: one
+  duration: '${{ values.duration }}'
+  selector:
+    namespaces:
+      - ${{ values.namespace }}
+    labelSelectors:
+      app.kubernetes.io/name: ${{ values.name | replace('-chaos', '') | replace('-resilience', '') }}
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
