@@ -318,6 +318,16 @@ if ! $SKIP_OBS; then
     --values "$(dirname "$0")/../local/observability/prometheus-stack-values.yaml" \
     --wait --timeout 10m
 
+  log "  Waiting for Grafana API to be ready..."
+  for _i in {1..24}; do
+    if kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
+        curl -sf http://localhost:3000/api/health &>/dev/null 2>&1; then
+      break
+    fi
+    log "  Grafana not ready yet (${_i}/24) — retrying in 5s..."
+    sleep 5
+  done
+
   log "  Provisioning Grafana Viewer token for Backstage proxy..."
   GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
     curl -sf -u admin:admin -X POST http://localhost:3000/api/serviceaccounts \
@@ -640,6 +650,10 @@ fi
 
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
 log "Step 12: Wiring AlertManager..."
+# Prefer shell-env SLACK_WEBHOOK_URL; fall back to local/.env
+if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
+  SLACK_WEBHOOK_URL=$(grep -E '^SLACK_WEBHOOK_URL=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+fi
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
   kubectl create secret generic alertmanager-slack-webhook \
     --from-literal=webhook-url="${SLACK_WEBHOOK_URL}" \

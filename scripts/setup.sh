@@ -154,6 +154,18 @@ Install them and re-run this script, or run manually:
       up -d
     log "Backstage is starting at http://localhost:3000 (allow ~30s)"
 
+    log "Waiting for Backstage container to join the kind network..."
+    for _i in {1..24}; do
+      _bs_ip=$(docker inspect backstage-backstage-1 \
+        --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
+      if [[ -n "$_bs_ip" && "$_bs_ip" != "<no value>" ]]; then
+        log "  Container IP on kind network: ${_bs_ip}"
+        break
+      fi
+      log "  Not on kind network yet (${_i}/24) — retrying in 5s..."
+      sleep 5
+    done
+
     log "Refreshing nginx → Backstage endpoint IP..."
     "${ROOT_DIR}/scripts/bootstrap-local.sh" --update-backstage-ip \
       || warn "Could not update Backstage IP — run manually: ./scripts/bootstrap-local.sh --update-backstage-ip"
@@ -161,7 +173,12 @@ Install them and re-run this script, or run manually:
     log "Seeding sample QA metrics into Pushgateway..."
     kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &>/dev/null &
     PFORWARD_PID=$!
-    sleep 3
+    for _i in {1..10}; do
+      if curl -sf http://localhost:9091/-/healthy &>/dev/null; then
+        break
+      fi
+      sleep 2
+    done
     PUSHGATEWAY_URL=http://localhost:9091 "${ROOT_DIR}/scripts/seed-qa-metrics.sh" \
       || warn "Could not seed QA metrics — run manually: kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring & PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
     kill "${PFORWARD_PID}" 2>/dev/null || true
