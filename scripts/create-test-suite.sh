@@ -16,6 +16,10 @@
 #   ./scripts/create-test-suite.sh --name mut-tests    --type mutation      --service hello-service --score 70
 #   ./scripts/create-test-suite.sh --name int-tests    --type testcontainers --service hello-service --containers postgres,redis
 #
+# Environment flag (sets sensible URL defaults for the target cluster):
+#   --env local   Base URL → http://localhost:3000, Target URL → http://localhost:8080 (default)
+#   --env aws     Base URL → https://<service>.example.com (placeholder), prompts to override with --base-url / --target-url
+#
 # Supported types:
 #   playwright | k6 | pact | newman | zap | datadog | visual | accessibility | cucumber | appium | chaos | mutation | testcontainers
 
@@ -25,10 +29,13 @@ set -euo pipefail
 SUITE_NAME=""
 SUITE_TYPE=""
 TARGET_SERVICE=""
+DEPLOY_ENV="local"
 
-# Shared
+# Shared (overridden by --env or explicit --base-url / --target-url)
 BASE_URL="http://localhost:3000"
 TARGET_URL="http://localhost:8080"
+_EXPLICIT_BASE_URL=false
+_EXPLICIT_TARGET_URL=false
 
 # k6
 VUS=10
@@ -85,8 +92,9 @@ while [[ $# -gt 0 ]]; do
     --name)         SUITE_NAME="$2";         shift 2 ;;
     --type)         SUITE_TYPE="$2";         shift 2 ;;
     --service)      TARGET_SERVICE="$2";     shift 2 ;;
-    --base-url)     BASE_URL="$2";           shift 2 ;;
-    --target-url)   TARGET_URL="$2";         shift 2 ;;
+    --env)          DEPLOY_ENV="$2";         shift 2 ;;
+    --base-url)     BASE_URL="$2"; _EXPLICIT_BASE_URL=true;     shift 2 ;;
+    --target-url)   TARGET_URL="$2"; _EXPLICIT_TARGET_URL=true; shift 2 ;;
     --vus)          VUS="$2";                shift 2 ;;
     --duration)     DURATION="$2";           shift 2 ;;
     --p95)          P95_THRESHOLD="$2";      shift 2 ;;
@@ -113,6 +121,16 @@ while [[ $# -gt 0 ]]; do
     *) err "Unknown flag: $1. Run with --help for usage." ;;
   esac
 done
+
+# ── Environment URL defaults ──────────────────────────────────────────────────
+if [[ "$DEPLOY_ENV" == "aws" ]]; then
+  [[ "$_EXPLICIT_BASE_URL" == false ]]   && BASE_URL="https://<alb-dns>.amazonaws.com"
+  [[ "$_EXPLICIT_TARGET_URL" == false ]] && TARGET_URL="https://<alb-dns>.amazonaws.com"
+  [[ "$_EXPLICIT_TARGET_URL" == false ]] && OPENAPI_URL="${TARGET_URL}/openapi.json"
+  [[ "$_EXPLICIT_TARGET_URL" == false ]] && PROVIDER_BASE_URL="${TARGET_URL}"
+  APPIUM_SERVER="http://<appium-grid-host>:4723"
+  log "env=aws — BASE_URL=${BASE_URL}  (override with --base-url / --target-url)"
+fi
 
 # ── Validation ────────────────────────────────────────────────────────────────
 [[ -z "$SUITE_NAME" ]]    && err "--name is required"

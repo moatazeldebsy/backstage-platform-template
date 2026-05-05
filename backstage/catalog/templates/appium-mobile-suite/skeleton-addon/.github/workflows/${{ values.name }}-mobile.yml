@@ -1,0 +1,51 @@
+name: ${{ values.name }} Appium Mobile Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+
+env:
+  APPIUM_SERVER: '${{ values.appiumServer }}'
+  PLATFORM: '${{ values.platform }}'
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start Appium server
+        run: npx appium &
+        env:
+          APPIUM_LOG_LEVEL: error
+
+      - name: Wait for Appium
+        run: npx wait-on http://localhost:4723/status --timeout 30000
+
+      - name: Run mobile tests
+        run: npm test
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-results-${{ values.name }}
+          path: test-suites/${{ values.name }}/reports/
+          retention-days: 30

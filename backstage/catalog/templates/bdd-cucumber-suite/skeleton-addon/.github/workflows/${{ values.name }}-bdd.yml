@@ -1,0 +1,48 @@
+name: ${{ values.name }} BDD Cucumber Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+
+env:
+  BASE_URL: '${{ values.baseUrl }}'
+
+jobs:
+  bdd:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run Cucumber tests
+        run: npm test
+
+      - name: Upload JUnit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cucumber-results-${{ values.name }}
+          path: test-suites/${{ values.name }}/reports/
+          retention-days: 30
+
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: test-suites/${{ values.name }}/reports/junit.xml
+          check_name: Cucumber BDD Tests

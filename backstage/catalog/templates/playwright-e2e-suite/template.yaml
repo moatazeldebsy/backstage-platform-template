@@ -20,6 +20,7 @@ spec:
         - description
         - owner
         - targetService
+        - deploymentMode
       properties:
         name:
           title: Suite Name
@@ -45,15 +46,57 @@ spec:
           ui:field: EntityPicker
           ui:options:
             catalogFilter:
-              kind: Component
+              - kind: Component
+                spec.type: service
+        deploymentMode:
+          title: Deployment Mode
+          type: string
+          enum: [new-repository, add-to-existing]
+          enumNames:
+            - 'Create a new repository'
+            - 'Add tests to an existing service repo (opens PR)'
+          default: new-repository
+      dependencies:
+        deploymentMode:
+          oneOf:
+            - properties:
+                deploymentMode:
+                  enum: [new-repository]
+                repoUrl:
+                  title: GitHub Repository
+                  type: string
+                  ui:field: RepoUrlPicker
+                  ui:help: 'Repository name must not already exist on GitHub.'
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - moatazeldebsy
+              required:
+                - repoUrl
+            - properties:
+                deploymentMode:
+                  enum: [add-to-existing]
+                targetRepoUrl:
+                  title: Target Service Repository
+                  type: string
+                  description: 'Pick the existing GitHub repo to open the PR against (must match the selected target service)'
+                  ui:field: RepoUrlPicker
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - moatazeldebsy
+              required:
+                - targetRepoUrl
 
     - title: Configuration
       properties:
         baseUrl:
           title: Base URL
           type: string
-          description: Base URL of the service under test
-          default: 'http://localhost:3000'
+          description: 'Service URL to test against (e.g. http://localhost:3000 for Kind, or https://<alb-dns>.amazonaws.com for AWS)'
+          default: ''
         browsers:
           title: Browsers
           type: array
@@ -68,25 +111,11 @@ spec:
             - chromium
           ui:widget: checkboxes
 
-    - title: Repository
-      required:
-        - repoUrl
-      properties:
-        repoUrl:
-          title: GitHub Repository
-          type: string
-          ui:field: RepoUrlPicker
-          ui:help: "Repository name must not already exist on GitHub."
-          ui:options:
-            allowedHosts:
-              - github.com
-            allowedOwners:
-              - moatazeldebsy
-
   steps:
-    - id: fetch-template
-      name: Fetch Template
+    - id: fetch-template-new-repo
+      name: Fetch Template (New Repo)
       action: fetch:template
+      if: ${{ parameters.deploymentMode === 'new-repository' }}
       input:
         url: ./skeleton
         values:
@@ -99,9 +128,26 @@ spec:
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
+    - id: fetch-template-addon
+      name: Fetch Template (Add to Existing)
+      action: fetch:template
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        url: ./skeleton-addon
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          baseUrl: ${{ parameters.baseUrl }}
+          browsers: ${{ parameters.browsers }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
     - id: publish
       name: Publish to GitHub
       action: publish:github
+      if: ${{ parameters.deploymentMode === 'new-repository' }}
       input:
         description: ${{ parameters.description }}
         repoUrl: ${{ parameters.repoUrl }}
@@ -112,17 +158,43 @@ spec:
           - e2e-testing
           - qa
 
+    - id: publish-pr
+      name: Open Pull Request on Service Repo
+      action: publish:github:pull-request
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'test: add ${{ parameters.name }} Playwright E2E test suite'
+        branchName: feat/add-${{ parameters.name }}-e2e-suite
+        description: |
+          ## Add ${{ parameters.name }} Playwright E2E Test Suite
+
+          Adds a Playwright E2E test suite targeting `${{ parameters.targetService }}`.
+
+          **What's included:**
+          - Test files under `test-suites/${{ parameters.name }}/`
+          - GitHub Actions CI workflow at `.github/workflows/${{ parameters.name }}-e2e.yml`
+          - Backstage catalog entry at `test-suites/${{ parameters.name }}/catalog-info.yaml`
+
+          After merging, register the catalog entry via **Backstage → Catalog → Register existing component**.
+
+          > Scaffolded via the IDP QA Platform
+        sourcePath: .
+
     - id: register
       name: Register in Catalog
       action: catalog:register
+      if: ${{ parameters.deploymentMode === 'new-repository' }}
       input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
 
   output:
     links:
       - title: Repository
-        url: ${{ steps.publish.output.remoteUrl }}
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
       - title: Open in Catalog
         icon: catalog
-        entityRef: ${{ steps.register.output.entityRef }}
+        entityRef: ${{ steps['register'].output.entityRef }}

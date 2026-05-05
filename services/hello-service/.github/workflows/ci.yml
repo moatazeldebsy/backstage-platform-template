@@ -65,7 +65,7 @@ jobs:
         id: build
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
-          IMAGE=ghcr.io/YOUR_GITHUB_ORG/hello-service
+          IMAGE=ghcr.io/${{ github.repository_owner }}/hello-service
           docker build -t ${IMAGE}:${SHORT_SHA} -t ${IMAGE}:latest .
           docker push ${IMAGE}:${SHORT_SHA}
           docker push ${IMAGE}:latest
@@ -77,11 +77,11 @@ jobs:
         run: |
           if [ -z "$GH_TOKEN" ]; then
             echo "GH_PAT not set — platform repo image tag update skipped"
-            exit 1
+            exit 0
           fi
           git config --global user.email "ci@idp.platform"
           git config --global user.name "IDP CI Bot"
-          git clone https://x-access-token:${GH_TOKEN}@github.com/YOUR_GITHUB_ORG/backstage-idp-starter.git /tmp/platform
+          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository_owner }}/backstage-idp-starter.git /tmp/platform
           cd /tmp/platform
           VALUES_FILE="services/hello-service/helm-values-dev.yaml"
           if [ -f "${VALUES_FILE}" ]; then

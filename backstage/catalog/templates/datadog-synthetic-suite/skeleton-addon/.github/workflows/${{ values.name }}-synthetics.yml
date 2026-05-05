@@ -1,0 +1,38 @@
+name: ${{ values.name }} Datadog Synthetic Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+
+env:
+  DATADOG_SITE: '${{ values.datadogSite }}'
+  # Set DD_API_KEY and DD_APP_KEY as repository secrets in GitHub settings
+  DD_API_KEY: ${{ '${{ secrets.DD_API_KEY }}' }}
+  DD_APP_KEY: ${{ '${{ secrets.DD_APP_KEY }}' }}
+
+jobs:
+  synthetics:
+    name: Run Synthetic Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Datadog Synthetic Tests
+        run: npm test

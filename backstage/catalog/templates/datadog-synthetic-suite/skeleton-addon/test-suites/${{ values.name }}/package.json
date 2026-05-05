@@ -1,0 +1,14 @@
+{
+  "name": "${{ values.name }}",
+  "version": "0.1.0",
+  "description": "${{ values.description }}",
+  "private": true,
+  "scripts": {
+    "test": "datadog-ci synthetics run-tests --config datadog-ci.json",
+    "test:api": "datadog-ci synthetics run-tests --config datadog-ci.json --files 'synthetics/api-*.json'",
+    "test:browser": "datadog-ci synthetics run-tests --config datadog-ci.json --files 'synthetics/browser-*.json'"
+  },
+  "devDependencies": {
+    "@datadog/datadog-ci": "^2.18.0"
+  }
+}

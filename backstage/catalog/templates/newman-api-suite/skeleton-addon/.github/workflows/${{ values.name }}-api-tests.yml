@@ -1,0 +1,51 @@
+name: ${{ values.name }} Newman API Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+
+env:
+  BASE_URL: '${{ values.baseUrl }}'
+
+jobs:
+  api-tests:
+    name: API Test Suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Newman collection
+        run: npm test
+
+      - name: Upload JUnit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: newman-results-${{ values.name }}
+          path: test-suites/${{ values.name }}/reports/results.xml
+          retention-days: 30
+
+      - name: Publish Test Results
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: test-suites/${{ values.name }}/reports/results.xml
+          check_name: Newman API Tests (${{ values.name }})

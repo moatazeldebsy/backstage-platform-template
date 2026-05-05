@@ -1,0 +1,47 @@
+name: ${{ values.name }} Playwright E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npx playwright test
+        env:
+          BASE_URL: '${{ values.baseUrl }}'
+          CI: 'true'
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ values.name }}
+          path: test-suites/${{ values.name }}/playwright-report/
+          retention-days: 30

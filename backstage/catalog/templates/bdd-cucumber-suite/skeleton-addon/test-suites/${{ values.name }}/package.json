@@ -1,0 +1,15 @@
+{
+  "name": "${{ values.name }}",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "cucumber-js --config cucumber.js"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^10.8.0",
+    "@types/node": "^20.0.0",
+    "axios": "^1.7.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.4.0"
+  }
+}

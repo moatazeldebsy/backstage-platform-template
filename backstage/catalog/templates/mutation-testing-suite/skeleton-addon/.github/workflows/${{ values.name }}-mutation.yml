@@ -1,0 +1,37 @@
+name: ${{ values.name }} Mutation Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  schedule:
+    - cron: '0 4 * * 0'
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Stryker mutation tests
+        run: npm test
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stryker-report-${{ values.name }}
+          path: test-suites/${{ values.name }}/reports/mutation/
+          retention-days: 30

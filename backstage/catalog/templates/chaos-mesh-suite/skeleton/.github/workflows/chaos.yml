@@ -23,13 +23,19 @@ jobs:
       - name: Configure kubectl
         env:
           KUBECONFIG_DATA: ${{ '${{ secrets.KUBECONFIG }}' }}
+          EKS_CLUSTER: ${{ '${{ secrets.EKS_CLUSTER_NAME }}' }}
+          EKS_REGION: ${{ '${{ secrets.AWS_REGION }}' }}
         run: |
           mkdir -p ~/.kube
-          echo "${KUBECONFIG_DATA}" | base64 -d > ~/.kube/config
+          if [ -n "${EKS_CLUSTER}" ]; then
+            aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${EKS_REGION:-us-east-1}"
+          else
+            echo "${KUBECONFIG_DATA}" | base64 -d > ~/.kube/config
+          fi
 
       - name: Apply chaos experiment
         run: |
-          EXPERIMENT="${{ '${{ github.event.inputs.experiment || ' }}'pod-failure'${{ ' }}' }}"
+          EXPERIMENT="${{ '${{ github.event.inputs.experiment }}' }}"
           case "${EXPERIMENT}" in
             pod-failure)       kubectl apply -f experiments/pod-failure.yaml ;;
             network-latency)   kubectl apply -f experiments/network-latency.yaml ;;

@@ -1,0 +1,53 @@
+name: ${{ values.name }} Chaos Engineering Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: 'Experiment to run (pod-failure|network-latency|cpu-stress|memory-stress|all)'
+        required: true
+        default: pod-failure
+  schedule:
+    - cron: '0 3 * * 3'
+
+env:
+  TARGET_NAMESPACE: '${{ values.namespace }}'
+  TARGET_SERVICE: '${{ values.name }}'
+  EXPERIMENTS_DIR: 'test-suites/${{ values.name }}/experiments'
+
+jobs:
+  chaos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ '${{ secrets.KUBECONFIG }}' }}
+          EKS_CLUSTER: ${{ '${{ secrets.EKS_CLUSTER_NAME }}' }}
+          EKS_REGION: ${{ '${{ secrets.AWS_REGION }}' }}
+        run: |
+          mkdir -p ~/.kube
+          if [ -n "${EKS_CLUSTER}" ]; then
+            aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${EKS_REGION:-us-east-1}"
+          else
+            echo "${KUBECONFIG_DATA}" | base64 -d > ~/.kube/config
+          fi
+
+      - name: Apply chaos experiment
+        run: |
+          EXPERIMENT="${{ '${{ github.event.inputs.experiment }}' }}"
+          case "${EXPERIMENT}" in
+            pod-failure)       kubectl apply -f ${EXPERIMENTS_DIR}/pod-failure.yaml ;;
+            network-latency)   kubectl apply -f ${EXPERIMENTS_DIR}/network-latency.yaml ;;
+            cpu-stress)        kubectl apply -f ${EXPERIMENTS_DIR}/cpu-stress.yaml ;;
+            memory-stress)     kubectl apply -f ${EXPERIMENTS_DIR}/memory-stress.yaml ;;
+            all)               kubectl apply -f ${EXPERIMENTS_DIR}/ ;;
+          esac
+
+      - name: Wait for experiment duration
+        run: sleep 90
+
+      - name: Cleanup experiments
+        if: always()
+        run: kubectl delete -f ${EXPERIMENTS_DIR}/ --ignore-not-found
