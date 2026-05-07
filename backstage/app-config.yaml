@@ -40,6 +40,12 @@ backend:
       password: ${POSTGRES_PASSWORD}
       ssl:
         rejectUnauthorized: false
+    knexConfig:
+      pool:
+        min: 3
+        max: 20
+        acquireTimeoutMillis: 60000
+        idleTimeoutMillis: 30000
 
 integrations:
   github:
@@ -207,6 +213,27 @@ catalog:
     # Registered services (co-located catalog-info uses dir:. for techdocs)
     - type: file
       target: /services/hello-service/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── AI / ML / MCP Platform ───────────────────────────────────────────────
+    - type: file
+      target: /catalog/templates/ai-agent-kagent/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mlflow-experiment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mcp-server/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/resources/ai-platform.yaml
+      rules:
+        - allow: [Resource, Component]
+    - type: file
+      target: /services/idp-mcp-server/catalog-info.yaml
       rules:
         - allow: [Component]
 

@@ -1,0 +1,6 @@
+site_name: ${{ values.name }}
+site_description: MLflow experiment — ${{ values.experimentName }}
+docs_dir: docs
+nav:
+  - Overview: index.md
+  - Runbook: runbooks/experiment.md

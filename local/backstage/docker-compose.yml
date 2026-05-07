@@ -56,9 +56,13 @@ services:
     extra_hosts:
       - "backstage.idp.local:host-gateway"
       - "hello-service.idp.local:host-gateway"
+      - "argocd.idp.local:host-gateway"
       - "grafana.idp.local:host-gateway"
       - "prometheus.idp.local:host-gateway"
       - "opencost.idp.local:host-gateway"
+      - "mlflow.idp.local:host-gateway"
+      - "kagent.idp.local:host-gateway"
+      - "idp-mcp-server.idp.local:host-gateway"
     volumes:
       - ../../backstage/app-config.yaml:/app/app-config.yaml:ro
       - ../../backstage/app-config.local.yaml:/app/app-config.local.yaml:ro

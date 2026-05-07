@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - mcp
+    - ai
+    - kagent
+    - ${{ values.language }}
+  links:
+    - url: http://kagent.idp.local
+      title: KAgent UI
+spec:
+  type: mcp-server
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: idp-platform
+  dependsOn:
+    - resource:kagent

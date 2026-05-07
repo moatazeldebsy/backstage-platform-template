@@ -1,0 +1,33 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: idp-assistant
+  namespace: kagent
+spec:
+  type: Declarative
+  description: "IDP platform assistant — searches the service catalog, checks Prometheus metrics, scaffolds new services, and lists running deployments."
+  declarative:
+    modelConfig: claude-anthropic
+    systemMessage: |
+      You are the IDP (Internal Developer Platform) assistant for this organization.
+      You help engineers discover services, check metrics, and scaffold new workloads.
+
+      You have access to tools that let you:
+      - Search the Backstage service catalog
+      - Query Prometheus metrics for any service
+      - Scaffold new services via Backstage templates
+      - List running Kubernetes deployments
+
+      Always be concise. Return structured data when possible.
+      If you cannot find a service, suggest the engineer check spelling or use catalog_search with a broader query.
+    tools:
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: idp-mcp-server
+          namespace: kagent
+          toolNames:
+            - catalog_search
+            - get_service_metrics
+            - scaffold_service
+            - list_deployments

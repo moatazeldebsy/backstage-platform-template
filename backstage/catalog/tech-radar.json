@@ -452,18 +452,18 @@
       "id": "langgraph"
     },
     {
-      "key": "ollama",
-      "title": "Ollama",
+      "key": "anthropic-claude",
+      "title": "Anthropic Claude API",
       "quadrant": "tools",
-      "description": "Local LLM inference server \u2014 default LLM_PROVIDER for dev/local environments.",
+      "description": "Managed LLM provider for AI agents \u2014 Claude Haiku for fast platform assistant tasks. Replaces local Ollama to avoid cluster memory constraints.",
       "timeline": [
         {
           "moved": 1,
-          "ringId": "assess",
-          "date": "2025-01-01"
+          "ringId": "adopt",
+          "date": "2026-01-01"
         }
       ],
-      "id": "ollama"
+      "id": "anthropic-claude"
     },
     {
       "key": "openai",

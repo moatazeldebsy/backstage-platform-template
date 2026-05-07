@@ -150,7 +150,7 @@ one-click PR. This is the most-requested feature after first scaffold.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| `ai-agent-service` template | 🔴 High | `LLM_API_KEY` wiring; Ollama local / OpenAI prod; `agent_invocations_total` metric |
+| `ai-agent-service` template | 🔴 High | Anthropic Claude API via KAgent; `agent_invocations_total` metric |
 | `model-serving-api` template | 🔴 High | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var |
 | `ml-training-job` template | 🟡 Medium | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
 | `mlflow-experiment` template | 🟡 Medium | MLflow tracking server; registers as `Resource` kind in catalog |
@@ -186,7 +186,7 @@ to under 10 minutes.
 | Ephemeral PR environments | PR label `env: preview` → Helm install into `services-preview-<pr#>`; torn down on close |
 | Multi-region / HA | Second AWS region; Route53 weighted failover; cross-region ECR replication |
 | AI/ML platform namespace | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
-| LLM gateway resource | Shared Ollama (local) / OpenAI proxy (AWS); AI agent templates `dependsOn` it |
+| LLM gateway resource | Anthropic Claude API (all envs); AI agent templates `dependsOn: resource:claude-api` |
 | Chaos engineering integration | Chaos Mesh; `chaos-experiment` Backstage template |
 | Platform API (FastAPI) | REST API for programmatic service creation |
 | Backstage plugin: security posture | Aggregate Trivy + OPA pass/fail per service into a single security score |

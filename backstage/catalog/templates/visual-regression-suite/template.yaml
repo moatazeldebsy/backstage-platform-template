@@ -47,6 +47,8 @@ spec:
             catalogFilter:
               - kind: Component
                 spec.type: service
+              - kind: Component
+                spec.type: website
         deploymentMode:
           title: Deployment Mode
           type: string

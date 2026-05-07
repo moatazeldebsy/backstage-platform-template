@@ -1,0 +1,72 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: idp-platform
+  description: Internal Developer Platform — AI/ML components including Claude API (KAgent), MLflow, and MCP Server
+  tags:
+    - ai
+    - ml
+    - platform
+spec:
+  owner: platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: claude-api
+  description: Anthropic Claude API — LLM backend for KAgent AI agents (claude-haiku-4-5-20251001)
+  tags:
+    - llm
+    - ai
+    - anthropic
+    - claude
+  links:
+    - url: https://console.anthropic.com
+      title: Anthropic Console
+spec:
+  type: ai-model
+  lifecycle: experimental
+  owner: platform-team
+  system: idp-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: mlflow
+  description: MLflow experiment tracking and model registry
+  annotations:
+    backstage.io/kubernetes-id: mlflow
+  tags:
+    - ml
+    - model-registry
+    - experiment-tracking
+  links:
+    - url: http://mlflow.idp.local
+      title: MLflow UI
+spec:
+  type: ml-platform
+  lifecycle: experimental
+  owner: platform-team
+  system: idp-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: kagent
+  description: Kubernetes-native AI agent framework — runs AI agents as K8s CRDs
+  annotations:
+    backstage.io/kubernetes-id: kagent
+  tags:
+    - ai
+    - agents
+    - kubernetes
+    - mcp
+  links:
+    - url: http://kagent.idp.local
+      title: KAgent UI
+spec:
+  type: ai-platform
+  lifecycle: experimental
+  owner: platform-team
+  system: idp-platform

@@ -1,0 +1,19 @@
+# KAgent Helm values for local Kind cluster — uses Anthropic Claude API.
+# Requires a Kubernetes Secret: kagent-anthropic (key: ANTHROPIC_API_KEY)
+# Create it with: scripts/bootstrap-ai.sh  (reads from local/.env)
+
+providers:
+  default: anthropic
+  anthropic:
+    provider: Anthropic
+    model: claude-haiku-4-5-20251001
+    apiKeySecretRef: kagent-anthropic
+    apiKeySecretKey: ANTHROPIC_API_KEY
+
+ui:
+  enabled: true
+  service:
+    type: ClusterIP
+  # NOTE: hostAliases are applied via kubectl patch in bootstrap-ai.sh after
+  # helm install (the chart does not expose this in values). This lets the
+  # Next.js SSR resolve kagent.idp.local (only in Mac /etc/hosts, not cluster DNS).

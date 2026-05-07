@@ -27,10 +27,7 @@ async function encryptSecret(repoPublicKey: string, secretValue: string): Promis
 }
 
 function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) {
-  return createTemplateAction<{
-    repoUrl: string;
-    secrets: Record<string, string>;
-  }>({
+  return createTemplateAction({
     id: 'idp:repo:set-secrets',
     description:
       'Set GitHub Actions secrets on a newly scaffolded repository using the platform GitHub integration token.',
@@ -55,26 +52,40 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
     },
 
     async handler(ctx) {
-      const { repoUrl } = ctx.input;
+      const repoUrl = ctx.input['repoUrl'] as string;
 
       // Auto-inject IDP_PLATFORM_TOKEN from the pod's GITHUB_TOKEN env var
       // (set via K8s secret backstage-secrets → idp-mvp/backstage in Secrets Manager)
       const platformToken = process.env.GITHUB_TOKEN;
-      const secrets: Record<string, string> = { ...ctx.input.secrets };
+      const secrets: Record<string, string> = { ...(ctx.input['secrets'] as Record<string, string>) };
       if (platformToken && !secrets['IDP_PLATFORM_TOKEN']) {
         secrets['IDP_PLATFORM_TOKEN'] = platformToken;
       }
 
-      // Parse owner/repo from https://github.com/owner/repo or git URL
-      const match = repoUrl.match(/github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/);
-      if (!match) {
-        throw new Error(`Cannot parse GitHub owner/repo from URL: ${repoUrl}`);
+      // Parse owner/repo from either:
+      //   - Backstage RepoUrlPicker format: github.com?owner=X&repo=Y
+      //   - Standard HTTPS/git URL:         https://github.com/owner/repo
+      let owner: string;
+      let repo: string;
+      const pathMatch = repoUrl.match(/github\.com[/:]([^/?]+)\/([^/?]+?)(?:\.git)?(?:[/?].*)?$/);
+      if (pathMatch) {
+        [, owner, repo] = pathMatch;
+      } else {
+        const urlStr = repoUrl.startsWith('http') ? repoUrl : `https://${repoUrl}`;
+        const parsed = new URL(urlStr);
+        owner = parsed.searchParams.get('owner') ?? '';
+        repo = parsed.searchParams.get('repo') ?? '';
+        if (!owner || !repo) {
+          throw new Error(`Cannot parse GitHub owner/repo from URL: ${repoUrl}`);
+        }
       }
-      const [, owner, repo] = match;
+
+      // Normalise to HTTPS URL for credential lookup
+      const httpsUrl = `https://github.com/${owner}/${repo}`;
 
       // Get GitHub token from Backstage SCM integration config
       const credProvider = DefaultGithubCredentialsProvider.fromIntegrations(options.integrations);
-      const { token } = await credProvider.getCredentials({ url: repoUrl });
+      const { token } = await credProvider.getCredentials({ url: httpsUrl });
 
       const ghHeaders = {
         Authorization: `token ${token}`,

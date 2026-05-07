@@ -13,7 +13,7 @@ metadata:
     cost-center: ${{ values.costCenter }}
   links:
     - title: Grafana Dashboard
-      url: http://grafana.idp.local/d/idp-services
+      url: http://grafana.idp.local/d/idp-services/idp-services-overview
       icon: dashboard
     - title: ArgoCD App
       url: http://argocd.idp.local/applications/${{ values.name }}-dev

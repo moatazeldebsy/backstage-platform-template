@@ -1,0 +1,4 @@
+site_name: AI Agent (KAgent)
+docs_dir: docs
+plugins:
+  - techdocs-core

@@ -1,0 +1,28 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: ${{ values.name }}
+  namespace: kagent
+  labels:
+    backstage.io/kubernetes-id: ${{ values.name }}
+spec:
+  type: Declarative
+  description: "${{ values.description }}"
+  declarative:
+    modelConfig: ${{ values.modelProvider }}-local
+    systemMessage: |
+      You are ${{ values.name }}, an AI agent running on the Internal Developer Platform.
+      ${{ values.description }}
+
+      You help engineers by providing accurate, concise answers.
+      Always cite which tool you used to retrieve information.
+    tools:
+{%- if values.enableCatalogSearch or values.enableMetrics or values.enableScaffolding %}
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: idp-mcp-server
+          namespace: kagent
+{%- else %}
+      []
+{%- endif %}

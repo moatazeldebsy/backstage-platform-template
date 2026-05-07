@@ -74,6 +74,25 @@ helm lint helm/service-template --set image.repository=test --set image.tag=abc1
 ./scripts/setup-runner.sh --repo my-svc
 ```
 
+### AI/ML platform (KAgent + MLflow)
+
+```bash
+# Prerequisites: ANTHROPIC_API_KEY must be set in local/.env
+# Boot the AI/ML stack after bootstrap-local.sh
+./scripts/bootstrap-ai.sh
+
+# Options
+./scripts/bootstrap-ai.sh --skip-mlflow   # skip MLflow
+./scripts/bootstrap-ai.sh --skip-mcp      # skip IDP MCP Server build
+./scripts/bootstrap-ai.sh --skip-kagent   # skip KAgent install
+```
+
+| Service | URL |
+|---------|-----|
+| KAgent UI | http://kagent.idp.local |
+| MLflow UI | http://mlflow.idp.local |
+| IDP MCP Server | http://idp-mcp-server.idp.local/healthz |
+
 ### Scaffold a QA test suite (CLI golden path)
 
 ```bash
