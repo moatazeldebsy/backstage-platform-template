@@ -16,5 +16,7 @@ spec:
   lifecycle: production
   owner: ${{ values.owner }}
   system: internal-developer-platform
+{%- if values.targetService %}
   dependsOn:
     - ${{ values.targetService }}
+{%- endif %}
