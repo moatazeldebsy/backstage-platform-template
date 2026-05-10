@@ -11,6 +11,7 @@
 #   --skip-mlflow      Skip MLflow tracking server
 #   --skip-kagent      Skip KAgent CRDs and Helm install
 #   --skip-mcp         Skip IDP/QA MCP Server build and deploy
+#   --destroy          Remove AI/ML components only (keeps core platform running)
 
 set -euo pipefail
 
@@ -20,6 +21,7 @@ CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 SKIP_MLFLOW=false
 SKIP_KAGENT=false
 SKIP_MCP=false
+DESTROY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,6 +31,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mlflow)  SKIP_MLFLOW=true; shift ;;
     --skip-kagent)  SKIP_KAGENT=true; shift ;;
     --skip-mcp)     SKIP_MCP=true; shift ;;
+    --destroy)      DESTROY=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
@@ -45,6 +48,27 @@ die()   { echo "✗ ERROR: $*" >&2; exit 1; }
 command -v kubectl >/dev/null || die "kubectl not found"
 command -v helm    >/dev/null || die "helm not found"
 command -v docker  >/dev/null || die "docker not found"
+
+# ── Destroy mode ──────────────────────────────────────────────────────────────
+
+if $DESTROY; then
+  info "Tearing down AI/ML platform components (core platform untouched)..."
+  helm uninstall kagent      --namespace kagent   2>/dev/null || true
+  helm uninstall kagent-crds --namespace kagent   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"    2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"  2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml" 2>/dev/null || true
+  kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow-aws.yaml" 2>/dev/null || true
+  helm uninstall idp-mcp-server --namespace services 2>/dev/null || true
+  helm uninstall qa-mcp-server  --namespace services 2>/dev/null || true
+  kubectl delete namespace kagent ml-platform 2>/dev/null || true
+  info "Done. Re-run ./scripts/bootstrap-ai.sh to reinstall."
+  exit 0
+fi
 
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
   command -v aws >/dev/null || die "aws CLI not found"
@@ -303,6 +327,7 @@ else
   kubectl rollout restart deployment/qa-mcp-server -n services
   kubectl rollout status  deployment/qa-mcp-server -n services --timeout 90s
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     check "QA MCP Server deployed → ALB (AWS Load Balancer Controller)"

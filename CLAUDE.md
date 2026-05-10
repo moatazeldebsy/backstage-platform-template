@@ -85,6 +85,7 @@ helm lint helm/service-template --set image.repository=test --set image.tag=abc1
 ./scripts/bootstrap-ai.sh --skip-mlflow   # skip MLflow
 ./scripts/bootstrap-ai.sh --skip-mcp      # skip IDP MCP Server build
 ./scripts/bootstrap-ai.sh --skip-kagent   # skip KAgent install
+./scripts/bootstrap-ai.sh --destroy       # remove AI/ML stack only (core platform stays up)
 ```
 
 | Service | URL |
