@@ -648,6 +648,18 @@ else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
 fi
 
+# ── Step 11: Tech Insights Exporter ──────────────────────────────────────────
+if ! $SKIP_OBS; then
+  log "Step 11: Deploying Tech Insights Exporter CronJob..."
+  kubectl create configmap tech-insights-exporter-script \
+    --from-file=exporter.py="${ROOT_DIR}/observability/tech-insights-exporter/exporter.py" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
+  log "  Tech Insights Exporter deployed (pushes scorecard metrics every 15m)."
+else
+  log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."
+fi
+
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
 log "Step 12: Wiring AlertManager..."
 # Prefer shell-env SLACK_WEBHOOK_URL; fall back to local/.env

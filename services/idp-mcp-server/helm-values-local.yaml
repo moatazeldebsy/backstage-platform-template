@@ -48,7 +48,17 @@ resources:
 
 env:
   - name: BACKSTAGE_URL
-    value: "http://backstage.backstage.svc.cluster.local:7007"
+    # Backstage runs in Docker Compose on the Mac host, not in Kubernetes.
+    # host.docker.internal resolves to the Mac host from inside Kind (Docker) pods.
+    # The Docker Compose port mapping is 3000:7007 (host:container), so use port 3000.
+    value: "http://host.docker.internal:3000"
+  - name: BACKSTAGE_EXTERNAL_URL
+    # Browser-accessible URL for Backstage (used in scaffold_service response links)
+    value: "http://backstage.idp.local"
+  - name: BACKSTAGE_TOKEN
+    # Static externalAccess token defined in backstage/app-config.local.yaml
+    # backend.auth.externalAccess[0].options.token
+    value: "local-catalog-exporter-token"
   - name: PROMETHEUS_URL
     value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
   - name: K8S_API
@@ -61,6 +71,13 @@ env:
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false   # Node.js needs writable tmp
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["get", "list", "watch"]
   capabilities:
     drop:
       - ALL

@@ -18055,6 +18055,7 @@ __metadata:
     "@backstage/plugin-techdocs-module-addons-contrib": "npm:^1.1.34"
     "@backstage/plugin-techdocs-react": "npm:^1.3.9"
     "@backstage/plugin-user-settings": "npm:^0.9.1"
+    "@backstage/theme": "npm:^0.7.2"
     "@backstage/ui": "npm:^0.14.3"
     "@material-ui/core": "npm:^4.12.2"
     "@material-ui/icons": "npm:^4.9.1"

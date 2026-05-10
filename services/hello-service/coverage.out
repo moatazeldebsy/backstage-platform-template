@@ -1,0 +1,22 @@
+mode: atomic
+github.com/idp-mvp/hello-service/src/main.go:38.13,56.12 9 0
+github.com/idp-mvp/hello-service/src/main.go:56.12,58.77 2 0
+github.com/idp-mvp/hello-service/src/main.go:58.77,61.4 2 0
+github.com/idp-mvp/hello-service/src/main.go:64.2,72.42 7 0
+github.com/idp-mvp/hello-service/src/main.go:72.42,74.3 1 0
+github.com/idp-mvp/hello-service/src/main.go:78.54,79.71 1 0
+github.com/idp-mvp/hello-service/src/main.go:79.71,81.31 1 0
+github.com/idp-mvp/hello-service/src/main.go:81.31,84.4 2 0
+github.com/idp-mvp/hello-service/src/main.go:85.3,91.91 7 0
+github.com/idp-mvp/hello-service/src/main.go:101.49,104.2 2 0
+github.com/idp-mvp/hello-service/src/main.go:106.57,107.23 1 2
+github.com/idp-mvp/hello-service/src/main.go:107.23,110.3 2 1
+github.com/idp-mvp/hello-service/src/main.go:111.2,115.4 1 1
+github.com/idp-mvp/hello-service/src/main.go:118.61,120.2 1 1
+github.com/idp-mvp/hello-service/src/main.go:122.62,124.2 1 1
+github.com/idp-mvp/hello-service/src/main.go:126.58,130.2 3 3
+github.com/idp-mvp/hello-service/src/main.go:132.77,133.71 1 0
+github.com/idp-mvp/hello-service/src/main.go:133.71,141.3 3 0
+github.com/idp-mvp/hello-service/src/main.go:144.44,145.36 1 0
+github.com/idp-mvp/hello-service/src/main.go:145.36,147.3 1 0
+github.com/idp-mvp/hello-service/src/main.go:148.2,148.19 1 0

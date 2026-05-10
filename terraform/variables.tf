@@ -60,7 +60,7 @@ variable "node_group_desired_size" {
 variable "ecr_repositories" {
   description = "List of ECR repository names to create"
   type        = list(string)
-  default     = ["hello-service"]
+  default     = ["hello-service", "idp-mcp-server", "qa-mcp-server"]
 }
 
 variable "rds_instance_class" {
@@ -117,4 +117,12 @@ variable "cost_optimizer_scale_up_cron" {
   description = "EventBridge cron expression (UTC) for scaling back up. Default: 7 am UTC daily."
   type        = string
   default     = "cron(0 7 * * ? *)"
+}
+
+# ── AI/ML variables ───────────────────────────────────────────────────────────
+variable "anthropic_api_key" {
+  description = "Anthropic API key for KAgent (Claude). Stored in Secrets Manager (idp-mvp/kagent)."
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
 }

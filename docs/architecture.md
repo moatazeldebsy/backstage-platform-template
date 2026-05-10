@@ -26,9 +26,10 @@
 │                                                                      │
 │  namespace: services              namespace: monitoring              │
 │  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-│  │ Deployments (Helm)   │         │ Prometheus + Grafana (local)   │ │
-│  │ Services             │         │ CloudWatch agent (AWS)         │ │
-│  │ Ingress (nginx/ALB)  │         └────────────────────────────────┘ │
+│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
+│  │ Services             │         │ (Prometheus + Grafana +        │ │
+│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
+│  └──────────────────────┘         └────────────────────────────────┘ │
 │  └──────────────────────┘                                            │
 └─────────────────────────────────────────────────────────────────────┘
                     │ (AWS only)
@@ -57,7 +58,13 @@ Scaffolded service workflows run `test` on `ubuntu-latest`. No self-hosted runne
 GitHub Actions authenticates to AWS via OIDC (`aws-actions/configure-aws-credentials`), eliminating long-lived secrets. The IAM role is scoped to the specific GitHub org.
 
 ### IRSA for pod-level AWS access
-Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA).
+Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA). IRSA roles exist for: Backstage, ESO (shared), DORA exporter, Grafana (CloudWatch read), MLflow (S3), KAgent ESO (Secrets Manager).
+
+### External Secrets Operator (AWS)
+ESO syncs secrets from AWS Secrets Manager into Kubernetes `Secret` objects. A single cluster-scoped `ClusterSecretStore` named `aws-secretsmanager` is created during bootstrap and shared by all `ExternalSecret` resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read `idp-mvp/*` secrets without static credentials.
+
+### Observability parity (local = AWS)
+Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManager bundled). AWS uses ALB ingress and gp2 persistent volumes; local uses nginx and hostPath. Both install Prometheus Pushgateway as a separate Helm release so that `apply-catalog-exporter.sh`, `seed-qa-metrics.sh`, and the tech-insights-exporter CronJob can push metrics without modification.
 
 ### AWS Load Balancer Controller (AWS)
 All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Balancer Controller. Supports `target-type: ip` (pod-level routing without NodePort).
@@ -79,8 +86,12 @@ All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Bala
 | Deploy-to-Kind template | `backstage/catalog/templates/deploy-to-kind/` | Standalone local deploy |
 | `idp:deploy-local` action | `backstage/app/packages/backend/src/modules/idpLocalDeploy.ts` | Custom scaffolder action |
 | Backstage image | `backstage/Dockerfile` | Production image (pre-built bundle) |
-| CloudWatch agent | `observability/cloudwatch/` | Log/metric collection (AWS) |
-| Grafana | `observability/grafana/` | Visualization (both envs) |
+| kube-prometheus-stack values (local) | `local/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (nginx, local storage) |
+| kube-prometheus-stack values (AWS) | `observability/prometheus-stack-values-aws.yaml` | Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention) |
+| ClusterSecretStore | `kubernetes/external-secrets/cluster-secret-store.yaml` | ESO → AWS Secrets Manager backend |
+| Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
+| DORA exporter (local) | `observability/dora/dora-cronjob-local.yaml` | DORA metrics → Pushgateway (local) |
+| DORA exporter (AWS) | `observability/dora/dora-cronjob.yaml` | DORA metrics → CloudWatch (AWS) |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 
 ## Backstage Custom Action: `idp:deploy-local`

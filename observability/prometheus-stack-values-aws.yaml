@@ -1,0 +1,169 @@
+# kube-prometheus-stack Helm values for AWS EKS deployment.
+# Mirrors local/observability/prometheus-stack-values.yaml with:
+#   - ALB ingress (instead of nginx)
+#   - gp2 persistent volumes (EKS default StorageClass)
+#   - 15-day Prometheus retention (production-grade)
+#   - Grafana IRSA annotation for CloudWatch datasource
+#   - All three dashboard ConfigMaps wired (IDP, DORA, QA)
+#
+# Install:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     --values observability/prometheus-stack-values-aws.yaml \
+#     --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}"
+
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    hosts: []   # empty = match any ALB hostname; set to real domain when DNS is configured
+    servicePort: 9090
+  prometheusSpec:
+    retention: 15d
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp2
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+
+alertmanager:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    hosts: []
+  alertmanagerSpec:
+    alertmanagerConfigSelector:
+      matchLabels:
+        app.kubernetes.io/part-of: kube-prometheus-stack
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+grafana:
+  # Password set via --set grafana.adminPassword at install time (from Secrets Manager / env var)
+  serviceAccount:
+    annotations:
+      # Populated by bootstrap.sh: eks.amazonaws.com/role-arn = grafana_role_arn terraform output
+      eks.amazonaws.com/role-arn: "GRAFANA_IRSA_ROLE_ARN"
+
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    hosts: []
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          uid: prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus-operated.monitoring:9090
+          isDefault: true
+        - name: AlertManager
+          uid: alertmanager
+          type: alertmanager
+          access: proxy
+          url: http://prometheus-kube-prometheus-alertmanager.monitoring:9093
+          jsonData:
+            implementation: prometheus
+        - name: CloudWatch
+          uid: cloudwatch
+          type: cloudwatch
+          access: proxy
+          jsonData:
+            authType: default
+            # Region substituted by bootstrap.sh
+            defaultRegion: "YOUR_AWS_REGION"
+
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: idp
+          folder: IDP Services
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/idp
+        - name: dora
+          folder: DORA Metrics
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/dora
+        - name: qa
+          folder: QA Platform
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/qa
+
+  # ConfigMap names must match what bootstrap.sh creates via kubectl create configmap
+  dashboardsConfigMaps:
+    idp: grafana-dashboards-idp
+    dora: grafana-dashboards-dora
+    qa: grafana-qa-dashboard
+
+  persistence:
+    enabled: true
+    storageClassName: gp2
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+kubeStateMetrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+nodeExporter:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Note: Prometheus Pushgateway is installed as a separate Helm release (not a subchart):
+#   helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+#     --namespace monitoring --set serviceMonitor.enabled=true \
+#     --set serviceMonitor.additionalLabels.release=prometheus

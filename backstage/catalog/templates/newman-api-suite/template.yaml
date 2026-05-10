@@ -19,8 +19,6 @@ spec:
         - name
         - description
         - owner
-        - targetService
-        - deploymentMode
       properties:
         name:
           title: Suite Name
@@ -118,7 +116,7 @@ spec:
     - id: fetch-template-new-repo
       name: Fetch Template (New Repo)
       action: fetch:template
-      if: ${{ parameters.deploymentMode === 'new-repository' }}
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
       input:
         url: ./skeleton
         values:
@@ -150,7 +148,7 @@ spec:
     - id: publish
       name: Publish to GitHub
       action: publish:github
-      if: ${{ parameters.deploymentMode === 'new-repository' }}
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
       input:
         description: ${{ parameters.description }}
         repoUrl: ${{ parameters.repoUrl }}
@@ -164,6 +162,7 @@ spec:
     - id: publish-pr
       name: Open Pull Request on Service Repo
       action: publish:github:pull-request
+      continueOnError: true
       if: ${{ parameters.deploymentMode === 'add-to-existing' }}
       input:
         repoUrl: ${{ parameters.targetRepoUrl }}
@@ -187,7 +186,8 @@ spec:
     - id: register
       name: Register in Catalog
       action: catalog:register
-      if: ${{ parameters.deploymentMode === 'new-repository' }}
+      continueOnError: true
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'

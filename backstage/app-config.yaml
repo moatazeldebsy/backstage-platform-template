@@ -132,6 +132,18 @@ catalog:
       target: /catalog/templates/rds-database/template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: /catalog/templates/kafka-topic/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/s3-bucket/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/eks-cluster/template.yaml
+      rules:
+        - allow: [Template]
     # QA golden-path testing scaffolds
     - type: file
       target: /catalog/templates/playwright-e2e-suite/template.yaml
@@ -234,6 +246,11 @@ catalog:
         - allow: [Resource, Component]
     - type: file
       target: /services/idp-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── QA MCP Server ────────────────────────────────────────────────────────
+    - type: file
+      target: /services/qa-mcp-server/catalog-info.yaml
       rules:
         - allow: [Component]
 

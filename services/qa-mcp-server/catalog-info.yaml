@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: qa-mcp-server
+  description: MCP server exposing QA and testing capabilities (test suite discovery, scaffolding, catalog search, test metrics) as AI tools for KAgent
+  annotations:
+    backstage.io/kubernetes-id: qa-mcp-server
+    backstage.io/techdocs-ref: dir:.
+    prometheus.io/scrape: "true"
+  tags:
+    - mcp
+    - qa
+    - testing
+    - ai
+    - typescript
+  links:
+    - url: http://qa-mcp-server.idp.local/healthz
+      title: Health Check
+    - url: http://qa-mcp-server.idp.local/mcp
+      title: MCP Endpoint
+spec:
+  type: service
+  lifecycle: experimental
+  owner: qa-team
+  system: idp-platform
+  dependsOn:
+    - resource:kagent
+    - resource:claude-api

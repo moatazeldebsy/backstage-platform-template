@@ -64,3 +64,23 @@ output "slack_webhook_secret_arn" {
   description = "ARN of the Slack webhook Secrets Manager secret"
   value       = aws_secretsmanager_secret.slack_webhook.arn
 }
+
+# ── KAgent (AI/ML platform) secret ────────────────────────────────────────────────
+resource "aws_secretsmanager_secret" "kagent" {
+  name                    = "idp-mvp/kagent"
+  description             = "KAgent AI platform credentials — Anthropic API key"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "kagent" {
+  secret_id = aws_secretsmanager_secret.kagent.id
+
+  secret_string = jsonencode({
+    ANTHROPIC_API_KEY = var.anthropic_api_key
+  })
+}
+
+output "kagent_secret_arn" {
+  description = "ARN of the KAgent Secrets Manager secret (idp-mvp/kagent)"
+  value       = aws_secretsmanager_secret.kagent.arn
+}

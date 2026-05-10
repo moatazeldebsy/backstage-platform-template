@@ -5,7 +5,6 @@ metadata:
   namespace: kagent
 spec:
   description: "IDP platform MCP server — catalog search, Prometheus metrics, scaffolding, and deployment listing"
-  url: http://idp-mcp-server.services.svc.cluster.local:3001/sse
-  protocol: SSE
-  sseReadTimeout: 30s
+  url: http://idp-mcp-server.services.svc.cluster.local:3001/mcp
+  protocol: STREAMABLE_HTTP
   timeout: 60s

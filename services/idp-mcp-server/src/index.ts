@@ -1,11 +1,14 @@
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 import fetch from 'node-fetch';
 import { register, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
+import fs from 'fs';
 
 const BACKSTAGE_URL = process.env.BACKSTAGE_URL ?? 'http://backstage:7007';
+// External URL used in user-facing links (browser-accessible, not internal cluster DNS)
+const BACKSTAGE_EXTERNAL_URL = process.env.BACKSTAGE_EXTERNAL_URL ?? 'http://backstage.idp.local';
 const BACKSTAGE_TOKEN = process.env.BACKSTAGE_TOKEN ?? '';
 const PROMETHEUS_URL = process.env.PROMETHEUS_URL ?? 'http://prometheus-kube-prometheus-prometheus.monitoring:9090';
 const K8S_API = process.env.K8S_API ?? 'https://kubernetes.default.svc';
@@ -36,15 +39,20 @@ async function fetchPrometheus(query: string) {
 }
 
 async function fetchK8s(path: string) {
+  // Use explicit K8S_TOKEN env var first; fall back to in-cluster service account token.
+  const SA_TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
+  const token = K8S_TOKEN || (fs.existsSync(SA_TOKEN_PATH) ? fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim() : '');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (K8S_TOKEN) headers['Authorization'] = `Bearer ${K8S_TOKEN}`;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${K8S_API}${path}`, { headers, ...(process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ? {} : {}) });
   if (!res.ok) throw new Error(`K8s API error ${res.status}`);
   return res.json() as Promise<{ items: Array<Record<string, unknown>> }>;
 }
 
-// ── MCP Server ────────────────────────────────────────────────────────────
-
+// ── MCP Server factory ────────────────────────────────────────────────────
+// Stateless Streamable HTTP requires a fresh McpServer per request because
+// McpServer.connect() can only be called once per instance.
+function createServer() {
 const server = new McpServer({
   name: 'idp-mcp-server',
   version: '1.0.0',
@@ -61,11 +69,13 @@ server.tool(
     const end = toolDuration.startTimer({ tool: 'catalog_search' });
     toolCalls.inc({ tool: 'catalog_search' });
     try {
-      const kindFilter = kind ? `kind=${kind}&` : '';
-      const data = await fetchCatalog(`/api/catalog/entities?${kindFilter}filter=metadata.name=${query}`) as unknown[];
+      // Backstage catalog API: all filters go through filter=key=value pairs (comma-separated for AND).
+      // The `kind` param is NOT a top-level query param — it must be filter=kind=Component.
+      const kindParam = kind ? `filter=kind=${kind}&` : '';
+      const data = await fetchCatalog(`/api/catalog/entities?${kindParam}filter=metadata.name=${encodeURIComponent(query)}`) as unknown[];
       if (!Array.isArray(data) || data.length === 0) {
-        // fallback: full list search
-        const all = await fetchCatalog(`/api/catalog/entities?${kindFilter}limit=200`) as Array<{ metadata: { name: string; description?: string }; kind: string; spec?: { owner?: string; type?: string } }>;
+        // fallback: full list search (client-side fuzzy match)
+        const all = await fetchCatalog(`/api/catalog/entities?${kindParam}limit=200`) as Array<{ metadata: { name: string; description?: string }; kind: string; spec?: { owner?: string; type?: string } }>;
         const matches = all.filter(e =>
           e.metadata.name.toLowerCase().includes(query.toLowerCase()) ||
           (e.metadata.description ?? '').toLowerCase().includes(query.toLowerCase())
@@ -136,31 +146,82 @@ server.tool(
 
 server.tool(
   'scaffold_service',
-  'Trigger a Backstage scaffolder template to create a new service or resource',
+  'Trigger a Backstage scaffolder template to create a new service. ' +
+  'IMPORTANT: values must include "repoUrl" in Backstage RepoUrlPicker format: ' +
+  '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=moatazeldebsy&repo=my-service"). ' +
+  'Required values: name (string), description (string), owner (Backstage group ref, e.g. "group:default/platform-team"), ' +
+  'repoUrl (RepoUrlPicker format as above).',
   {
     template_ref: z.string().describe('Template entity ref, e.g. template:default/nodejs-service'),
-    values: z.record(z.string(), z.unknown()).describe('Template parameter values as key-value pairs'),
+    values: z.record(z.string(), z.unknown()).describe(
+      'Template parameter values. Required: name, description, owner (e.g. "group:default/platform-team"), ' +
+      'repoUrl (format: "github.com?owner=OWNER&repo=REPO_NAME"). ' +
+      'repoUrl is auto-constructed from name+owner if omitted.'
+    ),
   },
   async ({ template_ref, values }) => {
     const end = toolDuration.startTimer({ tool: 'scaffold_service' });
     toolCalls.inc({ tool: 'scaffold_service' });
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (BACKSTAGE_TOKEN) headers['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
+      // Ensure repoUrl is in Backstage RepoUrlPicker format: github.com?owner=X&repo=Y
+      // The AI may omit it entirely, or pass a full https://github.com/... URL — normalise both.
+      const enrichedValues: Record<string, unknown> = { ...values };
+      const repoName = (enrichedValues['name'] as string | undefined) ?? '';
+      // owner may be a Backstage group ref like "group:default/platform-team" — extract the last segment
+      const rawOwner = (enrichedValues['owner'] as string | undefined) ?? '';
+      const ghOwner = rawOwner.includes('/') ? rawOwner.split('/').pop()! : (rawOwner || 'moatazeldebsy');
+
+      if (!enrichedValues['repoUrl']) {
+        // Auto-build from name + owner
+        enrichedValues['repoUrl'] = `github.com?owner=${encodeURIComponent(ghOwner)}&repo=${encodeURIComponent(repoName)}`;
+      } else if (
+        typeof enrichedValues['repoUrl'] === 'string' &&
+        enrichedValues['repoUrl'].startsWith('https://github.com/')
+      ) {
+        // Normalize full HTTPS URL to RepoUrlPicker format
+        const parts = enrichedValues['repoUrl'].replace('https://github.com/', '').split('/');
+        const urlOwner = parts[0] ?? ghOwner;
+        const urlRepo = parts[1] ?? repoName;
+        enrichedValues['repoUrl'] = `github.com?owner=${encodeURIComponent(urlOwner)}&repo=${encodeURIComponent(urlRepo)}`;
+      }
+
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (BACKSTAGE_TOKEN) authHeaders['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
       const res = await fetch(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks`, {
         method: 'POST',
-        headers,
-        body: JSON.stringify({ templateRef: template_ref, values }),
+        headers: authHeaders,
+        body: JSON.stringify({ templateRef: template_ref, values: enrichedValues }),
       });
       if (!res.ok) throw new Error(`Scaffolder error ${res.status}: ${await res.text()}`);
       const task = await res.json() as { id: string };
+
+      // Poll for task completion so callers don't need to make authenticated status requests.
+      const pollHeaders: Record<string, string> = {};
+      if (BACKSTAGE_TOKEN) pollHeaders['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
+      const POLL_INTERVAL_MS = 4000;
+      const POLL_TIMEOUT_MS = 180000; // 3 minutes
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      let taskStatus: string = 'processing';
+      let taskOutput: unknown = undefined;
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+        const statusRes = await fetch(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks/${task.id}`, { headers: pollHeaders });
+        if (statusRes.ok) {
+          const statusBody = await statusRes.json() as { status: string; output?: unknown };
+          taskStatus = statusBody.status;
+          taskOutput = statusBody.output;
+          if (taskStatus === 'completed' || taskStatus === 'failed' || taskStatus === 'cancelled') break;
+        }
+      }
+
       return {
         content: [{
           type: 'text' as const,
           text: JSON.stringify({
             task_id: task.id,
-            status_url: `${BACKSTAGE_URL}/api/scaffolder/v2/tasks/${task.id}`,
-            ui_url: `http://localhost:3000/create/tasks/${task.id}`,
+            status: taskStatus,
+            output: taskOutput,
+            ui_url: `${BACKSTAGE_EXTERNAL_URL}/create/tasks/${task.id}`,
           }, null, 2),
         }],
       };
@@ -207,9 +268,39 @@ server.tool(
   }
 );
 
-// ── Express HTTP server with SSE transport ────────────────────────────────
+server.tool(
+  'list_templates',
+  'List all available Backstage scaffolder templates with name, title, description, and template ref. ' +
+  'Use this to discover what can be scaffolded before calling scaffold_service.',
+  {},
+  async () => {
+    const end = toolDuration.startTimer({ tool: 'list_templates' });
+    toolCalls.inc({ tool: 'list_templates' });
+    try {
+      const data = await fetchCatalog('/api/catalog/entities?filter=kind=Template&limit=100') as Array<{
+        metadata: { name: string; description?: string; title?: string };
+        spec?: { type?: string };
+      }>;
+      const templates = data.map(e => ({
+        name: e.metadata.name,
+        title: e.metadata.title ?? e.metadata.name,
+        description: e.metadata.description,
+        templateRef: `template:default/${e.metadata.name}`,
+        type: e.spec?.type,
+      }));
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(templates, null, 2) }],
+      };
+    } finally {
+      end();
+    }
+  }
+);
 
-const transports: Record<string, SSEServerTransport> = {};
+  return server;
+}
+
+// ── Express HTTP server with Streamable HTTP transport ──────────────────────
 
 app.get('/healthz', (_req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
@@ -218,25 +309,17 @@ app.get('/metrics', async (_req, res) => {
   res.end(await register.metrics());
 });
 
-app.get('/sse', async (req, res) => {
-  const transport = new SSEServerTransport('/messages', res);
-  transports[transport.sessionId] = transport;
-  res.on('close', () => delete transports[transport.sessionId]);
-  await server.connect(transport);
-});
-
-app.post('/messages', async (req, res) => {
-  const sessionId = req.query['sessionId'] as string;
-  const transport = transports[sessionId];
-  if (!transport) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
-  }
-  await transport.handlePostMessage(req, res);
+// Stateless Streamable HTTP — each request gets a fresh McpServer+transport.
+// This is required because McpServer.connect() can only be called once per instance.
+app.post('/mcp', express.json(), async (req, res) => {
+  const srv = createServer();
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  await srv.connect(transport);
+  await transport.handleRequest(req, res, req.body);
 });
 
 app.listen(PORT, () => {
   console.log(`IDP MCP Server listening on :${PORT}`);
-  console.log(`  SSE endpoint: http://localhost:${PORT}/sse`);
+  console.log(`  MCP endpoint: http://localhost:${PORT}/mcp`);
   console.log(`  Health:       http://localhost:${PORT}/healthz`);
 });

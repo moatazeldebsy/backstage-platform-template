@@ -20,6 +20,7 @@ import { SignInPage } from '@backstage/core-components';
 import { githubAuthApiRef } from '@backstage/core-plugin-api';
 import { SignInPageBlueprint } from '@backstage/plugin-app-react';
 import { navModule } from './modules/nav';
+import { themesModule } from './modules/themes';
 import { customPagesPlugin } from './extensions';
 
 // Override the default sign-in page to add GitHub provider alongside Guest.
@@ -68,6 +69,7 @@ export default createApp({
     adrPlugin,
     techRadarPlugin,
     navModule,
+    themesModule,
     appSignInModule,
   ],
 });

@@ -4,7 +4,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-idp-starter/)
 [![CI](https://github.com/moatazeldebsy/backstage-idp-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-idp-starter/actions/workflows/ci.yml)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 9 software templates + 13 QA testing scaffold templates, Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 13 QA testing scaffold templates, AI/ML platform (KAgent + MLflow + MCP Server), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -34,9 +34,10 @@
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, and custom scaffolder actions |
-| **Software templates** | 9 golden-path service templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace, RDS, Add-secret) |
+| **Software templates** | 12 golden-path service templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace, RDS, Add-secret, AI Agent, ML Experiment, MCP Server) |
 | **QA templates** | 13 testing scaffold templates — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual, a11y, Cucumber, Appium, Chaos Mesh, Stryker, Testcontainers |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
+| **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + IDP MCP Server (catalog/metrics/scaffolding tools for agents) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
 | **Infrastructure** | Terraform modules for EKS, VPC, ECR, IAM (OIDC + IRSA), RDS, S3, Secrets Manager |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
@@ -91,6 +92,7 @@ cd backstage/app && yarn install && yarn build:backend && cd ../..
 cp local/.env.example local/.env                        # shared tokens (GitHub, AWS, cluster name)
 cp local/backstage/.env.example local/backstage/.env    # Backstage-specific tokens (OAuth, K8s)
 # Edit both files and fill in your values
+ # For AI/ML stack (optional): also set ANTHROPIC_API_KEY=<your-key> in local/.env before running bootstrap-ai.sh
 
 # Start Backstage + Postgres
 docker compose -f local/backstage/docker-compose.yml build backstage
@@ -111,6 +113,9 @@ After `bootstrap-local.sh` completes and Backstage is running, everything is rea
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(run `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" \| base64 -d`)* |
 | **Prometheus** | http://prometheus.idp.local | — |
 | **OpenCost** | http://opencost.idp.local | — |
+| **KAgent UI** | http://kagent.idp.local | — (requires `bootstrap-ai.sh`) |
+| **MLflow UI** | http://mlflow.idp.local | — (requires `bootstrap-ai.sh`) |
+| **IDP MCP Server** | http://idp-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 > `/etc/hosts` entries are added to `127.0.0.1` by `bootstrap-local.sh`. You may need `sudo` on first run.
@@ -160,6 +165,7 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
+| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`. | After `bootstrap-local.sh` |
 
 ### Day-2 — Per-service operations
 
@@ -225,6 +231,10 @@ Backstage → scaffold repo → push code
 - Deploy to Kind
 - RDS Database
 - Add Secret
+*AI/ML templates:*
+- AI Agent (KAgent) — scaffold a Kubernetes-native AI agent powered by Anthropic Claude API
+- ML Experiment (MLflow) — scaffold a Python ML experiment with tracking, model registry, and CI
+- MCP Server (kmcp) — scaffold a Model Context Protocol server managed by the kmcp Kubernetes controller
 
 *QA testing templates (13):*
 - Playwright E2E, Visual Regression, Accessibility (axe-core)
@@ -285,6 +295,7 @@ helm upgrade --install my-svc ./helm/service-template \
 | 9 | GitHub Actions CD (ECR push → EKS Helm deploy) | Ready |
 | 10 | Prometheus ServiceMonitor for app metrics scraping | Ready |
 | 11 | EKS access entry for GitHub Actions IAM role | Ready |
+| 12 | AI/ML platform — KAgent, MLflow, IDP MCP Server, 3 Backstage AI/ML templates, `bootstrap-ai.sh` | Ready |
 
 ## AWS Cost
 

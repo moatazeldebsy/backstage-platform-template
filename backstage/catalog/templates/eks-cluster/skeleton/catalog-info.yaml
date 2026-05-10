@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.clusterName }}
+  description: EKS cluster ${{ values.clusterName }} (k8s ${{ values.kubernetesVersion }}) in ${{ values.awsRegion }}
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/terraform/infra/eks-clusters/${{ values.clusterName }}/
+  labels:
+    aws-region: ${{ values.awsRegion }}
+    kubernetes-version: ${{ values.kubernetesVersion }}
+  tags:
+    - eks
+    - kubernetes
+    - aws
+spec:
+  type: kubernetes-cluster
+  owner: ${{ values.owner }}
+  system: internal-developer-platform

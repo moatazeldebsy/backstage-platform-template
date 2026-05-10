@@ -99,6 +99,7 @@ spec:
     - id: secrets
       name: Set CI secrets
       action: idp:repo:set-secrets
+      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         secrets: {}
@@ -115,9 +116,10 @@ spec:
     - id: catalog
       name: Register in catalog
       action: catalog:register
+      continueOnError: true
       input:
         repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: /catalog-info.yaml
+        catalogInfoPath: '/catalog-info.yaml'
 
   output:
     links:

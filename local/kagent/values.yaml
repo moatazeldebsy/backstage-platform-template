@@ -14,6 +14,20 @@ ui:
   enabled: true
   service:
     type: ClusterIP
-  # NOTE: hostAliases are applied via kubectl patch in bootstrap-ai.sh after
-  # helm install (the chart does not expose this in values). This lets the
-  # Next.js SSR resolve kagent.idp.local (only in Mac /etc/hosts, not cluster DNS).
+  # backendInternalUrl sets BACKEND_INTERNAL_URL in the Next.js container.
+  # Next.js server actions use this as the base URL for all SSR API calls.
+  # Routing through 127.0.0.1:8080 (nginx inside the pod) avoids direct
+  # in-cluster DNS calls from Node.js that cause Next.js to crash.
+  # Nginx forwards /api/* → kagent-controller:8083/api/* correctly.
+  backendInternalUrl: "http://127.0.0.1:8080/api"
+
+postgres:
+  # Enable pgvector so the controller can create the memory table (vector(768)).
+  vectorEnabled: true
+  bundled:
+    image:
+      registry: docker.io
+      repository: pgvector
+      name: pgvector
+      # pgvector-enabled Postgres 18 (multi-arch: amd64 + arm64)
+      tag: "pg18"

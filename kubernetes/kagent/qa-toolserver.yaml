@@ -1,0 +1,10 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: qa-mcp-server
+  namespace: kagent
+spec:
+  description: "QA MCP server — test suite discovery, scaffolding, catalog search, and test metrics"
+  url: http://qa-mcp-server.services.svc.cluster.local:3002/mcp
+  protocol: STREAMABLE_HTTP
+  timeout: 60s

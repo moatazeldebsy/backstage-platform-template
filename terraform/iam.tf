@@ -318,3 +318,89 @@ output "backstage_role_arn" {
   description = "IAM role ARN for Backstage"
   value       = module.backstage_irsa.iam_role_arn
 }
+
+# ── AI/ML IRSA roles ───────────────────────────────────────────────────────────────────
+
+# MLflow IRSA — allows MLflow to read/write experiment artifacts to S3
+module "mlflow_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-mlflow"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["ml-platform:mlflow"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "mlflow" {
+  name = "mlflow-s3-artifacts"
+  role = module.mlflow_irsa.iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.mlflow_artifacts.arn,
+          "${aws_s3_bucket.mlflow_artifacts.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+output "mlflow_role_arn" {
+  description = "IAM role ARN for the MLflow ServiceAccount (IRSA) — S3 artifact access"
+  value       = module.mlflow_irsa.iam_role_arn
+}
+
+# KAgent ESO IRSA — allows External Secrets Operator in the kagent namespace to
+# read the Anthropic API key from Secrets Manager (idp-mvp/kagent).
+module "kagent_eso_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-kagent-eso"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kagent:kagent-eso-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "kagent_eso" {
+  name = "kagent-eso-secrets-read"
+  role = module.kagent_eso_irsa.iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = aws_secretsmanager_secret.kagent.arn
+      }
+    ]
+  })
+}
+
+output "kagent_eso_role_arn" {
+  description = "IAM role ARN for the KAgent ESO ServiceAccount (IRSA) — reads idp-mvp/kagent from Secrets Manager"
+  value       = module.kagent_eso_irsa.iam_role_arn
+}

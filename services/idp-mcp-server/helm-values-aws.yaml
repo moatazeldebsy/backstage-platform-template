@@ -1,0 +1,50 @@
+fullnameOverride: idp-mcp-server
+
+replicaCount: 1
+
+image:
+  # ECR_REGISTRY_PLACEHOLDER is substituted by bootstrap-ai.sh --aws
+  repository: ECR_REGISTRY_PLACEHOLDER/idp-mcp-server
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3001
+  targetPort: 3001
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+  hosts:
+    - host: ""   # match any hostname; use ALB DNS directly
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

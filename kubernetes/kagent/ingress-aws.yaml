@@ -1,0 +1,27 @@
+# KAgent UI ingress — AWS/EKS variant (AWS Load Balancer Controller / ALB).
+# No TLS at the ingress level; ALB handles SSL termination.
+# kagent-ui's backend nginx only speaks HTTP/1.1 — ALB forwards HTTP to port 8080.
+# Applied by: scripts/bootstrap-ai.sh --aws
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kagent-ui
+  namespace: kagent
+  labels:
+    app: kagent-ui
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kagent-ui
+                port:
+                  number: 8080

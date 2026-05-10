@@ -38,13 +38,14 @@ What it does (in order):
 | 4 | Installs nginx ingress controller (host ports 80/443) |
 | 4b | Installs metrics-server (required for CPU/memory in Backstage) |
 | 4c | Wires Backstage K8s Service + nginx Ingress |
-| 5 | Installs Prometheus + Grafana (`kube-prometheus-stack`) |
+| 5 | Installs Prometheus + Grafana + AlertManager (`kube-prometheus-stack`) |
+| 5b | Installs OpenCost |
 | 6 | Builds and deploys `hello-service` via the golden-path Helm chart |
 | 7 | Writes `/etc/hosts` entries for `*.idp.local` and flushes DNS cache |
 | 8 | Installs ArgoCD |
-| 9 | Installs OPA/Gatekeeper and applies all policy constraints |
-| 10 | Deploys OpenCost |
-| 11 | Installs Prometheus Pushgateway + DORA exporter CronJob |
+| 9 | Installs OPA/Gatekeeper and applies all five policy constraints |
+| 10 | Installs Prometheus Pushgateway + DORA exporter CronJob + catalog exporter CronJob |
+| 11 | Deploys Tech Insights Exporter CronJob (scorecard metrics → Pushgateway every 15 min) |
 | 12 | Wires AlertManager Slack webhook (if `SLACK_WEBHOOK_URL` is set) |
 | 13 | Applies ArgoCD ApplicationSet (hello-service → local/dev/staging/prod) |
 

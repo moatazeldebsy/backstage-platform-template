@@ -1,0 +1,32 @@
+# KAgent Helm values for AWS/EKS — uses Anthropic Claude API.
+# Requires a Kubernetes Secret: kagent-anthropic (key: ANTHROPIC_API_KEY)
+# Created automatically via ExternalSecret (kubernetes/kagent/external-secret-aws.yaml)
+# which syncs from AWS Secrets Manager secret: idp-mvp/kagent
+# Applied by: scripts/bootstrap-ai.sh --aws
+
+providers:
+  default: anthropic
+  anthropic:
+    provider: Anthropic
+    model: claude-haiku-4-5-20251001
+    apiKeySecretRef: kagent-anthropic
+    apiKeySecretKey: ANTHROPIC_API_KEY
+
+ui:
+  enabled: true
+  service:
+    type: ClusterIP
+  # Next.js SSR API calls route through nginx inside the pod (127.0.0.1:8080)
+  # to avoid direct in-cluster DNS calls that cause crashes.
+  backendInternalUrl: "http://127.0.0.1:8080/api"
+
+postgres:
+  # Enable pgvector so the controller can create the memory table (vector(768)).
+  vectorEnabled: true
+  bundled:
+    image:
+      registry: docker.io
+      repository: pgvector
+      name: pgvector
+      # pgvector-enabled Postgres 18 (multi-arch: amd64 + arm64)
+      tag: "pg18"

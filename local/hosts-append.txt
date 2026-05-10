@@ -16,3 +16,4 @@
 127.0.0.1  mlflow.idp.local
 127.0.0.1  kagent.idp.local
 127.0.0.1  idp-mcp-server.idp.local
+127.0.0.1  qa-mcp-server.idp.local

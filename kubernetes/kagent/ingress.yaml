@@ -5,8 +5,16 @@ metadata:
   namespace: kagent
   labels:
     app: kagent-ui
+  annotations:
+    # kagent-ui's backend nginx only speaks HTTP/1.1 — disable HTTP/2 forwarding
+    # to prevent 502 Bad Gateway when clients (e.g. Chrome) negotiate HTTP/2
+    nginx.ingress.kubernetes.io/use-http2: "false"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - kagent.idp.local
+      secretName: kagent-tls
   rules:
     - host: kagent.idp.local
       http:

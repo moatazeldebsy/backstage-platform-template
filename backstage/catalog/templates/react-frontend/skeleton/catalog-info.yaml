@@ -10,7 +10,7 @@ metadata:
     backstage.io/kubernetes-namespace: services-dev
     backstage.io/adr-location: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/tree/main/docs/adr
     backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbooks/service.md
-    cost-center: ${{ values.costCenter }}
+    cost-center: "${{ values.costCenter }}"
   links:
     - title: Grafana Dashboard
       url: http://grafana.idp.local/d/idp-services/idp-services-overview
