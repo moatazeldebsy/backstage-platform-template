@@ -91,8 +91,22 @@ helm lint helm/service-template --set image.repository=test --set image.tag=abc1
 | Service | URL |
 |---------|-----|
 | KAgent UI | http://kagent.idp.local |
+| AI Assistant (Backstage) | http://backstage.idp.local/ai-assistant |
 | MLflow UI | http://mlflow.idp.local |
 | IDP MCP Server | http://idp-mcp-server.idp.local/healthz |
+
+**AI Assistant — scaffolding in one message:**
+Provide `name`, `description`, and `owner` together and the agent scaffolds immediately
+without asking for confirmation. Example:
+`"scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/platform-team"`
+
+**Key files for the AI Assistant:**
+- `kubernetes/kagent/idp-agent.yaml` — Agent CRD (model, system message, tool allowlist)
+- `services/idp-mcp-server/src/index.ts` — MCP server (6 tools)
+- `backstage/app/packages/app/src/extensions.tsx` — Backstage chat UI (`AiAssistantPage`)
+- `backstage/app-config.yaml` + `app-config.local.yaml` — KAgent proxy config
+
+See `docs/ai-assistant.md` for the full architecture.
 
 ### Scaffold a QA test suite (CLI golden path)
 
@@ -114,12 +128,15 @@ helm lint helm/service-template --set image.repository=test --set image.tag=abc1
 ```
 Backstage Portal  ──────────────────────────────────────────┐
   custom action: idp:deploy-local                            │ scaffold + deploy
+  AI Assistant page (/ai-assistant) ──► KAgent proxy         │
   (backstage/app/packages/backend/src/modules/idpLocalDeploy.ts)
                                                              ▼
 Kind cluster (local) / EKS (AWS)
-  namespace: services  → Helm chart (helm/service-template)
-  namespace: monitoring → Prometheus + Grafana
-  namespace: argocd     → ArgoCD (local only)
+  namespace: services    → Helm chart (helm/service-template)
+  namespace: monitoring  → Prometheus + Grafana
+  namespace: argocd      → ArgoCD (local only)
+  namespace: kagent      → KAgent + idp-assistant Agent + IDP MCP Server
+  namespace: ml-platform → MLflow tracking server
 ```
 
 ### Single Helm chart for everything

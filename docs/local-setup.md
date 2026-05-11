@@ -218,6 +218,52 @@ helm upgrade --install my-svc ./helm/service-template \
 
 The Helm chart (`helm/service-template`) is **identical** for both. Only the values file differs.
 
+## AI/ML stack (optional)
+
+After `bootstrap-local.sh` completes, boot the AI/ML platform:
+
+```bash
+# Requires ANTHROPIC_API_KEY in local/.env
+./scripts/bootstrap-ai.sh
+```
+
+This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| KAgent UI | http://kagent.idp.local | Direct agent chat UI |
+| AI Assistant | http://backstage.idp.local/ai-assistant | Backstage-embedded chat |
+| MLflow UI | http://mlflow.idp.local | Experiment tracking |
+| IDP MCP Server health | http://idp-mcp-server.idp.local/healthz | MCP server status |
+
+**Skip flags** (combine freely):
+```bash
+./scripts/bootstrap-ai.sh --skip-mlflow   # skip MLflow
+./scripts/bootstrap-ai.sh --skip-kagent   # skip KAgent install
+./scripts/bootstrap-ai.sh --skip-mcp      # skip IDP MCP Server build
+```
+
+**Tear down AI/ML only** (core platform stays up):
+```bash
+./scripts/bootstrap-ai.sh --destroy
+```
+
+### Using the AI Assistant in Backstage
+
+Open http://backstage.idp.local/ai-assistant (or click **AI Assistant** in the
+sidebar). The assistant can:
+
+- Search the service catalog: *"find all Python services owned by qa-team"*
+- Check metrics: *"show request rate for hello-service"*
+- List running deployments: *"what's deployed in the services namespace?"*
+- Scaffold a new service: *"scaffold a Python FastAPI service called demo, description demo API, owner group:default/platform-team"*
+
+For scaffolding, provide `name`, `description`, and `owner` in one message — the
+agent will call the scaffolder immediately without asking for confirmation.
+
+See [docs/ai-assistant.md](ai-assistant.md) for the full architecture and
+troubleshooting guide.
+
 ## Teardown
 
 ```bash

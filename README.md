@@ -37,7 +37,7 @@
 | **Software templates** | 12 golden-path service templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace, RDS, Add-secret, AI Agent, ML Experiment, MCP Server) |
 | **QA templates** | 13 testing scaffold templates — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual, a11y, Cucumber, Appium, Chaos Mesh, Stryker, Testcontainers |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
-| **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + IDP MCP Server (catalog/metrics/scaffolding tools for agents) |
+| **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + IDP MCP Server (catalog/metrics/scaffolding tools for agents) + AI Assistant chat page embedded in Backstage |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
 | **Infrastructure** | Terraform modules for EKS, VPC, ECR, IAM (OIDC + IRSA), RDS, S3, Secrets Manager |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
@@ -347,3 +347,4 @@ Estimated savings vs always-on (11 h off × 30 days):
 - [Getting Started (AWS)](docs/getting-started.md)
 - [Golden Path](docs/golden-path.md)
 - [Architecture](docs/architecture.md)
+- [AI Assistant](docs/ai-assistant.md)
