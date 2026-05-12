@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED: Use the idp CLI instead.
+#   make cli-build          # build ./bin/idp
+#   ./bin/idp scaffold test-suite --name my-e2e --type playwright --service hello-service
+#
+# This script is kept as a fallback reference only.
 # create-test-suite.sh — CLI golden path for scaffolding QA test suites
 #
 # Usage:

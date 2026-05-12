@@ -130,18 +130,36 @@ without asking for confirmation. Example:
 
 See `docs/ai-assistant.md` for the full architecture.
 
-### Scaffold a QA test suite (CLI golden path)
+### Scaffold a QA test suite (`idp` CLI — golden path)
 
 ```bash
-./scripts/create-test-suite.sh --name my-e2e  --type playwright    --service my-svc
-./scripts/create-test-suite.sh --name my-perf --type k6            --service my-svc --vus 20 --duration 2m
-./scripts/create-test-suite.sh --name my-a11y --type accessibility --service my-svc --wcag wcag2aa
-./scripts/create-test-suite.sh --help   # all types and flags
+# Build the idp CLI first: make cli-build
 
-# types: playwright | k6 | pact | newman | zap | datadog | visual |
-#        accessibility | cucumber | appium | chaos | mutation | testcontainers
-# Output: test-suites/<name>/ with catalog-info.yaml, test files, CI workflow
+./bin/idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
+./bin/idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20 --duration 2m
+./bin/idp scaffold test-suite --name my-a11y --type accessibility --service my-svc --wcag wcag2aa
+./bin/idp scaffold test-suite --name sec-scan   --type zap        --service my-svc --scan-type baseline
+./bin/idp scaffold test-suite --name contracts  --type pact       --service my-svc
+./bin/idp scaffold test-suite --name api-tests  --type newman     --service my-svc
+./bin/idp scaffold test-suite --name synthetics --type datadog    --service my-svc
+./bin/idp scaffold test-suite --name visual     --type visual     --service my-svc --threshold 0.1
+./bin/idp scaffold test-suite --name bdd-suite  --type cucumber   --service my-svc
+./bin/idp scaffold test-suite --name mobile     --type appium     --service my-svc --platform ios
+./bin/idp scaffold test-suite --name chaos      --type chaos      --service my-svc --chaos-duration 2m
+./bin/idp scaffold test-suite --name mutation   --type mutation   --service my-svc --score 80
+./bin/idp scaffold test-suite --name int-tests  --type testcontainers --service my-svc --containers postgres,redis
+
+# Show all flags for a type
+./bin/idp scaffold test-suite --help
+
+# Force local generation (offline / pre-Backstage)
+./bin/idp scaffold test-suite --name my-e2e --type playwright --service my-svc --local
 ```
+
+**Types:** `playwright` | `k6` | `pact` | `newman` | `zap` | `datadog` | `visual` |
+`accessibility` | `cucumber` | `appium` | `chaos` | `mutation` | `testcontainers`
+
+**Output:** `test-suites/<name>/` with `catalog-info.yaml`, `mkdocs.yml`, type-specific test files.
 
 ## Architecture Overview
 

@@ -1,8 +1,0 @@
-site_name: e2e-suite
-site_description: playwright test suite for hello-service
-
-nav:
-  - Home: index.md
-
-plugins:
-  - techdocs-core

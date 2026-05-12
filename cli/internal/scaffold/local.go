@@ -42,7 +42,7 @@ func LocalService(cfg ServiceConfig) error {
 		}
 	}
 
-	if err := gitCommit(cfg.RootDir, cfg.Name); err != nil {
+	if err := gitCommit(cfg.RootDir, "services/"+cfg.Name); err != nil {
 		fmt.Printf("[idp] Warning: git commit/push skipped: %v\n", err)
 	}
 
@@ -108,7 +108,8 @@ func renderFile(tmplRelPath, outPath string, data ServiceConfig) error {
 	return t.Execute(f, data)
 }
 
-func gitCommit(rootDir, name string) error {
+// gitCommit stages and commits the given relPath (e.g. "services/foo" or "test-suites/bar").
+func gitCommit(rootDir, relPath string) error {
 	run := func(args ...string) error {
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Dir = rootDir
@@ -116,7 +117,7 @@ func gitCommit(rootDir, name string) error {
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
 	}
-	if err := run("git", "add", "services/"+name+"/"); err != nil {
+	if err := run("git", "add", relPath+"/"); err != nil {
 		return err
 	}
 	// Only commit if there are staged changes.
@@ -125,7 +126,7 @@ func gitCommit(rootDir, name string) error {
 	if diffCmd.Run() == nil {
 		return nil // nothing to commit
 	}
-	if err := run("git", "commit", "-m", "feat: onboard "+name+" to GitOps"); err != nil {
+	if err := run("git", "commit", "-m", "feat: onboard "+relPath+" to GitOps"); err != nil {
 		return err
 	}
 	_ = run("git", "push") // push is best-effort

@@ -98,6 +98,51 @@ func (c *Client) ScaffoldService(ctx context.Context, req ScaffoldRequest) error
 	return c.streamTask(ctx, task.ID)
 }
 
+// TestSuiteRequest holds the values forwarded to a Backstage test suite template.
+type TestSuiteRequest struct {
+	Name        string
+	TemplateRef string // e.g. "playwright-e2e-suite"
+	Service     string
+	Namespace   string
+}
+
+// ScaffoldTestSuite creates a scaffolder task for a test suite template.
+func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) error {
+	payload := taskPayload{
+		TemplateRef: "template:default/" + req.TemplateRef,
+		Values: map[string]any{
+			"name":      req.Name,
+			"service":   req.Service,
+			"namespace": req.Namespace,
+		},
+	}
+	body, _ := json.Marshal(payload)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.base+"/api/scaffolder/v2/tasks", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.setHeaders(httpReq)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("scaffolder API: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("scaffolder API returned %d: %s", resp.StatusCode, b)
+	}
+
+	var task taskCreated
+	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
+		return fmt.Errorf("parsing task response: %w", err)
+	}
+	fmt.Printf("[idp] Scaffolder task created: %s\n", task.ID)
+	return c.streamTask(ctx, task.ID)
+}
+
 type sseEvent struct {
 	Type string          `json:"type"`
 	Body json.RawMessage `json:"body"`

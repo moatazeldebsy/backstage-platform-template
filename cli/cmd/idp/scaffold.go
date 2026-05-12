@@ -9,4 +9,5 @@ var scaffoldCmd = &cobra.Command{
 
 func init() {
 	scaffoldCmd.AddCommand(serviceCmd)
+	scaffoldCmd.AddCommand(testSuiteCmd)
 }
