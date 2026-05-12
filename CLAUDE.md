@@ -66,13 +66,33 @@ helm lint helm/service-template
 helm lint helm/service-template --set image.repository=test --set image.tag=abc1234
 ```
 
-### Scaffold a new service (CLI golden path)
+### Scaffold a new service (`idp` CLI — golden path)
 
 ```bash
-./scripts/create-service.sh --name my-svc --type nodejs
+# Build the idp CLI (once)
+make cli-build
+
+# Scaffold a service — uses Backstage Scaffolder API when running, local generation otherwise
+./bin/idp scaffold service --name my-svc --type nodejs
+./bin/idp scaffold service --name my-svc --type python
+./bin/idp scaffold service --name my-svc --type go
 # types: nodejs | python | go
 
-# Wire a self-hosted GitHub Actions runner for local CD
+# Force local generation (offline / pre-Backstage)
+./bin/idp scaffold service --name my-svc --type nodejs --local
+
+# Install globally
+make cli-install   # installs to $(go env GOPATH)/bin/idp
+```
+
+**Backstage API mode** (when `http://backstage.idp.local` is reachable): creates GitHub repo,
+registers the service in the catalog, opens a GitOps PR, generates TechDocs.
+
+**Local mode** (offline fallback): generates `services/<name>/` with Dockerfile, CI workflow,
+Helm values, and `catalog-info.yaml` directly in this repo.
+
+```bash
+# Wire a self-hosted GitHub Actions runner for local CD (optional)
 ./scripts/setup-runner.sh --repo my-svc
 ```
 

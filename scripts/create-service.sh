@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED: Use the idp CLI instead.
+#   make cli-build          # build ./bin/idp
+#   ./bin/idp scaffold service --name my-service --type nodejs
+#
+# This script is kept as a fallback reference only.
 # create-service.sh — CLI golden path for scaffolding a new service
 # Usage: ./scripts/create-service.sh --name my-service --type nodejs
 set -euo pipefail

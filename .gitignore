@@ -12,6 +12,8 @@ terraform/override.tf.json
 # Go
 services/*/bin/
 services/*/*.test
+bin/
+cli/bin/
 
 # Node
 node_modules/
