@@ -380,3 +380,10 @@ echo "║  Backstage       http://localhost:3000/create             ║"
 [[ "$SKIP_KAGENT"  == "false" ]] && echo "║                  → 'AI Agent (KAgent)' template          ║"
 [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║                  → 'ML Experiment (MLflow)' template     ║"
 echo "╚══════════════════════════════════════════════════════════╝"
+echo ""
+if [[ "$SKIP_MCP" == "false" && "$DEPLOY_MODE" == "local" ]]; then
+  echo "  Register CI runners for MCP servers (optional, for local CD):"
+  echo "    ./scripts/setup-runner.sh --repo idp-mcp-server"
+  echo "    ./scripts/setup-runner.sh --repo qa-mcp-server"
+  echo ""
+fi
