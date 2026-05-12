@@ -1,0 +1,8 @@
+site_name: test-k6
+site_description: k6 test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
