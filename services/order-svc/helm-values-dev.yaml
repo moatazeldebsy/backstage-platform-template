@@ -1,0 +1,39 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/moatazeldebsy/order-svc
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: order-svc-dev.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: dev
+
+podLabels:
+  team: "platform-team"
+  cost-center: ""
+  environment: dev
+  app.kubernetes.io/part-of: internal-developer-platform
