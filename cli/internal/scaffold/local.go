@@ -147,25 +147,30 @@ func applyDefaults(cfg ServiceConfig) ServiceConfig {
 	if cfg.TestCmd == "" {
 		cfg.TestCmd = testCmds[cfg.Type]
 	}
+	localEnv := cfg.RootDir + "/local/.env"
 	if cfg.GHOrg == "" {
-		cfg.GHOrg = envOr("GITHUB_ORG", "GH_ORG", "YOUR_GITHUB_ORG")
+		cfg.GHOrg = firstNonEmpty(
+			os.Getenv("GITHUB_ORG"),
+			os.Getenv("GH_ORG"),
+			envOrFromFile(localEnv, "GITHUB_ORG"),
+			"YOUR_GITHUB_ORG",
+		)
 	}
 	if cfg.PlatformRepo == "" {
-		cfg.PlatformRepo = envOr("PLATFORM_REPO", "", "backstage-idp-starter")
+		cfg.PlatformRepo = firstNonEmpty(
+			os.Getenv("PLATFORM_REPO"),
+			envOrFromFile(localEnv, "PLATFORM_REPO"),
+			"backstage-idp-starter",
+		)
 	}
 	return cfg
 }
 
-func envOr(keys ...string) string {
-	for i, k := range keys {
-		if k == "" {
-			continue
-		}
-		if v := os.Getenv(k); v != "" {
+// firstNonEmpty returns the first non-empty string from the list.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
 			return v
-		}
-		if i == len(keys)-1 {
-			return k // last key is the default value
 		}
 	}
 	return ""

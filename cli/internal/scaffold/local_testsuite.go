@@ -119,7 +119,12 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 
 func applyTestSuiteDefaults(cfg TestSuiteConfig) TestSuiteConfig {
 	if cfg.GHOrg == "" {
-		cfg.GHOrg = envOr("GITHUB_ORG", "GH_ORG", "YOUR_GITHUB_ORG")
+		cfg.GHOrg = firstNonEmpty(
+			os.Getenv("GITHUB_ORG"),
+			os.Getenv("GH_ORG"),
+			envOrFromFile(cfg.RootDir+"/local/.env", "GITHUB_ORG"),
+			"YOUR_GITHUB_ORG",
+		)
 	}
 	if cfg.ConsumerName == "" {
 		cfg.ConsumerName = cfg.Name + "-consumer"
