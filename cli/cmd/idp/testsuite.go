@@ -218,13 +218,16 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 				tsDesc = tsType + " test suite for " + tsService
 			}
 			return client.ScaffoldTestSuite(cmd.Context(), backstage.TestSuiteRequest{
-				Name:        tsName,
-				TemplateRef: templateRef[tsType],
-				Service:     tsService,
-				Namespace:   tsNamespace,
-				GHOrg:       ghOrg(),
-				Owner:       tsOwner,
-				Desc:        tsDesc,
+				Name:         tsName,
+				TemplateRef:  templateRef[tsType],
+				Service:      tsService,
+				Namespace:    tsNamespace,
+				GHOrg:        ghOrg(),
+				Owner:        tsOwner,
+				Desc:         tsDesc,
+				ConsumerName: tsConsumer,
+				ProviderName: tsProvider,
+				DDSite:       tsDDSite,
 			})
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")

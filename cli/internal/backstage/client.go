@@ -102,27 +102,40 @@ func (c *Client) ScaffoldService(ctx context.Context, req ScaffoldRequest) error
 
 // TestSuiteRequest holds the values forwarded to a Backstage test suite template.
 type TestSuiteRequest struct {
-	Name        string
-	TemplateRef string // e.g. "playwright-e2e-suite"
-	Service     string
-	Namespace   string
-	GHOrg       string
-	Owner       string
-	Desc        string
+	Name         string
+	TemplateRef  string // e.g. "playwright-e2e-suite"
+	Service      string
+	Namespace    string
+	GHOrg        string
+	Owner        string
+	Desc         string
+	ConsumerName string // pact only
+	ProviderName string // pact only
+	DDSite       string // datadog only
 }
 
 // ScaffoldTestSuite creates a scaffolder task for a test suite template.
 func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) error {
+	values := map[string]any{
+		"name":           req.Name,
+		"description":    req.Desc,
+		"owner":          req.Owner,
+		"targetService":  fmt.Sprintf("component:default/%s", req.Service),
+		"deploymentMode": "new-repository",
+		"repoUrl":        fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
+	}
+	if req.ConsumerName != "" {
+		values["consumerName"] = req.ConsumerName
+	}
+	if req.ProviderName != "" {
+		values["providerName"] = req.ProviderName
+	}
+	if req.DDSite != "" {
+		values["datadogSite"] = req.DDSite
+	}
 	payload := taskPayload{
 		TemplateRef: "template:default/" + req.TemplateRef,
-		Values: map[string]any{
-			"name":           req.Name,
-			"description":    req.Desc,
-			"owner":          req.Owner,
-			"targetService":  fmt.Sprintf("component:default/%s", req.Service),
-			"deploymentMode": "new-repository",
-			"repoUrl":        fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
-		},
+		Values:      values,
 	}
 	body, _ := json.Marshal(payload)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
