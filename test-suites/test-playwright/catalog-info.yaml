@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: test-playwright
+  description: playwright test suite for hello-service
+  annotations:
+    github.com/project-slug: YOUR_GITHUB_ORG/test-playwright
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: test-suite
+  lifecycle: production
+  owner: qa-team
+  system: internal-developer-platform
+  dependsOn:
+    - component:default/hello-service

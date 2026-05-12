@@ -1,0 +1,8 @@
+site_name: test-playwright
+site_description: playwright test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
