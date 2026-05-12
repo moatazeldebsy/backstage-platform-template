@@ -30,7 +30,7 @@ _print_skip_summary() {
   echo "  4. Commit your personalised repo:"
   echo "       git add . && git commit -m 'chore: initialise from backstage-idp-starter'"
   echo ""
-  echo "Full docs: docs/  |  Day-2 tools: scripts/create-service.sh, scripts/setup-runner.sh"
+  echo "Full docs: docs/  |  Day-2 tools: idp scaffold service / test-suite  |  scripts/setup-runner.sh"
   echo ""
 }
 
@@ -187,7 +187,8 @@ Install them and re-run this script, or run manually:
   echo "  3. Push first image:    git push origin main  (triggers GitHub Actions CI/CD)"
   echo ""
   echo -e "${BOLD}Day-2 tools:${RESET}"
-  echo "  Scaffold a service:   ./scripts/create-service.sh --name my-svc --type nodejs"
+  echo "  Scaffold a service:   idp scaffold service --name my-svc --type nodejs"
+  echo "  Scaffold a test suite: idp scaffold test-suite --name my-e2e --type playwright --service my-svc"
   echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
   echo ""
   echo "  Commit your personalised repo:"
@@ -329,11 +330,23 @@ if [[ -f local/backstage/.env.example && ! -f local/backstage/.env ]]; then
   log "Created local/backstage/.env — fill in your tokens before starting Backstage."
 fi
 
-# Persist org + repo to local/.env so day-2 scripts (setup-runner.sh, create-service.sh) can read them
+# Persist org + repo to local/.env so the idp CLI and day-2 scripts can read them
 if [[ -f local/.env ]]; then
   _upsert_env "local/.env" "GITHUB_ORG" "${GITHUB_ORG}"
   _upsert_env "local/.env" "PLATFORM_REPO" "${PLATFORM_REPO}"
   log "Wrote GITHUB_ORG and PLATFORM_REPO to local/.env"
+fi
+
+# Build the idp CLI so it is ready immediately after setup
+if command -v go &>/dev/null; then
+  step "Building idp CLI..."
+  if (cd cli && go build -o ../bin/idp ./cmd/idp 2>/dev/null); then
+    log "idp CLI built → ./bin/idp  (add $(pwd)/bin to PATH or run: make cli-install)"
+  else
+    warn "idp CLI build failed — run 'make cli-build' manually after fixing the error."
+  fi
+else
+  warn "Go not found — skipping idp CLI build. Install Go then run: make cli-build"
 fi
 
 echo ""

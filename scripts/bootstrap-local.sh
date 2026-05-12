@@ -274,6 +274,18 @@ fi
 # ── Pre-flight ────────────────────────────────────────────────────────────────
 _preflight_check_local
 
+# ── Build idp CLI if not already built ────────────────────────────────────────
+if [[ ! -x "${ROOT_DIR}/bin/idp" ]]; then
+  if command -v go &>/dev/null; then
+    log "Building idp CLI..."
+    (cd "${ROOT_DIR}/cli" && go build -o "${ROOT_DIR}/bin/idp" ./cmd/idp) && \
+      log "idp CLI built → ${ROOT_DIR}/bin/idp" || \
+      warn "idp CLI build failed — run 'make cli-build' manually."
+  else
+    warn "Go not found — idp CLI not built. Install Go then run: make cli-build"
+  fi
+fi
+
 # ── Personalisation: replace any remaining YOUR_GITHUB_ORG placeholders ──────
 _apply_personalization
 
