@@ -50,11 +50,22 @@ git clone https://github.com/YOUR_ORG/YOUR_REPO.git && cd YOUR_REPO
 
 # 2. Personalise placeholders AND bootstrap the platform (guided, interactive)
 ./scripts/setup.sh
+# → choose "local" when prompted for environment
+# → fill in GITHUB_TOKEN and OAuth credentials when prompted
+
+# 3. When prompted "Start Backstage now?", answer Y
+# setup.sh calls: ./scripts/bootstrap-local.sh --start-backstage
+# This builds the image, starts Docker Compose, wires nginx, seeds metrics
 ```
 
-`setup.sh` walks you through placeholder substitution (GitHub org, AWS account, region, cluster name) and then asks whether to bootstrap **local** (Kind) or **AWS** (EKS), or stop for manual steps. It calls the other scripts automatically in the correct order.
+`setup.sh` walks you through placeholder substitution (GitHub org, AWS account, region, cluster name), bootstraps the Kind cluster, and starts Backstage — all in one flow. Steps 2 and 3 can also be run independently for day-2 cluster recreates:
 
-That's it — Backstage is at `http://backstage.idp.local` and hello-service at `http://hello-service.idp.local`.
+```bash
+./scripts/bootstrap-local.sh              # cluster + platform (~10–15 min)
+./scripts/bootstrap-local.sh --start-backstage  # Backstage (~2 min)
+```
+
+After that, Backstage is at `http://backstage.idp.local` and hello-service at `http://hello-service.idp.local`.
 
 ## Platform Summary
 
@@ -85,18 +96,14 @@ curl http://hello-service.idp.local   # after adding /etc/hosts entry
 ### Backstage (developer portal)
 
 ```bash
-# First time: build the backend bundle
-cd backstage/app && yarn install && yarn build:backend && cd ../..
-
-# Set up environment files (both are required before starting)
+# Set up environment files (first time only)
 cp local/.env.example local/.env                        # shared tokens (GitHub, AWS, cluster name)
 cp local/backstage/.env.example local/backstage/.env    # Backstage-specific tokens (OAuth, K8s)
 # Edit both files and fill in your values
- # For AI/ML stack (optional): also set ANTHROPIC_API_KEY=<your-key> in local/.env before running bootstrap-ai.sh
+# For AI/ML stack (optional): also set ANTHROPIC_API_KEY=<your-key> in local/.env
 
-# Start Backstage + Postgres
-docker compose -f local/backstage/docker-compose.yml build backstage
-docker compose -f local/backstage/docker-compose.yml up -d
+# Build image, start Docker Compose, wire nginx, seed metrics (after bootstrap-local.sh)
+./scripts/bootstrap-local.sh --start-backstage
 
 # Open http://localhost:3000
 ```
@@ -160,7 +167,7 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | Script | Purpose | Called by |
 |---|---|---|
 | `setup.sh` | **Entry point.** Interactive: replaces placeholders (org, AWS account, region, cluster name), creates `.env` files, then dispatches to local or AWS bootstrap. | You (once) |
-| `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. Pass `--destroy` to tear down. | `setup.sh` → local path, or standalone |
+| `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. `--start-backstage` builds + starts Backstage, wires nginx, seeds metrics. `--destroy` tears everything down. | `setup.sh` → local path, or standalone |
 | `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components, and pushes `hello-service` to ECR. | `setup.sh` → AWS path, or standalone |
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
@@ -186,9 +193,13 @@ scripts/setup.sh
        │
        ├─ local path ──► cleanup-helm-repos.sh          (auto)
        │                ► bootstrap-local.sh
-       │                    ├─ get-k8s-credentials.sh  (auto)
+       │                    ├─ get-k8s-credentials.sh   (auto)
        │                    └─ apply-catalog-exporter.sh (auto)
-       │                ► docker compose up (Backstage)
+       │                ► bootstrap-local.sh --start-backstage
+       │                    ├─ docker compose build + up
+       │                    ├─ wire nginx endpoint
+       │                    ├─ seed QA metrics
+       │                    └─ trigger catalog export
        │
        └─ AWS path  ──► bootstrap.sh
                           └─ terraform init/apply
