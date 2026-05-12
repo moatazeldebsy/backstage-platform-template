@@ -48,6 +48,7 @@ type ScaffoldRequest struct {
 	Namespace string
 	Owner     string
 	Desc      string
+	GHOrg     string
 }
 
 type taskPayload struct {
@@ -68,6 +69,7 @@ func (c *Client) ScaffoldService(ctx context.Context, req ScaffoldRequest) error
 			"namespace":   req.Namespace,
 			"owner":       req.Owner,
 			"description": req.Desc,
+			"repoUrl":     fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
 		},
 	}
 
@@ -104,6 +106,7 @@ type TestSuiteRequest struct {
 	TemplateRef string // e.g. "playwright-e2e-suite"
 	Service     string
 	Namespace   string
+	GHOrg       string
 }
 
 // ScaffoldTestSuite creates a scaffolder task for a test suite template.
@@ -114,6 +117,7 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 			"name":      req.Name,
 			"service":   req.Service,
 			"namespace": req.Namespace,
+			"repoUrl":   fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
 		},
 	}
 	body, _ := json.Marshal(payload)

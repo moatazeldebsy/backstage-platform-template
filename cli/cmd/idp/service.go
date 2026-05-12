@@ -79,6 +79,7 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 				Namespace: svcNamespace,
 				Owner:     svcOwner,
 				Desc:      svcDesc,
+				GHOrg:     ghOrg(),
 			})
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")
@@ -92,6 +93,19 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 	})
 }
 
+// ghOrg returns the GitHub org from env or local/.env.
+func ghOrg() string {
+	for _, key := range []string{"GITHUB_ORG", "GH_ORG"} {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
+	}
+	if v := keyFromEnvFile(rootDir()+"/local/.env", "GITHUB_ORG"); v != "" {
+		return v
+	}
+	return "YOUR_GITHUB_ORG"
+}
+
 // rootDir returns the git repository root, or cwd as fallback.
 func rootDir() string {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
@@ -102,20 +116,74 @@ func rootDir() string {
 	return dir
 }
 
-// readBackstageToken reads BACKSTAGE_TOKEN env or parses local/backstage/.env.
+// readBackstageToken resolves a Backstage service token from (in priority order):
+//  1. --token flag
+//  2. BACKSTAGE_TOKEN env var
+//  3. BACKSTAGE_AUTH_SECRET in local/backstage/.env  (skip if empty)
+//  4. The first static externalAccess token in backstage/app-config.local.yaml
 func readBackstageToken(root string) string {
+	// 1. explicit flag (set by caller before this is invoked)
+	if scaffoldToken != "" {
+		return scaffoldToken
+	}
+	// 2. env var
 	if t := os.Getenv("BACKSTAGE_TOKEN"); t != "" {
 		return t
 	}
-	envFile := root + "/local/backstage/.env"
-	data, err := os.ReadFile(envFile)
+	// 3. local/backstage/.env → BACKSTAGE_AUTH_SECRET
+	if t := keyFromEnvFile(root+"/local/backstage/.env", "BACKSTAGE_AUTH_SECRET"); t != "" {
+		return t
+	}
+	// 4. backstage/app-config.local.yaml → backend.auth.externalAccess static token
+	if t := staticTokenFromConfig(root + "/backstage/app-config.local.yaml"); t != "" {
+		fmt.Printf("[idp] Using static token from app-config.local.yaml\n")
+		return t
+	}
+	return ""
+}
+
+func keyFromEnvFile(path, key string) string {
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
+	prefix := key + "="
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "BACKSTAGE_AUTH_SECRET=") {
-			return strings.TrimPrefix(line, "BACKSTAGE_AUTH_SECRET=")
+		if v, ok := strings.CutPrefix(line, prefix); ok && v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// staticTokenFromConfig parses the first static externalAccess token from
+// a Backstage YAML config without importing a YAML library.
+func staticTokenFromConfig(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	inExternal := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, "externalAccess") {
+			inExternal = true
+			continue
+		}
+		if inExternal && strings.Contains(line, "token:") {
+			// Extract value between quotes or after the colon.
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				v := strings.TrimSpace(parts[1])
+				v = strings.Trim(v, `"'`)
+				if v != "" {
+					return v
+				}
+			}
+		}
+		// Stop at next top-level key (unindented, non-comment line).
+		if inExternal && len(line) > 0 && line[0] != ' ' && line[0] != '\t' && line[0] != '#' && line[0] != '-' {
+			inExternal = false
 		}
 	}
 	return ""

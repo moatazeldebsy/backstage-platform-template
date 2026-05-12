@@ -215,6 +215,7 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 				TemplateRef: templateRef[tsType],
 				Service:     tsService,
 				Namespace:   tsNamespace,
+				GHOrg:       ghOrg(),
 			})
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")
