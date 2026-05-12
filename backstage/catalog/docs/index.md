@@ -13,7 +13,7 @@ Engineers can self-service a complete test suite in minutes — either through t
 
 ## Scaffold Templates
 
-All templates are available in the Backstage **Create** page (`http://localhost:3000/create`) and via the CLI (`./scripts/create-test-suite.sh`).
+All templates are available in the Backstage **Create** page (`http://backstage.idp.local/create`) and via the CLI (`./scripts/create-test-suite.sh`).
 
 ### Functional & E2E
 

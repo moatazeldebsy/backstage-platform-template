@@ -106,7 +106,7 @@ This single command:
 6. Triggers an immediate catalog export
 7. Prints the full access-URL summary
 
-Backstage is then available at http://localhost:3000 (or http://backstage.idp.local after the `/etc/hosts` entries are written by `bootstrap-local.sh`).
+Backstage is then available at http://backstage.idp.local (or http://localhost:3000 as a direct fallback).
 
 ### Environment files (first time only)
 
@@ -149,7 +149,7 @@ cd backstage/app && yarn install && yarn build:backend && cd ../..
 
 ### Scaffold a new service
 
-1. Open http://localhost:3000 → **Create**
+1. Open http://backstage.idp.local → **Create**
 2. Choose **Node.js Service** or **Python FastAPI Service**
 3. Fill in name, description, owner, GitHub repo
 4. Click **Create** — Backstage publishes the repo to GitHub and registers it in the catalog
@@ -170,7 +170,7 @@ docker push localhost:5003/<name>:latest
 ```
 
 **Deploy via Backstage:**
-1. Open http://localhost:3000 → **Create**
+1. Open http://backstage.idp.local → **Create**
 2. Choose **Deploy Service to local Kind cluster**
 3. Pick the service from the catalog, set image tag (`latest`)
 4. Click **Create**

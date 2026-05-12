@@ -59,10 +59,10 @@ curl -sf http://grafana.idp.local > /dev/null && echo "Grafana OK"
 
 | Tab | URL |
 |-----|-----|
-| Backstage portal | http://localhost:3000 |
-| Backstage catalog | http://localhost:3000/catalog |
-| Backstage create | http://localhost:3000/create |
-| Tech Radar | http://localhost:3000/tech-radar |
+| Backstage portal | http://backstage.idp.local |
+| Backstage catalog | http://backstage.idp.local/catalog |
+| Backstage create | http://backstage.idp.local/create |
+| Tech Radar | http://backstage.idp.local/tech-radar |
 | Grafana — hello-service | http://grafana.idp.local/d/idp-services |
 | Grafana — DORA | http://grafana.idp.local/d/dora-metrics-idp |
 | ArgoCD | http://argocd.idp.local |

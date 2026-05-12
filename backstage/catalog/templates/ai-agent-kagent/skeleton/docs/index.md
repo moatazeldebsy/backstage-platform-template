@@ -39,5 +39,5 @@ open http://kagent.idp.local
 ## Links
 
 - [KAgent UI](http://kagent.idp.local)
-- [Backstage catalog](http://localhost:3000/catalog/default/component/${{ values.name }})
+- [Backstage catalog](http://backstage.idp.local/catalog/default/component/${{ values.name }})
 - [Runbook](runbooks/agent.md)

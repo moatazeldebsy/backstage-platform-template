@@ -9,7 +9,7 @@ The golden path is the single, opinionated workflow every developer follows to s
 ```
 Developer                Platform
 ─────────                ────────
-1. Open Backstage (http://localhost:3000)
+1. Open Backstage (http://backstage.idp.local)
 2. Choose template ──────> Scaffolder creates GitHub repo + README
 3. Clone & code          > CI workflow is pre-wired (test + smoke-check)
 4. git push ─────────────> GitHub Actions: install → test → docker build → /healthz check

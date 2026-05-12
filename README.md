@@ -105,7 +105,7 @@ cp local/backstage/.env.example local/backstage/.env    # Backstage-specific tok
 # Build image, start Docker Compose, wire nginx, seed metrics (after bootstrap-local.sh)
 ./scripts/bootstrap-local.sh --start-backstage
 
-# Open http://localhost:3000
+# Open http://backstage.idp.local
 ```
 
 ### Local Access URLs
@@ -230,7 +230,7 @@ Backstage → scaffold repo → push code
 
 ### Scaffold a new service
 
-**Via Backstage** (http://localhost:3000 → Create):
+**Via Backstage** (http://backstage.idp.local → Create):
 
 *Service templates:*
 - Node.js Service
@@ -268,7 +268,7 @@ Both paths generate: source/test code, `catalog-info.yaml`, GitHub Actions CI, T
 
 ### Deploy to local Kind
 
-**Via Backstage** (http://localhost:3000 → Create → "Deploy Service to local Kind cluster"):
+**Via Backstage** (http://backstage.idp.local → Create → "Deploy Service to local Kind cluster"):
 1. Pick the service from the catalog
 2. Set image tag (default: `latest`)
 3. Click Create — the `idp:deploy-local` custom action runs `helm upgrade --install`

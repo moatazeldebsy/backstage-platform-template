@@ -182,7 +182,7 @@ After `bootstrap-local.sh`, all entries in `local/hosts-append.txt` are written 
 
 | Service | URL |
 |---------|-----|
-| Backstage | http://localhost:3000 |
+| Backstage | http://backstage.idp.local |
 | hello-service | http://hello-service.idp.local |
 | Grafana | http://grafana.idp.local (admin/admin) |
 | ArgoCD | http://argocd.idp.local |
