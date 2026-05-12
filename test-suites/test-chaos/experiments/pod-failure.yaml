@@ -1,0 +1,13 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: test-chaos-pod-failure
+  namespace: services
+spec:
+  action: pod-failure
+  mode: one
+  duration: '1m'
+  selector:
+    namespaces: [services]
+    labelSelectors:
+      app.kubernetes.io/name: hello-service

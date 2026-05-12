@@ -1,0 +1,14 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: test-chaos-cpu-stress
+  namespace: services
+spec:
+  mode: one
+  duration: '1m'
+  selector:
+    namespaces: [services]
+    labelSelectors:
+      app.kubernetes.io/name: hello-service
+  stressors:
+    cpu: { workers: 2, load: 80 }

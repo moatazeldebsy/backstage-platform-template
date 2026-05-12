@@ -1,0 +1,17 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: test-chaos-network-latency
+  namespace: services
+spec:
+  action: delay
+  mode: all
+  duration: '1m'
+  selector:
+    namespaces: [services]
+    labelSelectors:
+      app.kubernetes.io/name: hello-service
+  delay:
+    latency: '100ms'
+    jitter: '20ms'
+    correlation: '25'

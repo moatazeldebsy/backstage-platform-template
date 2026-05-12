@@ -1,0 +1,8 @@
+site_name: test-chaos
+site_description: chaos test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
