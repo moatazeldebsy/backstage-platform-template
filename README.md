@@ -176,12 +176,14 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 
 ### Day-2 — Per-service operations
 
-| Script | Purpose | When to run |
+| Tool | Purpose | When to run |
 |---|---|---|
-| `create-service.sh` | CLI golden path: scaffold a new service repo (Node.js / Python / Go). Mirrors the Backstage template flow. | Each time you add a new service |
-| `create-test-suite.sh` | CLI golden path: scaffold a QA test suite (13 types: playwright, k6, pact, newman, zap, datadog, visual, accessibility, cucumber, appium, chaos, mutation, testcontainers). | Each time you add a test suite |
-| `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner for a scaffolded service repo so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
+| `idp scaffold service` | Scaffold a new service (Node.js / Python / Go) via Backstage API or locally. Built by `setup.sh` automatically. | Each time you add a new service |
+| `idp scaffold test-suite` | Scaffold a QA test suite (13 types). Uses Backstage Scaffolder API when running, local generation otherwise. | Each time you add a test suite |
+| `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
 | `seed-qa-metrics.sh` | Push synthetic QA metrics so the Grafana QA dashboard shows data immediately. | Optional — demo / dev only |
+
+> `create-service.sh` and `create-test-suite.sh` are deprecated. Use `idp scaffold` instead.
 
 ### Execution flow
 
@@ -206,17 +208,54 @@ scripts/setup.sh
                           └─ helm installs on EKS
 
 # Per new service (day-2)
-scripts/create-service.sh --name my-svc --type nodejs
-scripts/setup-runner.sh   --repo my-svc
+idp scaffold service --name my-svc --type nodejs   # Backstage API when running
+idp scaffold service --name my-svc --type nodejs --local  # offline / pre-Backstage
+scripts/setup-runner.sh --repo my-svc
 
 # Per new QA test suite (day-2)
-scripts/create-test-suite.sh --name my-e2e  --type playwright    --service my-svc
-scripts/create-test-suite.sh --name my-perf --type k6            --service my-svc --vus 20
-scripts/create-test-suite.sh --name my-a11y --type accessibility --service my-svc
+idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
+idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20
+idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
 
 # Optional
 scripts/seed-qa-metrics.sh
 ```
+
+## `idp` CLI
+
+The `idp` CLI is the day-2 golden path for scaffolding. It is built automatically by `setup.sh` and `bootstrap-local.sh`. To build manually:
+
+```bash
+make cli-build     # → ./bin/idp
+make cli-install   # → $(go env GOPATH)/bin/idp  (adds to PATH)
+```
+
+### Scaffold a service
+
+```bash
+idp scaffold service --name payments-api --type nodejs   # nodejs | python | go
+idp scaffold service --name payments-api --type python --local  # force local generation
+idp scaffold service --help
+```
+
+### Scaffold a test suite
+
+```bash
+# 13 types: playwright | k6 | pact | newman | zap | datadog | visual |
+#           accessibility | cucumber | appium | chaos | mutation | testcontainers
+idp scaffold test-suite --name hello-e2e   --type playwright    --service hello-service
+idp scaffold test-suite --name hello-load  --type k6            --service hello-service --vus 50 --duration 5m
+idp scaffold test-suite --name hello-sec   --type zap           --service hello-service --scan-type baseline
+idp scaffold test-suite --name hello-a11y  --type accessibility --service hello-service --wcag wcag21aa
+idp scaffold test-suite --name hello-chaos --type chaos         --service hello-service --chaos-duration 2m
+idp scaffold test-suite --help
+```
+
+**Backstage API mode** (default when `http://backstage.idp.local` responds): full golden path — GitHub repo, TechDocs, catalog registration, GitOps PR.
+
+**Local mode** (`--local` flag or Backstage offline): generates files directly in `services/<name>/` or `test-suites/<name>/`.
+
+Token is resolved automatically from `local/backstage/.env` → `backstage/app-config.local.yaml`. Override with `--token` or `BACKSTAGE_TOKEN` env var.
 
 ## The Golden Path
 
@@ -254,17 +293,23 @@ Backstage → scaffold repo → push code
 - OWASP ZAP DAST, Datadog Synthetics
 - BDD Cucumber, Appium Mobile, Stryker Mutation
 
-**Via CLI:**
+**Via `idp` CLI** (built automatically by `setup.sh`):
 ```bash
-# New service
-./scripts/create-service.sh --name my-svc --type nodejs
+# New service — uses Backstage Scaffolder API when reachable, local generation otherwise
+idp scaffold service --name my-svc --type nodejs
+idp scaffold service --name my-svc --type python
+idp scaffold service --name my-svc --type go
 
 # New test suite
-./scripts/create-test-suite.sh --name my-e2e --type playwright --service my-svc
-./scripts/create-test-suite.sh --help   # show all types and flags
+idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
+idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20 --duration 5m
+idp scaffold test-suite --name my-a11y --type accessibility --service my-svc --wcag wcag21aa
+idp scaffold test-suite --help   # show all 13 types and flags
 ```
 
-Both paths generate: source/test code, `catalog-info.yaml`, GitHub Actions CI, TechDocs, and a `README.md`.
+**Backstage API mode** (when `http://backstage.idp.local` is reachable): creates GitHub repo, registers the service in the catalog, opens a GitOps PR, and generates TechDocs.
+
+**Local mode** (offline / pre-Backstage): generates `services/<name>/` or `test-suites/<name>/` with source code, `catalog-info.yaml`, GitHub Actions CI, Helm values, and a `README.md`.
 
 ### Deploy to local Kind
 

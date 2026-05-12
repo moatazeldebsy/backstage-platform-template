@@ -161,8 +161,11 @@ Then re-add the deploy job to `.github/workflows/build-and-deploy.yml` (see `doc
 ## CLI Alternative (without Backstage)
 
 ```bash
-# Scaffold
-./scripts/create-service.sh --name my-service --type nodejs
+# Scaffold — auto-detects Backstage; falls back to local generation
+idp scaffold service --name my-service --type nodejs
+
+# Force local generation (offline / pre-Backstage)
+idp scaffold service --name my-service --type nodejs --local
 
 # Deploy locally
 docker build -t localhost:5003/my-service:latest services/my-service/

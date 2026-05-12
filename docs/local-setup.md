@@ -189,8 +189,11 @@ helm upgrade --install <name> ./helm/service-template \
 ## Scaffold and test a new service locally (CLI path)
 
 ```bash
-# 1. Scaffold
-./scripts/create-service.sh --name my-svc --type nodejs
+# 1. Scaffold — uses Backstage Scaffolder API when running, local generation otherwise
+idp scaffold service --name my-svc --type nodejs
+
+# Force local generation (offline / pre-Backstage)
+idp scaffold service --name my-svc --type nodejs --local
 
 # 2. Build and push the image
 cd services/my-svc
