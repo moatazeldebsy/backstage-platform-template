@@ -19,13 +19,13 @@
 | Component | Tested version |
 |-----------|---------------|
 | Backstage | v1.49.1 |
-| Kubernetes | 1.29 (EKS), 1.32 (Kind) |
-| Helm | 3.x |
-| Kind | 0.24 |
-| ArgoCD | v2.12 |
+| Kubernetes | 1.29 (EKS), 1.33.1 (Kind) |
+| Helm | 3.x / 4.x |
+| Kind | ≥ 0.27 |
+| ArgoCD | v3.4 (chart 9.5.13) |
 | Terraform | ≥ 1.5 |
-| Go (hello-service) | 1.22 |
-| Node.js (Backstage) | 20 LTS |
+| Go (hello-service) | 1.26 |
+| Node.js (Backstage) | 24 LTS |
 
 ---
 

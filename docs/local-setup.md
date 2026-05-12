@@ -9,14 +9,13 @@ Run the full IDP platform on your laptop — no AWS account required.
 brew install kind kubectl helm docker
 
 # Verify
-kind version    # >= 0.22
+kind version    # >= 0.27
 kubectl version --client
 helm version    # >= 3.14
 docker info     # Docker running
 ```
 
-> **macOS ARM64 note**: The cluster is pinned to K8s **1.31.6** (`kindest/node:v1.31.6`).
-> K8s 1.35 (Kind's current default) has kubelet cgroup issues with Docker Desktop on Apple Silicon.
+> **macOS ARM64 note**: The cluster is pinned to K8s **1.33.1** (`kindest/node:v1.33.1`) — tested stable on macOS ARM64 with Docker Desktop.
 
 ## Bootstrap (~10–15 min)
 

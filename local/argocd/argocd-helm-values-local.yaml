@@ -1,6 +1,6 @@
 # Helm values for ArgoCD on local Kind cluster
 # Install: helm upgrade --install argocd argo/argo-cd \
-#   --namespace argocd --create-namespace --version 7.7.16 \
+#   --namespace argocd --create-namespace --version 9.5.13 \
 #   --values local/argocd/argocd-helm-values-local.yaml
 #
 # AWS equivalent: kubernetes/argocd/argocd-helm-values.yaml

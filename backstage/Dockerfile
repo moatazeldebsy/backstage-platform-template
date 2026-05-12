@@ -1,6 +1,6 @@
 # Production Backstage image — uses pre-built bundle from `yarn build:backend`
 # Run `yarn build:backend` in backstage/app/ before building this image.
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev python3 python3-pip make g++ curl ca-certificates \
@@ -44,7 +44,7 @@ RUN yarn workspaces focus --all --production && rm -rf "$(yarn cache dir)"
 COPY packages/backend/dist/bundle.tar.gz bundle.tar.gz
 RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
 
-# node:22-bookworm-slim already has uid 1000 as 'node'
+# node:24-bookworm-slim already has uid 1000 as 'node'
 RUN chown -R node:node /app
 USER node
 

@@ -1,6 +1,6 @@
 module github.com/idp-mvp/hello-service
 
-go 1.23.0
+go 1.26
 
 require github.com/prometheus/client_golang v1.23.2
 

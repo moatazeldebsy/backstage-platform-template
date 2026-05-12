@@ -515,7 +515,7 @@ if ! $SKIP_GITOPS; then
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \
-    --version 7.7.16 \
+    --version 9.5.13 \
     --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
     --wait --timeout 10m
 
