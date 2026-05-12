@@ -83,6 +83,35 @@ files locally under test-suites/<name>/.
 
 Supported types: playwright | k6 | pact | newman | zap | datadog | visual |
                  accessibility | cucumber | appium | chaos | mutation | testcontainers`,
+	Example: `  # Playwright E2E suite
+  idp scaffold test-suite --name payments-e2e --type playwright --service payments-api
+
+  # k6 load test — 50 VUs, 5 min, p95 < 300 ms
+  idp scaffold test-suite --name payments-load --type k6 --service payments-api \
+    --vus 50 --duration 5m --p95 300
+
+  # Pact consumer contract tests
+  idp scaffold test-suite --name checkout-contracts --type pact --service payments-api \
+    --consumer checkout-ui --provider payments-api
+
+  # OWASP ZAP DAST security scan
+  idp scaffold test-suite --name payments-sec --type zap --service payments-api \
+    --scan-type full --fail-risk Medium
+
+  # WCAG 2.1 AA accessibility audit
+  idp scaffold test-suite --name payments-a11y --type accessibility --service payments-api \
+    --wcag wcag21aa
+
+  # Chaos Mesh resilience experiments
+  idp scaffold test-suite --name payments-chaos --type chaos --service payments-api \
+    --chaos-duration 2m
+
+  # Stryker mutation testing, 80 % threshold
+  idp scaffold test-suite --name payments-mutation --type mutation --service payments-api \
+    --score 80
+
+  # Force local generation (offline / pre-Backstage)
+  idp scaffold test-suite --name my-e2e --type playwright --service my-svc --local`,
 	RunE: runScaffoldTestSuite,
 }
 
