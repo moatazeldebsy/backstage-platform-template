@@ -1,0 +1,8 @@
+site_name: test-mutation
+site_description: mutation test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
