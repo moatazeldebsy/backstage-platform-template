@@ -1,0 +1,8 @@
+site_name: test-appium
+site_description: appium test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
