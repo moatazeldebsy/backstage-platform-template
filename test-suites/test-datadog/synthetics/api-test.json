@@ -1,0 +1,14 @@
+{
+  "name": "test-datadog - API health check",
+  "type": "api", "subtype": "http", "status": "live",
+  "tags": ["service:test-datadog", "env:production"],
+  "locations": ["aws:eu-west-1", "aws:us-east-1"],
+  "options": { "tick_every": 300, "retry": { "count": 2, "interval": 300 } },
+  "config": {
+    "request": { "method": "GET", "url": "http://localhost:8080/healthz", "timeout": 30 },
+    "assertions": [
+      { "type": "statusCode", "operator": "is", "target": 200 },
+      { "type": "responseTime", "operator": "lessThan", "target": 2000 }
+    ]
+  }
+}

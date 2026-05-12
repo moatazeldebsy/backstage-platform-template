@@ -1,0 +1,8 @@
+site_name: test-datadog
+site_description: datadog test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core

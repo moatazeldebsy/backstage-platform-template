@@ -1,0 +1,7 @@
+{
+  "name": "test-datadog",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": { "test": "datadog-ci synthetics run-tests --config datadog-ci.json" },
+  "devDependencies": { "@datadog/datadog-ci": "^2.18.0" }
+}

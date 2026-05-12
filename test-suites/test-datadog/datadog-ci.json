@@ -1,0 +1,7 @@
+{
+  "datadogSite": "datadoghq.eu",
+  "files": ["synthetics/**/*.json"],
+  "failOnCriticalErrors": true,
+  "failOnMissingTests": true,
+  "runName": "test-datadog - CI run"
+}
