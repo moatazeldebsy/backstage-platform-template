@@ -1,0 +1,8 @@
+site_name: test-testcontainers
+site_description: testcontainers test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
