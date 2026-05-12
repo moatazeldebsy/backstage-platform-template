@@ -93,7 +93,7 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 	})
 }
 
-// ghOrg returns the GitHub org from env or local/.env.
+// ghOrg returns the GitHub org, warning if it falls back to the placeholder.
 func ghOrg() string {
 	for _, key := range []string{"GITHUB_ORG", "GH_ORG"} {
 		if v := os.Getenv(key); v != "" {
@@ -103,6 +103,7 @@ func ghOrg() string {
 	if v := keyFromEnvFile(rootDir()+"/local/.env", "GITHUB_ORG"); v != "" {
 		return v
 	}
+	fmt.Fprintln(os.Stderr, "[idp] Warning: GitHub org not found — set GITHUB_ORG or add it to local/.env")
 	return "YOUR_GITHUB_ORG"
 }
 
@@ -112,7 +113,11 @@ func rootDir() string {
 	if err == nil {
 		return strings.TrimSpace(string(out))
 	}
-	dir, _ := os.Getwd()
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "[idp] Warning: could not determine working directory:", err)
+		return "."
+	}
 	return dir
 }
 

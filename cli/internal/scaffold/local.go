@@ -38,6 +38,7 @@ func LocalService(cfg ServiceConfig) error {
 	entries := fileEntries(cfg.Type)
 	for _, e := range entries {
 		if err := renderFile(e.tmpl, filepath.Join(targetDir, e.out), cfg); err != nil {
+			_ = os.RemoveAll(targetDir)
 			return fmt.Errorf("rendering %s: %w", e.tmpl, err)
 		}
 	}

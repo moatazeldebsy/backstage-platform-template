@@ -73,7 +73,10 @@ func (c *Client) ScaffoldService(ctx context.Context, req ScaffoldRequest) error
 		},
 	}
 
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encoding request: %w", err)
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.base+"/api/scaffolder/v2/tasks", bytes.NewReader(body))
 	if err != nil {
@@ -137,7 +140,10 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 		TemplateRef: "template:default/" + req.TemplateRef,
 		Values:      values,
 	}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encoding request: %w", err)
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.base+"/api/scaffolder/v2/tasks", bytes.NewReader(body))
 	if err != nil {
@@ -183,7 +189,7 @@ type completionBody struct {
 
 // streamTask reads the SSE event stream for a scaffolder task and prints log lines.
 func (c *Client) streamTask(ctx context.Context, taskID string) error {
-	// Use a client without timeout for streaming.
+	// No client-level timeout — the context controls cancellation instead.
 	streamClient := &http.Client{}
 	url := fmt.Sprintf("%s/api/scaffolder/v2/tasks/%s/eventstream", c.base, taskID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -199,8 +205,18 @@ func (c *Client) streamTask(ctx context.Context, taskID string) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("event stream returned %d: %s", resp.StatusCode, b)
+	}
+
+	// Use a larger scanner buffer for big SSE payloads.
 	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 256*1024), 256*1024)
+
 	var dataLines []string
+	completed := false
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		switch {
@@ -210,19 +226,31 @@ func (c *Client) streamTask(ctx context.Context, taskID string) error {
 			if len(dataLines) > 0 {
 				raw := strings.Join(dataLines, "")
 				dataLines = nil
-				if err := c.handleEvent(raw); err != nil {
+				done, err := c.handleEvent(raw)
+				if err != nil {
 					return err
+				}
+				if done {
+					completed = true
 				}
 			}
 		}
 	}
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("reading event stream: %w", err)
+	}
+	if !completed {
+		return fmt.Errorf("event stream ended without a completion event — the task may still be running; check %s", c.base)
+	}
+	return nil
 }
 
-func (c *Client) handleEvent(raw string) error {
+// handleEvent processes one SSE event. Returns (true, nil) on successful
+// completion, (false, err) on failure, (false, nil) for log/info events.
+func (c *Client) handleEvent(raw string) (completed bool, err error) {
 	var ev sseEvent
 	if err := json.Unmarshal([]byte(raw), &ev); err != nil {
-		return nil // ignore malformed events
+		return false, nil // ignore malformed events
 	}
 	switch ev.Type {
 	case "log":
@@ -232,14 +260,24 @@ func (c *Client) handleEvent(raw string) error {
 		}
 	case "completion":
 		var b completionBody
-		if err := json.Unmarshal(ev.Body, &b); err == nil {
-			if b.Status == "failed" && b.Error != nil {
-				return fmt.Errorf("scaffolder task failed: %s", b.Error.Message)
-			}
+		if err := json.Unmarshal(ev.Body, &b); err != nil {
+			return false, fmt.Errorf("parsing completion event: %w", err)
+		}
+		switch b.Status {
+		case "completed":
 			fmt.Printf("[idp] Task completed: %s\n", b.Status)
+			return true, nil
+		case "failed":
+			msg := b.Status
+			if b.Error != nil {
+				msg = b.Error.Message
+			}
+			return false, fmt.Errorf("scaffolder task failed: %s", msg)
+		default:
+			return false, fmt.Errorf("scaffolder task ended with unexpected status %q", b.Status)
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func (c *Client) setHeaders(req *http.Request) {

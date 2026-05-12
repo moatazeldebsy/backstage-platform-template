@@ -88,19 +88,24 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 	if !ok {
 		return fmt.Errorf("unknown test suite type: %s", cfg.Type)
 	}
-	if err := gen(cfg, targetDir); err != nil {
+	cleanup := func(err error) error {
+		_ = os.RemoveAll(targetDir)
 		return err
+	}
+
+	if err := gen(cfg, targetDir); err != nil {
+		return cleanup(err)
 	}
 
 	// Always write shared files (catalog-info, mkdocs).
 	if err := writeTSFile(targetDir, "catalog-info.yaml", tsCatalogInfo, cfg); err != nil {
-		return err
+		return cleanup(err)
 	}
 	if err := writeTSFile(targetDir, "mkdocs.yml", tsMkdocs, cfg); err != nil {
-		return err
+		return cleanup(err)
 	}
 	if err := os.MkdirAll(filepath.Join(targetDir, "docs"), 0o755); err != nil {
-		return err
+		return cleanup(err)
 	}
 
 	if err := gitCommit(cfg.RootDir, "test-suites/"+cfg.Name); err != nil {
