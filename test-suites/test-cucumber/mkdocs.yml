@@ -1,0 +1,8 @@
+site_name: test-cucumber
+site_description: cucumber test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
