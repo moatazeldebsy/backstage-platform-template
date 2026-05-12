@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: <% .Name %>
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: <% .TestCmd %>
+      - name: Build Docker image (smoke check)
+        run: docker build -t <% .Name %>:ci .
+      - name: Smoke-test container
+        run: |
+          docker run -d --name svc -p <% .Port %>:<% .Port %> -e PORT=<% .Port %> <% .Name %>:ci
+          sleep 3
+          curl -sf --retry 5 --retry-delay 2 --retry-connrefused http://localhost:<% .Port %>/healthz
+          docker stop svc && docker rm svc
+
+  publish:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        id: build
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          IMAGE=ghcr.io/<% .GHOrg %>/<% .Name %>
+          docker build -t ${IMAGE}:${SHORT_SHA} -t ${IMAGE}:latest .
+          docker push ${IMAGE}:${SHORT_SHA}
+          docker push ${IMAGE}:latest
+          echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_ENV"
+      - name: Update image tag in platform repo
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "GH_PAT not set — platform repo image tag update skipped"
+            exit 0
+          fi
+          git config --global user.email "ci@idp.platform"
+          git config --global user.name "IDP CI Bot"
+          git clone https://x-access-token:${GH_TOKEN}@github.com/<% .GHOrg %>/<% .PlatformRepo %>.git /tmp/platform
+          cd /tmp/platform
+          VALUES_FILE="services/<% .Name %>/helm-values-dev.yaml"
+          if [ -f "${VALUES_FILE}" ]; then
+            sed -i "s|^  tag: .*|  tag: \"${SHORT_SHA}\"|" "${VALUES_FILE}"
+            git add "${VALUES_FILE}"
+            git diff --cached --quiet || git commit -m "chore: bump <% .Name %> image to ${SHORT_SHA} [skip ci]"
+            git push
+          else
+            echo "Values file not found — merge the Platform GitOps PR first"
+          fi

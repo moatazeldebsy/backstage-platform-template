@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: <% .Name %>
+  description: Auto-scaffolded <% .Type %> service
+  annotations:
+    github.com/project-slug: <% .GHOrg %>/<% .Name %>
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=<% .Name %>
+    backstage.io/kubernetes-namespace: <% .Namespace %>
+spec:
+  type: service
+  lifecycle: development
+  owner: platform-team
+  system: internal-developer-platform

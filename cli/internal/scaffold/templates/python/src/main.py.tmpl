@@ -1,0 +1,18 @@
+from fastapi import FastAPI
+
+app = FastAPI(title="<% .Name %>")
+
+
+@app.get("/")
+def root():
+    return {"service": "<% .Name %>", "status": "ok"}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+
+@app.get("/ready")
+def ready():
+    return {"status": "ready"}

@@ -1,0 +1,48 @@
+# <% .Name %>
+
+Auto-scaffolded <% .Type %> service.
+
+## Getting Started
+
+<% if eq .Type "nodejs" %>```bash
+npm install
+npm start
+```<% else if eq .Type "python" %>```bash
+pip install -r requirements.txt
+uvicorn src.main:app --host 0.0.0.0 --port <% .Port %> --reload
+```<% else %>```bash
+go run ./src/...
+```<% end %>
+
+## Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Root — returns service name and status |
+| `GET /healthz` | Liveness probe |
+| `GET /ready` | Readiness probe |<% if eq .Type "python" %>
+| `GET /docs` | Swagger UI |
+| `GET /openapi.json` | OpenAPI schema |<% end %>
+
+## Running Tests
+
+<% if eq .Type "nodejs" %>```bash
+npm test
+```<% else if eq .Type "python" %>```bash
+pytest src/ -q
+```<% else %>```bash
+go test ./src/...
+```<% end %>
+
+## Local Development (Kind)
+
+```bash
+# http://<% .Name %>.idp.local
+helm upgrade --install <% .Name %> ./helm/service-template \
+  --namespace <% .Namespace %> \
+  --values services/<% .Name %>/helm-values-local.yaml
+```
+
+## Deploying
+
+Push to `main` to trigger CI/CD (GitHub Actions → GHCR → Helm deploy).

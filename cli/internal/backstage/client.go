@@ -1,0 +1,183 @@
+package backstage
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// Client talks to the Backstage Scaffolder API.
+type Client struct {
+	base   string
+	token  string
+	client *http.Client
+}
+
+func NewClient(baseURL, token string) *Client {
+	return &Client{
+		base:  strings.TrimRight(baseURL, "/"),
+		token: token,
+		client: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+// Healthy returns true if Backstage responds to its healthcheck endpoint.
+func (c *Client) Healthy(ctx context.Context) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+"/healthcheck", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+// ScaffoldRequest holds the values forwarded to the Backstage Scaffolder template.
+type ScaffoldRequest struct {
+	Name      string
+	Type      string
+	Namespace string
+	Owner     string
+	Desc      string
+}
+
+type taskPayload struct {
+	TemplateRef string         `json:"templateRef"`
+	Values      map[string]any `json:"values"`
+}
+
+type taskCreated struct {
+	ID string `json:"id"`
+}
+
+// ScaffoldService creates a scaffolder task and streams its log until completion.
+func (c *Client) ScaffoldService(ctx context.Context, req ScaffoldRequest) error {
+	payload := taskPayload{
+		TemplateRef: fmt.Sprintf("template:default/%s-service", req.Type),
+		Values: map[string]any{
+			"name":        req.Name,
+			"namespace":   req.Namespace,
+			"owner":       req.Owner,
+			"description": req.Desc,
+		},
+	}
+
+	body, _ := json.Marshal(payload)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.base+"/api/scaffolder/v2/tasks", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.setHeaders(httpReq)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("scaffolder API: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("scaffolder API returned %d: %s", resp.StatusCode, b)
+	}
+
+	var task taskCreated
+	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
+		return fmt.Errorf("parsing task response: %w", err)
+	}
+	fmt.Printf("[idp] Scaffolder task created: %s\n", task.ID)
+	return c.streamTask(ctx, task.ID)
+}
+
+type sseEvent struct {
+	Type string          `json:"type"`
+	Body json.RawMessage `json:"body"`
+}
+
+type logBody struct {
+	Message string `json:"message"`
+	StepID  string `json:"stepId"`
+}
+
+type completionBody struct {
+	Status string `json:"status"`
+	Error  *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+// streamTask reads the SSE event stream for a scaffolder task and prints log lines.
+func (c *Client) streamTask(ctx context.Context, taskID string) error {
+	// Use a client without timeout for streaming.
+	streamClient := &http.Client{}
+	url := fmt.Sprintf("%s/api/scaffolder/v2/tasks/%s/eventstream", c.base, taskID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	c.setHeaders(req)
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err := streamClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("event stream: %w", err)
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	var dataLines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case strings.HasPrefix(line, "data:"):
+			dataLines = append(dataLines, strings.TrimPrefix(line, "data:"))
+		case line == "":
+			if len(dataLines) > 0 {
+				raw := strings.Join(dataLines, "")
+				dataLines = nil
+				if err := c.handleEvent(raw); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return scanner.Err()
+}
+
+func (c *Client) handleEvent(raw string) error {
+	var ev sseEvent
+	if err := json.Unmarshal([]byte(raw), &ev); err != nil {
+		return nil // ignore malformed events
+	}
+	switch ev.Type {
+	case "log":
+		var b logBody
+		if err := json.Unmarshal(ev.Body, &b); err == nil && b.Message != "" {
+			fmt.Printf("[idp] [%s] %s\n", b.StepID, b.Message)
+		}
+	case "completion":
+		var b completionBody
+		if err := json.Unmarshal(ev.Body, &b); err == nil {
+			if b.Status == "failed" && b.Error != nil {
+				return fmt.Errorf("scaffolder task failed: %s", b.Error.Message)
+			}
+			fmt.Printf("[idp] Task completed: %s\n", b.Status)
+		}
+	}
+	return nil
+}
+
+func (c *Client) setHeaders(req *http.Request) {
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+}

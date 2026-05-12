@@ -1,0 +1,16 @@
+'use strict';
+
+const express = require('express');
+
+const app = express();
+const port = parseInt(process.env.PORT || '<% .Port %>', 10);
+
+app.get('/', (_req, res) => res.json({ service: '<% .Name %>', status: 'ok' }));
+app.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
+app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
+
+app.listen(port, () => {
+  process.stdout.write(JSON.stringify({ msg: 'listening', port }) + '\n');
+});
+
+module.exports = app;

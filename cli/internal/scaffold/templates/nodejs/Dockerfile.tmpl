@@ -1,0 +1,11 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package.json ./
+RUN npm install --omit=dev
+COPY src/ ./src/
+
+FROM gcr.io/distroless/nodejs20-debian12:nonroot
+WORKDIR /app
+COPY --from=builder /app .
+EXPOSE <% .Port %>
+CMD ["src/index.js"]

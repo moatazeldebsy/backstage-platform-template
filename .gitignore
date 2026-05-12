@@ -45,3 +45,5 @@ Thumbs.db
 kubeconfig
 
 .playwright-cli/
+
+.claude/
