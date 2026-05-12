@@ -1,0 +1,3 @@
+# ZAP false-positive suppression
+# Format: <ruleId>\t<action>\t<url>\t<parameter>\t<attack>\t<evidence>\t<comment>
+# Example: 10021\tIGNORE\t.*\t.*\t.*\t.*\tKnown false positive
