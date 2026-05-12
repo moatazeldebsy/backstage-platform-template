@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: my-e2e
+  description: playwright test suite for hello-service
+  annotations:
+    github.com/project-slug: moatazeldebsy/my-e2e
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - playwright
+    - e2e
+    - testing
+    - qa
+spec:
+  type: test-suite
+  lifecycle: production
+  owner: qa-team
+  system: internal-developer-platform
+  dependsOn:
+    - component:default/hello-service
