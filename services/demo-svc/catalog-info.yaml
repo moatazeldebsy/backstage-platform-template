@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: demo-svc
+  description: Auto-scaffolded nodejs service
+  annotations:
+    github.com/project-slug: YOUR_GITHUB_ORG/demo-svc
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=demo-svc
+    backstage.io/kubernetes-namespace: services
+spec:
+  type: service
+  lifecycle: development
+  owner: platform-team
+  system: internal-developer-platform
