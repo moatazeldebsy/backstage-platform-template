@@ -1,0 +1,4 @@
+{
+  "name": "test-newman-dev",
+  "values": [{ "key": "baseUrl", "value": "http://localhost:3000", "type": "default", "enabled": true }]
+}

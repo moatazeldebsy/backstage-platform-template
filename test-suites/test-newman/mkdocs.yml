@@ -1,0 +1,8 @@
+site_name: test-newman
+site_description: newman test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
