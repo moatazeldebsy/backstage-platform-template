@@ -1,0 +1,8 @@
+site_name: test-accessibility
+site_description: accessibility test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
