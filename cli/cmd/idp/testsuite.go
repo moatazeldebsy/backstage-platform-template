@@ -83,35 +83,35 @@ files locally under test-suites/<name>/.
 
 Supported types: playwright | k6 | pact | newman | zap | datadog | visual |
                  accessibility | cucumber | appium | chaos | mutation | testcontainers`,
-	Example: `  # Playwright E2E suite
-  idp scaffold test-suite --name payments-e2e --type playwright --service payments-api
+	Example: `  # Playwright E2E suite for hello-service
+  idp scaffold test-suite --name hello-e2e --type playwright --service hello-service
 
   # k6 load test — 50 VUs, 5 min, p95 < 300 ms
-  idp scaffold test-suite --name payments-load --type k6 --service payments-api \
+  idp scaffold test-suite --name hello-load --type k6 --service hello-service \
     --vus 50 --duration 5m --p95 300
 
   # Pact consumer contract tests
-  idp scaffold test-suite --name checkout-contracts --type pact --service payments-api \
-    --consumer checkout-ui --provider payments-api
+  idp scaffold test-suite --name hello-contracts --type pact --service hello-service \
+    --consumer frontend --provider hello-service
 
   # OWASP ZAP DAST security scan
-  idp scaffold test-suite --name payments-sec --type zap --service payments-api \
-    --scan-type full --fail-risk Medium
+  idp scaffold test-suite --name hello-sec --type zap --service hello-service \
+    --scan-type baseline --target-url http://hello-service.idp.local
 
   # WCAG 2.1 AA accessibility audit
-  idp scaffold test-suite --name payments-a11y --type accessibility --service payments-api \
+  idp scaffold test-suite --name hello-a11y --type accessibility --service hello-service \
     --wcag wcag21aa
 
   # Chaos Mesh resilience experiments
-  idp scaffold test-suite --name payments-chaos --type chaos --service payments-api \
+  idp scaffold test-suite --name hello-chaos --type chaos --service hello-service \
     --chaos-duration 2m
 
   # Stryker mutation testing, 80 % threshold
-  idp scaffold test-suite --name payments-mutation --type mutation --service payments-api \
+  idp scaffold test-suite --name hello-mutation --type mutation --service hello-service \
     --score 80
 
   # Force local generation (offline / pre-Backstage)
-  idp scaffold test-suite --name my-e2e --type playwright --service my-svc --local`,
+  idp scaffold test-suite --name hello-e2e --type playwright --service hello-service --local`,
 	RunE: runScaffoldTestSuite,
 }
 

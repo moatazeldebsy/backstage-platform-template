@@ -32,17 +32,17 @@ var serviceCmd = &cobra.Command{
 When Backstage is reachable the Scaffolder API is used (full golden path:
 GitHub repo, TechDocs, catalog registration, GitOps PR). When offline,
 files are generated locally inside services/<name>/.`,
-	Example: `  # Node.js service (auto-detects Backstage)
-  idp scaffold service --name payments-api --type nodejs
+	Example: `  # Node.js service (auto-detects Backstage at http://backstage.idp.local)
+  idp scaffold service --name order-svc --type nodejs
 
-  # Python FastAPI service, explicit local generation
-  idp scaffold service --name ml-infer --type python --local
+  # Python FastAPI service, force local generation (offline / pre-Backstage)
+  idp scaffold service --name data-pipeline --type python --local
 
-  # Go service with a custom namespace
-  idp scaffold service --name auth-svc --type go --namespace platform
+  # Go service — same stack as hello-service
+  idp scaffold service --name inventory-svc --type go
 
-  # Override Backstage URL (e.g. staging cluster)
-  idp scaffold service --name demo-svc --type nodejs --backstage-url http://backstage.staging.local`,
+  # Explicit token when BACKSTAGE_AUTH_SECRET is set in local/backstage/.env
+  idp scaffold service --name billing-svc --type nodejs --token local-catalog-exporter-token`,
 	RunE: runScaffoldService,
 }
 
