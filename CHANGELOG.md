@@ -10,6 +10,21 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+#### Local ↔ AWS environment parity (gap-fix)
+- `kubernetes/external-secrets/cluster-secret-store.yaml` — ClusterSecretStore backed by AWS Secrets Manager; required by all ExternalSecrets in the repo. ESO ServiceAccount is annotated with the Backstage IRSA role ARN at deploy time.
+- `observability/prometheus-stack-values-aws.yaml` — kube-prometheus-stack Helm values for AWS (ALB ingress, gp2 storage, 15-day retention, CloudWatch datasource, Grafana IRSA annotation, all three dashboard ConfigMap providers).
+
+### Fixed
+- `scripts/bootstrap.sh`: replaced standalone Grafana install (Phase 4) with `kube-prometheus-stack` so AWS now has Prometheus + AlertManager + Grafana at parity with local.
+- `scripts/bootstrap.sh`: added Prometheus Pushgateway Helm install (Phase 4a) — both `apply-catalog-exporter.sh` and `seed-qa-metrics.sh` now work on AWS.
+- `scripts/bootstrap.sh`: added OpenCost Helm install (Phase 4b) via `opencost/opencost` chart — was previously only applying a namespace manifest.
+- `scripts/bootstrap.sh`: added Phase 3.6a to create ClusterSecretStore and annotate the ESO ServiceAccount with the Backstage IRSA role ARN immediately after ESO Helm install.
+- `scripts/bootstrap.sh`: added `require-cost-tags.yaml` to both OPA policy apply passes (Phase 3.8) — was missing from AWS but present in local bootstrap.
+- `scripts/bootstrap.sh`: replaced two `sleep 30` waits in Phase 3.8 with `kubectl wait crd ... --for=condition=Established --timeout=120s` for all five Gatekeeper ConstraintTemplate CRDs.
+- `scripts/bootstrap.sh`: added Phase 4.4 to deploy tech-insights-exporter CronJob (ConfigMap + CronJob) — was never deployed on AWS despite the manifest existing.
+- `scripts/bootstrap-local.sh`: added Step 11 to deploy tech-insights-exporter CronJob — was never deployed locally despite the manifest existing.
+- `scripts/apply-catalog-exporter.sh`: corrected Backstage in-cluster URL from `http://backstage.default.svc.cluster.local:7007` to `http://backstage.backstage.svc.cluster.local:7007` (Backstage Service lives in the `backstage` namespace, not `default`).
+
 #### QA Platform — 13 golden-path testing scaffold templates
 - `playwright-e2e-suite` — Playwright TypeScript E2E with LambdaTest cloud option and HTML report upload
 - `k6-performance-suite` — k6 smoke/load/stress scenarios with configurable VUs, duration, p95 threshold, and Prometheus Pushgateway push

@@ -1,0 +1,19 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.topicName | replace('.', '-') }}
+  description: Kafka topic ${{ values.topicName }} on ${{ values.mskCluster }} — owned by ${{ values.ownerService }}
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/terraform/infra/kafka-topics/${{ values.topicName | replace('.', '-') }}/
+  labels:
+    msk-cluster: ${{ values.mskCluster }}
+  tags:
+    - kafka
+    - messaging
+    - aws-msk
+spec:
+  type: messaging
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependencyOf:
+    - component:${{ values.ownerService }}

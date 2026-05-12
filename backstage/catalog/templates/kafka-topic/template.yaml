@@ -1,0 +1,167 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: kafka-topic
+  title: Kafka Topic
+  description: Create a Kafka topic on the shared MSK cluster with partitions, retention, ACLs for the owning service, and an optional schema registry subject.
+  tags:
+    - kafka
+    - messaging
+    - aws
+    - msk
+    - golden-path
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required:
+        - topicName
+        - ownerService
+        - owner
+      properties:
+        topicName:
+          title: Topic name
+          type: string
+          description: Kafka topic name (e.g. orders.events.v1)
+          default: orders.events.v1
+          pattern: '^[a-zA-Z0-9._-]+$'
+          ui:autofocus: true
+        ownerService:
+          title: Owning service
+          type: string
+          description: Service that produces/consumes this topic — ACLs will be created for it
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          description: Team that owns this topic
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        mskCluster:
+          title: MSK cluster
+          type: string
+          default: shared-prod
+          enum:
+            - shared-prod
+            - shared-staging
+            - shared-dev
+        partitions:
+          title: Partitions
+          type: integer
+          default: 12
+          minimum: 1
+          maximum: 200
+        replicationFactor:
+          title: Replication factor
+          type: integer
+          default: 3
+          enum:
+            - 1
+            - 2
+            - 3
+          enumNames:
+            - '1 (dev/test only)'
+            - '2 (staging)'
+            - '3 (production recommended)'
+        retentionHours:
+          title: Retention (hours)
+          type: integer
+          default: 168
+          minimum: 1
+          maximum: 8760
+          description: How long messages are retained (168h = 7 days, 8760h = 1 year)
+        cleanupPolicy:
+          title: Cleanup policy
+          type: string
+          default: delete
+          enum:
+            - delete
+            - compact
+            - compact,delete
+          enumNames:
+            - 'delete — remove old segments after retention period'
+            - 'compact — keep latest value per key (log compaction)'
+            - 'compact,delete — compact then delete'
+        schemaRegistrySubject:
+          title: Schema registry subject
+          type: string
+          description: Optional AWS Glue Schema Registry subject (e.g. orders-events-v1). Leave empty to skip.
+          default: ''
+
+    - title: Review
+      description: Review your configuration before creating the pull request
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+            allowedRepos:
+              - backstage-idp-starter
+
+  steps:
+    - id: fetch-template
+      name: Generate Terraform manifests
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          topicName: ${{ parameters.topicName }}
+          ownerService: ${{ parameters.ownerService }}
+          mskCluster: ${{ parameters.mskCluster }}
+          partitions: ${{ parameters.partitions }}
+          replicationFactor: ${{ parameters.replicationFactor }}
+          retentionHours: ${{ parameters.retentionHours }}
+          cleanupPolicy: ${{ parameters.cleanupPolicy }}
+          schemaRegistrySubject: ${{ parameters.schemaRegistrySubject }}
+          owner: ${{ parameters.owner }}
+
+    - id: open-pr
+      name: Open PR to create Kafka topic
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): create Kafka topic ${{ parameters.topicName }}"
+        branchName: kafka-topic/${{ parameters.topicName | replace('.', '-') }}
+        description: |
+          Creates Kafka topic `${{ parameters.topicName }}` on cluster `${{ parameters.mskCluster }}`.
+
+          | Parameter | Value |
+          |-----------|-------|
+          | Topic | `${{ parameters.topicName }}` |
+          | MSK cluster | `${{ parameters.mskCluster }}` |
+          | Partitions | `${{ parameters.partitions }}` |
+          | Replication factor | `${{ parameters.replicationFactor }}` |
+          | Retention | `${{ parameters.retentionHours }}h` |
+          | Cleanup policy | `${{ parameters.cleanupPolicy }}` |
+          | Schema subject | `${{ parameters.schemaRegistrySubject }}` |
+
+          **Resources created:**
+          - `terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}/` — Kafka topic + ACLs (producer + consumer for `${{ parameters.ownerService }}`)${{ ' + Glue schema registry subject' if parameters.schemaRegistrySubject }}
+
+          **After merging:**
+          ```bash
+          cd terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}
+          terraform init && terraform apply
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the pull request to create the Terraform files
+          2. Run `terraform init && terraform apply` in `terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}/`
+          3. Update your service's Kafka configuration with the topic name: `${{ parameters.topicName }}`

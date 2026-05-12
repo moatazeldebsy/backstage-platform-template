@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate agent manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Lint YAML
+        run: |
+          find kubernetes/ -name '*.yaml' | xargs -I{} sh -c \
+            'python3 -c "import yaml,sys; yaml.safe_load_all(open(sys.argv[1]))" {}'
+
+      - name: Dry-run apply agent manifest
+        run: |
+          kubectl apply -f kubernetes/agent.yaml --dry-run=client
+          echo "Agent manifest is valid"
+
+      - name: Check required fields
+        run: |
+          python3 - <<'PYEOF'
+          import yaml
+
+          with open("kubernetes/agent.yaml") as f:
+              doc = yaml.safe_load(f)
+
+          spec = doc.get("spec", {})
+          decl = spec.get("declarative", {})
+
+          assert decl.get("modelConfig"), "spec.declarative.modelConfig is required"
+          assert decl.get("systemMessage"), "spec.declarative.systemMessage is required"
+          assert doc["metadata"].get("labels", {}).get("backstage.io/kubernetes-id"), \
+              "backstage.io/kubernetes-id label is required"
+
+          print("All required fields present")
+          PYEOF

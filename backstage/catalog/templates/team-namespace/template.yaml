@@ -9,6 +9,8 @@ metadata:
     - kubernetes
     - onboarding
     - self-service
+    - local
+    - aws
 spec:
   owner: platform-team
   type: infrastructure
@@ -102,6 +104,7 @@ spec:
     - id: publish
       name: Publish to platform repo
       action: publish:github:pull-request
+      continueOnError: true
       input:
         repoUrl: github.com?repo=${{ parameters.platformRepo }}&owner=${{ parameters.githubOrg }}
         branchName: team/${{ parameters.teamName }}-namespace

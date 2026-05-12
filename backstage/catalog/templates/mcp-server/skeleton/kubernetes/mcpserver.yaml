@@ -1,0 +1,30 @@
+apiVersion: kagent.dev/v1alpha2
+kind: MCPServer
+metadata:
+  name: ${{ values.name }}
+  namespace: kagent
+  labels:
+    backstage.io/kubernetes-id: ${{ values.name }}
+spec:
+  transportType: http
+  deployment:
+    image: ghcr.io/${{ values.repoOwner }}/${{ values.repoName }}:latest
+    port: ${{ values.port }}
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+{% if values.enableAuth %}
+    env:
+      - name: MCP_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: ${{ values.name }}-secrets
+            key: MCP_API_KEY
+{% endif %}
+  httpTransport:
+    path: /mcp

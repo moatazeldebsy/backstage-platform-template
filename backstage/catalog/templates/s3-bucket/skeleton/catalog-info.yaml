@@ -1,0 +1,21 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.bucketName }}
+  description: S3 bucket ${{ values.bucketName }} in ${{ values.awsRegion }} — owned by ${{ values.ownerService }}
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-idp-starter/blob/main/terraform/infra/s3-buckets/${{ values.bucketName }}/
+  labels:
+    aws-region: ${{ values.awsRegion }}
+    encryption: ${{ values.encryption }}
+    versioning: ${{ values.versioning }}
+  tags:
+    - s3
+    - storage
+    - aws
+spec:
+  type: storage
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependencyOf:
+    - component:${{ values.ownerService }}

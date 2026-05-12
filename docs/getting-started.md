@@ -59,15 +59,21 @@ Add these secrets to any scaffolded service repo to enable AWS CD:
 ### 4. Verify
 
 ```bash
-kubectl get pods -n services      # hello-service running
-kubectl get pods -n monitoring    # grafana running
-kubectl get ingress -n services   # ALB address
+kubectl get pods -n services              # hello-service running
+kubectl get pods -n monitoring            # prometheus, grafana, alertmanager, pushgateway
+kubectl get pods -n external-secrets      # external-secrets operator
+kubectl get clustersecretstore            # aws-secretsmanager → Ready
+kubectl get ingress -n services           # ALB address
 ```
 
 Visit the ALB hostname:
 ```json
 {"service":"hello-service","version":"<sha>","message":"Hello from the IDP!"}
 ```
+
+> **Observability note:** `bootstrap.sh` installs the full `kube-prometheus-stack` (Prometheus + Grafana + AlertManager + Pushgateway) on AWS at parity with the local Kind setup. Grafana is pre-configured with the CloudWatch datasource using IRSA — no static AWS credentials needed.
+>
+> OPA/Gatekeeper enforces all five golden-path policies (`require-health-probes`, `require-resource-limits`, `require-labels`, `deny-latest-tag`, `require-cost-tags`). The bootstrap waits for CRDs to be established before applying constraints rather than sleeping.
 
 ### 5. Deploy Backstage to AWS (optional)
 

@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  tags:
+    - ai
+    - agent
+    - kagent
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: http://kagent.idp.local
+      title: KAgent UI
+spec:
+  type: ai-agent
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: idp-platform
+  dependsOn:
+    - resource:kagent
+    - resource:claude-api

@@ -9,6 +9,7 @@ metadata:
     - infrastructure
     - iac
     - golden-path
+    - aws
 spec:
   owner: platform-team
   type: infrastructure
@@ -92,6 +93,7 @@ spec:
     - id: register
       name: Register in Catalog
       action: catalog:register
+      continueOnError: true
       input:
         repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'

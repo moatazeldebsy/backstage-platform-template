@@ -36,19 +36,18 @@ Status is updated as work progresses.
 
 ---
 
-## Phase 0 — Open-Source Readiness 📋
+## Phase 0 — Open-Source Readiness ✅
 
 **Goal:** Fix first-run correctness and credibility issues before promoting the project publicly.
-These are blocking items — nothing else ships until this phase is green.
 
-| Item | Priority | Notes |
-|------|----------|-------|
-| Fix `YOUR_DISPLAY_NAME` in `catalog-info.yaml` | 🔴 High | Hardcoded author name appears in every user's Backstage catalog after setup |
-| Correct README template count | 🔴 High | README says "16/19 templates"; only 7 exist — creates immediate trust issue |
-| Add `SECURITY.md` | 🔴 High | GitHub warns on public repos without a security policy; expected for a security-focused IDP |
-| Add Dependabot config | 🟡 Medium | GitHub highlights stale deps; signals active maintenance to new contributors |
-| Verify all Phase 1–4 shipped items exist on disk | 🔴 High | Several ✅ items reference files not confirmed present (`observability/slo/`, `terraform/finops.tf`, `idpTechInsights.ts`, `kubernetes/finops/`) |
-| Fix setup.sh `YOUR_ORG`/`YOUR_REPO` doc substitution | 🟡 Medium | README quickstart `git clone` command still shows raw placeholders after setup |
+| Item | Status | Notes |
+|------|--------|-------|
+| Fix `YOUR_DISPLAY_NAME` in `catalog-info.yaml` | ✅ | Resolved in personalisation pass during `setup.sh` |
+| Correct README template count | ✅ | README updated to reflect 28 templates |
+| Add `SECURITY.md` | ✅ | `SECURITY.md` added — vulnerability disclosure policy |
+| Add Dependabot config | ✅ | `.github/dependabot.yml` present |
+| Verify all Phase 1–4 shipped items exist on disk | ✅ | `observability/slo/`, `terraform/finops.tf`, `idpTechInsights.ts`, `kubernetes/finops/` all confirmed |
+| Semantic versioning + `CHANGELOG.md` | ✅ | `CHANGELOG.md` follows Keep-a-Changelog; v0.1.0 tagged |
 
 ---
 
@@ -111,21 +110,21 @@ These are blocking items — nothing else ships until this phase is green.
 
 ---
 
-## Phase 5 — Open-Source Launch Readiness 📋
+## Phase 5 — Open-Source Launch Readiness �
 
 **Goal:** Make the project a compelling, trustworthy open-source reference. Every item here
 directly affects GitHub discoverability, first-run experience, or contributor confidence.
 
-| Item | Priority | Notes |
-|------|----------|-------|
-| Demo GIF / screenshot in README | 🔴 High | #1 driver of GitHub stars; shows the golden path end-to-end in 30 seconds |
-| GitHub Pages deployment (MkDocs) | 🔴 High | `mkdocs.yml` is configured but docs aren't published; zero discoverability without it |
-| Trivy + Cosign in CI | 🔴 High | Moved from Phase 8 — table stakes for a security-focused IDP, not advanced |
-| Compatibility matrix | 🟡 Medium | Backstage v1.49, K8s 1.29, Helm 3.x, Kind 0.24 — tested and declared |
-| Semantic versioning + `CHANGELOG.md` | 🟡 Medium | Open-source consumers expect semver; v0.1.0 tag on current state |
-| SLO definitions (Sloth) | 🟡 Medium | `observability/slo/hello-service-slos.yaml` — 99.5% availability, p99 < 500ms |
-| Complete template library (add-secret, rds-database) | 🟡 Medium | Closes the most-requested gap; immediate user value |
-| GitHub org auto-discovery | 🟡 Medium | Catalog discovers repos with `catalog-info.yaml` automatically |
+| Item | Status | Notes |
+|------|--------|-------|
+| Demo GIF / screenshot in README | 📋 | #1 driver of GitHub stars; shows the golden path end-to-end in 30 seconds |
+| GitHub Pages deployment (MkDocs) | 📋 | `mkdocs.yml` is configured but docs aren't published; zero discoverability without it |
+| Trivy + Cosign in CI | ✅ | Trivy vulnerability scan + Cosign image signing in CI pipeline |
+| Compatibility matrix | 📋 | Backstage v1.49, K8s 1.32, Helm 3.x, Kind 0.27 — to be declared |
+| Semantic versioning + `CHANGELOG.md` | ✅ | `CHANGELOG.md` follows Keep-a-Changelog format; v0.1.0 tagged |
+| SLO definitions (Sloth) | ✅ | `observability/slo/hello-service-slos.yaml` — 99.5% availability, p99 < 500ms |
+| Complete template library (add-secret, rds-database) | ✅ | `add-secret/`, `rds-database/`, `s3-bucket/`, `kafka-topic/`, `eks-cluster/` all added |
+| GitHub org auto-discovery | 📋 | Catalog auto-discovers repos with `catalog-info.yaml` |
 
 ---
 
@@ -144,16 +143,20 @@ one-click PR. This is the most-requested feature after first scaffold.
 
 ---
 
-## Phase 7 — Complete Template Library (AI/ML) 📋
+## Phase 7 — AI/ML Platform 🚧
 
 **Goal:** Every developer persona — including ML engineers and AI teams — has a golden path.
 
-| Item | Priority | Notes |
-|------|----------|-------|
-| `ai-agent-service` template | 🔴 High | `LLM_API_KEY` wiring; Ollama local / OpenAI prod; `agent_invocations_total` metric |
-| `model-serving-api` template | 🔴 High | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var |
-| `ml-training-job` template | 🟡 Medium | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
-| `mlflow-experiment` template | 🟡 Medium | MLflow tracking server; registers as `Resource` kind in catalog |
+| Item | Status | Notes |
+|------|--------|-------|
+| `ai-agent-service` template (`ai-agent-kagent`) | ✅ | Anthropic Claude API via KAgent; full skeleton in `backstage/catalog/templates/ai-agent-kagent/` |
+| `mlflow-experiment` template | ✅ | MLflow tracking server; registers as `Resource` kind; `backstage/catalog/templates/mlflow-experiment/` |
+| `mcp-server` template | ✅ | Model Context Protocol server skeleton; `backstage/catalog/templates/mcp-server/` |
+| KAgent platform deployment | ✅ | KAgent installed on local Kind + AWS EKS; ingress at `kagent.idp.local` / AWS ALB |
+| MLflow tracking server | ✅ | MLflow installed on local Kind + AWS EKS; ingress at `mlflow.idp.local` / AWS ALB |
+| IDP MCP Server | ✅ | `services/idp-mcp-server/` — exposes IDP operations as MCP tools; `bootstrap-ai.sh` bootstraps the full stack |
+| `model-serving-api` template | 📋 | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var |
+| `ml-training-job` template | 📋 | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
 
 ---
 
@@ -186,7 +189,7 @@ to under 10 minutes.
 | Ephemeral PR environments | PR label `env: preview` → Helm install into `services-preview-<pr#>`; torn down on close |
 | Multi-region / HA | Second AWS region; Route53 weighted failover; cross-region ECR replication |
 | AI/ML platform namespace | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
-| LLM gateway resource | Shared Ollama (local) / OpenAI proxy (AWS); AI agent templates `dependsOn` it |
+| LLM gateway resource | Anthropic Claude API (all envs); AI agent templates `dependsOn: resource:claude-api` |
 | Chaos engineering integration | Chaos Mesh; `chaos-experiment` Backstage template |
 | Platform API (FastAPI) | REST API for programmatic service creation |
 | Backstage plugin: security posture | Aggregate Trivy + OPA pass/fail per service into a single security score |
@@ -211,11 +214,11 @@ to under 10 minutes.
 | M2: Ops-ready platform | Q2 2026 | Phase 2 | `milestone/m2-ops-ready` |
 | M3: Cost-aware platform | Q2 2026 | Phase 3 | `milestone/m3-finops` |
 | M4: Developer excellence | Q2 2026 | Phase 4 | `milestone/m4-scorecards` |
-| M5: OSS launch | Q3 2026 | Phase 5 | `milestone/m5-oss-launch` |
+| M5: OSS launch | Q2 2026 🚧 | Phase 5 | `milestone/m5-oss-launch` |
 | M6: Multi-env GitOps | Q3 2026 | Phase 6 | `milestone/m6-gitops` |
-| M7: AI/ML templates | Q4 2026 | Phase 7 | `milestone/m7-aiml` |
-| M8: Developer experience | Q4 2026 | Phase 8 | `milestone/m8-dx` |
-| M9: Advanced platform | Q1 2027 | Phase 9 | `milestone/m9-advanced` |
+| M7: AI/ML platform | Q2 2026 🚧 | Phase 7 | `milestone/m7-aiml` |
+| M8: Developer experience | Q3 2026 | Phase 8 | `milestone/m8-dx` |
+| M9: Advanced platform | Q4 2026 | Phase 9 | `milestone/m9-advanced` |
 
 ---
 

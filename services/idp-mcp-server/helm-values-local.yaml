@@ -1,0 +1,89 @@
+fullnameOverride: idp-mcp-server
+
+replicaCount: 1
+
+image:
+  repository: localhost:5003/idp-mcp-server
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3001
+  targetPort: 3001      # container listens on 3001
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: idp-mcp-server.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http            # 'http' is the named port (targetPort 3001)
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  - name: BACKSTAGE_URL
+    # Backstage runs in Docker Compose on the Mac host, not in Kubernetes.
+    # host.docker.internal resolves to the Mac host from inside Kind (Docker) pods.
+    # The Docker Compose port mapping is 3000:7007 (host:container), so use port 3000.
+    value: "http://host.docker.internal:3000"
+  - name: BACKSTAGE_EXTERNAL_URL
+    # Browser-accessible URL for Backstage (used in scaffold_service response links)
+    value: "http://backstage.idp.local"
+  - name: BACKSTAGE_TOKEN
+    # Static externalAccess token defined in backstage/app-config.local.yaml
+    # backend.auth.externalAccess[0].options.token
+    value: "local-catalog-exporter-token"
+  - name: PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: K8S_API
+    value: "https://kubernetes.default.svc"
+  - name: PORT
+    value: "3001"
+  - name: NODE_TLS_REJECT_UNAUTHORIZED
+    value: "0"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false   # Node.js needs writable tmp
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["get", "list", "watch"]
+  capabilities:
+    drop:
+      - ALL
+
+backstage:
+  kubernetesId: idp-mcp-server
+
+podLabels:
+  backstage.io/kubernetes-id: idp-mcp-server

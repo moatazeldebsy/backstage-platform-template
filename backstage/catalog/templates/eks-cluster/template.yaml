@@ -1,0 +1,180 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: eks-cluster
+  title: Kubernetes Cluster (EKS)
+  description: Provision an EKS cluster with autoscaling node groups and platform addons (ingress-nginx, cert-manager, ArgoCD, Prometheus).
+  tags:
+    - eks
+    - kubernetes
+    - aws
+    - golden-path
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required:
+        - clusterName
+        - owner
+      properties:
+        clusterName:
+          title: Cluster name
+          type: string
+          description: Unique EKS cluster name (lowercase, hyphens only)
+          default: my-eks-cluster
+          pattern: '^[a-z][a-z0-9-]{1,38}[a-z0-9]$'
+          ui:autofocus: true
+        owner:
+          title: Owner
+          type: string
+          description: Team that will manage this cluster
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        awsRegion:
+          title: AWS region
+          type: string
+          default: us-east-1
+          enum:
+            - us-east-1
+            - us-west-2
+            - eu-west-1
+            - eu-central-1
+            - ap-southeast-1
+        kubernetesVersion:
+          title: Kubernetes version
+          type: string
+          default: '1.31'
+          enum:
+            - '1.28'
+            - '1.29'
+            - '1.30'
+            - '1.31'
+        nodeInstanceType:
+          title: Node instance type
+          type: string
+          default: m6i.large
+          enum:
+            - t3.medium
+            - m6i.large
+            - m6i.xlarge
+            - m6i.2xlarge
+            - c6i.large
+            - c6i.xlarge
+          description: EC2 instance type for worker nodes
+        minNodes:
+          title: Minimum nodes
+          type: integer
+          default: 3
+          minimum: 1
+          maximum: 100
+        maxNodes:
+          title: Maximum nodes
+          type: integer
+          default: 10
+          minimum: 1
+          maximum: 500
+        desiredNodes:
+          title: Desired nodes
+          type: integer
+          default: 3
+          minimum: 1
+          maximum: 500
+        addons:
+          title: Platform addons
+          type: array
+          items:
+            type: string
+            enum:
+              - ingress-nginx
+              - cert-manager
+              - argocd
+              - prometheus
+          uniqueItems: true
+          default:
+            - ingress-nginx
+            - cert-manager
+            - argocd
+            - prometheus
+          ui:widget: checkboxes
+          description: Platform components to install via Helm after cluster creation
+
+    - title: Review
+      description: Review your configuration before creating the pull request
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+            allowedRepos:
+              - backstage-idp-starter
+
+  steps:
+    - id: fetch-template
+      name: Generate Terraform manifests
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          awsRegion: ${{ parameters.awsRegion }}
+          kubernetesVersion: ${{ parameters.kubernetesVersion }}
+          nodeInstanceType: ${{ parameters.nodeInstanceType }}
+          minNodes: ${{ parameters.minNodes }}
+          maxNodes: ${{ parameters.maxNodes }}
+          desiredNodes: ${{ parameters.desiredNodes }}
+          addons: ${{ parameters.addons }}
+          owner: ${{ parameters.owner }}
+
+    - id: open-pr
+      name: Open PR to create EKS cluster
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): create EKS cluster ${{ parameters.clusterName }}"
+        branchName: eks/${{ parameters.clusterName }}
+        description: |
+          Creates EKS cluster `${{ parameters.clusterName }}` in `${{ parameters.awsRegion }}`.
+
+          | Parameter | Value |
+          |-----------|-------|
+          | Cluster | `${{ parameters.clusterName }}` |
+          | Region | `${{ parameters.awsRegion }}` |
+          | Kubernetes version | `${{ parameters.kubernetesVersion }}` |
+          | Node type | `${{ parameters.nodeInstanceType }}` |
+          | Min / desired / max nodes | `${{ parameters.minNodes }} / ${{ parameters.desiredNodes }} / ${{ parameters.maxNodes }}` |
+          | Addons | `${{ parameters.addons | join(', ') }}` |
+
+          **Resources created:**
+          - `terraform/infra/eks-clusters/${{ parameters.clusterName }}/main.tf` — EKS cluster + managed node group (via `terraform-aws-modules/eks`)
+          - `terraform/infra/eks-clusters/${{ parameters.clusterName }}/addons.tf` — Helm releases for selected addons
+
+          **After merging:**
+          ```bash
+          cd terraform/infra/eks-clusters/${{ parameters.clusterName }}
+          terraform init && terraform apply
+          aws eks update-kubeconfig --name ${{ parameters.clusterName }} --region ${{ parameters.awsRegion }}
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the pull request to create the Terraform files
+          2. Run `terraform init && terraform apply` in `terraform/infra/eks-clusters/${{ parameters.clusterName }}/`
+          3. Configure `kubectl`: `aws eks update-kubeconfig --name ${{ parameters.clusterName }} --region ${{ parameters.awsRegion }}`
+          4. The following addons will be installed automatically by Terraform:
+             ${{ parameters.addons | join(', ') }}

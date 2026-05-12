@@ -182,6 +182,7 @@ Install them and re-run this script, or run manually:
     PUSHGATEWAY_URL=http://localhost:9091 "${ROOT_DIR}/scripts/seed-qa-metrics.sh" \
       || warn "Could not seed QA metrics — run manually: kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring & PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
     kill "${PFORWARD_PID}" 2>/dev/null || true
+    wait "${PFORWARD_PID}" 2>/dev/null || true
 
     log "Triggering an immediate catalog export..."
     kubectl create job catalog-exporter-now \

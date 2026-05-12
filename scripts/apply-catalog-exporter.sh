@@ -17,7 +17,7 @@
 set -euo pipefail
 
 NAMESPACE="monitoring"
-BACKSTAGE_URL="http://backstage.default.svc.cluster.local:7007"
+BACKSTAGE_URL="http://backstage.backstage.svc.cluster.local:7007"
 PUSHGATEWAY_URL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
 CATALOG_TOKEN="local-catalog-exporter-token"
 
@@ -67,7 +67,7 @@ spec:
                 - name: PYTHONPATH
                   value: /deps
                 - name: BACKSTAGE_URL
-                  value: http://backstage.default.svc.cluster.local:7007
+                  value: http://backstage.backstage.svc.cluster.local:7007
                 - name: CATALOG_TOKEN
                   value: local-catalog-exporter-token
                 - name: PUSHGATEWAY_URL

@@ -1,0 +1,97 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mlflow-experiment
+  title: ML Experiment (MLflow)
+  description: Run a Python ML training job with MLflow tracking. Scaffolds the experiment locally and submits a Kubernetes Job to the ml-platform namespace. Results appear in the MLflow UI.
+  tags:
+    - ml
+    - mlflow
+    - python
+    - training
+    - local
+    - aws
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  owner: platform-team
+  type: template
+
+  parameters:
+    - title: Experiment Details
+      required: [name, experimentName, owner]
+      properties:
+        name:
+          title: Experiment ID
+          type: string
+          description: Lowercase alphanumeric with hyphens (e.g. churn-prediction) — used as the Kubernetes Job name
+          pattern: '^[a-z][a-z0-9-]{2,40}$'
+          ui:autofocus: true
+        experimentName:
+          title: MLflow Experiment Name
+          type: string
+          description: Name shown in MLflow UI (can include spaces)
+          default: My Experiment
+        owner:
+          title: Owner
+          type: string
+          description: Team owning this experiment
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: ML Framework
+      properties:
+        framework:
+          title: ML Framework
+          type: string
+          enum: [sklearn, pytorch, xgboost, tensorflow]
+          enumNames:
+            - 'scikit-learn (recommended for local)'
+            - 'PyTorch'
+            - 'XGBoost'
+            - 'TensorFlow'
+          default: sklearn
+        pythonVersion:
+          title: Python Version
+          type: string
+          enum: ['3.11', '3.12']
+          default: '3.11'
+        registerModel:
+          title: Register model in MLflow Model Registry
+          type: boolean
+          default: true
+
+  steps:
+    - id: fetch
+      name: Generate experiment scaffold
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          experimentName: ${{ parameters.experimentName }}
+          owner: ${{ parameters.owner }}
+          framework: ${{ parameters.framework }}
+          pythonVersion: ${{ parameters.pythonVersion }}
+          registerModel: ${{ parameters.registerModel }}
+
+    - id: train
+      name: Run Initial Training Job
+      action: idp:run-training-job
+      input:
+        name: ${{ parameters.name }}
+        experimentName: ${{ parameters.experimentName }}
+        framework: ${{ parameters.framework }}
+        pythonVersion: ${{ parameters.pythonVersion }}
+        owner: ${{ parameters.owner }}
+
+  output:
+    links:
+      - title: MLflow UI
+        url: http://mlflow.idp.local
+        icon: dashboard
+      - title: Open in Catalog
+        url: http://backstage.idp.local/catalog/default/component/${{ parameters.name }}
+        icon: catalog

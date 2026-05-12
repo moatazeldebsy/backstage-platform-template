@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: MLflow experiment — ${{ values.experimentName }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - ml
+    - mlflow
+    - ${{ values.framework }}
+    - python
+  links:
+    - url: http://mlflow.idp.local
+      title: MLflow UI
+spec:
+  type: ml-experiment
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: idp-platform
+  dependsOn:
+    - resource:mlflow

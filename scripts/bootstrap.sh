@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bootstrap.sh — Provision the IDP MVP platform end-to-end
-# Usage: ./scripts/bootstrap.sh [--region us-east-1] [--cluster-name idp-mvp]
+# Usage: ./scripts/bootstrap.sh [--region us-east-1] [--cluster-name idp-mvp] [--skip-*]
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -9,14 +9,25 @@ CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform"
 
+SKIP_OBS="${SKIP_OBS:-false}"
+SKIP_GITOPS="${SKIP_GITOPS:-false}"
+SKIP_POLICIES="${SKIP_POLICIES:-false}"
+SKIP_DORA="${SKIP_DORA:-false}"
+SKIP_AI="${SKIP_AI:-false}"
+
 log()  { echo "[$(date +%T)] INFO  $*"; }
 err()  { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --region)       AWS_REGION="$2"; shift 2 ;;
-    --cluster-name) CLUSTER_NAME="$2"; shift 2 ;;
+    --region)        AWS_REGION="$2"; shift 2 ;;
+    --cluster-name)  CLUSTER_NAME="$2"; shift 2 ;;
+    --skip-obs)      SKIP_OBS=true; shift ;;
+    --skip-gitops)   SKIP_GITOPS=true; shift ;;
+    --skip-policies) SKIP_POLICIES=true; shift ;;
+    --skip-dora)     SKIP_DORA=true; shift ;;
+    --skip-ai)       SKIP_AI=true; shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -86,15 +97,43 @@ helm upgrade --install external-secrets external-secrets/external-secrets \
   --set installCRDs=true \
   --wait
 
-# Deploy DORA cronjob now that ExternalSecret CRD exists
-kubectl apply -f observability/dora/dora-cronjob.yaml
-kubectl annotate serviceaccount dora-exporter-sa \
-  -n monitoring \
-  "eks.amazonaws.com/role-arn=${DORA_ROLE_ARN}" \
+# ── Phase 3.6a: Create ClusterSecretStore (AWS Secrets Manager backend for ESO) ─
+log "Phase 3.6a: Creating ClusterSecretStore for AWS Secrets Manager..."
+
+# Annotate the ESO ServiceAccount with the Backstage IRSA role so it can
+# authenticate to Secrets Manager via pod identity (no static credentials).
+kubectl annotate serviceaccount external-secrets-sa \
+  -n external-secrets \
+  "eks.amazonaws.com/role-arn=${BACKSTAGE_ROLE_ARN}" \
   --overwrite
-kubectl create configmap dora-exporter-script \
-  --from-file=dora-exporter.py=observability/dora/dora-exporter.py \
-  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+# Substitute the AWS region placeholder and apply
+sed "s/YOUR_AWS_REGION/${AWS_REGION}/g" kubernetes/external-secrets/cluster-secret-store.yaml \
+  | kubectl apply -f -
+
+# Wait up to 60s for the ClusterSecretStore to become Ready
+for i in $(seq 1 12); do
+  CSS_STATUS=$(kubectl get clustersecretstore aws-secretsmanager \
+    -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "NotReady")
+  if [[ "$CSS_STATUS" == "StoreValid" ]]; then
+    log "  ClusterSecretStore aws-secretsmanager is Ready."
+    break
+  fi
+  [[ $i -eq 12 ]] && log "  WARNING: ClusterSecretStore may not be ready — proceeding anyway."
+  sleep 5
+done
+
+# Deploy DORA cronjob now that ExternalSecret CRD exists
+if [[ "$SKIP_DORA" != "true" ]]; then
+  kubectl apply -f observability/dora/dora-cronjob.yaml
+  kubectl annotate serviceaccount dora-exporter-sa \
+    -n monitoring \
+    "eks.amazonaws.com/role-arn=${DORA_ROLE_ARN}" \
+    --overwrite
+  kubectl create configmap dora-exporter-script \
+    --from-file=dora-exporter.py=observability/dora/dora-exporter.py \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+fi
 
 # ── Phase 3.7: Populate Secrets Manager with runtime secrets ─────────────────
 log "Phase 3.7: Updating Secrets Manager with runtime credentials..."
@@ -146,28 +185,69 @@ print(json.dumps(s))
 fi
 
 # ── Phase 4: Observability ────────────────────────────────────────────────────
-log "Phase 4: Installing observability stack..."
-helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+log "Phase 4: Installing observability stack (kube-prometheus-stack)..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
 helm repo update
 
+# Grafana IRSA role ARN (injected into the Helm values via --set)
+GRAFANA_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw grafana_role_arn 2>/dev/null || echo "")
+
+# Create Grafana dashboard ConfigMaps before installing the chart so that
+# Grafana picks them up on first boot rather than requiring a pod restart.
 kubectl create configmap grafana-dashboards-idp \
-  --from-file=hello-service.json=observability/grafana/dashboards/hello-service.json \
+  --from-file=observability/grafana/dashboards/ \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl create configmap grafana-dashboards-dora \
-  --from-file=dora-metrics.json=observability/grafana/dashboards/dora-metrics.json \
-  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-
+kubectl apply -f kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml
 
-helm upgrade --install grafana grafana/grafana \
+# Substitute region and Grafana IRSA ARN placeholders in the values file
+tmp_obs_values=$(mktemp /tmp/prometheus-stack-values-aws.XXXXXX.yaml)
+sed \
+  -e "s|YOUR_AWS_REGION|${AWS_REGION}|g" \
+  -e "s|GRAFANA_IRSA_ROLE_ARN|${GRAFANA_ROLE_ARN}|g" \
+  observability/prometheus-stack-values-aws.yaml > "${tmp_obs_values}"
+
+helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
-  --values observability/grafana/grafana-helm-values.yaml \
-  --set adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
+  --values "${tmp_obs_values}" \
+  --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
+  --wait --timeout 10m
+rm -f "${tmp_obs_values}"
+
+# ── Phase 4a: Prometheus Pushgateway ─────────────────────────────────────────
+log "Phase 4a: Installing Prometheus Pushgateway..."
+helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+  --namespace monitoring \
+  --set serviceMonitor.enabled=true \
+  --set "serviceMonitor.additionalLabels.release=prometheus" \
+  --set resources.requests.cpu=10m \
+  --set resources.requests.memory=32Mi \
+  --set resources.limits.cpu=100m \
+  --set resources.limits.memory=64Mi \
+  --set "extraArgs[0]=--web.enable-admin-api" \
   --wait
 
+# ── Phase 4b: OpenCost ────────────────────────────────────────────────────────
+log "Phase 4b: Installing OpenCost (cluster cost visibility)..."
+helm repo add opencost https://opencost.github.io/opencost-helm-chart 2>/dev/null || true
+helm repo update
+
+kubectl apply -f kubernetes/finops/opencost.yaml
+
+helm upgrade --install opencost opencost/opencost \
+  --namespace opencost \
+  --set opencost.prometheus.internal.enabled=false \
+  --set opencost.prometheus.external.enabled=true \
+  --set "opencost.prometheus.external.url=http://prometheus-operated.monitoring.svc.cluster.local:9090" \
+  --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
+  --wait --timeout 5m
+
+log "OpenCost installed."
+
 # ── Phase 3.8: Install OPA/Gatekeeper + apply golden-path policies ───────────
+if [[ "$SKIP_POLICIES" != "true" ]]; then
 log "Phase 3.8: Installing OPA/Gatekeeper policy engine..."
 helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
 helm repo update
@@ -181,24 +261,45 @@ helm upgrade --install gatekeeper gatekeeper/gatekeeper \
   --timeout 5m
 
 log "  Applying golden-path ConstraintTemplates..."
-# Wait for Gatekeeper webhook to be ready before applying templates
-sleep 30
-# First pass: apply ConstraintTemplates (creates CRDs); Constraints will fail — that's expected
-kubectl apply -f kubernetes/policies/require-health-probes.yaml 2>/dev/null || true
-kubectl apply -f kubernetes/policies/require-resource-limits.yaml 2>/dev/null || true
-kubectl apply -f kubernetes/policies/require-labels.yaml 2>/dev/null || true
-kubectl apply -f kubernetes/policies/deny-latest-tag.yaml 2>/dev/null || true
+# Pass 1: apply full files — creates ConstraintTemplates (Constraint instances
+# fail because their CRDs don't exist yet; errors are expected and suppressed).
+kubectl apply \
+  -f kubernetes/policies/require-health-probes.yaml \
+  -f kubernetes/policies/require-resource-limits.yaml \
+  -f kubernetes/policies/require-labels.yaml \
+  -f kubernetes/policies/deny-latest-tag.yaml \
+  -f kubernetes/policies/require-cost-tags.yaml 2>/dev/null || true
+
 # Wait for Gatekeeper to register the CRDs from the ConstraintTemplates
-log "  Waiting 30s for ConstraintTemplate CRDs to register..."
-sleep 30
-# Second pass: now Constraints can be applied successfully
-kubectl apply -f kubernetes/policies/require-health-probes.yaml
-kubectl apply -f kubernetes/policies/require-resource-limits.yaml
-kubectl apply -f kubernetes/policies/require-labels.yaml
-kubectl apply -f kubernetes/policies/deny-latest-tag.yaml
-log "  OPA/Gatekeeper policies applied."
+log "  Waiting for ConstraintTemplate CRDs to become established..."
+kubectl wait crd \
+  requirehealthprobes.constraints.gatekeeper.sh \
+  requireresourcelimits.constraints.gatekeeper.sh \
+  requirelabels.constraints.gatekeeper.sh \
+  denylatestimgtag.constraints.gatekeeper.sh \
+  requirecosttags.constraints.gatekeeper.sh \
+  --for=condition=Established \
+  --timeout=120s
+
+# Pass 2: CRDs now exist — apply again to create the Constraint instances.
+kubectl apply \
+  -f kubernetes/policies/require-health-probes.yaml \
+  -f kubernetes/policies/require-resource-limits.yaml \
+  -f kubernetes/policies/require-labels.yaml \
+  -f kubernetes/policies/deny-latest-tag.yaml \
+  -f kubernetes/policies/require-cost-tags.yaml
+log "  OPA/Gatekeeper policies applied (health-probes, resource-limits, labels, deny-latest-tag, cost-tags)."
+
+# ── Phase 4.4: Tech Insights Exporter ────────────────────────────────────────
+log "Phase 4.4: Deploying Tech Insights Exporter CronJob..."
+kubectl create configmap tech-insights-exporter-script \
+  --from-file=exporter.py=observability/tech-insights-exporter/exporter.py \
+  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
+log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
 
 # ── Phase 4.5: Install ArgoCD ────────────────────────────────────────────────
+if [[ "$SKIP_GITOPS" != "true" ]]; then
 log "Phase 4.5: Installing ArgoCD..."
 helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
 helm repo update
@@ -267,6 +368,7 @@ print(json.dumps(s))
     fi
   fi
 fi
+fi # --skip-gitops
 
 # ── Phase 5: Build + push hello-service seed image ───────────────────────────
 # CI (GitHub Actions) manages ongoing deployments via GitOps (update-image-tag job).
@@ -371,15 +473,32 @@ fi
 kubectl rollout status deployment/backstage -n backstage --timeout=120s || \
   log "  WARNING: Backstage rollout did not complete in time — check pod logs."
 
+# ── Phase 5.7: Catalog exporter CronJob ──────────────────────────────────────
+if [[ "$SKIP_DORA" != "true" ]]; then
+  log "Phase 5.7: Deploying catalog exporter CronJob..."
+  cd "$ROOT_DIR"
+  bash scripts/apply-catalog-exporter.sh
+  log "  Catalog exporter deployed."
+fi
+
+# ── Phase 6: AI/ML platform (KAgent + MLflow + MCP servers) ──────────────────
+if [[ "$SKIP_AI" != "true" ]]; then
+  log "Phase 6: Deploying AI/ML platform..."
+  cd "$ROOT_DIR"
+  bash scripts/bootstrap-ai.sh --aws --region "${AWS_REGION}" --cluster "${CLUSTER_NAME}"
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 log ""
 log "Bootstrap complete! Platform summary:"
 log "  Cluster:        $(kubectl config current-context)"
 log "  hello-service:  $(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
 log "  Backstage:      http://${BACKSTAGE_URL:-PENDING}"
-log "  Grafana:        $(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
+log "  Grafana:        $(kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
 log "  TechDocs S3:    s3://${TECHDOCS_BUCKET}"
-log "  ArgoCD:         $(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
+log "  ArgoCD:         $(kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
+log "  KAgent UI:      $(kubectl get ingress kagent-ui -n kagent -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'not deployed (--skip-ai)')"
+log "  MLflow:         $(kubectl get ingress mlflow -n ml-platform -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'not deployed (--skip-ai)')"
 log ""
 log "Next steps if GITHUB_TOKEN was not set:"
 log "  1. aws secretsmanager update-secret --secret-id idp-mvp/backstage \\"

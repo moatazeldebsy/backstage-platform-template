@@ -1,0 +1,164 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: s3-bucket
+  title: S3 Object Bucket
+  description: Create an S3 bucket with versioning, lifecycle rules, KMS encryption, and a least-privilege IAM policy attached to the requesting service.
+  tags:
+    - s3
+    - storage
+    - aws
+    - golden-path
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required:
+        - bucketName
+        - ownerService
+        - owner
+      properties:
+        bucketName:
+          title: Bucket name
+          type: string
+          description: Globally unique S3 bucket name (lowercase, hyphens, up to 63 chars)
+          default: my-app-assets
+          pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$'
+          ui:autofocus: true
+        ownerService:
+          title: Owning service
+          type: string
+          description: Service that will access this bucket — least-privilege IAM policy is attached to its role
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          description: Team that owns this bucket
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        awsRegion:
+          title: AWS region
+          type: string
+          default: eu-west-1
+          enum:
+            - us-east-1
+            - us-west-2
+            - eu-west-1
+            - eu-central-1
+            - ap-southeast-1
+        visibility:
+          title: Visibility
+          type: string
+          default: private
+          enum:
+            - private
+            - public-read
+          enumNames:
+            - 'private — no public access (recommended)'
+            - 'public-read — objects publicly readable (static assets only)'
+        versioning:
+          title: Versioning
+          type: string
+          default: enabled
+          enum:
+            - enabled
+            - disabled
+          enumNames:
+            - 'enabled — keep all versions of every object'
+            - 'disabled — no versioning'
+        expireNoncurrentDays:
+          title: Expire noncurrent versions after (days)
+          type: integer
+          default: 90
+          minimum: 1
+          maximum: 3650
+          description: Only applies when versioning is enabled. Set to 0 to disable expiry.
+        encryption:
+          title: Encryption
+          type: string
+          default: aws-kms
+          enum:
+            - aws-kms
+            - AES256
+          enumNames:
+            - 'aws-kms — customer-managed KMS key (recommended)'
+            - 'AES256 — S3-managed encryption (SSE-S3)'
+
+    - title: Review
+      description: Review your configuration before creating the pull request
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+            allowedRepos:
+              - backstage-idp-starter
+
+  steps:
+    - id: fetch-template
+      name: Generate Terraform manifests
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          bucketName: ${{ parameters.bucketName }}
+          ownerService: ${{ parameters.ownerService }}
+          awsRegion: ${{ parameters.awsRegion }}
+          visibility: ${{ parameters.visibility }}
+          versioning: ${{ parameters.versioning }}
+          expireNoncurrentDays: ${{ parameters.expireNoncurrentDays }}
+          encryption: ${{ parameters.encryption }}
+          owner: ${{ parameters.owner }}
+
+    - id: open-pr
+      name: Open PR to create S3 bucket
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): create S3 bucket ${{ parameters.bucketName }}"
+        branchName: s3-bucket/${{ parameters.bucketName }}
+        description: |
+          Creates S3 bucket `${{ parameters.bucketName }}` in `${{ parameters.awsRegion }}`.
+
+          | Parameter | Value |
+          |-----------|-------|
+          | Bucket | `${{ parameters.bucketName }}` |
+          | Region | `${{ parameters.awsRegion }}` |
+          | Visibility | `${{ parameters.visibility }}` |
+          | Versioning | `${{ parameters.versioning }}` |
+          | Noncurrent version expiry | `${{ parameters.expireNoncurrentDays }} days` |
+          | Encryption | `${{ parameters.encryption }}` |
+
+          **Resources created:**
+          - `terraform/infra/s3-buckets/${{ parameters.bucketName }}/` — S3 bucket, versioning, lifecycle rules, encryption, public access block, least-privilege IAM policy for `${{ parameters.ownerService }}`
+
+          **After merging:**
+          ```bash
+          cd terraform/infra/s3-buckets/${{ parameters.bucketName }}
+          terraform init && terraform apply
+          ```
+
+          Attach the output IAM policy to your service's task/pod IAM role to grant access.
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the pull request to create the Terraform files
+          2. Run `terraform init && terraform apply` in `terraform/infra/s3-buckets/${{ parameters.bucketName }}/`
+          3. Attach the `${{ parameters.bucketName }}-access` IAM policy to your service's pod/task role
+          4. Set `S3_BUCKET_NAME=${{ parameters.bucketName }}` in your service environment

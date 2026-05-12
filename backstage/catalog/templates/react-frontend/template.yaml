@@ -10,6 +10,8 @@ metadata:
     - typescript
     - frontend
     - golden-path
+    - local
+    - aws
 spec:
   owner: platform-team
   type: website
@@ -98,6 +100,7 @@ spec:
     - id: set-repo-secrets
       name: Configure CI/CD Secrets
       action: idp:repo:set-secrets
+      continueOnError: true
       input:
         repoUrl: ${{ steps.publish.output.remoteUrl }}
         secrets:
@@ -106,6 +109,7 @@ spec:
     - id: register
       name: Register in Catalog
       action: catalog:register
+      continueOnError: true
       input:
         repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
@@ -125,6 +129,7 @@ spec:
     - id: platform-pr
       name: Open Platform GitOps PR
       action: publish:github:pull-request
+      continueOnError: true
       input:
         repoUrl: github.com?repo=backstage-idp-starter&owner=moatazeldebsy
         title: "feat: onboard ${{ parameters.name }} to GitOps"
@@ -140,6 +145,7 @@ spec:
     - id: seed-image
       name: Seed placeholder image in local registry
       action: idp:seed-image
+      continueOnError: true
       input:
         serviceName: ${{ parameters.name }}
 

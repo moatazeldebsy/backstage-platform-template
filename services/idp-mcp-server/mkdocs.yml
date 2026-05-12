@@ -1,0 +1,8 @@
+site_name: idp-mcp-server
+site_description: MCP server exposing IDP capabilities as AI tools for KAgent
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core

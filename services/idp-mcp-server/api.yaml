@@ -1,0 +1,33 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: idp-mcp-api
+  description: Model Context Protocol API exposed by the IDP MCP Server for KAgent tool access
+  tags:
+    - mcp
+    - ai
+    - platform
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: platform-team
+  system: idp-platform
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: IDP MCP API
+      version: 1.0.0
+      description: MCP tools exposed by idp-mcp-server for KAgent
+    paths:
+      /healthz:
+        get:
+          summary: Health check
+          responses:
+            '200':
+              description: OK
+      /sse:
+        get:
+          summary: MCP SSE transport endpoint
+          responses:
+            '200':
+              description: SSE stream of MCP messages

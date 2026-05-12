@@ -1,0 +1,6 @@
+site_name: ML Experiment (MLflow)
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

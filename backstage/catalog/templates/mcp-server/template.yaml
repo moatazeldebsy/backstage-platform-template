@@ -1,0 +1,135 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mcp-server
+  title: MCP Server (kmcp)
+  description: Scaffold a Model Context Protocol server managed by the kmcp Kubernetes controller. Defines an MCPServer CRD — the controller auto-deploys it as a pod in the kagent namespace.
+  tags:
+    - mcp
+    - ai
+    - kagent
+    - kmcp
+    - typescript
+    - local
+    - aws
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  owner: platform-team
+  type: template
+
+  parameters:
+    - title: Server Details
+      required: [name, description, owner]
+      properties:
+        name:
+          title: Server Name
+          type: string
+          description: Lowercase alphanumeric with hyphens (e.g. my-mcp-server)
+          pattern: '^[a-z][a-z0-9-]{2,40}$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: What tools does this MCP server expose?
+          maxLength: 200
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Server Config
+      properties:
+        port:
+          title: Port
+          type: integer
+          default: 3001
+          description: Port the MCP server listens on
+        language:
+          title: Language
+          type: string
+          enum: [typescript, python]
+          enumNames: ['TypeScript', 'Python']
+          default: typescript
+        enableAuth:
+          title: Require API key authentication
+          type: boolean
+          default: false
+
+    - title: Repository
+      required: [repoUrl]
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+    - id: fetch
+      name: Generate MCP server scaffold
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          port: ${{ parameters.port }}
+          language: ${{ parameters.language }}
+          enableAuth: ${{ parameters.enableAuth }}
+          repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: MCP Server — ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: scaffold MCP server via IDP"
+        topics:
+          - mcp
+          - kagent
+          - idp
+
+    - id: secrets
+      name: Set CI secrets
+      action: idp:repo:set-secrets
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        secrets: {}
+
+    - id: deploy
+      name: Deploy MCPServer to Kubernetes
+      action: idp:deploy-mcp-server
+      input:
+        name: ${{ parameters.name }}
+        port: ${{ parameters.port }}
+        repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+        repoOwner: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
+
+    - id: catalog
+      name: Register in catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Catalog Entity
+        icon: catalog
+        entityRef: ${{ steps.catalog.output.entityRef }}
+      - title: KAgent UI
+        url: http://kagent.idp.local
+        icon: dashboard

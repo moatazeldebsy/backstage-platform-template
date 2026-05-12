@@ -9,6 +9,7 @@ metadata:
     - aws
     - security
     - golden-path
+    - local
 spec:
   owner: platform-team
   type: service
@@ -90,6 +91,7 @@ spec:
     - id: open-pr
       name: Open PR to apply ExternalSecret
       action: publish:github:pull-request
+      continueOnError: true
       input:
         repoUrl: github.com?repo=backstage-idp-starter&owner=moatazeldebsy
         title: "feat(${{ parameters.serviceName }}): add ${{ parameters.secretKey }} secret"

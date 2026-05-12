@@ -1,0 +1,29 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: idp-mcp-server
+  description: MCP server exposing IDP capabilities (catalog search, Prometheus metrics, scaffolding, deployments) as AI tools for KAgent
+  annotations:
+    backstage.io/kubernetes-id: idp-mcp-server
+    backstage.io/techdocs-ref: dir:.
+    prometheus.io/scrape: "true"
+  tags:
+    - mcp
+    - ai
+    - platform
+    - typescript
+  links:
+    - url: http://idp-mcp-server.idp.local/healthz
+      title: Health Check
+    - url: http://idp-mcp-server.idp.local/sse
+      title: MCP SSE Endpoint
+spec:
+  type: service
+  lifecycle: experimental
+  owner: platform-team
+  system: idp-platform
+  dependsOn:
+    - resource:kagent
+    - resource:claude-api
+  providesApis:
+    - idp-mcp-api

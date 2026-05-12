@@ -40,6 +40,12 @@ backend:
       password: ${POSTGRES_PASSWORD}
       ssl:
         rejectUnauthorized: false
+    knexConfig:
+      pool:
+        min: 3
+        max: 20
+        acquireTimeoutMillis: 60000
+        idleTimeoutMillis: 30000
 
 integrations:
   github:
@@ -126,6 +132,18 @@ catalog:
       target: /catalog/templates/rds-database/template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: /catalog/templates/kafka-topic/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/s3-bucket/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/eks-cluster/template.yaml
+      rules:
+        - allow: [Template]
     # QA golden-path testing scaffolds
     - type: file
       target: /catalog/templates/playwright-e2e-suite/template.yaml
@@ -209,6 +227,41 @@ catalog:
       target: /services/hello-service/catalog-info.yaml
       rules:
         - allow: [Component]
+    # ── AI / ML / MCP Platform ───────────────────────────────────────────────
+    - type: file
+      target: /catalog/templates/ai-agent-kagent/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mlflow-experiment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mcp-server/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/resources/ai-platform.yaml
+      rules:
+        - allow: [Resource, Component]
+    - type: file
+      target: /services/idp-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /services/idp-mcp-server/api.yaml
+      rules:
+        - allow: [API]
+    # ── QA MCP Server ────────────────────────────────────────────────────────
+    - type: file
+      target: /services/qa-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── Scaffolded ML experiments (written at scaffold-time by idp:run-training-job) ──
+    - type: file
+      target: /catalog/ml-experiments/*/catalog-info.yaml
+      rules:
+        - allow: [Component]
 
   # GitHub org auto-discovery — finds all repos with a catalog-info.yaml in
   # YOUR_GITHUB_ORG automatically. New scaffolded services appear within 15 min.
@@ -288,5 +341,14 @@ techInsights:
           successCriteria:
             - factOperator: IS_GREATER_THAN
               value: 0
+
+# KAgent AI assistant proxy — target is the in-cluster kagent-ui service.
+# The local override in app-config.local.yaml points this at the ingress hostname.
+proxy:
+  endpoints:
+    /kagent:
+      target: http://kagent-ui.kagent.svc.cluster.local:8080
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
 
 

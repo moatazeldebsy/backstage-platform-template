@@ -8,8 +8,9 @@
 │  ┌──────────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
 │  │  Backstage        │  │  GitHub      │  │  create-service.sh     │ │
 │  │  Portal           │  │  (source)    │  │  (CLI scaffold)        │ │
-│  │  + custom actions │  └──────┬───────┘  └────────────────────────┘ │
-│  └──────┬───────┬────┘         │ push                                │
+│  │  + AI Assistant   │  └──────┬───────┘  └────────────────────────┘ │
+│  │  + custom actions │         │ push                                │
+│  └──────┬───────┬────┘         │                                    │
 └─────────┼───────┼──────────────┼─────────────────────────────────────┘
           │       │              │
   scaffold│  deploy              │ push
@@ -26,10 +27,17 @@
 │                                                                      │
 │  namespace: services              namespace: monitoring              │
 │  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-│  │ Deployments (Helm)   │         │ Prometheus + Grafana (local)   │ │
-│  │ Services             │         │ CloudWatch agent (AWS)         │ │
-│  │ Ingress (nginx/ALB)  │         └────────────────────────────────┘ │
-│  └──────────────────────┘                                            │
+│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
+│  │ Services             │         │ (Prometheus + Grafana +        │ │
+│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
+│  └──────────────────────┘         └────────────────────────────────┘ │
+│                                                                      │
+│  namespace: kagent                namespace: ml-platform             │
+│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
+│  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
+│  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
+│  │ IDP MCP Server       │         │                                │ │
+│  └──────────────────────┘         └────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
                     │ (AWS only)
                     ▼
@@ -57,10 +65,69 @@ Scaffolded service workflows run `test` on `ubuntu-latest`. No self-hosted runne
 GitHub Actions authenticates to AWS via OIDC (`aws-actions/configure-aws-credentials`), eliminating long-lived secrets. The IAM role is scoped to the specific GitHub org.
 
 ### IRSA for pod-level AWS access
-Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA).
+Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA). IRSA roles exist for: Backstage, ESO (shared), DORA exporter, Grafana (CloudWatch read), MLflow (S3), KAgent ESO (Secrets Manager).
+
+### External Secrets Operator (AWS)
+ESO syncs secrets from AWS Secrets Manager into Kubernetes `Secret` objects. A single cluster-scoped `ClusterSecretStore` named `aws-secretsmanager` is created during bootstrap and shared by all `ExternalSecret` resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read `idp-mvp/*` secrets without static credentials.
+
+### Observability parity (local = AWS)
+Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManager bundled). AWS uses ALB ingress and gp2 persistent volumes; local uses nginx and hostPath. Both install Prometheus Pushgateway as a separate Helm release so that `apply-catalog-exporter.sh`, `seed-qa-metrics.sh`, and the tech-insights-exporter CronJob can push metrics without modification.
 
 ### AWS Load Balancer Controller (AWS)
 All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Balancer Controller. Supports `target-type: ip` (pod-level routing without NodePort).
+
+## AI/ML Platform
+
+### How the AI Assistant works end-to-end
+
+```
+Backstage UI (extensions.tsx)
+  AiAssistantPage — React chat component at /ai-assistant
+    │
+    │  POST /api/proxy/kagent/a2a/kagent/idp-assistant  (A2A JSON-RPC)
+    │  GET  /api/proxy/kagent/api/sessions/<id>          (poll for response)
+    ▼
+Backstage proxy  →  KAgent UI (kagent-ui.kagent.svc.cluster.local:8080)
+                     A2A server routes to the idp-assistant Agent CRD
+                                │
+                                │  MCP over Streamable HTTP
+                                ▼
+                     IDP MCP Server  (idp-mcp-server:3001/mcp)
+                       catalog_search    → Backstage catalog API
+                       get_service_metrics → Prometheus
+                       list_templates    → Backstage catalog (Templates)
+                       get_template_params → Backstage catalog entity
+                       scaffold_service  → Backstage scaffolder v2
+                       list_deployments  → Kubernetes apps/v1 API
+```
+
+### Scaffolding flow (single agent turn)
+
+When the user provides `name`, `description`, and `owner` in one message, the agent
+completes the entire scaffold in one response turn without asking for confirmation:
+
+```
+list_templates → get_template_params → scaffold_service (immediate)
+```
+
+The agent manifest (`kubernetes/kagent/idp-agent.yaml`) enforces this via the
+system message: Rule 4 requires `scaffold_service` to be called immediately once
+all required fields are known, and Rule 5 defines those fields as `name`,
+`description`, and `owner`.
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `backstage/app/packages/app/src/extensions.tsx` | AI Assistant React page + chat polling logic |
+| `backstage/app-config.yaml` | KAgent proxy target (in-cluster) |
+| `backstage/app-config.local.yaml` | KAgent proxy target override (local ingress) |
+| `kubernetes/kagent/idp-agent.yaml` | Agent CRD: model, system message, tool allowlist |
+| `kubernetes/kagent/toolserver.yaml` | RemoteMCPServer CRD pointing at idp-mcp-server |
+| `kubernetes/kagent/modelconfig.yaml` | Claude Anthropic model configuration |
+| `services/idp-mcp-server/src/index.ts` | MCP server implementing all 6 tools |
+
+For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 
 ## Component Inventory
 
@@ -79,8 +146,12 @@ All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Bala
 | Deploy-to-Kind template | `backstage/catalog/templates/deploy-to-kind/` | Standalone local deploy |
 | `idp:deploy-local` action | `backstage/app/packages/backend/src/modules/idpLocalDeploy.ts` | Custom scaffolder action |
 | Backstage image | `backstage/Dockerfile` | Production image (pre-built bundle) |
-| CloudWatch agent | `observability/cloudwatch/` | Log/metric collection (AWS) |
-| Grafana | `observability/grafana/` | Visualization (both envs) |
+| kube-prometheus-stack values (local) | `local/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (nginx, local storage) |
+| kube-prometheus-stack values (AWS) | `observability/prometheus-stack-values-aws.yaml` | Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention) |
+| ClusterSecretStore | `kubernetes/external-secrets/cluster-secret-store.yaml` | ESO → AWS Secrets Manager backend |
+| Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
+| DORA exporter (local) | `observability/dora/dora-cronjob-local.yaml` | DORA metrics → Pushgateway (local) |
+| DORA exporter (AWS) | `observability/dora/dora-cronjob.yaml` | DORA metrics → CloudWatch (AWS) |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 
 ## Backstage Custom Action: `idp:deploy-local`

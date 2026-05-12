@@ -3,6 +3,11 @@
 
 replicaCount: 2
 
+# Pods must be Running AND passing readiness for this many seconds before they
+# receive traffic. Prevents nginx from hitting a pod that just passed its first
+# readiness check but isn't fully warm yet.
+minReadySeconds: 10
+
 image:
   repository: ""   # Set to your ECR repository URL
   tag: "local"     # Never use "latest" — blocked by deny-latest-tag policy in services-prod
@@ -19,6 +24,12 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # Retry on upstream errors/timeouts so a single slow pod doesn't 503 the user
+    nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout"
+    nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "3"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
   hosts:
     - host: ""
       paths:
@@ -41,6 +52,7 @@ livenessProbe:
     port: http
   initialDelaySeconds: 10
   periodSeconds: 15
+  failureThreshold: 3
 
 readinessProbe:
   httpGet:
@@ -48,6 +60,16 @@ readinessProbe:
     port: http
   initialDelaySeconds: 5
   periodSeconds: 10
+  failureThreshold: 3
+  successThreshold: 1
+
+# Grace period given to a terminating pod before SIGTERM. nginx takes ~2 s to
+# remove a pod from its upstream list; this sleep ensures no in-flight requests
+# are dropped during a rolling update or pod eviction.
+lifecycle:
+  preStop:
+    exec:
+      command: ["/bin/sh", "-c", "sleep 5"]
 
 autoscaling:
   enabled: false
@@ -59,6 +81,18 @@ serviceAccount:
   create: true
   annotations: {}
   name: ""
+
+# RBAC: create a ClusterRole + ClusterRoleBinding for the service account.
+# Useful for services that need to query the Kubernetes API (e.g. list deployments).
+rbac:
+  create: false
+  # rules follow the standard ClusterRole rules format.
+  rules: []
+  # Example for an MCP server that needs to list deployments:
+  # rules:
+  #   - apiGroups: ["apps"]
+  #     resources: ["deployments"]
+  #     verbs: ["get", "list", "watch"]
 
 podAnnotations:
   prometheus.io/scrape: "true"

@@ -1,0 +1,8 @@
+site_name: qa-mcp-server
+site_description: MCP server exposing QA and testing capabilities as AI tools for KAgent
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core

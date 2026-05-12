@@ -1,0 +1,149 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: ai-agent-kagent
+  title: AI Agent (KAgent)
+  description: Scaffold a Kubernetes-native AI agent using KAgent — powered by Anthropic Claude API. Defines an Agent CRD with MCP tool access to the Backstage catalog, Prometheus, and scaffolder.
+  tags:
+    - ai
+    - agent
+    - kagent
+    - mcp
+    - anthropic
+    - local
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  owner: platform-team
+  type: template
+
+  parameters:
+    - title: Agent Details
+      required: [name, description, owner]
+      properties:
+        name:
+          title: Agent Name
+          type: string
+          description: Lowercase alphanumeric with hyphens (e.g. my-data-agent)
+          pattern: '^[a-z][a-z0-9-]{2,30}$'
+          ui:autofocus: true
+        description:
+          title: Agent Description
+          type: string
+          description: What does this agent do? (used as the systemPrompt preamble)
+          maxLength: 200
+        owner:
+          title: Owner
+          type: string
+          description: Team owning this agent
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Model & Tools
+      properties:
+        model:
+          title: LLM Model
+          type: string
+          enum:
+            - claude-haiku-4-5-20251001
+            - claude-sonnet-4-6
+            - claude-opus-4-7
+          enumNames:
+            - 'Claude Haiku 4.5 (fast, cost-effective — default)'
+            - 'Claude Sonnet 4.6 (balanced)'
+            - 'Claude Opus 4.7 (most capable)'
+          default: claude-haiku-4-5-20251001
+        modelProvider:
+          title: Model Provider
+          type: string
+          enum: [anthropic]
+          enumNames: ['Anthropic (Claude API)']
+          default: anthropic
+        enableCatalogSearch:
+          title: Enable catalog_search tool
+          type: boolean
+          default: true
+          description: Allow this agent to search the Backstage service catalog
+        enableMetrics:
+          title: Enable get_service_metrics tool
+          type: boolean
+          default: true
+          description: Allow this agent to query Prometheus metrics
+        enableScaffolding:
+          title: Enable scaffold_service tool
+          type: boolean
+          default: false
+          description: Allow this agent to trigger Backstage scaffolder templates
+
+    - title: Repository
+      required: [repoUrl]
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+    - id: fetch
+      name: Generate agent manifests
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          model: ${{ parameters.model }}
+          modelProvider: ${{ parameters.modelProvider }}
+          enableCatalogSearch: ${{ parameters.enableCatalogSearch }}
+          enableMetrics: ${{ parameters.enableMetrics }}
+          enableScaffolding: ${{ parameters.enableScaffolding }}
+          repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: KAgent AI agent — ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: scaffold AI agent via IDP"
+        topics:
+          - ai-agent
+          - kagent
+          - idp
+
+    - id: catalog
+      name: Register in catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    - id: deploy
+      name: Deploy Agent to KAgent
+      action: idp:deploy-agent
+      input:
+        name: ${{ parameters.name }}
+        description: ${{ parameters.description }}
+        modelProvider: ${{ parameters.modelProvider }}
+        enableCatalogSearch: ${{ parameters.enableCatalogSearch }}
+        enableMetrics: ${{ parameters.enableMetrics }}
+        enableScaffolding: ${{ parameters.enableScaffolding }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Catalog Entity
+        icon: catalog
+        entityRef: ${{ steps.catalog.output.entityRef }}
+      - title: KAgent UI
+        url: http://kagent.idp.local
+        icon: dashboard

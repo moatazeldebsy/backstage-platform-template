@@ -1,0 +1,33 @@
+# KAgent Helm values for local Kind cluster — uses Anthropic Claude API.
+# Requires a Kubernetes Secret: kagent-anthropic (key: ANTHROPIC_API_KEY)
+# Create it with: scripts/bootstrap-ai.sh  (reads from local/.env)
+
+providers:
+  default: anthropic
+  anthropic:
+    provider: Anthropic
+    model: claude-haiku-4-5-20251001
+    apiKeySecretRef: kagent-anthropic
+    apiKeySecretKey: ANTHROPIC_API_KEY
+
+ui:
+  enabled: true
+  service:
+    type: ClusterIP
+  # backendInternalUrl sets BACKEND_INTERNAL_URL in the Next.js container.
+  # Next.js server actions use this as the base URL for all SSR API calls.
+  # Routing through 127.0.0.1:8080 (nginx inside the pod) avoids direct
+  # in-cluster DNS calls from Node.js that cause Next.js to crash.
+  # Nginx forwards /api/* → kagent-controller:8083/api/* correctly.
+  backendInternalUrl: "http://127.0.0.1:8080/api"
+
+postgres:
+  # Enable pgvector so the controller can create the memory table (vector(768)).
+  vectorEnabled: true
+  bundled:
+    image:
+      registry: docker.io
+      repository: pgvector
+      name: pgvector
+      # pgvector-enabled Postgres 18 (multi-arch: amd64 + arm64)
+      tag: "pg18"

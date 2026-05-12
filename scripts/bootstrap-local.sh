@@ -412,25 +412,12 @@ else
   log "Step 6b: nginx-prometheus-exporter:1.3.0 already in registry — skipping."
 fi
 
-# Build and seed hello-react-srv from services/hello-react-srv/Dockerfile.
-# That image includes a custom nginx.conf with stub_status enabled so the
-# nginx-prometheus-exporter sidecar can scrape Prometheus metrics.
-REACT_IMAGE="localhost:${REGISTRY_PORT}/hello-react-srv:local"
-if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/hello-react-srv/tags/list" | grep -q '"local"'; then
-  log "Step 6c: Building hello-react-srv image..."
-  docker build -t "${REACT_IMAGE}" "${ROOT_DIR}/services/hello-react-srv/" --quiet
-  docker push "${REACT_IMAGE}"
-  log "  Pushed ${REACT_IMAGE}"
-else
-  log "Step 6c: hello-react-srv:local already in registry — skipping."
-fi
-
-# Build and seed images for any service in services/ that has both a
-# helm-values-local.yaml and a Dockerfile. Services with only helm-values-local.yaml
-# but no Dockerfile get an inline stub (backward-compat for scaffolded-only services).
+# Build and seed images for any scaffolded service in services/ that has a
+# helm-values-local.yaml. hello-service is handled above; idp-mcp-server and
+# qa-mcp-server are deployed by bootstrap-ai.sh — skip them here.
 for svc_dir in "${ROOT_DIR}/services"/*/; do
   svc=$(basename "$svc_dir")
-  [[ "$svc" == "hello-service" || "$svc" == "hello-react-srv" ]] && continue
+  [[ "$svc" == "hello-service" || "$svc" == "idp-mcp-server" || "$svc" == "qa-mcp-server" ]] && continue
   [[ ! -f "${svc_dir}/helm-values-local.yaml" ]] && continue
   img_repo=$(grep -E '^\s+repository:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}')
   img_tag=$(grep -E '^\s+tag:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}' | tr -d '"')
@@ -646,6 +633,18 @@ if ! $SKIP_DORA; then
   fi
 else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
+fi
+
+# ── Step 11: Tech Insights Exporter ──────────────────────────────────────────
+if ! $SKIP_OBS; then
+  log "Step 11: Deploying Tech Insights Exporter CronJob..."
+  kubectl create configmap tech-insights-exporter-script \
+    --from-file=exporter.py="${ROOT_DIR}/observability/tech-insights-exporter/exporter.py" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
+  log "  Tech Insights Exporter deployed (pushes scorecard metrics every 15m)."
+else
+  log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."
 fi
 
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────

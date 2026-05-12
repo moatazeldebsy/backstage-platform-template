@@ -11,6 +11,9 @@ import { idpLocalDeployModule } from './modules/idpLocalDeploy';
 import { idpProvisionSecretModule } from './modules/idpProvisionSecret';
 import { idpSetRepoSecretsModule } from './modules/idpSetRepoSecrets';
 import { idpTechInsightsModule } from './modules/idpTechInsights';
+import { idpDeployAgentModule } from './modules/idpDeployAgent';
+import { idpRunTrainingJobModule } from './modules/idpRunTrainingJob';
+import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
 
 
 const backend = createBackend();
@@ -25,6 +28,9 @@ backend.add(idpLocalDeployModule);
 backend.add(idpProvisionSecretModule);
 backend.add(idpSetRepoSecretsModule);
 backend.add(idpTechInsightsModule);
+backend.add(idpDeployAgentModule);
+backend.add(idpRunTrainingJobModule);
+backend.add(idpDeployMcpServerModule);
 
 // techdocs plugin
 backend.add(import('@backstage/plugin-techdocs-backend'));
