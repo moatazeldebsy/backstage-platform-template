@@ -30,6 +30,8 @@ var (
 	tsType      string
 	tsService   string
 	tsNamespace string
+	tsOwner     string
+	tsDesc      string
 	tsLocal     bool
 	tsURL       string
 
@@ -122,6 +124,8 @@ func init() {
 	f.StringVar(&tsType, "type", "", "Suite type (required) — see list above")
 	f.StringVar(&tsService, "service", "", "Target service name (required)")
 	f.StringVar(&tsNamespace, "namespace", "services", "Kubernetes namespace of the target service")
+	f.StringVar(&tsOwner, "owner", "group:default/platform-team", "Backstage catalog owner ref")
+	f.StringVar(&tsDesc, "description", "", "Short description (used by Backstage template)")
 	f.BoolVar(&tsLocal, "local", false, "Skip Backstage API, generate files locally")
 	f.StringVar(&tsURL, "backstage-url", "http://backstage.idp.local", "Backstage base URL")
 
@@ -210,12 +214,17 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		client := backstage.NewClient(tsURL, readBackstageToken(rootDir()))
 		if client.Healthy(cmd.Context()) {
 			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", tsURL)
+			if tsDesc == "" {
+				tsDesc = tsType + " test suite for " + tsService
+			}
 			return client.ScaffoldTestSuite(cmd.Context(), backstage.TestSuiteRequest{
 				Name:        tsName,
 				TemplateRef: templateRef[tsType],
 				Service:     tsService,
 				Namespace:   tsNamespace,
 				GHOrg:       ghOrg(),
+				Owner:       tsOwner,
+				Desc:        tsDesc,
 			})
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")

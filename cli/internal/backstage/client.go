@@ -107,6 +107,8 @@ type TestSuiteRequest struct {
 	Service     string
 	Namespace   string
 	GHOrg       string
+	Owner       string
+	Desc        string
 }
 
 // ScaffoldTestSuite creates a scaffolder task for a test suite template.
@@ -114,10 +116,12 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 	payload := taskPayload{
 		TemplateRef: "template:default/" + req.TemplateRef,
 		Values: map[string]any{
-			"name":      req.Name,
-			"service":   req.Service,
-			"namespace": req.Namespace,
-			"repoUrl":   fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
+			"name":           req.Name,
+			"description":    req.Desc,
+			"owner":          req.Owner,
+			"targetService":  fmt.Sprintf("component:default/%s", req.Service),
+			"deploymentMode": "new-repository",
+			"repoUrl":        fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
 		},
 	}
 	body, _ := json.Marshal(payload)
