@@ -7,23 +7,18 @@
 #   ./scripts/cleanup-helm-repos.sh --dry-run # show what would be removed without acting
 set -euo pipefail
 
-BOLD='\033[1m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-RESET='\033[0m'
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=scripts/lib.sh
+source "${ROOT_DIR}/scripts/lib.sh"
 
 DRY_RUN=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
-    *) echo "Unknown flag: $1"; exit 1 ;;
+    *) err "Unknown flag: $1" ;;
   esac
 done
-
-log()  { echo -e "[$(date +%T)] $*"; }
-warn() { echo -e "[$(date +%T)] ${YELLOW}WARN${RESET}  $*"; }
 
 # ── Repos that are NOT used by any script in this project ────────────────────
 # backstage        — Backstage runs via Docker Compose (local) or k8s manifests (AWS)

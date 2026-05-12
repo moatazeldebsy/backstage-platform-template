@@ -90,9 +90,24 @@ Alternatively, use `kubectl port-forward` for any service:
 kubectl port-forward svc/hello-service 8080:80 -n services
 ```
 
-## Start Backstage (required after every bootstrap)
+## Start Backstage
 
-`bootstrap-local.sh` only wires the nginx ingress for Backstage on the Kind side. It does **not** build or start the Docker Compose stack. You will see a **502 Bad Gateway** at `http://backstage.idp.local` until the containers are running.
+`bootstrap-local.sh` sets up the cluster and platform but does not start Backstage. Run this after the cluster is up:
+
+```bash
+./scripts/bootstrap-local.sh --start-backstage
+```
+
+This single command:
+1. Builds the Backstage Docker image
+2. Starts the Docker Compose stack
+3. Waits for the container to join the `kind` network
+4. Wires the nginx ingress endpoint to the live container IP
+5. Seeds sample QA metrics into Pushgateway
+6. Triggers an immediate catalog export
+7. Prints the full access-URL summary
+
+Backstage is then available at http://localhost:3000 (or http://backstage.idp.local after the `/etc/hosts` entries are written by `bootstrap-local.sh`).
 
 ### Environment files (first time only)
 
@@ -102,44 +117,34 @@ cp local/backstage/.env.example local/backstage/.env
 # Edit both and fill in:
 #   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION
 #   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,
-#                          BACKSTAGE_AUTH_SECRET (any string locally),
-#                          K8s credentials (run get-k8s-credentials.sh, see below)
+#                          BACKSTAGE_AUTH_SECRET (any string locally)
 ```
 
-### Build and start
+> K8s credentials (`K8S_CLUSTER_URL`, `K8S_SERVICE_ACCOUNT_TOKEN`, `K8S_CLUSTER_CA_DATA`) are written to `local/backstage/.env` automatically by `bootstrap-local.sh` via `get-k8s-credentials.sh`. No manual step needed if you bootstrapped with that script.
+
+### Day-2 Backstage restart
+
+If you restart Docker Compose manually, re-run `--start-backstage` to rewire the nginx endpoint:
 
 ```bash
-# 1. Build the backend bundle (required before docker build, and after any backend code change)
-cd backstage/app && yarn install && yarn build:backend && cd ../..
-
-# 2. Build the Docker image and start the stack
-docker compose -f local/backstage/docker-compose.yml build backstage
-docker compose -f local/backstage/docker-compose.yml up -d
-
-# Backstage is now at http://localhost:3000
+./scripts/bootstrap-local.sh --start-backstage
 ```
 
-### Fix 502 on backstage.idp.local
-
-nginx proxies to the Backstage container's IP on the `kind` Docker network. After `docker compose up -d`, update the K8s endpoint to match the live container IP:
+Or, if you only need to refresh the IP without reseeding metrics:
 
 ```bash
 ./scripts/bootstrap-local.sh --update-backstage-ip
 ```
 
-The `docker-compose.yml` declares the `kind` network so the container is automatically reachable from inside the cluster. No manual `docker network connect` is needed.
+### Manual backend bundle rebuild
 
-### Wire K8s credentials into Backstage
-
-Needed for the Kubernetes tab and `idp:deploy-local` action:
+Only needed if you changed code under `backstage/app/packages/backend/src/`:
 
 ```bash
-./scripts/get-k8s-credentials.sh
-# Writes K8S_CLUSTER_URL, K8S_SERVICE_ACCOUNT_TOKEN, K8S_CLUSTER_CA_DATA to local/backstage/.env
-# Then restart: docker compose -f local/backstage/docker-compose.yml restart backstage
+cd backstage/app && yarn install && yarn build:backend && cd ../..
+# Then re-run --start-backstage to pick up the new image
+./scripts/bootstrap-local.sh --start-backstage
 ```
-
-> `bootstrap-local.sh` (and therefore `setup.sh`) runs `get-k8s-credentials.sh` automatically. The manual step above is only needed if you provisioned the cluster without `bootstrap-local.sh`. `--update-backstage-ip` is still required manually after `docker compose up -d`.
 
 ## Deploy a service via Backstage
 
@@ -155,7 +160,7 @@ Needed for the Kubernetes tab and `idp:deploy-local` action:
 The platform includes a custom `idp:deploy-local` action and a dedicated template.
 
 **Prerequisites:**
-- Kind cluster running (`./scripts/bootstrap-local.sh`)
+- Kind cluster and Backstage running (`./scripts/bootstrap-local.sh` then `./scripts/bootstrap-local.sh --start-backstage`)
 - Image pushed to local registry (see below)
 
 **Push the image:**
@@ -220,7 +225,7 @@ The Helm chart (`helm/service-template`) is **identical** for both. Only the val
 
 ## AI/ML stack (optional)
 
-After `bootstrap-local.sh` completes, boot the AI/ML platform:
+After `bootstrap-local.sh` (and optionally `--start-backstage`) completes, boot the AI/ML platform:
 
 ```bash
 # Requires ANTHROPIC_API_KEY in local/.env

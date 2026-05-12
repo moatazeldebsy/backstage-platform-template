@@ -33,10 +33,12 @@ Faster option (skips observability — use only if Grafana is not part of the de
 ./scripts/bootstrap-local.sh --skip-obs
 ```
 
-### Step 3 — Start Backstage *(~1 min)*
+### Step 3 — Start Backstage *(~2 min)*
+
+Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, and triggers catalog export:
 
 ```bash
-docker compose -f local/backstage/docker-compose.yml up -d
+./scripts/bootstrap-local.sh --start-backstage
 ```
 
 ### Step 4 — Verify everything is green

@@ -10,28 +10,10 @@
 # Individual scripts in scripts/ remain fully standalone for day-2 use.
 set -euo pipefail
 
-BOLD='\033[1m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-RESET='\033[0m'
-
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-log()  { echo -e "[$(date +%T)] $*"; }
-warn() { echo -e "[$(date +%T)] ${YELLOW}WARN${RESET}  $*"; }
-err()  { echo -e "[$(date +%T)] ${RED}ERROR${RESET} $*" >&2; exit 1; }
-step() { echo -e "\n${BOLD}▶ $*${RESET}"; }
-
-_sed() {
-  # macOS (BSD sed) requires '' suffix with -i; GNU sed takes no suffix
-  if sed --version 2>&1 | grep -q GNU; then
-    sed -i "$@"
-  else
-    sed -i '' "$@"
-  fi
-}
+# shellcheck source=scripts/lib.sh
+source "${ROOT_DIR}/scripts/lib.sh"
 
 # ── Shared helper: print manual next-steps ───────────────────────────────────
 _print_skip_summary() {
@@ -40,7 +22,7 @@ _print_skip_summary() {
   echo "  1. Fill in secrets in local/.env and local/backstage/.env"
   echo "  2. Local platform:"
   echo "       ./scripts/bootstrap-local.sh          # cluster + platform (includes K8s creds + catalog exporter)"
-  echo "       docker compose -f local/backstage/docker-compose.yml up -d"
+  echo "       ./scripts/bootstrap-local.sh --start-backstage   # build, start, wire Backstage"
   echo "  3. AWS platform:"
   echo "       cd terraform && cp terraform.tfvars.example terraform.tfvars"
   echo "       # edit terraform.tfvars, then:"
@@ -58,19 +40,6 @@ _print_skip_summary() {
 
 _bootstrap_local() {
   step "Phase 2A — Local bootstrap"
-
-  # ── Pre-flight ──────────────────────────────────────────────────────────────
-  log "Checking required tools..."
-  local missing=()
-  for cmd in kind kubectl helm docker; do
-    command -v "$cmd" &>/dev/null || missing+=("$cmd")
-  done
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    err "Missing required tools: ${missing[*]}
-Install them and re-run this script, or run manually:
-  ./scripts/bootstrap-local.sh"
-  fi
-  log "All required tools found."
 
   # ── Ensure .env files exist and prompt the user to fill them in ─────────────
   local env_shared="${ROOT_DIR}/local/.env"
@@ -147,76 +116,11 @@ Install them and re-run this script, or run manually:
   read -rp "$(echo -e "${CYAN}Start Backstage (Docker Compose) now?${RESET} [Y/n] ")" START_BS
   START_BS="${START_BS:-Y}"
   if [[ "${START_BS}" =~ ^[Yy]$ ]]; then
-    log "Building and starting Backstage..."
-    docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
-      build backstage
-    docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
-      up -d
-    log "Backstage is starting at http://localhost:3000 (allow ~30s)"
-
-    log "Waiting for Backstage container to join the kind network..."
-    for _i in {1..24}; do
-      _bs_ip=$(docker inspect backstage-backstage-1 \
-        --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
-      if [[ -n "$_bs_ip" && "$_bs_ip" != "<no value>" ]]; then
-        log "  Container IP on kind network: ${_bs_ip}"
-        break
-      fi
-      log "  Not on kind network yet (${_i}/24) — retrying in 5s..."
-      sleep 5
-    done
-
-    log "Refreshing nginx → Backstage endpoint IP..."
-    "${ROOT_DIR}/scripts/bootstrap-local.sh" --update-backstage-ip \
-      || warn "Could not update Backstage IP — run manually: ./scripts/bootstrap-local.sh --update-backstage-ip"
-
-    log "Seeding sample QA metrics into Pushgateway..."
-    kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &>/dev/null &
-    PFORWARD_PID=$!
-    for _i in {1..10}; do
-      if curl -sf http://localhost:9091/-/healthy &>/dev/null; then
-        break
-      fi
-      sleep 2
-    done
-    PUSHGATEWAY_URL=http://localhost:9091 "${ROOT_DIR}/scripts/seed-qa-metrics.sh" \
-      || warn "Could not seed QA metrics — run manually: kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring & PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
-    kill "${PFORWARD_PID}" 2>/dev/null || true
-    wait "${PFORWARD_PID}" 2>/dev/null || true
-
-    log "Triggering an immediate catalog export..."
-    kubectl create job catalog-exporter-now \
-      --from=cronjob/catalog-exporter -n monitoring 2>/dev/null \
-      || warn "Could not trigger catalog export — run manually: kubectl create job catalog-exporter-now --from=cronjob/catalog-exporter -n monitoring"
+    "${ROOT_DIR}/scripts/bootstrap-local.sh" --start-backstage
   else
     log "Skipped. Start manually:"
-    log "  docker compose -f local/backstage/docker-compose.yml up -d"
-    log "  ./scripts/bootstrap-local.sh --update-backstage-ip"
-    log "  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &"
-    log "  PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
+    log "  ./scripts/bootstrap-local.sh --start-backstage"
   fi
-
-  # ── Step 3: Summary ──────────────────────────────────────────────────────────
-  step "Step 3/3 — Done!"
-  echo ""
-  echo -e "${GREEN}✓ Local IDP platform is up.${RESET}"
-  echo ""
-  echo -e "${BOLD}Access URLs:${RESET}"
-  echo "  Backstage:      http://localhost:3000  (or http://backstage.idp.local after /etc/hosts)"
-  echo "  hello-service:  http://hello-service.idp.local"
-  echo "  Grafana:        http://grafana.idp.local          (admin / admin)"
-  echo "  ArgoCD:         http://argocd.idp.local"
-  echo "  OpenCost:       http://opencost.idp.local"
-  echo ""
-  echo -e "${BOLD}Day-2 tools:${RESET}"
-  echo "  Scaffold a service:   ./scripts/create-service.sh --name my-svc --type nodejs"
-  echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
-  echo "  Seed QA demo metrics: ./scripts/seed-qa-metrics.sh"
-  echo "  Teardown cluster:     ./scripts/bootstrap-local.sh --destroy"
-  echo ""
-  echo "  Commit your personalised repo:"
-  echo "    git add . && git commit -m 'chore: initialise from backstage-idp-starter'"
-  echo ""
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -426,14 +330,6 @@ if [[ -f local/backstage/.env.example && ! -f local/backstage/.env ]]; then
 fi
 
 # Persist org + repo to local/.env so day-2 scripts (setup-runner.sh, create-service.sh) can read them
-_upsert_env() {
-  local file="$1" key="$2" val="$3"
-  if grep -q "^${key}=" "$file" 2>/dev/null; then
-    _sed "s|^${key}=.*|${key}=${val}|" "$file"
-  else
-    echo "${key}=${val}" >> "$file"
-  fi
-}
 if [[ -f local/.env ]]; then
   _upsert_env "local/.env" "GITHUB_ORG" "${GITHUB_ORG}"
   _upsert_env "local/.env" "PLATFORM_REPO" "${PLATFORM_REPO}"

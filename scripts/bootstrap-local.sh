@@ -3,8 +3,9 @@
 # No AWS account needed. Mirrors the cloud setup with Kind + nginx + Prometheus.
 #
 # Usage:
-#   ./scripts/bootstrap-local.sh              # full setup
-#   ./scripts/bootstrap-local.sh --skip-obs  # skip observability (faster)
+#   ./scripts/bootstrap-local.sh                   # full cluster + platform setup
+#   ./scripts/bootstrap-local.sh --skip-obs        # skip observability (faster)
+#   ./scripts/bootstrap-local.sh --start-backstage # build + start Backstage, wire nginx, seed metrics
 #   ./scripts/bootstrap-local.sh --update-backstage-ip  # refresh Backstage endpoint IP after compose up
 #   ./scripts/bootstrap-local.sh --destroy              # tear everything down
 #   ./scripts/bootstrap-local.sh --clean-docker         # stop Backstage + prune all Docker resources
@@ -13,6 +14,12 @@
 #        K8s credentials (local/backstage/.env), and catalog exporter CronJob.
 # Called by setup.sh (first-time) and usable standalone for day-2 cluster recreates.
 set -euo pipefail
+
+# Resolved once here so every step and the early-exit paths can use it.
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# shellcheck source=scripts/lib.sh
+source "${ROOT_DIR}/scripts/lib.sh"
 
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 REGISTRY_NAME="registry"
@@ -23,22 +30,7 @@ SKIP_POLICIES=false
 SKIP_DORA=false
 DESTROY=false
 UPDATE_BACKSTAGE_IP=false
-
-# Resolved once here so every step and the early-exit paths can use it.
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-
-log()  { echo "[$(date +%T)] INFO  $*"; }
-warn() { echo "[$(date +%T)] WARN  $*"; }
-err()  { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
-
-# ── Cross-platform sed helper (macOS BSD vs GNU) ──────────────────────────────
-_sed() {
-  if sed --version 2>&1 | grep -q GNU; then
-    sed -i "$@"
-  else
-    sed -i '' "$@"
-  fi
-}
+START_BACKSTAGE=false
 
 # ── Source local/.env to pick up GITHUB_ORG and PLATFORM_REPO ────────────────
 # Then apply any remaining YOUR_GITHUB_ORG / YOUR_PLATFORM_REPO placeholders
@@ -92,6 +84,7 @@ while [[ $# -gt 0 ]]; do
     --destroy)             DESTROY=true;            shift ;;
     --clean-docker)        CLEAN_DOCKER=true;       shift ;;
     --update-backstage-ip) UPDATE_BACKSTAGE_IP=true;  shift ;;
+    --start-backstage)     START_BACKSTAGE=true;    shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -205,10 +198,81 @@ if $UPDATE_BACKSTAGE_IP; then
   exit 0
 fi
 
+# ── --start-backstage fast path ───────────────────────────────────────────────
+# Build + start Backstage, wire nginx routing, seed QA metrics, trigger catalog
+# export. Run after 'bootstrap-local.sh' finishes, or as a day-2 restart path.
+_start_backstage() {
+  step "Starting Backstage..."
+  kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+
+  log "Building and starting Backstage Docker Compose..."
+  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" build backstage
+  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" up -d
+  log "Backstage starting at http://localhost:3000 (allow ~30s)"
+
+  log "Waiting for Backstage container to join the kind network..."
+  for _i in {1..24}; do
+    _bs_ip=$(docker inspect backstage-backstage-1 \
+      --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
+    if [[ -n "$_bs_ip" && "$_bs_ip" != "<no value>" ]]; then
+      log "  Container IP on kind network: ${_bs_ip}"
+      break
+    fi
+    log "  Not on kind network yet (${_i}/24) — retrying in 5s..."
+    sleep 5
+  done
+
+  log "Wiring nginx → Backstage endpoint..."
+  apply_backstage_k8s_objects
+
+  log "Seeding sample QA metrics into Pushgateway..."
+  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &>/dev/null &
+  _PFORWARD_PID=$!
+  for _i in {1..10}; do
+    if curl -sf http://localhost:9091/-/healthy &>/dev/null; then break; fi
+    sleep 2
+  done
+  PUSHGATEWAY_URL=http://localhost:9091 "${ROOT_DIR}/scripts/seed-qa-metrics.sh" \
+    || warn "Could not seed QA metrics — run manually:
+  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &
+  PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
+  kill "${_PFORWARD_PID}" 2>/dev/null || true
+  wait "${_PFORWARD_PID}" 2>/dev/null || true
+
+  log "Triggering catalog export..."
+  "${ROOT_DIR}/scripts/apply-catalog-exporter.sh" \
+    || warn "Could not trigger catalog export — run manually: ./scripts/apply-catalog-exporter.sh"
+
+  step "Done!"
+  echo ""
+  echo -e "${GREEN}✓ Local IDP platform is up.${RESET}"
+  echo ""
+  echo -e "${BOLD}Access URLs:${RESET}"
+  echo "  Backstage:     http://localhost:3000  (or http://backstage.idp.local)"
+  echo "  hello-service: http://hello-service.idp.local"
+  echo "  Grafana:       http://grafana.idp.local          (admin / admin)"
+  echo "  ArgoCD:        http://argocd.idp.local"
+  echo "  OpenCost:      http://opencost.idp.local"
+  echo ""
+  echo -e "${BOLD}Day-2 tools:${RESET}"
+  echo "  Scaffold a service:   ./scripts/create-service.sh --name my-svc --type nodejs"
+  echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
+  echo "  Seed QA demo metrics: ./scripts/seed-qa-metrics.sh"
+  echo "  Restart Backstage:    ./scripts/bootstrap-local.sh --start-backstage"
+  echo "  Teardown cluster:     ./scripts/bootstrap-local.sh --destroy"
+  echo ""
+  echo "  Commit your personalised repo:"
+  echo "    git add . && git commit -m 'chore: initialise from backstage-idp-starter'"
+  echo ""
+}
+
+if $START_BACKSTAGE; then
+  _start_backstage
+  exit 0
+fi
+
 # ── Pre-flight ────────────────────────────────────────────────────────────────
-for cmd in kind kubectl helm docker; do
-  command -v "$cmd" &>/dev/null || err "'$cmd' not found. Install it first."
-done
+_preflight_check_local
 
 # ── Personalisation: replace any remaining YOUR_GITHUB_ORG placeholders ──────
 _apply_personalization
@@ -755,9 +819,8 @@ echo "    kubectl -n argocd get secret argocd-initial-admin-secret \\"
 echo "      -o jsonpath='{.data.password}' | base64 -d && echo"
 echo ""
 fi
-echo "  Start Backstage:"
-echo "    docker compose -f local/backstage/docker-compose.yml up -d"
-echo "    ./scripts/bootstrap-local.sh --update-backstage-ip"
+echo "  Start Backstage (builds, wires nginx, seeds metrics):"
+echo "    ./scripts/bootstrap-local.sh --start-backstage"
 echo ""
 echo "  Day-2:"
 echo "    Scaffold service:  ./scripts/create-service.sh --name my-svc --type nodejs"

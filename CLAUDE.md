@@ -15,8 +15,11 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 ./scripts/setup.sh
 
 # Day-2 local cluster recreate (skip observability for speed)
-./scripts/bootstrap-local.sh
-./scripts/bootstrap-local.sh --skip-obs
+./scripts/bootstrap-local.sh              # cluster + platform
+./scripts/bootstrap-local.sh --skip-obs  # skip Prometheus/Grafana for speed
+
+# Then start Backstage (builds image, wires nginx, seeds metrics)
+./scripts/bootstrap-local.sh --start-backstage
 
 # Tear down
 ./scripts/bootstrap-local.sh --destroy
@@ -25,15 +28,14 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 ### Backstage (developer portal)
 
 ```bash
-# Build backend bundle (required before docker build, and after any change to
-# backstage/app/packages/backend/src/)
+# Start Backstage after bootstrap-local.sh (builds image, wires nginx, seeds metrics)
+./scripts/bootstrap-local.sh --start-backstage
+
+# Rebuild backend bundle only (required after changes to backstage/app/packages/backend/src/)
 cd backstage/app && yarn install && yarn build:backend && cd ../..
+# Then re-run --start-backstage to pick up the new image
 
-# Start Backstage + Postgres
-docker compose -f local/backstage/docker-compose.yml build backstage
-docker compose -f local/backstage/docker-compose.yml up -d
-
-# Tear down
+# Tear down Backstage only
 docker compose -f local/backstage/docker-compose.yml down
 ```
 
