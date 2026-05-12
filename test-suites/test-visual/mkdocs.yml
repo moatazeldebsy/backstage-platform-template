@@ -1,0 +1,8 @@
+site_name: test-visual
+site_description: visual test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
