@@ -248,9 +248,18 @@ catalog:
       target: /services/idp-mcp-server/catalog-info.yaml
       rules:
         - allow: [Component]
+    - type: file
+      target: /services/idp-mcp-server/api.yaml
+      rules:
+        - allow: [API]
     # ── QA MCP Server ────────────────────────────────────────────────────────
     - type: file
       target: /services/qa-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── Scaffolded ML experiments (written at scaffold-time by idp:run-training-job) ──
+    - type: file
+      target: /catalog/ml-experiments/*/catalog-info.yaml
       rules:
         - allow: [Component]
 
@@ -332,5 +341,14 @@ techInsights:
           successCriteria:
             - factOperator: IS_GREATER_THAN
               value: 0
+
+# KAgent AI assistant proxy — target is the in-cluster kagent-ui service.
+# The local override in app-config.local.yaml points this at the ingress hostname.
+proxy:
+  endpoints:
+    /kagent:
+      target: http://kagent-ui.kagent.svc.cluster.local:8080
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
 
 

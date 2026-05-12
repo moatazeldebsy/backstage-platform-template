@@ -9,6 +9,8 @@ metadata:
     - postman
     - api-testing
     - qa
+    - local
+    - aws
 spec:
   owner: qa-team
   type: test-suite

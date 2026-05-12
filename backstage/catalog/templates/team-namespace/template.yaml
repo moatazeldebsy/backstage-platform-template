@@ -9,6 +9,8 @@ metadata:
     - kubernetes
     - onboarding
     - self-service
+    - local
+    - aws
 spec:
   owner: platform-team
   type: infrastructure

@@ -10,6 +10,8 @@ metadata:
     - typescript
     - frontend
     - golden-path
+    - local
+    - aws
 spec:
   owner: platform-team
   type: website

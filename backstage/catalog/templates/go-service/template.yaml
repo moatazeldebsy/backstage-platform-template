@@ -8,6 +8,8 @@ metadata:
     - go
     - golang
     - golden-path
+    - local
+    - aws
 spec:
   owner: platform-team
   type: service

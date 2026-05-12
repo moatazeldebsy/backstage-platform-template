@@ -10,6 +10,8 @@ metadata:
     - kagent
     - kmcp
     - typescript
+    - local
+    - aws
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:

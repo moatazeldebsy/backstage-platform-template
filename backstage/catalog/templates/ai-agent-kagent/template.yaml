@@ -10,6 +10,7 @@ metadata:
     - kagent
     - mcp
     - anthropic
+    - local
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:

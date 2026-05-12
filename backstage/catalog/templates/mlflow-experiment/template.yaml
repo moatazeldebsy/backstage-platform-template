@@ -3,12 +3,14 @@ kind: Template
 metadata:
   name: mlflow-experiment
   title: ML Experiment (MLflow)
-  description: Scaffold a Python ML experiment with MLflow tracking, model registry, and CI/CD. Deploys a training job that logs metrics and registers the model in MLflow.
+  description: Run a Python ML training job with MLflow tracking. Scaffolds the experiment locally and submits a Kubernetes Job to the ml-platform namespace. Results appear in the MLflow UI.
   tags:
     - ml
     - mlflow
     - python
     - training
+    - local
+    - aws
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
@@ -20,9 +22,9 @@ spec:
       required: [name, experimentName, owner]
       properties:
         name:
-          title: Repository Name
+          title: Experiment ID
           type: string
-          description: Lowercase alphanumeric with hyphens (e.g. churn-prediction)
+          description: Lowercase alphanumeric with hyphens (e.g. churn-prediction) — used as the Kubernetes Job name
           pattern: '^[a-z][a-z0-9-]{2,40}$'
           ui:autofocus: true
         experimentName:
@@ -46,7 +48,7 @@ spec:
           type: string
           enum: [sklearn, pytorch, xgboost, tensorflow]
           enumNames:
-            - 'scikit-learn'
+            - 'scikit-learn (recommended for local)'
             - 'PyTorch'
             - 'XGBoost'
             - 'TensorFlow'
@@ -61,17 +63,6 @@ spec:
           type: boolean
           default: true
 
-    - title: Repository
-      required: [repoUrl]
-      properties:
-        repoUrl:
-          title: Repository Location
-          type: string
-          ui:field: RepoUrlPicker
-          ui:options:
-            allowedHosts:
-              - github.com
-
   steps:
     - id: fetch
       name: Generate experiment scaffold
@@ -85,29 +76,6 @@ spec:
           framework: ${{ parameters.framework }}
           pythonVersion: ${{ parameters.pythonVersion }}
           registerModel: ${{ parameters.registerModel }}
-          repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
-
-    - id: publish
-      name: Publish to GitHub
-      action: publish:github
-      input:
-        description: MLflow experiment — ${{ parameters.experimentName }}
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-        gitCommitMessage: "chore: scaffold ML experiment via IDP"
-        topics:
-          - mlflow
-          - ml-experiment
-          - idp
-
-    - id: secrets
-      name: Set CI secrets
-      action: idp:repo:set-secrets
-      continueOnError: true
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        secrets:
-          MLFLOW_TRACKING_URI: http://mlflow.ml-platform.svc.cluster.local:5000
 
     - id: train
       name: Run Initial Training Job
@@ -117,22 +85,13 @@ spec:
         experimentName: ${{ parameters.experimentName }}
         framework: ${{ parameters.framework }}
         pythonVersion: ${{ parameters.pythonVersion }}
-
-    - id: catalog
-      name: Register in catalog
-      action: catalog:register
-      continueOnError: true
-      input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
+        owner: ${{ parameters.owner }}
 
   output:
     links:
-      - title: Repository
-        url: ${{ steps.publish.output.remoteUrl }}
-      - title: Catalog Entity
-        icon: catalog
-        entityRef: ${{ steps.catalog.output.entityRef }}
       - title: MLflow UI
         url: http://mlflow.idp.local
         icon: dashboard
+      - title: Open in Catalog
+        url: http://backstage.idp.local/catalog/default/component/${{ parameters.name }}
+        icon: catalog

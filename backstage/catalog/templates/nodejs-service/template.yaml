@@ -8,6 +8,8 @@ metadata:
     - nodejs
     - express
     - golden-path
+    - local
+    - aws
 spec:
   owner: platform-team
   type: service

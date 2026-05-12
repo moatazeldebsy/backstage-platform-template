@@ -8,6 +8,8 @@ metadata:
     - python
     - fastapi
     - golden-path
+    - local
+    - aws
 spec:
   owner: platform-team
   type: service

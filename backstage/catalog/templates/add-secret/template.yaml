@@ -9,6 +9,7 @@ metadata:
     - aws
     - security
     - golden-path
+    - local
 spec:
   owner: platform-team
   type: service

@@ -10,6 +10,8 @@ metadata:
     - axe-core
     - playwright
     - qa
+    - local
+    - aws
 spec:
   owner: qa-team
   type: test-suite

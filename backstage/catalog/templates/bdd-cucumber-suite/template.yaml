@@ -10,6 +10,8 @@ metadata:
     - gherkin
     - testing
     - qa
+    - local
+    - aws
 spec:
   owner: qa-team
   type: test-suite

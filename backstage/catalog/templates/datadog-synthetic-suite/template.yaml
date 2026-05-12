@@ -9,6 +9,8 @@ metadata:
     - synthetic
     - monitoring
     - qa
+    - local
+    - aws
 spec:
   owner: qa-team
   type: test-suite
