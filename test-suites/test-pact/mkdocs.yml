@@ -1,0 +1,8 @@
+site_name: test-pact
+site_description: pact test suite for hello-service
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core

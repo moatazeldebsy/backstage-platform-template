@@ -1,0 +1,13 @@
+{
+  "name": "test-pact",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": { "test": "jest --testPathPattern=consumer" },
+  "devDependencies": {
+    "@pact-foundation/pact": "^12.0.0",
+    "@types/jest": "^29.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.4.0"
+  }
+}
