@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-# bootstrap-local.sh — Set up the full IDP MVP locally using Kind
-# No AWS account needed. Mirrors the cloud setup with Kind + nginx + Prometheus.
+# bootstrap-local.sh — Set up the full IDP MVP locally using Kind or Rancher Desktop.
+# No AWS account needed. Mirrors the cloud setup with nginx + Prometheus.
 #
 # Usage:
-#   ./scripts/bootstrap-local.sh                   # full cluster + platform setup
-#   ./scripts/bootstrap-local.sh --skip-obs        # skip observability (faster)
-#   ./scripts/bootstrap-local.sh --start-backstage # build + start Backstage, wire nginx, seed metrics
-#   ./scripts/bootstrap-local.sh --update-backstage-ip  # refresh Backstage endpoint IP after compose up
-#   ./scripts/bootstrap-local.sh --destroy              # tear everything down
-#   ./scripts/bootstrap-local.sh --clean-docker         # stop Backstage + prune all Docker resources
+#   ./scripts/bootstrap-local.sh                              # Kind (default)
+#   ./scripts/bootstrap-local.sh --provider rancher-desktop   # Rancher Desktop k3s
+#   ./scripts/bootstrap-local.sh --skip-obs                   # skip observability (faster)
+#   ./scripts/bootstrap-local.sh --start-backstage            # build + start Backstage, wire nginx, seed metrics
+#   ./scripts/bootstrap-local.sh --update-backstage-ip        # refresh Backstage endpoint IP after compose up
+#   ./scripts/bootstrap-local.sh --destroy                    # tear everything down
+#   ./scripts/bootstrap-local.sh --clean-docker               # stop Backstage + prune all Docker resources
+#   ./scripts/bootstrap-local.sh --print-urls                 # print all service URLs without running bootstrap
+#
+# Rancher Desktop prerequisites (one-time):
+#   1. Preferences → Kubernetes → disable Traefik  (nginx-ingress uses ports 80/443)
+#   2. Preferences → Container Engine → set to dockerd
+#   3. Set KUBERNETES_PROVIDER=rancher-desktop in local/.env (or pass --provider each time)
 #
 # Scope: cluster creation, ingress, observability, ArgoCD, OPA, DORA exporter,
 #        K8s credentials (local/backstage/.env), and catalog exporter CronJob.
@@ -31,6 +38,9 @@ SKIP_DORA=false
 DESTROY=false
 UPDATE_BACKSTAGE_IP=false
 START_BACKSTAGE=false
+PRINT_URLS=false
+# Read provider from env first; CLI --provider flag overrides below.
+PROVIDER="${KUBERNETES_PROVIDER:-kind}"
 
 # ── Source local/.env to pick up GITHUB_ORG and PLATFORM_REPO ────────────────
 # Then apply any remaining YOUR_GITHUB_ORG / YOUR_PLATFORM_REPO placeholders
@@ -85,14 +95,25 @@ while [[ $# -gt 0 ]]; do
     --clean-docker)        CLEAN_DOCKER=true;       shift ;;
     --update-backstage-ip) UPDATE_BACKSTAGE_IP=true;  shift ;;
     --start-backstage)     START_BACKSTAGE=true;    shift ;;
+    --provider)            PROVIDER="$2";           shift 2 ;;
+    --print-urls)          PRINT_URLS=true;         shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
 
+# Compose file(s) — Rancher Desktop override drops the 'kind' external network.
+_COMPOSE_BASE="${ROOT_DIR}/local/backstage/docker-compose.yml"
+_COMPOSE_RANCHER="${ROOT_DIR}/local/backstage/docker-compose.rancher.yml"
+if [[ "$PROVIDER" == "rancher-desktop" ]]; then
+  COMPOSE_CMD="docker compose -f ${_COMPOSE_BASE} -f ${_COMPOSE_RANCHER}"
+else
+  COMPOSE_CMD="docker compose -f ${_COMPOSE_BASE}"
+fi
+
 # ── Docker deep-clean helper ──────────────────────────────────────────────────
 _clean_docker() {
   log "Stopping Backstage Docker Compose stack..."
-  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
+  ${COMPOSE_CMD} \
     down --volumes --remove-orphans --rmi all 2>/dev/null || true
 
   log "Stopping and removing local registry container..."
@@ -112,22 +133,86 @@ _clean_docker() {
   log "Docker clean complete."
 }
 
+# ── URL banner helper (used by --print-urls and the final Done section) ───────
+_print_url_banner() {
+  local argocd_pass=""
+  argocd_pass=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
+
+  echo ""
+  echo "╔═══════════════════════════════════════════════════════════════════════════╗"
+  echo "║                    IDP Platform — Service URLs                           ║"
+  echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  echo "║  Core Platform                                                            ║"
+  echo "║  Backstage        http://backstage.idp.local                             ║"
+  echo "║  hello-service    http://hello-service.idp.local                         ║"
+  if kubectl get svc argocd-server -n argocd &>/dev/null 2>&1; then
+    if [[ -n "$argocd_pass" ]]; then
+  echo "║  ArgoCD           http://argocd.idp.local          admin/${argocd_pass}  ║"
+    else
+  echo "║  ArgoCD           http://argocd.idp.local                                ║"
+    fi
+  fi
+  echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  echo "║  Observability                                                            ║"
+  echo "║  Grafana          http://grafana.idp.local         admin/admin            ║"
+  echo "║  Prometheus       http://prometheus.idp.local                             ║"
+  echo "║  AlertManager     http://alertmanager.idp.local                           ║"
+  echo "║  Pushgateway      http://pushgateway.idp.local                            ║"
+  echo "║  OpenCost         http://opencost.idp.local                               ║"
+  echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  echo "║  AI / ML Platform  (install: ./scripts/bootstrap-ai.sh)                  ║"
+  echo "║  KAgent UI        http://kagent.idp.local                                ║"
+  echo "║  AI Assistant     http://backstage.idp.local/ai-assistant                ║"
+  echo "║  MLflow           http://mlflow.idp.local                                ║"
+  echo "║  IDP MCP Server   http://idp-mcp-server.idp.local/healthz                ║"
+  echo "║  QA MCP Server    http://qa-mcp-server.idp.local/healthz                 ║"
+  echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  echo "║  Local registry   localhost:5003                                          ║"
+  echo "╚═══════════════════════════════════════════════════════════════════════════╝"
+  echo ""
+  if [[ -n "$argocd_pass" ]]; then
+  echo "  ArgoCD admin password: ${argocd_pass}"
+  echo "  (saved in local/backstage/.env as ARGOCD_AUTH_TOKEN)"
+  echo ""
+  fi
+  echo "  Next steps:"
+  echo "    Start Backstage:   ./scripts/bootstrap-local.sh --start-backstage"
+  echo "    Install AI/ML:     ./scripts/bootstrap-ai.sh"
+  echo "    Scaffold service:  ./bin/idp scaffold service --name my-svc --type nodejs"
+  echo "    Print URLs again:  ./scripts/bootstrap-local.sh --print-urls"
+  echo "    Teardown:          ./scripts/bootstrap-local.sh --destroy"
+  echo ""
+}
+
 # ── --clean-docker fast path ──────────────────────────────────────────────────
 if ${CLEAN_DOCKER:-false}; then
   _clean_docker
   exit 0
 fi
 
+# ── --print-urls fast path ────────────────────────────────────────────────────
+if $PRINT_URLS; then
+  _print_url_banner
+  exit 0
+fi
+
 # ── Teardown path ─────────────────────────────────────────────────────────────
 if $DESTROY; then
   log "Destroying local IDP platform..."
-  # Delete the Kind cluster first — this removes all namespaces, Helm release
-  # state (stored as k8s secrets), and workloads in one shot. No need to
-  # helm uninstall each release individually before cluster deletion.
-  kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
+  if [[ "$PROVIDER" == "kind" ]]; then
+    # Delete the Kind cluster first — this removes all namespaces, Helm release
+    # state (stored as k8s secrets), and workloads in one shot.
+    kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
+  else
+    # Rancher Desktop: delete all platform namespaces but leave the cluster running.
+    log "Rancher Desktop: removing platform namespaces (cluster itself is untouched)..."
+    kubectl delete namespace services monitoring argocd ingress-nginx \
+      gatekeeper-system opencost 2>/dev/null || true
+  fi
   # Stop the Backstage Docker Compose stack and remove the local registry.
   # Skip the full docker prune — use --clean-docker separately if needed.
-  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" \
+  ${COMPOSE_CMD} \
     down --volumes --remove-orphans 2>/dev/null || true
   docker stop "$REGISTRY_NAME" 2>/dev/null || true
   docker rm   "$REGISTRY_NAME" 2>/dev/null || true
@@ -163,6 +248,39 @@ if $DESTROY; then
   exit 0
 fi
 
+# ── Helper: configure containerd registry mirrors on Kind nodes ───────────────
+# Uses the hosts.toml approach (containerd v1 + v2 compatible).
+# The old containerdConfigPatches registry.mirrors syntax was removed in containerd v2.
+_setup_kind_registry_mirrors() {
+  local certs_dir="/etc/containerd/certs.d/localhost:${REGISTRY_PORT}"
+  for node in $(kind get nodes --name "$CLUSTER_NAME" 2>/dev/null); do
+    # Create hosts.toml mirror entry for this registry
+    docker exec "${node}" sh -c "
+      mkdir -p '${certs_dir}' &&
+      printf '[host.\"http://${REGISTRY_NAME}:5000\"]\n  capabilities = [\"pull\", \"resolve\"]\n' \
+        > '${certs_dir}/hosts.toml'
+    "
+
+    # Ensure containerd config.toml has config_path pointing to certs.d.
+    # Detect containerd major version to choose the right plugin key.
+    docker exec "${node}" sh -c '
+      if ! grep -q "config_path" /etc/containerd/config.toml 2>/dev/null; then
+        ct_major=$(containerd --version 2>/dev/null | sed "s/.*v\([0-9]*\)\..*/\1/")
+        if [ "${ct_major:-1}" -ge 2 ]; then
+          plugin="io.containerd.cri.v1.images"
+        else
+          plugin="io.containerd.grpc.v1.cri"
+        fi
+        printf "\n[plugins.\"%s\".registry]\n  config_path = \"/etc/containerd/certs.d\"\n" \
+          "$plugin" >> /etc/containerd/config.toml
+      fi
+    '
+
+    docker exec "${node}" systemctl restart containerd
+    log "  Node ${node}: registry mirror configured."
+  done
+}
+
 # ── Helper: apply Backstage K8s Service, Endpoints, and nginx Ingress ────────
 # Auto-detects the live container IP on the 'kind' Docker network so nginx can
 # proxy to the Docker Compose Backstage container. Falls back to the hardcoded
@@ -172,11 +290,18 @@ apply_backstage_k8s_objects() {
   local ingress_file="${ROOT_DIR}/local/backstage/backstage-ingress.yaml"
 
   local bs_ip
-  bs_ip=$(docker inspect backstage-backstage-1 \
-    --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
+  if [[ "$PROVIDER" == "kind" ]]; then
+    bs_ip=$(docker inspect backstage-backstage-1 \
+      --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
+  else
+    # Rancher Desktop: Backstage container is on the default bridge; the k3s VM
+    # reaches Docker containers via the host bridge IP (host.docker.internal).
+    bs_ip=$(docker inspect backstage-backstage-1 \
+      --format '{{(index .NetworkSettings.Networks "bridge").IPAddress}}' 2>/dev/null || true)
+  fi
 
   if [[ -n "$bs_ip" && "$bs_ip" != "<no value>" ]]; then
-    log "  Backstage container IP on kind network: ${bs_ip}"
+    log "  Backstage container IP: ${bs_ip}"
     sed "s/ip: \"[0-9.]*\"/ip: \"${bs_ip}\"/" "$endpoints_file" | kubectl apply -f -
   else
     warn "  Backstage container not running — applying with default IP (172.21.0.6)."
@@ -191,7 +316,11 @@ apply_backstage_k8s_objects() {
 # ── --update-backstage-ip fast path ──────────────────────────────────────────
 # Run after 'docker compose up' to refresh the Backstage Endpoints IP.
 if $UPDATE_BACKSTAGE_IP; then
-  kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+  if [[ "$PROVIDER" == "kind" ]]; then
+    kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+  else
+    kubectl config use-context rancher-desktop 2>/dev/null || true
+  fi
   log "Re-applying Backstage K8s objects with updated container IP..."
   apply_backstage_k8s_objects
   log "Done. Test with: curl -sv http://backstage.idp.local"
@@ -203,24 +332,49 @@ fi
 # export. Run after 'bootstrap-local.sh' finishes, or as a day-2 restart path.
 _start_backstage() {
   step "Starting Backstage..."
-  kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+  if [[ "$PROVIDER" == "kind" ]]; then
+    kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+  else
+    kubectl config use-context rancher-desktop 2>/dev/null || true
+  fi
+
+  local bundle="${ROOT_DIR}/backstage/app/packages/backend/dist/bundle.tar.gz"
+  if [[ ! -f "$bundle" ]]; then
+    log "Backend bundle not found — running yarn install + yarn build:backend..."
+    command -v yarn &>/dev/null || err "yarn not found. Install it with: npm install -g yarn"
+    (cd "${ROOT_DIR}/backstage/app" && yarn install && yarn build:backend) || \
+      err "Backstage backend build failed. Fix errors above and re-run --start-backstage."
+    log "Backend bundle built."
+  fi
 
   log "Building and starting Backstage Docker Compose..."
-  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" build backstage
-  docker compose -f "${ROOT_DIR}/local/backstage/docker-compose.yml" up -d
+  ${COMPOSE_CMD} build backstage
+  ${COMPOSE_CMD} up -d
   log "Backstage starting at http://localhost:3000 (allow ~30s)"
 
-  log "Waiting for Backstage container to join the kind network..."
-  for _i in {1..24}; do
-    _bs_ip=$(docker inspect backstage-backstage-1 \
-      --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
-    if [[ -n "$_bs_ip" && "$_bs_ip" != "<no value>" ]]; then
-      log "  Container IP on kind network: ${_bs_ip}"
-      break
-    fi
-    log "  Not on kind network yet (${_i}/24) — retrying in 5s..."
-    sleep 5
-  done
+  if [[ "$PROVIDER" == "kind" ]]; then
+    log "Waiting for Backstage container to join the kind network..."
+    for _i in {1..24}; do
+      _bs_ip=$(docker inspect backstage-backstage-1 \
+        --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
+      if [[ -n "$_bs_ip" && "$_bs_ip" != "<no value>" ]]; then
+        log "  Container IP on kind network: ${_bs_ip}"
+        break
+      fi
+      log "  Not on kind network yet (${_i}/24) — retrying in 5s..."
+      sleep 5
+    done
+  else
+    log "Waiting for Backstage container to start (rancher-desktop)..."
+    for _i in {1..12}; do
+      if docker inspect backstage-backstage-1 &>/dev/null; then
+        log "  Container is up."
+        break
+      fi
+      log "  Container not ready yet (${_i}/12) — retrying in 5s..."
+      sleep 5
+    done
+  fi
 
   log "Wiring nginx → Backstage endpoint..."
   apply_backstage_k8s_objects
@@ -305,26 +459,32 @@ else
   log "Registry already running."
 fi
 
-# ── Step 2: Kind cluster ──────────────────────────────────────────────────────
-log "Step 2: Creating Kind cluster '$CLUSTER_NAME'..."
+# ── Step 2: Kubernetes cluster ────────────────────────────────────────────────
+if [[ "$PROVIDER" == "kind" ]]; then
+  log "Step 2: Creating Kind cluster '$CLUSTER_NAME'..."
 
-if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
-  log "Cluster '$CLUSTER_NAME' already exists — skipping creation."
-else
-  kind create cluster \
-    --name "$CLUSTER_NAME" \
-    --config "$(dirname "$0")/../local/kind-config.yaml"
-fi
+  if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
+    log "Cluster '$CLUSTER_NAME' already exists — skipping creation."
+  else
+    kind create cluster \
+      --name "$CLUSTER_NAME" \
+      --config "$(dirname "$0")/../local/kind-config.yaml"
+  fi
 
-kubectl config use-context "kind-${CLUSTER_NAME}"
+  kubectl config use-context "kind-${CLUSTER_NAME}"
 
-# Connect registry to the Kind network so nodes can pull from it
-if ! docker network inspect kind --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}' 2>/dev/null | grep -q "^${REGISTRY_NAME}$"; then
-  docker network connect kind "$REGISTRY_NAME" 2>/dev/null || true
-fi
+  # Connect registry to the Kind network so nodes can pull from it
+  if ! docker network inspect kind --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}' 2>/dev/null | grep -q "^${REGISTRY_NAME}$"; then
+    docker network connect kind "$REGISTRY_NAME" 2>/dev/null || true
+  fi
 
-# Annotate nodes so containerd resolves localhost:5003 → registry:5001
-kubectl apply -f - <<EOF
+  # Configure containerd on each node to mirror localhost:5003 → registry:5000.
+  # This uses hosts.toml (containerd v2 compatible) instead of the deprecated
+  # containerdConfigPatches registry.mirrors syntax.
+  _setup_kind_registry_mirrors
+
+  # Annotate nodes so tools like kubectl know about the local registry.
+  kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -336,6 +496,28 @@ data:
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
 
+else
+  log "Step 2: Using Rancher Desktop k3s cluster (no cluster creation needed)..."
+  kubectl config use-context rancher-desktop || \
+    err "Could not switch to rancher-desktop context. Is Rancher Desktop running?"
+  kubectl cluster-info --context rancher-desktop || \
+    err "Rancher Desktop cluster is not reachable. Start Rancher Desktop and try again."
+
+  # Configure k3s containerd mirror so the Lima VM can pull from localhost:5003 on the host.
+  # host.lima.internal resolves to the Mac host from inside the Lima VM.
+  log "  Configuring k3s registry mirror for localhost:${REGISTRY_PORT}..."
+  rdctl shell sudo mkdir -p /etc/rancher/k3s
+  rdctl shell "sudo tee /etc/rancher/k3s/registries.yaml > /dev/null" <<EOF
+mirrors:
+  "localhost:${REGISTRY_PORT}":
+    endpoint:
+      - "http://host.lima.internal:${REGISTRY_PORT}"
+EOF
+  log "  Restarting k3s to apply registry mirror..."
+  rdctl shell sudo systemctl restart k3s
+  sleep 8
+fi
+
 # ── Step 3: Namespaces ────────────────────────────────────────────────────────
 log "Step 3: Creating platform namespaces..."
 kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
@@ -344,17 +526,26 @@ kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
 # ── Step 4: nginx ingress controller ─────────────────────────────────────────
 log "Step 4: Installing nginx ingress controller..."
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
+helm repo update ingress-nginx
+
+_INGRESS_EXTRA_ARGS=()
+if [[ "$PROVIDER" == "kind" ]]; then
+  # Kind labels the control-plane node 'ingress-ready=true' and taints it;
+  # nginx must target that node and tolerate the taint.
+  _INGRESS_EXTRA_ARGS=(
+    --set-string "controller.nodeSelector.ingress-ready=true"
+    --set "controller.tolerations[0].key=node-role.kubernetes.io/control-plane"
+    --set "controller.tolerations[0].operator=Exists"
+    --set "controller.tolerations[0].effect=NoSchedule"
+  )
+fi
 
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --set controller.hostPort.enabled=true \
   --set controller.service.type=NodePort \
-  --set-string "controller.nodeSelector.ingress-ready=true" \
-  --set "controller.tolerations[0].key=node-role.kubernetes.io/control-plane" \
-  --set "controller.tolerations[0].operator=Exists" \
-  --set "controller.tolerations[0].effect=NoSchedule" \
+  "${_INGRESS_EXTRA_ARGS[@]}" \
   --wait --timeout 5m
 
 # ── Step 4c: Backstage K8s Service, Endpoints, and nginx Ingress ─────────────
@@ -370,16 +561,20 @@ log "  K8s credentials written to local/backstage/.env"
 
 # ── Step 4b: metrics-server ───────────────────────────────────────────────────
 log "Step 4b: Installing metrics-server (required for CPU/memory in Backstage)..."
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-# Kind uses self-signed kubelet certs — patch to skip TLS verification
-kubectl patch deployment metrics-server -n kube-system --type=json \
-  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+if [[ "$PROVIDER" == "kind" ]]; then
+  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  # Kind uses self-signed kubelet certs — patch to skip TLS verification
+  kubectl patch deployment metrics-server -n kube-system --type=json \
+    -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+else
+  log "  Rancher Desktop k3s ships metrics-server pre-configured — skipping install."
+fi
 
 # ── Step 5: Observability ─────────────────────────────────────────────────────
 if ! $SKIP_OBS; then
   log "Step 5: Installing Prometheus + Grafana (kube-prometheus-stack)..."
   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-  helm repo update
+  helm repo update prometheus-community
 
   # Create Grafana dashboard ConfigMaps
   kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
@@ -438,7 +633,7 @@ fi
 if ! $SKIP_OBS; then
   log "Step 5b: Installing OpenCost (cluster cost visibility)..."
   helm repo add opencost https://opencost.github.io/opencost-helm-chart 2>/dev/null || true
-  helm repo update
+  helm repo update opencost
 
   kubectl apply -f "${ROOT_DIR}/kubernetes/finops/opencost.yaml"
 
@@ -521,53 +716,49 @@ done
 # ── Step 8: ArgoCD ────────────────────────────────────────────────────────────
 if ! $SKIP_GITOPS; then
   log "Step 8: Installing ArgoCD..."
-  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-  helm repo update
+  (
+    set -e
+    helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
+    helm repo update argo
 
-  helm upgrade --install argocd argo/argo-cd \
-    --namespace argocd \
-    --create-namespace \
-    --version 9.5.13 \
-    --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
-    --wait --timeout 10m
+    helm upgrade --install argocd argo/argo-cd \
+      --namespace argocd \
+      --create-namespace \
+      --version 9.5.13 \
+      --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
+      --wait --timeout 10m
 
-  ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
-  log "ArgoCD installed. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
+    ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+      -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
+    log "ArgoCD installed. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
 
-  if [[ -n "$ARGOCD_PASS" ]]; then
-    local_env="${ROOT_DIR}/local/backstage/.env"
-    if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
-      sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}|" "$local_env" && rm -f "${local_env}.bak"
-    else
-      echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
+    if [[ -n "$ARGOCD_PASS" ]]; then
+      local_env="${ROOT_DIR}/local/backstage/.env"
+      if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
+        sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}|" "$local_env" && rm -f "${local_env}.bak"
+      else
+        echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
+      fi
+      log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
     fi
-    log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
-  fi
 
-  # Register GitHub credentials so ArgoCD can read the private platform repo.
-  # Reads GITHUB_TOKEN and GITHUB_ORG from local/.env (set by setup.sh).
-  _github_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-  _github_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-  if [[ -n "$_github_token" && -n "$_github_org" && "$_github_org" != "YOUR_GITHUB_ORG" ]]; then
-    kubectl create secret generic argocd-github-creds \
-      -n argocd \
-      --from-literal=type=git \
-      --from-literal=url="https://github.com/${_github_org}" \
-      --from-literal=username="${_github_org}" \
-      --from-literal=password="${_github_token}" \
-      --dry-run=client -o yaml \
-      | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
-      | kubectl apply -f -
-    log "  ArgoCD GitHub credentials registered for https://github.com/${_github_org}"
-  else
-    warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
-    warn "  Set both and re-run, or create the secret manually:"
-    warn "  kubectl create secret generic argocd-github-creds -n argocd \\"
-    warn "    --from-literal=type=git --from-literal=url=https://github.com/<org> \\"
-    warn "    --from-literal=username=<org> --from-literal=password=<token>"
-    warn "  kubectl label secret argocd-github-creds -n argocd argocd.argoproj.io/secret-type=repo-creds"
-  fi
+    _github_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+    _github_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+    if [[ -n "$_github_token" && -n "$_github_org" && "$_github_org" != "YOUR_GITHUB_ORG" ]]; then
+      kubectl create secret generic argocd-github-creds \
+        -n argocd \
+        --from-literal=type=git \
+        --from-literal=url="https://github.com/${_github_org}" \
+        --from-literal=username="${_github_org}" \
+        --from-literal=password="${_github_token}" \
+        --dry-run=client -o yaml \
+        | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
+        | kubectl apply -f -
+      log "  ArgoCD GitHub credentials registered for https://github.com/${_github_org}"
+    else
+      warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
+    fi
+  ) || warn "Step 8 (ArgoCD) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
 fi
@@ -575,180 +766,171 @@ fi
 # ── Step 9: OPA/Gatekeeper ───────────────────────────────────────────────────
 if ! $SKIP_POLICIES; then
   log "Step 9: Installing OPA/Gatekeeper..."
-  helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
-  helm repo update
+  (
+    set -e
+    helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
+    helm repo update gatekeeper
 
-  helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-    --namespace gatekeeper-system \
-    --create-namespace \
-    --version 3.18.2 \
-    --set replicas=1 \
-    --set controllerManager.resources.requests.cpu=100m \
-    --set controllerManager.resources.requests.memory=128Mi \
-    --set controllerManager.resources.limits.cpu=500m \
-    --set controllerManager.resources.limits.memory=512Mi \
-    --set audit.resources.requests.cpu=100m \
-    --set audit.resources.requests.memory=128Mi \
-    --set audit.resources.limits.cpu=500m \
-    --set audit.resources.limits.memory=512Mi \
-    --wait --timeout 10m
+    helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+      --namespace gatekeeper-system \
+      --create-namespace \
+      --version 3.18.2 \
+      --set replicas=1 \
+      --set controllerManager.resources.requests.cpu=100m \
+      --set controllerManager.resources.requests.memory=128Mi \
+      --set controllerManager.resources.limits.cpu=500m \
+      --set controllerManager.resources.limits.memory=512Mi \
+      --set audit.resources.requests.cpu=100m \
+      --set audit.resources.requests.memory=128Mi \
+      --set audit.resources.limits.cpu=500m \
+      --set audit.resources.limits.memory=512Mi \
+      --wait --timeout 10m
 
-  log "Applying OPA ConstraintTemplates..."
-  # Pass 1: apply full files — this creates the ConstraintTemplates (and fails on
-  # Constraints because the CRDs don't exist yet; we ignore those errors here)
-  kubectl apply \
-    -f "${ROOT_DIR}/kubernetes/policies/require-health-probes.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/require-resource-limits.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/require-labels.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/deny-latest-tag.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/require-cost-tags.yaml" 2>/dev/null || true
+    log "Applying OPA ConstraintTemplates..."
+    kubectl apply \
+      -f "${ROOT_DIR}/kubernetes/policies/require-health-probes.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/require-resource-limits.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/require-labels.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/deny-latest-tag.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/require-cost-tags.yaml" 2>/dev/null || true
 
-  # Wait for Gatekeeper to register the CRDs from the ConstraintTemplates
-  log "Waiting for ConstraintTemplate CRDs to become established..."
-  kubectl wait crd \
-    requirehealthprobes.constraints.gatekeeper.sh \
-    requireresourcelimits.constraints.gatekeeper.sh \
-    requirelabels.constraints.gatekeeper.sh \
-    denylatestimgtag.constraints.gatekeeper.sh \
-    requirecosttags.constraints.gatekeeper.sh \
-    --for=condition=Established \
-    --timeout=120s
+    log "Waiting for ConstraintTemplate CRDs to become established..."
+    kubectl wait crd \
+      requirehealthprobes.constraints.gatekeeper.sh \
+      requireresourcelimits.constraints.gatekeeper.sh \
+      requirelabels.constraints.gatekeeper.sh \
+      denylatestimgtag.constraints.gatekeeper.sh \
+      requirecosttags.constraints.gatekeeper.sh \
+      --for=condition=Established \
+      --timeout=120s
 
-  # Pass 2: now the CRDs exist — apply again to create the Constraint instances
-  log "Applying OPA Constraints..."
-  kubectl apply \
-    -f "${ROOT_DIR}/kubernetes/policies/require-health-probes.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/require-resource-limits.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/require-labels.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/deny-latest-tag.yaml" \
-    -f "${ROOT_DIR}/kubernetes/policies/require-cost-tags.yaml"
+    log "Applying OPA Constraints..."
+    kubectl apply \
+      -f "${ROOT_DIR}/kubernetes/policies/require-health-probes.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/require-resource-limits.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/require-labels.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/deny-latest-tag.yaml" \
+      -f "${ROOT_DIR}/kubernetes/policies/require-cost-tags.yaml"
 
-  log "OPA/Gatekeeper installed. Policies: health-probes, resource-limits, labels, deny-latest-tag (prod only), cost-tags."
+    log "OPA/Gatekeeper installed."
+  ) || warn "Step 9 (OPA/Gatekeeper) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 9: Skipping OPA/Gatekeeper (--skip-policies)."
 fi
 
 # ── Step 10: DORA Exporter (Pushgateway) ─────────────────────────────────────
 if ! $SKIP_DORA; then
-  if ! $SKIP_OBS; then
-    log "Step 10: Installing Prometheus Pushgateway (separate release)..."
-    helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
-      --namespace monitoring \
-      --set resources.requests.cpu=10m \
-      --set resources.requests.memory=32Mi \
-      --set resources.limits.cpu=100m \
-      --set resources.limits.memory=64Mi \
-      --set serviceMonitor.enabled=true \
-      --set serviceMonitor.additionalLabels.release=prometheus \
-      --set "extraArgs[0]=--web.enable-admin-api" \
-      --wait --timeout 5m
+  (
+    set -e
+    if ! $SKIP_OBS; then
+      log "Step 10: Installing Prometheus Pushgateway (separate release)..."
+      helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+        --namespace monitoring \
+        --set resources.requests.cpu=10m \
+        --set resources.requests.memory=32Mi \
+        --set resources.limits.cpu=100m \
+        --set resources.limits.memory=64Mi \
+        --set serviceMonitor.enabled=true \
+        --set serviceMonitor.additionalLabels.release=prometheus \
+        --set "extraArgs[0]=--web.enable-admin-api" \
+        --wait --timeout 5m
 
-    kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
-    log "Pushgateway ingress: http://pushgateway.idp.local"
+      kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
+      log "Pushgateway ingress: http://pushgateway.idp.local"
 
-    log "  Wiping stale Pushgateway metrics for a clean slate..."
-    kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
-    if ! kubectl exec -n monitoring deploy/prometheus-pushgateway -- \
-        wget -q -O- --method=DELETE http://localhost:9091/api/v1/admin/wipe 2>/dev/null; then
-      warn "  Pushgateway admin wipe failed — restarting pod to clear in-memory state."
-      kubectl rollout restart deployment/prometheus-pushgateway -n monitoring
       kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
+      if ! kubectl exec -n monitoring deploy/prometheus-pushgateway -- \
+          wget -q -O- --method=DELETE http://localhost:9091/api/v1/admin/wipe 2>/dev/null; then
+        warn "  Pushgateway admin wipe failed — restarting pod."
+        kubectl rollout restart deployment/prometheus-pushgateway -n monitoring
+        kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
+      fi
     fi
-    log "  Pushgateway reset complete."
-  fi
 
-  log "Step 10b: Applying DORA exporter (Pushgateway variant)..."
-  # Prefer shell-env GITHUB_TOKEN; fall back to local/.env so bootstrap is
-  # idempotent without needing the caller to export the variable first.
-  _dora_token="${GITHUB_TOKEN:-}"
-  if [[ -z "$_dora_token" ]]; then
-    _dora_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
-  fi
-  if [[ -n "$_dora_token" ]]; then
-    kubectl create secret generic dora-exporter-secret \
-      --from-literal=GITHUB_TOKEN="${_dora_token}" \
-      -n monitoring \
-      --dry-run=client -o yaml | kubectl apply -f -
-    log "  dora-exporter-secret populated from local/.env."
-  else
-    warn "GITHUB_TOKEN not set in environment or local/.env — DORA exporter will fail."
-    warn "Add GITHUB_TOKEN=<your-pat> to local/.env and re-run bootstrap."
-  fi
-
-  kubectl create configmap dora-exporter-script \
-    --from-file=dora-exporter.py="${ROOT_DIR}/observability/dora/dora-exporter-local.py" \
-    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-
-  kubectl apply -f "${ROOT_DIR}/observability/dora/dora-cronjob-local.yaml"
-  log "DORA exporter deployed (pushes to Prometheus Pushgateway every 15m)."
-
-  log "  Triggering immediate DORA exporter run (seed data without waiting 15m)..."
-  kubectl create job "dora-exporter-init-$(date +%s)" \
-    --from=cronjob/dora-exporter \
-    -n monitoring \
-    --dry-run=client -o yaml | kubectl apply -f - || \
-    warn "  Could not trigger immediate DORA job — data will appear after first scheduled run."
-
-  # ── Step 10c: Catalog exporter CronJob ─────────────────────────────────────
-  if ! $SKIP_OBS; then
-    log "Step 10c: Deploying Backstage catalog exporter CronJob..."
-    "${ROOT_DIR}/scripts/apply-catalog-exporter.sh"
-    log "  Catalog exporter deployed (pushes entity counts to Pushgateway every 15m)."
-
-    log "  Triggering immediate catalog exporter run (seed data without waiting 15m)..."
-    CATALOG_CRONJOB=$(kubectl get cronjobs -n monitoring -o jsonpath='{.items[?(@.metadata.name!="dora-exporter")].metadata.name}' 2>/dev/null | tr ' ' '\n' | head -1)
-    if [[ -n "$CATALOG_CRONJOB" ]]; then
-      kubectl create job "catalog-exporter-init-$(date +%s)" \
-        --from="cronjob/${CATALOG_CRONJOB}" \
-        -n monitoring \
-        --dry-run=client -o yaml | kubectl apply -f - || \
-        warn "  Could not trigger immediate catalog job — data will appear after first scheduled run."
+    log "Step 10b: Applying DORA exporter..."
+    _dora_token="${GITHUB_TOKEN:-}"
+    if [[ -z "$_dora_token" ]]; then
+      _dora_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
+    if [[ -n "$_dora_token" ]]; then
+      kubectl create secret generic dora-exporter-secret \
+        --from-literal=GITHUB_TOKEN="${_dora_token}" \
+        -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+      log "  dora-exporter-secret populated."
     else
-      warn "  Could not detect catalog exporter cronjob name — data will appear after first scheduled run."
+      warn "GITHUB_TOKEN not set — DORA exporter will not push metrics. Add it to local/.env and re-run."
     fi
-  fi
+
+    kubectl create configmap dora-exporter-script \
+      --from-file=dora-exporter.py="${ROOT_DIR}/observability/dora/dora-exporter-local.py" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -f "${ROOT_DIR}/observability/dora/dora-cronjob-local.yaml"
+    log "DORA exporter deployed."
+
+    kubectl create job "dora-exporter-init-$(date +%s)" \
+      --from=cronjob/dora-exporter -n monitoring \
+      --dry-run=client -o yaml | kubectl apply -f - || \
+      warn "  Could not trigger immediate DORA job — will run on schedule."
+
+    if ! $SKIP_OBS; then
+      log "Step 10c: Deploying catalog exporter CronJob..."
+      "${ROOT_DIR}/scripts/apply-catalog-exporter.sh"
+      CATALOG_CRONJOB=$(kubectl get cronjobs -n monitoring \
+        -o jsonpath='{.items[?(@.metadata.name!="dora-exporter")].metadata.name}' \
+        2>/dev/null | tr ' ' '\n' | head -1)
+      if [[ -n "$CATALOG_CRONJOB" ]]; then
+        kubectl create job "catalog-exporter-init-$(date +%s)" \
+          --from="cronjob/${CATALOG_CRONJOB}" -n monitoring \
+          --dry-run=client -o yaml | kubectl apply -f - || \
+          warn "  Could not trigger immediate catalog job — will run on schedule."
+      fi
+    fi
+  ) || warn "Step 10 (Pushgateway/DORA) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
 fi
 
 # ── Step 11: Tech Insights Exporter ──────────────────────────────────────────
 if ! $SKIP_OBS; then
-  log "Step 11: Deploying Tech Insights Exporter CronJob..."
-  kubectl create configmap tech-insights-exporter-script \
-    --from-file=exporter.py="${ROOT_DIR}/observability/tech-insights-exporter/exporter.py" \
-    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-  kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
-  log "  Tech Insights Exporter deployed (pushes scorecard metrics every 15m)."
+  (
+    set -e
+    log "Step 11: Deploying Tech Insights Exporter CronJob..."
+    kubectl create configmap tech-insights-exporter-script \
+      --from-file=exporter.py="${ROOT_DIR}/observability/tech-insights-exporter/exporter.py" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
+    log "  Tech Insights Exporter deployed."
+  ) || warn "Step 11 (Tech Insights) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."
 fi
 
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
 log "Step 12: Wiring AlertManager..."
-# Prefer shell-env SLACK_WEBHOOK_URL; fall back to local/.env
 if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
   SLACK_WEBHOOK_URL=$(grep -E '^SLACK_WEBHOOK_URL=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
 fi
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
-  kubectl create secret generic alertmanager-slack-webhook \
-    --from-literal=webhook-url="${SLACK_WEBHOOK_URL}" \
-    -n monitoring \
-    --dry-run=client -o yaml | kubectl apply -f -
-  kubectl apply -f "${ROOT_DIR}/observability/alertmanager/alertmanager-config.yaml"
-  log "AlertManager Slack webhook configured."
+  (
+    set -e
+    kubectl create secret generic alertmanager-slack-webhook \
+      --from-literal=webhook-url="${SLACK_WEBHOOK_URL}" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -f "${ROOT_DIR}/observability/alertmanager/alertmanager-config.yaml"
+    log "AlertManager Slack webhook configured."
+  ) || warn "Step 12 (AlertManager) failed — skipping. Continuing..."
 else
   warn "SLACK_WEBHOOK_URL not set — skipping AlertManager Slack routing."
-  warn "Set it and re-run, or:"
-  warn "  kubectl create secret generic alertmanager-slack-webhook \\"
-  warn "    --from-literal=webhook-url='https://hooks.slack.com/...' -n monitoring"
-  warn "  kubectl apply -f observability/alertmanager/alertmanager-config.yaml"
 fi
 
 # ── Step 13: ArgoCD ApplicationSet ───────────────────────────────────────────
 if ! $SKIP_GITOPS; then
-  log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
-  kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
-  log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
+  (
+    set -e
+    log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
+    kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
+    log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
+  ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
 fi
 
 # ── Step 7: /etc/hosts ───────────────────────────────────────────────────────
@@ -790,52 +972,4 @@ else
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-ARGOCD_PASS=""
-if ! $SKIP_GITOPS; then
-  ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
-fi
-
-echo ""
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║                  Bootstrap complete!                            ║"
-echo "╠══════════════════════════════════════════════════════════════════╣"
-echo "║  Service          URL                              Credentials  ║"
-echo "╠══════════════════════════════════════════════════════════════════╣"
-echo "║  hello-service    http://hello-service.idp.local               ║"
-if ! $SKIP_OBS; then
-echo "║  Grafana          http://grafana.idp.local          admin/admin ║"
-echo "║  Prometheus       http://prometheus.idp.local                   ║"
-echo "║  AlertManager     http://alertmanager.idp.local                 ║"
-echo "║  Pushgateway      http://pushgateway.idp.local                  ║"
-echo "║  OpenCost         http://opencost.idp.local                     ║"
-fi
-if ! $SKIP_GITOPS; then
-if [[ -n "$ARGOCD_PASS" ]]; then
-echo "║  ArgoCD           http://argocd.idp.local           admin/${ARGOCD_PASS} ║"
-else
-echo "║  ArgoCD           http://argocd.idp.local                       ║"
-fi
-fi
-echo "║  Backstage        http://localhost:3000  (start separately ↓)  ║"
-echo "╠══════════════════════════════════════════════════════════════════╣"
-echo "║  Local registry   localhost:5003                                ║"
-echo "╚══════════════════════════════════════════════════════════════════╝"
-echo ""
-if ! $SKIP_GITOPS && [[ -n "$ARGOCD_PASS" ]]; then
-echo "  ArgoCD password:  ${ARGOCD_PASS}"
-echo "  (also saved in local/backstage/.env as ARGOCD_AUTH_TOKEN)"
-echo ""
-echo "  Retrieve any time:"
-echo "    kubectl -n argocd get secret argocd-initial-admin-secret \\"
-echo "      -o jsonpath='{.data.password}' | base64 -d && echo"
-echo ""
-fi
-echo "  Start Backstage (builds, wires nginx, seeds metrics):"
-echo "    ./scripts/bootstrap-local.sh --start-backstage"
-echo ""
-echo "  Day-2:"
-echo "    Scaffold service:  ./scripts/create-service.sh --name my-svc --type nodejs"
-echo "    Seed QA metrics:   ./scripts/seed-qa-metrics.sh"
-echo "    Teardown:          ./scripts/bootstrap-local.sh --destroy"
-echo ""
+_print_url_banner

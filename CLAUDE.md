@@ -28,9 +28,6 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 ### Backstage (developer portal)
 
 ```bash
-# Start Backstage after bootstrap-local.sh (builds image, wires nginx, seeds metrics)
-./scripts/bootstrap-local.sh --start-backstage
-
 # Rebuild backend bundle only (required after changes to backstage/app/packages/backend/src/)
 cd backstage/app && yarn install && yarn build:backend && cd ../..
 # Then re-run --start-backstage to pick up the new image
@@ -46,7 +43,8 @@ cd backstage/app
 yarn install
 yarn start          # frontend dev server (hot reload)
 yarn start-backend  # backend dev server
-yarn test           # run tests
+yarn test           # run all tests
+yarn test --testPathPattern=idpLocalDeploy  # run a single test file
 yarn lint           # lint
 yarn build          # production build
 ```
@@ -55,8 +53,21 @@ yarn build          # production build
 
 ```bash
 cd services/hello-service
-go test ./... -coverprofile=coverage.out -covermode=atomic
+go test ./... -coverprofile=coverage.out -covermode=atomic  # all tests
+go test -run TestHandlerName ./...                          # single test
 go build ./...
+```
+
+### `idp` CLI (separate Go module at `cli/`)
+
+```bash
+# Build
+make cli-build          # outputs ./bin/idp
+make cli-install        # go install → $(go env GOPATH)/bin/idp
+make cli-clean
+
+# Test the CLI itself (cli/ is a separate go.mod — not covered by CI)
+cd cli && go build ./... && go vet ./...
 ```
 
 ### Helm chart
@@ -66,12 +77,18 @@ helm lint helm/service-template
 helm lint helm/service-template --set image.repository=test --set image.tag=abc1234
 ```
 
+### Terraform
+
+```bash
+cd terraform
+terraform fmt -recursive        # format before committing
+terraform init -backend=false   # validate without remote state
+terraform validate
+```
+
 ### Scaffold a new service (`idp` CLI — golden path)
 
 ```bash
-# Build the idp CLI (once)
-make cli-build
-
 # Scaffold a service — uses Backstage Scaffolder API when running, local generation otherwise
 ./bin/idp scaffold service --name my-svc --type nodejs
 ./bin/idp scaffold service --name my-svc --type python
@@ -80,9 +97,6 @@ make cli-build
 
 # Force local generation (offline / pre-Backstage)
 ./bin/idp scaffold service --name my-svc --type nodejs --local
-
-# Install globally
-make cli-install   # installs to $(go env GOPATH)/bin/idp
 ```
 
 **Backstage API mode** (when `http://backstage.idp.local` is reachable): creates GitHub repo,
@@ -90,6 +104,12 @@ registers the service in the catalog, opens a GitOps PR, generates TechDocs.
 
 **Local mode** (offline fallback): generates `services/<name>/` with Dockerfile, CI workflow,
 Helm values, and `catalog-info.yaml` directly in this repo.
+
+**CLI Backstage token resolution** (priority order):
+1. `--token` flag
+2. `BACKSTAGE_TOKEN` env var
+3. `BACKSTAGE_AUTH_SECRET` in `local/backstage/.env`
+4. Static token parsed from `backstage/app-config.local.yaml`
 
 ```bash
 # Wire a self-hosted GitHub Actions runner for local CD (optional)
@@ -100,10 +120,8 @@ Helm values, and `catalog-info.yaml` directly in this repo.
 
 ```bash
 # Prerequisites: ANTHROPIC_API_KEY must be set in local/.env
-# Boot the AI/ML stack after bootstrap-local.sh
 ./scripts/bootstrap-ai.sh
 
-# Options
 ./scripts/bootstrap-ai.sh --skip-mlflow   # skip MLflow
 ./scripts/bootstrap-ai.sh --skip-mcp      # skip IDP MCP Server build
 ./scripts/bootstrap-ai.sh --skip-kagent   # skip KAgent install
@@ -124,17 +142,25 @@ without asking for confirmation. Example:
 
 **Key files for the AI Assistant:**
 - `kubernetes/kagent/idp-agent.yaml` — Agent CRD (model, system message, tool allowlist)
-- `services/idp-mcp-server/src/index.ts` — MCP server (6 tools)
+- `services/idp-mcp-server/src/index.ts` — MCP server (5 tools)
 - `backstage/app/packages/app/src/extensions.tsx` — Backstage chat UI (`AiAssistantPage`)
 - `backstage/app-config.yaml` + `app-config.local.yaml` — KAgent proxy config
+
+**IDP MCP Server tools** (`services/idp-mcp-server/src/index.ts`):
+
+| Tool | Purpose |
+|------|---------|
+| `catalog_search` | Search Backstage catalog by keyword; filterable by kind (Component/API/System/Resource) |
+| `get_service_metrics` | Query Prometheus for a service's metrics (default: `http_requests_total`) |
+| `scaffold_service` | Trigger Backstage scaffolder; auto-builds `repoUrl` from `name`+`owner` if omitted |
+| `list_deployments` | List Kubernetes Deployments in a namespace with readiness status |
+| `list_templates` | List all Backstage templates (returns `templateRef` strings ready for `scaffold_service`) |
 
 See `docs/ai-assistant.md` for the full architecture.
 
 ### Scaffold a QA test suite (`idp` CLI — golden path)
 
 ```bash
-# Build the idp CLI first: make cli-build
-
 ./bin/idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
 ./bin/idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20 --duration 2m
 ./bin/idp scaffold test-suite --name my-a11y --type accessibility --service my-svc --wcag wcag2aa
@@ -149,11 +175,8 @@ See `docs/ai-assistant.md` for the full architecture.
 ./bin/idp scaffold test-suite --name mutation   --type mutation   --service my-svc --score 80
 ./bin/idp scaffold test-suite --name int-tests  --type testcontainers --service my-svc --containers postgres,redis
 
-# Show all flags for a type
-./bin/idp scaffold test-suite --help
-
-# Force local generation (offline / pre-Backstage)
-./bin/idp scaffold test-suite --name my-e2e --type playwright --service my-svc --local
+./bin/idp scaffold test-suite --help            # show all flags for a type
+./bin/idp scaffold test-suite --name my-e2e --type playwright --service my-svc --local  # offline
 ```
 
 **Types:** `playwright` | `k6` | `pact` | `newman` | `zap` | `datadog` | `visual` |
@@ -183,9 +206,19 @@ Kind cluster (local) / EKS (AWS)
 
 `helm/service-template/` is the only deployment abstraction. All scaffolded services inherit it and only override `helm-values.yaml` / `helm-values-local.yaml`. There is no raw Kubernetes YAML for service workloads.
 
-### Custom Backstage action (`idp:deploy-local`)
+### Custom Backstage scaffold modules
 
-Registered as a backend module in `backstage/app/packages/backend/src/index.ts`. It runs `helm upgrade --install` from inside the Backstage container, using a kubeconfig that replaces `127.0.0.1` with `host.docker.internal` so it can reach the host's Kind cluster. Environment variable `KUBECONFIG=/tmp/kubeconfig` is always injected.
+All registered in `backstage/app/packages/backend/src/index.ts`. Each module lives in `backstage/app/packages/backend/src/modules/`:
+
+| Module file | Scaffold action ID | Purpose |
+|---|---|---|
+| `idpLocalDeploy.ts` | `idp:deploy-local` | `helm upgrade --install` to Kind via `host.docker.internal` |
+| `idpProvisionSecret.ts` | `idp:provision-secret` | Create a Kubernetes Secret in a namespace |
+| `idpSetRepoSecrets.ts` | `idp:set-repo-secrets` | Write GitHub Actions secrets for a repo |
+| `idpTechInsights.ts` | `idp:tech-insights` | Push tech-insights metrics to Prometheus Pushgateway |
+| `idpDeployAgent.ts` | `idp:deploy-agent` | Deploy a KAgent Agent CRD to the cluster |
+| `idpRunTrainingJob.ts` | `idp:run-training-job` | Launch an MLflow training job |
+| `idpDeployMcpServer.ts` | `idp:deploy-mcp-server` | Deploy an MCP server via Helm |
 
 ### Config layering
 
@@ -195,14 +228,39 @@ Registered as a backend module in `backstage/app/packages/backend/src/index.ts`.
 
 | File | Purpose |
 |------|---------|
-| `local/.env` | Shared tokens: `GITHUB_TOKEN`, `AWS_REGION`, cluster name |
+| `local/.env` | Shared tokens: `GITHUB_TOKEN`, `AWS_REGION`, `ANTHROPIC_API_KEY`, cluster name |
 | `local/backstage/.env` | Backstage tokens: `AUTH_GITHUB_CLIENT_ID/SECRET`, `K8S_*`, `BACKSTAGE_AUTH_SECRET` |
 
-Both have `.env.example` counterparts. Neither is committed.
+Both have `.env.example` counterparts. Neither is committed. `K8S_*` and `ARGOCD_AUTH_TOKEN`/`GRAFANA_TOKEN` in `local/backstage/.env` are auto-populated by bootstrap scripts — do not set manually.
+
+### Go module boundaries
+
+`cli/` (`github.com/moatazeldebsy/backstage-idp-starter/cli`) and `services/hello-service/` (`github.com/idp-mvp/hello-service`) are independent Go modules with their own `go.mod`. CI only covers `services/hello-service/` — changes to `cli/` are not automatically tested.
 
 ### AWS infrastructure
 
 Terraform in `terraform/` provisions EKS, VPC, ECR, IAM (OIDC for keyless CI/CD + IRSA for pod-level AWS access), RDS, S3, and Secrets Manager. CI/CD uses `aws-actions/configure-aws-credentials` with OIDC — no long-lived secrets.
+
+### `kubernetes/` directory structure
+
+| Directory | Contents |
+|-----------|---------|
+| `namespaces/` | Namespace manifests for services, monitoring, argocd, kagent, ml-platform; also ExternalSecrets |
+| `rbac/` | GitHub Actions OIDC binding + RBAC roles (validated by kubeconform in CI) |
+| `kagent/` | KAgent CRDs: `idp-agent.yaml` (AI assistant) + `qa-agent.yaml`; MCP toolserver configs |
+| `argocd/` | App-of-Apps pattern + Helm values for ArgoCD itself |
+| `monitoring/` | ServiceMonitor (Prometheus scrape config) + Grafana ConfigMaps (DORA + QA dashboards) |
+| `ingress/` | nginx ingress (local) + AWS ALB (production) |
+| `policies/` | Kyverno policies: health probes, labels, resource limits, no-latest-tag, cost tags |
+| `finops/` | OpenCost for cost attribution |
+| `external-secrets/` | ExternalSecrets operator config to sync from AWS Secrets Manager |
+| `teams/` | Team-scoped NetworkPolicies |
+
+### Backstage software templates (`backstage/catalog/templates/`)
+
+Service templates: `nodejs-service`, `python-service`, `go-service`, `react-frontend`
+Infrastructure templates: `terraform-module`, `kafka-topic`, `rds-database`, `s3-bucket`, `team-namespace`
+Platform templates: `deploy-to-kind`, `add-secret`, `ai-agent-kagent`, `mlflow-experiment`, `mcp-server`
 
 ## Adding a Software Template
 
@@ -212,7 +270,14 @@ Terraform in `terraform/` provisions EKS, VPC, ECR, IAM (OIDC for keyless CI/CD 
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) triggers on changes to `services/`, `helm/`, `kubernetes/`, `terraform/`, `backstage/app/`. Jobs: Go tests with coverage, `helm lint`, Kubernetes dry-run validation.
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `ci.yml` | Push/PR to `services/`, `helm/`, `kubernetes/`, `terraform/`, `backstage/app/` | Go tests + coverage, `helm lint`, kubeconform (`namespaces/`, `rbac/`), Backstage backend compile + Docker build, Terraform `fmt`/`init`/`validate` |
+| `build-and-deploy.yml` | Push to service directories | Change detection → runtime-based matrix (Go/Node/Python auto-detected) → GHCR image build → ArgoCD sync |
+| `auto-merge-onboarding.yml` | PRs titled "feat: onboard …" | Auto-approves and merges if only `services/*/helm-values-*.yaml` changed; requires `GH_PAT` secret |
+| `docs.yml` | Changes to `docs/` or `mkdocs.yml` | Builds and deploys MkDocs site to GitHub Pages |
+
+Changes to `cli/` do **not** trigger CI.
 
 ## Local Access URLs
 

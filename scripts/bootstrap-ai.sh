@@ -90,7 +90,17 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   fi
 else
   REGISTRY="localhost:5003"
-  kind get clusters 2>/dev/null | grep -q "." || die "No Kind cluster found. Run ./scripts/bootstrap-local.sh first."
+  # Read provider from local/.env (set by setup.sh / user)
+  _provider="${KUBERNETES_PROVIDER:-kind}"
+  if [[ -f "${ENV_FILE}" ]]; then
+    _provider="${_provider:-$(grep '^KUBERNETES_PROVIDER=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' || echo 'kind')}"
+  fi
+  if [[ "$_provider" == "kind" ]]; then
+    kind get clusters 2>/dev/null | grep -q "." || die "No Kind cluster found. Run ./scripts/bootstrap-local.sh first."
+  else
+    kubectl cluster-info --context rancher-desktop &>/dev/null || \
+      die "Rancher Desktop cluster not reachable. Start Rancher Desktop and run ./scripts/bootstrap-local.sh --provider rancher-desktop first."
+  fi
   # Load ANTHROPIC_API_KEY from local/.env if not already set
   if [[ -f "${ENV_FILE}" ]]; then
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
@@ -162,9 +172,11 @@ else
   helm upgrade --install kagent \
     oci://ghcr.io/kagent-dev/kagent/helm/kagent \
     --namespace kagent \
-    --values "${KAGENT_VALUES}" \
-    --wait \
-    --timeout 5m
+    --values "${KAGENT_VALUES}"
+  # Don't --wait here: built-in Agent CRDs (argo-rollouts, cilium, etc.) take
+  # longer than helm's wait window to reach Ready. Poll the controller pod only.
+  kubectl rollout status deployment/kagent-controller -n kagent --timeout=5m || \
+    warn "kagent-controller not ready yet — pods are starting, will self-heal. Continuing..."
 
   check "KAgent installed"
 
@@ -264,76 +276,74 @@ if [[ "$SKIP_MCP" == "true" ]]; then
 else
   # ── IDP MCP Server ───────────────────────────────────────────────────────────
   info "Building IDP MCP Server..."
-  if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    docker build \
-      --platform linux/amd64 --provenance=false \
-      -t "${REGISTRY}/idp-mcp-server:0.1.0" \
-      -t "${REGISTRY}/idp-mcp-server:latest" \
-      "${REPO_ROOT}/services/idp-mcp-server/"
-    docker push "${REGISTRY}/idp-mcp-server:0.1.0"
-    docker push "${REGISTRY}/idp-mcp-server:latest"
-    sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
-      "${REPO_ROOT}/services/idp-mcp-server/helm-values-aws.yaml" \
-      | helm upgrade --install idp-mcp-server "${REPO_ROOT}/helm/service-template" \
-          --namespace services --values /dev/stdin --wait --timeout 3m
-  else
-    docker build -t "${REGISTRY}/idp-mcp-server:0.1.0" -t "${REGISTRY}/idp-mcp-server:latest" "${REPO_ROOT}/services/idp-mcp-server/"
-    docker push "${REGISTRY}/idp-mcp-server:0.1.0"
-    docker push "${REGISTRY}/idp-mcp-server:latest"
-    helm upgrade --install idp-mcp-server "${REPO_ROOT}/helm/service-template" \
-      --namespace services \
-      --values "${REPO_ROOT}/services/idp-mcp-server/helm-values-local.yaml" \
-      --wait --timeout 3m
-  fi
-
-  # Force a rollout restart so Kubernetes pulls the freshly pushed image
-  # (pullPolicy: Always but tag may not change between runs).
-  kubectl rollout restart deployment/idp-mcp-server -n services
-  kubectl rollout status  deployment/idp-mcp-server -n services --timeout 90s
-
-  # Apply the KAgent RemoteMCPServer manifest (STREAMABLE_HTTP protocol).
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
-
-  if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    check "IDP MCP Server deployed → ALB (AWS Load Balancer Controller)"
-  else
-    check "IDP MCP Server deployed → http://idp-mcp-server.idp.local"
-  fi
+  (
+    set -e
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      docker build \
+        --platform linux/amd64 --provenance=false \
+        -t "${REGISTRY}/idp-mcp-server:0.1.0" \
+        -t "${REGISTRY}/idp-mcp-server:latest" \
+        "${REPO_ROOT}/services/idp-mcp-server/"
+      docker push "${REGISTRY}/idp-mcp-server:0.1.0"
+      docker push "${REGISTRY}/idp-mcp-server:latest"
+      sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
+        "${REPO_ROOT}/services/idp-mcp-server/helm-values-aws.yaml" \
+        | helm upgrade --install idp-mcp-server "${REPO_ROOT}/helm/service-template" \
+            --namespace services --values /dev/stdin --wait --timeout 3m
+    else
+      docker build -t "${REGISTRY}/idp-mcp-server:0.1.0" -t "${REGISTRY}/idp-mcp-server:latest" "${REPO_ROOT}/services/idp-mcp-server/"
+      docker push "${REGISTRY}/idp-mcp-server:0.1.0"
+      docker push "${REGISTRY}/idp-mcp-server:latest"
+      helm upgrade --install idp-mcp-server "${REPO_ROOT}/helm/service-template" \
+        --namespace services \
+        --values "${REPO_ROOT}/services/idp-mcp-server/helm-values-local.yaml" \
+        --wait --timeout 3m
+    fi
+    kubectl rollout restart deployment/idp-mcp-server -n services
+    kubectl rollout status  deployment/idp-mcp-server -n services --timeout 90s
+    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      check "IDP MCP Server deployed → ALB"
+    else
+      check "IDP MCP Server deployed → http://idp-mcp-server.idp.local"
+    fi
+  ) || warn "IDP MCP Server deploy failed — retry: ./scripts/bootstrap-ai.sh --skip-kagent --skip-mlflow"
 
   # ── QA MCP Server ─────────────────────────────────────────────────────────────
   info "Building QA MCP Server..."
-  if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    docker build \
-      --platform linux/amd64 --provenance=false \
-      -t "${REGISTRY}/qa-mcp-server:0.1.0" \
-      -t "${REGISTRY}/qa-mcp-server:latest" \
-      "${REPO_ROOT}/services/qa-mcp-server/"
-    docker push "${REGISTRY}/qa-mcp-server:0.1.0"
-    docker push "${REGISTRY}/qa-mcp-server:latest"
-    sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
-      "${REPO_ROOT}/services/qa-mcp-server/helm-values-aws.yaml" \
-      | helm upgrade --install qa-mcp-server "${REPO_ROOT}/helm/service-template" \
-          --namespace services --values /dev/stdin --wait --timeout 3m
-  else
-    docker build -t "${REGISTRY}/qa-mcp-server:0.1.0" -t "${REGISTRY}/qa-mcp-server:latest" "${REPO_ROOT}/services/qa-mcp-server/"
-    docker push "${REGISTRY}/qa-mcp-server:0.1.0"
-    docker push "${REGISTRY}/qa-mcp-server:latest"
-    helm upgrade --install qa-mcp-server "${REPO_ROOT}/helm/service-template" \
-      --namespace services \
-      --values "${REPO_ROOT}/services/qa-mcp-server/helm-values-local.yaml" \
-      --wait --timeout 3m
-  fi
-
-  kubectl rollout restart deployment/qa-mcp-server -n services
-  kubectl rollout status  deployment/qa-mcp-server -n services --timeout 90s
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
-
-  if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    check "QA MCP Server deployed → ALB (AWS Load Balancer Controller)"
-  else
-    check "QA MCP Server deployed → http://qa-mcp-server.idp.local"
-  fi
+  (
+    set -e
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      docker build \
+        --platform linux/amd64 --provenance=false \
+        -t "${REGISTRY}/qa-mcp-server:0.1.0" \
+        -t "${REGISTRY}/qa-mcp-server:latest" \
+        "${REPO_ROOT}/services/qa-mcp-server/"
+      docker push "${REGISTRY}/qa-mcp-server:0.1.0"
+      docker push "${REGISTRY}/qa-mcp-server:latest"
+      sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
+        "${REPO_ROOT}/services/qa-mcp-server/helm-values-aws.yaml" \
+        | helm upgrade --install qa-mcp-server "${REPO_ROOT}/helm/service-template" \
+            --namespace services --values /dev/stdin --wait --timeout 3m
+    else
+      docker build -t "${REGISTRY}/qa-mcp-server:0.1.0" -t "${REGISTRY}/qa-mcp-server:latest" "${REPO_ROOT}/services/qa-mcp-server/"
+      docker push "${REGISTRY}/qa-mcp-server:0.1.0"
+      docker push "${REGISTRY}/qa-mcp-server:latest"
+      helm upgrade --install qa-mcp-server "${REPO_ROOT}/helm/service-template" \
+        --namespace services \
+        --values "${REPO_ROOT}/services/qa-mcp-server/helm-values-local.yaml" \
+        --wait --timeout 3m
+    fi
+    kubectl rollout restart deployment/qa-mcp-server -n services
+    kubectl rollout status  deployment/qa-mcp-server -n services --timeout 90s
+    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
+    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      check "QA MCP Server deployed → ALB"
+    else
+      check "QA MCP Server deployed → http://qa-mcp-server.idp.local"
+    fi
+  ) || warn "QA MCP Server deploy failed — retry: ./scripts/bootstrap-ai.sh --skip-kagent --skip-mlflow"
 fi
 
 # ── 7. KAgent UI port-forward (background) ───────────────────────────────────
@@ -360,29 +370,28 @@ fi
 # ── Done ──────────────────────────────────────────────────────────────────────
 
 echo ""
-echo "╔══════════════════════════════════════════════════════════╗"
-echo "║        AI Platform Bootstrap Complete                    ║"
-echo "╠══════════════════════════════════════════════════════════╣"
+echo "╔═══════════════════════════════════════════════════════════════════════════╗"
+echo "║               AI/ML Platform Bootstrap Complete                          ║"
+echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow UI       ALB DNS (kubectl get ingress -n ml-platform)║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server  ALB DNS (kubectl get ingress -n services)   ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server   ALB DNS (kubectl get ingress -n services)   ║"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI       ALB DNS (kubectl get ingress -n kagent)     ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI        ALB DNS  (kubectl get ingress -n kagent)            ║"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow           ALB DNS  (kubectl get ingress -n ml-platform)       ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server   ALB DNS  (kubectl get ingress -n services)          ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server    ALB DNS  (kubectl get ingress -n services)          ║"
 else
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow UI       http://mlflow.idp.local                 ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server  http://idp-mcp-server.idp.local/healthz ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server   http://qa-mcp-server.idp.local/healthz  ║"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI       http://kagent.idp.local                 ║"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║                  http://localhost:8082 (port-forward)    ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI        http://kagent.idp.local                            ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant     http://backstage.idp.local/ai-assistant            ║"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow           http://mlflow.idp.local                            ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server   http://idp-mcp-server.idp.local/healthz            ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server    http://qa-mcp-server.idp.local/healthz             ║"
 fi
-echo "║  Model           Claude Haiku (Anthropic API)            ║"
-echo "║  Backstage       http://localhost:3000/create             ║"
-[[ "$SKIP_KAGENT"  == "false" ]] && echo "║                  → 'AI Agent (KAgent)' template          ║"
-[[ "$SKIP_MLFLOW"  == "false" ]] && echo "║                  → 'ML Experiment (MLflow)' template     ║"
-echo "╚══════════════════════════════════════════════════════════╝"
+echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"
+echo "║  All platform URLs: ./scripts/bootstrap-local.sh --print-urls            ║"
+echo "╚═══════════════════════════════════════════════════════════════════════════╝"
 echo ""
 if [[ "$SKIP_MCP" == "false" && "$DEPLOY_MODE" == "local" ]]; then
-  echo "  Register CI runners for MCP servers (optional, for local CD):"
+  echo "  Register CI runners for MCP servers (optional):"
   echo "    ./scripts/setup-runner.sh --repo idp-mcp-server"
   echo "    ./scripts/setup-runner.sh --repo qa-mcp-server"
   echo ""

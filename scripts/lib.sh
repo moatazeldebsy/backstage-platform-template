@@ -35,7 +35,9 @@ _upsert_env() {
 
 _preflight_check_local() {
   local missing=()
-  for cmd in kind kubectl helm docker; do
+  local required_cmds=(kubectl helm docker)
+  [[ "${KUBERNETES_PROVIDER:-kind}" == "kind" ]] && required_cmds+=(kind)
+  for cmd in "${required_cmds[@]}"; do
     command -v "$cmd" &>/dev/null || missing+=("$cmd")
   done
   if [[ ${#missing[@]} -gt 0 ]]; then

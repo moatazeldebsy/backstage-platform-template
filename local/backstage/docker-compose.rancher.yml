@@ -1,0 +1,19 @@
+# Rancher Desktop overlay — removes the 'kind' external network dependency.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.rancher.yml
+#
+# With Rancher Desktop the k3s cluster runs in a Lima VM. Docker containers
+# are reachable from the VM via host.docker.internal (Mac). The kubeconfig
+# rewrite in the base file's entrypoint (127.0.0.1 → host.docker.internal)
+# already handles cluster API access — no extra Docker network needed.
+
+services:
+  backstage:
+    networks:
+      - default
+
+networks:
+  kind:
+    # Override: declare as a plain internal network instead of external=true.
+    # This prevents docker compose from failing when the 'kind' Docker network
+    # does not exist (Rancher Desktop does not create it).
+    external: false
