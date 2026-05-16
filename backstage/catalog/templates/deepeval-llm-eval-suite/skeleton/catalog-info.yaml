@@ -12,5 +12,5 @@ spec:
   owner: ${{ values.owner }}
   {%- if values.targetAgent %}
   dependsOn:
-    - component:${{ values.targetAgent }}
+    - ${{ values.targetAgent }}
   {%- endif %}
