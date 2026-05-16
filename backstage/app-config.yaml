@@ -241,6 +241,10 @@ catalog:
       rules:
         - allow: [Template]
     - type: file
+      target: /catalog/templates/deepeval-llm-eval-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
       target: /catalog/resources/ai-platform.yaml
       rules:
         - allow: [Resource, Component]

@@ -1,0 +1,58 @@
+name: LLM Eval (${{ values.name }})
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tests/**'
+      - '.github/workflows/eval.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/**'
+      - '.github/workflows/eval.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: eval-${{"{{"}} github.ref {{"}}"}}
+  cancel-in-progress: true
+
+jobs:
+  deepeval:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run DeepEval suite
+        env:
+          ANTHROPIC_API_KEY: ${{"{{"}} secrets.ANTHROPIC_API_KEY {{"}}"}}
+          DEEPEVAL_TELEMETRY_OPT_OUT: 'YES'
+        run: |
+          mkdir -p results
+          deepeval test run tests/test_agent.py \
+            --exit-on-first-failure \
+            --junitxml=results/report.xml \
+            --html=results/report.html \
+            --self-contained-html
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepeval-report
+          path: results/
+          retention-days: 30

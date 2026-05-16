@@ -1,0 +1,220 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: deepeval-llm-eval-suite
+  title: DeepEval LLM Eval Suite
+  description: Scaffold a DeepEval evaluation suite for an AI agent — covers answer relevancy, faithfulness, and tool correctness
+  tags:
+    - deepeval
+    - llm
+    - eval
+    - ai
+    - testing
+    - qa
+spec:
+  owner: platform-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          description: Unique name for this eval suite (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this eval suite
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetAgent:
+          title: Target Agent
+          type: string
+          description: The AI agent entity this suite evaluates (optional — used for catalog dependency)
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: ai-agent
+        deploymentMode:
+          title: Deployment Mode
+          type: string
+          enum: [new-repository, add-to-existing]
+          enumNames:
+            - 'Create a new repository'
+            - 'Add eval suite to an existing repo (opens PR)'
+          default: new-repository
+      dependencies:
+        deploymentMode:
+          oneOf:
+            - properties:
+                deploymentMode:
+                  enum: [new-repository]
+                repoUrl:
+                  title: GitHub Repository
+                  type: string
+                  ui:field: RepoUrlPicker
+                  ui:help: 'Repository name must not already exist on GitHub.'
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - YOUR_GITHUB_ORG
+              required:
+                - repoUrl
+            - properties:
+                deploymentMode:
+                  enum: [add-to-existing]
+                targetRepoUrl:
+                  title: Target Repository
+                  type: string
+                  description: 'Existing GitHub repo to open the PR against'
+                  ui:field: RepoUrlPicker
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - YOUR_GITHUB_ORG
+              required:
+                - targetRepoUrl
+
+    - title: Agent Configuration
+      required:
+        - agentSystemPrompt
+        - agentTools
+      properties:
+        agentSystemPrompt:
+          title: Agent System Prompt
+          type: string
+          description: Verbatim system prompt used by the agent — copy from the agent's deployment manifest
+          ui:widget: textarea
+          ui:options:
+            rows: 8
+        agentTools:
+          title: Agent Tools
+          type: string
+          description: Comma-separated list of MCP tool names the agent has access to (e.g. catalog_search,get_service_metrics,scaffold_service)
+        judgeModel:
+          title: LLM Judge Model
+          type: string
+          description: Claude model used as the LLM judge for AnswerRelevancy and Faithfulness metrics
+          enum:
+            - claude-haiku-4-5-20251001
+            - claude-sonnet-4-6
+          enumNames:
+            - 'Claude Haiku 4.5 (faster, cheaper)'
+            - 'Claude Sonnet 4.6 (more accurate)'
+          default: claude-haiku-4-5-20251001
+
+  steps:
+    - id: fetch-template-new-repo
+      name: Fetch Template (New Repo)
+      action: fetch:template
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetAgent: ${{ parameters.targetAgent }}
+          agentSystemPrompt: ${{ parameters.agentSystemPrompt }}
+          agentTools: ${{ parameters.agentTools }}
+          judgeModel: ${{ parameters.judgeModel }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-template-addon
+      name: Fetch Template (Add to Existing)
+      action: fetch:template
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        url: ./skeleton
+        targetPath: eval-suites/${{ parameters.name }}
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetAgent: ${{ parameters.targetAgent }}
+          agentSystemPrompt: ${{ parameters.agentSystemPrompt }}
+          agentTools: ${{ parameters.agentTools }}
+          judgeModel: ${{ parameters.judgeModel }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - deepeval
+          - llm-eval
+          - ai-testing
+          - qa
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      continueOnError: true
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'test: add ${{ parameters.name }} DeepEval eval suite'
+        branchName: feat/add-${{ parameters.name }}-eval-suite
+        description: |
+          ## Add ${{ parameters.name }} DeepEval LLM Eval Suite
+
+          Adds a DeepEval evaluation suite for `${{ parameters.targetAgent }}`.
+
+          **What's included:**
+          - `eval-suites/${{ parameters.name }}/tests/conftest.py` — system prompt + tool stubs
+          - `eval-suites/${{ parameters.name }}/tests/test_agent.py` — 3 starter eval test cases
+          - `eval-suites/${{ parameters.name }}/.github/workflows/eval.yml` — CI pipeline
+          - `eval-suites/${{ parameters.name }}/requirements.txt`
+
+          **To run locally:**
+          ```bash
+          cd eval-suites/${{ parameters.name }}
+          pip install -r requirements.txt
+          export ANTHROPIC_API_KEY=sk-ant-...
+          deepeval test run tests/test_agent.py -v
+          ```
+
+          > Scaffolded via the IDP Platform
+        sourcePath: .
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

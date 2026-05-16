@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: test-suite
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  {%- if values.targetAgent %}
+  dependsOn:
+    - component:${{ values.targetAgent }}
+  {%- endif %}
