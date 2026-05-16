@@ -5,6 +5,11 @@ metadata:
   description: ${{ values.description }}
   annotations:
     github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - deepeval
+    - llm-eval
+    - ai-testing
 spec:
   type: test-suite
   lifecycle: experimental

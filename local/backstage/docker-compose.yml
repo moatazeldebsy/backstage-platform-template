@@ -80,6 +80,8 @@ services:
       - ../../docs:/docs:ro
       # services/ — needed so TechDocs can resolve dir: refs in entity files
       - ../../services:/services:ro
+      # test-suites/ — catalog-info.yaml entries for eval suites
+      - ../../test-suites:/test-suites:ro
       # idp:deploy-local — helm chart and kubeconfig
       - ../../helm/service-template:/helm/service-template:ro
       - ~/.kube/config:/home/node/.kube/config:ro
