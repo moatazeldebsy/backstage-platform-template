@@ -41,6 +41,8 @@ ENV_FILE="${REPO_ROOT}/local/.env"
 
 info()  { echo "  [ai] $*"; }
 check() { echo "✓ $*"; }
+warn()  { echo "  [ai] WARNING: $*" >&2; }
+log()   { echo "  [ai] $*"; }
 die()   { echo "✗ ERROR: $*" >&2; exit 1; }
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
@@ -215,10 +217,12 @@ else
 
   # ── 5. KAgent resources ─────────────────────────────────────────────────────
 
-  info "Applying KAgent ModelConfig, Ingress, and IDP Assistant agent..."
+  info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
@@ -231,35 +235,16 @@ else
       "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" \
       --overwrite
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-aws.yaml"
-    check "IDP Assistant agent defined (claude-haiku-4-5-20251001)"
+    check "IDP + QA agents defined (claude-haiku-4-5-20251001)"
     check "KAgent ExternalSecret → idp-mvp/kagent (Secrets Manager)"
     check "KAgent UI ingress → ALB (AWS Load Balancer Controller)"
   else
-    # Local: create API key secret directly + nginx ingress with TLS
+    # Local: create API key secret directly + nginx ingresses (HTTP)
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress.yaml"
-    check "IDP Assistant agent defined (claude-haiku-4-5-20251001)"
-    check "KAgent UI ingress → https://kagent.idp.local"
-
-    # ── 5b. TLS for kagent.idp.local (mkcert) ─────────────────────────────────
-    # crypto.randomUUID() requires a secure context (HTTPS). We use mkcert to
-    # generate a locally-trusted cert so Chrome accepts it without warnings.
-    if command -v mkcert &>/dev/null; then
-      info "Generating mkcert TLS cert for kagent.idp.local..."
-      mkcert -install 2>/dev/null || true
-      TLS_DIR="$(mktemp -d)"
-      mkcert -cert-file "${TLS_DIR}/tls.crt" -key-file "${TLS_DIR}/tls.key" kagent.idp.local
-      kubectl create secret tls kagent-tls \
-        --cert="${TLS_DIR}/tls.crt" \
-        --key="${TLS_DIR}/tls.key" \
-        -n kagent \
-        --dry-run=client -o yaml | kubectl apply -f -
-      rm -rf "${TLS_DIR}"
-      check "TLS secret kagent-tls created (valid for kagent.idp.local)"
-    else
-      info "mkcert not found — skipping TLS. Install with: brew install mkcert"
-      info "Then run: mkcert -install && mkcert kagent.idp.local"
-      info "And:      kubectl create secret tls kagent-tls --cert=kagent.idp.local.pem --key=kagent.idp.local-key.pem -n kagent"
-    fi
+    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-idp-assistant.yaml"
+    check "IDP + QA agents defined (claude-haiku-4-5-20251001)"
+    check "KAgent UI ingress → http://kagent.idp.local"
+    check "IDP Assistant ingress → http://idp-assistant.idp.local"
 
     # ── 5c. SSR resolution ────────────────────────────────────────────────────
     # Next.js SSR API calls are routed via ui.backendInternalUrl in
@@ -269,81 +254,46 @@ else
   fi
 fi
 
-# ── 6. IDP MCP Server ─────────────────────────────────────────────────────────
+# ── 6. IDP / QA MCP Servers ───────────────────────────────────────────────────
+# Local: build images into the local registry; ArgoCD (services-dev namespace)
+#        manages the actual Kubernetes deployment via GitOps.
+# AWS:   build, push to ECR, and Helm-deploy directly (ArgoCD handles day-2).
 
 if [[ "$SKIP_MCP" == "true" ]]; then
   info "Skipping IDP/QA MCP Servers (--skip-mcp)."
 else
-  # ── IDP MCP Server ───────────────────────────────────────────────────────────
-  info "Building IDP MCP Server..."
-  (
-    set -e
-    if [[ "$DEPLOY_MODE" == "aws" ]]; then
-      docker build \
-        --platform linux/amd64 --provenance=false \
-        -t "${REGISTRY}/idp-mcp-server:0.1.0" \
-        -t "${REGISTRY}/idp-mcp-server:latest" \
-        "${REPO_ROOT}/services/idp-mcp-server/"
-      docker push "${REGISTRY}/idp-mcp-server:0.1.0"
-      docker push "${REGISTRY}/idp-mcp-server:latest"
-      sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
-        "${REPO_ROOT}/services/idp-mcp-server/helm-values-aws.yaml" \
-        | helm upgrade --install idp-mcp-server "${REPO_ROOT}/helm/service-template" \
-            --namespace services --values /dev/stdin --wait --timeout 3m
-    else
-      docker build -t "${REGISTRY}/idp-mcp-server:0.1.0" -t "${REGISTRY}/idp-mcp-server:latest" "${REPO_ROOT}/services/idp-mcp-server/"
-      docker push "${REGISTRY}/idp-mcp-server:0.1.0"
-      docker push "${REGISTRY}/idp-mcp-server:latest"
-      helm upgrade --install idp-mcp-server "${REPO_ROOT}/helm/service-template" \
-        --namespace services \
-        --values "${REPO_ROOT}/services/idp-mcp-server/helm-values-local.yaml" \
-        --wait --timeout 3m
-    fi
-    kubectl rollout restart deployment/idp-mcp-server -n services
-    kubectl rollout status  deployment/idp-mcp-server -n services --timeout 90s
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
-    if [[ "$DEPLOY_MODE" == "aws" ]]; then
-      check "IDP MCP Server deployed → ALB"
-    else
-      check "IDP MCP Server deployed → http://idp-mcp-server.idp.local"
-    fi
-  ) || warn "IDP MCP Server deploy failed — retry: ./scripts/bootstrap-ai.sh --skip-kagent --skip-mlflow"
-
-  # ── QA MCP Server ─────────────────────────────────────────────────────────────
-  info "Building QA MCP Server..."
-  (
-    set -e
-    if [[ "$DEPLOY_MODE" == "aws" ]]; then
-      docker build \
-        --platform linux/amd64 --provenance=false \
-        -t "${REGISTRY}/qa-mcp-server:0.1.0" \
-        -t "${REGISTRY}/qa-mcp-server:latest" \
-        "${REPO_ROOT}/services/qa-mcp-server/"
-      docker push "${REGISTRY}/qa-mcp-server:0.1.0"
-      docker push "${REGISTRY}/qa-mcp-server:latest"
-      sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
-        "${REPO_ROOT}/services/qa-mcp-server/helm-values-aws.yaml" \
-        | helm upgrade --install qa-mcp-server "${REPO_ROOT}/helm/service-template" \
-            --namespace services --values /dev/stdin --wait --timeout 3m
-    else
-      docker build -t "${REGISTRY}/qa-mcp-server:0.1.0" -t "${REGISTRY}/qa-mcp-server:latest" "${REPO_ROOT}/services/qa-mcp-server/"
-      docker push "${REGISTRY}/qa-mcp-server:0.1.0"
-      docker push "${REGISTRY}/qa-mcp-server:latest"
-      helm upgrade --install qa-mcp-server "${REPO_ROOT}/helm/service-template" \
-        --namespace services \
-        --values "${REPO_ROOT}/services/qa-mcp-server/helm-values-local.yaml" \
-        --wait --timeout 3m
-    fi
-    kubectl rollout restart deployment/qa-mcp-server -n services
-    kubectl rollout status  deployment/qa-mcp-server -n services --timeout 90s
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
-    if [[ "$DEPLOY_MODE" == "aws" ]]; then
-      check "QA MCP Server deployed → ALB"
-    else
-      check "QA MCP Server deployed → http://qa-mcp-server.idp.local"
-    fi
-  ) || warn "QA MCP Server deploy failed — retry: ./scripts/bootstrap-ai.sh --skip-kagent --skip-mlflow"
+  for SVC in idp-mcp-server qa-mcp-server; do
+    info "Building ${SVC}..."
+    (
+      set -e
+      if [[ "$DEPLOY_MODE" == "aws" ]]; then
+        docker build \
+          --platform linux/amd64 --provenance=false \
+          -t "${REGISTRY}/${SVC}:0.1.0" \
+          -t "${REGISTRY}/${SVC}:latest" \
+          "${REPO_ROOT}/services/${SVC}/"
+        docker push "${REGISTRY}/${SVC}:0.1.0"
+        docker push "${REGISTRY}/${SVC}:latest"
+        sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
+          "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
+          | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
+              --namespace services --values /dev/stdin --wait --timeout 3m
+        check "${SVC} deployed → ALB"
+      else
+        docker build \
+          -t "${REGISTRY}/${SVC}:0.1.0" \
+          -t "${REGISTRY}/${SVC}:latest" \
+          "${REPO_ROOT}/services/${SVC}/"
+        docker push "${REGISTRY}/${SVC}:0.1.0"
+        docker push "${REGISTRY}/${SVC}:latest"
+        # Local: ArgoCD manages the deployment in services-dev namespace.
+        # Trigger a sync so the new image is picked up immediately.
+        argocd app sync "${SVC}-local" --grpc-web 2>/dev/null || true
+        kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
+        check "${SVC} image pushed → localhost:5003 (ArgoCD synced to services-dev)"
+      fi
+    ) || warn "${SVC} build/deploy failed — check: kubectl get po -n services-dev"
+  done
 fi
 
 # ── 7. KAgent UI port-forward (background) ───────────────────────────────────
@@ -359,12 +309,32 @@ if [[ "$SKIP_KAGENT" == "false" && "$DEPLOY_MODE" == "local" ]]; then
   check "KAgent UI port-forward → http://localhost:8082 (PID $(cat /tmp/kagent-ui-pf.pid))"
 fi
 
-# ── 8. hosts-append.txt reminder ─────────────────────────────────────────────
+# ── 8. /etc/hosts — AI platform entries ──────────────────────────────────────
 
-if [[ "$DEPLOY_MODE" == "local" ]] && ! grep -q "mlflow.idp.local" /etc/hosts 2>/dev/null; then
-  echo ""
-  echo "⚠  Add AI platform hosts to /etc/hosts:"
-  echo "   sudo sh -c 'grep \"mlflow\|kagent\|idp-mcp-server\" ${REPO_ROOT}/local/hosts-append.txt >> /etc/hosts'"
+if [[ "$DEPLOY_MODE" == "local" ]]; then
+  HOSTS_ADDED=false
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    # Only process AI/ML entries from hosts-append.txt
+    echo "$line" | grep -qE "mlflow|kagent|idp-mcp-server|qa-mcp-server" || continue
+    hostname=$(awk '{print $2}' <<< "$line")
+    [[ -z "$hostname" ]] && continue
+    if ! grep -qF "$hostname" /etc/hosts 2>/dev/null; then
+      if sudo sh -c "echo '$line' >> /etc/hosts"; then
+        log "  Added to /etc/hosts: $hostname"
+        HOSTS_ADDED=true
+      else
+        warn "  Could not add '$hostname' to /etc/hosts. Add manually:"
+        warn "  echo '$line' | sudo tee -a /etc/hosts"
+      fi
+    fi
+  done < "${REPO_ROOT}/local/hosts-append.txt"
+
+  if $HOSTS_ADDED && [[ "$(uname)" == "Darwin" ]]; then
+    sudo dscacheutil -flushcache 2>/dev/null || true
+    sudo killall -HUP mDNSResponder 2>/dev/null || true
+    log "  macOS DNS cache flushed."
+  fi
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

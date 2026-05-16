@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef } from '@backstage/frontend-plugin-api';
-import { useApi, fetchApiRef, configApiRef } from '@backstage/core-plugin-api';
+import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
   Content,
   Header,
@@ -9,7 +9,23 @@ import {
   Table,
   TableColumn,
 } from '@backstage/core-components';
+import Box from '@material-ui/core/Box';
+import Button from '@material-ui/core/Button';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import IconButton from '@material-ui/core/IconButton';
+import InputAdornment from '@material-ui/core/InputAdornment';
+import Paper from '@material-ui/core/Paper';
+import TextField from '@material-ui/core/TextField';
+import Tooltip from '@material-ui/core/Tooltip';
+import Typography from '@material-ui/core/Typography';
 import AttachMoneyIcon from '@material-ui/icons/AttachMoney';
+import ChatIcon from '@material-ui/icons/Chat';
+import AddCommentIcon from '@material-ui/icons/AddComment';
+import SendIcon from '@material-ui/icons/Send';
+import SearchIcon from '@material-ui/icons/Search';
+import Chip from '@material-ui/core/Chip';
+import LinearProgress from '@material-ui/core/LinearProgress';
+import Link from '@material-ui/core/Link';
 
 // ── FinOps / Cost Overview page ───────────────────────────────────────────────
 // Queries OpenCost via the Backstage proxy (/api/proxy/opencost).
@@ -118,11 +134,484 @@ const finOpsNavItem = NavItemBlueprint.make({
   },
 });
 
+function uuidv4(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+// ── AI Assistant page ─────────────────────────────────────────────────────────
+// Native chat UI that talks to the idp-assistant KAgent agent via the Backstage
+// proxy (/api/proxy/kagent → kagent-ui:8080).
+//
+// Flow per user turn:
+//   1. POST /a2a/kagent/idp-assistant  (KAgent Next.js route adds auth headers)
+//   2. Poll GET /api/sessions           every 500 ms for up to 12 s — find session
+//   3. Poll GET /api/sessions/<id>      every 1 s for up to 90 s — wait for text
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+function AiAssistantPage() {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const identityApi = useApi(identityApiRef);
+  const [userRef, setUserRef] = useState<string>('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [statusText, setStatusText] = useState('');
+  // contextId persists the KAgent session across turns so the agent keeps history
+  const contextIdRef = useRef<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Load user identity once, then restore their stored session from localStorage
+  useEffect(() => {
+    identityApi.getBackstageIdentity().then(identity => {
+      const ref = identity.userEntityRef;
+      setUserRef(ref);
+      const storedContextId = localStorage.getItem(`ai-chat-ctx:${ref}`);
+      const storedMessages = localStorage.getItem(`ai-chat-msgs:${ref}`);
+      if (storedContextId) contextIdRef.current = storedContextId;
+      if (storedMessages) {
+        try { setMessages(JSON.parse(storedMessages)); } catch { /* ignore */ }
+      }
+    });
+  }, [identityApi]);
+
+  // Persist messages to localStorage whenever they change (per user)
+  useEffect(() => {
+    if (!userRef) return;
+    localStorage.setItem(`ai-chat-msgs:${userRef}`, JSON.stringify(messages));
+  }, [messages, userRef]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text }]);
+    setLoading(true);
+    setStatusText('Sending…');
+
+    const base = configApi.getString('backend.baseUrl');
+    const proxyBase = `${base}/api/proxy/kagent`;
+
+    try {
+      // Include contextId to continue the same session (agent keeps full history)
+      const message: any = {
+        messageId: uuidv4(),
+        role: 'user',
+        parts: [{ kind: 'text', text }],
+      };
+      if (contextIdRef.current) message.contextId = contextIdRef.current;
+
+      const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/idp-assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'message/send',
+          params: { message },
+          id: 1,
+        }),
+      });
+
+      // Capture contextId from response to reuse on next turn
+      let sessionId: string | null = contextIdRef.current;
+      try {
+        const a2aBody = await a2aRes.json();
+        if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
+      } catch { /* ignore parse errors */ }
+
+      // If we don't have a sessionId yet, poll the sessions list
+      if (!sessionId) {
+        setStatusText('Waiting for agent…');
+        const sentAt = Date.now();
+        for (let i = 0; i < 24 && !sessionId; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const res = await fetchApi.fetch(`${proxyBase}/api/sessions`);
+          if (res.ok) {
+            const body = await res.json();
+            const sessions: any[] = body.data ?? [];
+            const match = sessions.find(
+              s =>
+                s.agent_id === 'kagent__NS__idp_assistant' &&
+                new Date(s.created_at).getTime() >= sentAt - 15000,
+            );
+            if (match) sessionId = match.id;
+          }
+        }
+      }
+
+      if (!sessionId) throw new Error('AI assistant did not respond (no session created)');
+      contextIdRef.current = sessionId;
+      if (userRef) localStorage.setItem(`ai-chat-ctx:${userRef}`, sessionId);
+
+      // Poll for agent response — events are newest-first, so agentEvents[0] is latest
+      // Scaffold can take up to 3 min (list_templates + get_template_params + scaffold_service)
+      setStatusText('Agent is thinking…');
+      let agentReply: string | null = null;
+      for (let i = 0; i < 600 && !agentReply; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        const res = await fetchApi.fetch(`${proxyBase}/api/sessions/${sessionId}`);
+        if (!res.ok) continue;
+        const body = await res.json();
+        const events: any[] = body.data?.events ?? [];
+
+        const parsed = events.map((e: any) => {
+          try { return JSON.parse(e.data); } catch { return null; }
+        }).filter(Boolean);
+
+        const agentEvents = parsed.filter(
+          (d: any) => d?.author === 'idp_assistant' && d?.content?.parts,
+        );
+
+        if (agentEvents.length === 0) continue;
+
+        // [0] is the newest agent event (events are newest-first)
+        const newest = agentEvents[0];
+        const parts: any[] = newest.content.parts;
+        const activeTool = parts.find((p: any) => p.function_call)?.function_call?.name;
+        const textParts = parts.filter((p: any) => p.text);
+
+        if (activeTool) {
+          // Show which tool is running so the user knows it's working
+          const labels: Record<string, string> = {
+            list_templates: 'Fetching available templates…',
+            get_template_params: 'Reading template parameters…',
+            scaffold_service: 'Scaffolding service — this may take a minute…',
+            list_deployments: 'Listing deployments…',
+            catalog_search: 'Searching catalog…',
+            get_service_metrics: 'Fetching metrics…',
+          };
+          setStatusText(labels[activeTool] ?? `Running ${activeTool}…`);
+        } else if (textParts.length > 0) {
+          agentReply = textParts.map((p: any) => p.text).join('');
+        }
+      }
+
+      if (!agentReply) throw new Error('Agent did not respond in time');
+      setMessages(prev => [...prev, { role: 'assistant', text: agentReply! }]);
+    } catch (err: any) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', text: `⚠️ ${err.message}` },
+      ]);
+    } finally {
+      setLoading(false);
+      setStatusText('');
+    }
+  };
+
+  const newChat = () => {
+    if (loading) return;
+    setMessages([]);
+    setInput('');
+    setStatusText('');
+    contextIdRef.current = null;
+    if (userRef) {
+      localStorage.removeItem(`ai-chat-ctx:${userRef}`);
+      localStorage.removeItem(`ai-chat-msgs:${userRef}`);
+    }
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="AI Assistant" subtitle="Powered by KAgent · idp-assistant" />
+      <Content>
+        <Box display="flex" flexDirection="column" height="calc(100vh - 180px)">
+          {/* Toolbar */}
+          <Box display="flex" justifyContent="flex-end" mb={1}>
+            <Tooltip title="Start a new conversation">
+              <span>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddCommentIcon />}
+                  onClick={newChat}
+                  disabled={loading || messages.length === 0}
+                >
+                  New Chat
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
+
+          {/* Message list */}
+          <Box flex={1} overflow="auto" mb={2} px={1}>
+            {messages.length === 0 && !loading && (
+              <Typography variant="body2" color="textSecondary" align="center" style={{ marginTop: 40 }}>
+                Ask me about services, deployments, metrics, or scaffold a new service.
+              </Typography>
+            )}
+            {messages.map((msg, i) => (
+              <Box
+                key={i}
+                display="flex"
+                justifyContent={msg.role === 'user' ? 'flex-end' : 'flex-start'}
+                mb={1}
+              >
+                <Paper
+                  elevation={1}
+                  style={{
+                    padding: '10px 16px',
+                    maxWidth: '75%',
+                    backgroundColor: msg.role === 'user' ? '#1976d2' : '#f5f5f5',
+                    color: msg.role === 'user' ? '#fff' : 'inherit',
+                    borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  <Typography variant="body2">{msg.text}</Typography>
+                </Paper>
+              </Box>
+            ))}
+            {loading && (
+              <Box display="flex" alignItems="center" mb={1} style={{ gap: 8 }}>
+                <CircularProgress size={16} />
+                <Typography variant="caption" color="textSecondary">{statusText}</Typography>
+              </Box>
+            )}
+            <div ref={bottomRef} />
+          </Box>
+
+          {/* Input */}
+          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder="Ask about services, deployments, metrics…"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+              disabled={loading}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={sendMessage} disabled={loading || !input.trim()}>
+                      <SendIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        </Box>
+      </Content>
+    </Page>
+  );
+}
+
+// ── Semantic Search (RAG) page ────────────────────────────────────────────────
+// Calls /api/rag-search/search → Voyage AI embeddings → pgvector similarity.
+
+interface RagResult {
+  id: string;
+  title: string;
+  kind: string;
+  url: string;
+  content: string;
+  similarity: number;
+}
+
+function SemanticSearchPage() {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<RagResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [indexing, setIndexing] = useState(false);
+  const [indexMsg, setIndexMsg] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runSearch = async (q: string) => {
+    if (!q.trim()) { setResults([]); return; }
+    setLoading(true);
+    setError(null);
+    const base = configApi.getString('backend.baseUrl');
+    try {
+      const resp = await fetchApi.fetch(
+        `${base}/api/rag-search/search?q=${encodeURIComponent(q)}`,
+      );
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({})) as any;
+        throw new Error(body.error ?? `HTTP ${resp.status}`);
+      }
+      const data = await resp.json() as { results: RagResult[] };
+      setResults(data.results);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearch(value), 400);
+  };
+
+  const handleReindex = async () => {
+    setIndexing(true);
+    setIndexMsg(null);
+    const base = configApi.getString('backend.baseUrl');
+    try {
+      await fetchApi.fetch(`${base}/api/rag-search/index`, { method: 'POST' });
+      setIndexMsg('Re-index started — results will update within a minute.');
+    } catch (err: any) {
+      setIndexMsg(`Re-index failed: ${err.message}`);
+    } finally {
+      setIndexing(false);
+    }
+  };
+
+  const kindColors: Record<string, 'default' | 'primary' | 'secondary'> = {
+    Component: 'primary',
+    Template: 'secondary',
+    API: 'default',
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="AI Search" subtitle="Semantic search powered by Voyage AI + pgvector" />
+      <Content>
+        <Box mb={2} display="flex" alignItems="center" style={{ gap: 8 }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            size="small"
+            placeholder="Search by intent, e.g. 'deploy a Go service' or 'ML training pipeline'…"
+            value={query}
+            onChange={e => handleQueryChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') runSearch(query); }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => runSearch(query)} disabled={loading || !query.trim()}>
+                    <SearchIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Tooltip title="Re-index catalog entities and external sources">
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleReindex}
+                disabled={indexing}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {indexing ? 'Indexing…' : 'Re-index'}
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
+
+        {indexMsg && (
+          <Box mb={1}><Typography variant="caption" color="textSecondary">{indexMsg}</Typography></Box>
+        )}
+
+        {loading && <LinearProgress style={{ marginBottom: 12 }} />}
+
+        {error && (
+          <Box mb={2}><Typography color="error" variant="body2">{error}</Typography></Box>
+        )}
+
+        {!loading && !error && results.length === 0 && query.trim() && (
+          <Typography variant="body2" color="textSecondary">
+            No results found. Try re-indexing if this is a first run.
+          </Typography>
+        )}
+
+        {results.map(r => (
+          <Paper key={r.id} elevation={1} style={{ padding: '12px 16px', marginBottom: 10 }}>
+            <Box display="flex" alignItems="center" mb={1} style={{ gap: 8 }}>
+              <Chip
+                label={r.kind}
+                size="small"
+                color={kindColors[r.kind] ?? 'default'}
+              />
+              <Typography variant="subtitle2">
+                {r.url ? (
+                  <Link href={r.url} target="_blank" rel="noopener">
+                    {r.title}
+                  </Link>
+                ) : r.title}
+              </Typography>
+              <Typography variant="caption" color="textSecondary" style={{ marginLeft: 'auto' }}>
+                {Math.round(r.similarity * 100)}% match
+              </Typography>
+            </Box>
+            {r.content && (
+              <Typography variant="body2" color="textSecondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {r.content.slice(0, 200)}{r.content.length > 200 ? '…' : ''}
+              </Typography>
+            )}
+          </Paper>
+        ))}
+      </Content>
+    </Page>
+  );
+}
+
+const semanticSearchRouteRef = createRouteRef();
+
+const semanticSearchPage = PageBlueprint.make({
+  name: 'ai-search',
+  params: {
+    path: '/ai-search',
+    routeRef: semanticSearchRouteRef,
+    loader: async () => <SemanticSearchPage />,
+  },
+});
+
+const semanticSearchNavItem = NavItemBlueprint.make({
+  name: 'ai-search',
+  params: {
+    title: 'AI Search',
+    icon: SearchIcon as any,
+    routeRef: semanticSearchRouteRef,
+  },
+});
+
+const aiAssistantRouteRef = createRouteRef();
+
+const aiAssistantPage = PageBlueprint.make({
+  name: 'ai-assistant',
+  params: {
+    path: '/ai-assistant',
+    routeRef: aiAssistantRouteRef,
+    loader: async () => <AiAssistantPage />,
+  },
+});
+
+const aiAssistantNavItem = NavItemBlueprint.make({
+  name: 'ai-assistant',
+  params: {
+    title: 'AI Assistant',
+    icon: ChatIcon as any,
+    routeRef: aiAssistantRouteRef,
+  },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
-  id: 'custom-pages',
+  pluginId: 'custom-pages',
   routes: {
     root: finOpsRouteRef,
   },
-  extensions: [finOpsPage, finOpsNavItem],
+  extensions: [finOpsPage, finOpsNavItem, aiAssistantPage, aiAssistantNavItem, semanticSearchPage, semanticSearchNavItem],
 });

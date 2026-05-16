@@ -342,12 +342,16 @@ techInsights:
             - factOperator: IS_GREATER_THAN
               value: 0
 
-# KAgent AI assistant proxy — target is the in-cluster kagent-ui service.
-# The local override in app-config.local.yaml points this at the ingress hostname.
+ragSearch:
+  voyageApiKey: ${VOYAGE_API_KEY}
+  indexIntervalMinutes: 30
+  externalSources: []
+
+# KAgent AI assistant proxy — routes to the idp-assistant A2A agent (JSON-RPC over HTTP POST).
 proxy:
   endpoints:
     /kagent:
-      target: http://kagent-ui.kagent.svc.cluster.local:8080
+      target: http://idp-assistant.kagent.svc.cluster.local:8080
       allowedMethods: ['GET', 'POST']
       changeOrigin: true
 

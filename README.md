@@ -121,6 +121,9 @@ After `bootstrap-local.sh` completes and Backstage is running, everything is rea
 | **Prometheus** | http://prometheus.idp.local | — |
 | **OpenCost** | http://opencost.idp.local | — |
 | **KAgent UI** | http://kagent.idp.local | — (requires `bootstrap-ai.sh`) |
+| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (requires `bootstrap-ai.sh`) |
+| **AI Search** | http://backstage.idp.local/ai-search | — (requires `VOYAGE_API_KEY` in `local/backstage/.env`) |
+| **IDP Assistant (A2A)** | http://idp-assistant.idp.local | — (requires `bootstrap-ai.sh`) |
 | **MLflow UI** | http://mlflow.idp.local | — (requires `bootstrap-ai.sh`) |
 | **IDP MCP Server** | http://idp-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
 | **Local registry** | localhost:5003 | — (no auth) |
@@ -172,7 +175,7 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
-| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`. | After `bootstrap-local.sh` |
+| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. | After `bootstrap-local.sh` |
 
 ### Day-2 — Per-service operations
 

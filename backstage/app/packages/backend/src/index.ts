@@ -14,6 +14,7 @@ import { idpTechInsightsModule } from './modules/idpTechInsights';
 import { idpDeployAgentModule } from './modules/idpDeployAgent';
 import { idpRunTrainingJobModule } from './modules/idpRunTrainingJob';
 import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
+import { ragSearchPlugin } from './modules/idpRagSearch';
 
 
 const backend = createBackend();
@@ -31,6 +32,7 @@ backend.add(idpTechInsightsModule);
 backend.add(idpDeployAgentModule);
 backend.add(idpRunTrainingJobModule);
 backend.add(idpDeployMcpServerModule);
+backend.add(ragSearchPlugin);
 
 // techdocs plugin
 backend.add(import('@backstage/plugin-techdocs-backend'));

@@ -3,10 +3,13 @@
 # No AWS account needed. Mirrors the cloud setup with nginx + Prometheus.
 #
 # Usage:
-#   ./scripts/bootstrap-local.sh                              # Kind (default)
+#   ./scripts/bootstrap-local.sh                              # Kind (default): cluster + platform
+#   ./scripts/bootstrap-local.sh --full                       # cluster + platform + Backstage in one shot
 #   ./scripts/bootstrap-local.sh --provider rancher-desktop   # Rancher Desktop k3s
 #   ./scripts/bootstrap-local.sh --skip-obs                   # skip observability (faster)
-#   ./scripts/bootstrap-local.sh --start-backstage            # build + start Backstage, wire nginx, seed metrics
+#   ./scripts/bootstrap-local.sh --start-backstage            # Backstage only (cluster already up)
+#   ./scripts/bootstrap-local.sh --install-pushgateway        # install/fix Pushgateway + seed QA metrics
+#   ./scripts/bootstrap-local.sh --install-argocd             # install/fix ArgoCD + register GitHub creds
 #   ./scripts/bootstrap-local.sh --update-backstage-ip        # refresh Backstage endpoint IP after compose up
 #   ./scripts/bootstrap-local.sh --destroy                    # tear everything down
 #   ./scripts/bootstrap-local.sh --clean-docker               # stop Backstage + prune all Docker resources
@@ -38,6 +41,8 @@ SKIP_DORA=false
 DESTROY=false
 UPDATE_BACKSTAGE_IP=false
 START_BACKSTAGE=false
+INSTALL_PUSHGATEWAY=false
+INSTALL_ARGOCD=false
 PRINT_URLS=false
 # Read provider from env first; CLI --provider flag overrides below.
 PROVIDER="${KUBERNETES_PROVIDER:-kind}"
@@ -94,9 +99,12 @@ while [[ $# -gt 0 ]]; do
     --destroy)             DESTROY=true;            shift ;;
     --clean-docker)        CLEAN_DOCKER=true;       shift ;;
     --update-backstage-ip) UPDATE_BACKSTAGE_IP=true;  shift ;;
-    --start-backstage)     START_BACKSTAGE=true;    shift ;;
-    --provider)            PROVIDER="$2";           shift 2 ;;
-    --print-urls)          PRINT_URLS=true;         shift ;;
+    --full)                START_BACKSTAGE=true;       shift ;;
+    --start-backstage)     START_BACKSTAGE=true;       shift ;;
+    --install-pushgateway) INSTALL_PUSHGATEWAY=true;   shift ;;
+    --install-argocd)      INSTALL_ARGOCD=true;        shift ;;
+    --provider)            PROVIDER="$2";              shift 2 ;;
+    --print-urls)          PRINT_URLS=true;            shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -194,6 +202,73 @@ fi
 # ── --print-urls fast path ────────────────────────────────────────────────────
 if $PRINT_URLS; then
   _print_url_banner
+  exit 0
+fi
+
+# ── --install-argocd fast path ────────────────────────────────────────────────
+if $INSTALL_ARGOCD; then
+  log "Installing / repairing ArgoCD..."
+  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
+  helm repo update argo
+  helm upgrade --install argocd argo/argo-cd \
+    --namespace argocd \
+    --create-namespace \
+    --version 9.5.13 \
+    --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
+    --wait --timeout 10m
+
+  ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
+  log "ArgoCD ready. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'secret not yet available'})"
+
+  if [[ -n "$ARGOCD_PASS" ]]; then
+    local_env="${ROOT_DIR}/local/backstage/.env"
+    if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
+      sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}|" "$local_env" && rm -f "${local_env}.bak"
+    else
+      echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
+    fi
+    log "  ArgoCD token written to local/backstage/.env"
+  fi
+
+  _github_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+  _github_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+  if [[ -n "$_github_token" && -n "$_github_org" && "$_github_org" != "YOUR_GITHUB_ORG" ]]; then
+    kubectl create secret generic argocd-github-creds \
+      -n argocd \
+      --from-literal=type=git \
+      --from-literal=url="https://github.com/${_github_org}" \
+      --from-literal=username="${_github_org}" \
+      --from-literal=password="${_github_token}" \
+      --dry-run=client -o yaml \
+      | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
+      | kubectl apply -f -
+    log "  GitHub credentials registered for https://github.com/${_github_org}"
+  fi
+
+  kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd || \
+    warn "ApplicationSet apply failed — ArgoCD may need a moment to settle. Retry: kubectl apply -f local/argocd/app-of-apps-local.yaml -n argocd"
+  exit 0
+fi
+
+# ── --install-pushgateway fast path ───────────────────────────────────────────
+if $INSTALL_PUSHGATEWAY; then
+  log "Installing / repairing Prometheus Pushgateway..."
+  helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+    --namespace monitoring --create-namespace \
+    --set resources.requests.cpu=10m \
+    --set resources.requests.memory=32Mi \
+    --set resources.limits.cpu=100m \
+    --set resources.limits.memory=64Mi \
+    --set serviceMonitor.enabled=true \
+    --set serviceMonitor.additionalLabels.release=prometheus \
+    --set "extraArgs[0]=--web.enable-admin-api" \
+    --wait --timeout 5m
+  kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
+  kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
+  log "Pushgateway ready. Seeding QA metrics..."
+  "${ROOT_DIR}/scripts/seed-qa-metrics.sh"
+  log "Done. Grafana → QA Platform Metrics dashboard: http://grafana.idp.local"
   exit 0
 fi
 
@@ -402,16 +477,24 @@ _start_backstage() {
   echo -e "${GREEN}✓ Local IDP platform is up.${RESET}"
   echo ""
   echo -e "${BOLD}Access URLs:${RESET}"
-  echo "  Backstage:     http://localhost:3000  (or http://backstage.idp.local)"
-  echo "  hello-service: http://hello-service.idp.local"
-  echo "  Grafana:       http://grafana.idp.local          (admin / admin)"
-  echo "  ArgoCD:        http://argocd.idp.local"
-  echo "  OpenCost:      http://opencost.idp.local"
+  echo "  Backstage:      http://backstage.idp.local   (or http://localhost:3000)"
+  echo "  hello-service:  http://hello-service.idp.local"
+  echo "  ArgoCD:         http://argocd.idp.local"
+  echo "  Grafana:        http://grafana.idp.local      (admin / admin)"
+  echo "  Prometheus:     http://prometheus.idp.local"
+  echo "  AlertManager:   http://alertmanager.idp.local"
+  echo "  Pushgateway:    http://pushgateway.idp.local"
+  echo "  OpenCost:       http://opencost.idp.local"
+  echo "  KAgent UI:      http://kagent.idp.local"
+  echo "  AI Assistant:   http://backstage.idp.local/ai-assistant"
+  echo "  MLflow:         http://mlflow.idp.local"
+  echo "  Local registry: localhost:5003"
   echo ""
   echo -e "${BOLD}Day-2 tools:${RESET}"
-  echo "  Scaffold a service:   ./scripts/create-service.sh --name my-svc --type nodejs"
+  echo "  Scaffold a service:   ./bin/idp scaffold service --name my-svc --type nodejs"
   echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
   echo "  Seed QA demo metrics: ./scripts/seed-qa-metrics.sh"
+  echo "  Install AI/ML stack:  ./scripts/bootstrap-ai.sh"
   echo "  Restart Backstage:    ./scripts/bootstrap-local.sh --start-backstage"
   echo "  Teardown cluster:     ./scripts/bootstrap-local.sh --destroy"
   echo ""
@@ -758,7 +841,16 @@ if ! $SKIP_GITOPS; then
     else
       warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
     fi
-  ) || warn "Step 8 (ArgoCD) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+  ) || {
+    warn "Step 8 (ArgoCD) failed on first attempt — retrying once..."
+    sleep 10
+    helm upgrade --install argocd argo/argo-cd \
+      --namespace argocd \
+      --create-namespace \
+      --version 9.5.13 \
+      --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
+      --wait --timeout 10m || warn "Step 8 (ArgoCD) failed after retry — run: ./scripts/bootstrap-local.sh --install-argocd"
+  }
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
 fi
@@ -845,6 +937,8 @@ if ! $SKIP_DORA; then
         kubectl rollout restart deployment/prometheus-pushgateway -n monitoring
         kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
       fi
+      log "Seeding QA metrics..."
+      "${ROOT_DIR}/scripts/seed-qa-metrics.sh" || warn "QA metrics seed failed — run ./scripts/seed-qa-metrics.sh manually."
     fi
 
     log "Step 10b: Applying DORA exporter..."

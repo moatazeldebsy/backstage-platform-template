@@ -288,3 +288,104 @@ docker build -t localhost:5003/idp-mcp-server:latest services/idp-mcp-server/
 docker push localhost:5003/idp-mcp-server:latest
 kubectl rollout restart deployment/idp-mcp-server -n kagent
 ```
+
+---
+
+## AI Search (Semantic / RAG)
+
+The `/ai-search` page in Backstage provides semantic search over the service catalog
+using [Voyage AI](https://www.voyageai.com) embeddings stored in pgvector.
+
+### Architecture
+
+```
+Browser → Backstage frontend (AiSearchPage)
+            ↓  GET /api/rag-search/search?q=<query>
+          Backstage backend (idpRagSearch plugin)
+            ↓  Voyage AI API (voyage-3-lite, 512-dim)
+            ↓  PostgreSQL + pgvector (HNSW cosine similarity)
+            → top-10 results with similarity score
+```
+
+### Prerequisites
+
+Add your Voyage AI API key to `local/backstage/.env`:
+
+```bash
+VOYAGE_API_KEY=your-key-here
+```
+
+Sign up at https://www.voyageai.com — the free tier provides 200M tokens/month,
+which is more than sufficient for a local IDP catalog.
+
+Without `VOYAGE_API_KEY`, the `/ai-search` page loads but returns HTTP 503 on every
+search. All other Backstage features are unaffected.
+
+### How pgvector is provisioned
+
+`local/backstage/docker-compose.yml` uses the `pgvector/pgvector:pg17` image instead
+of plain `postgres:17-alpine`. On the first container startup (empty volume),
+`local/backstage/init-pgvector.sql` is executed automatically via
+`docker-entrypoint-initdb.d`. It:
+
+1. Creates the `vector` extension
+2. Creates the `rag_documents` table (512-dim embedding column + metadata)
+3. Creates an HNSW index for fast cosine-similarity search
+
+This runs automatically — no manual SQL step required. After a cluster destroy +
+`--start-backstage`, the volume is re-created and the SQL runs again on the fresh
+Postgres instance.
+
+### Backend plugin
+
+**File:** `backstage/app/packages/backend/src/modules/idpRagSearch.ts`
+
+Registered in `backend/src/index.ts` as `ragSearchPlugin`. Exposes three endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/rag-search/search?q=<query>` | GET | Returns top-10 semantically similar catalog entities |
+| `/api/rag-search/index` | POST | Triggers a manual re-index of the catalog |
+| `/api/rag-search/status` | GET | Returns last-indexed timestamp and document count |
+
+The plugin auto-indexes the full catalog every 30 minutes (configurable via
+`ragSearch.indexIntervalMinutes` in `app-config.yaml`).
+
+### Configuration (`app-config.yaml`)
+
+```yaml
+ragSearch:
+  voyageApiKey: ${VOYAGE_API_KEY}
+  indexIntervalMinutes: 30
+  externalSources: []   # optional list of documentation URLs to include
+```
+
+### Troubleshooting
+
+**Search returns 503**
+
+`VOYAGE_API_KEY` is missing or empty in `local/backstage/.env`. Add the key and
+restart Backstage (`./scripts/bootstrap-local.sh --start-backstage`).
+
+**No results / stale results**
+
+Trigger a manual re-index:
+```bash
+curl -X POST http://backstage.idp.local/api/rag-search/index
+# Or click the "Re-index" button on the /ai-search page
+```
+
+Check indexing status:
+```bash
+curl http://backstage.idp.local/api/rag-search/status
+```
+
+**pgvector extension missing**
+
+The `rag_documents` table won't exist if Backstage was started before the
+`init-pgvector.sql` fix was committed. Tear down and restart Docker Compose:
+
+```bash
+docker compose -f local/backstage/docker-compose.yml down -v
+./scripts/bootstrap-local.sh --start-backstage
+```

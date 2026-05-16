@@ -59,6 +59,10 @@ proxy:
       changeOrigin: true
       headers:
         Authorization: Bearer ${GRAFANA_TOKEN}
+    /kagent:
+      target: http://kagent.idp.local
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
 
 # Serve tech radar from the locally mounted catalog volume instead of GitHub raw URL.
 # This avoids the YOUR_GITHUB_ORG placeholder issue and works without a GitHub token.

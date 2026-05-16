@@ -240,6 +240,8 @@ This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.
 |---------|-----|-------|
 | KAgent UI | http://kagent.idp.local | Direct agent chat UI |
 | AI Assistant | http://backstage.idp.local/ai-assistant | Backstage-embedded chat |
+| AI Search | http://backstage.idp.local/ai-search | Semantic search (requires `VOYAGE_API_KEY`) |
+| IDP Assistant (A2A) | http://idp-assistant.idp.local | A2A agent endpoint |
 | MLflow UI | http://mlflow.idp.local | Experiment tracking |
 | IDP MCP Server health | http://idp-mcp-server.idp.local/healthz | MCP server status |
 
@@ -267,6 +269,23 @@ sidebar). The assistant can:
 
 For scaffolding, provide `name`, `description`, and `owner` in one message — the
 agent will call the scaffolder immediately without asking for confirmation.
+
+### Enabling AI Search (semantic / RAG)
+
+The `/ai-search` page provides semantic search over the catalog using Voyage AI
+embeddings stored in pgvector. To enable it, add your Voyage AI key to
+`local/backstage/.env` before starting Backstage:
+
+```bash
+VOYAGE_API_KEY=your-key-here   # free tier: 200M tokens/month — voyageai.com
+```
+
+The Postgres image used by Docker Compose (`pgvector/pgvector:pg17`) and
+`local/backstage/init-pgvector.sql` handle the vector extension and table
+automatically on first Postgres startup — no manual SQL step needed.
+
+Without `VOYAGE_API_KEY`, the page loads but search returns HTTP 503. All other
+features are unaffected.
 
 See [docs/ai-assistant.md](ai-assistant.md) for the full architecture and
 troubleshooting guide.
