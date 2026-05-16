@@ -46,10 +46,5 @@ jobs:
       - name: Run DeepEval suite
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # AnswerRelevancy and Faithfulness use an LLM-as-judge.
-          # Either set OPENAI_API_KEY or update metric constructors to use
-          # a Claude model (claude-haiku-4-5-20251001 is cheapest).
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Disable DeepEval telemetry in CI
           DEEPEVAL_TELEMETRY_OPT_OUT: 'YES'
         run: deepeval test run tests/test_idp_assistant.py --exit-on-first-failure

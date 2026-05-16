@@ -48,7 +48,5 @@ The `eval.yml` workflow runs this suite on push/PR to `test-suites/test-deepeval
 or `kubernetes/kagent/idp-agent.yaml`. It requires `ANTHROPIC_API_KEY` to be set
 as a GitHub Actions repository secret.
 
-> **Note:** AnswerRelevancy and Faithfulness metrics use an LLM-as-judge
-> (default: `gpt-4o-mini`). Set `OPENAI_API_KEY` as a repo secret as well, or
-> swap the judge model for Claude by passing `model="claude-haiku-4-5-20251001"`
-> to the metric constructors.
+> **Note:** AnswerRelevancy and Faithfulness metrics use `claude-haiku-4-5-20251001`
+> as the LLM judge. Only `ANTHROPIC_API_KEY` is required — no OpenAI key needed.
