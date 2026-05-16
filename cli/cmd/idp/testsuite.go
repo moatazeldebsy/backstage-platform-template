@@ -33,6 +33,7 @@ var (
 	tsOwner     string
 	tsDesc      string
 	tsLocal     bool
+	tsDryRun    bool
 	tsURL       string
 
 	// k6
@@ -127,6 +128,7 @@ func init() {
 	f.StringVar(&tsOwner, "owner", "group:default/platform-team", "Backstage catalog owner ref")
 	f.StringVar(&tsDesc, "description", "", "Short description (used by Backstage template)")
 	f.BoolVar(&tsLocal, "local", false, "Skip Backstage API, generate files locally")
+	f.BoolVar(&tsDryRun, "dry-run", false, "Print files that would be generated without writing them")
 	f.StringVar(&tsURL, "backstage-url", "http://backstage.idp.local", "Backstage base URL")
 
 	// k6
@@ -208,9 +210,10 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		MutationScore: tsMutationScore,
 		TestRunner:    tsTestRunner,
 		Containers:    tsContainers,
+		DryRun:        tsDryRun,
 	}
 
-	if !tsLocal {
+	if !tsLocal && !tsDryRun {
 		client := backstage.NewClient(tsURL, readBackstageToken(rootDir()))
 		if client.Healthy(cmd.Context()) {
 			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", tsURL)

@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "${{ values.pythonVersion }}"
       - run: pip install -r requirements.txt ruff pytest
-      - run: ruff check . || true
-      - run: python -m pytest --tb=short || true
+      - run: ruff check .
+      - run: python -m pytest --tb=short
 
   train:
     name: Training smoke test
@@ -28,7 +28,7 @@ jobs:
       MLFLOW_TRACKING_URI: http://localhost:5000
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "${{ values.pythonVersion }}"
       - run: pip install -r requirements.txt mlflow
@@ -54,10 +54,10 @@ jobs:
       - name: Set image tag
         id: tag
         env:
-          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_SHA: ${{ '${{ github.sha }}' }}
         run: echo "tag=${COMMIT_SHA::8}" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v6
         with:
           context: .
           push: false
-          tags: ${{ values.name }}:${{ steps.tag.outputs.tag }}
+          tags: ${{ values.name }}:${{ '${{ steps.tag.outputs.tag }}' }}

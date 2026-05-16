@@ -167,6 +167,9 @@ idp scaffold service --name my-service --type nodejs
 # Force local generation (offline / pre-Backstage)
 idp scaffold service --name my-service --type nodejs --local
 
+# Preview what would be generated without writing anything
+idp scaffold service --name my-service --type nodejs --dry-run
+
 # Deploy locally
 docker build -t localhost:5003/my-service:latest services/my-service/
 docker push localhost:5003/my-service:latest
@@ -176,3 +179,27 @@ helm upgrade --install my-service ./helm/service-template \
   --set image.tag=latest \
   --values services/my-service/helm-values-local.yaml
 ```
+
+## CLI: Scaffold a test suite
+
+The `idp scaffold test-suite` command generates a ready-to-run QA suite alongside your service. It supports 13 test types.
+
+```bash
+# Playwright E2E suite
+idp scaffold test-suite --name my-svc-e2e --type playwright --service my-service
+
+# k6 load test — 20 VUs, 2 min, p95 < 400 ms
+idp scaffold test-suite --name my-svc-load --type k6 --service my-service \
+  --vus 20 --duration 2m --p95 400
+
+# OWASP ZAP DAST security scan
+idp scaffold test-suite --name my-svc-sec --type zap --service my-service \
+  --scan-type baseline
+
+# Preview before writing
+idp scaffold test-suite --name my-svc-e2e --type playwright --service my-service --dry-run
+```
+
+Generated suites land in `test-suites/<name>/` and are auto-registered in the Backstage catalog via `catalog-info.yaml`.
+
+See [CLI Reference](cli-reference.md) for all 13 test suite types and their flags.

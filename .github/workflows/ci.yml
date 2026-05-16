@@ -9,7 +9,10 @@ on:
       - 'kubernetes/**'
       - 'terraform/**'
       - 'backstage/app/**'
+      - 'backstage/app-config*.yaml'
       - 'backstage/Dockerfile'
+      - 'observability/**'
+      - 'cli/**'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
@@ -19,7 +22,10 @@ on:
       - 'kubernetes/**'
       - 'terraform/**'
       - 'backstage/app/**'
+      - 'backstage/app-config*.yaml'
       - 'backstage/Dockerfile'
+      - 'observability/**'
+      - 'cli/**'
       - '.github/workflows/ci.yml'
 
 env:
@@ -52,6 +58,48 @@ jobs:
           name: go-coverage
           path: services/hello-service/coverage.out
           retention-days: 1
+
+  test-cli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+
+      - name: Build CLI
+        working-directory: cli
+        run: go build ./...
+
+      - name: Vet CLI
+        working-directory: cli
+        run: go vet ./...
+
+      - name: Test CLI
+        working-directory: cli
+        run: go test ./...
+
+  python-observability-checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Syntax check observability scripts
+        run: |
+          python -m py_compile observability/dora/dora-exporter-local.py
+          python -m py_compile observability/dora/dora-exporter.py
+          python -m py_compile observability/tech-insights-exporter/exporter.py
 
   helm-lint:
     runs-on: ubuntu-latest
@@ -91,6 +139,12 @@ jobs:
       - name: Validate RBAC manifests
         run: kubeconform -strict -summary kubernetes/rbac/
 
+      - name: Validate monitoring manifests
+        run: kubeconform -strict -summary kubernetes/monitoring/
+
+      - name: Validate kagent manifests
+        run: kubeconform -strict -summary kubernetes/kagent/
+
   backstage-compile:
     runs-on: ubuntu-latest
     permissions:
@@ -101,7 +155,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: '24'
 
       - name: Enable Corepack (Yarn 4)
         run: corepack enable

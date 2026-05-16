@@ -662,7 +662,7 @@ if ! $SKIP_OBS; then
   # Create Grafana dashboard ConfigMaps
   kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
   kubectl create configmap grafana-dashboards-idp \
-    --from-file="$(dirname "$0")/../observability/grafana/dashboards/" \
+    --from-file="$(dirname "$0")/../observability/grafana/dashboards/idp/" \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml"
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml"

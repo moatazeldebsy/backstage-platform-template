@@ -1,9 +1,9 @@
 .PHONY: cli-build cli-install cli-clean
 
 cli-build: ## Build the idp CLI binary to ./bin/idp
-	cd cli && go build -o ../bin/idp ./cmd/idp
+	cd cli && go build -ldflags "-X main.version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)" -o ../bin/idp ./cmd/idp
 
-cli-install: ## Install the idp CLI to /usr/local/bin
+cli-install: ## Install the idp CLI to $(GOPATH)/bin
 	cd cli && go install ./cmd/idp
 
 cli-clean: ## Remove the built binary

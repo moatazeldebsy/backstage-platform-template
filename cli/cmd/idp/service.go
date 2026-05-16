@@ -17,6 +17,7 @@ var (
 	svcType      string
 	svcNamespace string
 	svcLocal     bool
+	svcDryRun    bool
 	svcURL       string
 	svcOwner     string
 	svcDesc      string
@@ -51,6 +52,7 @@ func init() {
 	serviceCmd.Flags().StringVar(&svcType, "type", "nodejs", "Service type: nodejs | python | go")
 	serviceCmd.Flags().StringVar(&svcNamespace, "namespace", "services", "Kubernetes namespace")
 	serviceCmd.Flags().BoolVar(&svcLocal, "local", false, "Skip Backstage API, generate files locally")
+	serviceCmd.Flags().BoolVar(&svcDryRun, "dry-run", false, "Print files that would be generated without writing them")
 	serviceCmd.Flags().StringVar(&svcURL, "backstage-url", "http://backstage.idp.local", "Backstage base URL")
 	serviceCmd.Flags().StringVar(&svcOwner, "owner", "group:default/platform-team", "Backstage catalog owner ref")
 	serviceCmd.Flags().StringVar(&svcDesc, "description", "", "Short description (used by Backstage template)")
@@ -66,7 +68,7 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--type must be nodejs, python, or go (got %q)", svcType)
 	}
 
-	if !svcLocal {
+	if !svcLocal && !svcDryRun {
 		client := backstage.NewClient(svcURL, readBackstageToken(rootDir()))
 		if client.Healthy(cmd.Context()) {
 			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", svcURL)
@@ -90,6 +92,7 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 		Type:      svcType,
 		Namespace: svcNamespace,
 		RootDir:   rootDir(),
+		DryRun:    svcDryRun,
 	})
 }
 

@@ -96,9 +96,12 @@ def compute_lead_time(prod_runs: list) -> float:
     for run in prod_runs:
         if run.get("conclusion") != "success":
             continue
-        created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
-        updated = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
-        lead_times.append((updated - created).total_seconds() / 60.0)
+        # True DORA lead time: from the commit timestamp to when the deploy completed.
+        # head_commit.timestamp is the moment the commit was pushed; updated_at is deploy done.
+        commit_ts = (run.get("head_commit") or {}).get("timestamp") or run["created_at"]
+        commit_time = datetime.fromisoformat(commit_ts.replace("Z", "+00:00"))
+        deploy_time = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
+        lead_times.append((deploy_time - commit_time).total_seconds() / 60.0)
     return sum(lead_times) / len(lead_times) if lead_times else 0.0
 
 
@@ -161,12 +164,12 @@ def push_aggregate_metrics(repos: list, all_deploy_freq: list, all_lead_times: l
     Gauge("dora_lead_time_minutes",
           "Average lead time from commit to prod deploy (minutes)",
           ["service"], registry=registry).labels(service="all-services").set(
-              sum(all_lead_times) / len(all_lead_times))
+              sum(all_lead_times) / len(all_lead_times) if all_lead_times else 0.0)
 
     Gauge("dora_change_failure_rate_percent",
           "Percentage of prod deploys that resulted in failure",
           ["service"], registry=registry).labels(service="all-services").set(
-              sum(all_cfr) / len(all_cfr))
+              sum(all_cfr) / len(all_cfr) if all_cfr else 0.0)
 
     Gauge("dora_mttr_minutes",
           "Mean time to restore after a failed prod deploy (minutes)",

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"embed"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,7 @@ type ServiceConfig struct {
 	PlatformRepo string
 	Port         int
 	TestCmd      string
+	DryRun       bool
 }
 
 // LocalService generates a service scaffold under <RootDir>/services/<Name>.
@@ -31,16 +33,25 @@ func LocalService(cfg ServiceConfig) error {
 	cfg = applyDefaults(cfg)
 
 	targetDir := filepath.Join(cfg.RootDir, "services", cfg.Name)
-	if _, err := os.Stat(targetDir); err == nil {
-		return fmt.Errorf("service %q already exists at %s", cfg.Name, targetDir)
+	if !cfg.DryRun {
+		if _, err := os.Stat(targetDir); err == nil {
+			return fmt.Errorf("service %q already exists at %s", cfg.Name, targetDir)
+		}
 	}
 
 	entries := fileEntries(cfg.Type)
 	for _, e := range entries {
 		if err := renderFile(e.tmpl, filepath.Join(targetDir, e.out), cfg); err != nil {
-			_ = os.RemoveAll(targetDir)
+			if !cfg.DryRun {
+				_ = os.RemoveAll(targetDir)
+			}
 			return fmt.Errorf("rendering %s: %w", e.tmpl, err)
 		}
+	}
+
+	if cfg.DryRun {
+		fmt.Printf("[idp] [dry-run] no files written — rerun without --dry-run to scaffold\n")
+		return nil
 	}
 
 	if err := gitCommit(cfg.RootDir, "services/"+cfg.Name); err != nil {
@@ -94,12 +105,16 @@ func renderFile(tmplRelPath, outPath string, data ServiceConfig) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return err
-	}
 	t, err := template.New(filepath.Base(src)).Delims("<%", "%>").Parse(string(content))
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
+	}
+	if data.DryRun {
+		fmt.Printf("[idp] [dry-run] would write %s\n", outPath)
+		return t.Execute(io.Discard, data)
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
 	}
 	f, err := os.Create(outPath)
 	if err != nil {

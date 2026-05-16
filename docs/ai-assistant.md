@@ -20,10 +20,10 @@ catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolde
                         ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  KAgent UI  (namespace: kagent)                                  │
-│  kagent-ui.kagent.svc.cluster.local:8080  (in-cluster)          │
+│  kagent-ui.kagent.svc.cluster.local:8080  (in-cluster)           │
 │  http://kagent.idp.local  (local ingress)                        │
 │                                                                  │
-│  A2A server — routes /a2a/kagent/<agent-name>                   │
+│  A2A server — routes /a2a/kagent/<agent-name>                    │
 │  Sessions API — GET /api/sessions/:id                            │
 └───────────────────────┬──────────────────────────────────────────┘
                         │  MCP over HTTP

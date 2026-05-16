@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,6 +58,8 @@ type TestSuiteConfig struct {
 
 	// testcontainers
 	Containers string
+
+	DryRun bool
 }
 
 // LocalTestSuite generates a test suite scaffold under <RootDir>/test-suites/<Name>.
@@ -64,8 +67,10 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 	cfg = applyTestSuiteDefaults(cfg)
 
 	targetDir := filepath.Join(cfg.RootDir, "test-suites", cfg.Name)
-	if _, err := os.Stat(targetDir); err == nil {
-		return fmt.Errorf("test suite %q already exists at %s", cfg.Name, targetDir)
+	if !cfg.DryRun {
+		if _, err := os.Stat(targetDir); err == nil {
+			return fmt.Errorf("test suite %q already exists at %s", cfg.Name, targetDir)
+		}
 	}
 
 	generators := map[string]func(TestSuiteConfig, string) error{
@@ -89,7 +94,9 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 		return fmt.Errorf("unknown test suite type: %s", cfg.Type)
 	}
 	cleanup := func(err error) error {
-		_ = os.RemoveAll(targetDir)
+		if !cfg.DryRun {
+			_ = os.RemoveAll(targetDir)
+		}
 		return err
 	}
 
@@ -104,8 +111,15 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 	if err := writeTSFile(targetDir, "mkdocs.yml", tsMkdocs, cfg); err != nil {
 		return cleanup(err)
 	}
-	if err := os.MkdirAll(filepath.Join(targetDir, "docs"), 0o755); err != nil {
-		return cleanup(err)
+	if !cfg.DryRun {
+		if err := os.MkdirAll(filepath.Join(targetDir, "docs"), 0o755); err != nil {
+			return cleanup(err)
+		}
+	}
+
+	if cfg.DryRun {
+		fmt.Printf("[idp] [dry-run] no files written — rerun without --dry-run to scaffold\n")
+		return nil
 	}
 
 	if err := gitCommit(cfg.RootDir, "test-suites/"+cfg.Name); err != nil {
@@ -138,12 +152,16 @@ func applyTestSuiteDefaults(cfg TestSuiteConfig) TestSuiteConfig {
 // writeTSFile renders a template string and writes it to outPath inside targetDir.
 func writeTSFile(targetDir, relPath, tmplStr string, data TestSuiteConfig) error {
 	outPath := filepath.Join(targetDir, relPath)
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return err
-	}
 	t, err := template.New(relPath).Delims("<%", "%>").Parse(tmplStr)
 	if err != nil {
 		return fmt.Errorf("parse template %s: %w", relPath, err)
+	}
+	if data.DryRun {
+		fmt.Printf("[idp] [dry-run] would write %s\n", outPath)
+		return t.Execute(io.Discard, data)
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
 	}
 	f, err := os.Create(outPath)
 	if err != nil {
