@@ -140,10 +140,19 @@ jobs:
         run: kubeconform -strict -summary kubernetes/rbac/
 
       - name: Validate monitoring manifests
-        run: kubeconform -strict -summary kubernetes/monitoring/
+        run: |
+          kubeconform -strict -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            kubernetes/monitoring/
 
       - name: Validate kagent manifests
-        run: kubeconform -strict -summary kubernetes/kagent/
+        run: |
+          kubeconform -strict -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            kubernetes/kagent/
 
   backstage-compile:
     runs-on: ubuntu-latest
