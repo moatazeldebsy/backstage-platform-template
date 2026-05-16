@@ -89,7 +89,7 @@ def _call_agent(
 # Starter test cases — customise inputs and expected_tools for your agent
 # ---------------------------------------------------------------------------
 
-{%- set first_tool = values.agentTools.split(',')[0].strip() %}
+{%- set first_tool = (values.agentTools.split(',') | first) | trim %}
 
 def test_answer_relevancy():
     """Agent responses should be relevant to the question asked."""
@@ -112,8 +112,7 @@ def test_faithfulness():
         "Give me the latest information you have.",
         metrics=[metric],
     )
-    # Use the first tool stub as the retrieval context
-    retrieval_context = [TOOL_STUB_RESPONSES.get("${{ first_tool }}", "{}")]
+    retrieval_context = [TOOL_STUB_RESPONSES.get("{{ first_tool }}", "{}")]
     test_case = LLMTestCase(
         input="Give me the latest information you have.",
         actual_output=output,
@@ -126,20 +125,19 @@ def test_tool_correctness():
     """Agent must call the expected tool when given a clear task."""
     metric = ToolCorrectnessMetric(threshold=1.0, model=JUDGE_MODEL())
     output, tools_called = _call_agent(
-        # TODO: replace with a prompt that should trigger '${{ first_tool }}'
-        "Use ${{ first_tool }} to get information.",
+        "Use {{ first_tool }} to get information.",
         metrics=[metric],
     )
 
-    assert "${{ first_tool }}" in tools_called, (
-        f"Expected '${{ first_tool }}' to be called, got: {tools_called}"
+    assert "{{ first_tool }}" in tools_called, (
+        f"Expected '{{ first_tool }}' to be called, got: {tools_called}"
     )
 
     actual_tool_calls = [ToolCall(name=t) for t in tools_called]
     test_case = LLMTestCase(
-        input="Use ${{ first_tool }} to get information.",
+        input="Use {{ first_tool }} to get information.",
         actual_output=output,
         tools_called=actual_tool_calls,
-        expected_tools=[ToolCall(name="${{ first_tool }}")],
+        expected_tools=[ToolCall(name="{{ first_tool }}")],
     )
     assert_test(test_case, [metric])

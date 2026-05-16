@@ -18,8 +18,8 @@ SYSTEM_PROMPT = """${{ values.agentSystemPrompt }}"""
 TOOL_DEFINITIONS = [
 {%- for tool in tool_list %}
     {
-        "name": "${{ tool.strip() }}",
-        "description": "Tool: ${{ tool.strip() }} — update this description to match the deployed agent.",
+        "name": "{{ tool | trim }}",
+        "description": "Tool: {{ tool | trim }} — update this description to match the deployed agent.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -34,7 +34,7 @@ TOOL_DEFINITIONS = [
 # Replace placeholder values with realistic fixture data for your agent.
 TOOL_STUB_RESPONSES: dict[str, str] = {
 {%- for tool in tool_list %}
-    "${{ tool.strip() }}": json.dumps({"result": "stub response for ${{ tool.strip() }} — replace with realistic fixture data"}),
+    "{{ tool | trim }}": json.dumps({"result": "stub response for {{ tool | trim }} — replace with realistic fixture data"}),
 {%- endfor %}
 }
 
