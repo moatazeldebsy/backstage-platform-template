@@ -102,7 +102,7 @@ def _call_agent(
 
 def test_catalog_lookup_answer_relevancy():
     """Claude should answer a catalog lookup question using catalog_search."""
-    metric = AnswerRelevancyMetric(threshold=0.7, model=JUDGE_MODEL)
+    metric = AnswerRelevancyMetric(threshold=0.7, model=JUDGE_MODEL())
     output, _ = _call_agent(
         "What services are registered in the catalog?",
         metrics=[metric],
@@ -116,7 +116,7 @@ def test_catalog_lookup_answer_relevancy():
 
 def test_service_metrics_faithfulness():
     """Claude should report only the metrics returned by get_service_metrics."""
-    metric = FaithfulnessMetric(threshold=0.7, model=JUDGE_MODEL)
+    metric = FaithfulnessMetric(threshold=0.7, model=JUDGE_MODEL())
     output, _ = _call_agent(
         "What is the error rate for hello-service?",
         metrics=[metric],
@@ -161,7 +161,7 @@ def test_scaffold_flow_tool_correctness():
 
 def test_list_deployments_answer_relevancy():
     """Claude should enumerate deployments returned by list_deployments."""
-    metric = AnswerRelevancyMetric(threshold=0.7, model=JUDGE_MODEL)
+    metric = AnswerRelevancyMetric(threshold=0.7, model=JUDGE_MODEL())
     output, _ = _call_agent(
         "What deployments are currently running?",
         metrics=[metric],
