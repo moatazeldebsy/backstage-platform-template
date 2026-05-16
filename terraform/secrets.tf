@@ -19,10 +19,7 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     K8S_SERVICE_ACCOUNT_TOKEN = "REPLACE_ME"
     TECHDOCS_S3_BUCKET_NAME   = aws_s3_bucket.techdocs.id
     AWS_REGION                = var.aws_region
-    # Static token for in-cluster services (MCP servers, catalog exporter) to
-    # authenticate against the Backstage catalog API. Must match the value
-    # in the backend.auth.externalAccess section of app-config.production.yaml.
-    BACKSTAGE_CATALOG_TOKEN   = "REPLACE_ME"
+    BACKSTAGE_CATALOG_TOKEN = "REPLACE_ME" # must match backend.auth.externalAccess in configmap.yaml
   })
 }
 
