@@ -1,0 +1,55 @@
+name: LLM Eval (DeepEval)
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'test-suites/test-deepeval/**'
+      - 'kubernetes/kagent/idp-agent.yaml'
+      - '.github/workflows/eval.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/test-deepeval/**'
+      - 'kubernetes/kagent/idp-agent.yaml'
+      - '.github/workflows/eval.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deepeval:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: test-suites/test-deepeval
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test-suites/test-deepeval/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run DeepEval suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # AnswerRelevancy and Faithfulness use an LLM-as-judge.
+          # Either set OPENAI_API_KEY or update metric constructors to use
+          # a Claude model (claude-haiku-4-5-20251001 is cheapest).
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Disable DeepEval telemetry in CI
+          DEEPEVAL_TELEMETRY_OPT_OUT: 'YES'
+        run: deepeval test run tests/test_idp_assistant.py --exit-on-first-failure

@@ -257,6 +257,11 @@ catalog:
       target: /services/qa-mcp-server/catalog-info.yaml
       rules:
         - allow: [Component]
+    # ── LLM Eval suite ───────────────────────────────────────────────────────
+    - type: file
+      target: /test-suites/test-deepeval/catalog-info.yaml
+      rules:
+        - allow: [Component]
     # ── Scaffolded ML experiments (written at scaffold-time by idp:run-training-job) ──
     - type: file
       target: /catalog/ml-experiments/*/catalog-info.yaml
