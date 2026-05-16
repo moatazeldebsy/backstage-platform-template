@@ -227,6 +227,10 @@ catalog:
       target: /services/hello-service/catalog-info.yaml
       rules:
         - allow: [Component]
+    - type: file
+      target: /catalog/services/idp-assistant/catalog-info.yaml
+      rules:
+        - allow: [Component]
     # ── AI / ML / MCP Platform ───────────────────────────────────────────────
     - type: file
       target: /catalog/templates/ai-agent-kagent/template.yaml
