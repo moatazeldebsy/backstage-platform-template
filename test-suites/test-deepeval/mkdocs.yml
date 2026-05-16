@@ -1,0 +1,8 @@
+site_name: test-deepeval
+site_description: DeepEval LLM evaluation suite for the IDP assistant (Claude/Anthropic)
+
+nav:
+  - Home: docs/index.md
+
+plugins:
+  - techdocs-core
