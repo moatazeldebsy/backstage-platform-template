@@ -137,7 +137,8 @@ export const ragSearchPlugin = createBackendPlugin({
             const tags: string = (e.metadata?.tags ?? []).join(' ');
             const owner: string = e.spec?.owner ?? '';
             const content = [desc, tags, owner].filter(Boolean).join('\n');
-            const searchUrl = `http://localhost:3000/catalog/${e.metadata?.namespace ?? 'default'}/${e.kind.toLowerCase()}/${e.metadata?.name}`;
+            const appBaseUrl = config.getString('app.baseUrl');
+            const searchUrl = `${appBaseUrl}/catalog/${e.metadata?.namespace ?? 'default'}/${e.kind.toLowerCase()}/${e.metadata?.name}`;
             return { id: `catalog:${ref}`, title: e.metadata?.name ?? ref, kind: e.kind, url: searchUrl, content };
           });
           await upsertDocs(docs);

@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/moatazeldebsy/order-svc
+  repository: ghcr.io/YOUR_GITHUB_ORG/order-svc
   tag: "latest"
   pullPolicy: IfNotPresent
 

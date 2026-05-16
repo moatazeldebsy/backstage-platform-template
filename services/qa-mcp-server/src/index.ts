@@ -136,7 +136,7 @@ function createServer() {
         const enrichedValues: Record<string, unknown> = { ...values };
         const repoName = (enrichedValues['name'] as string | undefined) ?? '';
         const rawOwner = (enrichedValues['owner'] as string | undefined) ?? '';
-        const ghOwner = rawOwner.includes('/') ? rawOwner.split('/').pop()! : (rawOwner || 'moatazeldebsy');
+        const ghOwner = rawOwner.includes('/') ? rawOwner.split('/').pop()! : (rawOwner || process.env.GITHUB_ORG || 'YOUR_GITHUB_ORG');
 
         if (!enrichedValues['repoUrl']) {
           enrichedValues['repoUrl'] = `github.com?owner=${encodeURIComponent(ghOwner)}&repo=${encodeURIComponent(repoName)}`;
