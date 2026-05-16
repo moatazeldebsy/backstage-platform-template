@@ -20,6 +20,9 @@ prometheus:
     servicePort: 9090
   prometheusSpec:
     retention: 6h
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelector: {}
     resources:
       requests:
         cpu: 100m
@@ -44,6 +47,10 @@ alertmanager:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout"
+      nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "3"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     hosts:
       - alertmanager.idp.local
   alertmanagerSpec:
@@ -68,6 +75,10 @@ grafana:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout"
+      nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "3"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     hosts:
       - grafana.idp.local
   dashboardProviders:
