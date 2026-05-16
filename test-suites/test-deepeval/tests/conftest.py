@@ -8,6 +8,9 @@ aligned with what is actually deployed.
 
 import json
 import pytest
+from deepeval.models import AnthropicModel
+
+JUDGE_MODEL = AnthropicModel(model="claude-haiku-4-5-20251001")
 
 # Verbatim from kubernetes/kagent/idp-agent.yaml → spec.declarative.systemMessage
 SYSTEM_PROMPT = """You are the IDP (Internal Developer Platform) assistant for this organization.
