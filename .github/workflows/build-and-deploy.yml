@@ -169,7 +169,7 @@ jobs:
       # ── Trivy vulnerability scan ──────────────────────────────────────────
       - name: Run Trivy vulnerability scan
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
           format: sarif
