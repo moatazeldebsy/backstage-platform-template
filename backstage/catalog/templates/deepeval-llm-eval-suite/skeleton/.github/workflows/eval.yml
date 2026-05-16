@@ -16,7 +16,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 concurrency:
-  group: eval-${{"{{"}} github.ref {{"}}"}}
+  group: ${{ '${{ github.ref }}' }}
   cancel-in-progress: true
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Run DeepEval suite
         env:
-          ANTHROPIC_API_KEY: ${{"{{"}} secrets.ANTHROPIC_API_KEY {{"}}"}}
+          ANTHROPIC_API_KEY: ${{ '${{ secrets.ANTHROPIC_API_KEY }}' }}
           DEEPEVAL_TELEMETRY_OPT_OUT: 'YES'
         run: |
           mkdir -p results
