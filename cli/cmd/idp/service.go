@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/moatazeldebsy/backstage-idp-starter/cli/internal/backstage"
-	"github.com/moatazeldebsy/backstage-idp-starter/cli/internal/scaffold"
+	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/backstage"
+	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/scaffold"
 )
 
 var (

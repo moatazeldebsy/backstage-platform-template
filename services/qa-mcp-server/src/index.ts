@@ -99,7 +99,7 @@ function createServer() {
     'scaffold_test_suite',
     'Scaffold a QA test suite from a Backstage template. Only test-suite templates are accepted. ' +
     'IMPORTANT: values must include "repoUrl" in Backstage RepoUrlPicker format: ' +
-    '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=moatazeldebsy&repo=my-pact-tests"). ' +
+    '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=YOUR_GITHUB_ORG&repo=my-pact-tests"). ' +
     'Required values: name, description, owner (Backstage group ref, e.g. "group:default/qa-team"), ' +
     'repoUrl (RepoUrlPicker format). ' +
     'Call list_test_suites first to pick the right templateRef.',

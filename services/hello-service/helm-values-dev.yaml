@@ -12,12 +12,13 @@ service:
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: "alb"
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
   hosts:
-    - host: hello-service-dev.idp.local
+    - host: ""   # match any hostname; use ALB DNS directly
       paths:
         - path: /
           pathType: Prefix

@@ -77,6 +77,11 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: AUTH_GITHUB_CLIENT_SECRET
+            - name: BACKSTAGE_CATALOG_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: BACKSTAGE_CATALOG_TOKEN
             - name: PGSSLMODE
               value: require
             - name: NODE_ENV

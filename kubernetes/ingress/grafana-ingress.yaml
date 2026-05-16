@@ -1,8 +1,14 @@
-# Production ALB Ingress for Grafana (kube-prometheus-stack release name: prometheus)
-# Apply after kube-prometheus-stack is deployed to EKS:
-#   kubectl apply -f kubernetes/ingress/grafana-ingress.yaml
+# NOTE: Do NOT apply this file manually. The ALB ingress for Grafana is already
+# created by the kube-prometheus-stack Helm chart via observability/prometheus-stack-values-aws.yaml.
+# Applying this file would create a duplicate Ingress object and cause ALB conflicts.
 #
-# hosts: [] — matches any hostname; set to real domain when Route53/DNS is configured.
+# This file is kept as a reference for the ingress spec. To customise (e.g. add a real
+# hostname after Route53 is configured), edit the grafana.ingress section in
+# observability/prometheus-stack-values-aws.yaml and run:
+#   helm upgrade prometheus prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --values observability/prometheus-stack-values-aws.yaml
+#
+# hosts: [] — matches any hostname; use ALB DNS directly until Route53 is configured.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

@@ -1,4 +1,4 @@
-module github.com/moatazeldebsy/backstage-idp-starter/cli
+module github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli
 
 go 1.26
 

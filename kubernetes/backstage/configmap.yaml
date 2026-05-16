@@ -109,6 +109,12 @@ data:
       baseUrl: http://BACKSTAGE_ALB_URL
       cors:
         origin: http://BACKSTAGE_ALB_URL
+      auth:
+        externalAccess:
+          - type: static
+            options:
+              token: ${BACKSTAGE_CATALOG_TOKEN}
+              subject: catalog-exporter
 
     techRadar:
       url: https://raw.githubusercontent.com/YOUR_GITHUB_ORG/backstage-idp-starter/main/backstage/catalog/tech-radar.json

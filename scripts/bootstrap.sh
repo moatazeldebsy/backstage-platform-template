@@ -159,6 +159,10 @@ else
     --secret-id "$BACKSTAGE_SECRET_ARN" \
     --query SecretString --output text)
 
+  # Generate a random token for Backstage external access (used by MCP servers
+  # and catalog exporter). Must match backend.auth.externalAccess in configmap.yaml.
+  BACKSTAGE_CATALOG_TOKEN=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
+
   UPDATED_SECRET=$(echo "$CURRENT_SECRET" | python3 -c "
 import json, sys, os
 s = json.load(sys.stdin)
@@ -175,8 +179,9 @@ if client_secret:
 grafana_pw = os.environ.get('GRAFANA_ADMIN_PASSWORD', '')
 if grafana_pw:
     s['GRAFANA_ADMIN_PASSWORD'] = grafana_pw
+s['BACKSTAGE_CATALOG_TOKEN'] = os.environ['BACKSTAGE_CATALOG_TOKEN']
 print(json.dumps(s))
-" K8S_SA_TOKEN="$K8S_SA_TOKEN")
+" K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN")
 
   aws secretsmanager update-secret \
     --secret-id "$BACKSTAGE_SECRET_ARN" \
@@ -297,6 +302,20 @@ kubectl create configmap tech-insights-exporter-script \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
 log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
+
+# ── Phase 4.4a: ServiceMonitor — Prometheus scraping for services namespaces ──
+log "Phase 4.4a: Applying ServiceMonitor for services namespaces..."
+kubectl apply -f kubernetes/monitoring/servicemonitor.yaml
+log "  ServiceMonitor applied — Prometheus will scrape services/services-dev."
+
+# ── Phase 4.4b: Demo team namespace (awesome-team) ───────────────────────────
+log "Phase 4.4b: Applying demo team namespace (awesome-team)..."
+kubectl apply -f kubernetes/teams/awesome-team/namespace.yaml
+kubectl apply -f kubernetes/teams/awesome-team/rbac.yaml
+kubectl apply -f kubernetes/teams/awesome-team/resource-quota.yaml
+kubectl apply -f kubernetes/teams/awesome-team/limit-range.yaml
+kubectl apply -f kubernetes/teams/awesome-team/network-policy.yaml
+log "  Team namespace team-awesome-team ready (RBAC, quotas, network policies)."
 
 # ── Phase 4.5: Install ArgoCD ────────────────────────────────────────────────
 if [[ "$SKIP_GITOPS" != "true" ]]; then
@@ -479,6 +498,19 @@ if [[ "$SKIP_DORA" != "true" ]]; then
   cd "$ROOT_DIR"
   bash scripts/apply-catalog-exporter.sh
   log "  Catalog exporter deployed."
+fi
+
+# ── Phase 5.8: AlertManager Slack webhook ────────────────────────────────────
+log "Phase 5.8: Wiring AlertManager Slack webhook..."
+if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+  kubectl create secret generic alertmanager-slack-webhook \
+    --from-literal=webhook-url="${SLACK_WEBHOOK_URL}" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f observability/alertmanager/alertmanager-config.yaml
+  log "  AlertManager Slack webhook configured."
+else
+  log "  SLACK_WEBHOOK_URL not set — skipping AlertManager Slack routing."
+  log "  To enable: export SLACK_WEBHOOK_URL=https://hooks.slack.com/... and re-run."
 fi
 
 # ── Phase 6: AI/ML platform (KAgent + MLflow + MCP servers) ──────────────────

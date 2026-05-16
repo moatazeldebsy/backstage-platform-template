@@ -999,6 +999,28 @@ else
   log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."
 fi
 
+# ── Step 11b: ServiceMonitor — Prometheus scraping for services namespaces ────
+if ! $SKIP_OBS; then
+  (
+    set -e
+    log "Step 11b: Applying ServiceMonitor for services namespaces..."
+    kubectl apply -f "${ROOT_DIR}/kubernetes/monitoring/servicemonitor.yaml"
+    log "  ServiceMonitor applied — Prometheus will scrape services/services-dev."
+  ) || warn "Step 11b (ServiceMonitor) failed — run: kubectl apply -f kubernetes/monitoring/servicemonitor.yaml"
+fi
+
+# ── Step 11c: Demo team namespace (awesome-team) ──────────────────────────────
+(
+  set -e
+  log "Step 11c: Applying demo team namespace (awesome-team)..."
+  kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/namespace.yaml"
+  kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/rbac.yaml"
+  kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/resource-quota.yaml"
+  kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/limit-range.yaml"
+  kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/network-policy.yaml"
+  log "  Team namespace team-awesome-team ready (RBAC, quotas, network policies)."
+) || warn "Step 11c (team namespace) failed — run: kubectl apply -f kubernetes/teams/awesome-team/ Continuing..."
+
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
 log "Step 12: Wiring AlertManager..."
 if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then

@@ -85,5 +85,5 @@ Initial open-source release of the backstage-idp-starter template.
 - `YOUR_ORG`/`YOUR_REPO` documentation tokens now substituted by setup.sh
 - build-and-deploy.yml: graceful skip when `AWS_ROLE_ARN` secret is not set
 
-[Unreleased]: https://github.com/moatazeldebsy/backstage-idp-starter/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/moatazeldebsy/backstage-idp-starter/releases/tag/v0.1.0
+[Unreleased]: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/releases/tag/v0.1.0

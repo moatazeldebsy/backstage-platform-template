@@ -1,0 +1,88 @@
+# Helm overrides for qa-mcp-server — AWS dev environment
+# ECR_REGISTRY_PLACEHOLDER is substituted by bootstrap-ai.sh --aws
+fullnameOverride: qa-mcp-server
+
+replicaCount: 1
+
+image:
+  repository: ECR_REGISTRY_PLACEHOLDER/qa-mcp-server
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3002
+  targetPort: 3002
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+  hosts:
+    - host: ""   # match any hostname; use ALB DNS directly
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+env:
+  - name: BACKSTAGE_URL
+    value: "http://backstage.backstage.svc.cluster.local:7007"
+  - name: BACKSTAGE_EXTERNAL_URL
+    value: ""   # set to real domain when DNS is configured
+  - name: BACKSTAGE_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: mcp-backstage-token
+        key: token
+  - name: PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PORT
+    value: "3002"
+  - name: GITHUB_ORG
+    value: "YOUR_GITHUB_ORG"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch"]
+  capabilities:
+    drop:
+      - ALL
+
+backstage:
+  kubernetesId: qa-mcp-server
+
+podLabels:
+  backstage.io/kubernetes-id: qa-mcp-server

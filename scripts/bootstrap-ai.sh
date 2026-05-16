@@ -65,8 +65,8 @@ if $DESTROY; then
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow-aws.yaml" 2>/dev/null || true
-  helm uninstall idp-mcp-server --namespace services 2>/dev/null || true
-  helm uninstall qa-mcp-server  --namespace services 2>/dev/null || true
+  helm uninstall idp-mcp-server --namespace services-dev 2>/dev/null || true
+  helm uninstall qa-mcp-server  --namespace services-dev 2>/dev/null || true
   kubectl delete namespace kagent ml-platform 2>/dev/null || true
   info "Done. Re-run ./scripts/bootstrap-ai.sh to reinstall."
   exit 0
@@ -262,6 +262,27 @@ fi
 if [[ "$SKIP_MCP" == "true" ]]; then
   info "Skipping IDP/QA MCP Servers (--skip-mcp)."
 else
+  # AWS: create mcp-backstage-token secret in services-dev so MCP servers can
+  # authenticate against the Backstage catalog API. The token value comes from
+  # Secrets Manager (idp-mvp/backstage → BACKSTAGE_CATALOG_TOKEN) and must match
+  # the externalAccess token configured in kubernetes/backstage/configmap.yaml.
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    info "Creating mcp-backstage-token secret in services-dev..."
+    MCP_BS_TOKEN=$(aws secretsmanager get-secret-value \
+      --secret-id "${CLUSTER_NAME}/backstage" \
+      --query SecretString --output text 2>/dev/null \
+      | python3 -c "import json,sys; s=json.load(sys.stdin); print(s.get('BACKSTAGE_CATALOG_TOKEN','REPLACE_ME'))" \
+      2>/dev/null || echo "REPLACE_ME")
+    if [[ "$MCP_BS_TOKEN" == "REPLACE_ME" ]]; then
+      warn "BACKSTAGE_CATALOG_TOKEN not set in Secrets Manager — MCP servers won't authenticate to Backstage."
+      warn "Update the secret: aws secretsmanager update-secret --secret-id ${CLUSTER_NAME}/backstage ..."
+    fi
+    kubectl create secret generic mcp-backstage-token \
+      --from-literal=token="${MCP_BS_TOKEN}" \
+      --namespace services-dev --dry-run=client -o yaml | kubectl apply -f -
+    check "mcp-backstage-token secret created in services-dev"
+  fi
+
   for SVC in idp-mcp-server qa-mcp-server; do
     info "Building ${SVC}..."
     (
@@ -275,9 +296,9 @@ else
         docker push "${REGISTRY}/${SVC}:0.1.0"
         docker push "${REGISTRY}/${SVC}:latest"
         sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
-          "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
+          "${REPO_ROOT}/services/${SVC}/helm-values-dev.yaml" \
           | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
-              --namespace services --values /dev/stdin --wait --timeout 3m
+              --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
         check "${SVC} deployed → ALB"
       else
         docker build \

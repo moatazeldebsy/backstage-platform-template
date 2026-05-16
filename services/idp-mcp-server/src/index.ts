@@ -148,7 +148,7 @@ server.tool(
   'scaffold_service',
   'Trigger a Backstage scaffolder template to create a new service. ' +
   'IMPORTANT: values must include "repoUrl" in Backstage RepoUrlPicker format: ' +
-  '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=moatazeldebsy&repo=my-service"). ' +
+  '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=YOUR_GITHUB_ORG&repo=my-service"). ' +
   'Required values: name (string), description (string), owner (Backstage group ref, e.g. "group:default/platform-team"), ' +
   'repoUrl (RepoUrlPicker format as above).',
   {
