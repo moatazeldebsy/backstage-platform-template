@@ -136,7 +136,7 @@ def test_scaffold_flow_tool_correctness():
     (in that order) when asked to scaffold a new service with all required
     fields provided.
     """
-    metric = ToolCorrectnessMetric(threshold=1.0)
+    metric = ToolCorrectnessMetric(threshold=1.0, model=JUDGE_MODEL())
     output, tools_called = _call_agent(
         "Scaffold a Go service called payments-api owned by payments-team.",
         metrics=[metric],
@@ -175,7 +175,7 @@ def test_list_deployments_answer_relevancy():
 
 def test_no_template_hallucination():
     """Claude must not name templates from memory without calling list_templates."""
-    metric = ToolCorrectnessMetric(threshold=1.0)
+    metric = ToolCorrectnessMetric(threshold=1.0, model=JUDGE_MODEL())
     output, tools_called = _call_agent(
         "What templates are available for scaffolding?",
         metrics=[metric],
