@@ -55,19 +55,39 @@ command -v docker  >/dev/null || die "docker not found"
 
 if $DESTROY; then
   info "Tearing down AI/ML platform components (core platform untouched)..."
-  helm uninstall kagent      --namespace kagent   2>/dev/null || true
-  helm uninstall kagent-crds --namespace kagent   2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"   2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"    2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"  2>/dev/null || true
+
+  # Ingresses first — deleting the namespace races with finalizer cleanup
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ingress.yaml"              2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ingress-idp-assistant.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ingress-aws.yaml"          2>/dev/null || true
+
+  # KAgent Helm releases + resources
+  helm uninstall kagent      --namespace kagent 2>/dev/null || true
+  helm uninstall kagent-crds --namespace kagent 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"    2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"     2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"   2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"  2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
+
+  # MLflow
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow-aws.yaml" 2>/dev/null || true
+
+  # MCP servers (services-dev namespace)
   helm uninstall idp-mcp-server --namespace services-dev 2>/dev/null || true
   helm uninstall qa-mcp-server  --namespace services-dev 2>/dev/null || true
-  kubectl delete namespace kagent ml-platform 2>/dev/null || true
+  # Remove services-dev only if it is now empty
+  if [[ -z "$(kubectl get all -n services-dev --ignore-not-found -o name 2>/dev/null)" ]]; then
+    kubectl delete namespace services-dev 2>/dev/null || true
+  else
+    warn "services-dev still has resources — namespace left in place."
+  fi
+
+  # Delete namespaces (waits for all pods to terminate)
+  kubectl delete namespace kagent ml-platform --wait=true 2>/dev/null || true
+
   info "Done. Re-run ./scripts/bootstrap-ai.sh to reinstall."
   exit 0
 fi

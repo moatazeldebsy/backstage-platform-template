@@ -11,7 +11,7 @@
 #   ./scripts/bootstrap-local.sh --install-pushgateway        # install/fix Pushgateway + seed QA metrics
 #   ./scripts/bootstrap-local.sh --install-argocd             # install/fix ArgoCD + register GitHub creds
 #   ./scripts/bootstrap-local.sh --update-backstage-ip        # refresh Backstage endpoint IP after compose up
-#   ./scripts/bootstrap-local.sh --destroy                    # tear everything down
+#   ./scripts/bootstrap-local.sh --destroy                    # tear everything down (prompts for confirmation)
 #   ./scripts/bootstrap-local.sh --clean-docker               # stop Backstage + prune all Docker resources
 #   ./scripts/bootstrap-local.sh --print-urls                 # print all service URLs without running bootstrap
 #
@@ -274,23 +274,48 @@ fi
 
 # ── Teardown path ─────────────────────────────────────────────────────────────
 if $DESTROY; then
+  # ── Confirmation guard ────────────────────────────────────────────────────
+  echo ""
+  warn "This will permanently delete the local IDP cluster, all workloads, volumes,"
+  warn "the local Docker registry, and remove /etc/hosts entries."
+  echo ""
+  read -rp "  Type 'yes' to confirm destroy: " _CONFIRM
+  if [[ "$_CONFIRM" != "yes" ]]; then
+    log "Aborted — nothing was destroyed."
+    exit 0
+  fi
+  echo ""
+
   log "Destroying local IDP platform..."
+
+  # ── Tear down AI/ML components first (while cluster is still up) ──────────
+  if kubectl get namespace kagent ml-platform services-dev &>/dev/null 2>&1; then
+    log "AI/ML components detected — running bootstrap-ai.sh --destroy first..."
+    bash "${ROOT_DIR}/scripts/bootstrap-ai.sh" --destroy || true
+  fi
+
   if [[ "$PROVIDER" == "kind" ]]; then
-    # Delete the Kind cluster first — this removes all namespaces, Helm release
-    # state (stored as k8s secrets), and workloads in one shot.
+    # Delete the Kind cluster — removes all namespaces, Helm state, and workloads.
     kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
   else
-    # Rancher Desktop: delete all platform namespaces but leave the cluster running.
+    # Rancher Desktop: delete all platform namespaces (cluster itself stays).
     log "Rancher Desktop: removing platform namespaces (cluster itself is untouched)..."
-    kubectl delete namespace services monitoring argocd ingress-nginx \
-      gatekeeper-system opencost 2>/dev/null || true
+    kubectl delete namespace \
+      services services-dev monitoring argocd ingress-nginx \
+      gatekeeper-system opencost kagent ml-platform \
+      2>/dev/null || true
   fi
-  # Stop the Backstage Docker Compose stack and remove the local registry.
-  # Skip the full docker prune — use --clean-docker separately if needed.
-  ${COMPOSE_CMD} \
-    down --volumes --remove-orphans 2>/dev/null || true
+
+  # ── Stop Backstage compose stack and local registry ───────────────────────
+  ${COMPOSE_CMD} down --volumes --remove-orphans 2>/dev/null || true
   docker stop "$REGISTRY_NAME" 2>/dev/null || true
   docker rm   "$REGISTRY_NAME" 2>/dev/null || true
+
+  # ── Clean up dangling images and volumes left by the local registry ───────
+  log "Pruning dangling Docker images and volumes..."
+  docker image prune -f 2>/dev/null || true
+  docker volume prune -f 2>/dev/null || true
+
   log "Done."
   log ""
   log "Cleaning up /etc/hosts entries..."
