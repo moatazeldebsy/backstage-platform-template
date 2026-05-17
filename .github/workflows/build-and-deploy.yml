@@ -24,12 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read   # required by dorny/paths-filter@v3 on PRs
+      pull-requests: read   # required by dorny/paths-filter@v4 on PRs
     outputs:
       services: ${{ steps.filter.outputs.changes }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -48,7 +48,7 @@ jobs:
       run:
         working-directory: services/${{ matrix.service }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Detect runtime
         id: runtime
@@ -58,7 +58,7 @@ jobs:
           elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then echo "runtime=python" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         if: steps.runtime.outputs.runtime == 'go'
         with:
           go-version-file: services/${{ matrix.service }}/go.mod
@@ -102,7 +102,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check AWS_ROLE_ARN secret
         id: guard
@@ -147,7 +147,7 @@ jobs:
       - name: Docker metadata
         id: meta
         if: steps.guard.outputs.has_aws == 'true'
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
           tags: |
@@ -213,7 +213,7 @@ jobs:
       id-token: write
       contents: write   # needed to push the image tag commit
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.IDP_PLATFORM_TOKEN }}   # push back to repo
           fetch-depth: 0

@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.event.pull_request.title, 'feat: onboard ')"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Verify only GitOps values files changed
         id: check
