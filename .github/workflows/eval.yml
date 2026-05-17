@@ -24,7 +24,6 @@ concurrency:
 jobs:
   deepeval:
     runs-on: ubuntu-latest
-    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     permissions:
       contents: read
     defaults:
@@ -41,10 +40,19 @@ jobs:
           cache: pip
           cache-dependency-path: test-suites/test-deepeval/requirements.txt
 
+      - name: Check API key
+        run: |
+          if [[ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]]; then
+            echo "ANTHROPIC_API_KEY secret is not set — skipping eval."
+            echo "skip=true" >> $GITHUB_ENV
+          fi
+
       - name: Install dependencies
+        if: env.skip != 'true'
         run: pip install -r requirements.txt
 
       - name: Run DeepEval suite
+        if: env.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DEEPEVAL_TELEMETRY_OPT_OUT: 'YES'
@@ -56,7 +64,7 @@ jobs:
             --self-contained-html
 
       - name: Upload test report
-        if: always()
+        if: env.skip != 'true' && always()
         uses: actions/upload-artifact@v4
         with:
           name: deepeval-report
