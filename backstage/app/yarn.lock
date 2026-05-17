@@ -18756,7 +18756,7 @@ __metadata:
     "@backstage/plugin-techdocs-backend": "npm:^2.1.7"
     app: "link:../app"
     better-sqlite3: "npm:^12.0.0"
-    libsodium-wrappers: "npm:^0.7.11"
+    libsodium-wrappers: "npm:^0.8.4"
     node-gyp: "npm:^10.0.0"
     pg: "npm:^8.11.3"
   languageName: unknown
@@ -27708,15 +27708,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsodium-wrappers@npm:^0.7.11":
-  version: 0.7.16
-  resolution: "libsodium-wrappers@npm:0.7.16"
-  dependencies:
-    libsodium: "npm:^0.7.16"
-  checksum: 10c0/7e6b5f3db8b8a3181e713b5017e000384142137a1712cd4c966f11f03e53ee5169c3277b80c3f2b68676f7e9a6ad141e58ce8b6a71728538b42d1201a566faf6
-  languageName: node
-  linkType: hard
-
 "libsodium-wrappers@npm:^0.8.0":
   version: 0.8.3
   resolution: "libsodium-wrappers@npm:0.8.3"
@@ -27726,10 +27717,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsodium@npm:^0.7.16":
-  version: 0.7.16
-  resolution: "libsodium@npm:0.7.16"
-  checksum: 10c0/4f1edd4d5d703c20505bbed74bf0dea22db7b9787cfbe4ab9572f0f4ca16f7a5d1d90e18a822ee4d91058a7c9701f82a24a5f22d0a29be5203b9ab9d8c037bda
+"libsodium-wrappers@npm:^0.8.4":
+  version: 0.8.4
+  resolution: "libsodium-wrappers@npm:0.8.4"
+  dependencies:
+    libsodium: "npm:^0.8.0"
+  checksum: 10c0/d1348354e1b55b4c50e972a597903966227932ce348ffe2cde61b19b4c459edaf511d055c2047fe5ae006f170015d6d1735acb232231ecf4707eed22388458a0
   languageName: node
   linkType: hard
 
