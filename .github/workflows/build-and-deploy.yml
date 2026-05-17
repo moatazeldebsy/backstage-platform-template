@@ -58,7 +58,7 @@ jobs:
           elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then echo "runtime=python" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         if: steps.runtime.outputs.runtime == 'go'
         with:
           go-version-file: services/${{ matrix.service }}/go.mod
