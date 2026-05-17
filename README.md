@@ -1,8 +1,8 @@
-# backstage-idp-starter
+# backstage-platform-template
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://YOUR_GITHUB_ORG.github.io/backstage-idp-starter/)
-[![CI](https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://YOUR_GITHUB_ORG.github.io/backstage-platform-template/)
+[![CI](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/actions/workflows/ci.yml)
 
 **A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 13 QA testing scaffold templates, AI/ML platform (KAgent + MLflow + MCP Server), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 

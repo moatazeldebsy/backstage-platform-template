@@ -115,7 +115,7 @@ spec:
             allowedOwners:
               - YOUR_GITHUB_ORG
             allowedRepos:
-              - backstage-idp-starter
+              - backstage-platform-template
 
   steps:
     - id: fetch-template

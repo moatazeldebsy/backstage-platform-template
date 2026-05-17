@@ -1,4 +1,4 @@
-# Contributing to backstage-idp-starter
+# Contributing to backstage-platform-template
 
 Thank you for your interest in contributing! This project is a community-maintained GitHub template for building Internal Developer Platforms with Backstage, Helm, and AWS EKS.
 
@@ -14,8 +14,8 @@ Thank you for your interest in contributing! This project is a community-maintai
 1. Clone the repo and run the one-time setup:
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter.git
-cd backstage-idp-starter
+git clone https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+cd backstage-platform-template
 ./scripts/setup.sh
 ```
 

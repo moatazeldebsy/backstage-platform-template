@@ -175,7 +175,7 @@ func applyDefaults(cfg ServiceConfig) ServiceConfig {
 		cfg.PlatformRepo = firstNonEmpty(
 			os.Getenv("PLATFORM_REPO"),
 			envOrFromFile(localEnv, "PLATFORM_REPO"),
-			"backstage-idp-starter",
+			"backstage-platform-template",
 		)
 	}
 	return cfg

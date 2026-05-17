@@ -54,7 +54,7 @@ This deploys your service into the local Kind cluster managed by the platform.
 | Repo | Purpose |
 |------|---------|
 | **This repo** (`${{ values.repoName }}/`) | Your service code, `Dockerfile`, `helm-values-local.yaml` |
-| **Platform repo** (`backstage-idp-starter/`) | Shared Helm chart (`helm/service-template/`) used by all services |
+| **Platform repo** (`backstage-platform-template/`) | Shared Helm chart (`helm/service-template/`) used by all services |
 
 ### Step 1 — In your cloned service repo: build and push the image
 
@@ -66,11 +66,11 @@ docker push localhost:5003/${{ values.name }}:local
 
 ### Step 2 — In your cloned service repo: deploy with Helm
 
-Point `PLATFORM_REPO` at your local `backstage-idp-starter` clone, then run `helm upgrade` from **this repo** (so Helm can find `helm-values-local.yaml`):
+Point `PLATFORM_REPO` at your local `backstage-platform-template` clone, then run `helm upgrade` from **this repo** (so Helm can find `helm-values-local.yaml`):
 
 ```bash
 # cd ${{ values.repoName }}
-export PLATFORM_REPO=~/projects/backstage-idp-starter   # adjust path if needed
+export PLATFORM_REPO=~/projects/backstage-platform-template   # adjust path if needed
 
 helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
@@ -102,7 +102,7 @@ Push to main (this repo)
         ├─ pytest
         ├─ docker build + smoke-test /healthz
         ├─ docker push → GHCR (ghcr.io/${{ values.githubOrg }}/${{ values.name }})
-        └─ updates helm-values-dev.yaml in backstage-idp-starter  ← platform repo
+        └─ updates helm-values-dev.yaml in backstage-platform-template  ← platform repo
               └─▶ ArgoCD detects the change and deploys to the Kind/EKS cluster
 ```
 
@@ -112,7 +112,7 @@ Set these in **this repo's** Settings → Secrets and variables → Actions:
 
 | Secret | Required | Purpose |
 |--------|----------|---------|
-| `GH_PAT` | Yes | Allows CI to commit the new image tag to `backstage-idp-starter` |
+| `GH_PAT` | Yes | Allows CI to commit the new image tag to `backstage-platform-template` |
 | `AWS_ROLE_ARN` | AWS only | IAM role for ECR push (`terraform output github_actions_role_arn` in platform repo) |
 
 Without `GH_PAT` the `update-image-tag` step is skipped and ArgoCD won't auto-deploy.
@@ -123,7 +123,7 @@ Only needed if CI is broken or you want to deploy a specific image by hand.
 
 ```bash
 # Local Kind — run from your cloned service repo
-export PLATFORM_REPO=~/projects/backstage-idp-starter
+export PLATFORM_REPO=~/projects/backstage-platform-template
 helm upgrade --install ${{ values.name }} ${PLATFORM_REPO}/helm/service-template \
   --namespace services \
   --set image.repository=localhost:5003/${{ values.name }} \
@@ -155,7 +155,7 @@ ${{ values.name }}/              ← this repo (your service)
 ├── api-info.yaml                # Backstage API descriptor
 └── docs/
 
-backstage-idp-starter/           ← platform repo (separate clone)
+backstage-platform-template/           ← platform repo (separate clone)
 └── helm/service-template/       # Shared Helm chart used by ALL services
 ```
 

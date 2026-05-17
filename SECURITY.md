@@ -17,7 +17,7 @@ Report vulnerabilities privately via one of these channels:
 1. **GitHub Private Advisory** (preferred) — open a
    [Security Advisory](../../security/advisories/new) directly on this repository.
 2. **Email** — send details to `security@idp.platform` with subject line
-   `[backstage-idp-starter] <short description>`.
+   `[backstage-platform-template] <short description>`.
 
 ### What to include
 

@@ -83,8 +83,8 @@ _apply_personalization() {
 
   echo "$targets" | xargs -I{} _sed "s/YOUR_GITHUB_ORG/${github_org}/g" {} 2>/dev/null || true
 
-  if [[ -n "$platform_repo" && "$platform_repo" != "YOUR_PLATFORM_REPO" && "$platform_repo" != "backstage-idp-starter" ]]; then
-    echo "$targets" | xargs -I{} _sed "s/backstage-idp-starter/${platform_repo}/g" {} 2>/dev/null || true
+  if [[ -n "$platform_repo" && "$platform_repo" != "YOUR_PLATFORM_REPO" && "$platform_repo" != "backstage-platform-template" ]]; then
+    echo "$targets" | xargs -I{} _sed "s/backstage-platform-template/${platform_repo}/g" {} 2>/dev/null || true
   fi
 
   log "Personalisation applied."
@@ -524,7 +524,7 @@ _start_backstage() {
   echo "  Teardown cluster:     ./scripts/bootstrap-local.sh --destroy"
   echo ""
   echo "  Commit your personalised repo:"
-  echo "    git add . && git commit -m 'chore: initialise from backstage-idp-starter'"
+  echo "    git add . && git commit -m 'chore: initialise from backstage-platform-template'"
   echo ""
 }
 

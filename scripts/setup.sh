@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/setup.sh — One-time setup for backstage-idp-starter.
+# scripts/setup.sh — One-time setup for backstage-platform-template.
 #
 # Phases:
 #   0. Personalise placeholders (GitHub org, AWS account, region, cluster name)
@@ -28,7 +28,7 @@ _print_skip_summary() {
   echo "       # edit terraform.tfvars, then:"
   echo "       ./scripts/bootstrap.sh"
   echo "  4. Commit your personalised repo:"
-  echo "       git add . && git commit -m 'chore: initialise from backstage-idp-starter'"
+  echo "       git add . && git commit -m 'chore: initialise from backstage-platform-template'"
   echo ""
   echo "Full docs: docs/  |  Day-2 tools: idp scaffold service / test-suite  |  scripts/setup-runner.sh"
   echo ""
@@ -192,7 +192,7 @@ Install them and re-run this script, or run manually:
   echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
   echo ""
   echo "  Commit your personalised repo:"
-  echo "    git add . && git commit -m 'chore: initialise from backstage-idp-starter'"
+  echo "    git add . && git commit -m 'chore: initialise from backstage-platform-template'"
   echo ""
 }
 
@@ -202,7 +202,7 @@ Install them and re-run this script, or run manually:
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║     backstage-idp-starter  ·  Setup         ║${RESET}"
+echo -e "${BOLD}║     backstage-platform-template  ·  Setup         ║${RESET}"
 echo -e "${BOLD}╚══════════════════════════════════════════════╝${RESET}"
 echo ""
 echo "This script personalises your copy of the template and optionally"
@@ -230,8 +230,8 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 read -rp "$(echo -e "${CYAN}EKS / Kind cluster name${RESET} [idp-mvp]: ")" CLUSTER_NAME
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 
-read -rp "$(echo -e "${CYAN}Platform repo name${RESET} (the name of THIS repo) [backstage-idp-starter]: ")" PLATFORM_REPO
-PLATFORM_REPO="${PLATFORM_REPO:-backstage-idp-starter}"
+read -rp "$(echo -e "${CYAN}Platform repo name${RESET} (the name of THIS repo) [backstage-platform-template]: ")" PLATFORM_REPO
+PLATFORM_REPO="${PLATFORM_REPO:-backstage-platform-template}"
 
 read -rp "$(echo -e "${CYAN}Backstage base URL${RESET} [http://localhost:3000]: ")" BACKSTAGE_URL
 BACKSTAGE_URL="${BACKSTAGE_URL:-http://localhost:3000}"
@@ -302,9 +302,9 @@ if [[ "${CLUSTER_NAME}" != "idp-mvp" ]]; then
     {} 2>/dev/null || true
 fi
 
-if [[ "${PLATFORM_REPO}" != "backstage-idp-starter" ]]; then
+if [[ "${PLATFORM_REPO}" != "backstage-platform-template" ]]; then
   echo "$TARGETS" | xargs -I{} _sed \
-    "s/backstage-idp-starter/${PLATFORM_REPO}/g" \
+    "s/backstage-platform-template/${PLATFORM_REPO}/g" \
     {} 2>/dev/null || true
 fi
 

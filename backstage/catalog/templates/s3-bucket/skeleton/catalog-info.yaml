@@ -4,7 +4,7 @@ metadata:
   name: ${{ values.bucketName }}
   description: S3 bucket ${{ values.bucketName }} in ${{ values.awsRegion }} — owned by ${{ values.ownerService }}
   annotations:
-    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/blob/main/terraform/infra/s3-buckets/${{ values.bucketName }}/
+    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/terraform/infra/s3-buckets/${{ values.bucketName }}/
   labels:
     aws-region: ${{ values.awsRegion }}
     encryption: ${{ values.encryption }}

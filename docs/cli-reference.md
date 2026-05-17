@@ -204,7 +204,7 @@ When calling the Backstage Scaffolder API, the CLI resolves the auth token in th
 |----------|---------|
 | `BACKSTAGE_TOKEN` | Bearer token for Backstage API calls |
 | `GITHUB_ORG` or `GH_ORG` | GitHub org used in generated catalog entries |
-| `PLATFORM_REPO` | Platform repo name (default: `backstage-idp-starter`) |
+| `PLATFORM_REPO` | Platform repo name (default: `backstage-platform-template`) |
 
 ---
 

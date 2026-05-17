@@ -83,7 +83,7 @@ jobs:
           git config --global user.email "ci@idp.platform"
           git config --global user.name "IDP CI Bot"
           PLATFORM_DIR=$(mktemp -d)
-          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ values.githubOrg }}/backstage-idp-starter.git "$PLATFORM_DIR"
+          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ values.githubOrg }}/backstage-platform-template.git "$PLATFORM_DIR"
           cd "$PLATFORM_DIR"
           VALUES_FILE="services/${{ values.name }}/helm-values-dev.yaml"
           if [ -f "${VALUES_FILE}" ]; then

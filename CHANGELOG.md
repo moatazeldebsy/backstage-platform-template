@@ -57,7 +57,7 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.0] — 2026-04-29
 
-Initial open-source release of the backstage-idp-starter template.
+Initial open-source release of the backstage-platform-template template.
 
 ### Added
 - Backstage v1.49.1 developer portal with catalog, TechDocs, Kubernetes plugin
@@ -85,5 +85,5 @@ Initial open-source release of the backstage-idp-starter template.
 - `YOUR_ORG`/`YOUR_REPO` documentation tokens now substituted by setup.sh
 - build-and-deploy.yml: graceful skip when `AWS_ROLE_ARN` secret is not set
 
-[Unreleased]: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/releases/tag/v0.1.0
+[Unreleased]: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/releases/tag/v0.1.0

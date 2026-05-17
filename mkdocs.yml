@@ -1,7 +1,7 @@
 site_name: Internal Developer Platform
 site_description: Golden-path platform for building and deploying services on EKS
-repo_url: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter
-repo_name: YOUR_GITHUB_ORG/backstage-idp-starter
+repo_url: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template
+repo_name: YOUR_GITHUB_ORG/backstage-platform-template
 
 theme:
   name: material

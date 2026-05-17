@@ -142,7 +142,7 @@ spec:
       action: publish:github:pull-request
       continueOnError: true
       input:
-        repoUrl: github.com?repo=backstage-idp-starter&owner=YOUR_GITHUB_ORG
+        repoUrl: github.com?repo=backstage-platform-template&owner=YOUR_GITHUB_ORG
         title: "feat: onboard ${{ parameters.name }} to GitOps"
         branchName: feat/onboard-${{ parameters.name }}
         description: |
