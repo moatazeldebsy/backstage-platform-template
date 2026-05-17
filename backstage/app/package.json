@@ -63,8 +63,8 @@
     "basic-ftp": "^5.0.5",
     "lodash": "^4.17.21",
     "fast-uri": "^3.1.2",
-    "fast-xml-builder": "^2.0.0",
-    "fast-xml-parser": "^4.5.3",
+    "fast-xml-builder": "^1.2.0",
+    "fast-xml-parser": "^5.7.0",
     "koa": "^2.16.0",
     "postcss": "^8.5.10",
     "dompurify": "^3.4.0",
@@ -77,7 +77,8 @@
     "follow-redirects": "^1.15.9",
     "@octokit/request": "^8.4.1",
     "@octokit/plugin-paginate-rest": "^9.2.2",
-    "@octokit/request-error": "^5.1.1"
+    "@octokit/request-error": "^5.1.1",
+    "@tootallnate/once": "^3.0.1"
   },
   "prettier": "@backstage/cli/config/prettier",
   "lint-staged": {
