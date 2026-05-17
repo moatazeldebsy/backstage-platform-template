@@ -1,8 +1,11 @@
 # backstage-platform-template
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://YOUR_GITHUB_ORG.github.io/backstage-platform-template/)
-[![CI](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/actions/workflows/ci.yml)
+[![CI](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
+[![GitHub stars](https://img.shields.io/github/stars/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
+[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
 
 **A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 13 QA testing scaffold templates, AI/ML platform (KAgent + MLflow + MCP Server), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
 
