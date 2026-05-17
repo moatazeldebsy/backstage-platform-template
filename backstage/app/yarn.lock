@@ -4812,16 +4812,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/plugin-auth-backend-module-guest-provider@npm:^0.2.17":
-  version: 0.2.17
-  resolution: "@backstage/plugin-auth-backend-module-guest-provider@npm:0.2.17"
+"@backstage/plugin-auth-backend-module-guest-provider@npm:^0.2.18":
+  version: 0.2.18
+  resolution: "@backstage/plugin-auth-backend-module-guest-provider@npm:0.2.18"
   dependencies:
-    "@backstage/backend-plugin-api": "npm:^1.8.0"
-    "@backstage/catalog-model": "npm:^1.7.7"
-    "@backstage/errors": "npm:^1.2.7"
-    "@backstage/plugin-auth-node": "npm:^0.6.14"
+    "@backstage/backend-plugin-api": "npm:^1.9.0"
+    "@backstage/catalog-model": "npm:^1.8.0"
+    "@backstage/errors": "npm:^1.3.0"
+    "@backstage/plugin-auth-node": "npm:^0.7.0"
     passport-oauth2: "npm:^1.7.0"
-  checksum: 10c0/d73bac816b4175e5a773296e7864cd033eb7146d66abb5b4c7ac3f2504889fd9fce05a9416d7db3c6f683ea558897914a6e1d58b08fb45c87f0e377fd7336bc4
+  checksum: 10c0/7440fa2e6d310b932e0f861506a7fd05fa8fb4d40cf5290f40a774b31ec6c8efe561735c18d06b08ebbd48fffde330e54445eca0b4e8b235e3a325dcc57dfaf4
   languageName: node
   linkType: hard
 
@@ -18714,7 +18714,7 @@ __metadata:
     "@backstage/plugin-app-backend": "npm:^0.5.12"
     "@backstage/plugin-auth-backend": "npm:^0.28.0"
     "@backstage/plugin-auth-backend-module-github-provider": "npm:^0.5.1"
-    "@backstage/plugin-auth-backend-module-guest-provider": "npm:^0.2.17"
+    "@backstage/plugin-auth-backend-module-guest-provider": "npm:^0.2.18"
     "@backstage/plugin-auth-node": "npm:^0.6.14"
     "@backstage/plugin-catalog-backend": "npm:^3.5.0"
     "@backstage/plugin-catalog-backend-module-logs": "npm:^0.1.20"
