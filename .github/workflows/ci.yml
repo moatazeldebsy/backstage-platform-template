@@ -176,6 +176,8 @@ jobs:
 
       - name: Build backend bundle
         working-directory: backstage/app
+        env:
+          CI: ''
         run: yarn build:backend
 
       - name: Build Docker image (local, no push)
