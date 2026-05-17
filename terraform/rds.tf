@@ -51,11 +51,11 @@ resource "aws_db_instance" "backstage" {
   db_subnet_group_name   = aws_db_subnet_group.backstage.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  backup_retention_period  = 7
-  storage_encrypted        = true
-  skip_final_snapshot      = false
+  backup_retention_period   = 7
+  storage_encrypted         = true
+  skip_final_snapshot       = false
   final_snapshot_identifier = "${var.cluster_name}-backstage-final"
-  deletion_protection      = true
+  deletion_protection       = true
 
   tags = {
     Name = "${var.cluster_name}-backstage-db"

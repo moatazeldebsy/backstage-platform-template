@@ -24,6 +24,7 @@ concurrency:
 jobs:
   deepeval:
     runs-on: ubuntu-latest
+    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     permissions:
       contents: read
     defaults:

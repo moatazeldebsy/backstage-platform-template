@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install helm (pinned version with checksum verification)
 RUN HELM_VERSION=3.17.3 && \
-    HELM_SHA256=e5dde0e37b52cbab4b2a2b5c75eb00e8d7c95c4543cd8c2e7cd739c6b19daa2f && \
+    HELM_SHA256=ee88b3c851ae6466a3de507f7be73fe94d54cbf2987cbaa3d1a3832ea331f2cd && \
     curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tar.gz && \
     echo "${HELM_SHA256}  /tmp/helm.tar.gz" | sha256sum -c - && \
     tar xz -C /tmp -f /tmp/helm.tar.gz && \
