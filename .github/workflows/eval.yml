@@ -33,19 +33,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: test-suites/test-deepeval/requirements.txt
-
       - name: Check API key
         run: |
           if [[ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]]; then
             echo "ANTHROPIC_API_KEY secret is not set — skipping eval."
             echo "skip=true" >> $GITHUB_ENV
           fi
+
+      - name: Set up Python
+        if: env.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test-suites/test-deepeval/requirements.txt
 
       - name: Install dependencies
         if: env.skip != 'true'
