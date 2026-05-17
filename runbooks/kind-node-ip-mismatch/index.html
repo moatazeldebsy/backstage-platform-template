@@ -11,10 +11,8 @@
       
       
       
-        <link rel="prev" href="../pod-crash-loop/">
+        <link rel="prev" href="../db-recovery/">
       
-      
-        <link rel="next" href="../high-cpu/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +20,7 @@
     
     
       
-        <title>High Memory - Internal Developer Platform</title>
+        <title>Kind Node IP Mismatch - Internal Developer Platform</title>
       
     
     
@@ -64,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#high-memory-usage-runbook" class="md-skip">
+        <a href="#kind-node-ip-mismatch-after-crash-runbook" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              High Memory
+              Kind Node IP Mismatch
             
           </span>
         </div>
@@ -573,30 +571,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    High Memory
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -605,140 +583,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#alert-description" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alert Description
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#impact" class="md-nav__link">
-    <span class="md-ellipsis">
-      Impact
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#immediate-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Immediate Actions
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Immediate Actions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-identify-the-high-memory-pods" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Identify the high-memory pods
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-check-for-a-memory-leak-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Check for a memory leak pattern
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-scale-out-to-reduce-per-pod-pressure-immediate-relief" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Scale out to reduce per-pod pressure (immediate relief)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-if-hpa-is-configured-check-its-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. If HPA is configured — check its status
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-increase-memory-limit-temporary-emergency-fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Increase memory limit (temporary emergency fix)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#root-cause-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      Root Cause Analysis
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resolution-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Resolution Steps
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#escalation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Escalation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#post-incident" class="md-nav__link">
-    <span class="md-ellipsis">
-      Post-Incident
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -790,10 +634,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../kind-node-ip-mismatch/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -802,6 +666,173 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#symptoms" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptoms
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      Root Cause
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnosis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnosis
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diagnosis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-confirm-the-ip-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Confirm the IP mismatch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-confirm-the-api-server-cert-covers-the-new-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Confirm the API server cert covers the new IP
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-check-kubeletconf-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Check kubelet.conf target
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fix
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-update-kubeletconf-with-the-new-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1 — Update kubelet.conf with the new IP
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-restart-the-kubelet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2 — Restart the kubelet
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-wait-for-the-node-to-recover" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3 — Wait for the node to recover
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-fix-inotify-limits-if-kube-proxy-is-crash-looping" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4 — Fix inotify limits if kube-proxy is crash-looping
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-verify-full-cluster-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5 — Verify full cluster health
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-harmless-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known Harmless Failure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prevention
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-runbooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related Runbooks
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -829,7 +860,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/high-memory.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/kind-node-ip-mismatch.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -837,97 +868,141 @@
   
 
 
-<h1 id="high-memory-usage-runbook">High Memory Usage Runbook<a class="headerlink" href="#high-memory-usage-runbook" title="Permanent link">&para;</a></h1>
-<h2 id="alert-description">Alert Description<a class="headerlink" href="#alert-description" title="Permanent link">&para;</a></h2>
-<p><strong>Alert:</strong> <code>HighMemoryUsage</code>
-<strong>Severity:</strong> Warning at 80% of limit, Critical at 95%
-<strong>Expression:</strong> Container memory usage / memory limit &gt; threshold for 5 minutes.</p>
-<h2 id="impact">Impact<a class="headerlink" href="#impact" title="Permanent link">&para;</a></h2>
+<h1 id="kind-node-ip-mismatch-after-crash-runbook">Kind Node IP Mismatch After Crash Runbook<a class="headerlink" href="#kind-node-ip-mismatch-after-crash-runbook" title="Permanent link">&para;</a></h1>
+<h2 id="symptoms">Symptoms<a class="headerlink" href="#symptoms" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Warning (80%):</strong> Service is approaching its limit. Risk of OOMKill if load increases.</li>
-<li><strong>Critical (95%):</strong> OOMKill is imminent. Pod may be killed and restarted at any moment.</li>
+<li>One or more nodes stuck in <code>NotReady</code> after Docker / Rancher Desktop crash and restart</li>
+<li>Pods stuck in <code>Terminating</code> or <code>Pending</code> state</li>
+<li><code>ingress-nginx</code> controller unable to schedule a replacement pod — all <code>*.idp.local</code> URLs return 502 / unreachable</li>
+<li><code>kubectl get nodes</code> shows a node as <code>NotReady</code> even though its Docker container is running</li>
+<li>Kubelet logs inside the node container show repeated connection errors to the old IP:</li>
 </ul>
-<h2 id="immediate-actions">Immediate Actions<a class="headerlink" href="#immediate-actions" title="Permanent link">&para;</a></h2>
-<h3 id="1-identify-the-high-memory-pods">1. Identify the high-memory pods<a class="headerlink" href="#1-identify-the-high-memory-pods" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>dial tcp 172.18.0.X:6443: connect: connection refused
+</code></pre></div></td></tr></table></div>
+<h2 id="root-cause">Root Cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h2>
+<p>Kind runs each cluster node as a Docker container. When Docker or Rancher Desktop crashes and restarts, it may reassign container IPs — the control-plane node gets a <strong>different IP</strong> than what is baked into <code>/etc/kubernetes/kubelet.conf</code>. The kubelet then cannot reach the API server, so the node reports <code>NodeStatusUnknown</code> and stays <code>NotReady</code>.</p>
+<p>This cascades to:
+- Pods that were running on the affected node get evicted and enter <code>Terminating</code>
+- Replacement pods that require a <code>NotReady</code> node (e.g. DaemonSets, ingress with node affinity) stay <code>Pending</code>
+- inotify resource limits may also be exhausted after the restart, causing kube-proxy to crash</p>
+<h2 id="diagnosis">Diagnosis<a class="headerlink" href="#diagnosis" title="Permanent link">&para;</a></h2>
+<h3 id="1-confirm-the-ip-mismatch">1. Confirm the IP mismatch<a class="headerlink" href="#1-confirm-the-ip-mismatch" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Top memory consumers in services namespace</span>
-kubectl<span class="w"> </span>top<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--sort-by<span class="o">=</span>memory
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Current Docker container IPs</span>
+<span class="k">for</span><span class="w"> </span>c<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>docker<span class="w"> </span>ps<span class="w"> </span>--filter<span class="w"> </span><span class="s2">&quot;name=idp-mvp&quot;</span><span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;{{.Names}}&quot;</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$c</span><span class="s2">: </span><span class="k">$(</span>docker<span class="w"> </span>inspect<span class="w"> </span><span class="nv">$c</span><span class="w"> </span>--format<span class="w"> </span><span class="s1">&#39;{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="k">done</span>
 
-<span class="c1"># Check memory usage vs limits</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;Limits\|Requests\|Memory&quot;</span>
+<span class="c1"># IPs registered in Kubernetes</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>wide
 </code></pre></div></td></tr></table></div>
-<h3 id="2-check-for-a-memory-leak-pattern">2. Check for a memory leak pattern<a class="headerlink" href="#2-check-for-a-memory-leak-pattern" title="Permanent link">&para;</a></h3>
+<p>If the control-plane's Docker IP differs from its <code>INTERNAL-IP</code> in kubectl, you have an IP mismatch.</p>
+<h3 id="2-confirm-the-api-server-cert-covers-the-new-ip">2. Confirm the API server cert covers the new IP<a class="headerlink" href="#2-confirm-the-api-server-cert-covers-the-new-ip" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Is memory climbing steadily (leak) or spiked (load)?</span>
-<span class="c1"># Check the Grafana dashboard: IDP Services → memory graph</span>
-<span class="c1"># Look for a sawtooth pattern (GC) vs a steady upward slope (leak)</span>
-kubectl<span class="w"> </span>top<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/instance<span class="o">=</span>&lt;service-name&gt;<span class="w"> </span>--containers
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>openssl<span class="w"> </span>x509<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-in<span class="w"> </span>/etc/kubernetes/pki/apiserver.crt<span class="w"> </span>-noout<span class="w"> </span>-ext<span class="w"> </span>subjectAltName
 </code></pre></div></td></tr></table></div>
-<h3 id="3-scale-out-to-reduce-per-pod-pressure-immediate-relief">3. Scale out to reduce per-pod pressure (immediate relief)<a class="headerlink" href="#3-scale-out-to-reduce-per-pod-pressure-immediate-relief" title="Permanent link">&para;</a></h3>
+<p>The new IP must appear in the <code>IP Address:</code> list. If it does not, a cluster recreate is required (see <strong>Prevention</strong> below).</p>
+<h3 id="3-check-kubeletconf-target">3. Check kubelet.conf target<a class="headerlink" href="#3-check-kubeletconf-target" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>grep<span class="w"> </span>server:<span class="w"> </span>/etc/kubernetes/kubelet.conf
+</code></pre></div></td></tr></table></div>
+<p>It should match the <strong>current</strong> Docker IP of the control-plane.</p>
+<h2 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">&para;</a></h2>
+<p>Replace <code>172.18.0.NEW</code> with the current Docker IP of the control-plane container (from step 1 above).</p>
+<h3 id="step-1-update-kubeletconf-with-the-new-ip">Step 1 — Update kubelet.conf with the new IP<a class="headerlink" href="#step-1-update-kubeletconf-with-the-new-ip" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Scale up replicas</span>
-kubectl<span class="w"> </span>scale<span class="w"> </span>deployment/&lt;service-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--replicas<span class="o">=</span>&lt;current+2&gt;
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">NEW_IP</span><span class="o">=</span><span class="k">$(</span>docker<span class="w"> </span>inspect<span class="w"> </span>idp-mvp-control-plane<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--format<span class="w"> </span><span class="s1">&#39;{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}&#39;</span><span class="k">)</span>
 
-<span class="c1"># Verify pods are running</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/instance<span class="o">=</span>&lt;service-name&gt;
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;s|https://[0-9.]*:6443|https://</span><span class="si">${</span><span class="nv">NEW_IP</span><span class="si">}</span><span class="s2">:6443|g&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/etc/kubernetes/kubelet.conf
 </code></pre></div></td></tr></table></div>
-<h3 id="4-if-hpa-is-configured-check-its-status">4. If HPA is configured — check its status<a class="headerlink" href="#4-if-hpa-is-configured-check-its-status" title="Permanent link">&para;</a></h3>
+<h3 id="step-2-restart-the-kubelet">Step 2 — Restart the kubelet<a class="headerlink" href="#step-2-restart-the-kubelet" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>kubelet
+</code></pre></div></td></tr></table></div>
+<h3 id="step-3-wait-for-the-node-to-recover">Step 3 — Wait for the node to recover<a class="headerlink" href="#step-3-wait-for-the-node-to-recover" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>hpa<span class="w"> </span>-n<span class="w"> </span>services
-kubectl<span class="w"> </span>describe<span class="w"> </span>hpa<span class="w"> </span>&lt;service-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-w
+<span class="c1"># Expect: idp-mvp-control-plane   Ready   control-plane   ...</span>
 </code></pre></div></td></tr></table></div>
-<h3 id="5-increase-memory-limit-temporary-emergency-fix">5. Increase memory limit (temporary emergency fix)<a class="headerlink" href="#5-increase-memory-limit-temporary-emergency-fix" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">set</span><span class="w"> </span>resources<span class="w"> </span>deployment/&lt;service-name&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>services<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--limits<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>&lt;new-limit&gt;Mi<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--requests<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>&lt;new-request&gt;Mi
-</code></pre></div></td></tr></table></div>
-<p>Update <code>helm-values.yaml</code> with the new values and open a PR to make this permanent.</p>
-<h2 id="root-cause-analysis">Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="step-4-fix-inotify-limits-if-kube-proxy-is-crash-looping">Step 4 — Fix inotify limits if kube-proxy is crash-looping<a class="headerlink" href="#step-4-fix-inotify-limits-if-kube-proxy-is-crash-looping" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check if recent deploy introduced the memory growth</span>
-helm<span class="w"> </span><span class="nb">history</span><span class="w"> </span>&lt;service-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>kube-proxy
 
-<span class="c1"># Compare memory usage before/after the deploy time in Grafana</span>
-<span class="c1"># Panel: &quot;Container Memory Usage&quot; → annotate with deploy timestamp</span>
+<span class="c1"># If any pod shows Error / CrashLoopBackOff with &quot;too many open files&quot;:</span>
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.inotify.max_user_instances<span class="o">=</span><span class="m">1024</span>
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.inotify.max_user_watches<span class="o">=</span><span class="m">655360</span>
+
+<span class="c1"># Delete the crashing pod so the DaemonSet recreates it</span>
+kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>&lt;kube-proxy-pod-name&gt;
 </code></pre></div></td></tr></table></div>
-<p>Common causes:
-- Memory leak in application code (objects not released)
-- Unbounded in-memory cache or queue
-- Too many goroutines / threads accumulating
-- JVM heap not tuned (Java services)</p>
-<h2 id="resolution-steps">Resolution Steps<a class="headerlink" href="#resolution-steps" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Scale out immediately if at critical threshold</li>
-<li>If a specific deploy caused the spike: roll back (see <a href="../deployment-rollback/">Deployment Rollback</a>)</li>
-<li>If it's a gradual leak: page the service owner to profile and fix</li>
-<li>Update <code>helm-values.yaml</code> with a higher memory limit as a short-term mitigation</li>
-<li>Track the fix in a GitHub issue labelled <code>memory-leak</code></li>
-</ol>
-<h2 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h2>
+<h3 id="step-5-verify-full-cluster-health">Step 5 — Verify full cluster health<a class="headerlink" href="#step-5-verify-full-cluster-health" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># All nodes Ready</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+
+<span class="c1"># No non-Running pods (excluding expected failures like catalog-exporter)</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Running<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Completed
+</code></pre></div></td></tr></table></div>
+<p>ingress-nginx should reschedule and reach <code>Running</code> within ~60 seconds, restoring all <code>*.idp.local</code> URLs.</p>
+<h2 id="known-harmless-failure">Known Harmless Failure<a class="headerlink" href="#known-harmless-failure" title="Permanent link">&para;</a></h2>
+<p><code>catalog-exporter</code> in the <code>monitoring</code> namespace will stay in <code>CrashLoopBackOff</code> whenever Backstage is <strong>not</strong> running via Docker Compose. It tries to reach <code>backstage.backstage.svc.cluster.local:7007</code> (in-cluster DNS), which does not exist. Start Backstage to resolve it:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<h2 id="prevention">Prevention<a class="headerlink" href="#prevention" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Critical and scaling out doesn't help → page service owner immediately</li>
-<li>Service is OOMKilled in a loop → follow <a href="../pod-crash-loop/">Pod Crash Loop</a> runbook</li>
+<li>
+<p><strong>Add a fixed IP subnet to Docker:</strong> configure Docker Desktop / Rancher Desktop to use a stable subnet so container IPs do not change across restarts. Set this in Docker Desktop → Settings → Docker Engine:</p>
+<div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;default-address-pools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;base&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;172.18.0.0/16&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+<p>Kind still assigns IPs dynamically within that pool, but stability is improved on clean restarts.</p>
+</li>
 </ul>
-<h2 id="post-incident">Post-Incident<a class="headerlink" href="#post-incident" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Add memory profiling results to the incident thread</li>
-<li>Verify memory limits in <code>helm-values.yaml</code> reflect actual usage patterns + 30% headroom</li>
-<li>Consider adding memory-based HPA if load is bursty</li>
+<li><strong>Graceful shutdown:</strong> use <code>./scripts/bootstrap-local.sh --destroy</code> before shutting down Docker / Rancher Desktop, then re-bootstrap on next use. This avoids IP drift entirely.</li>
+</ul>
+<ul>
+<li>
+<p><strong>Cluster recreate (last resort):</strong> if the API server cert does not cover the new IP, recreate the cluster:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+./scripts/bootstrap-local.sh<span class="w"> </span>--full
+</code></pre></div></td></tr></table></div>
+</li>
+</ul>
+<h2 id="related-runbooks">Related Runbooks<a class="headerlink" href="#related-runbooks" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../pod-crash-loop/">Pod Crash Loop</a></li>
+<li><a href="../image-pull-backoff/">ImagePullBackOff</a></li>
 </ul>
 
 
@@ -958,7 +1033,7 @@ helm<span class="w"> </span><span class="nb">history</span><span class="w"> </sp
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../pod-crash-loop/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Pod Crash Loop">
+          <a href="../db-recovery/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Database Recovery">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -968,27 +1043,11 @@ helm<span class="w"> </span><span class="nb">history</span><span class="w"> </sp
                 Previous
               </span>
               <div class="md-ellipsis">
-                Pod Crash Loop
+                Database Recovery
               </div>
             </div>
           </a>
         
-        
-          
-          <a href="../high-cpu/" class="md-footer__link md-footer__link--next" aria-label="Next: High CPU">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                High CPU
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-            </div>
-          </a>
         
       </nav>
     

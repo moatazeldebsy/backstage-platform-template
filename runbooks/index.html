@@ -568,6 +568,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#local-dev-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Dev Issues
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#on-call-escalation" class="md-nav__link">
     <span class="md-ellipsis">
       On-Call Escalation
@@ -699,6 +708,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -774,6 +804,31 @@
 <tr>
 <td><code>ImagePullBackOff</code> (local)</td>
 <td>Warning</td>
+<td><a href="image-pull-backoff/">ImagePullBackOff</a></td>
+</tr>
+<tr>
+<td>Kind node <code>NotReady</code> after crash (local)</td>
+<td>Warning</td>
+<td><a href="kind-node-ip-mismatch/">Kind Node IP Mismatch</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="local-dev-issues">Local Dev Issues<a class="headerlink" href="#local-dev-issues" title="Permanent link">&para;</a></h2>
+<p>These are not alert-driven but are common when running the platform locally with Kind or Rancher Desktop.</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Runbook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Node <code>NotReady</code> + <code>*.idp.local</code> unreachable after Docker/Rancher crash</td>
+<td><a href="kind-node-ip-mismatch/">Kind Node IP Mismatch</a></td>
+</tr>
+<tr>
+<td>Pod stuck in <code>ImagePullBackOff</code></td>
 <td><a href="image-pull-backoff/">ImagePullBackOff</a></td>
 </tr>
 </tbody>
