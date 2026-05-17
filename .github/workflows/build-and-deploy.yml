@@ -147,7 +147,7 @@ jobs:
       - name: Docker metadata
         id: meta
         if: steps.guard.outputs.has_aws == 'true'
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
           tags: |
