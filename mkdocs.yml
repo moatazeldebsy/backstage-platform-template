@@ -23,6 +23,7 @@ nav:
   - Golden Path: golden-path.md
   - Local Setup: local-setup.md
   - Roadmap: roadmap.md
+  - Readiness Checklist: readiness-checklist.md
   - Runbooks:
     - Overview: runbooks/index.md
     - Deployment Rollback: runbooks/deployment-rollback.md

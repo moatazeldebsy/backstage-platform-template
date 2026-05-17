@@ -65,8 +65,7 @@ techdocs:
 auth:
   environment: development
   providers:
-    guest:
-      dangerouslyAllowOutsideDevelopment: true
+    guest: {}
     github:
       development:
         # Use a non-empty placeholder so the backend starts even without real OAuth creds.

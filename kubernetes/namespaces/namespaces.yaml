@@ -82,7 +82,7 @@ kind: Namespace
 metadata:
   name: ml-platform
   labels:
-    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
     team: platform-team
@@ -93,7 +93,9 @@ kind: Namespace
 metadata:
   name: kagent
   labels:
-    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
     team: platform-team
     purpose: ai-agents
 

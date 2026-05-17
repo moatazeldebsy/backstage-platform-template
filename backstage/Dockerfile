@@ -7,8 +7,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pip3 install --break-system-packages mkdocs-techdocs-core \
     && rm -rf /var/lib/apt/lists/*
 
-# Install helm
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# Install helm (pinned version with checksum verification)
+RUN HELM_VERSION=3.17.3 && \
+    HELM_SHA256=e5dde0e37b52cbab4b2a2b5c75eb00e8d7c95c4543cd8c2e7cd739c6b19daa2f && \
+    curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tar.gz && \
+    echo "${HELM_SHA256}  /tmp/helm.tar.gz" | sha256sum -c - && \
+    tar xz -C /tmp -f /tmp/helm.tar.gz && \
+    mv /tmp/linux-amd64/helm /usr/local/bin/helm && \
+    rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
 
 # Install kubectl
 RUN curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
