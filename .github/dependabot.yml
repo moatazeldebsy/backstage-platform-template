@@ -1,2 +1,37 @@
 version: 2
-updates: []
+updates:
+  - package-ecosystem: npm
+    directory: /backstage/app
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      backstage:
+        patterns:
+          - "@backstage/*"
+          - "@backstage-community/*"
+
+  - package-ecosystem: npm
+    directory: /services/idp-mcp-server
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /backstage/catalog/templates/react-frontend/skeleton
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: gomod
+    directory: /services/hello-service
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: gomod
+    directory: /cli
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /backstage/app/packages/backend
+    schedule:
+      interval: weekly

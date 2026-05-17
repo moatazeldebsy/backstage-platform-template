@@ -1,0 +1,7 @@
+{
+  "name": "vm2",
+  "version": "3.10.5",
+  "description": "Safe shim replacing abandoned vm2 with Node built-in vm module",
+  "main": "index.js",
+  "license": "MIT"
+}
