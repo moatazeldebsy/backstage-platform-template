@@ -31,7 +31,7 @@ jobs:
         working-directory: test-suites/test-deepeval
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
