@@ -18033,7 +18033,7 @@ __metadata:
     "@backstage/cli": "npm:^0.36.0"
     "@backstage/core-compat-api": "npm:^0.5.9"
     "@backstage/core-components": "npm:^0.18.8"
-    "@backstage/core-plugin-api": "npm:^1.12.4"
+    "@backstage/core-plugin-api": "npm:^1.12.5"
     "@backstage/frontend-defaults": "npm:^0.5.0"
     "@backstage/frontend-plugin-api": "npm:^0.15.1"
     "@backstage/frontend-test-utils": "npm:^0.5.1"
