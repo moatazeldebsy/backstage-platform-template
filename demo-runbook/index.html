@@ -1,0 +1,901 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>IDP MVP — Leadership Demo Runbook - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#idp-mvp-leadership-demo-runbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IDP MVP — Leadership Demo Runbook
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/demo-runbook.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="idp-mvp-leadership-demo-runbook">IDP MVP — Leadership Demo Runbook<a class="headerlink" href="#idp-mvp-leadership-demo-runbook" title="Permanent link">&para;</a></h1>
+<p>A step-by-step guide for running a 15-minute live demo of the Internal Developer Platform.</p>
+<hr />
+<h2 id="pre-demo-setup-t-30-min">Pre-Demo Setup (T-30 min)<a class="headerlink" href="#pre-demo-setup-t-30-min" title="Permanent link">&para;</a></h2>
+<p>Run these steps <strong>before</strong> the audience arrives. All commands from the repo root.</p>
+<h3 id="step-1-build-backstage-bundle-one-time-per-machine-5-min">Step 1 — Build Backstage bundle <em>(one-time per machine, ~5 min)</em><a class="headerlink" href="#step-1-build-backstage-bundle-one-time-per-machine-5-min" title="Permanent link">&para;</a></h3>
+<p>Required once after any backend source change. Skip if the bundle is already built and <code>dist/bundle.tar.gz</code> exists.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app
+yarn<span class="w"> </span>install
+yarn<span class="w"> </span>build:backend
+<span class="nb">cd</span><span class="w"> </span>../..
+</code></pre></div></td></tr></table></div>
+<h3 id="step-2-bootstrap-the-local-platform-15-min">Step 2 — Bootstrap the local platform <em>(~15 min)</em><a class="headerlink" href="#step-2-bootstrap-the-local-platform-15-min" title="Permanent link">&para;</a></h3>
+<p>Starts a Kind cluster with nginx, metrics-server, Prometheus/Grafana, ArgoCD, OPA/Gatekeeper, DORA exporter, and deploys <code>hello-service</code>.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh
+</code></pre></div></td></tr></table></div>
+<p>Faster option (skips observability — use only if Grafana is not part of the demo):</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs
+</code></pre></div></td></tr></table></div>
+<h3 id="step-3-start-backstage-2-min">Step 3 — Start Backstage <em>(~2 min)</em><a class="headerlink" href="#step-3-start-backstage-2-min" title="Permanent link">&para;</a></h3>
+<p>Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, and triggers catalog export:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<h3 id="step-4-verify-everything-is-green">Step 4 — Verify everything is green<a class="headerlink" href="#step-4-verify-everything-is-green" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage portal</span>
+curl<span class="w"> </span>-sf<span class="w"> </span>http://localhost:3000<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Backstage OK&quot;</span>
+
+<span class="c1"># hello-service in Kind</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/hello-service<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--timeout<span class="o">=</span>60s
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services
+
+<span class="c1"># Grafana</span>
+curl<span class="w"> </span>-sf<span class="w"> </span>http://grafana.idp.local<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Grafana OK&quot;</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="step-5-open-browser-tabs-in-advance">Step 5 — Open browser tabs in advance<a class="headerlink" href="#step-5-open-browser-tabs-in-advance" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backstage portal</td>
+<td><a href="http://backstage.idp.local">http://backstage.idp.local</a></td>
+</tr>
+<tr>
+<td>Backstage catalog</td>
+<td><a href="http://backstage.idp.local/catalog">http://backstage.idp.local/catalog</a></td>
+</tr>
+<tr>
+<td>Backstage create</td>
+<td><a href="http://backstage.idp.local/create">http://backstage.idp.local/create</a></td>
+</tr>
+<tr>
+<td>Tech Radar</td>
+<td><a href="http://backstage.idp.local/tech-radar">http://backstage.idp.local/tech-radar</a></td>
+</tr>
+<tr>
+<td>Grafana — hello-service</td>
+<td><a href="http://grafana.idp.local/d/idp-services">http://grafana.idp.local/d/idp-services</a></td>
+</tr>
+<tr>
+<td>Grafana — DORA</td>
+<td><a href="http://grafana.idp.local/d/dora-metrics-idp">http://grafana.idp.local/d/dora-metrics-idp</a></td>
+</tr>
+<tr>
+<td>ArgoCD</td>
+<td><a href="http://argocd.idp.local">http://argocd.idp.local</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="demo-flow-15-min">Demo Flow (15 min)<a class="headerlink" href="#demo-flow-15-min" title="Permanent link">&para;</a></h2>
+<h3 id="1-platform-story-2-min">1 — Platform Story (2 min)<a class="headerlink" href="#1-platform-story-2-min" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>"The platform's job is to turn 'I have an idea' into 'it's running in production' — without the developer needing to know Kubernetes, Terraform, or CI/CD."</strong></p>
+</blockquote>
+<ul>
+<li>Open <code>README.md</code> or <code>docs/architecture.md</code></li>
+<li>Show the architecture layers: Developer → Backstage → GitHub Actions → Helm → EKS/Kind → CloudWatch/Grafana</li>
+</ul>
+<h3 id="2-developer-portal-3-min">2 — Developer Portal (3 min)<a class="headerlink" href="#2-developer-portal-3-min" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Open <strong>Backstage catalog</strong> → show existing services, systems, APIs</li>
+<li>Click <strong>Tech Radar</strong> → highlight ADOPT ring (Go, Python, ArgoCD, Helm, Prometheus) vs TRIAL (OpenTelemetry, KEDA) vs HOLD (Java, Monorepo)</li>
+<li>Point out: "43 entries — this drives technology decisions across all teams"</li>
+</ul>
+<h3 id="3-golden-path-live-4-min">3 — Golden Path Live (4 min)<a class="headerlink" href="#3-golden-path-live-4-min" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>"Watch a developer go from zero to a working service with CI/CD in under 2 minutes."</strong></p>
+</blockquote>
+<ul>
+<li>Click <strong>Create</strong> → choose <strong>Node.js Service</strong></li>
+<li>Fill in: name=<code>demo-service</code>, description, owner=<code>platform-team</code></li>
+<li>Submit → show the scaffolded GitHub repo (or show <code>hello-service</code> as pre-built output)</li>
+<li>Open the GitHub Actions tab → show CI running (test → build → smoke test)</li>
+<li>Show the generated files: <code>Dockerfile</code>, <code>helm-values-local.yaml</code>, <code>catalog-info.yaml</code>, <code>ci.yml</code></li>
+</ul>
+<h3 id="4-observability-3-min">4 — Observability (3 min)<a class="headerlink" href="#4-observability-3-min" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>"Every service gets metrics, dashboards, and alerting pre-wired — zero configuration."</strong></p>
+</blockquote>
+<ul>
+<li>Open <strong>Grafana — hello-service</strong> → show HTTP request rate, latency, error rate</li>
+<li>Open <strong>Grafana — DORA</strong> → point to deploy frequency and lead time panels</li>
+<li>Say: "DORA metrics are how we measure platform success — not just uptime"</li>
+</ul>
+<hr />
+<h2 id="key-talking-points">Key Talking Points<a class="headerlink" href="#key-talking-points" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Theme</th>
+<th>Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Developer Experience</strong></td>
+<td>From idea to production without Kubernetes knowledge</td>
+</tr>
+<tr>
+<td><strong>Zero Friction</strong></td>
+<td>Bootstrap runs on a laptop — no AWS account needed for local demo</td>
+</tr>
+<tr>
+<td><strong>Consistency</strong></td>
+<td>8 golden-path templates, one Helm chart, one CI pattern</td>
+</tr>
+<tr>
+<td><strong>Observability First</strong></td>
+<td>Prometheus + Grafana + DORA metrics are defaults, not afterthoughts</td>
+</tr>
+<tr>
+<td><strong>Platform KPIs</strong></td>
+<td>DORA metrics track platform impact — deploy frequency, lead time, CFR, MTTR</td>
+</tr>
+<tr>
+<td><strong>Tech Radar</strong></td>
+<td>Drives technology standardisation — 43 entries across adopt/trial/assess/hold</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="fallback-options">Fallback Options<a class="headerlink" href="#fallback-options" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>What breaks</th>
+<th>Fallback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backstage won't start</td>
+<td>Show the GitHub repo directly + CI results</td>
+</tr>
+<tr>
+<td>Kind cluster not ready</td>
+<td>Use screenshots of Grafana dashboards; explain architecture verbally</td>
+</tr>
+<tr>
+<td>Scaffold fails</td>
+<td>Show pre-scaffolded <code>hello-service</code> as the reference output</td>
+</tr>
+<tr>
+<td>Grafana blank</td>
+<td>Say "data populates once services send traffic" — show the dashboard structure</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

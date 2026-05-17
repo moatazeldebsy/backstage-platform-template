@@ -1,0 +1,1113 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>IDP CLI Reference - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#idp-cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IDP CLI Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/cli-reference.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="idp-cli-reference">IDP CLI Reference<a class="headerlink" href="#idp-cli-reference" title="Permanent link">&para;</a></h1>
+<p>The <code>idp</code> CLI is the terminal companion to the Backstage portal. It scaffolds services and test suites using the Backstage Scaffolder API when the platform is reachable, and falls back to local file generation when offline.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Build binary to ./bin/idp</span>
+make<span class="w"> </span>cli-build
+
+<span class="c1"># Or install to $(GOPATH)/bin</span>
+make<span class="w"> </span>cli-install
+</code></pre></div></td></tr></table></div>
+<h2 id="shell-completion">Shell completion<a class="headerlink" href="#shell-completion" title="Permanent link">&para;</a></h2>
+<p>Cobra generates completion scripts for bash, zsh, fish, and PowerShell:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Bash (add to ~/.bashrc or /etc/bash_completion.d/)</span>
+idp<span class="w"> </span>completion<span class="w"> </span>bash<span class="w"> </span>&gt;<span class="w"> </span>/usr/local/etc/bash_completion.d/idp
+
+<span class="c1"># Zsh (add to ~/.zshrc)</span>
+<span class="nb">source</span><span class="w"> </span>&lt;<span class="o">(</span>idp<span class="w"> </span>completion<span class="w"> </span>zsh<span class="o">)</span>
+
+<span class="c1"># Fish</span>
+idp<span class="w"> </span>completion<span class="w"> </span>fish<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nb">source</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
+<h3 id="idp-scaffold-service"><code>idp scaffold service</code><a class="headerlink" href="#idp-scaffold-service" title="Permanent link">&para;</a></h3>
+<p>Scaffold a new microservice. Uses the Backstage Scaffolder API when reachable; falls back to generating files locally under <code>services/&lt;name&gt;/</code>.</p>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td><em>(required)</em></td>
+<td>Service name — lowercase alphanumeric + hyphens</td>
+</tr>
+<tr>
+<td><code>--type</code></td>
+<td><code>nodejs</code></td>
+<td><code>nodejs</code> | <code>python</code> | <code>go</code></td>
+</tr>
+<tr>
+<td><code>--namespace</code></td>
+<td><code>services</code></td>
+<td>Kubernetes namespace</td>
+</tr>
+<tr>
+<td><code>--local</code></td>
+<td><code>false</code></td>
+<td>Skip Backstage API, generate files locally</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td><code>false</code></td>
+<td>Print files that would be generated without writing them</td>
+</tr>
+<tr>
+<td><code>--backstage-url</code></td>
+<td><code>http://backstage.idp.local</code></td>
+<td>Backstage base URL</td>
+</tr>
+<tr>
+<td><code>--owner</code></td>
+<td><code>group:default/platform-team</code></td>
+<td>Backstage catalog owner ref</td>
+</tr>
+<tr>
+<td><code>--description</code></td>
+<td></td>
+<td>Short description (used by Backstage template)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Node.js service (auto-detects Backstage)</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>order-svc<span class="w"> </span>--type<span class="w"> </span>nodejs
+
+<span class="c1"># Python FastAPI service, force local generation</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>data-pipeline<span class="w"> </span>--type<span class="w"> </span>python<span class="w"> </span>--local
+
+<span class="c1"># Go service</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>inventory-svc<span class="w"> </span>--type<span class="w"> </span>go
+
+<span class="c1"># Preview what would be generated without writing anything</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>billing-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w"> </span>--dry-run
+</code></pre></div></td></tr></table></div>
+<p><strong>Generated files (all types):</strong></p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code>services/&lt;name&gt;/
+├── src/                    # Application code
+├── Dockerfile
+├── README.md
+├── helm-values.yaml        # AWS / ALB overrides
+├── helm-values-local.yaml  # Kind / nginx overrides
+├── helm-values-dev.yaml
+├── helm-values-staging.yaml
+├── catalog-info.yaml       # Backstage registration
+└── .github/
+    └── workflows/
+        └── ci.yml
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="idp-scaffold-test-suite"><code>idp scaffold test-suite</code><a class="headerlink" href="#idp-scaffold-test-suite" title="Permanent link">&para;</a></h3>
+<p>Scaffold a QA/testing suite. Supports 13 test types.</p>
+<p><strong>Common flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td><em>(required)</em></td>
+<td>Suite name — lowercase alphanumeric + hyphens</td>
+</tr>
+<tr>
+<td><code>--type</code></td>
+<td><em>(required)</em></td>
+<td>Test suite type (see table below)</td>
+</tr>
+<tr>
+<td><code>--service</code></td>
+<td><em>(required)</em></td>
+<td>Target service name</td>
+</tr>
+<tr>
+<td><code>--namespace</code></td>
+<td><code>services</code></td>
+<td>Kubernetes namespace of the target service</td>
+</tr>
+<tr>
+<td><code>--local</code></td>
+<td><code>false</code></td>
+<td>Skip Backstage API, generate files locally</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td><code>false</code></td>
+<td>Print files that would be generated without writing them</td>
+</tr>
+<tr>
+<td><code>--backstage-url</code></td>
+<td><code>http://backstage.idp.local</code></td>
+<td>Backstage base URL</td>
+</tr>
+<tr>
+<td><code>--owner</code></td>
+<td><code>group:default/platform-team</code></td>
+<td>Backstage catalog owner ref</td>
+</tr>
+<tr>
+<td><code>--description</code></td>
+<td></td>
+<td>Short description</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Supported types:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+<th>Key flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>playwright</code></td>
+<td>E2E browser tests</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>k6</code></td>
+<td>Load / performance tests</td>
+<td><code>--vus</code> (10), <code>--duration</code> (30s), <code>--p95</code> (500)</td>
+</tr>
+<tr>
+<td><code>pact</code></td>
+<td>Consumer contract tests</td>
+<td><code>--consumer</code>, <code>--provider</code>, <code>--broker-url</code></td>
+</tr>
+<tr>
+<td><code>newman</code></td>
+<td>Postman / API tests</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>zap</code></td>
+<td>OWASP DAST security scan</td>
+<td><code>--scan-type</code> (baseline|full|api|graphql), <code>--openapi-url</code>, <code>--fail-risk</code></td>
+</tr>
+<tr>
+<td><code>datadog</code></td>
+<td>Datadog synthetic monitors</td>
+<td><code>--dd-site</code> (datadoghq.eu)</td>
+</tr>
+<tr>
+<td><code>visual</code></td>
+<td>Screenshot regression</td>
+<td><code>--threshold</code> (0.2)</td>
+</tr>
+<tr>
+<td><code>accessibility</code></td>
+<td>WCAG a11y audit</td>
+<td><code>--wcag</code> (wcag2a|wcag2aa|wcag21aa|wcag22aa)</td>
+</tr>
+<tr>
+<td><code>cucumber</code></td>
+<td>BDD Gherkin scenarios</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>appium</code></td>
+<td>Mobile UI tests</td>
+<td><code>--platform</code> (android|ios), <code>--appium-server</code></td>
+</tr>
+<tr>
+<td><code>chaos</code></td>
+<td>Chaos Mesh experiments</td>
+<td><code>--experiments</code>, <code>--chaos-duration</code> (1m)</td>
+</tr>
+<tr>
+<td><code>mutation</code></td>
+<td>Stryker mutation testing</td>
+<td><code>--score</code> (70), <code>--test-runner</code> (jest|mocha|jasmine)</td>
+</tr>
+<tr>
+<td><code>testcontainers</code></td>
+<td>Integration tests with containers</td>
+<td><code>--containers</code> (postgres)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Playwright E2E suite</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service
+
+<span class="c1"># k6 load test — 50 VUs, 5 min, p95 &lt; 300 ms</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-load<span class="w"> </span>--type<span class="w"> </span>k6<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--vus<span class="w"> </span><span class="m">50</span><span class="w"> </span>--duration<span class="w"> </span>5m<span class="w"> </span>--p95<span class="w"> </span><span class="m">300</span>
+
+<span class="c1"># OWASP ZAP DAST security scan</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-sec<span class="w"> </span>--type<span class="w"> </span>zap<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scan-type<span class="w"> </span>baseline
+
+<span class="c1"># WCAG 2.1 AA accessibility audit</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-a11y<span class="w"> </span>--type<span class="w"> </span>accessibility<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--wcag<span class="w"> </span>wcag21aa
+
+<span class="c1"># Pact consumer contract tests</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-contracts<span class="w"> </span>--type<span class="w"> </span>pact<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--consumer<span class="w"> </span>frontend<span class="w"> </span>--provider<span class="w"> </span>hello-service
+
+<span class="c1"># Chaos resilience experiments</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-chaos<span class="w"> </span>--type<span class="w"> </span>chaos<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--chaos-duration<span class="w"> </span>2m
+
+<span class="c1"># Stryker mutation testing, 80% threshold</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-mutation<span class="w"> </span>--type<span class="w"> </span>mutation<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--score<span class="w"> </span><span class="m">80</span>
+
+<span class="c1"># Preview what would be generated</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span>--dry-run
+
+<span class="c1"># Force local generation (offline)</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span>--local
+</code></pre></div></td></tr></table></div>
+<p><strong>Generated directory structure (all types):</strong></p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code>test-suites/&lt;name&gt;/
+├── tests/              # Test files (type-specific)
+├── README.md
+├── catalog-info.yaml   # Backstage test-suite registration
+├── mkdocs.yml          # TechDocs
+└── docs/
+    └── index.md
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="idp-completion"><code>idp completion</code><a class="headerlink" href="#idp-completion" title="Permanent link">&para;</a></h3>
+<p>Generate shell completion scripts (auto-provided by Cobra):</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>idp<span class="w"> </span>completion<span class="w"> </span>bash
+idp<span class="w"> </span>completion<span class="w"> </span>zsh
+idp<span class="w"> </span>completion<span class="w"> </span>fish
+idp<span class="w"> </span>completion<span class="w"> </span>powershell
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="idp-version-idp-version"><code>idp version</code> / <code>idp --version</code><a class="headerlink" href="#idp-version-idp-version" title="Permanent link">&para;</a></h3>
+<p>Print the CLI version. Binaries built with <code>make cli-build</code> embed the git tag/sha automatically (e.g. <code>v0.1.0-42-gabcdef</code>).</p>
+<hr />
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="token-resolution-order">Token resolution order<a class="headerlink" href="#token-resolution-order" title="Permanent link">&para;</a></h3>
+<p>When calling the Backstage Scaffolder API, the CLI resolves the auth token in this priority order:</p>
+<ol>
+<li><code>--token</code> flag (explicit override on the <code>scaffold</code> parent command)</li>
+<li><code>BACKSTAGE_TOKEN</code> environment variable</li>
+<li><code>BACKSTAGE_AUTH_SECRET</code> in <code>local/backstage/.env</code></li>
+<li>First static <code>externalAccess</code> token in <code>backstage/app-config.local.yaml</code></li>
+</ol>
+<h3 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BACKSTAGE_TOKEN</code></td>
+<td>Bearer token for Backstage API calls</td>
+</tr>
+<tr>
+<td><code>GITHUB_ORG</code> or <code>GH_ORG</code></td>
+<td>GitHub org used in generated catalog entries</td>
+</tr>
+<tr>
+<td><code>PLATFORM_REPO</code></td>
+<td>Platform repo name (default: <code>backstage-platform-template</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="offline-local-mode">Offline / local mode<a class="headerlink" href="#offline-local-mode" title="Permanent link">&para;</a></h2>
+<p>Pass <code>--local</code> to skip the Backstage health check entirely and generate files directly on disk. Useful before the platform is running or in CI pipelines that don't have Backstage access.</p>
+<p>Pass <code>--dry-run</code> to see exactly which files would be written without touching the filesystem — no Backstage call, no git commit.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

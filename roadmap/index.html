@@ -1,0 +1,1651 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../local-setup/">
+      
+      
+        <link rel="next" href="../readiness-checklist/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Roadmap - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#platform-roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#status-legend" class="md-nav__link">
+    <span class="md-ellipsis">
+      Status Legend
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#currently-shipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      Currently Shipped ✅
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-0-open-source-readiness" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 — Open-Source Readiness ✅
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-cd-to-eks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — CD to EKS ✅
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-runbooks-alertmanager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — Runbooks + AlertManager ✅
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-finops-cost-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — FinOps &amp; Cost Management ✅
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-4-team-scorecards-tech-insights" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 — Team Scorecards (Tech Insights) ✅
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-5-open-source-launch-readiness" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 5 — Open-Source Launch Readiness �
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-6-multi-environment-gitops-promotion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 6 — Multi-Environment GitOps Promotion 📋
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-7-aiml-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7 — AI/ML Platform 🚧
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-8-developer-experience" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 8 — Developer Experience 📋
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-9-advanced-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 9 — Advanced Platform 💡
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backlog 💡
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#milestones" class="md-nav__link">
+    <span class="md-ellipsis">
+      Milestones
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#github-project-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Project Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GitHub Project Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#labels-to-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      Labels to create
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommended-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Recommended workflow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#suggested-issue-template-for-roadmap-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      Suggested issue template for roadmap items
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/roadmap.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="platform-roadmap">Platform Roadmap<a class="headerlink" href="#platform-roadmap" title="Permanent link">&para;</a></h1>
+<p>This document tracks the planned feature additions to the Internal Developer Platform.
+Status is updated as work progresses.</p>
+<blockquote>
+<p><strong>GitHub Project Roadmap:</strong> All roadmap items are tracked as issues in the
+<a href="../../projects">GitHub Project board</a> with milestone dates, priority labels, and
+a timeline view. The sections below are the canonical source of truth; the GitHub
+Project syncs from them.</p>
+</blockquote>
+<h2 id="status-legend">Status Legend<a class="headerlink" href="#status-legend" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅</td>
+<td>Shipped</td>
+</tr>
+<tr>
+<td>🚧</td>
+<td>In Progress</td>
+</tr>
+<tr>
+<td>📋</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>💡</td>
+<td>Backlog</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="currently-shipped">Currently Shipped ✅<a class="headerlink" href="#currently-shipped" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Golden path templates</td>
+<td>Node.js, Python, Go, React, Terraform, Deploy-to-Kind (7 templates)</td>
+</tr>
+<tr>
+<td>CI pipeline</td>
+<td>Multi-language test detection, ECR push, OIDC auth, graceful skip when secrets absent</td>
+</tr>
+<tr>
+<td>EKS platform</td>
+<td>VPC, EKS v1.29, ECR, RDS, Secrets Manager via Terraform</td>
+</tr>
+<tr>
+<td>Observability</td>
+<td>Prometheus + Grafana, DORA metrics exporter, hello-service + QA dashboards</td>
+</tr>
+<tr>
+<td>OPA/Gatekeeper policies</td>
+<td>deny-latest-tag, require-health-probes, require-resource-limits, require-labels, require-cost-tags</td>
+</tr>
+<tr>
+<td>Backstage portal</td>
+<td>7 templates, custom scaffolder actions (<code>idpLocalDeploy</code>, <code>idpProvisionSecret</code>, <code>idpSetRepoSecrets</code>), TechDocs, Kubernetes plugin</td>
+</tr>
+<tr>
+<td>Multi-env namespaces</td>
+<td><code>services-dev</code>, <code>services-staging</code>, <code>services-prod</code> with Pod Security Standards</td>
+</tr>
+<tr>
+<td>DORA metrics</td>
+<td>Deployment frequency, lead time, MTTR, change failure rate — CloudWatch (AWS) + Pushgateway (local)</td>
+</tr>
+<tr>
+<td>Community health</td>
+<td>CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates, PR template, CODEOWNERS</td>
+</tr>
+<tr>
+<td>GitOps</td>
+<td>ArgoCD app-of-apps for local and AWS; image tag commit loop via <code>build-and-deploy.yml</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-0-open-source-readiness">Phase 0 — Open-Source Readiness ✅<a class="headerlink" href="#phase-0-open-source-readiness" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Fix first-run correctness and credibility issues before promoting the project publicly.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fix <code>YOUR_DISPLAY_NAME</code> in <code>catalog-info.yaml</code></td>
+<td>✅</td>
+<td>Resolved in personalisation pass during <code>setup.sh</code></td>
+</tr>
+<tr>
+<td>Correct README template count</td>
+<td>✅</td>
+<td>README updated to reflect 28 templates</td>
+</tr>
+<tr>
+<td>Add <code>SECURITY.md</code></td>
+<td>✅</td>
+<td><code>SECURITY.md</code> added — vulnerability disclosure policy</td>
+</tr>
+<tr>
+<td>Add Dependabot config</td>
+<td>✅</td>
+<td><code>.github/dependabot.yml</code> present</td>
+</tr>
+<tr>
+<td>Verify all Phase 1–4 shipped items exist on disk</td>
+<td>✅</td>
+<td><code>observability/slo/</code>, <code>terraform/finops.tf</code>, <code>idpTechInsights.ts</code>, <code>kubernetes/finops/</code> all confirmed</td>
+</tr>
+<tr>
+<td>Semantic versioning + <code>CHANGELOG.md</code></td>
+<td>✅</td>
+<td><code>CHANGELOG.md</code> follows Keep-a-Changelog; v0.1.0 tagged</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-1-cd-to-eks">Phase 1 — CD to EKS ✅<a class="headerlink" href="#phase-1-cd-to-eks" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Every merge to <code>main</code> automatically deploys to EKS via Helm.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fix image tag propagation between CI jobs</td>
+<td>✅</td>
+<td>Uses <code>needs.build-and-push.outputs.image_tag</code></td>
+</tr>
+<tr>
+<td>Slack deploy notifications (success + failure)</td>
+<td>✅</td>
+<td><code>slackapi/slack-github-action@v2</code></td>
+</tr>
+<tr>
+<td>GitHub deployment environment tracking</td>
+<td>✅</td>
+<td><code>environment: production</code> set</td>
+</tr>
+<tr>
+<td>Graceful skip when <code>AWS_ROLE_ARN</code> is unset</td>
+<td>✅</td>
+<td>Guard step in <code>build-and-push</code> and <code>update-image-tag</code> jobs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Secrets required:</strong> <code>SLACK_BOT_TOKEN</code>, <code>SLACK_CHANNEL_ID</code></p>
+<hr />
+<h2 id="phase-2-runbooks-alertmanager">Phase 2 — Runbooks + AlertManager ✅<a class="headerlink" href="#phase-2-runbooks-alertmanager" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Prometheus alerts route to Slack with clickable runbook links; ops procedures documented in TechDocs.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runbook library (8 runbooks)</td>
+<td>✅</td>
+<td><code>docs/runbooks/</code> — deployment-rollback, pod-crash-loop, high-memory, high-cpu, db-recovery, image-pull-backoff</td>
+</tr>
+<tr>
+<td>AlertManager enabled (local)</td>
+<td>✅</td>
+<td><code>local/observability/prometheus-stack-values.yaml</code></td>
+</tr>
+<tr>
+<td>AlertManager config (Slack routing)</td>
+<td>✅</td>
+<td><code>observability/alertmanager/alertmanager-config.yaml</code></td>
+</tr>
+<tr>
+<td>Prometheus alert rules</td>
+<td>✅</td>
+<td><code>observability/alertmanager/prometheus-rules.yaml</code></td>
+</tr>
+<tr>
+<td>AlertManager datasource in Grafana</td>
+<td>✅</td>
+<td>Added to <code>grafana-helm-values.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-3-finops-cost-management">Phase 3 — FinOps &amp; Cost Management ✅<a class="headerlink" href="#phase-3-finops-cost-management" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Cost visibility in AWS and in-cluster; budget alerts to Slack before overspend.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPA cost-tag enforcement</td>
+<td>✅</td>
+<td><code>kubernetes/policies/require-cost-tags.yaml</code> (warn mode)</td>
+</tr>
+<tr>
+<td>OpenCost in-cluster</td>
+<td>✅</td>
+<td><code>kubernetes/finops/opencost.yaml</code></td>
+</tr>
+<tr>
+<td>OpenCost Grafana dashboard</td>
+<td>✅</td>
+<td><code>finops</code> provider in Grafana helm values</td>
+</tr>
+<tr>
+<td>AWS Cost Anomaly Detection</td>
+<td>✅</td>
+<td><code>terraform/finops.tf</code></td>
+</tr>
+<tr>
+<td>AWS Budgets with Slack alerts</td>
+<td>✅</td>
+<td>Monthly cap, 80% warning + 100% forecasted alerts</td>
+</tr>
+<tr>
+<td>Backstage Cost Insights plugin</td>
+<td>✅</td>
+<td><code>@backstage-community/plugin-cost-insights</code> wired via proxy</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-4-team-scorecards-tech-insights">Phase 4 — Team Scorecards (Tech Insights) ✅<a class="headerlink" href="#phase-4-team-scorecards-tech-insights" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Per-service quality scorecard in Backstage; Bronze/Silver/Gold maturity model visible to all teams.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tech Insights backend plugin</td>
+<td>✅</td>
+<td><code>@backstage/plugin-tech-insights-backend</code></td>
+</tr>
+<tr>
+<td>Fact collectors (6 checks)</td>
+<td>✅</td>
+<td>has-owner, has-techdocs, has-health-probes, has-runbook-url, has-api-definition, uses-pinned-image-tag</td>
+</tr>
+<tr>
+<td>Bronze / Silver / Gold checks</td>
+<td>✅</td>
+<td>Defined in fact retriever schema</td>
+</tr>
+<tr>
+<td>Frontend scorecard tab</td>
+<td>✅</td>
+<td><code>@backstage/plugin-tech-insights</code></td>
+</tr>
+<tr>
+<td>Scorecard metrics exporter + CronJob</td>
+<td>✅</td>
+<td><code>observability/tech-insights-exporter/</code></td>
+</tr>
+<tr>
+<td>Annotate all service skeletons</td>
+<td>✅</td>
+<td><code>backstage.io/runbook-url</code> in all template skeletons</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-5-open-source-launch-readiness">Phase 5 — Open-Source Launch Readiness �<a class="headerlink" href="#phase-5-open-source-launch-readiness" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Make the project a compelling, trustworthy open-source reference. Every item here
+directly affects GitHub discoverability, first-run experience, or contributor confidence.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Demo GIF / screenshot in README</td>
+<td>📋</td>
+<td>#1 driver of GitHub stars; shows the golden path end-to-end in 30 seconds</td>
+</tr>
+<tr>
+<td>GitHub Pages deployment (MkDocs)</td>
+<td>📋</td>
+<td><code>mkdocs.yml</code> is configured but docs aren't published; zero discoverability without it</td>
+</tr>
+<tr>
+<td>Trivy + Cosign in CI</td>
+<td>✅</td>
+<td>Trivy vulnerability scan + Cosign image signing in CI pipeline</td>
+</tr>
+<tr>
+<td>Compatibility matrix</td>
+<td>📋</td>
+<td>Backstage v1.49, K8s 1.32, Helm 3.x, Kind 0.27 — to be declared</td>
+</tr>
+<tr>
+<td>Semantic versioning + <code>CHANGELOG.md</code></td>
+<td>✅</td>
+<td><code>CHANGELOG.md</code> follows Keep-a-Changelog format; v0.1.0 tagged</td>
+</tr>
+<tr>
+<td>SLO definitions (Sloth)</td>
+<td>✅</td>
+<td><code>observability/slo/hello-service-slos.yaml</code> — 99.5% availability, p99 &lt; 500ms</td>
+</tr>
+<tr>
+<td>Complete template library (add-secret, rds-database)</td>
+<td>✅</td>
+<td><code>add-secret/</code>, <code>rds-database/</code>, <code>s3-bucket/</code>, <code>kafka-topic/</code>, <code>eks-cluster/</code> all added</td>
+</tr>
+<tr>
+<td>GitHub org auto-discovery</td>
+<td>📋</td>
+<td>Catalog auto-discovers repos with <code>catalog-info.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-6-multi-environment-gitops-promotion">Phase 6 — Multi-Environment GitOps Promotion 📋<a class="headerlink" href="#phase-6-multi-environment-gitops-promotion" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Merge to <code>main</code> deploys to dev automatically; promotion to staging and prod is a
+one-click PR. This is the most-requested feature after first scaffold.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ArgoCD app-of-apps for staging</td>
+<td>🔴 High</td>
+<td><code>local/argocd/app-of-apps-staging.yaml</code>; watches <code>helm-values-staging.yaml</code></td>
+</tr>
+<tr>
+<td>ArgoCD app-of-apps for prod</td>
+<td>🔴 High</td>
+<td><code>kubernetes/argocd/app-of-apps-prod.yaml</code>; watches <code>helm-values-prod.yaml</code></td>
+</tr>
+<tr>
+<td><code>update-image-tag</code> CI step (multi-env)</td>
+<td>🔴 High</td>
+<td>CI writes SHA tag to <code>helm-values-dev.yaml</code>; promotion PR updates staging/prod values</td>
+</tr>
+<tr>
+<td>Namespace isolation per environment</td>
+<td>🟡 Medium</td>
+<td><code>services-staging</code> and <code>services-prod</code> with OPA policies matching <code>services-dev</code></td>
+</tr>
+<tr>
+<td>Environment promotion Backstage template</td>
+<td>🟡 Medium</td>
+<td>Scaffolder action opens a PR updating <code>helm-values-&lt;target&gt;.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-7-aiml-platform">Phase 7 — AI/ML Platform 🚧<a class="headerlink" href="#phase-7-aiml-platform" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Every developer persona — including ML engineers and AI teams — has a golden path.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ai-agent-service</code> template (<code>ai-agent-kagent</code>)</td>
+<td>✅</td>
+<td>Anthropic Claude API via KAgent; full skeleton in <code>backstage/catalog/templates/ai-agent-kagent/</code></td>
+</tr>
+<tr>
+<td><code>mlflow-experiment</code> template</td>
+<td>✅</td>
+<td>MLflow tracking server; registers as <code>Resource</code> kind; <code>backstage/catalog/templates/mlflow-experiment/</code></td>
+</tr>
+<tr>
+<td><code>mcp-server</code> template</td>
+<td>✅</td>
+<td>Model Context Protocol server skeleton; <code>backstage/catalog/templates/mcp-server/</code></td>
+</tr>
+<tr>
+<td>KAgent platform deployment</td>
+<td>✅</td>
+<td>KAgent installed on local Kind + AWS EKS; ingress at <code>kagent.idp.local</code> / AWS ALB</td>
+</tr>
+<tr>
+<td>MLflow tracking server</td>
+<td>✅</td>
+<td>MLflow installed on local Kind + AWS EKS; ingress at <code>mlflow.idp.local</code> / AWS ALB</td>
+</tr>
+<tr>
+<td>IDP MCP Server</td>
+<td>✅</td>
+<td><code>services/idp-mcp-server/</code> — exposes IDP operations as MCP tools; <code>bootstrap-ai.sh</code> bootstraps the full stack</td>
+</tr>
+<tr>
+<td><code>model-serving-api</code> template</td>
+<td>📋</td>
+<td>FastAPI skeleton; <code>prediction_latency_seconds</code> histogram; <code>MODEL_URI</code> env var</td>
+</tr>
+<tr>
+<td><code>ml-training-job</code> template</td>
+<td>📋</td>
+<td>Argo Workflows <code>workflow.yaml</code>; MLflow run logging; CronJob variant</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-8-developer-experience">Phase 8 — Developer Experience 📋<a class="headerlink" href="#phase-8-developer-experience" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Reduce the time between "I wrote code" and "I see it running with full observability"
+to under 10 minutes.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DORA metrics Backstage widget</td>
+<td>🔴 High</td>
+<td>Homepage card showing deployment frequency and MTTR per team</td>
+</tr>
+<tr>
+<td>Trivy results in Backstage</td>
+<td>🟡 Medium</td>
+<td>Post-CI Trivy JSON → catalog entity; security tab shows CVE count per service</td>
+</tr>
+<tr>
+<td>External Secrets Operator full loop</td>
+<td>🟡 Medium</td>
+<td><code>idpProvisionSecret</code> extended to emit <code>ExternalSecret</code> CRD; automatic rotation every 30 days</td>
+</tr>
+<tr>
+<td>Platform CLI (<code>platformctl</code>)</td>
+<td>🟡 Medium</td>
+<td>Go CLI wrapping <code>create-service.sh</code>, <code>setup-runner.sh</code>; <code>--help</code> + shell autocomplete</td>
+</tr>
+<tr>
+<td>ECR repository provisioner</td>
+<td>🟢 Low</td>
+<td><code>idp:provision-ecr</code> scaffolder action; creates ECR repo + lifecycle policy + IRSA</td>
+</tr>
+<tr>
+<td>Namespace provisioner action</td>
+<td>🟢 Low</td>
+<td><code>idp:create-namespace</code> for fast-path team onboarding</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note on ephemeral PR environments:</strong> Moved to backlog. Namespace lifecycle management,
+wildcard ingress DNS, and concurrent-PR race conditions make this a Phase 9+ item in practice.</p>
+</blockquote>
+<hr />
+<h2 id="phase-9-advanced-platform">Phase 9 — Advanced Platform 💡<a class="headerlink" href="#phase-9-advanced-platform" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Platform is self-healing, cost-attributed, and secure by default at scale.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Network policies cluster-wide</td>
+<td>Default-deny + explicit allow; Cilium or Calico</td>
+</tr>
+<tr>
+<td>Ephemeral PR environments</td>
+<td>PR label <code>env: preview</code> → Helm install into <code>services-preview-&lt;pr#&gt;</code>; torn down on close</td>
+</tr>
+<tr>
+<td>Multi-region / HA</td>
+<td>Second AWS region; Route53 weighted failover; cross-region ECR replication</td>
+</tr>
+<tr>
+<td>AI/ML platform namespace</td>
+<td><code>ml-platform</code> namespace; GPU node group in Terraform; <code>LimitRange</code> for GPU quota</td>
+</tr>
+<tr>
+<td>LLM gateway resource</td>
+<td>Anthropic Claude API (all envs); AI agent templates <code>dependsOn: resource:claude-api</code></td>
+</tr>
+<tr>
+<td>Chaos engineering integration</td>
+<td>Chaos Mesh; <code>chaos-experiment</code> Backstage template</td>
+</tr>
+<tr>
+<td>Platform API (FastAPI)</td>
+<td>REST API for programmatic service creation</td>
+</tr>
+<tr>
+<td>Backstage plugin: security posture</td>
+<td>Aggregate Trivy + OPA pass/fail per service into a single security score</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="backlog">Backlog 💡<a class="headerlink" href="#backlog" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Secret rotation template</td>
+<td>Backstage template wrapping <code>idp:provision-secret</code> with rotation schedule UI</td>
+</tr>
+<tr>
+<td>Multi-region / HA</td>
+<td>Second AWS region, Route53 failover</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="milestones">Milestones<a class="headerlink" href="#milestones" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Target</th>
+<th>Phase</th>
+<th>GitHub Label</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0: Open-source ready</td>
+<td>Q2 2026</td>
+<td>Phase 0</td>
+<td><code>milestone/m0-oss-ready</code></td>
+</tr>
+<tr>
+<td>M1: Live CD</td>
+<td>Q2 2026</td>
+<td>Phase 1</td>
+<td><code>milestone/m1-live-cd</code></td>
+</tr>
+<tr>
+<td>M2: Ops-ready platform</td>
+<td>Q2 2026</td>
+<td>Phase 2</td>
+<td><code>milestone/m2-ops-ready</code></td>
+</tr>
+<tr>
+<td>M3: Cost-aware platform</td>
+<td>Q2 2026</td>
+<td>Phase 3</td>
+<td><code>milestone/m3-finops</code></td>
+</tr>
+<tr>
+<td>M4: Developer excellence</td>
+<td>Q2 2026</td>
+<td>Phase 4</td>
+<td><code>milestone/m4-scorecards</code></td>
+</tr>
+<tr>
+<td>M5: OSS launch</td>
+<td>Q2 2026 🚧</td>
+<td>Phase 5</td>
+<td><code>milestone/m5-oss-launch</code></td>
+</tr>
+<tr>
+<td>M6: Multi-env GitOps</td>
+<td>Q3 2026</td>
+<td>Phase 6</td>
+<td><code>milestone/m6-gitops</code></td>
+</tr>
+<tr>
+<td>M7: AI/ML platform</td>
+<td>Q2 2026 🚧</td>
+<td>Phase 7</td>
+<td><code>milestone/m7-aiml</code></td>
+</tr>
+<tr>
+<td>M8: Developer experience</td>
+<td>Q3 2026</td>
+<td>Phase 8</td>
+<td><code>milestone/m8-dx</code></td>
+</tr>
+<tr>
+<td>M9: Advanced platform</td>
+<td>Q4 2026</td>
+<td>Phase 9</td>
+<td><code>milestone/m9-advanced</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="github-project-setup">GitHub Project Setup<a class="headerlink" href="#github-project-setup" title="Permanent link">&para;</a></h2>
+<p>This roadmap is designed to sync directly with a <strong>GitHub Project (Roadmap view)</strong>:</p>
+<h3 id="labels-to-create">Labels to create<a class="headerlink" href="#labels-to-create" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code>priority/high    — #d93f0b
+priority/medium  — #e4e669
+priority/low     — #0075ca
+phase/0-oss-ready
+phase/5-oss-launch
+phase/6-gitops
+phase/7-aiml
+phase/8-dx
+phase/9-advanced
+</code></pre></div></td></tr></table></div>
+<h3 id="recommended-workflow">Recommended workflow<a class="headerlink" href="#recommended-workflow" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create one GitHub Issue per roadmap row (use the item title + notes as the issue body)</li>
+<li>Assign the matching <code>phase/*</code> and <code>priority/*</code> labels</li>
+<li>Set the GitHub Milestone to the matching <code>M*</code> milestone</li>
+<li>In the GitHub Project, add a <strong>Roadmap</strong> (timeline) view grouped by Milestone</li>
+<li>Set start/due dates on each issue to place items on the timeline</li>
+</ol>
+<h3 id="suggested-issue-template-for-roadmap-items">Suggested issue template for roadmap items<a class="headerlink" href="#suggested-issue-template-for-roadmap-items" title="Permanent link">&para;</a></h3>
+<div class="language-markdown highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="gu">## Summary</span>
+&lt;!-- Copy the Notes column from roadmap.md --&gt;
+
+<span class="gu">## Acceptance criteria</span>
+<span class="k">- [ ]</span> Implementation complete
+<span class="k">- [ ]</span> Tests / verification steps pass (see roadmap.md Verification section)
+<span class="k">- [ ]</span> roadmap.md status updated to ✅
+
+<span class="gu">## Phase</span>
+&lt;!-- e.g. Phase 6 — Multi-Environment GitOps --&gt;
+
+<span class="gu">## References</span>
+&lt;!-- Links to relevant files, ADRs, or prior issues --&gt;
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../local-setup/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Local Setup">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Local Setup
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../readiness-checklist/" class="md-footer__link md-footer__link--next" aria-label="Next: Readiness Checklist">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Readiness Checklist
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

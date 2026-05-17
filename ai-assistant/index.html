@@ -1,0 +1,1231 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>AI Assistant - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ai-assistant" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AI Assistant
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/ai-assistant.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="ai-assistant">AI Assistant<a class="headerlink" href="#ai-assistant" title="Permanent link">&para;</a></h1>
+<p>The AI Assistant is a chat interface embedded in the Backstage portal backed by a
+<a href="https://kagent.dev">KAgent</a> AI agent (Claude) that has live access to the service
+catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolder.</p>
+<hr />
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span></pre></div></td><td class="code"><div><pre><span></span><code>┌──────────────────────────────────────────────────────────────────┐
+│  Backstage (Docker Compose / EKS pod)                            │
+│                                                                  │
+│  extensions.tsx — AiAssistantPage                                │
+│    POST /api/proxy/kagent/a2a/kagent/idp-assistant               │
+│    GET  /api/proxy/kagent/api/sessions/&lt;id&gt;  (poll)              │
+└───────────────────────┬──────────────────────────────────────────┘
+                        │  Backstage proxy
+                        ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  KAgent UI  (namespace: kagent)                                  │
+│  kagent-ui.kagent.svc.cluster.local:8080  (in-cluster)           │
+│  http://kagent.idp.local  (local ingress)                        │
+│                                                                  │
+│  A2A server — routes /a2a/kagent/&lt;agent-name&gt;                    │
+│  Sessions API — GET /api/sessions/:id                            │
+└───────────────────────┬──────────────────────────────────────────┘
+                        │  MCP over HTTP
+                        ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  IDP MCP Server  (namespace: kagent)                             │
+│  service: idp-mcp-server  port: 3001                             │
+│  POST /mcp  (Streamable HTTP, stateless, one McpServer/request)  │
+│                                                                  │
+│  Tools:                                                          │
+│    catalog_search       → Backstage catalog API                  │
+│    get_service_metrics  → Prometheus query API                   │
+│    list_templates       → Backstage catalog (kind=Template)      │
+│    get_template_params  → Backstage catalog entity by name       │
+│    scaffold_service     → Backstage scaffolder v2 tasks API      │
+│    list_deployments     → Kubernetes apps/v1 Deployments API     │
+└──────────────────────────────────────────────────────────────────┘
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="component-breakdown">Component breakdown<a class="headerlink" href="#component-breakdown" title="Permanent link">&para;</a></h2>
+<h3 id="1-backstage-frontend-aiassistantpage">1. Backstage frontend — <code>AiAssistantPage</code><a class="headerlink" href="#1-backstage-frontend-aiassistantpage" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>backstage/app/packages/app/src/extensions.tsx</code></p>
+<p>Registered as a Backstage frontend plugin extension at route <code>/ai-assistant</code> with a
+nav item (chat icon) in the sidebar.</p>
+<p><strong>Message flow per user turn:</strong></p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code>1. Generate a UUID contextId (used to locate the session after creation)
+2. POST /api/proxy/kagent/a2a/kagent/idp-assistant  { jsonrpc: &quot;2.0&quot;, method: &quot;message/send&quot;, … }
+   — fire and ignore the SSE response (KAgent streams SSE, not JSON)
+3. Poll GET /api/proxy/kagent/api/sessions  every 500 ms for up to 12 s
+   — find the session whose id matches contextId (or the most-recent idp_assistant session)
+4. Poll GET /api/proxy/kagent/api/sessions/&lt;sessionId&gt;  every 1 s for up to 90 s
+   — inspect the last agent event:
+       function_call present  → tool round-trip in progress, keep polling
+       function_response      → agent generating next text, keep polling
+       plain text only        → turn complete, render the message
+5. Concatenate all non-partial agent text parts and display as the assistant bubble
+</code></pre></div></td></tr></table></div>
+<p><strong><code>ask_user</code> / interactive form fallback:</strong>
+KAgent may emit an <code>ask_user</code> function call when it wants to render a form dialog.
+The Backstage chat UI cannot render ADK form widgets, so the frontend detects this
+event, extracts the question text from the function call args, and appends them as
+plain text. The system message Rule 2 now explicitly forbids the agent from calling
+this tool.</p>
+<p><strong>New Chat button:</strong> clears local <code>messages</code> state only — the KAgent session on the
+server is not deleted. Each new message creates a fresh contextId, so the next
+user turn starts a new server-side session.</p>
+<hr />
+<h3 id="2-backstage-proxy-config">2. Backstage proxy config<a class="headerlink" href="#2-backstage-proxy-config" title="Permanent link">&para;</a></h3>
+<p><strong>Base config (<code>backstage/app-config.yaml</code>):</strong>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">proxy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">/kagent</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://kagent-ui.kagent.svc.cluster.local:8080</span>
+<span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;GET&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;POST&#39;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></td></tr></table></div></p>
+<p><strong>Local override (<code>backstage/app-config.local.yaml</code>):</strong>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">proxy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">/kagent</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://kagent.idp.local</span>
+<span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;GET&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;POST&#39;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></td></tr></table></div></p>
+<p>The local override is needed because <code>kagent-ui.kagent.svc.cluster.local</code> is not
+resolvable from the Backstage Docker Compose container (it runs on the host network,
+not inside the Kind cluster). The <code>/etc/hosts</code> entry for <code>kagent.idp.local</code> pointing
+to <code>127.0.0.1</code> is sufficient.</p>
+<hr />
+<h3 id="3-kagent-agent-manifest">3. KAgent agent manifest<a class="headerlink" href="#3-kagent-agent-manifest" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>kubernetes/kagent/idp-agent.yaml</code></p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kagent.dev/v1alpha2</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Agent</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">idp-assistant</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kagent</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Declarative</span>
+<span class="w">  </span><span class="nt">declarative</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">modelConfig</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-anthropic</span><span class="w">   </span><span class="c1"># references kubernetes/kagent/modelconfig.yaml</span>
+<span class="w">    </span><span class="nt">systemMessage</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">…</span>
+<span class="w">    </span><span class="nt">tools</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">McpServer</span>
+<span class="w">        </span><span class="nt">mcpServer</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RemoteMCPServer</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">idp-mcp-server</span>
+<span class="w">          </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kagent</span>
+<span class="w">          </span><span class="nt">toolNames</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">catalog_search</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">get_service_metrics</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">get_template_params</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scaffold_service</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">list_deployments</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">list_templates</span>
+</code></pre></div></td></tr></table></div>
+<p><strong>System message rules (summarised):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Never reference templates from memory — always call <code>list_templates</code> first</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Never call <code>ask_user</code> or any interactive confirmation tool</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Ask for missing info as plain text; wait for the next user message</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Scaffold flow: <code>list_templates</code> → <code>get_template_params</code> → <code>scaffold_service</code> — <strong>immediately, no confirmation prompt</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Minimum required fields to scaffold: <code>name</code>, <code>description</code>, <code>owner</code> — proceed without asking when all three are present</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Catalog/metric/deployment: call the relevant tool immediately</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Be concise; show real tool results, not assumptions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why Rule 4 + 5 matter:</strong> If the agent asks "Should I proceed?" and the user replies
+in a new message, the agent loses the scaffolding context (the previous tool results
+are not re-sent) and resets to its opening prompt. The fix was to prohibit confirmation
+questions entirely and call <code>scaffold_service</code> in the same response turn.</p>
+<hr />
+<h3 id="4-idp-mcp-server">4. IDP MCP Server<a class="headerlink" href="#4-idp-mcp-server" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>services/idp-mcp-server/src/index.ts</code></p>
+<p>Node.js/TypeScript process exposed on port <code>3001</code>. Uses the
+<code>@modelcontextprotocol/sdk</code> Streamable HTTP transport. Because <code>McpServer.connect()</code>
+can only be called once per instance, a fresh <code>McpServer</code> is created per request
+(<code>createServer()</code> factory).</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Upstream call</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>catalog_search</code></td>
+<td><code>GET /api/catalog/entities</code></td>
+<td>Exact-match first, falls back to client-side fuzzy filter (200 entities)</td>
+</tr>
+<tr>
+<td><code>get_service_metrics</code></td>
+<td>Prometheus <code>/api/v1/query</code></td>
+<td>Defaults to <code>http_requests_total</code></td>
+</tr>
+<tr>
+<td><code>list_templates</code></td>
+<td><code>GET /api/catalog/entities?filter=kind=Template</code></td>
+<td>Returns name, title, description, templateRef</td>
+</tr>
+<tr>
+<td><code>get_template_params</code></td>
+<td><code>GET /api/catalog/entities/by-name/Template/default/&lt;name&gt;</code></td>
+<td>Flattens all parameter groups into a single list with required/optional flags</td>
+</tr>
+<tr>
+<td><code>scaffold_service</code></td>
+<td><code>POST /api/scaffolder/v2/tasks</code> then polls status</td>
+<td>Auto-builds <code>repoUrl</code> from <code>name</code>+<code>owner</code> if omitted; normalises full HTTPS GitHub URLs; polls for up to 3 min</td>
+</tr>
+<tr>
+<td><code>list_deployments</code></td>
+<td>Kubernetes <code>/apis/apps/v1/namespaces/&lt;ns&gt;/deployments</code></td>
+<td>Defaults to namespace <code>services</code>; uses in-cluster service account token</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Environment variables:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BACKSTAGE_URL</code></td>
+<td><code>http://backstage:7007</code></td>
+<td>Internal Backstage URL</td>
+</tr>
+<tr>
+<td><code>BACKSTAGE_EXTERNAL_URL</code></td>
+<td><code>http://backstage.idp.local</code></td>
+<td>Browser-accessible URL (used in task output links)</td>
+</tr>
+<tr>
+<td><code>BACKSTAGE_TOKEN</code></td>
+<td><em>(empty)</em></td>
+<td>Static token from <code>app-config.local.yaml</code></td>
+</tr>
+<tr>
+<td><code>PROMETHEUS_URL</code></td>
+<td><code>http://prometheus-kube-prometheus-prometheus.monitoring:9090</code></td>
+<td>In-cluster Prometheus</td>
+</tr>
+<tr>
+<td><code>K8S_API</code></td>
+<td><code>https://kubernetes.default.svc</code></td>
+<td>In-cluster Kubernetes API</td>
+</tr>
+<tr>
+<td><code>K8S_TOKEN</code></td>
+<td><em>(empty)</em></td>
+<td>Falls back to in-cluster service account token</td>
+</tr>
+<tr>
+<td><code>PORT</code></td>
+<td><code>3001</code></td>
+<td>HTTP listen port</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="scaffolding-flow-step-by-step">Scaffolding flow (step-by-step)<a class="headerlink" href="#scaffolding-flow-step-by-step" title="Permanent link">&para;</a></h2>
+<p>When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-team":</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code>Agent turn 1 (same response):
+  1. call list_templates
+     → returns template list including template:default/python-service
+  2. call get_template_params { template_ref: &quot;template:default/python-service&quot; }
+     → returns { params: [ {key:&quot;name&quot;, required:true}, {key:&quot;description&quot;,...}, ... ] }
+  3. All required fields (name, description, owner) are already known
+  4. call scaffold_service {
+       template_ref: &quot;template:default/python-service&quot;,
+       values: { name: &quot;demo-svc&quot;, description: &quot;demo&quot;, owner: &quot;group:default/qa-team&quot; }
+     }
+     → MCP server auto-builds repoUrl: &quot;github.com?owner=qa-team&amp;repo=demo-svc&quot;
+     → POSTs to Backstage scaffolder, polls until completed/failed (up to 3 min)
+     → returns { task_id, status: &quot;completed&quot;, ui_url: &quot;http://backstage.idp.local/create/tasks/&lt;id&gt;&quot; }
+  5. Agent responds with task result and the Backstage task URL
+</code></pre></div></td></tr></table></div>
+<p>The agent never breaks this into multiple turns or asks for confirmation.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="ai-assistant-did-not-respond-no-session-created">"AI assistant did not respond (no session created)"<a class="headerlink" href="#ai-assistant-did-not-respond-no-session-created" title="Permanent link">&para;</a></h3>
+<p>KAgent is not running or the proxy target is wrong.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check KAgent pods</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>po<span class="w"> </span>-n<span class="w"> </span>kagent
+
+<span class="c1"># Check the proxy is reachable from Backstage</span>
+<span class="c1"># (in the Backstage container or from the host)</span>
+curl<span class="w"> </span>http://kagent.idp.local/api/sessions
+</code></pre></div></td></tr></table></div>
+<h3 id="agent-resets-to-what-would-you-like-to-do">Agent resets to "what would you like to do?"<a class="headerlink" href="#agent-resets-to-what-would-you-like-to-do" title="Permanent link">&para;</a></h3>
+<p>This was caused by two bugs, both now fixed:
+1. <code>get_template_params</code> was missing from the agent's <code>toolNames</code> list — the tool
+   call failed silently and the agent lost its place in the scaffold flow.
+2. The system message allowed the agent to ask "Should I proceed?" — when the user
+   replied in a new message the previous context was not available, causing a reset.</p>
+<p><strong>Fix applied:</strong> <code>kubernetes/kagent/idp-agent.yaml</code> — <code>get_template_params</code> added to
+<code>toolNames</code>; Rule 4 + Rule 5 now require immediate <code>scaffold_service</code> invocation.</p>
+<p>To re-apply after a cluster rebuild:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/idp-agent.yaml
+<span class="c1"># (bootstrap-ai.sh does this automatically on every run)</span>
+</code></pre></div></td></tr></table></div></p>
+<h3 id="scaffold-task-stuck-in-processing">Scaffold task stuck in "processing"<a class="headerlink" href="#scaffold-task-stuck-in-processing" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check task status directly in Backstage</span>
+open<span class="w"> </span>http://backstage.idp.local/create/tasks/&lt;task-id&gt;
+
+<span class="c1"># Check the scaffolder backend logs</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="no-metrics-found-for">"No metrics found for …"<a class="headerlink" href="#no-metrics-found-for" title="Permanent link">&para;</a></h3>
+<p>The service's <code>/metrics</code> endpoint is not yet scraped. Check that a <code>ServiceMonitor</code>
+exists in the <code>services</code> namespace and that Prometheus has discovered it:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>servicemonitor<span class="w"> </span>-n<span class="w"> </span>services
+<span class="c1"># Then check Prometheus targets: http://prometheus.idp.local/targets</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="rebuilding-the-idp-mcp-server-image">Rebuilding the IDP MCP Server image<a class="headerlink" href="#rebuilding-the-idp-mcp-server-image" title="Permanent link">&para;</a></h2>
+<p>After any code change to <code>services/idp-mcp-server/</code>:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-kagent
+<span class="c1"># Rebuilds and pushes the idp-mcp-server image only, then reloads the deployment</span>
+</code></pre></div></td></tr></table></div>
+<p>Or manually:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/idp-mcp-server:latest<span class="w"> </span>services/idp-mcp-server/
+docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/idp-mcp-server:latest
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span>-n<span class="w"> </span>kagent
+</code></pre></div></td></tr></table></div></p>
+<hr />
+<h2 id="ai-search-semantic-rag">AI Search (Semantic / RAG)<a class="headerlink" href="#ai-search-semantic-rag" title="Permanent link">&para;</a></h2>
+<p>The <code>/ai-search</code> page in Backstage provides semantic search over the service catalog
+using <a href="https://www.voyageai.com">Voyage AI</a> embeddings stored in pgvector.</p>
+<h3 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>Browser → Backstage frontend (AiSearchPage)
+            ↓  GET /api/rag-search/search?q=&lt;query&gt;
+          Backstage backend (idpRagSearch plugin)
+            ↓  Voyage AI API (voyage-3-lite, 512-dim)
+            ↓  PostgreSQL + pgvector (HNSW cosine similarity)
+            → top-10 results with similarity score
+</code></pre></div></td></tr></table></div>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<p>Add your Voyage AI API key to <code>local/backstage/.env</code>:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">VOYAGE_API_KEY</span><span class="o">=</span>your-key-here
+</code></pre></div></td></tr></table></div>
+<p>Sign up at <a href="https://www.voyageai.com">https://www.voyageai.com</a> — the free tier provides 200M tokens/month,
+which is more than sufficient for a local IDP catalog.</p>
+<p>Without <code>VOYAGE_API_KEY</code>, the <code>/ai-search</code> page loads but returns HTTP 503 on every
+search. All other Backstage features are unaffected.</p>
+<h3 id="how-pgvector-is-provisioned">How pgvector is provisioned<a class="headerlink" href="#how-pgvector-is-provisioned" title="Permanent link">&para;</a></h3>
+<p><code>local/backstage/docker-compose.yml</code> uses the <code>pgvector/pgvector:pg17</code> image instead
+of plain <code>postgres:17-alpine</code>. On the first container startup (empty volume),
+<code>local/backstage/init-pgvector.sql</code> is executed automatically via
+<code>docker-entrypoint-initdb.d</code>. It:</p>
+<ol>
+<li>Creates the <code>vector</code> extension</li>
+<li>Creates the <code>rag_documents</code> table (512-dim embedding column + metadata)</li>
+<li>Creates an HNSW index for fast cosine-similarity search</li>
+</ol>
+<p>This runs automatically — no manual SQL step required. After a cluster destroy +
+<code>--start-backstage</code>, the volume is re-created and the SQL runs again on the fresh
+Postgres instance.</p>
+<h3 id="backend-plugin">Backend plugin<a class="headerlink" href="#backend-plugin" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>backstage/app/packages/backend/src/modules/idpRagSearch.ts</code></p>
+<p>Registered in <code>backend/src/index.ts</code> as <code>ragSearchPlugin</code>. Exposes three endpoints:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/rag-search/search?q=&lt;query&gt;</code></td>
+<td>GET</td>
+<td>Returns top-10 semantically similar catalog entities</td>
+</tr>
+<tr>
+<td><code>/api/rag-search/index</code></td>
+<td>POST</td>
+<td>Triggers a manual re-index of the catalog</td>
+</tr>
+<tr>
+<td><code>/api/rag-search/status</code></td>
+<td>GET</td>
+<td>Returns last-indexed timestamp and document count</td>
+</tr>
+</tbody>
+</table>
+<p>The plugin auto-indexes the full catalog every 30 minutes (configurable via
+<code>ragSearch.indexIntervalMinutes</code> in <code>app-config.yaml</code>).</p>
+<h3 id="configuration-app-configyaml">Configuration (<code>app-config.yaml</code>)<a class="headerlink" href="#configuration-app-configyaml" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">ragSearch</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">voyageApiKey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${VOYAGE_API_KEY}</span>
+<span class="w">  </span><span class="nt">indexIntervalMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">  </span><span class="nt">externalSources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">   </span><span class="c1"># optional list of documentation URLs to include</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="troubleshooting_1">Troubleshooting<a class="headerlink" href="#troubleshooting_1" title="Permanent link">&para;</a></h3>
+<p><strong>Search returns 503</strong></p>
+<p><code>VOYAGE_API_KEY</code> is missing or empty in <code>local/backstage/.env</code>. Add the key and
+restart Backstage (<code>./scripts/bootstrap-local.sh --start-backstage</code>).</p>
+<p><strong>No results / stale results</strong></p>
+<p>Trigger a manual re-index:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://backstage.idp.local/api/rag-search/index
+<span class="c1"># Or click the &quot;Re-index&quot; button on the /ai-search page</span>
+</code></pre></div></td></tr></table></div></p>
+<p>Check indexing status:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>curl<span class="w"> </span>http://backstage.idp.local/api/rag-search/status
+</code></pre></div></td></tr></table></div></p>
+<p><strong>pgvector extension missing</strong></p>
+<p>The <code>rag_documents</code> table won't exist if Backstage was started before the
+<code>init-pgvector.sql</code> fix was committed. Tear down and restart Docker Compose:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1406 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../golden-path/">
+      
+      
+        <link rel="next" href="../roadmap/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Local Setup - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#local-setup-kind" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Local Setup
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bootstrap-1015-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bootstrap (~10–15 min)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bootstrap (~10–15 min)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#faster-startup-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Faster startup flags
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      Access services
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#start-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Start Backstage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Start Backstage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-files-first-time-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment files (first time only)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-2-backstage-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day-2 Backstage restart
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-backend-bundle-rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manual backend bundle rebuild
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-a-service-via-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy a service via Backstage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploy a service via Backstage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scaffold-a-new-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffold a new service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-to-local-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy to local Kind
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaffold-and-test-a-new-service-locally-cli-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffold and test a new service locally (CLI path)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-vs-aws-whats-different" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local vs AWS — what's different
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aiml-stack-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      AI/ML stack (optional)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI/ML stack (optional)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-ai-assistant-in-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the AI Assistant in Backstage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enabling-ai-search-semantic-rag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enabling AI Search (semantic / RAG)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Teardown
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/local-setup.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="local-setup-kind">Local Setup (Kind)<a class="headerlink" href="#local-setup-kind" title="Permanent link">&para;</a></h1>
+<p>Run the full IDP platform on your laptop — no AWS account required.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># macOS</span>
+brew<span class="w"> </span>install<span class="w"> </span>kind<span class="w"> </span>kubectl<span class="w"> </span>helm<span class="w"> </span>docker
+
+<span class="c1"># Verify</span>
+kind<span class="w"> </span>version<span class="w">    </span><span class="c1"># &gt;= 0.27</span>
+kubectl<span class="w"> </span>version<span class="w"> </span>--client
+helm<span class="w"> </span>version<span class="w">    </span><span class="c1"># &gt;= 3.14</span>
+docker<span class="w"> </span>info<span class="w">     </span><span class="c1"># Docker running</span>
+</code></pre></div></td></tr></table></div>
+<blockquote>
+<p><strong>macOS ARM64 note</strong>: The cluster is pinned to K8s <strong>1.33.1</strong> (<code>kindest/node:v1.33.1</code>) — tested stable on macOS ARM64 with Docker Desktop.</p>
+</blockquote>
+<h2 id="bootstrap-1015-min">Bootstrap (~10–15 min)<a class="headerlink" href="#bootstrap-1015-min" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>First time?</strong> Run <code>./scripts/setup.sh</code> from the repo root — it handles placeholder personalisation and then calls <code>bootstrap-local.sh</code> automatically (choose "local" when prompted).</p>
+</blockquote>
+<p>To run the bootstrap directly (e.g. day-2 cluster recreation):</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh
+</code></pre></div></td></tr></table></div>
+<p>What it does (in order):</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Starts a local container registry on <code>localhost:5003</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Creates a Kind cluster (<code>kind-idp-mvp</code>) with the registry wired in</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Creates platform namespaces and RBAC</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Installs nginx ingress controller (host ports 80/443)</td>
+</tr>
+<tr>
+<td>4b</td>
+<td>Installs metrics-server (required for CPU/memory in Backstage)</td>
+</tr>
+<tr>
+<td>4c</td>
+<td>Wires Backstage K8s Service + nginx Ingress</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Installs Prometheus + Grafana + AlertManager (<code>kube-prometheus-stack</code>)</td>
+</tr>
+<tr>
+<td>5b</td>
+<td>Installs OpenCost</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Builds and deploys <code>hello-service</code> via the golden-path Helm chart</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Writes <code>/etc/hosts</code> entries for <code>*.idp.local</code> and flushes DNS cache</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Installs ArgoCD</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Installs OPA/Gatekeeper and applies all five policy constraints</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Installs Prometheus Pushgateway + DORA exporter CronJob + catalog exporter CronJob</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Deploys Tech Insights Exporter CronJob (scorecard metrics → Pushgateway every 15 min)</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Wires AlertManager Slack webhook (if <code>SLACK_WEBHOOK_URL</code> is set)</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Applies ArgoCD ApplicationSet (hello-service → local/dev/staging/prod)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="faster-startup-flags">Faster startup flags<a class="headerlink" href="#faster-startup-flags" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w">       </span><span class="c1"># skip Prometheus + Grafana</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-gitops<span class="w">    </span><span class="c1"># skip ArgoCD</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies<span class="w">  </span><span class="c1"># skip OPA/Gatekeeper</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-dora<span class="w">      </span><span class="c1"># skip DORA exporter</span>
+</code></pre></div></td></tr></table></div>
+<p>Flags can be combined: <code>--skip-obs --skip-gitops</code> cuts bootstrap time roughly in half.</p>
+<h2 id="access-services">Access services<a class="headerlink" href="#access-services" title="Permanent link">&para;</a></h2>
+<p><code>/etc/hosts</code> entries are written automatically by <code>bootstrap-local.sh</code>. If you need to add them manually:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;cat local/hosts-append.txt &gt;&gt; /etc/hosts&quot;</span>
+</code></pre></div></td></tr></table></div>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>URL</th>
+<th>Credentials</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Backstage</strong></td>
+<td><a href="http://backstage.idp.local">http://backstage.idp.local</a> (or <a href="http://localhost:3000">http://localhost:3000</a>)</td>
+<td>— (guest mode)</td>
+</tr>
+<tr>
+<td><strong>hello-service</strong></td>
+<td><a href="http://hello-service.idp.local">http://hello-service.idp.local</a></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Grafana</strong></td>
+<td><a href="http://grafana.idp.local">http://grafana.idp.local</a></td>
+<td><code>admin</code> / <code>admin</code></td>
+</tr>
+<tr>
+<td><strong>ArgoCD</strong></td>
+<td><a href="http://argocd.idp.local">http://argocd.idp.local</a></td>
+<td><code>admin</code> / <em>(see below)</em></td>
+</tr>
+<tr>
+<td><strong>Prometheus</strong></td>
+<td><a href="http://prometheus.idp.local">http://prometheus.idp.local</a></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>OpenCost</strong></td>
+<td><a href="http://opencost.idp.local">http://opencost.idp.local</a></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Pushgateway</strong></td>
+<td><a href="http://pushgateway.idp.local">http://pushgateway.idp.local</a></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Local registry</strong></td>
+<td>localhost:5003</td>
+<td>— (no auth)</td>
+</tr>
+</tbody>
+</table>
+<p>ArgoCD initial admin password:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s2">&quot;{.data.password}&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
+</code></pre></div></td></tr></table></div></p>
+<p>Alternatively, use <code>kubectl port-forward</code> for any service:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/hello-service<span class="w"> </span><span class="m">8080</span>:80<span class="w"> </span>-n<span class="w"> </span>services
+</code></pre></div></td></tr></table></div></p>
+<h2 id="start-backstage">Start Backstage<a class="headerlink" href="#start-backstage" title="Permanent link">&para;</a></h2>
+<p><code>bootstrap-local.sh</code> sets up the cluster and platform but does not start Backstage. Run this after the cluster is up:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<p>This single command:
+1. Builds the Backstage Docker image
+2. Starts the Docker Compose stack
+3. Waits for the container to join the <code>kind</code> network
+4. Wires the nginx ingress endpoint to the live container IP
+5. Seeds sample QA metrics into Pushgateway
+6. Triggers an immediate catalog export
+7. Prints the full access-URL summary</p>
+<p>Backstage is then available at <a href="http://backstage.idp.local">http://backstage.idp.local</a> (or <a href="http://localhost:3000">http://localhost:3000</a> as a direct fallback).</p>
+<h3 id="environment-files-first-time-only">Environment files (first time only)<a class="headerlink" href="#environment-files-first-time-only" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>cp<span class="w"> </span>local/.env.example<span class="w"> </span>local/.env
+cp<span class="w"> </span>local/backstage/.env.example<span class="w"> </span>local/backstage/.env
+<span class="c1"># Edit both and fill in:</span>
+<span class="c1">#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION</span>
+<span class="c1">#   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,</span>
+<span class="c1">#                          BACKSTAGE_AUTH_SECRET (any string locally)</span>
+</code></pre></div></td></tr></table></div>
+<blockquote>
+<p>K8s credentials (<code>K8S_CLUSTER_URL</code>, <code>K8S_SERVICE_ACCOUNT_TOKEN</code>, <code>K8S_CLUSTER_CA_DATA</code>) are written to <code>local/backstage/.env</code> automatically by <code>bootstrap-local.sh</code> via <code>get-k8s-credentials.sh</code>. No manual step needed if you bootstrapped with that script.</p>
+</blockquote>
+<h3 id="day-2-backstage-restart">Day-2 Backstage restart<a class="headerlink" href="#day-2-backstage-restart" title="Permanent link">&para;</a></h3>
+<p>If you restart Docker Compose manually, re-run <code>--start-backstage</code> to rewire the nginx endpoint:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<p>Or, if you only need to refresh the IP without reseeding metrics:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--update-backstage-ip
+</code></pre></div></td></tr></table></div>
+<h3 id="manual-backend-bundle-rebuild">Manual backend bundle rebuild<a class="headerlink" href="#manual-backend-bundle-rebuild" title="Permanent link">&para;</a></h3>
+<p>Only needed if you changed code under <code>backstage/app/packages/backend/src/</code>:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>install<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>build:backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../..
+<span class="c1"># Then re-run --start-backstage to pick up the new image</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<h2 id="deploy-a-service-via-backstage">Deploy a service via Backstage<a class="headerlink" href="#deploy-a-service-via-backstage" title="Permanent link">&para;</a></h2>
+<h3 id="scaffold-a-new-service">Scaffold a new service<a class="headerlink" href="#scaffold-a-new-service" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open <a href="http://backstage.idp.local">http://backstage.idp.local</a> → <strong>Create</strong></li>
+<li>Choose <strong>Node.js Service</strong> or <strong>Python FastAPI Service</strong></li>
+<li>Fill in name, description, owner, GitHub repo</li>
+<li>Click <strong>Create</strong> — Backstage publishes the repo to GitHub and registers it in the catalog</li>
+</ol>
+<h3 id="deploy-to-local-kind">Deploy to local Kind<a class="headerlink" href="#deploy-to-local-kind" title="Permanent link">&para;</a></h3>
+<p>The platform includes a custom <code>idp:deploy-local</code> action and a dedicated template.</p>
+<p><strong>Prerequisites:</strong>
+- Kind cluster and Backstage running (<code>./scripts/bootstrap-local.sh</code> then <code>./scripts/bootstrap-local.sh --start-backstage</code>)
+- Image pushed to local registry (see below)</p>
+<p><strong>Push the image:</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/&lt;name&gt;
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/&lt;name&gt;:latest<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;name&gt;:latest
+</code></pre></div></td></tr></table></div></p>
+<p><strong>Deploy via Backstage:</strong>
+1. Open <a href="http://backstage.idp.local">http://backstage.idp.local</a> → <strong>Create</strong>
+2. Choose <strong>Deploy Service to local Kind cluster</strong>
+3. Pick the service from the catalog, set image tag (<code>latest</code>)
+4. Click <strong>Create</strong></p>
+<p>The action runs <code>helm upgrade --install</code> and logs pod status. It connects to Kind via a rewritten kubeconfig (<code>127.0.0.1</code> → <code>host.docker.internal</code>) mounted into the Backstage container.</p>
+<p><strong>Deploy via CLI (alternative):</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>&lt;name&gt;<span class="w"> </span>./helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/&lt;name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/&lt;name&gt;/helm-values-local.yaml
+</code></pre></div></td></tr></table></div></p>
+<h2 id="scaffold-and-test-a-new-service-locally-cli-path">Scaffold and test a new service locally (CLI path)<a class="headerlink" href="#scaffold-and-test-a-new-service-locally-cli-path" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Scaffold — uses Backstage Scaffolder API when running, local generation otherwise</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs
+
+<span class="c1"># Force local generation (offline / pre-Backstage)</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w"> </span>--local
+
+<span class="c1"># 2. Build and push the image</span>
+<span class="nb">cd</span><span class="w"> </span>services/my-svc
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/my-svc:latest<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/my-svc:latest
+
+<span class="c1"># 3. Deploy</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-svc<span class="w"> </span>./helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/my-svc<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/my-svc/helm-values-local.yaml
+
+<span class="c1"># 4. Access</span>
+<span class="c1"># http://my-svc.idp.local  (after /etc/hosts entry)</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="local-vs-aws-whats-different">Local vs AWS — what's different<a class="headerlink" href="#local-vs-aws-whats-different" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Local</th>
+<th>AWS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ingress class</td>
+<td><code>nginx</code></td>
+<td><code>alb</code></td>
+</tr>
+<tr>
+<td>Image pull</td>
+<td><code>localhost:5003/&lt;name&gt;</code></td>
+<td><code>&lt;account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/idp-mvp/&lt;name&gt;</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>none</td>
+<td>OIDC (GitHub Actions), IRSA (pods)</td>
+</tr>
+<tr>
+<td>CD trigger</td>
+<td><code>idp:deploy-local</code> Backstage action</td>
+<td>GitHub Actions push to <code>main</code></td>
+</tr>
+<tr>
+<td>Observability</td>
+<td>Prometheus in-cluster</td>
+<td>CloudWatch + Grafana</td>
+</tr>
+<tr>
+<td>Helm values file</td>
+<td><code>helm-values-local.yaml</code></td>
+<td><code>helm-values.yaml</code></td>
+</tr>
+<tr>
+<td>Persistent storage</td>
+<td>hostPath / emptyDir</td>
+<td>EBS (gp2/gp3)</td>
+</tr>
+</tbody>
+</table>
+<p>The Helm chart (<code>helm/service-template</code>) is <strong>identical</strong> for both. Only the values file differs.</p>
+<h2 id="aiml-stack-optional">AI/ML stack (optional)<a class="headerlink" href="#aiml-stack-optional" title="Permanent link">&para;</a></h2>
+<p>After <code>bootstrap-local.sh</code> (and optionally <code>--start-backstage</code>) completes, boot the AI/ML platform:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Requires ANTHROPIC_API_KEY in local/.env</span>
+./scripts/bootstrap-ai.sh
+</code></pre></div></td></tr></table></div>
+<p>This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>URL</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KAgent UI</td>
+<td><a href="http://kagent.idp.local">http://kagent.idp.local</a></td>
+<td>Direct agent chat UI</td>
+</tr>
+<tr>
+<td>AI Assistant</td>
+<td><a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a></td>
+<td>Backstage-embedded chat</td>
+</tr>
+<tr>
+<td>AI Search</td>
+<td><a href="http://backstage.idp.local/ai-search">http://backstage.idp.local/ai-search</a></td>
+<td>Semantic search (requires <code>VOYAGE_API_KEY</code>)</td>
+</tr>
+<tr>
+<td>IDP Assistant (A2A)</td>
+<td><a href="http://idp-assistant.idp.local">http://idp-assistant.idp.local</a></td>
+<td>A2A agent endpoint</td>
+</tr>
+<tr>
+<td>MLflow UI</td>
+<td><a href="http://mlflow.idp.local">http://mlflow.idp.local</a></td>
+<td>Experiment tracking</td>
+</tr>
+<tr>
+<td>IDP MCP Server health</td>
+<td><a href="http://idp-mcp-server.idp.local/healthz">http://idp-mcp-server.idp.local/healthz</a></td>
+<td>MCP server status</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Skip flags</strong> (combine freely):
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mlflow<span class="w">   </span><span class="c1"># skip MLflow</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-kagent<span class="w">   </span><span class="c1"># skip KAgent install</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mcp<span class="w">      </span><span class="c1"># skip IDP MCP Server build</span>
+</code></pre></div></td></tr></table></div></p>
+<p><strong>Tear down AI/ML only</strong> (core platform stays up):
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
+</code></pre></div></td></tr></table></div></p>
+<h3 id="using-the-ai-assistant-in-backstage">Using the AI Assistant in Backstage<a class="headerlink" href="#using-the-ai-assistant-in-backstage" title="Permanent link">&para;</a></h3>
+<p>Open <a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a> (or click <strong>AI Assistant</strong> in the
+sidebar). The assistant can:</p>
+<ul>
+<li>Search the service catalog: <em>"find all Python services owned by qa-team"</em></li>
+<li>Check metrics: <em>"show request rate for hello-service"</em></li>
+<li>List running deployments: <em>"what's deployed in the services namespace?"</em></li>
+<li>Scaffold a new service: <em>"scaffold a Python FastAPI service called demo, description demo API, owner group:default/platform-team"</em></li>
+</ul>
+<p>For scaffolding, provide <code>name</code>, <code>description</code>, and <code>owner</code> in one message — the
+agent will call the scaffolder immediately without asking for confirmation.</p>
+<h3 id="enabling-ai-search-semantic-rag">Enabling AI Search (semantic / RAG)<a class="headerlink" href="#enabling-ai-search-semantic-rag" title="Permanent link">&para;</a></h3>
+<p>The <code>/ai-search</code> page provides semantic search over the catalog using Voyage AI
+embeddings stored in pgvector. To enable it, add your Voyage AI key to
+<code>local/backstage/.env</code> before starting Backstage:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">VOYAGE_API_KEY</span><span class="o">=</span>your-key-here<span class="w">   </span><span class="c1"># free tier: 200M tokens/month — voyageai.com</span>
+</code></pre></div></td></tr></table></div>
+<p>The Postgres image used by Docker Compose (<code>pgvector/pgvector:pg17</code>) and
+<code>local/backstage/init-pgvector.sql</code> handle the vector extension and table
+automatically on first Postgres startup — no manual SQL step needed.</p>
+<p>Without <code>VOYAGE_API_KEY</code>, the page loads but search returns HTTP 503. All other
+features are unaffected.</p>
+<p>See <a href="../ai-assistant/">docs/ai-assistant.md</a> for the full architecture and
+troubleshooting guide.</p>
+<h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+<span class="c1"># Removes Kind cluster and local registry container</span>
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../golden-path/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Golden Path">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Golden Path
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../roadmap/" class="md-footer__link md-footer__link--next" aria-label="Next: Roadmap">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Roadmap
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

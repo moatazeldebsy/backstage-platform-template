@@ -1,0 +1,1312 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../golden-path/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Architecture - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#platform-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Design Decisions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Design Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#convention-over-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Convention over configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-as-the-single-deployment-abstraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helm as the single deployment abstraction
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ci-only-in-github-actions-for-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI only in GitHub Actions (for now)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-backstage-action-for-local-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Backstage action for local deploy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oidc-for-keyless-cicd-auth-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      OIDC for keyless CI/CD auth (AWS)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#irsa-for-pod-level-aws-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      IRSA for pod-level AWS access
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-secrets-operator-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      External Secrets Operator (AWS)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observability-parity-local-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observability parity (local = AWS)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-load-balancer-controller-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS Load Balancer Controller (AWS)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aiml-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      AI/ML Platform
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI/ML Platform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-ai-assistant-works-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the AI Assistant works end-to-end
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaffolding-flow-single-agent-turn" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffolding flow (single agent turn)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key files
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component Inventory
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backstage-custom-action-idpdeploy-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backstage Custom Action: idp:deploy-local
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/architecture.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="platform-architecture">Platform Architecture<a class="headerlink" href="#platform-architecture" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code>┌─────────────────────────────────────────────────────────────────────┐
+│                       Developer Experience                           │
+│  ┌────────────────── ┐  ┌──────────────┐  ┌────────────────────────┐ │
+│  │  Backstage        │  │  GitHub      │  │  create-service.sh     │ │
+│  │  Portal           │  │  (source)    │  │  (CLI scaffold)        │ │
+│  │  + AI Assistant   │  └──────┬───────┘  └────────────────────────┘ │
+│  │  + custom actions │         │ push                                │
+│  └──────┬───────┬────┘         │                                     │
+└─────────┼───────┼──────────────┼─────────────────────────────────────┘
+          │       │              │
+  scaffold│  deploy              │ push
+          │  (idp:deploy-local)  ▼
+          │       │   ┌──────────────────────────────────────────┐
+          │       │   │           CI/CD Layer                    │
+          │       │   │  GitHub Actions (ubuntu-latest)          │
+          │       │   │  install → test → docker build → /healthz│
+          │       │   └────────────────┬─────────────────────────┘
+          │       │                    │ (AWS CD — planned)
+          ▼       ▼                    ▼
+┌───────────────────────────────────────────────────────────────────── ┐
+│               Local: Kind cluster  /  AWS: EKS                       │
+│                                                                      │
+│  namespace: services              namespace: monitoring              │
+│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
+│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
+│  │ Services             │         │ (Prometheus + Grafana +        │ │
+│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
+│  └──────────────────────┘         └────────────────────────────────┘ │
+│                                                                      │
+│  namespace: kagent                namespace: ml-platform             │
+│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
+│  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
+│  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
+│  │ IDP MCP Server       │         │                                │ │
+│  └──────────────────────┘         └────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────── ┘
+                    │ (AWS only)
+                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                 AWS Infrastructure (Terraform)                      │
+│   VPC → Private/Public Subnets → EKS → ECR → IAM (OIDC/IRSA)        │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre></div></td></tr></table></div>
+<h2 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="convention-over-configuration">Convention over configuration<a class="headerlink" href="#convention-over-configuration" title="Permanent link">&para;</a></h3>
+<p>Every service gets the same: container registry, CI workflow, Helm chart structure, health check paths, namespace, and monitoring. Developers don't configure these — they inherit them from the golden path.</p>
+<h3 id="helm-as-the-single-deployment-abstraction">Helm as the single deployment abstraction<a class="headerlink" href="#helm-as-the-single-deployment-abstraction" title="Permanent link">&para;</a></h3>
+<p>The <code>helm/service-template</code> chart is the single deployment unit for both local (Kind) and cloud (EKS). Service teams only override their <code>helm-values.yaml</code> or <code>helm-values-local.yaml</code> — no raw Kubernetes YAML.</p>
+<h3 id="ci-only-in-github-actions-for-now">CI only in GitHub Actions (for now)<a class="headerlink" href="#ci-only-in-github-actions-for-now" title="Permanent link">&para;</a></h3>
+<p>Scaffolded service workflows run <code>test</code> on <code>ubuntu-latest</code>. No self-hosted runners are required. CD is handled by the <code>idp:deploy-local</code> Backstage action (local) or will be added as an AWS deploy job when secrets are configured.</p>
+<h3 id="custom-backstage-action-for-local-deploy">Custom Backstage action for local deploy<a class="headerlink" href="#custom-backstage-action-for-local-deploy" title="Permanent link">&para;</a></h3>
+<p><code>idp:deploy-local</code> is a backend module registered in the Backstage scaffolder. It runs <code>helm upgrade --install</code> from inside the Backstage container using a kubeconfig rewritten to reach the host's Kind cluster via <code>host.docker.internal</code>.</p>
+<h3 id="oidc-for-keyless-cicd-auth-aws">OIDC for keyless CI/CD auth (AWS)<a class="headerlink" href="#oidc-for-keyless-cicd-auth-aws" title="Permanent link">&para;</a></h3>
+<p>GitHub Actions authenticates to AWS via OIDC (<code>aws-actions/configure-aws-credentials</code>), eliminating long-lived secrets. The IAM role is scoped to the specific GitHub org.</p>
+<h3 id="irsa-for-pod-level-aws-access">IRSA for pod-level AWS access<a class="headerlink" href="#irsa-for-pod-level-aws-access" title="Permanent link">&para;</a></h3>
+<p>Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA). IRSA roles exist for: Backstage, ESO (shared), DORA exporter, Grafana (CloudWatch read), MLflow (S3), KAgent ESO (Secrets Manager).</p>
+<h3 id="external-secrets-operator-aws">External Secrets Operator (AWS)<a class="headerlink" href="#external-secrets-operator-aws" title="Permanent link">&para;</a></h3>
+<p>ESO syncs secrets from AWS Secrets Manager into Kubernetes <code>Secret</code> objects. A single cluster-scoped <code>ClusterSecretStore</code> named <code>aws-secretsmanager</code> is created during bootstrap and shared by all <code>ExternalSecret</code> resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read <code>idp-mvp/*</code> secrets without static credentials.</p>
+<h3 id="observability-parity-local-aws">Observability parity (local = AWS)<a class="headerlink" href="#observability-parity-local-aws" title="Permanent link">&para;</a></h3>
+<p>Both environments use <code>kube-prometheus-stack</code> (Prometheus + Grafana + AlertManager bundled). AWS uses ALB ingress and gp2 persistent volumes; local uses nginx and hostPath. Both install Prometheus Pushgateway as a separate Helm release so that <code>apply-catalog-exporter.sh</code>, <code>seed-qa-metrics.sh</code>, and the tech-insights-exporter CronJob can push metrics without modification.</p>
+<h3 id="aws-load-balancer-controller-aws">AWS Load Balancer Controller (AWS)<a class="headerlink" href="#aws-load-balancer-controller-aws" title="Permanent link">&para;</a></h3>
+<p>All <code>Ingress</code> resources use <code>ingressClassName: alb</code>, backed by the AWS Load Balancer Controller. Supports <code>target-type: ip</code> (pod-level routing without NodePort).</p>
+<h2 id="aiml-platform">AI/ML Platform<a class="headerlink" href="#aiml-platform" title="Permanent link">&para;</a></h2>
+<h3 id="how-the-ai-assistant-works-end-to-end">How the AI Assistant works end-to-end<a class="headerlink" href="#how-the-ai-assistant-works-end-to-end" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code>Backstage UI (extensions.tsx)
+  AiAssistantPage — React chat component at /ai-assistant
+    │
+    │  POST /api/proxy/kagent/a2a/kagent/idp-assistant  (A2A JSON-RPC)
+    │  GET  /api/proxy/kagent/api/sessions/&lt;id&gt;          (poll for response)
+    ▼
+Backstage proxy  →  KAgent UI (kagent-ui.kagent.svc.cluster.local:8080)
+                     A2A server routes to the idp-assistant Agent CRD
+                                │
+                                │  MCP over Streamable HTTP
+                                ▼
+                     IDP MCP Server  (idp-mcp-server:3001/mcp)
+                       catalog_search    → Backstage catalog API
+                       get_service_metrics → Prometheus
+                       list_templates    → Backstage catalog (Templates)
+                       get_template_params → Backstage catalog entity
+                       scaffold_service  → Backstage scaffolder v2
+                       list_deployments  → Kubernetes apps/v1 API
+</code></pre></div></td></tr></table></div>
+<h3 id="scaffolding-flow-single-agent-turn">Scaffolding flow (single agent turn)<a class="headerlink" href="#scaffolding-flow-single-agent-turn" title="Permanent link">&para;</a></h3>
+<p>When the user provides <code>name</code>, <code>description</code>, and <code>owner</code> in one message, the agent
+completes the entire scaffold in one response turn without asking for confirmation:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>list_templates → get_template_params → scaffold_service (immediate)
+</code></pre></div></td></tr></table></div>
+<p>The agent manifest (<code>kubernetes/kagent/idp-agent.yaml</code>) enforces this via the
+system message: Rule 4 requires <code>scaffold_service</code> to be called immediately once
+all required fields are known, and Rule 5 defines those fields as <code>name</code>,
+<code>description</code>, and <code>owner</code>.</p>
+<h3 id="key-files">Key files<a class="headerlink" href="#key-files" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backstage/app/packages/app/src/extensions.tsx</code></td>
+<td>AI Assistant React page + chat polling logic</td>
+</tr>
+<tr>
+<td><code>backstage/app-config.yaml</code></td>
+<td>KAgent proxy target (in-cluster)</td>
+</tr>
+<tr>
+<td><code>backstage/app-config.local.yaml</code></td>
+<td>KAgent proxy target override (local ingress)</td>
+</tr>
+<tr>
+<td><code>kubernetes/kagent/idp-agent.yaml</code></td>
+<td>Agent CRD: model, system message, tool allowlist</td>
+</tr>
+<tr>
+<td><code>kubernetes/kagent/toolserver.yaml</code></td>
+<td>RemoteMCPServer CRD pointing at idp-mcp-server</td>
+</tr>
+<tr>
+<td><code>kubernetes/kagent/modelconfig.yaml</code></td>
+<td>Claude Anthropic model configuration</td>
+</tr>
+<tr>
+<td><code>services/idp-mcp-server/src/index.ts</code></td>
+<td>MCP server implementing all 6 tools</td>
+</tr>
+</tbody>
+</table>
+<p>For the full deep-dive see <a href="../ai-assistant/">docs/ai-assistant.md</a>.</p>
+<h2 id="component-inventory">Component Inventory<a class="headerlink" href="#component-inventory" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EKS cluster</td>
+<td><code>terraform/eks.tf</code></td>
+<td>Cloud compute platform</td>
+</tr>
+<tr>
+<td>VPC</td>
+<td><code>terraform/vpc.tf</code></td>
+<td>Network isolation</td>
+</tr>
+<tr>
+<td>ECR</td>
+<td><code>terraform/ecr.tf</code></td>
+<td>Cloud container registry</td>
+</tr>
+<tr>
+<td>IAM + OIDC</td>
+<td><code>terraform/iam.tf</code></td>
+<td>Keyless CI/CD auth</td>
+</tr>
+<tr>
+<td>Service chart</td>
+<td><code>helm/service-template/</code></td>
+<td>Deployment template (local + AWS)</td>
+</tr>
+<tr>
+<td>Platform CI/CD</td>
+<td><code>.github/workflows/build-and-deploy.yml</code></td>
+<td>Root platform pipeline</td>
+</tr>
+<tr>
+<td>Backstage config</td>
+<td><code>backstage/app-config.yaml</code></td>
+<td>Portal configuration</td>
+</tr>
+<tr>
+<td>Backstage local config</td>
+<td><code>backstage/app-config.local.yaml</code></td>
+<td>Local overrides (guest auth, local techdocs)</td>
+</tr>
+<tr>
+<td>Node.js template</td>
+<td><code>backstage/catalog/templates/nodejs-service/</code></td>
+<td>Express service scaffold</td>
+</tr>
+<tr>
+<td>Python template</td>
+<td><code>backstage/catalog/templates/python-service/</code></td>
+<td>FastAPI service scaffold</td>
+</tr>
+<tr>
+<td>Deploy-to-Kind template</td>
+<td><code>backstage/catalog/templates/deploy-to-kind/</code></td>
+<td>Standalone local deploy</td>
+</tr>
+<tr>
+<td><code>idp:deploy-local</code> action</td>
+<td><code>backstage/app/packages/backend/src/modules/idpLocalDeploy.ts</code></td>
+<td>Custom scaffolder action</td>
+</tr>
+<tr>
+<td>Backstage image</td>
+<td><code>backstage/Dockerfile</code></td>
+<td>Production image (pre-built bundle)</td>
+</tr>
+<tr>
+<td>kube-prometheus-stack values (local)</td>
+<td><code>local/observability/prometheus-stack-values.yaml</code></td>
+<td>Prometheus + Grafana + AlertManager (nginx, local storage)</td>
+</tr>
+<tr>
+<td>kube-prometheus-stack values (AWS)</td>
+<td><code>observability/prometheus-stack-values-aws.yaml</code></td>
+<td>Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention)</td>
+</tr>
+<tr>
+<td>ClusterSecretStore</td>
+<td><code>kubernetes/external-secrets/cluster-secret-store.yaml</code></td>
+<td>ESO → AWS Secrets Manager backend</td>
+</tr>
+<tr>
+<td>Tech Insights Exporter</td>
+<td><code>observability/tech-insights-exporter/cronjob.yaml</code></td>
+<td>Scorecard metrics → Pushgateway (both envs)</td>
+</tr>
+<tr>
+<td>DORA exporter (local)</td>
+<td><code>observability/dora/dora-cronjob-local.yaml</code></td>
+<td>DORA metrics → Pushgateway (local)</td>
+</tr>
+<tr>
+<td>DORA exporter (AWS)</td>
+<td><code>observability/dora/dora-cronjob.yaml</code></td>
+<td>DORA metrics → CloudWatch (AWS)</td>
+</tr>
+<tr>
+<td>hello-service</td>
+<td><code>services/hello-service/</code></td>
+<td>Reference Go implementation</td>
+</tr>
+</tbody>
+</table>
+<h2 id="backstage-custom-action-idpdeploy-local">Backstage Custom Action: <code>idp:deploy-local</code><a class="headerlink" href="#backstage-custom-action-idpdeploy-local" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code>Backstage UI
+  → &quot;Deploy Service to local Kind cluster&quot; template
+    → idp:deploy-local action
+      → kubectl cluster-info  (verify Kind reachable)
+      → helm upgrade --install &lt;name&gt; /helm/service-template \
+            --set image.repository=localhost:5003/&lt;name&gt; \
+            --set image.tag=&lt;tag&gt; \
+            --set ingress.className=nginx \
+            --set ingress.hosts[0].host=&lt;name&gt;.idp.local \
+            ...
+      → kubectl get pods  (log status)
+      → output: serviceUrl = http://&lt;name&gt;.idp.local
+</code></pre></div></td></tr></table></div>
+<p><strong>Kubeconfig bridge (macOS + Docker Desktop):</strong></p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code>Host ~/.kube/config         docker-compose mounts as read-only
+  (server: 127.0.0.1:PORT)  ───────────────────────────────────&gt;  /home/node/.kube/config
+                                                                          │
+                                                          startup sed rewrites:
+                                                          127.0.0.1 → host.docker.internal
+                                                          strips certificate-authority-data
+                                                          adds insecure-skip-tls-verify: true
+                                                                          │
+                                                                          ▼
+                                                                   /tmp/kubeconfig
+                                                          KUBECONFIG=/tmp/kubeconfig (env)
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Getting Started
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../golden-path/" class="md-footer__link md-footer__link--next" aria-label="Next: Golden Path">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Golden Path
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>
