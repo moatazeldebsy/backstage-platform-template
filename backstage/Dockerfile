@@ -42,6 +42,8 @@ RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
 COPY .yarnrc.yml ./
 COPY .yarn ./.yarn
 COPY package.json yarn.lock ./
+# vm2 is resolved via portal:./vm2-shim in package.json resolutions
+COPY vm2-shim ./vm2-shim
 
 # 3. Install production dependencies only
 RUN yarn workspaces focus --all --production && rm -rf "$(yarn cache dir)"
