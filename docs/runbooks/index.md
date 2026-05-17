@@ -13,6 +13,16 @@ Operational procedures for the Internal Developer Platform. Each runbook maps to
 | `HighHTTP5xxRate` | Critical | [Deployment Rollback](deployment-rollback.md) |
 | RDS unavailable | Critical | [Database Recovery](db-recovery.md) |
 | `ImagePullBackOff` (local) | Warning | [ImagePullBackOff](image-pull-backoff.md) |
+| Kind node `NotReady` after crash (local) | Warning | [Kind Node IP Mismatch](kind-node-ip-mismatch.md) |
+
+## Local Dev Issues
+
+These are not alert-driven but are common when running the platform locally with Kind or Rancher Desktop.
+
+| Symptom | Runbook |
+|---------|---------|
+| Node `NotReady` + `*.idp.local` unreachable after Docker/Rancher crash | [Kind Node IP Mismatch](kind-node-ip-mismatch.md) |
+| Pod stuck in `ImagePullBackOff` | [ImagePullBackOff](image-pull-backoff.md) |
 
 ## On-Call Escalation
 

@@ -31,3 +31,4 @@ nav:
     - High Memory: runbooks/high-memory.md
     - High CPU: runbooks/high-cpu.md
     - Database Recovery: runbooks/db-recovery.md
+    - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
