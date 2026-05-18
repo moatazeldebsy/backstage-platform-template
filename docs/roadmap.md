@@ -196,6 +196,73 @@ to under 10 minutes.
 
 ---
 
+## Phase 10 — Multi-Team Scale & Production Hardening 📋
+
+**Goal:** Harden the platform for use by 25+ production teams. This phase addresses the gaps
+identified in the production-readiness assessment: TLS, high availability, per-team isolation
+in ArgoCD, observability completeness, infrastructure right-sizing, and CI security gates.
+
+### 10a — Security Hardening (Blockers)
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| TLS on all ingresses | 🔴 High | Deploy cert-manager; add `tls:` sections to all ingress resources in `kubernetes/ingress/` |
+| Backstage auth: disable guest + production mode | 🔴 High | Set `auth.environment: production`, remove guest provider, configure real GitHub OAuth (`backstage/app-config.yaml:65–82`) |
+| PostgreSQL SSL strict mode | 🔴 High | `rejectUnauthorized: true` in `kubernetes/backstage/configmap.yaml:43` |
+| K8s API TLS verification | 🔴 High | `skipTLSVerify: false` + CA bundle in `backstage/app-config.yaml:302` |
+| Pin Backstage image tag | 🔴 High | Replace `:latest` with pinned SHA in `kubernetes/backstage/deployment.yaml:19`; violates repo's own OPA policy |
+| Secret scanning in CI | 🔴 High | Add Gitleaks or GitHub secret scanning workflow to `.github/workflows/` |
+| SAST scanning in CI | 🟡 Medium | Add CodeQL or Semgrep workflow to `.github/workflows/` |
+| Pin GitHub Actions to commit SHAs | 🟡 Medium | Replace `@v4`/`@v5` refs with full commit SHAs (supply-chain risk) |
+
+### 10b — High Availability
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Backstage: scale to 3+ replicas | 🔴 High | `kubernetes/backstage/deployment.yaml` — add replicas, PodDisruptionBudget, anti-affinity |
+| ArgoCD HA mode | 🔴 High | `kubernetes/argocd/argocd-helm-values.yaml` — replicaCount ≥ 3 for server, repo-server, applicationSet |
+| PodDisruptionBudgets | 🟡 Medium | Add PDB manifests for Backstage, ArgoCD, and monitoring stack |
+| Enable HPA by default | 🟡 Medium | `helm/service-template/values.yaml:75` — set `autoscaling.enabled: true` with 70% CPU target |
+| Multi-NAT Gateway | 🔴 High | Remove `single_nat_gateway = true` in `terraform/vpc.tf:24`; add per-AZ NAT GW for HA |
+
+### 10c — Per-Team Platform Isolation
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| ArgoCD AppProject per team | 🔴 High | Scope each team to their own namespace/repos; prevent cross-team app access |
+| ArgoCD RBAC per team | 🟡 Medium | `argocd-helm-values.yaml` — `role:team-<name>` policy scoped to AppProject |
+| Rate limiting on Backstage | 🟡 Medium | Add request throttling (reverse proxy or middleware) to prevent portal abuse |
+| Catalog permission policies | 🟡 Medium | Configure Backstage permission plugin; restrict catalog writes to team owners |
+| GitOps-driven namespace provisioning | 🟢 Low | Manage team namespaces via ArgoCD app-of-apps rather than manual `kubectl apply` |
+
+### 10d — Observability Completeness
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Log aggregation | 🔴 High | Deploy Loki or enable CloudWatch Logs; metrics alone are insufficient for debugging |
+| PagerDuty escalation | 🟡 Medium | Add PagerDuty receiver in `observability/alertmanager/alertmanager-config.yaml` for on-call escalation |
+| Per-team Slack alert routing | 🟡 Medium | Route alerts to `#<team>-alerts` channel in addition to `#platform-alerts` |
+| Backstage + ArgoCD ServiceMonitors | 🟢 Low | Extend `kubernetes/monitoring/servicemonitor.yaml` to cover platform components |
+
+### 10e — Infrastructure Right-Sizing
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Upgrade RDS instance class | 🟡 Medium | `terraform/rds.tf:44` — `db.t3.micro` → `db.t3.small` minimum; enable Multi-AZ failover |
+| Upgrade EKS node types | 🟡 Medium | `terraform/variables.tf` — `t3.medium` → `t3.large`/`m5.large`; add memory-optimised node group |
+| Cluster backup with Velero | 🟡 Medium | Protect PVCs, Grafana dashboards, and ArgoCD state; test restore procedure |
+| Extend RDS backup retention | 🟢 Low | Increase from 7 days to 30 days in `terraform/rds.tf` |
+
+### 10f — Developer Quality Gates
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Integration tests for scaffold actions | 🟡 Medium | Add `.test.ts` files for all 8 modules in `backstage/app/packages/backend/src/modules/` |
+| Test coverage threshold in CI | 🟢 Low | Fail CI when coverage drops below 70%; configure in Jest/go test |
+| Disaster recovery runbook | 🟡 Medium | Document RTO/RPO targets; tested RDS restore + cluster rebuild procedure |
+
+---
+
 ## Backlog 💡
 
 | Feature | Notes |
@@ -219,6 +286,7 @@ to under 10 minutes.
 | M7: AI/ML platform | Q2 2026 🚧 | Phase 7 | `milestone/m7-aiml` |
 | M8: Developer experience | Q3 2026 | Phase 8 | `milestone/m8-dx` |
 | M9: Advanced platform | Q4 2026 | Phase 9 | `milestone/m9-advanced` |
+| M10: Multi-team production scale | Q3 2026 | Phase 10 | `milestone/m10-scale` |
 
 ---
 
