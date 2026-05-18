@@ -622,6 +622,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#known-limitations-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known limitations (local)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#teardown" class="md-nav__link">
     <span class="md-ellipsis">
       Teardown
@@ -995,7 +1004,7 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 </tr>
 <tr>
 <td>13</td>
-<td>Applies ArgoCD ApplicationSet (hello-service → local/dev/staging/prod)</td>
+<td>Applies ArgoCD ApplicationSet (manages hello-service, idp-mcp-server, qa-mcp-server in services-dev) and removes the bootstrap-deployed hello-service from services namespace</td>
 </tr>
 </tbody>
 </table>
@@ -1030,7 +1039,7 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <tr>
 <td><strong>hello-service</strong></td>
 <td><a href="http://hello-service.idp.local">http://hello-service.idp.local</a></td>
-<td>—</td>
+<td>— (managed by ArgoCD in <code>services-dev</code> as <code>hello-service-local-service-template</code>)</td>
 </tr>
 <tr>
 <td><strong>Grafana</strong></td>
@@ -1085,6 +1094,9 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 6. Triggers an immediate catalog export
 7. Prints the full access-URL summary</p>
 <p>Backstage is then available at <a href="http://backstage.idp.local">http://backstage.idp.local</a> (or <a href="http://localhost:3000">http://localhost:3000</a> as a direct fallback).</p>
+<blockquote>
+<p><strong>Note:</strong> Backstage uses <code>dangerouslyDisableDefaultAuthPolicy: true</code> in <code>app-config.local.yaml</code> so the catalog loads and is accessible before sign-in completes (prevents 401 flash on first page load in Backstage v1.29+).</p>
+</blockquote>
 <h3 id="environment-files-first-time-only">Environment files (first time only)<a class="headerlink" href="#environment-files-first-time-only" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -1249,6 +1261,7 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 ./scripts/bootstrap-ai.sh
 </code></pre></div></td></tr></table></div>
 <p>This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.</p>
+<p>The AI Assistant at <code>/ai-assistant</code> is a <strong>native React chat UI</strong> (not an iframe) that talks directly to the KAgent A2A API via the Backstage proxy.</p>
 <table>
 <thead>
 <tr>
@@ -1266,7 +1279,7 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <tr>
 <td>AI Assistant</td>
 <td><a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a></td>
-<td>Backstage-embedded chat</td>
+<td>Backstage-embedded native React chat UI</td>
 </tr>
 <tr>
 <td>AI Search</td>
@@ -1324,6 +1337,38 @@ automatically on first Postgres startup — no manual SQL step needed.</p>
 features are unaffected.</p>
 <p>See <a href="../ai-assistant/">docs/ai-assistant.md</a> for the full architecture and
 troubleshooting guide.</p>
+<h2 id="known-limitations-local">Known limitations (local)<a class="headerlink" href="#known-limitations-local" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Status</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/kubernetes</code> standalone</td>
+<td>Disabled</td>
+<td>Requires entity context — use the Kubernetes tab on a catalog entity instead</td>
+</tr>
+<tr>
+<td><code>/catalog-graph</code></td>
+<td>Disabled</td>
+<td>Disabled pending fix</td>
+</tr>
+<tr>
+<td><code>/ai-search</code></td>
+<td>Requires <code>VOYAGE_API_KEY</code></td>
+<td>Returns 503 without the key; all other features unaffected</td>
+</tr>
+<tr>
+<td>Cost Overview</td>
+<td>Shows "OpenCost returned 500" if OpenCost is not running</td>
+<td>Check <code>kubectl get pods -n opencost</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy

@@ -1123,7 +1123,7 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <tr>
 <td>Backstage local config</td>
 <td><code>backstage/app-config.local.yaml</code></td>
-<td>Local overrides (guest auth, local techdocs)</td>
+<td>Local overrides (guest auth, local techdocs; also disables standalone /kubernetes and /catalog-graph pages; enables dangerouslyDisableDefaultAuthPolicy for local dev)</td>
 </tr>
 <tr>
 <td>Node.js template</td>
@@ -1184,6 +1184,11 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <td>hello-service</td>
 <td><code>services/hello-service/</code></td>
 <td>Reference Go implementation</td>
+</tr>
+<tr>
+<td>material-table patch</td>
+<td><code>backstage/app/.yarn/patches/</code></td>
+<td>Fixes <code>uuid</code> v10 compatibility crash in catalog, api-docs, and techdocs pages</td>
 </tr>
 </tbody>
 </table>

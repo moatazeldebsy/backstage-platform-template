@@ -932,6 +932,10 @@
 <h2 id="functionality">Functionality<a class="headerlink" href="#functionality" title="Permanent link">&para;</a></h2>
 <h3 id="backstage-portal">Backstage Portal<a class="headerlink" href="#backstage-portal" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>setup.sh</code> was run <strong>before</strong> <code>bootstrap-local.sh</code> (required for <code>YOUR_GITHUB_ORG</code> placeholder replacement)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD has 3 apps synced: <code>hello-service-local</code>, <code>idp-mcp-server-local</code>, <code>qa-mcp-server-local</code> (run <code>kubectl get applications -n argocd</code>)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>idp-mcp-server</code> and <code>qa-mcp-server</code> pods are running in <code>services-dev</code> namespace</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> KAgent agents show <code>READY=True</code> for both <code>idp-assistant</code> and <code>qa-assistant</code> (run <code>kubectl get agents -n kagent</code>)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All placeholder values replaced by running <code>./scripts/setup.sh</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>yarn build:backend</code> run after any changes to <code>backstage/app/packages/</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage image rebuilt and pushed after backend changes</li>
@@ -942,7 +946,7 @@
 </ul>
 <h3 id="platform-services">Platform Services<a class="headerlink" href="#platform-services" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD is accessible and <code>app-of-apps</code> is synced</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD is accessible at <a href="http://argocd.idp.local">http://argocd.idp.local</a> and all 3 apps are Synced+Healthy (<code>kubectl get applications -n argocd</code>)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Prometheus scrape targets are healthy</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Grafana dashboards load with data</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Pushgateway receives QA metrics from the seed job</li>
@@ -953,7 +957,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ANTHROPIC_API_KEY</code> is set in <code>local/.env</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> KAgent pods are running in <code>kagent</code> namespace</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> IDP Assistant is reachable at <code>http://idp-assistant.idp.local</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AI Assistant iframe loads in Backstage at <code>/ai-assistant</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AI Assistant chat UI loads in Backstage at <code>/ai-assistant</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> DeepEval suite passes: <code>deepeval test run test-suites/test-deepeval/tests/test_idp_assistant.py</code></li>
 </ul>
 <hr />

@@ -859,6 +859,10 @@
 </table>
 <h2 id="local-setup-no-aws-needed">Local Setup (no AWS needed)<a class="headerlink" href="#local-setup-no-aws-needed" title="Permanent link">&para;</a></h2>
 <p>See <a href="../local-setup/">docs/local-setup.md</a> for the full local walkthrough including Backstage, the <code>idp:deploy-local</code> action, and Kind deployment.</p>
+<p><code>./scripts/setup.sh</code> <strong>must be run before</strong> <code>bootstrap-local.sh</code>. It replaces <code>YOUR_GITHUB_ORG</code> and other placeholders across 542 targeted files (excluding node_modules). Without it, the ArgoCD ApplicationSet will have an unresolved placeholder and generate no apps.</p>
+<blockquote>
+<p><strong>Important:</strong> <code>setup.sh</code> uses targeted file scanning and <code>while</code>-loop replacement (not <code>xargs</code>) to reliably update placeholders. If you previously ran an older version and ArgoCD shows no apps, check that <code>local/argocd/app-of-apps-local.yaml</code> contains your GitHub org (not <code>YOUR_GITHUB_ORG</code>), then re-run <code>setup.sh</code>.</p>
+</blockquote>
 <h2 id="aws-setup">AWS Setup<a class="headerlink" href="#aws-setup" title="Permanent link">&para;</a></h2>
 <h3 id="1-configure-aws">1. Configure AWS<a class="headerlink" href="#1-configure-aws" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>

@@ -678,6 +678,7 @@
 catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolder.</p>
 <hr />
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<p>The AI Assistant is a <strong>native React chat component</strong> embedded directly in the Backstage frontend. It is not an iframe.</p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -747,7 +748,8 @@ catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolde
 <h3 id="1-backstage-frontend-aiassistantpage">1. Backstage frontend — <code>AiAssistantPage</code><a class="headerlink" href="#1-backstage-frontend-aiassistantpage" title="Permanent link">&para;</a></h3>
 <p><strong>File:</strong> <code>backstage/app/packages/app/src/extensions.tsx</code></p>
 <p>Registered as a Backstage frontend plugin extension at route <code>/ai-assistant</code> with a
-nav item (chat icon) in the sidebar.</p>
+nav item (chat icon) in the sidebar. The component is registered via <code>createFrontendPlugin</code>
+in <code>extensions.tsx</code> using Backstage's new declarative plugin API (<code>@backstage/frontend-plugin-api</code> v0.15+).</p>
 <p><strong>Message flow per user turn:</strong></p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
@@ -940,7 +942,7 @@ can only be called once per instance, a fresh <code>McpServer</code> is created 
 <tr>
 <td><code>get_template_params</code></td>
 <td><code>GET /api/catalog/entities/by-name/Template/default/&lt;name&gt;</code></td>
-<td>Flattens all parameter groups into a single list with required/optional flags</td>
+<td>Returns full parameter schema for a template — groups with required/optional fields</td>
 </tr>
 <tr>
 <td><code>scaffold_service</code></td>
@@ -1055,8 +1057,7 @@ curl<span class="w"> </span>http://kagent.idp.local/api/sessions
    call failed silently and the agent lost its place in the scaffold flow.
 2. The system message allowed the agent to ask "Should I proceed?" — when the user
    replied in a new message the previous context was not available, causing a reset.</p>
-<p><strong>Fix applied:</strong> <code>kubernetes/kagent/idp-agent.yaml</code> — <code>get_template_params</code> added to
-<code>toolNames</code>; Rule 4 + Rule 5 now require immediate <code>scaffold_service</code> invocation.</p>
+<p><strong>Fix applied:</strong> Both issues are now fixed in the source: <code>get_template_params</code> is implemented in <code>services/idp-mcp-server/src/index.ts</code> and listed in <code>kubernetes/kagent/idp-agent.yaml</code> toolNames. Rule 4 + Rule 5 now require immediate <code>scaffold_service</code> invocation.</p>
 <p>To re-apply after a cluster rebuild:
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/idp-agent.yaml
@@ -1073,6 +1074,23 @@ open<span class="w"> </span>http://backstage.idp.local/create/tasks/&lt;task-id&
 <span class="c1"># Check the scaffolder backend logs</span>
 kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
 </code></pre></div></td></tr></table></div>
+<h3 id="no-description-available-for-agent-tools-in-kagent-ui">"No description available" for agent tools in KAgent UI<a class="headerlink" href="#no-description-available-for-agent-tools-in-kagent-ui" title="Permanent link">&para;</a></h3>
+<p>The KAgent controller connects to the MCP server to fetch tool metadata via <code>tools/list</code>.
+If a tool is listed in the agent's <code>toolNames</code> but not exported by the MCP server, the controller cannot resolve all tools and displays "No description available" for all of them.</p>
+<p>Check the controller logs:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;error|registered&quot;</span>
+</code></pre></div></td></tr></table></div></p>
+<p>If you see <code>no such host: idp-mcp-server.services-dev.svc.cluster.local</code>, the MCP server is not deployed:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services-dev
+<span class="c1"># If missing, deploy manually:</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>idp-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/idp-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+</code></pre></div></td></tr></table></div></p>
 <h3 id="no-metrics-found-for">"No metrics found for …"<a class="headerlink" href="#no-metrics-found-for" title="Permanent link">&para;</a></h3>
 <p>The service's <code>/metrics</code> endpoint is not yet scraped. Check that a <code>ServiceMonitor</code>
 exists in the <code>services</code> namespace and that Prometheus has discovered it:</p>
