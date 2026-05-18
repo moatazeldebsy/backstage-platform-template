@@ -6,9 +6,13 @@ import {
   Header,
   Page,
   Progress,
-  Table,
-  TableColumn,
 } from '@backstage/core-components';
+import MuiTable from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableContainer from '@material-ui/core/TableContainer';
+import TableHead from '@material-ui/core/TableHead';
+import TableRow from '@material-ui/core/TableRow';
 import Box from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
@@ -37,13 +41,6 @@ interface AllocationRow {
   cpuCost: string;
   ramCost: string;
 }
-
-const COLUMNS: TableColumn<AllocationRow>[] = [
-  { title: 'Namespace', field: 'namespace' },
-  { title: 'Total Cost (USD)', field: 'totalCost' },
-  { title: 'CPU Cost (USD)', field: 'cpuCost' },
-  { title: 'RAM Cost (USD)', field: 'ramCost' },
-];
 
 function FinOpsPage() {
   const fetchApi = useApi(fetchApiRef);
@@ -102,12 +99,28 @@ function FinOpsPage() {
           <p>No allocation data returned by OpenCost for the last 7 days.</p>
         )}
         {!loading && !error && rows.length > 0 && (
-          <Table<AllocationRow>
-            title="Cost by Namespace — last 7 days"
-            options={{ search: false, paging: false }}
-            columns={COLUMNS}
-            data={rows}
-          />
+          <TableContainer component={Paper}>
+            <MuiTable size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell><strong>Namespace</strong></TableCell>
+                  <TableCell><strong>Total Cost (USD)</strong></TableCell>
+                  <TableCell><strong>CPU Cost (USD)</strong></TableCell>
+                  <TableCell><strong>RAM Cost (USD)</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map(row => (
+                  <TableRow key={row.namespace}>
+                    <TableCell>{row.namespace}</TableCell>
+                    <TableCell>{row.totalCost}</TableCell>
+                    <TableCell>{row.cpuCost}</TableCell>
+                    <TableCell>{row.ramCost}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </MuiTable>
+          </TableContainer>
         )}
       </Content>
     </Page>

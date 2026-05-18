@@ -265,56 +265,49 @@ read -rp "Proceed with personalisation? [y/N] " CONFIRM
 
 log "Applying substitutions..."
 
-# Collect text files (skip binary, git internals, and this script itself)
-TARGETS=$(LC_ALL=C find . -type f \
-  ! -path './.git/*' \
-  ! -name 'setup.sh' \
+# Collect only the files that actually contain placeholders — skip node_modules,
+# build artefacts, and binaries. xargs cannot call shell functions (they live
+# in the current process), so we use a while-read loop instead.
+TARGETS=$(LC_ALL=C find \
+  "${ROOT_DIR}/backstage/catalog" \
+  "${ROOT_DIR}/backstage/app-config.yaml" \
+  "${ROOT_DIR}/backstage/app-config.local.yaml" \
+  "${ROOT_DIR}/kubernetes" \
+  "${ROOT_DIR}/local" \
+  "${ROOT_DIR}/observability" \
+  "${ROOT_DIR}/services" \
+  "${ROOT_DIR}/terraform" \
+  "${ROOT_DIR}/docs" \
+  "${ROOT_DIR}/CLAUDE.md" \
+  "${ROOT_DIR}/README.md" \
+  -type f \
+  ! -path '*/node_modules/*' \
+  ! -path '*/.yarn/cache/*' \
+  ! -path '*/dist/*' \
   ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
   ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' ! -name '*.eot' \
   ! -name '*.gz' ! -name '*.zip' ! -name '*.tar' \
   2>/dev/null)
 
-echo "$TARGETS" | xargs -I{} _sed \
-  "s/YOUR_GITHUB_ORG/${GITHUB_ORG}/g" \
-  {} 2>/dev/null || true
+_replace_all() {
+  local pattern="$1" replacement="$2"
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    _sed "s/${pattern}/${replacement}/g" "$f" 2>/dev/null || true
+  done <<< "$TARGETS"
+}
 
-if [[ "${DISPLAY_NAME}" != "YOUR_DISPLAY_NAME" ]]; then
-  echo "$TARGETS" | xargs -I{} _sed \
-    "s/YOUR_DISPLAY_NAME/${DISPLAY_NAME}/g" \
-    {} 2>/dev/null || true
-fi
+_replace_all "YOUR_GITHUB_ORG"  "${GITHUB_ORG}"
 
-if [[ "${AWS_ACCOUNT_ID}" != "YOUR_AWS_ACCOUNT_ID" ]]; then
-  echo "$TARGETS" | xargs -I{} _sed \
-    "s/YOUR_AWS_ACCOUNT_ID/${AWS_ACCOUNT_ID}/g" \
-    {} 2>/dev/null || true
-fi
+[[ "${DISPLAY_NAME}"  != "YOUR_DISPLAY_NAME"          ]] && _replace_all "YOUR_DISPLAY_NAME"  "${DISPLAY_NAME}"
+[[ "${AWS_ACCOUNT_ID}"!= "YOUR_AWS_ACCOUNT_ID"         ]] && _replace_all "YOUR_AWS_ACCOUNT_ID" "${AWS_ACCOUNT_ID}"
+[[ "${AWS_REGION}"    != "us-east-1"                   ]] && _replace_all "us-east-1"           "${AWS_REGION}"
+[[ "${CLUSTER_NAME}"  != "idp-mvp"                     ]] && _replace_all "idp-mvp"             "${CLUSTER_NAME}"
+[[ "${PLATFORM_REPO}" != "backstage-platform-template" ]] && _replace_all "backstage-platform-template" "${PLATFORM_REPO}"
 
-if [[ "${AWS_REGION}" != "us-east-1" ]]; then
-  echo "$TARGETS" | xargs -I{} _sed \
-    "s/us-east-1/${AWS_REGION}/g" \
-    {} 2>/dev/null || true
-fi
-
-if [[ "${CLUSTER_NAME}" != "idp-mvp" ]]; then
-  echo "$TARGETS" | xargs -I{} _sed \
-    "s/idp-mvp/${CLUSTER_NAME}/g" \
-    {} 2>/dev/null || true
-fi
-
-if [[ "${PLATFORM_REPO}" != "backstage-platform-template" ]]; then
-  echo "$TARGETS" | xargs -I{} _sed \
-    "s/backstage-platform-template/${PLATFORM_REPO}/g" \
-    {} 2>/dev/null || true
-fi
-
-# Replace YOUR_ORG / YOUR_REPO used in documentation code blocks
-echo "$TARGETS" | xargs -I{} _sed \
-  "s/YOUR_ORG/${GITHUB_ORG}/g" \
-  {} 2>/dev/null || true
-echo "$TARGETS" | xargs -I{} _sed \
-  "s/YOUR_REPO/${PLATFORM_REPO}/g" \
-  {} 2>/dev/null || true
+# Documentation code blocks use YOUR_ORG / YOUR_REPO
+_replace_all "YOUR_ORG"  "${GITHUB_ORG}"
+_replace_all "YOUR_REPO" "${PLATFORM_REPO}"
 
 log "Substitutions applied."
 

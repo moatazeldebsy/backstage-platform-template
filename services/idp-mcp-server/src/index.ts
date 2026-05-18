@@ -297,6 +297,61 @@ server.tool(
   }
 );
 
+server.tool(
+  'get_template_params',
+  'Fetch the exact parameter schema for a Backstage scaffolder template. ' +
+  'Call this before scaffold_service to know which fields are required and their types.',
+  {
+    template_ref: z.string().describe(
+      'Template entity ref, e.g. template:default/nodejs-service or template:default/go-service'
+    ),
+  },
+  async ({ template_ref }) => {
+    const end = toolDuration.startTimer({ tool: 'get_template_params' });
+    toolCalls.inc({ tool: 'get_template_params' });
+    try {
+      // Parse template:namespace/name → /api/catalog/entities/by-name/Template/namespace/name
+      const withoutPrefix = template_ref.replace(/^template:/, '');
+      const slashIdx = withoutPrefix.indexOf('/');
+      const namespace = slashIdx !== -1 ? withoutPrefix.slice(0, slashIdx) : 'default';
+      const name = slashIdx !== -1 ? withoutPrefix.slice(slashIdx + 1) : withoutPrefix;
+
+      const entity = await fetchCatalog(
+        `/api/catalog/entities/by-name/Template/${namespace}/${name}`
+      ) as {
+        metadata: { name: string; title?: string; description?: string };
+        spec?: {
+          parameters?: Array<{
+            title?: string;
+            required?: string[];
+            properties?: Record<string, {
+              type?: string;
+              title?: string;
+              description?: string;
+              default?: unknown;
+              enum?: unknown[];
+            }>;
+          }>;
+        };
+      };
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            name: entity.metadata.name,
+            title: entity.metadata.title,
+            description: entity.metadata.description,
+            parameters: entity.spec?.parameters ?? [],
+          }, null, 2),
+        }],
+      };
+    } finally {
+      end();
+    }
+  }
+);
+
   return server;
 }
 

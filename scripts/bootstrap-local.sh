@@ -78,13 +78,24 @@ _apply_personalization() {
     "${ROOT_DIR}/observability" \
     "${ROOT_DIR}/services" \
     -type f \
+    ! -path '*/node_modules/*' \
+    ! -path '*/.yarn/cache/*' \
+    ! -path '*/dist/*' \
     ! -name '*.png' ! -name '*.jpg' ! -name '*.ico' \
     2>/dev/null)
 
-  echo "$targets" | xargs -I{} _sed "s/YOUR_GITHUB_ORG/${github_org}/g" {} 2>/dev/null || true
+  # Use a while-read loop so _sed (a shell function) is called in the current
+  # shell. xargs spawns subprocesses that cannot see shell functions.
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    _sed "s/YOUR_GITHUB_ORG/${github_org}/g" "$f" 2>/dev/null || true
+  done <<< "$targets"
 
   if [[ -n "$platform_repo" && "$platform_repo" != "YOUR_PLATFORM_REPO" && "$platform_repo" != "backstage-platform-template" ]]; then
-    echo "$targets" | xargs -I{} _sed "s/backstage-platform-template/${platform_repo}/g" {} 2>/dev/null || true
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      _sed "s/backstage-platform-template/${platform_repo}/g" "$f" 2>/dev/null || true
+    done <<< "$targets"
   fi
 
   log "Personalisation applied."
@@ -248,6 +259,9 @@ if $INSTALL_ARGOCD; then
 
   kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd || \
     warn "ApplicationSet apply failed — ArgoCD may need a moment to settle. Retry: kubectl apply -f local/argocd/app-of-apps-local.yaml -n argocd"
+  # Remove the bootstrap-deployed hello-service from 'services' so ArgoCD can
+  # manage it in 'services-dev' without an ingress hostname conflict.
+  helm uninstall hello-service -n services 2>/dev/null || true
   exit 0
 fi
 
@@ -1071,6 +1085,9 @@ if ! $SKIP_GITOPS; then
     log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
     kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
     log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
+    # Remove the bootstrap-deployed hello-service from 'services' so ArgoCD can
+    # manage it in 'services-dev' without an ingress hostname conflict.
+    helm uninstall hello-service -n services 2>/dev/null || true
   ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
 fi
 

@@ -11,6 +11,8 @@
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
+> **First time?** Always run `./scripts/setup.sh` first. It replaces `YOUR_GITHUB_ORG` and other placeholders across all config files. If you skip this step, ArgoCD will generate no apps because its ApplicationSet still has the unresolved `YOUR_GITHUB_ORG` placeholder.
+
 <!-- demo-gif: replace the image below with an animated GIF showing the golden path
      (scaffold service in Backstage → CI runs → service live with metrics).
      Suggested tool: peek, kooha, or asciinema + svg-term.
@@ -332,7 +334,7 @@ docker push localhost:5003/my-svc:latest
 
 # Deploy
 helm upgrade --install my-svc ./helm/service-template \
-  --namespace services --create-namespace \
+  --namespace services-dev --create-namespace \
   --set image.repository=localhost:5003/my-svc \
   --set image.tag=latest \
   --values services/my-svc/helm-values-local.yaml
@@ -402,6 +404,15 @@ Estimated savings vs always-on (11 h off × 30 days):
 
 > **Note:** The EKS control plane ($73) and NAT Gateway ($33) run 24/7 regardless.  
 > Budget alert is set at $500/month with SNS → Slack notification.
+
+## Known Issues (local development)
+
+| Issue | Status | Workaround |
+|-------|--------|------------|
+| `/kubernetes` standalone page crashes | By design — disabled in `app-config.local.yaml` | Use the Kubernetes tab on any catalog entity |
+| `/catalog-graph` page crashes | Disabled | N/A |
+| Cost Overview shows "OpenCost returned 500" | OpenCost pod not running / slow start | `kubectl get pods -n opencost` — wait for it to be Ready |
+| Catalog empty on first load | Backstage v1.29+ shows 401 before sign-in completes | Fixed: `dangerouslyDisableDefaultAuthPolicy: true` in local config |
 
 ## Documentation
 

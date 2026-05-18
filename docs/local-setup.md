@@ -46,7 +46,7 @@ What it does (in order):
 | 10 | Installs Prometheus Pushgateway + DORA exporter CronJob + catalog exporter CronJob |
 | 11 | Deploys Tech Insights Exporter CronJob (scorecard metrics → Pushgateway every 15 min) |
 | 12 | Wires AlertManager Slack webhook (if `SLACK_WEBHOOK_URL` is set) |
-| 13 | Applies ArgoCD ApplicationSet (hello-service → local/dev/staging/prod) |
+| 13 | Applies ArgoCD ApplicationSet (manages hello-service, idp-mcp-server, qa-mcp-server in services-dev) and removes the bootstrap-deployed hello-service from services namespace |
 
 ### Faster startup flags
 
@@ -70,7 +70,7 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
-| **hello-service** | http://hello-service.idp.local | — |
+| **hello-service** | http://hello-service.idp.local | — (managed by ArgoCD in `services-dev` as `hello-service-local-service-template`) |
 | **Grafana** | http://grafana.idp.local | `admin` / `admin` |
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |
 | **Prometheus** | http://prometheus.idp.local | — |
@@ -107,6 +107,8 @@ This single command:
 7. Prints the full access-URL summary
 
 Backstage is then available at http://backstage.idp.local (or http://localhost:3000 as a direct fallback).
+
+> **Note:** Backstage uses `dangerouslyDisableDefaultAuthPolicy: true` in `app-config.local.yaml` so the catalog loads and is accessible before sign-in completes (prevents 401 flash on first page load in Backstage v1.29+).
 
 ### Environment files (first time only)
 
@@ -236,10 +238,12 @@ After `bootstrap-local.sh` (and optionally `--start-backstage`) completes, boot 
 
 This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.
 
+The AI Assistant at `/ai-assistant` is a **native React chat UI** (not an iframe) that talks directly to the KAgent A2A API via the Backstage proxy.
+
 | Service | URL | Notes |
 |---------|-----|-------|
 | KAgent UI | http://kagent.idp.local | Direct agent chat UI |
-| AI Assistant | http://backstage.idp.local/ai-assistant | Backstage-embedded chat |
+| AI Assistant | http://backstage.idp.local/ai-assistant | Backstage-embedded native React chat UI |
 | AI Search | http://backstage.idp.local/ai-search | Semantic search (requires `VOYAGE_API_KEY`) |
 | IDP Assistant (A2A) | http://idp-assistant.idp.local | A2A agent endpoint |
 | MLflow UI | http://mlflow.idp.local | Experiment tracking |
@@ -289,6 +293,15 @@ features are unaffected.
 
 See [docs/ai-assistant.md](ai-assistant.md) for the full architecture and
 troubleshooting guide.
+
+## Known limitations (local)
+
+| Page | Status | Reason |
+|------|--------|--------|
+| `/kubernetes` standalone | Disabled | Requires entity context — use the Kubernetes tab on a catalog entity instead |
+| `/catalog-graph` | Disabled | Disabled pending fix |
+| `/ai-search` | Requires `VOYAGE_API_KEY` | Returns 503 without the key; all other features unaffected |
+| Cost Overview | Shows "OpenCost returned 500" if OpenCost is not running | Check `kubectl get pods -n opencost` |
 
 ## Teardown
 

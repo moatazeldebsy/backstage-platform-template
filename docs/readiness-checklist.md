@@ -49,6 +49,10 @@ Use this checklist before promoting the IDP to a production environment.
 ## Functionality
 
 ### Backstage Portal
+- [ ] `setup.sh` was run **before** `bootstrap-local.sh` (required for `YOUR_GITHUB_ORG` placeholder replacement)
+- [ ] ArgoCD has 3 apps synced: `hello-service-local`, `idp-mcp-server-local`, `qa-mcp-server-local` (run `kubectl get applications -n argocd`)
+- [ ] `idp-mcp-server` and `qa-mcp-server` pods are running in `services-dev` namespace
+- [ ] KAgent agents show `READY=True` for both `idp-assistant` and `qa-assistant` (run `kubectl get agents -n kagent`)
 - [ ] All placeholder values replaced by running `./scripts/setup.sh`
 - [ ] `yarn build:backend` run after any changes to `backstage/app/packages/`
 - [ ] Backstage image rebuilt and pushed after backend changes
@@ -58,7 +62,7 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] GitHub OAuth login works (not just guest auth)
 
 ### Platform Services
-- [ ] ArgoCD is accessible and `app-of-apps` is synced
+- [ ] ArgoCD is accessible at http://argocd.idp.local and all 3 apps are Synced+Healthy (`kubectl get applications -n argocd`)
 - [ ] Prometheus scrape targets are healthy
 - [ ] Grafana dashboards load with data
 - [ ] Pushgateway receives QA metrics from the seed job
@@ -68,7 +72,7 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] `ANTHROPIC_API_KEY` is set in `local/.env`
 - [ ] KAgent pods are running in `kagent` namespace
 - [ ] IDP Assistant is reachable at `http://idp-assistant.idp.local`
-- [ ] AI Assistant iframe loads in Backstage at `/ai-assistant`
+- [ ] AI Assistant chat UI loads in Backstage at `/ai-assistant`
 - [ ] DeepEval suite passes: `deepeval test run test-suites/test-deepeval/tests/test_idp_assistant.py`
 
 ---

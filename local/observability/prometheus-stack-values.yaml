@@ -75,12 +75,41 @@ grafana:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-      nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout"
-      nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "3"
-      nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+      # Retry on error, timeout, AND 503 so a restarting pod never shows to the user
+      nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout http_503"
+      nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "5"
+      nginx.ingress.kubernetes.io/proxy-next-upstream-timeout: "10"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
       nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     hosts:
       - grafana.idp.local
+  # Grafana needs ~350 Mi at steady state with dashboards loaded; give it 512 Mi
+  # to avoid OOMKill during startup (which causes the readiness probe cascade and
+  # the resulting 503 from nginx until the pod restarts and becomes ready again).
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  # Lenient probes — Grafana can be slow to start when loading dashboard ConfigMaps
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 10
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 60
+    timeoutSeconds: 30
+    periodSeconds: 10
+    failureThreshold: 10
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -104,13 +133,6 @@ grafana:
     idp: grafana-dashboards-idp
     dora: grafana-dashboards-dora
     qa: grafana-qa-dashboard
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
 
 kubeStateMetrics:
   resources:

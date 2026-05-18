@@ -327,11 +327,20 @@ else
           "${REPO_ROOT}/services/${SVC}/"
         docker push "${REGISTRY}/${SVC}:0.1.0"
         docker push "${REGISTRY}/${SVC}:latest"
-        # Local: ArgoCD manages the deployment in services-dev namespace.
-        # Trigger a sync so the new image is picked up immediately.
-        argocd app sync "${SVC}-local" --grpc-web 2>/dev/null || true
+        # Try ArgoCD sync first; fall back to direct Helm install when the
+        # ArgoCD application hasn't been registered yet (first-time install
+        # before app-of-apps-local.yaml is applied).
+        if argocd app get "${SVC}-local" --grpc-web &>/dev/null; then
+          argocd app sync "${SVC}-local" --grpc-web 2>/dev/null || true
+        else
+          info "${SVC}-local ArgoCD app not found — deploying directly with Helm..."
+          helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
+            --namespace services-dev --create-namespace \
+            --values "${REPO_ROOT}/services/${SVC}/helm-values-local.yaml" \
+            --wait --timeout 3m
+        fi
         kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
-        check "${SVC} image pushed → localhost:5003 (ArgoCD synced to services-dev)"
+        check "${SVC} deployed to services-dev"
       fi
     ) || warn "${SVC} build/deploy failed — check: kubectl get po -n services-dev"
   done

@@ -78,6 +78,10 @@ backend.add(import('@backstage-community/plugin-tech-insights-backend'));
 // announcements plugin
 backend.add(import('@backstage-community/plugin-announcements-backend'));
 
+// notifications plugin
+backend.add(import('@backstage/plugin-notifications-backend'));
+backend.add(import('@backstage/plugin-scaffolder-backend-module-notifications'));
+
 // adr plugin
 backend.add(import('@backstage-community/plugin-adr-backend'));
 

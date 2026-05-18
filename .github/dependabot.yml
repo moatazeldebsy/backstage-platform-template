@@ -1,37 +1,52 @@
+# Dependabot version updates are DISABLED (open-pull-requests-limit: 0).
+#
+# Why: Dependabot was auto-bumping transitive dependencies (e.g. uuid → v10)
+# that broke working configurations requiring manual patches (material-table,
+# scaffolder extension point imports). Re-enable when ready to audit and test
+# dependency upgrades manually.
+#
+# Dependabot SECURITY ALERTS remain active via GitHub repository settings —
+# they are not controlled by this file.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /backstage/app
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
-    groups:
-      backstage:
-        patterns:
-          - "@backstage/*"
-          - "@backstage-community/*"
+    open-pull-requests-limit: 0
 
   - package-ecosystem: npm
     directory: /services/idp-mcp-server
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: npm
+    directory: /services/qa-mcp-server
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
 
   - package-ecosystem: npm
     directory: /backstage/catalog/templates/react-frontend/skeleton
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
 
   - package-ecosystem: gomod
     directory: /services/hello-service
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
 
   - package-ecosystem: gomod
     directory: /cli
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
 
   - package-ecosystem: docker
     directory: /backstage/app/packages/backend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0

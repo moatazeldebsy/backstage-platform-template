@@ -4,6 +4,17 @@
 
 app:
   baseUrl: http://backstage.idp.local
+  # Disable the kubernetes standalone page — it requires an entity context and
+  # crashes with "Entity context is not available" when accessed directly.
+  # Kubernetes info is still available via entity tabs in the catalog.
+  extensions:
+    - page:catalog:
+        config:
+          path: /
+    - page:kubernetes:
+        disabled: true
+    - page:catalog-graph:
+        disabled: true
 
 backend:
   # All traffic (frontend + API) is served through port 3000 → 7007 in container
@@ -13,10 +24,13 @@ backend:
   database:
     connection:
       ssl: false   # local Postgres container has no SSL; override the production default
-  # externalAccess static token allows the catalog-exporter CronJob (in-cluster) to
-  # query the Backstage catalog API without a user session. Set the same value in the
-  # 'backstage-catalog-exporter-token' Kubernetes Secret.
   auth:
+    # Allows unauthenticated requests so the catalog/templates load before the
+    # sign-in flow completes (prevents 401 flash on first page load in local dev).
+    dangerouslyDisableDefaultAuthPolicy: true
+    # externalAccess static token allows the catalog-exporter CronJob (in-cluster) to
+    # query the Backstage catalog API without a user session. Set the same value in the
+    # 'backstage-catalog-exporter-token' Kubernetes Secret.
     externalAccess:
       - type: static
         options:
@@ -75,5 +89,3 @@ techdocs:
     runIn: 'local'   # use mkdocs installed in the container, not a separate Docker-in-Docker call
   publisher:
     type: 'local'    # store generated docs on the container filesystem
-
-

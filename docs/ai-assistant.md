@@ -8,6 +8,8 @@ catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolde
 
 ## Architecture
 
+The AI Assistant is a **native React chat component** embedded directly in the Backstage frontend. It is not an iframe.
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  Backstage (Docker Compose / EKS pod)                            │
@@ -52,7 +54,8 @@ catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolde
 **File:** `backstage/app/packages/app/src/extensions.tsx`
 
 Registered as a Backstage frontend plugin extension at route `/ai-assistant` with a
-nav item (chat icon) in the sidebar.
+nav item (chat icon) in the sidebar. The component is registered via `createFrontendPlugin`
+in `extensions.tsx` using Backstage's new declarative plugin API (`@backstage/frontend-plugin-api` v0.15+).
 
 **Message flow per user turn:**
 
@@ -176,7 +179,7 @@ can only be called once per instance, a fresh `McpServer` is created per request
 | `catalog_search` | `GET /api/catalog/entities` | Exact-match first, falls back to client-side fuzzy filter (200 entities) |
 | `get_service_metrics` | Prometheus `/api/v1/query` | Defaults to `http_requests_total` |
 | `list_templates` | `GET /api/catalog/entities?filter=kind=Template` | Returns name, title, description, templateRef |
-| `get_template_params` | `GET /api/catalog/entities/by-name/Template/default/<name>` | Flattens all parameter groups into a single list with required/optional flags |
+| `get_template_params` | `GET /api/catalog/entities/by-name/Template/default/<name>` | Returns full parameter schema for a template — groups with required/optional fields |
 | `scaffold_service` | `POST /api/scaffolder/v2/tasks` then polls status | Auto-builds `repoUrl` from `name`+`owner` if omitted; normalises full HTTPS GitHub URLs; polls for up to 3 min |
 | `list_deployments` | Kubernetes `/apis/apps/v1/namespaces/<ns>/deployments` | Defaults to namespace `services`; uses in-cluster service account token |
 
@@ -242,8 +245,7 @@ This was caused by two bugs, both now fixed:
 2. The system message allowed the agent to ask "Should I proceed?" — when the user
    replied in a new message the previous context was not available, causing a reset.
 
-**Fix applied:** `kubernetes/kagent/idp-agent.yaml` — `get_template_params` added to
-`toolNames`; Rule 4 + Rule 5 now require immediate `scaffold_service` invocation.
+**Fix applied:** Both issues are now fixed in the source: `get_template_params` is implemented in `services/idp-mcp-server/src/index.ts` and listed in `kubernetes/kagent/idp-agent.yaml` toolNames. Rule 4 + Rule 5 now require immediate `scaffold_service` invocation.
 
 To re-apply after a cluster rebuild:
 ```bash
@@ -259,6 +261,25 @@ open http://backstage.idp.local/create/tasks/<task-id>
 
 # Check the scaffolder backend logs
 kubectl logs -n backstage -l app=backstage --tail=50
+```
+
+### "No description available" for agent tools in KAgent UI
+
+The KAgent controller connects to the MCP server to fetch tool metadata via `tools/list`.
+If a tool is listed in the agent's `toolNames` but not exported by the MCP server, the controller cannot resolve all tools and displays "No description available" for all of them.
+
+Check the controller logs:
+```bash
+kubectl logs -n kagent deployment/kagent-controller --tail=30 | grep -E "error|registered"
+```
+
+If you see `no such host: idp-mcp-server.services-dev.svc.cluster.local`, the MCP server is not deployed:
+```bash
+kubectl get pods -n services-dev
+# If missing, deploy manually:
+helm upgrade --install idp-mcp-server helm/service-template \
+  --namespace services-dev --create-namespace \
+  --values services/idp-mcp-server/helm-values-local.yaml --wait
 ```
 
 ### "No metrics found for …"

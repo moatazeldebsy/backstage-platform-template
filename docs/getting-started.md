@@ -15,6 +15,10 @@
 
 See [docs/local-setup.md](local-setup.md) for the full local walkthrough including Backstage, the `idp:deploy-local` action, and Kind deployment.
 
+`./scripts/setup.sh` **must be run before** `bootstrap-local.sh`. It replaces `YOUR_GITHUB_ORG` and other placeholders across 542 targeted files (excluding node_modules). Without it, the ArgoCD ApplicationSet will have an unresolved placeholder and generate no apps.
+
+> **Important:** `setup.sh` uses targeted file scanning and `while`-loop replacement (not `xargs`) to reliably update placeholders. If you previously ran an older version and ArgoCD shows no apps, check that `local/argocd/app-of-apps-local.yaml` contains your GitHub org (not `YOUR_GITHUB_ORG`), then re-run `setup.sh`.
+
 ## AWS Setup
 
 ### 1. Configure AWS

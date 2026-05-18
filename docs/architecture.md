@@ -140,7 +140,7 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | Service chart | `helm/service-template/` | Deployment template (local + AWS) |
 | Platform CI/CD | `.github/workflows/build-and-deploy.yml` | Root platform pipeline |
 | Backstage config | `backstage/app-config.yaml` | Portal configuration |
-| Backstage local config | `backstage/app-config.local.yaml` | Local overrides (guest auth, local techdocs) |
+| Backstage local config | `backstage/app-config.local.yaml` | Local overrides (guest auth, local techdocs; also disables standalone /kubernetes and /catalog-graph pages; enables dangerouslyDisableDefaultAuthPolicy for local dev) |
 | Node.js template | `backstage/catalog/templates/nodejs-service/` | Express service scaffold |
 | Python template | `backstage/catalog/templates/python-service/` | FastAPI service scaffold |
 | Deploy-to-Kind template | `backstage/catalog/templates/deploy-to-kind/` | Standalone local deploy |
@@ -153,6 +153,7 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | DORA exporter (local) | `observability/dora/dora-cronjob-local.yaml` | DORA metrics → Pushgateway (local) |
 | DORA exporter (AWS) | `observability/dora/dora-cronjob.yaml` | DORA metrics → CloudWatch (AWS) |
 | hello-service | `services/hello-service/` | Reference Go implementation |
+| material-table patch | `backstage/app/.yarn/patches/` | Fixes `uuid` v10 compatibility crash in catalog, api-docs, and techdocs pages |
 
 ## Backstage Custom Action: `idp:deploy-local`
 
