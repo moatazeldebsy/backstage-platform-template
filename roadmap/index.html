@@ -582,6 +582,75 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#phase-10-multi-team-scale-production-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 10 — Multi-Team Scale &amp; Production Hardening 📋
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 10 — Multi-Team Scale & Production Hardening 📋">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#10a-security-hardening-blockers" class="md-nav__link">
+    <span class="md-ellipsis">
+      10a — Security Hardening (Blockers)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10b-high-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      10b — High Availability
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10c-per-team-platform-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      10c — Per-Team Platform Isolation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10d-observability-completeness" class="md-nav__link">
+    <span class="md-ellipsis">
+      10d — Observability Completeness
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10e-infrastructure-right-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      10e — Infrastructure Right-Sizing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10f-developer-quality-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      10f — Developer Quality Gates
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#backlog" class="md-nav__link">
     <span class="md-ellipsis">
       Backlog 💡
@@ -1424,6 +1493,228 @@ wildcard ingress DNS, and concurrent-PR race conditions make this a Phase 9+ ite
 </tbody>
 </table>
 <hr />
+<h2 id="phase-10-multi-team-scale-production-hardening">Phase 10 — Multi-Team Scale &amp; Production Hardening 📋<a class="headerlink" href="#phase-10-multi-team-scale-production-hardening" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Harden the platform for use by 25+ production teams. This phase addresses the gaps
+identified in the production-readiness assessment: TLS, high availability, per-team isolation
+in ArgoCD, observability completeness, infrastructure right-sizing, and CI security gates.</p>
+<h3 id="10a-security-hardening-blockers">10a — Security Hardening (Blockers)<a class="headerlink" href="#10a-security-hardening-blockers" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TLS on all ingresses</td>
+<td>🔴 High</td>
+<td>Deploy cert-manager; add <code>tls:</code> sections to all ingress resources in <code>kubernetes/ingress/</code></td>
+</tr>
+<tr>
+<td>Backstage auth: disable guest + production mode</td>
+<td>🔴 High</td>
+<td>Set <code>auth.environment: production</code>, remove guest provider, configure real GitHub OAuth (<code>backstage/app-config.yaml:65–82</code>)</td>
+</tr>
+<tr>
+<td>PostgreSQL SSL strict mode</td>
+<td>🔴 High</td>
+<td><code>rejectUnauthorized: true</code> in <code>kubernetes/backstage/configmap.yaml:43</code></td>
+</tr>
+<tr>
+<td>K8s API TLS verification</td>
+<td>🔴 High</td>
+<td><code>skipTLSVerify: false</code> + CA bundle in <code>backstage/app-config.yaml:302</code></td>
+</tr>
+<tr>
+<td>Pin Backstage image tag</td>
+<td>🔴 High</td>
+<td>Replace <code>:latest</code> with pinned SHA in <code>kubernetes/backstage/deployment.yaml:19</code>; violates repo's own OPA policy</td>
+</tr>
+<tr>
+<td>Secret scanning in CI</td>
+<td>🔴 High</td>
+<td>Add Gitleaks or GitHub secret scanning workflow to <code>.github/workflows/</code></td>
+</tr>
+<tr>
+<td>SAST scanning in CI</td>
+<td>🟡 Medium</td>
+<td>Add CodeQL or Semgrep workflow to <code>.github/workflows/</code></td>
+</tr>
+<tr>
+<td>Pin GitHub Actions to commit SHAs</td>
+<td>🟡 Medium</td>
+<td>Replace <code>@v4</code>/<code>@v5</code> refs with full commit SHAs (supply-chain risk)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="10b-high-availability">10b — High Availability<a class="headerlink" href="#10b-high-availability" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backstage: scale to 3+ replicas</td>
+<td>🔴 High</td>
+<td><code>kubernetes/backstage/deployment.yaml</code> — add replicas, PodDisruptionBudget, anti-affinity</td>
+</tr>
+<tr>
+<td>ArgoCD HA mode</td>
+<td>🔴 High</td>
+<td><code>kubernetes/argocd/argocd-helm-values.yaml</code> — replicaCount ≥ 3 for server, repo-server, applicationSet</td>
+</tr>
+<tr>
+<td>PodDisruptionBudgets</td>
+<td>🟡 Medium</td>
+<td>Add PDB manifests for Backstage, ArgoCD, and monitoring stack</td>
+</tr>
+<tr>
+<td>Enable HPA by default</td>
+<td>🟡 Medium</td>
+<td><code>helm/service-template/values.yaml:75</code> — set <code>autoscaling.enabled: true</code> with 70% CPU target</td>
+</tr>
+<tr>
+<td>Multi-NAT Gateway</td>
+<td>🔴 High</td>
+<td>Remove <code>single_nat_gateway = true</code> in <code>terraform/vpc.tf:24</code>; add per-AZ NAT GW for HA</td>
+</tr>
+</tbody>
+</table>
+<h3 id="10c-per-team-platform-isolation">10c — Per-Team Platform Isolation<a class="headerlink" href="#10c-per-team-platform-isolation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ArgoCD AppProject per team</td>
+<td>🔴 High</td>
+<td>Scope each team to their own namespace/repos; prevent cross-team app access</td>
+</tr>
+<tr>
+<td>ArgoCD RBAC per team</td>
+<td>🟡 Medium</td>
+<td><code>argocd-helm-values.yaml</code> — <code>role:team-&lt;name&gt;</code> policy scoped to AppProject</td>
+</tr>
+<tr>
+<td>Rate limiting on Backstage</td>
+<td>🟡 Medium</td>
+<td>Add request throttling (reverse proxy or middleware) to prevent portal abuse</td>
+</tr>
+<tr>
+<td>Catalog permission policies</td>
+<td>🟡 Medium</td>
+<td>Configure Backstage permission plugin; restrict catalog writes to team owners</td>
+</tr>
+<tr>
+<td>GitOps-driven namespace provisioning</td>
+<td>🟢 Low</td>
+<td>Manage team namespaces via ArgoCD app-of-apps rather than manual <code>kubectl apply</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="10d-observability-completeness">10d — Observability Completeness<a class="headerlink" href="#10d-observability-completeness" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Log aggregation</td>
+<td>🔴 High</td>
+<td>Deploy Loki or enable CloudWatch Logs; metrics alone are insufficient for debugging</td>
+</tr>
+<tr>
+<td>PagerDuty escalation</td>
+<td>🟡 Medium</td>
+<td>Add PagerDuty receiver in <code>observability/alertmanager/alertmanager-config.yaml</code> for on-call escalation</td>
+</tr>
+<tr>
+<td>Per-team Slack alert routing</td>
+<td>🟡 Medium</td>
+<td>Route alerts to <code>#&lt;team&gt;-alerts</code> channel in addition to <code>#platform-alerts</code></td>
+</tr>
+<tr>
+<td>Backstage + ArgoCD ServiceMonitors</td>
+<td>🟢 Low</td>
+<td>Extend <code>kubernetes/monitoring/servicemonitor.yaml</code> to cover platform components</td>
+</tr>
+</tbody>
+</table>
+<h3 id="10e-infrastructure-right-sizing">10e — Infrastructure Right-Sizing<a class="headerlink" href="#10e-infrastructure-right-sizing" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Upgrade RDS instance class</td>
+<td>🟡 Medium</td>
+<td><code>terraform/rds.tf:44</code> — <code>db.t3.micro</code> → <code>db.t3.small</code> minimum; enable Multi-AZ failover</td>
+</tr>
+<tr>
+<td>Upgrade EKS node types</td>
+<td>🟡 Medium</td>
+<td><code>terraform/variables.tf</code> — <code>t3.medium</code> → <code>t3.large</code>/<code>m5.large</code>; add memory-optimised node group</td>
+</tr>
+<tr>
+<td>Cluster backup with Velero</td>
+<td>🟡 Medium</td>
+<td>Protect PVCs, Grafana dashboards, and ArgoCD state; test restore procedure</td>
+</tr>
+<tr>
+<td>Extend RDS backup retention</td>
+<td>🟢 Low</td>
+<td>Increase from 7 days to 30 days in <code>terraform/rds.tf</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="10f-developer-quality-gates">10f — Developer Quality Gates<a class="headerlink" href="#10f-developer-quality-gates" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Integration tests for scaffold actions</td>
+<td>🟡 Medium</td>
+<td>Add <code>.test.ts</code> files for all 8 modules in <code>backstage/app/packages/backend/src/modules/</code></td>
+</tr>
+<tr>
+<td>Test coverage threshold in CI</td>
+<td>🟢 Low</td>
+<td>Fail CI when coverage drops below 70%; configure in Jest/go test</td>
+</tr>
+<tr>
+<td>Disaster recovery runbook</td>
+<td>🟡 Medium</td>
+<td>Document RTO/RPO targets; tested RDS restore + cluster rebuild procedure</td>
+</tr>
+</tbody>
+</table>
+<hr />
 <h2 id="backlog">Backlog 💡<a class="headerlink" href="#backlog" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1514,6 +1805,12 @@ wildcard ingress DNS, and concurrent-PR race conditions make this a Phase 9+ ite
 <td>Q4 2026</td>
 <td>Phase 9</td>
 <td><code>milestone/m9-advanced</code></td>
+</tr>
+<tr>
+<td>M10: Multi-team production scale</td>
+<td>Q3 2026</td>
+<td>Phase 10</td>
+<td><code>milestone/m10-scale</code></td>
 </tr>
 </tbody>
 </table>
