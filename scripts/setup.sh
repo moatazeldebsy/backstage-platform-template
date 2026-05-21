@@ -108,7 +108,9 @@ _bootstrap_local() {
   "${ROOT_DIR}/scripts/cleanup-helm-repos.sh" 2>/dev/null || true
 
   log "Running scripts/bootstrap-local.sh (this takes several minutes)..."
-  "${ROOT_DIR}/scripts/bootstrap-local.sh"
+  # setup.sh already ran the manifest-driven sed pass above — tell bootstrap-local.sh
+  # to skip _apply_personalization so we don't repeat a ~700-file scan.
+  IDP_PERSONALIZATION_DONE=1 "${ROOT_DIR}/scripts/bootstrap-local.sh"
 
   # ── Step 2: Start Backstage ──────────────────────────────────────────────────
   step "Step 2/3 — Backstage"
@@ -215,39 +217,62 @@ echo ""
 
 step "Phase 0 — Personalisation"
 
-# ── Gather inputs ────────────────────────────────────────────────────────────
+# ── Gather inputs (manifest-driven) ──────────────────────────────────────────
+# All prompts come from scripts/placeholders.conf. To add a new variable, add a
+# row to the manifest — no code change needed.
 
-read -rp "$(echo -e "${CYAN}GitHub org or username${RESET} (e.g. acme-corp): ")" GITHUB_ORG
-[[ -z "${GITHUB_ORG}" ]] && { echo "GitHub org is required."; exit 1; }
-GITHUB_ORG="${GITHUB_ORG}"
+load_placeholder_manifest    # populates MANIFEST_* parallel arrays (see lib.sh)
 
-read -rp "$(echo -e "${CYAN}AWS Account ID${RESET} (12 digits, leave blank to skip): ")" AWS_ACCOUNT_ID
-AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-YOUR_AWS_ACCOUNT_ID}"
+VALUES=()   # parallel to MANIFEST_NAMES — user-supplied (or fallback) values
 
-read -rp "$(echo -e "${CYAN}AWS Region${RESET} [us-east-1]: ")" AWS_REGION
-AWS_REGION="${AWS_REGION:-us-east-1}"
+for i in "${!MANIFEST_NAMES[@]}"; do
+  name="${MANIFEST_NAMES[$i]}"
+  placeholder="${MANIFEST_PLACEHOLDERS[$i]}"
+  default="${MANIFEST_DEFAULTS[$i]}"
+  prompt="${MANIFEST_PROMPTS[$i]}"
+  required="${MANIFEST_REQUIREDS[$i]}"
 
-read -rp "$(echo -e "${CYAN}EKS / Kind cluster name${RESET} [idp-mvp]: ")" CLUSTER_NAME
-CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
+  default_display=""
+  [[ -n "$default" ]] && default_display=" [${default}]"
+  read -rp "$(echo -e "${CYAN}${prompt}${RESET}${default_display}: ")" val
 
-read -rp "$(echo -e "${CYAN}Platform repo name${RESET} (the name of THIS repo) [backstage-platform-template]: ")" PLATFORM_REPO
-PLATFORM_REPO="${PLATFORM_REPO:-backstage-platform-template}"
+  if [[ -z "$val" ]]; then
+    if [[ "$required" == "yes" ]]; then
+      err "${name} is required."
+    fi
+    # Use prompt default if provided, otherwise keep the placeholder unchanged
+    val="${default:-$placeholder}"
+  fi
+  VALUES[$i]="$val"
+  # Also export as a named bash variable so existing code that reads
+  # $GITHUB_ORG, $AWS_REGION, etc. continues to work.
+  printf -v "$name" '%s' "$val"
+  export "$name"
+done
 
-read -rp "$(echo -e "${CYAN}Backstage base URL${RESET} [http://localhost:3000]: ")" BACKSTAGE_URL
+# Derived: YOUR_ORG (legacy alias) → PACTFLOW_ORG if set, else GITHUB_ORG.
+# Existing files may still reference YOUR_ORG; the dedicated YOUR_PACTFLOW_ORG
+# placeholder is preferred for new files.
+legacy_org="${PACTFLOW_ORG:-$GITHUB_ORG}"
+MANIFEST_NAMES+=("ORG_LEGACY")
+MANIFEST_PLACEHOLDERS+=("YOUR_ORG")
+MANIFEST_DEFAULTS+=("")
+MANIFEST_LITERALS+=("")
+VALUES+=("$legacy_org")
+
+# Derived: Backstage OAuth callback URL (display-only, not a placeholder).
 BACKSTAGE_URL="${BACKSTAGE_URL:-http://localhost:3000}"
 BACKSTAGE_CALLBACK_URL="${BACKSTAGE_URL}/api/auth/github/handler/frame"
 
-read -rp "$(echo -e "${CYAN}Your full display name${RESET} (shown in Backstage catalog, e.g. Jane Smith): ")" DISPLAY_NAME
-DISPLAY_NAME="${DISPLAY_NAME:-YOUR_DISPLAY_NAME}"
+# ── Confirmation ─────────────────────────────────────────────────────────────
 
 echo ""
 echo -e "${YELLOW}Will replace:${RESET}"
-echo "  YOUR_GITHUB_ORG      → ${GITHUB_ORG}"
-echo "  YOUR_DISPLAY_NAME    → ${DISPLAY_NAME}"
-echo "  YOUR_AWS_ACCOUNT_ID  → ${AWS_ACCOUNT_ID}"
-echo "  us-east-1            → ${AWS_REGION}"
-echo "  idp-mvp (cluster)    → ${CLUSTER_NAME}"
-echo "  YOUR_PLATFORM_REPO   → ${PLATFORM_REPO}"
+for i in "${!MANIFEST_NAMES[@]}"; do
+  [[ "${MANIFEST_NAMES[$i]}" == "ORG_LEGACY" ]] && continue
+  printf "  %-22s → %s\n" "${MANIFEST_PLACEHOLDERS[$i]}" "${VALUES[$i]}"
+done
+echo "  (plus the \${{ YOUR_* }} Jinja form and any hardcoded fallbacks listed in the manifest)"
 echo ""
 echo -e "${YELLOW}Backstage catalog User entity that will be created:${RESET}"
 echo "  name              : ${GITHUB_ORG}"
@@ -265,11 +290,11 @@ read -rp "Proceed with personalisation? [y/N] " CONFIRM
 
 log "Applying substitutions..."
 
-# Collect only the files that actually contain placeholders — skip node_modules,
-# build artefacts, and binaries. xargs cannot call shell functions (they live
-# in the current process), so we use a while-read loop instead.
+# Build the file list. xargs cannot call shell functions, so we use a
+# while-read loop in _replace_all instead.
 TARGETS=$(LC_ALL=C find \
   "${ROOT_DIR}/backstage/catalog" \
+  "${ROOT_DIR}/backstage/app" \
   "${ROOT_DIR}/backstage/app-config.yaml" \
   "${ROOT_DIR}/backstage/app-config.local.yaml" \
   "${ROOT_DIR}/kubernetes" \
@@ -278,8 +303,15 @@ TARGETS=$(LC_ALL=C find \
   "${ROOT_DIR}/services" \
   "${ROOT_DIR}/terraform" \
   "${ROOT_DIR}/docs" \
+  "${ROOT_DIR}/test-suites" \
+  "${ROOT_DIR}/.github/workflows" \
+  "${ROOT_DIR}/.github/CODEOWNERS" \
+  "${ROOT_DIR}/.github/pull_request_template.md" \
+  "${ROOT_DIR}/CONTRIBUTING.md" \
+  "${ROOT_DIR}/CHANGELOG.md" \
   "${ROOT_DIR}/CLAUDE.md" \
   "${ROOT_DIR}/README.md" \
+  "${ROOT_DIR}/mkdocs.yml" \
   -type f \
   ! -path '*/node_modules/*' \
   ! -path '*/.yarn/cache/*' \
@@ -289,25 +321,110 @@ TARGETS=$(LC_ALL=C find \
   ! -name '*.gz' ! -name '*.zip' ! -name '*.tar' \
   2>/dev/null)
 
+# Build a single bundled sed program (all -e expressions) and a grep pre-filter
+# so that:
+#   • each file is touched at most once by sed (one subprocess, not 30)
+#   • files that contain NONE of the search strings are skipped entirely
+# On a 700+ file TARGETS list this drops runtime from minutes to seconds.
+SED_ARGS=()
+NEEDLES=()
+for i in "${!MANIFEST_NAMES[@]}"; do
+  ph="${MANIFEST_PLACEHOLDERS[$i]}"
+  v="${VALUES[$i]}"
+  lit="${MANIFEST_LITERALS[$i]}"
+
+  # Skip if user took no value (placeholder unchanged) — nothing to substitute
+  [[ "$v" == "$ph" ]] && continue
+
+  # Use | as sed delimiter (none of our values normally contain it).
+  # Escape any literal | in the replacement just in case.
+  v_esc="${v//|/\\|}"
+
+  SED_ARGS+=(-e "s|${ph}|${v_esc}|g")
+  SED_ARGS+=(-e "s|\${{ ${ph} }}|${v_esc}|g")
+  NEEDLES+=("$ph")
+
+  if [[ -n "$lit" && "$v" != "$lit" ]]; then
+    # Escape regex metacharacters in the literal so we match it verbatim.
+    lit_esc="$(printf '%s' "$lit" | sed 's|[][\\.^$*+?(){}/|]|\\&|g')"
+    SED_ARGS+=(-e "s|${lit_esc}|${v_esc}|g")
+    NEEDLES+=("$lit")
+  fi
+done
+
+# Build a single ERE that matches ANY of the needles for the pre-filter pass.
+NEEDLE_RE="$(IFS='|'; echo "${NEEDLES[*]}")"
+
 _replace_all() {
+  # Legacy single-pair entry point — still used for the YOUR_ORG legacy alias
+  # appended after the manifest loop below.
   local pattern="$1" replacement="$2"
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    _sed "s/${pattern}/${replacement}/g" "$f" 2>/dev/null || true
+    LC_ALL=C grep -qE "$pattern" "$f" 2>/dev/null || continue
+    _sed "s|${pattern}|${replacement}|g" "$f" 2>/dev/null || true
   done <<< "$TARGETS"
 }
 
-_replace_all "YOUR_GITHUB_ORG"  "${GITHUB_ORG}"
+# Bundled pass: one sed invocation per matching file, with ALL substitutions.
+if [[ ${#SED_ARGS[@]} -gt 0 ]]; then
+  scanned=0
+  touched=0
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    scanned=$((scanned + 1))
+    LC_ALL=C grep -qE "$NEEDLE_RE" "$f" 2>/dev/null || continue
+    _sed "${SED_ARGS[@]}" "$f" 2>/dev/null || true
+    touched=$((touched + 1))
+  done <<< "$TARGETS"
+  log "Substituted in ${touched} of ${scanned} files (skipped $((scanned - touched)) with no match)."
+fi
 
-[[ "${DISPLAY_NAME}"  != "YOUR_DISPLAY_NAME"          ]] && _replace_all "YOUR_DISPLAY_NAME"  "${DISPLAY_NAME}"
-[[ "${AWS_ACCOUNT_ID}"!= "YOUR_AWS_ACCOUNT_ID"         ]] && _replace_all "YOUR_AWS_ACCOUNT_ID" "${AWS_ACCOUNT_ID}"
-[[ "${AWS_REGION}"    != "us-east-1"                   ]] && _replace_all "us-east-1"           "${AWS_REGION}"
-[[ "${CLUSTER_NAME}"  != "idp-mvp"                     ]] && _replace_all "idp-mvp"             "${CLUSTER_NAME}"
-[[ "${PLATFORM_REPO}" != "backstage-platform-template" ]] && _replace_all "backstage-platform-template" "${PLATFORM_REPO}"
+# Warn if any YOUR_* placeholders remain. Excludes:
+#   - .env.example files (intentional fill-in markers)
+#   - skeleton/ paths    (Backstage Nunjucks templates may keep YOUR_* for output)
+#   - placeholders.conf  (the manifest itself)
+_verify_no_remaining() {
+  local remaining=()
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    [[ "$f" == *.env.example ]] && continue
+    [[ "$f" == */skeleton/* ]] && continue
+    [[ "$f" == */placeholders.conf ]] && continue
+    LC_ALL=C grep -ql 'YOUR_[A-Z_]*' "$f" 2>/dev/null && remaining+=("$f")
+  done <<< "$TARGETS"
+  if [[ ${#remaining[@]} -gt 0 ]]; then
+    warn "These files still contain YOUR_* placeholders — review manually:"
+    for f in "${remaining[@]}"; do warn "  $f"; done
+  else
+    log "All YOUR_* placeholders resolved."
+  fi
+}
+_verify_no_remaining
 
-# Documentation code blocks use YOUR_ORG / YOUR_REPO
-_replace_all "YOUR_ORG"  "${GITHUB_ORG}"
-_replace_all "YOUR_REPO" "${PLATFORM_REPO}"
+# Write the single-source-of-truth file consumed by day-2 scripts.
+# Values are double-quoted with embedded " escaped, so that `source .idp-config.env`
+# works even when values contain spaces (e.g. DISPLAY_NAME="Jane Smith").
+_write_idp_config() {
+  local f="${ROOT_DIR}/.idp-config.env"
+  {
+    echo "# Generated by scripts/setup.sh — single source of truth for personalisation."
+    echo "# Re-run setup.sh to regenerate. Read by scripts/bootstrap-local.sh and friends."
+    for i in "${!MANIFEST_NAMES[@]}"; do
+      [[ "${MANIFEST_NAMES[$i]}" == "ORG_LEGACY" ]] && continue
+      local v="${VALUES[$i]}"
+      # Escape backslash, dollar, backtick, and double-quote so `source` reads
+      # the value verbatim regardless of shell metacharacters.
+      v="${v//\\/\\\\}"
+      v="${v//\"/\\\"}"
+      v="${v//\$/\\\$}"
+      v="${v//\`/\\\`}"
+      echo "${MANIFEST_NAMES[$i]}=\"${v}\""
+    done
+  } > "$f"
+  log "Wrote ${f}"
+}
+_write_idp_config
 
 log "Substitutions applied."
 

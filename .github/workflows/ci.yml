@@ -183,6 +183,28 @@ jobs:
       - name: Build Docker image (local, no push)
         run: docker build -t backstage:ci -f backstage/Dockerfile backstage/app
 
+  contract-mcp-server-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/contract-mcp-server/package.json
+
+      - name: Install dependencies
+        working-directory: services/contract-mcp-server
+        run: npm ci
+
+      - name: TypeScript compile
+        working-directory: services/contract-mcp-server
+        run: npm run build
+
   terraform-check:
     runs-on: ubuntu-latest
     permissions:

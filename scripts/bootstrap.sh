@@ -294,6 +294,7 @@ kubectl apply \
   -f kubernetes/policies/deny-latest-tag.yaml \
   -f kubernetes/policies/require-cost-tags.yaml
 log "  OPA/Gatekeeper policies applied (health-probes, resource-limits, labels, deny-latest-tag, cost-tags)."
+fi # --skip-policies
 
 # ── Phase 4.4: Tech Insights Exporter ────────────────────────────────────────
 log "Phase 4.4: Deploying Tech Insights Exporter CronJob..."
@@ -302,6 +303,29 @@ kubectl create configmap tech-insights-exporter-script \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
 log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
+
+# ── Phase 4.4a2: Flaky-Test Exporter ─────────────────────────────────────────
+log "Phase 4.4a2: Deploying Flaky-Test Exporter CronJob..."
+GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
+if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+  log "  GITHUB_TOKEN not in env — fetching from Secrets Manager (key: github-token in idp-mvp/backstage)..."
+  GH_TOKEN_FOR_FLAKE=$(aws secretsmanager get-secret-value \
+    --secret-id idp-mvp/backstage --query SecretString --output text 2>/dev/null \
+    | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('GITHUB_TOKEN',''))" \
+    2>/dev/null || echo "")
+fi
+if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+  log "  WARNING: no GITHUB_TOKEN available — Flaky-Test Exporter will skip every tick until you set it."
+  GH_TOKEN_FOR_FLAKE="placeholder-set-via-secrets-manager"
+fi
+kubectl create secret generic flaky-test-exporter-github-token \
+  --from-literal=token="$GH_TOKEN_FOR_FLAKE" \
+  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+kubectl create configmap flaky-test-exporter-script \
+  --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f observability/flaky-test-exporter/cronjob.yaml
+log "  Flaky-Test Exporter deployed (scans GitHub Actions artifacts every 30m)."
 
 # ── Phase 4.4a: ServiceMonitor — Prometheus scraping for services namespaces ──
 log "Phase 4.4a: Applying ServiceMonitor for services namespaces..."
@@ -431,12 +455,10 @@ git diff --staged --quiet || \
 log "hello-service seed image pushed — ArgoCD will deploy to dev namespace."
 
 # ── Phase 5.5: Build + push Backstage image ───────────────────────────────────
+# The Backstage Dockerfile is multi-stage and runs yarn install + yarn build:backend
+# inside the builder stage. No host-side yarn build is needed.
 log "Phase 5.5: Building and pushing Backstage image..."
 BACKSTAGE_IMAGE="${ECR_REGISTRY}/${CLUSTER_NAME}/backstage"
-
-# Compile TypeScript backend — produces packages/backend/dist/{bundle,skeleton}.tar.gz
-log "  Compiling Backstage backend (yarn build:backend)..."
-(cd backstage/app && yarn install --frozen-lockfile && yarn build:backend --config ../../app-config.yaml)
 
 docker build \
   --platform linux/amd64 \

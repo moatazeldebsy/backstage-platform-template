@@ -10,7 +10,7 @@
 #   --cluster <name>   EKS cluster name (default: idp-mvp, used with --aws)
 #   --skip-mlflow      Skip MLflow tracking server
 #   --skip-kagent      Skip KAgent CRDs and Helm install
-#   --skip-mcp         Skip IDP/QA MCP Server build and deploy
+#   --skip-mcp         Skip IDP/QA/Contract MCP Server build and deploy
 #   --destroy          Remove AI/ML components only (keeps core platform running)
 
 set -euo pipefail
@@ -75,9 +75,14 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow-aws.yaml" 2>/dev/null || true
 
+  # KAgent contract resources
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"      2>/dev/null || true
+
   # MCP servers (services-dev namespace)
-  helm uninstall idp-mcp-server --namespace services-dev 2>/dev/null || true
-  helm uninstall qa-mcp-server  --namespace services-dev 2>/dev/null || true
+  helm uninstall idp-mcp-server      --namespace services-dev 2>/dev/null || true
+  helm uninstall qa-mcp-server       --namespace services-dev 2>/dev/null || true
+  helm uninstall contract-mcp-server --namespace services-dev 2>/dev/null || true
   # Remove services-dev only if it is now empty
   if [[ -z "$(kubectl get all -n services-dev --ignore-not-found -o name 2>/dev/null)" ]]; then
     kubectl delete namespace services-dev 2>/dev/null || true
@@ -85,8 +90,29 @@ if $DESTROY; then
     warn "services-dev still has resources — namespace left in place."
   fi
 
-  # Delete namespaces (waits for all pods to terminate)
-  kubectl delete namespace kagent ml-platform --wait=true 2>/dev/null || true
+  # Delete namespaces (waits for all pods to terminate).
+  # Issue the deletes in background so we can also unblock the namespace
+  # controller — a stale APIService anywhere in the cluster (e.g. metrics-server
+  # marked False/FailedDiscoveryCheck) freezes every namespace finalizer.
+  kubectl delete namespace kagent ml-platform --wait=false 2>/dev/null || true
+
+  # Prune any non-Available APIServices that would stall NamespaceDeletionDiscoveryFailure.
+  for svc in $(kubectl get apiservice -o json 2>/dev/null \
+      | python3 -c "import json,sys
+for i in json.load(sys.stdin).get('items',[]):
+  for c in i.get('status',{}).get('conditions',[]):
+    if c.get('type')=='Available' and c.get('status')!='True':
+      print(i['metadata']['name']); break" 2>/dev/null); do
+    warn "Pruning stale APIService $svc (would block namespace deletion)."
+    kubectl delete apiservice "$svc" --ignore-not-found 2>/dev/null || true
+  done
+
+  # Wait up to 3m for the namespaces to actually disappear.
+  for _ in $(seq 1 90); do
+    remaining=$(kubectl get ns kagent ml-platform --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    [[ "$remaining" == "0" ]] && break
+    sleep 2
+  done
 
   info "Done. Re-run ./scripts/bootstrap-ai.sh to reinstall."
   exit 0
@@ -136,9 +162,68 @@ echo ""
 
 # ── 1. Namespaces ─────────────────────────────────────────────────────────────
 
+# Wait for any of our target namespaces to finish terminating before re-applying.
+# A previous failed run can leave kagent/ml-platform stuck in "Terminating" if
+# finalisers were slow to clear; kubectl apply then succeeds on the namespace
+# object but subsequent resource creates fail with "namespace is being terminated".
+wait_for_namespace_clear() {
+  local ns="$1"
+  local phase
+  for _ in $(seq 1 60); do
+    phase=$(kubectl get ns "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+    [[ "$phase" != "Terminating" ]] && return 0
+    sleep 2
+  done
+  warn "Namespace $ns is still Terminating after 2m — continuing anyway, kubectl apply may fail."
+}
+wait_for_namespace_clear kagent
+wait_for_namespace_clear ml-platform
+
 info "Applying namespaces (ml-platform, kagent)..."
-kubectl apply -f "${REPO_ROOT}/kubernetes/namespaces/namespaces.yaml"
+# Retry on transient admission-webhook timeouts (gatekeeper or other validators
+# may be briefly unresponsive while their pods restart). With failurePolicy=Fail
+# a single 3s timeout would otherwise bomb the whole bootstrap.
+ns_apply_attempts=0
+until kubectl apply -f "${REPO_ROOT}/kubernetes/namespaces/namespaces.yaml" 2> /tmp/ns_apply_err.$$; do
+  ns_apply_attempts=$((ns_apply_attempts + 1))
+  if grep -qE "failed calling webhook|context deadline exceeded" /tmp/ns_apply_err.$$ && [[ $ns_apply_attempts -lt 6 ]]; then
+    warn "Namespace apply hit a webhook timeout (attempt $ns_apply_attempts/5) — retrying in 10s."
+    cat /tmp/ns_apply_err.$$ | tail -3
+    sleep 10
+    continue
+  fi
+  cat /tmp/ns_apply_err.$$
+  rm -f /tmp/ns_apply_err.$$
+  die "Failed to apply namespaces after $ns_apply_attempts attempts."
+done
+rm -f /tmp/ns_apply_err.$$
 check "Namespaces ready"
+
+# Repair any helm releases stuck in `pending-*` state from a prior interrupted
+# run. Helm refuses subsequent upgrades with "another operation in progress"
+# until the orphan revision secret is removed.
+repair_stuck_helm_release() {
+  local rel="$1" ns="$2"
+  local status
+  status=$(helm status "$rel" -n "$ns" -o json 2>/dev/null | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+  if [[ "$status" == pending-* ]]; then
+    warn "Helm release $rel/$ns is stuck in $status — removing orphan revision secret(s)."
+    # Delete every secret whose revision is in pending-* state.
+    local secret latest_good
+    latest_good=$(helm history "$rel" -n "$ns" --max 20 -o json 2>/dev/null \
+      | grep -oE '"revision":[0-9]+,"updated":"[^"]+","status":"(deployed|superseded)"' \
+      | grep -oE '"revision":[0-9]+' | tail -1 | cut -d: -f2 || true)
+    for secret in $(kubectl get secrets -n "$ns" -l "owner=helm,name=$rel" -o name 2>/dev/null); do
+      local rev
+      rev=$(echo "$secret" | grep -oE 'v[0-9]+$' | tr -d v)
+      if [[ -n "$latest_good" && "$rev" -gt "$latest_good" ]]; then
+        kubectl delete -n "$ns" "$secret" 2>/dev/null || true
+      fi
+    done
+  fi
+}
+repair_stuck_helm_release kagent-crds kagent
+repair_stuck_helm_release kagent      kagent
 
 # ── 2. Anthropic API key secret ───────────────────────────────────────────────
 
@@ -191,10 +276,14 @@ else
   KAGENT_VALUES="${REPO_ROOT}/local/kagent/values.yaml"
   [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/kubernetes/kagent/values-aws.yaml"
 
+  # --force-conflicts: Helm v4 uses server-side apply; the kubectl patches below
+  # take field ownership on first install, so subsequent helm upgrades would
+  # fail with "conflict with kubectl-patch" without this flag.
   helm upgrade --install kagent \
     oci://ghcr.io/kagent-dev/kagent/helm/kagent \
     --namespace kagent \
-    --values "${KAGENT_VALUES}"
+    --values "${KAGENT_VALUES}" \
+    --force-conflicts
   # Don't --wait here: built-in Agent CRDs (argo-rollouts, cilium, etc.) take
   # longer than helm's wait window to reach Ready. Poll the controller pod only.
   kubectl rollout status deployment/kagent-controller -n kagent --timeout=5m || \
@@ -209,13 +298,18 @@ else
   info "Patching kagent-postgresql to pgvector image and enabling DATABASE_VECTOR_ENABLED..."
 
   # Switch the bundled postgres to the pgvector-enabled image.
+  # --field-manager=helm: claim ownership as helm so the next helm upgrade can
+  # overwrite these fields without a server-side-apply conflict.
   kubectl patch deployment kagent-postgresql -n kagent \
+    --field-manager=helm \
     --type='json' \
     --patch='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"pgvector/pgvector:pg18"},{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
-  kubectl rollout status deployment/kagent-postgresql -n kagent --timeout=120s
+  kubectl rollout status deployment/kagent-postgresql -n kagent --timeout=5m || \
+    warn "kagent-postgresql rollout slow (cold pgvector image + probe ramp-up) — continuing; will retry connection below."
 
   # Enable vector support in the controller ConfigMap.
   kubectl patch configmap kagent-controller -n kagent \
+    --field-manager=helm \
     --patch='{"data":{"DATABASE_VECTOR_ENABLED":"true"}}'
 
   # Wait for postgres to be accepting connections, then create the extension.
@@ -232,7 +326,8 @@ else
   # Restart the controller so it picks up DATABASE_VECTOR_ENABLED=true and
   # runs the AutoMigrate that creates the memory table.
   kubectl rollout restart deployment/kagent-controller -n kagent
-  kubectl rollout status  deployment/kagent-controller -n kagent --timeout=120s
+  kubectl rollout status  deployment/kagent-controller -n kagent --timeout=5m || \
+    warn "kagent-controller rollout slow — continuing; pod will become ready shortly."
   check "pgvector extension enabled → memory table will be created on controller start"
 
   # ── 5. KAgent resources ─────────────────────────────────────────────────────
@@ -243,6 +338,10 @@ else
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
+  # Contract-testing KAgent resources intentionally disabled (hidden from end users).
+  # To re-enable, uncomment the two lines below.
+  # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
+  # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
@@ -255,14 +354,14 @@ else
       "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" \
       --overwrite
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-aws.yaml"
-    check "IDP + QA agents defined (claude-haiku-4-5-20251001)"
+    check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
     check "KAgent ExternalSecret → idp-mvp/kagent (Secrets Manager)"
     check "KAgent UI ingress → ALB (AWS Load Balancer Controller)"
   else
     # Local: create API key secret directly + nginx ingresses (HTTP)
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress.yaml"
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-idp-assistant.yaml"
-    check "IDP + QA agents defined (claude-haiku-4-5-20251001)"
+    check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
     check "KAgent UI ingress → http://kagent.idp.local"
     check "IDP Assistant ingress → http://idp-assistant.idp.local"
 
@@ -272,6 +371,51 @@ else
     # No hostAliases patch needed; the controller is reached directly in-cluster.
     check "kagent-ui SSR → kagent-controller.kagent.svc.cluster.local:8083"
   fi
+
+  # ── 5d. Self-heal stuck RemoteMCPServers ─────────────────────────────────────
+  # Known kagent bug: the reconciler's tool-refresh transaction (DELETE + INSERT)
+  # can fail with `duplicate key value violates unique constraint "tool_pkey"`
+  # when the postgres `tool` table already has rows from a prior install (the
+  # PVC survives helm uninstall). The RemoteMCPServer stays ACCEPTED=False and
+  # its agents render with "No tools/agents available" in the UI even though
+  # the Agent CRs report READY=True. Clearing the stale rows unblocks the next
+  # reconcile tick (~60s).
+  info "Self-healing RemoteMCPServers (clearing stale tool rows if reconciler is stuck)..."
+  PG_POD=$(kubectl get pod -n kagent --no-headers 2>/dev/null | awk '/postgresql/{print $1;exit}')
+  for attempt in 1 2 3; do
+    stuck_servers=()
+    while IFS= read -r srv; do
+      [[ -z "$srv" ]] && continue
+      msg=$(kubectl get remotemcpserver "$srv" -n kagent \
+        -o jsonpath='{.status.conditions[?(@.type=="Accepted")].message}' 2>/dev/null || echo "")
+      status=$(kubectl get remotemcpserver "$srv" -n kagent \
+        -o jsonpath='{.status.conditions[?(@.type=="Accepted")].status}' 2>/dev/null || echo "")
+      if [[ "$status" == "False" && "$msg" == *"duplicate key value violates unique constraint"* ]]; then
+        stuck_servers+=("$srv")
+      fi
+    done < <(kubectl get remotemcpserver -n kagent -o name 2>/dev/null | sed 's|.*/||')
+
+    if (( ${#stuck_servers[@]} == 0 )); then
+      check "RemoteMCPServers reconciling cleanly"
+      break
+    fi
+
+    if [[ -z "$PG_POD" ]]; then
+      warn "kagent-postgresql pod not found — cannot self-heal stuck servers: ${stuck_servers[*]}"
+      break
+    fi
+
+    for srv in "${stuck_servers[@]}"; do
+      log "  Clearing stale tool rows for kagent/${srv} (attempt ${attempt}/3)..."
+      kubectl exec -n kagent "$PG_POD" -- \
+        psql -U kagent -d kagent -c \
+        "DELETE FROM tool WHERE server_name = 'kagent/${srv}';" >/dev/null 2>&1 || \
+        warn "  Failed to clear rows for ${srv}"
+    done
+
+    # Wait for the reconciler's next tick to repopulate.
+    sleep 65
+  done
 fi
 
 # ── 6. IDP / QA MCP Servers ───────────────────────────────────────────────────
@@ -303,6 +447,8 @@ else
     check "mcp-backstage-token secret created in services-dev"
   fi
 
+  # contract-mcp-server intentionally excluded — hidden from end users.
+  # To re-enable, add `contract-mcp-server` back to the list below.
   for SVC in idp-mcp-server qa-mcp-server; do
     info "Building ${SVC}..."
     (
@@ -366,7 +512,7 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
   while IFS= read -r line; do
     [[ -z "$line" || "$line" == \#* ]] && continue
     # Only process AI/ML entries from hosts-append.txt
-    echo "$line" | grep -qE "mlflow|kagent|idp-mcp-server|qa-mcp-server" || continue
+    echo "$line" | grep -qE "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server" || continue
     hostname=$(awk '{print $2}' <<< "$line")
     [[ -z "$hostname" ]] && continue
     if ! grep -qF "$hostname" /etc/hosts 2>/dev/null; then
@@ -394,16 +540,18 @@ echo "╔═══════════════════════�
 echo "║               AI/ML Platform Bootstrap Complete                          ║"
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI        ALB DNS  (kubectl get ingress -n kagent)            ║"
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow           ALB DNS  (kubectl get ingress -n ml-platform)       ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server   ALB DNS  (kubectl get ingress -n services)          ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server    ALB DNS  (kubectl get ingress -n services)          ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           ALB DNS  (kubectl get ingress -n kagent)         ║"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              ALB DNS  (kubectl get ingress -n ml-platform)    ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      ALB DNS  (kubectl get ingress -n services)       ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       ALB DNS  (kubectl get ingress -n services)       ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server ALB DNS  (kubectl get ingress -n services)       ║"
 else
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI        http://kagent.idp.local                            ║"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant     http://backstage.idp.local/ai-assistant            ║"
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow           http://mlflow.idp.local                            ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server   http://idp-mcp-server.idp.local/healthz            ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server    http://qa-mcp-server.idp.local/healthz             ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local                         ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant         ║"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://mlflow.idp.local                         ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz         ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz          ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz    ║"
 fi
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"
@@ -414,5 +562,6 @@ if [[ "$SKIP_MCP" == "false" && "$DEPLOY_MODE" == "local" ]]; then
   echo "  Register CI runners for MCP servers (optional):"
   echo "    ./scripts/setup-runner.sh --repo idp-mcp-server"
   echo "    ./scripts/setup-runner.sh --repo qa-mcp-server"
+  echo "    ./scripts/setup-runner.sh --repo contract-mcp-server"
   echo ""
 fi

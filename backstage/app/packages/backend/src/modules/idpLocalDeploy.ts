@@ -3,6 +3,8 @@ import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-no
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -238,6 +240,159 @@ function createSeedImageAction() {
   });
 }
 
+// Register a scaffolded entity directly into the local catalog by writing its
+// catalog-info.yaml to the bind-mounted /catalog/scaffolded/<name>/ directory
+// and POSTing a Location entity to the catalog API.
+//
+// Why: in local-only mode (no real GITHUB_TOKEN) `publish:github` and the
+// subsequent `catalog:register` both silently fail — see `continueOnError: true`
+// in the service templates — and the scaffolded entity never appears in the
+// catalog. This action gives the templates a GitHub-free registration path so
+// the new Component shows up after every local scaffold.
+function createCatalogRegisterLocalAction() {
+  return createTemplateAction<{
+    entityName: string;
+    entityKind?: string;
+    entityType?: string;
+    owner?: string;
+    description?: string;
+    namespace?: string;
+    annotations?: Record<string, string>;
+    catalogRootDir?: string;
+    backstageUrl?: string;
+  }>({
+    id: 'idp:catalog-register-local',
+    description:
+      'Write a catalog-info.yaml to the local catalog directory and register ' +
+      'it with the Backstage catalog API. Use this in local-only mode where ' +
+      'publish:github + catalog:register cannot run.',
+    schema: {
+      input: {
+        required: ['entityName'],
+        type: 'object',
+        properties: {
+          entityName: { type: 'string', title: 'Entity name' },
+          entityKind: {
+            type: 'string',
+            title: 'Entity kind',
+            default: 'Component',
+          },
+          entityType: {
+            type: 'string',
+            title: 'Spec type (service/library/website/…)',
+            default: 'service',
+          },
+          owner: { type: 'string', title: 'Owner', default: 'platform-team' },
+          description: { type: 'string', title: 'Description' },
+          namespace: {
+            type: 'string',
+            title: 'Backstage namespace',
+            default: 'default',
+          },
+          annotations: {
+            type: 'object',
+            title: 'Extra metadata.annotations',
+            additionalProperties: { type: 'string' },
+          },
+          catalogRootDir: {
+            type: 'string',
+            title: 'Bind-mounted catalog dir inside the container',
+            default: '/catalog/scaffolded',
+          },
+          backstageUrl: {
+            type: 'string',
+            title: 'Backstage backend URL (used to POST the new Location)',
+            default: 'http://localhost:7007',
+          },
+        },
+      },
+      output: {
+        type: 'object',
+        properties: {
+          entityRef: { type: 'string' },
+          catalogInfoPath: { type: 'string' },
+        },
+      },
+    },
+    async handler(ctx) {
+      const {
+        entityName,
+        entityKind = 'Component',
+        entityType = 'service',
+        owner = 'platform-team',
+        description = '',
+        namespace = 'default',
+        annotations = {},
+        catalogRootDir = '/catalog/scaffolded',
+        backstageUrl = 'http://localhost:7007',
+      } = ctx.input;
+
+      const entityDir = path.join(catalogRootDir, entityName);
+      const catalogInfoPath = path.join(entityDir, 'catalog-info.yaml');
+
+      // YAML built by hand — no yaml dependency needed, the shape is fixed.
+      const annotationLines = Object.entries(annotations)
+        .map(([k, v]) => `    ${k}: ${JSON.stringify(v)}`)
+        .join('\n');
+      const yaml = [
+        'apiVersion: backstage.io/v1alpha1',
+        `kind: ${entityKind}`,
+        'metadata:',
+        `  name: ${entityName}`,
+        `  namespace: ${namespace}`,
+        description ? `  description: ${JSON.stringify(description)}` : '',
+        annotationLines ? '  annotations:' : '',
+        annotationLines,
+        'spec:',
+        `  type: ${entityType}`,
+        `  lifecycle: experimental`,
+        `  owner: ${owner}`,
+      ]
+        .filter(Boolean)
+        .join('\n') + '\n';
+
+      await fs.mkdir(entityDir, { recursive: true });
+      await fs.writeFile(catalogInfoPath, yaml, 'utf8');
+      ctx.logger.info(`Wrote ${catalogInfoPath}`);
+
+      // POST a Location entity to the catalog so it picks the file up
+      // immediately (rather than waiting for the next refresh tick).
+      const locationsUrl = `${backstageUrl}/api/catalog/locations`;
+      const body = JSON.stringify({
+        type: 'file',
+        target: catalogInfoPath,
+      });
+      try {
+        const res = await fetch(locationsUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body,
+        });
+        if (!res.ok && res.status !== 409) {
+          // 409 = already registered (idempotent re-scaffold)
+          const text = await res.text();
+          ctx.logger.warn(
+            `Catalog location POST returned ${res.status}: ${text}`,
+          );
+        } else {
+          ctx.logger.info(
+            `Registered catalog location (status=${res.status}) for ${entityName}`,
+          );
+        }
+      } catch (e: any) {
+        ctx.logger.warn(
+          `Could not POST catalog location: ${e.message}. The next catalog ` +
+            `refresh tick will still pick up the file.`,
+        );
+      }
+
+      const entityRef = `${entityKind.toLowerCase()}:${namespace}/${entityName}`;
+      ctx.output('entityRef', entityRef);
+      ctx.output('catalogInfoPath', catalogInfoPath);
+    },
+  });
+}
+
 export const idpLocalDeployModule = createBackendModule({
   pluginId: 'scaffolder',
   moduleId: 'idp-local-deploy',
@@ -249,6 +404,7 @@ export const idpLocalDeployModule = createBackendModule({
       async init({ scaffolder }) {
         scaffolder.addActions(createDeployLocalAction());
         scaffolder.addActions(createSeedImageAction());
+        scaffolder.addActions(createCatalogRegisterLocalAction());
       },
     });
   },

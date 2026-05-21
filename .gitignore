@@ -28,6 +28,7 @@ dist/
 
 # Docker
 .dockerignore
+!backstage/app/.dockerignore
 
 # IDE
 .idea/
@@ -42,6 +43,11 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+.idp-config.env
+
+# Locally scaffolded catalog entries (written by idp:catalog-register-local)
+backstage/catalog/scaffolded/*/
+!backstage/catalog/scaffolded/.gitkeep
 *.pem
 *.key
 kubeconfig

@@ -14,10 +14,13 @@ spec:
         generators:
           # Generator 1: discover services from the platform repo
           - git:
-              repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter.git
+              repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
               revision: HEAD
               directories:
                 - path: services/*
+                # contract-mcp-server intentionally excluded — hidden from end users.
+                - path: services/contract-mcp-server
+                  exclude: true
           # Generator 2: one entry per environment
           - list:
               elements:
@@ -33,7 +36,7 @@ spec:
     spec:
       project: default
       sources:
-        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter.git
+        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
           targetRevision: HEAD
           path: helm/service-template
           helm:
@@ -42,7 +45,7 @@ spec:
                 value: "{{path.basename}}"
             valueFiles:
               - $values/services/{{path.basename}}/{{valuesFile}}
-        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter.git
+        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
           targetRevision: HEAD
           ref: values
       destination:

@@ -1,0 +1,16 @@
+# Build context is this directory (set in local/backstage/docker-compose.yml).
+# The multi-stage Dockerfile runs `yarn install` inside the builder stage,
+# so we don't want host node_modules in the context (saves ~1-2 GB transfer).
+node_modules
+**/node_modules
+packages/*/dist
+packages/*/dist-types
+plugins/*/dist
+plugins/*/dist-types
+dist-types
+.next
+build
+coverage
+.yarn/cache
+.yarn/install-state.gz
+*.tsbuildinfo

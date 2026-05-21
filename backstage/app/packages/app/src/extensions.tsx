@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef } from '@backstage/frontend-plugin-api';
+import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
+import { useEntity } from '@backstage/plugin-catalog-react';
+import type { Entity } from '@backstage/catalog-model';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
   Content,
@@ -7,6 +10,9 @@ import {
   Page,
   Progress,
 } from '@backstage/core-components';
+import CheckCircleIcon from '@material-ui/icons/CheckCircle';
+import CancelIcon from '@material-ui/icons/Cancel';
+import EmojiEventsIcon from '@material-ui/icons/EmojiEvents';
 import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -620,11 +626,255 @@ const aiAssistantNavItem = NavItemBlueprint.make({
   },
 });
 
+// ── Shift-Left Scorecard tab ──────────────────────────────────────────────────
+// Renders the Bronze/Silver/Gold quality scorecard on every Component entity
+// page. Computes the 11 checks client-side from the entity's annotations,
+// relations, and tags — keep this logic in sync with
+// backstage/app/packages/backend/src/modules/idpTechInsights.ts.
+// See docs/shift-left.md for the tier model.
+
+type CheckKey =
+  | 'has-owner'
+  | 'has-techdocs'
+  | 'has-health-probes'
+  | 'has-runbook-url'
+  | 'has-api-definition'
+  | 'uses-pinned-image-tag'
+  | 'has-coverage-gate'
+  | 'has-static-analysis'
+  | 'has-vuln-scan'
+  | 'has-contract-tests'
+  | 'has-e2e-tests';
+
+interface CheckDef {
+  id: CheckKey;
+  label: string;
+  group: 'Hygiene' | 'Shift-Left CI' | 'Test Coverage';
+  remediation: string;
+}
+
+const CHECKS: CheckDef[] = [
+  { id: 'has-owner',             group: 'Hygiene',       label: 'Has owner',                 remediation: 'Set spec.owner in catalog-info.yaml.' },
+  { id: 'has-techdocs',          group: 'Hygiene',       label: 'Has TechDocs',              remediation: 'Add annotation backstage.io/techdocs-ref: dir:.' },
+  { id: 'has-health-probes',     group: 'Hygiene',       label: 'Has Kubernetes probes',     remediation: 'Add annotation backstage.io/kubernetes-id (the Helm chart wires the probes).' },
+  { id: 'has-runbook-url',       group: 'Hygiene',       label: 'Has runbook URL',           remediation: 'Add annotation backstage.io/runbook-url linking to your service runbook.' },
+  { id: 'has-api-definition',    group: 'Hygiene',       label: 'Has API definition',        remediation: 'Declare providesApis in catalog-info.yaml or expose /openapi.json.' },
+  { id: 'uses-pinned-image-tag', group: 'Hygiene',       label: 'Pinned image tag (no :latest)', remediation: 'Set annotation backstage.io/image-tag to a SHA or version; avoid latest.' },
+  { id: 'has-coverage-gate',     group: 'Shift-Left CI', label: 'Coverage gate in CI',       remediation: 'Add "coverage" to idp.io/quality-gates annotation (skeleton CI already enforces 70%).' },
+  { id: 'has-static-analysis',   group: 'Shift-Left CI', label: 'Static analysis in CI',     remediation: 'Add "static-analysis" to idp.io/quality-gates annotation.' },
+  { id: 'has-vuln-scan',         group: 'Shift-Left CI', label: 'Vuln scan in CI',           remediation: 'Add "vuln-scan" to idp.io/quality-gates annotation.' },
+  { id: 'has-contract-tests',    group: 'Test Coverage', label: 'Contract tests',            remediation: 'Run the enable-contract-testing scaffolder template, or add "contract" to idp.io/quality-gates.' },
+  { id: 'has-e2e-tests',         group: 'Test Coverage', label: 'End-to-end tests',          remediation: 'Run the playwright-e2e-suite scaffolder, or tag the entity with e2e/playwright.' },
+];
+
+type TierName = 'none' | 'bronze' | 'silver' | 'gold';
+
+const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
+  bronze: 4,
+  silver: 7,
+  gold:   10,
+};
+
+interface ScorecardResult {
+  results: Record<CheckKey, boolean>;
+  passed: number;
+  total: number;
+  tier: TierName;
+}
+
+function parseGates(raw: string | undefined): Set<string> {
+  if (!raw) return new Set();
+  return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
+}
+
+function computeScorecard(entity: Entity): ScorecardResult {
+  const annotations = entity.metadata.annotations ?? {};
+  const relations   = entity.relations ?? [];
+  const tags        = entity.metadata.tags ?? [];
+  const gates       = parseGates(annotations['idp.io/quality-gates']);
+
+  const hasOwner = Boolean(
+    entity.spec?.owner &&
+    relations.some(r => r.type === 'ownedBy'),
+  );
+  const hasApiDefinition = relations.some(r => r.type === 'providesApi');
+  const imageTag         = annotations['backstage.io/image-tag'] ?? '';
+  const hasE2eTagged     = tags.some(t =>
+    ['e2e', 'playwright', 'cypress', 'appium'].includes(t.toLowerCase()),
+  );
+
+  const results: Record<CheckKey, boolean> = {
+    'has-owner':             hasOwner,
+    'has-techdocs':          Boolean(annotations['backstage.io/techdocs-ref']),
+    'has-health-probes':     Boolean(annotations['backstage.io/kubernetes-id']),
+    'has-runbook-url':       Boolean(annotations['backstage.io/runbook-url']),
+    'has-api-definition':    hasApiDefinition,
+    'uses-pinned-image-tag': imageTag !== '' && imageTag !== 'latest',
+    'has-coverage-gate':     gates.has('coverage'),
+    'has-static-analysis':   gates.has('static-analysis'),
+    'has-vuln-scan':         gates.has('vuln-scan'),
+    'has-contract-tests':    gates.has('contract') || hasApiDefinition,
+    'has-e2e-tests':         gates.has('e2e') || hasE2eTagged || relations.some(r => r.type === 'consumesApi'),
+  };
+
+  const passed = Object.values(results).filter(Boolean).length;
+  let tier: TierName = 'none';
+  if (passed >= TIER_THRESHOLDS.gold)   tier = 'gold';
+  else if (passed >= TIER_THRESHOLDS.silver) tier = 'silver';
+  else if (passed >= TIER_THRESHOLDS.bronze) tier = 'bronze';
+  return { results, passed, total: CHECKS.length, tier };
+}
+
+const TIER_COLORS: Record<TierName, string> = {
+  none:   '#9e9e9e',
+  bronze: '#cd7f32',
+  silver: '#a8a8a8',
+  gold:   '#daa520',
+};
+
+function TierBadge({ tier, passed, total }: { tier: TierName; passed: number; total: number }) {
+  const label = tier === 'none' ? 'No tier yet' : tier.charAt(0).toUpperCase() + tier.slice(1);
+  return (
+    <Box display="flex" alignItems="center" style={{ gap: 16 }}>
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        style={{
+          width: 80, height: 80, borderRadius: '50%',
+          backgroundColor: TIER_COLORS[tier], color: '#fff',
+        }}
+      >
+        <EmojiEventsIcon style={{ fontSize: 40 }} />
+      </Box>
+      <Box>
+        <Typography variant="h5">{label} tier</Typography>
+        <Typography variant="body2" color="textSecondary">
+          {passed} of {total} checks passing
+        </Typography>
+        <Typography variant="caption" color="textSecondary">
+          Thresholds — Bronze ≥4, Silver ≥7, Gold ≥10
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
+function NextTierHint({ tier, results }: { tier: TierName; results: Record<CheckKey, boolean> }) {
+  const passed = Object.values(results).filter(Boolean).length;
+  const target = tier === 'gold' ? null
+    : tier === 'silver' ? TIER_THRESHOLDS.gold
+    : tier === 'bronze' ? TIER_THRESHOLDS.silver
+    : TIER_THRESHOLDS.bronze;
+  if (target === null) {
+    return (
+      <Typography variant="body2" color="textSecondary">
+        🎉 Gold tier — full shift-left adoption. Consider mutation testing next.
+      </Typography>
+    );
+  }
+  const missing = CHECKS.filter(c => !results[c.id]);
+  return (
+    <Typography variant="body2" color="textSecondary">
+      {target - passed} more check{target - passed === 1 ? '' : 's'} to reach{' '}
+      {target === TIER_THRESHOLDS.gold ? 'Gold' : target === TIER_THRESHOLDS.silver ? 'Silver' : 'Bronze'}.
+      Cheapest unfilled: <strong>{missing[0]?.label ?? '—'}</strong>.
+    </Typography>
+  );
+}
+
+function ScorecardEntityContent() {
+  const { entity } = useEntity();
+  const score = useMemo(() => computeScorecard(entity), [entity]);
+  const grouped = useMemo(() => {
+    const groups: Record<string, CheckDef[]> = {};
+    for (const c of CHECKS) (groups[c.group] ||= []).push(c);
+    return groups;
+  }, []);
+
+  return (
+    <Content>
+      <Box mb={3}>
+        <TierBadge tier={score.tier} passed={score.passed} total={score.total} />
+        <Box mt={2}>
+          <NextTierHint tier={score.tier} results={score.results} />
+        </Box>
+      </Box>
+
+      {Object.entries(grouped).map(([group, checks]) => (
+        <Box key={group} mb={3}>
+          <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+            {group}
+          </Typography>
+          <TableContainer component={Paper}>
+            <MuiTable size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell style={{ width: 60 }}>Status</TableCell>
+                  <TableCell>Check</TableCell>
+                  <TableCell>How to fix if failing</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {checks.map(c => {
+                  const ok = score.results[c.id];
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell>
+                        {ok
+                          ? <CheckCircleIcon style={{ color: '#4caf50' }} />
+                          : <CancelIcon style={{ color: '#f44336' }} />}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2"><strong>{c.label}</strong></Typography>
+                        <Typography variant="caption" color="textSecondary">{c.id}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        {ok
+                          ? <Typography variant="caption" color="textSecondary">—</Typography>
+                          : <Typography variant="caption">{c.remediation}</Typography>}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </MuiTable>
+          </TableContainer>
+        </Box>
+      ))}
+
+      <Box mt={2}>
+        <Typography variant="caption" color="textSecondary">
+          Programme reference: <Link href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/docs/shift-left.md" target="_blank" rel="noopener">docs/shift-left.md</Link>
+        </Typography>
+      </Box>
+    </Content>
+  );
+}
+
+const scorecardEntityContent = EntityContentBlueprint.make({
+  name: 'shift-left-scorecard',
+  params: {
+    path: '/scorecard',
+    title: 'Scorecard',
+    filter: 'kind:component',
+    loader: async () => <ScorecardEntityContent />,
+  },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
   routes: {
     root: finOpsRouteRef,
   },
-  extensions: [finOpsPage, finOpsNavItem, aiAssistantPage, aiAssistantNavItem, semanticSearchPage, semanticSearchNavItem],
+  extensions: [
+    finOpsPage,
+    finOpsNavItem,
+    aiAssistantPage,
+    aiAssistantNavItem,
+    semanticSearchPage,
+    semanticSearchNavItem,
+    scorecardEntityContent,
+  ],
 });

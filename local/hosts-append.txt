@@ -18,3 +18,4 @@
 127.0.0.1  idp-assistant.idp.local
 127.0.0.1  idp-mcp-server.idp.local
 127.0.0.1  qa-mcp-server.idp.local
+127.0.0.1  contract-mcp-server.idp.local
