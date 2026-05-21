@@ -104,7 +104,7 @@ function createDeployAgentAction() {
 
       // Verify cluster is reachable
       try {
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv });
+        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
         throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
       }
@@ -114,7 +114,7 @@ function createDeployAgentAction() {
       const tmpFile = path.join(os.tmpdir(), `agent-${name}-${Date.now()}.yaml`);
       try {
         await fs.writeFile(tmpFile, yaml, 'utf8');
-        const { stdout, stderr } = await execAsync(`kubectl apply -f ${tmpFile}`, { env: kubeEnv });
+        const { stdout, stderr } = await execAsync(`kubectl apply -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
         if (stdout) ctx.logger.info(stdout.trim());
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {

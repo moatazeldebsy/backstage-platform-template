@@ -179,11 +179,14 @@ async function callMcpTool(
   return JSON.parse(rawText) as Record<string, unknown>;
 }
 
+const EXEC_TIMEOUT_FAST_MS = 10_000;
+const EXEC_TIMEOUT_DEPLOY_MS = 180_000;
+
 async function isHelmReleaseDeployed(releaseName: string, namespace: string): Promise<boolean> {
   try {
     const { stdout } = await execAsync(
       `helm status ${releaseName} --namespace ${namespace} --output json 2>/dev/null || echo "{}"`,
-      { env: kubeEnv },
+      { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS },
     );
     const status = JSON.parse(stdout.trim() || '{}') as { info?: { status?: string } };
     return status.info?.status === 'deployed';
@@ -247,7 +250,7 @@ function createSetupContractTestingAction() {
       // ── Step 1: Verify cluster is reachable ───────────────────────────────
       ctx.logger.info('Verifying Kind cluster is reachable...');
       try {
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv });
+        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
       } catch (e: any) {
         throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
       }
@@ -274,7 +277,7 @@ function createSetupContractTestingAction() {
               `--values ${valuesFile}`,
               '--wait --timeout 120s',
             ].join(' '),
-            { env: kubeEnv },
+            { env: kubeEnv, timeout: EXEC_TIMEOUT_DEPLOY_MS },
           );
           if (stdout) ctx.logger.info(stdout.trim());
           if (stderr) ctx.logger.warn(stderr.trim());
@@ -289,7 +292,7 @@ function createSetupContractTestingAction() {
       const toolserverFile = path.join(os.tmpdir(), `contract-toolserver-${Date.now()}.yaml`);
       try {
         await fs.writeFile(toolserverFile, buildContractToolserverYaml(), 'utf8');
-        const { stdout } = await execAsync(`kubectl apply -f ${toolserverFile}`, { env: kubeEnv });
+        const { stdout } = await execAsync(`kubectl apply -f ${toolserverFile}`, { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
         ctx.logger.info(stdout.trim());
       } finally {
         await fs.unlink(toolserverFile).catch(() => undefined);
@@ -300,23 +303,31 @@ function createSetupContractTestingAction() {
       const agentFile = path.join(os.tmpdir(), `contract-agent-${Date.now()}.yaml`);
       try {
         await fs.writeFile(agentFile, buildContractAgentYaml(), 'utf8');
-        const { stdout } = await execAsync(`kubectl apply -f ${agentFile}`, { env: kubeEnv });
+        const { stdout } = await execAsync(`kubectl apply -f ${agentFile}`, { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
         ctx.logger.info(stdout.trim());
       } finally {
         await fs.unlink(agentFile).catch(() => undefined);
       }
 
       // ── Step 5: Wait for contract-mcp-server to be ready ─────────────────
+      // Exponential backoff with jitter, capped at 5s, total deadline ~60s.
+      // Avoids the fixed 5s × 12 cadence that kept polling at full rate even
+      // when many setups ran in parallel.
       ctx.logger.info('Waiting for contract-mcp-server to be ready...');
       let ready = false;
-      for (let i = 0; i < 12; i++) {
+      const readyDeadline = Date.now() + 60_000;
+      let attempt = 0;
+      while (Date.now() < readyDeadline) {
         try {
           const res = await fetch(`${contractServerUrl}/healthz`, {
             signal: AbortSignal.timeout(3000),
           });
           if (res.ok) { ready = true; break; }
         } catch { /* not ready yet */ }
-        await new Promise(r => setTimeout(r, 5000));
+        const base = Math.min(5000, 500 * Math.pow(2, attempt));
+        const jitter = base * (0.8 + Math.random() * 0.4);
+        await new Promise(r => setTimeout(r, jitter));
+        attempt++;
       }
       if (!ready) {
         ctx.logger.warn('contract-mcp-server health check timed out — contract registration will be skipped');

@@ -2,7 +2,7 @@ import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import fetch from 'node-fetch';
+import fetch, { RequestInit } from 'node-fetch';
 import { register, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
 import fs from 'fs';
 
@@ -14,6 +14,34 @@ const PROMETHEUS_URL = process.env.PROMETHEUS_URL ?? 'http://prometheus-kube-pro
 const K8S_API = process.env.K8S_API ?? 'https://kubernetes.default.svc';
 const K8S_TOKEN = process.env.K8S_TOKEN ?? '';
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
+const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '8000', 10);
+
+// fetchWithTimeout wraps node-fetch with an AbortSignal so an unresponsive
+// upstream (Backstage / Prometheus / K8s) can't hang a tool call forever.
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = HTTP_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Service-account token is read once at boot; kubelet rotates the file
+// in-place, so re-reading per request just adds blocking I/O on the hot path.
+const SA_TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
+let cachedSaToken = '';
+try {
+  if (fs.existsSync(SA_TOKEN_PATH)) {
+    cachedSaToken = fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim();
+    fs.watch(SA_TOKEN_PATH, { persistent: false }, () => {
+      try {
+        cachedSaToken = fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim();
+      } catch { /* ignore — keep last good token until next rotation */ }
+    });
+  }
+} catch { /* not running in-cluster; K8S_TOKEN env var is used instead */ }
 
 collectDefaultMetrics();
 const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['tool'] });
@@ -26,25 +54,24 @@ const app = express();
 async function fetchCatalog(path: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (BACKSTAGE_TOKEN) headers['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
-  const res = await fetch(`${BACKSTAGE_URL}${path}`, { headers });
+  const res = await fetchWithTimeout(`${BACKSTAGE_URL}${path}`, { headers });
   if (!res.ok) throw new Error(`Backstage API error ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
 async function fetchPrometheus(query: string) {
   const url = `${PROMETHEUS_URL}/api/v1/query?query=${encodeURIComponent(query)}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error(`Prometheus error ${res.status}`);
   return res.json() as Promise<{ data: { result: Array<{ metric: Record<string, string>; value: [number, string] }> } }>;
 }
 
 async function fetchK8s(path: string) {
-  // Use explicit K8S_TOKEN env var first; fall back to in-cluster service account token.
-  const SA_TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
-  const token = K8S_TOKEN || (fs.existsSync(SA_TOKEN_PATH) ? fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim() : '');
+  // Use explicit K8S_TOKEN env var first; fall back to in-cluster service account token cached at boot.
+  const token = K8S_TOKEN || cachedSaToken;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${K8S_API}${path}`, { headers, ...(process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ? {} : {}) });
+  const res = await fetchWithTimeout(`${K8S_API}${path}`, { headers });
   if (!res.ok) throw new Error(`K8s API error ${res.status}`);
   return res.json() as Promise<{ items: Array<Record<string, unknown>> }>;
 }
@@ -187,7 +214,7 @@ server.tool(
 
       const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (BACKSTAGE_TOKEN) authHeaders['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
-      const res = await fetch(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks`, {
+      const res = await fetchWithTimeout(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ templateRef: template_ref, values: enrichedValues }),
@@ -195,17 +222,22 @@ server.tool(
       if (!res.ok) throw new Error(`Scaffolder error ${res.status}: ${await res.text()}`);
       const task = await res.json() as { id: string };
 
-      // Poll for task completion so callers don't need to make authenticated status requests.
+      // Poll for task completion. Exponential backoff with jitter keeps load
+      // off the scaffolder when many tasks run concurrently — a fixed 4s
+      // interval × N callers produced synchronized spikes on the API.
       const pollHeaders: Record<string, string> = {};
       if (BACKSTAGE_TOKEN) pollHeaders['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
-      const POLL_INTERVAL_MS = 4000;
-      const POLL_TIMEOUT_MS = 180000; // 3 minutes
+      const POLL_TIMEOUT_MS = 180000; // 3 minutes total
       const deadline = Date.now() + POLL_TIMEOUT_MS;
       let taskStatus: string = 'processing';
       let taskOutput: unknown = undefined;
+      let attempt = 0;
       while (Date.now() < deadline) {
-        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-        const statusRes = await fetch(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks/${task.id}`, { headers: pollHeaders });
+        const base = Math.min(4000, 500 * Math.pow(2, attempt));
+        const jitter = base * (0.8 + Math.random() * 0.4); // ±20%
+        await new Promise(r => setTimeout(r, jitter));
+        attempt++;
+        const statusRes = await fetchWithTimeout(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks/${task.id}`, { headers: pollHeaders });
         if (statusRes.ok) {
           const statusBody = await statusRes.json() as { status: string; output?: unknown };
           taskStatus = statusBody.status;
