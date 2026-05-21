@@ -1,0 +1,51 @@
+# SQS queue Composition. Default visibility/retention values match the AWS
+# defaults so callers can omit them; FIFO is opt-in.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xsqsqueue.aws
+  labels:
+    provider: aws
+    idp.platform/resource: sqs-queue
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XSQSQueue
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: queue
+            base:
+              apiVersion: sqs.aws.upbound.io/v1beta1
+              kind: Queue
+              spec:
+                forProvider:
+                  sqsManagedSseEnabled: true
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": sqs-queue
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.queueName
+                toFieldPath: metadata.name
+              - fromFieldPath: spec.parameters.queueName
+                toFieldPath: spec.forProvider.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.fifo
+                toFieldPath: spec.forProvider.fifoQueue
+              - fromFieldPath: spec.parameters.visibilityTimeoutSeconds
+                toFieldPath: spec.forProvider.visibilityTimeoutSeconds
+              - fromFieldPath: spec.parameters.messageRetentionSeconds
+                toFieldPath: spec.forProvider.messageRetentionSeconds
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags["idp:cost-center"]

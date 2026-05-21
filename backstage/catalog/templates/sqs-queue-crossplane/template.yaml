@@ -1,0 +1,108 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: sqs-queue-crossplane
+  title: SQS Queue (Crossplane)
+  description: |
+    Provision an SQS queue via a Crossplane Claim. Server-side encryption
+    is on by default; FIFO is opt-in.
+  tags:
+    - sqs
+    - messaging
+    - aws
+    - crossplane
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required: [queueName, ownerService, owner]
+      properties:
+        queueName:
+          title: Queue name
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,80}$'
+          ui:autofocus: true
+        ownerService:
+          title: Owning service
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        awsRegion:
+          title: AWS region
+          type: string
+          default: eu-west-1
+          enum: [us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-1]
+        fifo:
+          title: FIFO queue
+          type: boolean
+          default: false
+        visibilityTimeoutSeconds:
+          title: Visibility timeout (s)
+          type: integer
+          default: 30
+        messageRetentionSeconds:
+          title: Message retention (s)
+          type: integer
+          default: 345600
+        costCenter:
+          title: Cost center
+          type: string
+          default: engineering
+
+    - title: Review
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+            allowedOwners: [YOUR_GITHUB_ORG]
+            allowedRepos: [backstage-platform-template]
+
+  steps:
+    - id: fetch-template
+      name: Generate Crossplane Claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: services/${{ parameters.ownerService }}/claims
+        values:
+          queueName: ${{ parameters.queueName }}
+          ownerService: ${{ parameters.ownerService }}
+          owner: ${{ parameters.owner }}
+          awsRegion: ${{ parameters.awsRegion }}
+          fifo: ${{ parameters.fifo }}
+          visibilityTimeoutSeconds: ${{ parameters.visibilityTimeoutSeconds }}
+          messageRetentionSeconds: ${{ parameters.messageRetentionSeconds }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: open-pr
+      name: Open PR to register Crossplane Claim
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): SQS queue ${{ parameters.queueName }} via Crossplane"
+        branchName: crossplane/sqs/${{ parameters.queueName }}
+        description: |
+          Adds an `SQSQueue` Crossplane Claim at
+          `services/${{ parameters.ownerService }}/claims/${{ parameters.queueName }}.yaml`.
+
+          ```bash
+          kubectl get sqsqueue ${{ parameters.queueName }} -n services-dev
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

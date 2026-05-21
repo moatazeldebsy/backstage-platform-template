@@ -1,0 +1,14 @@
+apiVersion: idp.platform/v1alpha1
+kind: SQSQueue
+metadata:
+  name: orders-jobs
+  namespace: services-dev
+spec:
+  parameters:
+    queueName: idp-orders-jobs
+    owner: orders-team
+    region: eu-west-1
+    fifo: false
+    visibilityTimeoutSeconds: 60
+    messageRetentionSeconds: 345600
+    costCenter: eng-orders

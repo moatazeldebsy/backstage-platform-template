@@ -32,3 +32,8 @@ output "rds_port" {
   description = "RDS PostgreSQL port"
   value       = aws_db_instance.backstage.port
 }
+
+output "crossplane_aws_role_arn" {
+  description = "IAM role ARN assumed by Crossplane AWS providers via IRSA. Used as the eks.amazonaws.com/role-arn annotation on the provider-* ServiceAccounts in crossplane-system."
+  value       = aws_iam_role.crossplane_aws.arn
+}

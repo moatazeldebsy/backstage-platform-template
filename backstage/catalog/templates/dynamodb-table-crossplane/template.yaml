@@ -1,0 +1,117 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: dynamodb-table-crossplane
+  title: DynamoDB Table (Crossplane)
+  description: |
+    Provision a DynamoDB table via a Crossplane Claim. On-demand billing
+    and point-in-time recovery are on by default.
+  tags:
+    - dynamodb
+    - aws
+    - crossplane
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required: [tableName, hashKey, ownerService, owner]
+      properties:
+        tableName:
+          title: Table name
+          type: string
+          pattern: '^[a-zA-Z0-9._-]{3,255}$'
+          ui:autofocus: true
+        hashKey:
+          title: Partition key
+          type: string
+        hashKeyType:
+          title: Partition key type
+          type: string
+          default: S
+          enum: [S, N, B]
+        ownerService:
+          title: Owning service
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        awsRegion:
+          title: AWS region
+          type: string
+          default: eu-west-1
+          enum: [us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-1]
+        billingMode:
+          title: Billing mode
+          type: string
+          default: PAY_PER_REQUEST
+          enum: [PAY_PER_REQUEST, PROVISIONED]
+        pointInTimeRecovery:
+          title: Point-in-time recovery
+          type: boolean
+          default: true
+        costCenter:
+          title: Cost center
+          type: string
+          default: engineering
+
+    - title: Review
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+            allowedOwners: [YOUR_GITHUB_ORG]
+            allowedRepos: [backstage-platform-template]
+
+  steps:
+    - id: fetch-template
+      name: Generate Crossplane Claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: services/${{ parameters.ownerService }}/claims
+        values:
+          tableName: ${{ parameters.tableName }}
+          hashKey: ${{ parameters.hashKey }}
+          hashKeyType: ${{ parameters.hashKeyType }}
+          ownerService: ${{ parameters.ownerService }}
+          owner: ${{ parameters.owner }}
+          awsRegion: ${{ parameters.awsRegion }}
+          billingMode: ${{ parameters.billingMode }}
+          pointInTimeRecovery: ${{ parameters.pointInTimeRecovery }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: open-pr
+      name: Open PR to register Crossplane Claim
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): DynamoDB ${{ parameters.tableName }} via Crossplane"
+        branchName: crossplane/dynamodb/${{ parameters.tableName }}
+        description: |
+          Adds a `DynamoTable` Crossplane Claim at
+          `services/${{ parameters.ownerService }}/claims/${{ parameters.tableName }}.yaml`.
+
+          Partition key `${{ parameters.hashKey }}` (`${{ parameters.hashKeyType }}`) ·
+          billing `${{ parameters.billingMode }}` · PITR
+          `${{ parameters.pointInTimeRecovery }}`.
+
+          ```bash
+          kubectl get dynamotable ${{ parameters.tableName }} -n services-dev
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

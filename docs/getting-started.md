@@ -47,7 +47,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ./scripts/bootstrap.sh
 ```
 
-This provisions EKS, ECR, IAM, deploys observability, and deploys `hello-service`.
+This provisions EKS, ECR, IAM (including the Crossplane IRSA role from `terraform/iam-crossplane.tf`), deploys observability, deploys `hello-service`, and applies the Crossplane stack (core + AWS providers + Compositions) via ArgoCD. After bootstrap, per-service AWS resources can be requested through Backstage with no further `terraform apply` — see [crossplane.md](crossplane.md).
 
 ### 3. GitHub Actions secrets
 
@@ -67,6 +67,8 @@ kubectl get pods -n services              # hello-service running
 kubectl get pods -n monitoring            # prometheus, grafana, alertmanager, pushgateway
 kubectl get pods -n external-secrets      # external-secrets operator
 kubectl get clustersecretstore            # aws-secretsmanager → Ready
+kubectl get pods -n crossplane-system     # crossplane + 5 provider-aws-* pods
+kubectl get providers.pkg.crossplane.io   # all five INSTALLED=True HEALTHY=True
 kubectl get ingress -n services           # ALB address
 ```
 

@@ -8,6 +8,8 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [Golden Path](golden-path.md) — Conventions every service must follow
 - [Local Setup](local-setup.md) — Run the full platform on your laptop with Kind
 - [Contract Testing](contract-testing.md) — Self-describing, self-testing APIs with MCP
+- [Crossplane](crossplane.md) — Self-serve per-service AWS resources via in-cluster Claims
+- [Crossplane vs Terraform](crossplane-vs-terraform.md) — Which tool owns what, and why
 - [Shift-Left Quality](shift-left.md) — How the platform embeds testing at scaffold, PR, deploy, and runtime
 - [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage
 - [Roadmap](roadmap.md) — Upcoming features and milestones

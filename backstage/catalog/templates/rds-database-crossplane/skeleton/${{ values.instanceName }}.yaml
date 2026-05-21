@@ -1,0 +1,20 @@
+apiVersion: idp.platform/v1alpha1
+kind: RDSInstance
+metadata:
+  name: ${{ values.instanceName }}
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: ${{ values.ownerService }}
+spec:
+  writeConnectionSecretToRef:
+    name: ${{ values.instanceName }}-conn
+  parameters:
+    instanceName: ${{ values.instanceName }}
+    dbName: ${{ values.dbName }}
+    owner: ${{ values.owner }}
+    region: ${{ values.awsRegion }}
+    instanceClass: ${{ values.instanceClass }}
+    engineVersion: "${{ values.engineVersion }}"
+    allocatedStorage: ${{ values.allocatedStorage }}
+    multiAz: ${{ values.multiAz }}
+    costCenter: ${{ values.costCenter }}

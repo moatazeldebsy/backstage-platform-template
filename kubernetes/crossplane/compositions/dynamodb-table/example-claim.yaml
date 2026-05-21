@@ -1,0 +1,15 @@
+apiVersion: idp.platform/v1alpha1
+kind: DynamoTable
+metadata:
+  name: orders-state
+  namespace: services-dev
+spec:
+  parameters:
+    tableName: idp-orders-state
+    hashKey: orderId
+    hashKeyType: S
+    owner: orders-team
+    region: eu-west-1
+    billingMode: PAY_PER_REQUEST
+    pointInTimeRecovery: true
+    costCenter: eng-orders

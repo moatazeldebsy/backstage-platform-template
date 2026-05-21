@@ -1,0 +1,122 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: kafka-topic-crossplane
+  title: Kafka Topic (Crossplane)
+  description: |
+    Create a Kafka topic on the existing MSK cluster via a Crossplane Claim.
+    The cluster itself is Terraform-managed; topic lifecycle (partitions,
+    retention, cleanup policy) lives in Git per topic.
+  tags:
+    - kafka
+    - msk
+    - streaming
+    - aws
+    - crossplane
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required: [topicName, clusterArn, ownerService, owner]
+      properties:
+        topicName:
+          title: Topic name
+          type: string
+          pattern: '^[a-zA-Z0-9._-]{1,249}$'
+          ui:autofocus: true
+        ownerService:
+          title: Owning service
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        clusterArn:
+          title: MSK cluster ARN
+          type: string
+          description: ARN of the target MSK cluster (provisioned via Terraform).
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        partitions:
+          title: Partitions
+          type: integer
+          default: 6
+          minimum: 1
+        replicationFactor:
+          title: Replication factor
+          type: integer
+          default: 3
+          minimum: 1
+        retentionHours:
+          title: Retention (hours)
+          type: integer
+          default: 168
+        cleanupPolicy:
+          title: Cleanup policy
+          type: string
+          default: delete
+          enum: [delete, compact]
+        costCenter:
+          title: Cost center
+          type: string
+          default: engineering
+
+    - title: Review
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+            allowedOwners: [YOUR_GITHUB_ORG]
+            allowedRepos: [backstage-platform-template]
+
+  steps:
+    - id: fetch-template
+      name: Generate Crossplane Claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: services/${{ parameters.ownerService }}/claims
+        values:
+          topicName: ${{ parameters.topicName }}
+          ownerService: ${{ parameters.ownerService }}
+          clusterArn: ${{ parameters.clusterArn }}
+          owner: ${{ parameters.owner }}
+          partitions: ${{ parameters.partitions }}
+          replicationFactor: ${{ parameters.replicationFactor }}
+          retentionHours: ${{ parameters.retentionHours }}
+          cleanupPolicy: ${{ parameters.cleanupPolicy }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: open-pr
+      name: Open PR to register Crossplane Claim
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): Kafka topic ${{ parameters.topicName }} via Crossplane"
+        branchName: crossplane/kafka/${{ parameters.topicName }}
+        description: |
+          Adds a `KafkaTopic` Crossplane Claim at
+          `services/${{ parameters.ownerService }}/claims/${{ parameters.topicName }}.yaml`.
+
+          Partitions `${{ parameters.partitions }}` · replication
+          `${{ parameters.replicationFactor }}` · retention
+          `${{ parameters.retentionHours }} h` · cleanup
+          `${{ parameters.cleanupPolicy }}`.
+
+          ```bash
+          kubectl get kafkatopic ${{ parameters.topicName }} -n services-dev
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

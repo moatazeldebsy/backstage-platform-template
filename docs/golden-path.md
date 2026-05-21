@@ -43,6 +43,8 @@ Developer                Platform
 
 Open the Backstage portal and click **Create** → select one of:
 
+**Service templates**
+
 | Template | Language | Default Port |
 |----------|----------|-------------|
 | Node.js Service | Express | 3000 |
@@ -54,6 +56,25 @@ Backstage will:
 - Fetch the skeleton and render it with your values
 - Publish the repo to GitHub
 - Register the component and API in the catalog
+
+**Per-service infra (Crossplane, AWS)**
+
+| Template | Resource |
+|---|---|
+| S3 Object Bucket (Crossplane) | S3 bucket with encryption + public-access block |
+| RDS Postgres (Crossplane) | RDS instance + connection Secret |
+| Kafka Topic (Crossplane) | MSK topic on an existing cluster |
+| DynamoDB Table (Crossplane) | DynamoDB table with PITR |
+| SQS Queue (Crossplane) | SQS queue (FIFO opt-in) |
+
+These open a PR adding a Crossplane Claim YAML at
+`services/<ownerService>/claims/<name>.yaml`. ArgoCD syncs on merge and
+Crossplane provisions the AWS resource — no `terraform apply` step.
+See [crossplane.md](crossplane.md) for the full flow.
+
+> The legacy Terraform-PR templates (`s3-bucket`, `rds-database`,
+> `kafka-topic`) still exist for callers mid-migration. Pick the
+> Crossplane variant for new resources.
 
 ### 2. Clone your new repo
 

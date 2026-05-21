@@ -7,7 +7,7 @@
 [![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 13 QA testing scaffold templates, AI/ML platform (KAgent + MLflow + MCP Server), Prometheus + Grafana observability, and AWS EKS via Terraform. Runs locally on Kind in minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 13 QA testing scaffold templates + 5 Crossplane Claim templates, AI/ML platform (KAgent + MLflow + MCP Server), Prometheus + Grafana observability, AWS EKS via Terraform, and per-service cloud resources via Crossplane. Runs locally on Kind in minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -45,7 +45,7 @@
 | **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + IDP MCP Server (catalog/metrics/scaffolding tools for agents) + AI Assistant chat page embedded in Backstage |
 | **Contract testing** _(opt-in)_ | `contract-mcp-server` — self-describing, self-testing APIs; services expose `/openapi.json`, the AI agent auto-discovers contracts, generates Pact tests, detects breaking changes, and validates compatibility; ArgoCD PostSync/PreSync hooks run automatically on every deploy. **Disabled by default** — to enable, uncomment the contract-testing blocks in `backstage/app-config.yaml` and `scripts/bootstrap-ai.sh`. |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
-| **Infrastructure** | Terraform modules for EKS, VPC, ECR, IAM (OIDC + IRSA), RDS, S3, Secrets Manager |
+| **Infrastructure** | **Terraform** for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3, Secrets Manager) + **Crossplane** for per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) via in-cluster Claims reconciled by ArgoCD. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) for the boundary. |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
 ## Quick Start
@@ -82,7 +82,8 @@ After that, Backstage is at `http://backstage.idp.local` and hello-service at `h
 | Ingress | nginx ingress controller | AWS Load Balancer Controller (ALB) |
 | CI | GitHub Actions (`ubuntu-latest`) | GitHub Actions (`ubuntu-latest`) |
 | CD | `idp:deploy-local` Backstage action | GitHub Actions (OIDC → ECR → EKS) |
-| IaC | — | Terraform (EKS, VPC, ECR, IAM, RDS, S3, Secrets Manager) |
+| IaC (foundation) | — | Terraform (EKS, VPC, ECR, IAM, RDS, S3, Secrets Manager) |
+| IaC (per-service) | — | Crossplane (S3, RDS, MSK topics, DynamoDB, SQS) — Claims in Git, reconciled by ArgoCD |
 | Deployment | Helm (`helm/service-template`) | Helm (`helm/service-template`) |
 | Developer portal | Backstage (Docker Compose) | Backstage (EKS) |
 | Observability | Prometheus + Grafana | CloudWatch + Grafana |
@@ -150,9 +151,10 @@ See [docs/getting-started.md](docs/getting-started.md) for the full walkthrough.
 
 ```
 idp-mvp/
-├── terraform/              # AWS — EKS, VPC, ECR, IAM
+├── terraform/              # AWS foundation — EKS, VPC, ECR, IAM, + Crossplane IRSA role
 ├── local/                  # Local — Kind config, Prometheus values, Backstage compose
-├── kubernetes/             # Namespace, RBAC, and Backstage K8s manifests (both envs)
+├── kubernetes/             # Namespace, RBAC, Backstage manifests, ArgoCD app-of-apps
+│   └── crossplane/         # Crossplane providers + XRDs/Compositions (AWS-only)
 ├── helm/service-template/  # Golden-path Helm chart (both envs)
 ├── backstage/              # Developer portal: config, templates, custom actions
 │   ├── app/                # Backstage monorepo (v1.49.1)

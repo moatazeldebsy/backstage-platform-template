@@ -1,0 +1,145 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: rds-database-crossplane
+  title: RDS Postgres (Crossplane)
+  description: |
+    Provision a Postgres RDS instance via a Crossplane Claim. ArgoCD syncs
+    the Claim on merge; Crossplane creates the instance and writes
+    connection details (host, port, username, password) to a K8s Secret
+    in your service namespace.
+  tags:
+    - rds
+    - postgres
+    - database
+    - aws
+    - crossplane
+    - golden-path
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required: [instanceName, dbName, ownerService, owner]
+      properties:
+        instanceName:
+          title: DB instance name
+          type: string
+          pattern: '^[a-z][a-z0-9-]{0,62}$'
+          ui:autofocus: true
+        dbName:
+          title: Initial database name
+          type: string
+          pattern: '^[a-z][a-z0-9_]{0,62}$'
+        ownerService:
+          title: Owning service
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        awsRegion:
+          title: AWS region
+          type: string
+          default: eu-west-1
+          enum: [us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-1]
+        instanceClass:
+          title: Instance class
+          type: string
+          default: db.t4g.micro
+          enum: [db.t4g.micro, db.t4g.small, db.t4g.medium, db.m6g.large, db.r6g.large]
+        engineVersion:
+          title: Postgres engine version
+          type: string
+          default: "16.4"
+        allocatedStorage:
+          title: Storage (GB)
+          type: integer
+          default: 20
+          minimum: 20
+          maximum: 1000
+        multiAz:
+          title: Multi-AZ
+          type: boolean
+          default: false
+        costCenter:
+          title: Cost center
+          type: string
+          default: engineering
+
+    - title: Review
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+            allowedOwners: [YOUR_GITHUB_ORG]
+            allowedRepos: [backstage-platform-template]
+
+  steps:
+    - id: fetch-template
+      name: Generate Crossplane Claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: services/${{ parameters.ownerService }}/claims
+        values:
+          instanceName: ${{ parameters.instanceName }}
+          dbName: ${{ parameters.dbName }}
+          ownerService: ${{ parameters.ownerService }}
+          owner: ${{ parameters.owner }}
+          awsRegion: ${{ parameters.awsRegion }}
+          instanceClass: ${{ parameters.instanceClass }}
+          engineVersion: ${{ parameters.engineVersion }}
+          allocatedStorage: ${{ parameters.allocatedStorage }}
+          multiAz: ${{ parameters.multiAz }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: open-pr
+      name: Open PR to register Crossplane Claim
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): Postgres ${{ parameters.instanceName }} via Crossplane"
+        branchName: crossplane/rds/${{ parameters.instanceName }}
+        description: |
+          Adds an `RDSInstance` Crossplane Claim at
+          `services/${{ parameters.ownerService }}/claims/${{ parameters.instanceName }}.yaml`.
+
+          | Parameter | Value |
+          |---|---|
+          | Instance | `${{ parameters.instanceName }}` |
+          | DB | `${{ parameters.dbName }}` |
+          | Engine | Postgres `${{ parameters.engineVersion }}` |
+          | Class | `${{ parameters.instanceClass }}` |
+          | Storage | `${{ parameters.allocatedStorage }}` GB |
+          | Multi-AZ | `${{ parameters.multiAz }}` |
+
+          **Connection Secret:** `${{ parameters.instanceName }}-conn` in
+          namespace `services-dev`. Keys: `endpoint`, `port`, `username`,
+          `password`. Consume via `envFrom.secretRef` in your service's
+          helm-values.
+
+          ```bash
+          kubectl get rdsinstance ${{ parameters.instanceName }} -n services-dev
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the PR. ArgoCD syncs within ~1 min.
+          2. RDS instance takes 5–10 min to provision. Watch with `kubectl get rdsinstance ${{ parameters.instanceName }} -n services-dev -w`.
+          3. Add `envFrom: [{secretRef: {name: ${{ parameters.instanceName }}-conn}}]` to your service's helm-values.

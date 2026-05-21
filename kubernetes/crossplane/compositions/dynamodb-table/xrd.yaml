@@ -1,0 +1,72 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdynamotables.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XDynamoTable
+    plural: xdynamotables
+  claimNames:
+    kind: DynamoTable
+    plural: dynamotables
+  defaultCompositionRef:
+    name: xdynamotable.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [tableName, hashKey, owner]
+                  properties:
+                    tableName:
+                      type: string
+                      pattern: ^[a-zA-Z0-9._-]{3,255}$
+                    hashKey:
+                      type: string
+                      description: Partition key attribute name.
+                    hashKeyType:
+                      type: string
+                      enum: [S, N, B]
+                      default: S
+                    rangeKey:
+                      type: string
+                      description: Optional sort key.
+                    rangeKeyType:
+                      type: string
+                      enum: [S, N, B]
+                      default: S
+                    owner:
+                      type: string
+                    region:
+                      type: string
+                      default: eu-west-1
+                    billingMode:
+                      type: string
+                      enum: [PAY_PER_REQUEST, PROVISIONED]
+                      default: PAY_PER_REQUEST
+                    pointInTimeRecovery:
+                      type: boolean
+                      default: true
+                    costCenter:
+                      type: string
+                      default: engineering
+      additionalPrinterColumns:
+        - name: TABLE
+          type: string
+          jsonPath: .spec.parameters.tableName
+        - name: BILLING
+          type: string
+          jsonPath: .spec.parameters.billingMode
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status

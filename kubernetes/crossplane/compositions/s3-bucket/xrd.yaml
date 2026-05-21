@@ -1,0 +1,76 @@
+# XS3Bucket — the abstract API app teams Claim against. The Composition in
+# composition.yaml maps Claim fields to concrete AWS resources.
+#
+# Why this is opinionated rather than exposing all of provider-aws-s3's
+# knobs: scaffolded services get encryption-on, public-access-blocked, and
+# cost-attribution tags by default. Teams that need an exotic bucket can
+# still create one with raw provider-aws-s3 manifests; the XRD covers the
+# 90% case.
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xs3buckets.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XS3Bucket
+    plural: xs3buckets
+  claimNames:
+    kind: S3Bucket
+    plural: s3buckets
+  defaultCompositionRef:
+    name: xs3bucket.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [bucketName, region, owner]
+                  properties:
+                    bucketName:
+                      type: string
+                      description: Globally-unique S3 bucket name.
+                      pattern: ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$
+                    region:
+                      type: string
+                      description: AWS region.
+                      default: eu-west-1
+                    owner:
+                      type: string
+                      description: Owning team or service (for cost attribution).
+                    versioning:
+                      type: boolean
+                      description: Enable object versioning.
+                      default: true
+                    costCenter:
+                      type: string
+                      description: Cost center tag value.
+                      default: engineering
+            status:
+              type: object
+              properties:
+                bucketArn:
+                  type: string
+                  description: ARN of the provisioned bucket.
+      additionalPrinterColumns:
+        - name: BUCKET
+          type: string
+          jsonPath: .spec.parameters.bucketName
+        - name: REGION
+          type: string
+          jsonPath: .spec.parameters.region
+        - name: SYNCED
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
