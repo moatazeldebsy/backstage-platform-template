@@ -278,6 +278,40 @@
   
   
     <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../shift-left/" class="md-tabs__link">
         
   
@@ -649,6 +683,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#iac-split-terraform-foundation-crossplane-per-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      IaC split: Terraform (foundation) + Crossplane (per-service)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -829,6 +872,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../shift-left/" class="md-nav__link">
         
   
@@ -981,10 +1064,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
         
           
-          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -995,8 +1078,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_16">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_18">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1319,6 +1402,8 @@
 <p>Both environments use <code>kube-prometheus-stack</code> (Prometheus + Grafana + AlertManager bundled). AWS uses ALB ingress and gp2 persistent volumes; local uses nginx and hostPath. Both install Prometheus Pushgateway as a separate Helm release so that <code>apply-catalog-exporter.sh</code>, <code>seed-qa-metrics.sh</code>, and the tech-insights-exporter CronJob can push metrics without modification.</p>
 <h3 id="aws-load-balancer-controller-aws">AWS Load Balancer Controller (AWS)<a class="headerlink" href="#aws-load-balancer-controller-aws" title="Permanent link">&para;</a></h3>
 <p>All <code>Ingress</code> resources use <code>ingressClassName: alb</code>, backed by the AWS Load Balancer Controller. Supports <code>target-type: ip</code> (pod-level routing without NodePort).</p>
+<h3 id="iac-split-terraform-foundation-crossplane-per-service">IaC split: Terraform (foundation) + Crossplane (per-service)<a class="headerlink" href="#iac-split-terraform-foundation-crossplane-per-service" title="Permanent link">&para;</a></h3>
+<p>Both tools coexist by <strong>lifecycle</strong>, not by resource type. Terraform owns one-shot foundation (VPC, EKS, IAM, ECR, Secrets Manager scaffolding, <strong>and</strong> the IRSA role Crossplane providers assume). Crossplane owns day-2 per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) requested via Backstage scaffolder templates and reconciled in-cluster by ArgoCD — no manual <code>terraform apply</code> step. See <a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> for the decision matrix and <a href="../crossplane/">crossplane.md</a> for the end-to-end flow.</p>
 <h2 id="aiml-platform">AI/ML Platform<a class="headerlink" href="#aiml-platform" title="Permanent link">&para;</a></h2>
 <h3 id="how-the-ai-assistant-works-end-to-end">How the AI Assistant works end-to-end<a class="headerlink" href="#how-the-ai-assistant-works-end-to-end" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
@@ -1435,6 +1520,21 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <td>IAM + OIDC</td>
 <td><code>terraform/iam.tf</code></td>
 <td>Keyless CI/CD auth</td>
+</tr>
+<tr>
+<td>Crossplane IRSA role</td>
+<td><code>terraform/iam-crossplane.tf</code></td>
+<td>IAM role assumed by Crossplane AWS providers</td>
+</tr>
+<tr>
+<td>Crossplane providers + Compositions</td>
+<td><code>kubernetes/crossplane/</code></td>
+<td>Per-service S3/RDS/MSK/DynamoDB/SQS via Claims</td>
+</tr>
+<tr>
+<td>ArgoCD Crossplane stack</td>
+<td><code>kubernetes/argocd/crossplane.yaml</code></td>
+<td>Sync-wave-ordered install: core → providers → compositions</td>
 </tr>
 <tr>
 <td>Service chart</td>

@@ -278,6 +278,40 @@
   
   
     <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../shift-left/" class="md-tabs__link">
         
   
@@ -802,6 +836,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../shift-left/" class="md-nav__link">
         
   
@@ -954,10 +1028,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
         
           
-          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -968,8 +1042,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_16">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_18">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1227,6 +1301,7 @@
 <h2 id="step-by-step-for-developers">Step-by-Step for Developers<a class="headerlink" href="#step-by-step-for-developers" title="Permanent link">&para;</a></h2>
 <h3 id="1-pick-a-template-in-backstage">1. Pick a template in Backstage<a class="headerlink" href="#1-pick-a-template-in-backstage" title="Permanent link">&para;</a></h3>
 <p>Open the Backstage portal and click <strong>Create</strong> → select one of:</p>
+<p><strong>Service templates</strong></p>
 <table>
 <thead>
 <tr>
@@ -1253,6 +1328,46 @@
 - Fetch the skeleton and render it with your values
 - Publish the repo to GitHub
 - Register the component and API in the catalog</p>
+<p><strong>Per-service infra (Crossplane, AWS)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Resource</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S3 Object Bucket (Crossplane)</td>
+<td>S3 bucket with encryption + public-access block</td>
+</tr>
+<tr>
+<td>RDS Postgres (Crossplane)</td>
+<td>RDS instance + connection Secret</td>
+</tr>
+<tr>
+<td>Kafka Topic (Crossplane)</td>
+<td>MSK topic on an existing cluster</td>
+</tr>
+<tr>
+<td>DynamoDB Table (Crossplane)</td>
+<td>DynamoDB table with PITR</td>
+</tr>
+<tr>
+<td>SQS Queue (Crossplane)</td>
+<td>SQS queue (FIFO opt-in)</td>
+</tr>
+</tbody>
+</table>
+<p>These open a PR adding a Crossplane Claim YAML at
+<code>services/&lt;ownerService&gt;/claims/&lt;name&gt;.yaml</code>. ArgoCD syncs on merge and
+Crossplane provisions the AWS resource — no <code>terraform apply</code> step.
+See <a href="../crossplane/">crossplane.md</a> for the full flow.</p>
+<blockquote>
+<p>The legacy Terraform-PR templates (<code>s3-bucket</code>, <code>rds-database</code>,
+<code>kafka-topic</code>) still exist for callers mid-migration. Pick the
+Crossplane variant for new resources.</p>
+</blockquote>
 <h3 id="2-clone-your-new-repo">2. Clone your new repo<a class="headerlink" href="#2-clone-your-new-repo" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/YOUR_GITHUB_ORG/&lt;service-name&gt;

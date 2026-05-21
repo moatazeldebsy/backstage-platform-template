@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../readiness-checklist/">
+        <link rel="prev" href="../contract-testing/">
       
       
-        <link rel="next" href="deployment-rollback/">
+        <link rel="next" href="../crossplane-vs-terraform/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Overview - Internal Developer Platform</title>
+        <title>Crossplane - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#runbooks" class="md-skip">
+        <a href="#crossplane" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Crossplane
             
           </span>
         </div>
@@ -274,9 +274,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../crossplane/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -427,13 +429,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -655,10 +655,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../crossplane/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -667,6 +687,98 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-both" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why both
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-example-provisioning-an-s3-bucket" class="md-nav__link">
+    <span class="md-ellipsis">
+      End-to-end example: provisioning an S3 bucket
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local development
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources-covered" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resources covered
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bootstrap
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verifying" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verifying
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#drift-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Drift correction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -835,30 +947,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
         
           
-          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="">
+          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -869,7 +976,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_18">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
@@ -880,30 +987,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Overview
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -912,62 +999,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#alert-runbook-map" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alert → Runbook Map
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#local-dev-issues" class="md-nav__link">
-    <span class="md-ellipsis">
-      Local Dev Issues
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#on-call-escalation" class="md-nav__link">
-    <span class="md-ellipsis">
-      On-Call Escalation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#incident-process" class="md-nav__link">
-    <span class="md-ellipsis">
-      Incident Process
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -980,7 +1011,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment-rollback/" class="md-nav__link">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1001,7 +1032,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pod-crash-loop/" class="md-nav__link">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1022,7 +1053,7 @@
   
   
     <li class="md-nav__item">
-      <a href="high-memory/" class="md-nav__link">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1043,7 +1074,7 @@
   
   
     <li class="md-nav__item">
-      <a href="high-cpu/" class="md-nav__link">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1064,7 +1095,7 @@
   
   
     <li class="md-nav__item">
-      <a href="db-recovery/" class="md-nav__link">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1085,7 +1116,7 @@
   
   
     <li class="md-nav__item">
-      <a href="image-pull-backoff/" class="md-nav__link">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1106,7 +1137,7 @@
   
   
     <li class="md-nav__item">
-      <a href="kind-node-ip-mismatch/" class="md-nav__link">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1142,7 +1173,7 @@
                   
 
   
-    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/runbooks/index.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/crossplane.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1150,94 +1181,203 @@
   
 
 
-<h1 id="runbooks">Runbooks<a class="headerlink" href="#runbooks" title="Permanent link">&para;</a></h1>
-<p>Operational procedures for the Internal Developer Platform. Each runbook maps to a Prometheus alert and provides step-by-step remediation guidance.</p>
-<h2 id="alert-runbook-map">Alert → Runbook Map<a class="headerlink" href="#alert-runbook-map" title="Permanent link">&para;</a></h2>
+<h1 id="crossplane">Crossplane<a class="headerlink" href="#crossplane" title="Permanent link">&para;</a></h1>
+<p>Crossplane provisions per-service AWS resources (RDS, S3, Kafka topics,
+DynamoDB tables, SQS queues) as Kubernetes Claims, reconciled in-cluster by
+ArgoCD. It coexists with Terraform — see
+<a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> for the boundary.</p>
+<h2 id="why-both">Why both<a class="headerlink" href="#why-both" title="Permanent link">&para;</a></h2>
+<p>Terraform stays the right tool for the foundation: VPC, EKS cluster,
+IAM/OIDC, ECR registries, anything that must exist <em>before</em> Kubernetes is
+running. One-shot, platform-team-owned, applied from outside the cluster.</p>
+<p>Crossplane is the right tool for day-2, app-team-requested infra. Claims
+live in Git alongside the service that consumes them, ArgoCD syncs on
+merge, Crossplane reconciles continuously, and drift is corrected without a
+human running <code>terraform apply</code>. No manual step between "PR merged" and
+"resource exists".</p>
+<h2 id="end-to-end-example-provisioning-an-s3-bucket">End-to-end example: provisioning an S3 bucket<a class="headerlink" href="#end-to-end-example-provisioning-an-s3-bucket" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span></pre></div></td><td class="code"><div><pre><span></span><code>┌──────────────┐    PR      ┌────────────┐   sync   ┌──────────────┐
+│  Backstage   │──────────▶ │   GitHub   │ ───────▶ │   ArgoCD     │
+│  scaffolder  │            │ (platform  │          │ (in-cluster) │
+│ s3-bucket-   │            │   repo)    │          │              │
+│ crossplane   │            └────────────┘          └──────┬───────┘
+└──────────────┘                                           │ apply
+                                                           ▼
+                                                  ┌─────────────────┐
+                                                  │  S3Bucket Claim │
+                                                  │      (CR)       │
+                                                  └────────┬────────┘
+                                                           │ reconcile
+                                                           ▼
+                                                  ┌─────────────────┐
+                                                  │  Crossplane +   │
+                                                  │ provider-aws-s3 │
+                                                  └────────┬────────┘
+                                                           │ IRSA
+                                                           ▼
+                                                  ┌─────────────────┐
+                                                  │  Real S3 bucket │
+                                                  │      in AWS     │
+                                                  └─────────────────┘
+</code></pre></div></td></tr></table></div>
+<ol>
+<li>Engineer opens the Backstage portal, picks the <strong>S3 Object Bucket
+   (Crossplane)</strong> template, fills in <code>bucketName</code>, <code>ownerService</code>, region,
+   versioning, cost center.</li>
+<li>Backstage opens a PR adding
+   <code>services/&lt;ownerService&gt;/claims/&lt;bucketName&gt;.yaml</code> (an <code>S3Bucket</code>
+   Claim).</li>
+<li>Reviewer merges. The <code>idp-services</code> ApplicationSet in
+   <code>kubernetes/argocd/app-of-apps.yaml</code> already watches <code>services/*/</code>, so
+   ArgoCD syncs the Claim within ~60 s.</li>
+<li>The XRD <code>xs3buckets.idp.platform</code> matches the Claim; the Composition
+   <code>xs3bucket.aws</code> creates a <code>Bucket</code>, <code>BucketServerSideEncryptionConfig</code>,
+   <code>BucketPublicAccessBlock</code>, and <code>BucketVersioning</code> — all tagged
+   <code>idp:provisioner=crossplane</code>, <code>idp:owner=&lt;team&gt;</code>, <code>idp:cost-center=…</code>.</li>
+<li><code>provider-aws-s3</code> assumes the IRSA role
+   (<code>terraform/iam-crossplane.tf</code>) and creates the bucket in AWS.</li>
+<li>Verify: <code>kubectl get s3bucket &lt;bucketName&gt; -n services-dev</code> →
+   <code>READY=True</code> within ~60 s of merge.</li>
+</ol>
+<h2 id="local-development">Local development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
+<p>Crossplane runs in EKS only. The local Kind path stays unchanged — docker-
+compose-backed Postgres/Kafka are the substitutes for local dev.
+Cloud-only resources (real S3, DynamoDB, SQS) are not testable locally;
+write integration tests that hit AWS or LocalStack in CI instead.</p>
+<h2 id="resources-covered">Resources covered<a class="headerlink" href="#resources-covered" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Alert</th>
-<th>Severity</th>
-<th>Runbook</th>
+<th>Resource</th>
+<th>XRD kind</th>
+<th>Claim kind</th>
+<th>Template</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>PodCrashLooping</code></td>
-<td>Critical</td>
-<td><a href="pod-crash-loop/">Pod Crash Loop</a></td>
+<td>S3 bucket</td>
+<td><code>XS3Bucket</code></td>
+<td><code>S3Bucket</code></td>
+<td><code>s3-bucket-crossplane</code></td>
 </tr>
 <tr>
-<td><code>HighMemoryUsage</code></td>
-<td>Warning / Critical</td>
-<td><a href="high-memory/">High Memory</a></td>
+<td>RDS Postgres</td>
+<td><code>XRDSInstance</code></td>
+<td><code>RDSInstance</code></td>
+<td><code>rds-database-crossplane</code></td>
 </tr>
 <tr>
-<td><code>HighCPUUsage</code></td>
-<td>Warning</td>
-<td><a href="high-cpu/">High CPU</a></td>
+<td>MSK topic</td>
+<td><code>XKafkaTopic</code></td>
+<td><code>KafkaTopic</code></td>
+<td><code>kafka-topic-crossplane</code></td>
 </tr>
 <tr>
-<td><code>DeploymentReplicasMismatch</code></td>
-<td>Warning</td>
-<td><a href="deployment-rollback/">Deployment Rollback</a></td>
+<td>DynamoDB table</td>
+<td><code>XDynamoTable</code></td>
+<td><code>DynamoTable</code></td>
+<td><code>dynamodb-table-crossplane</code></td>
 </tr>
 <tr>
-<td><code>HighHTTP5xxRate</code></td>
-<td>Critical</td>
-<td><a href="deployment-rollback/">Deployment Rollback</a></td>
-</tr>
-<tr>
-<td>RDS unavailable</td>
-<td>Critical</td>
-<td><a href="db-recovery/">Database Recovery</a></td>
-</tr>
-<tr>
-<td><code>ImagePullBackOff</code> (local)</td>
-<td>Warning</td>
-<td><a href="image-pull-backoff/">ImagePullBackOff</a></td>
-</tr>
-<tr>
-<td>Kind node <code>NotReady</code> after crash (local)</td>
-<td>Warning</td>
-<td><a href="kind-node-ip-mismatch/">Kind Node IP Mismatch</a></td>
+<td>SQS queue</td>
+<td><code>XSQSQueue</code></td>
+<td><code>SQSQueue</code></td>
+<td><code>sqs-queue-crossplane</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="local-dev-issues">Local Dev Issues<a class="headerlink" href="#local-dev-issues" title="Permanent link">&para;</a></h2>
-<p>These are not alert-driven but are common when running the platform locally with Kind or Rancher Desktop.</p>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Runbook</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Node <code>NotReady</code> + <code>*.idp.local</code> unreachable after Docker/Rancher crash</td>
-<td><a href="kind-node-ip-mismatch/">Kind Node IP Mismatch</a></td>
-</tr>
-<tr>
-<td>Pod stuck in <code>ImagePullBackOff</code></td>
-<td><a href="image-pull-backoff/">ImagePullBackOff</a></td>
-</tr>
-</tbody>
-</table>
-<h2 id="on-call-escalation">On-Call Escalation<a class="headerlink" href="#on-call-escalation" title="Permanent link">&para;</a></h2>
-<ol>
-<li><strong>L1 — On-call engineer</strong> (Slack alert fires) — follow the runbook, aim to resolve within 30 min</li>
-<li><strong>L2 — Platform team</strong> — escalate via Slack <code>#platform-oncall</code> if unresolved</li>
-<li><strong>L3 — AWS Support</strong> — for infrastructure-level failures (EKS control plane, RDS)</li>
-</ol>
-<h2 id="incident-process">Incident Process<a class="headerlink" href="#incident-process" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Acknowledge the Slack alert (add 👀 reaction)</li>
-<li>Open an incident thread in <code>#incidents</code> with: service name, start time, symptoms</li>
-<li>Follow the relevant runbook</li>
-<li>Post resolution summary + timeline to the incident thread</li>
-<li>File a post-mortem within 48 hours for P1/P2 incidents</li>
-</ol>
+<p>All five Compositions live in <code>kubernetes/crossplane/compositions/</code>. Adding
+a new resource type is a matter of dropping in another <code>xrd.yaml</code> +
+<code>composition.yaml</code> pair plus a matching scaffolder template.</p>
+<h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Phase 1 — Terraform (provisions IRSA role)</span>
+<span class="nb">cd</span><span class="w"> </span>terraform
+terraform<span class="w"> </span>apply
+terraform<span class="w"> </span>output<span class="w"> </span>crossplane_aws_role_arn
+
+<span class="c1"># Phase 2 — substitute the role ARN into the runtime config and apply the</span>
+<span class="c1"># ArgoCD stack. scripts/bootstrap.sh does this automatically.</span>
+<span class="nv">ROLE_ARN</span><span class="o">=</span><span class="k">$(</span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>crossplane_aws_role_arn<span class="k">)</span>
+sed<span class="w"> </span><span class="s2">&quot;s|IRSA_ROLE_ARN|</span><span class="si">${</span><span class="nv">ROLE_ARN</span><span class="si">}</span><span class="s2">|g&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>kubernetes/crossplane/providers/deployment-runtime-config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/argocd/crossplane.yaml
+</code></pre></div></td></tr></table></div>
+<h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># All five providers Healthy</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io
+
+<span class="c1"># XRDs established</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>xrds
+
+<span class="c1"># ProviderConfig default present</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>providerconfigs.aws.upbound.io
+
+<span class="c1"># Provider Pod has the IRSA role annotation</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>crossplane-system<span class="w"> </span>-l<span class="w"> </span>pkg.crossplane.io/provider<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].spec.serviceAccountName}&#39;</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="drift-correction">Drift correction<a class="headerlink" href="#drift-correction" title="Permanent link">&para;</a></h2>
+<p>Crossplane reconciles continuously. To prove it:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Delete the bucket directly in AWS (or via kubectl)</span>
+aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force
+<span class="c1"># Within ~30s, Crossplane recreates it</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-w
+</code></pre></div></td></tr></table></div>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> — decision matrix</li>
+<li><code>kubernetes/crossplane/README.md</code> — operator notes</li>
+<li><code>kubernetes/crossplane/compositions/*/example-claim.yaml</code> — hand-rolled Claim references</li>
+</ul>
 
 
 
@@ -1267,7 +1407,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../readiness-checklist/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Readiness Checklist">
+          <a href="../contract-testing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Contract Testing">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1277,20 +1417,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Readiness Checklist
+                Contract Testing
               </div>
             </div>
           </a>
         
         
           
-          <a href="deployment-rollback/" class="md-footer__link md-footer__link--next" aria-label="Next: Deployment Rollback">
+          <a href="../crossplane-vs-terraform/" class="md-footer__link md-footer__link--next" aria-label="Next: Crossplane vs Terraform">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Deployment Rollback
+                Crossplane vs Terraform
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -278,6 +278,40 @@
   
   
     <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../shift-left/" class="md-tabs__link">
         
   
@@ -760,6 +794,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../shift-left/" class="md-nav__link">
         
   
@@ -912,10 +986,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
         
           
-          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -926,8 +1000,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_16">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_18">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1206,7 +1280,7 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 <span class="c1"># Edit terraform/terraform.tfvars — update cluster_name, region if needed</span>
 ./scripts/bootstrap.sh
 </code></pre></div></td></tr></table></div>
-<p>This provisions EKS, ECR, IAM, deploys observability, and deploys <code>hello-service</code>.</p>
+<p>This provisions EKS, ECR, IAM (including the Crossplane IRSA role from <code>terraform/iam-crossplane.tf</code>), deploys observability, deploys <code>hello-service</code>, and applies the Crossplane stack (core + AWS providers + Compositions) via ArgoCD. After bootstrap, per-service AWS resources can be requested through Backstage with no further <code>terraform apply</code> — see <a href="../crossplane/">crossplane.md</a>.</p>
 <h3 id="3-github-actions-secrets">3. GitHub Actions secrets<a class="headerlink" href="#3-github-actions-secrets" title="Permanent link">&para;</a></h3>
 <p>Add these secrets to any scaffolded service repo to enable AWS CD:</p>
 <table>
@@ -1240,10 +1314,14 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w">              </span><span class="c1"># hello-service running</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w">              </span><span class="c1"># hello-service running</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w">            </span><span class="c1"># prometheus, grafana, alertmanager, pushgateway</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>external-secrets<span class="w">      </span><span class="c1"># external-secrets operator</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w">            </span><span class="c1"># aws-secretsmanager → Ready</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>crossplane-system<span class="w">     </span><span class="c1"># crossplane + 5 provider-aws-* pods</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io<span class="w">   </span><span class="c1"># all five INSTALLED=True HEALTHY=True</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span>services<span class="w">           </span><span class="c1"># ALB address</span>
 </code></pre></div></td></tr></table></div>
 <p>Visit the ALB hostname:

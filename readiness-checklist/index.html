@@ -276,6 +276,40 @@
   
   
     <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../shift-left/" class="md-tabs__link">
         
   
@@ -624,6 +658,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../shift-left/" class="md-nav__link">
         
   
@@ -836,6 +910,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#infrastructure-crossplane" class="md-nav__link">
+    <span class="md-ellipsis">
+      Infrastructure (Crossplane)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#container-kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       Container &amp; Kubernetes
@@ -978,10 +1061,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
         
           
-          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -992,8 +1075,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_16">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_18">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1231,6 +1314,14 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> IAM roles follow least privilege — review and scope down <code>PowerUserAccess</code> to ECR + EKS + S3 only</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> S3 buckets for TechDocs have bucket versioning and server-side encryption enabled</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS egress security group rule restricts to VPC CIDR, not <code>0.0.0.0/0</code></li>
+</ul>
+<h3 id="infrastructure-crossplane">Infrastructure (Crossplane)<a class="headerlink" href="#infrastructure-crossplane" title="Permanent link">&para;</a></h3>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Crossplane IRSA role attaches AWS-managed <code>*FullAccess</code> policies — tighten to least-privilege custom policies before prod</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All Crossplane-provisioned resources carry <code>idp:provisioner=crossplane</code>, <code>idp:owner</code>, <code>idp:cost-center</code> tags ✅ (enforced by Compositions)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>kubectl get providers.pkg.crossplane.io</code> shows all five providers <code>HEALTHY=True</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage <code>*-crossplane</code> scaffolder templates produce PRs that sync within ~60s of merge</li>
 </ul>
 <h3 id="container-kubernetes">Container &amp; Kubernetes<a class="headerlink" href="#container-kubernetes" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
