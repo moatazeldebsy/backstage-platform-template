@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../security/">
+        <link rel="prev" href="../shift-left/">
       
       
-        <link rel="next" href="../roadmap/">
+        <link rel="next" href="../shift-left-pilot-kickoff/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Demo Runbook - Internal Developer Platform</title>
+        <title>Shift-Left Demo Cheatsheet - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#idp-mvp-leadership-demo-runbook" class="md-skip">
+        <a href="#shift-left-demo-cheatsheet" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Demo Runbook
+              Shift-Left Demo Cheatsheet
             
           </span>
         </div>
@@ -291,9 +291,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -342,11 +344,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
         
   
     
@@ -641,10 +641,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Shift-Left Demo Cheatsheet
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -653,6 +673,113 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pre-flight-10-min-before" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-flight (10 min before)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-demo-4-beats-15-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      The demo, 4 beats, ~15 minutes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The demo, 4 beats, ~15 minutes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#beat-1-scaffold-lands-you-at-silver-3-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beat 1 — Scaffold lands you at Silver (3 min)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beat-2-pr-time-gate-catches-a-vulnerability-3-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beat 2 — PR-time gate catches a vulnerability (3 min)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beat-3-deploy-time-gate-blocks-a-breaking-api-change-4-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beat 3 — Deploy-time gate blocks a breaking API change (4 min)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beat-4-runtime-loop-closes-the-feedback-cycle-2-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beat 4 — Runtime loop closes the feedback cycle (2 min)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#template-to-stage-map-for-the-qa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Template-to-stage map (for the Q&amp;A)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-if-it-breaks-live-recovery-moves" class="md-nav__link">
+    <span class="md-ellipsis">
+      "What if it breaks live?" recovery moves
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-30-second-close" class="md-nav__link">
+    <span class="md-ellipsis">
+      The 30-second close
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -701,30 +828,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Demo Runbook
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -733,164 +840,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#pre-demo-setup-t-30-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pre-Demo Setup (T-30 min)
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Pre-Demo Setup (T-30 min)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-1-build-backstage-bundle-one-time-per-machine-5-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1 — Build Backstage bundle (one-time per machine, ~5 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-bootstrap-the-local-platform-15-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Bootstrap the local platform (~15 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-start-backstage-2-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Start Backstage (~2 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-verify-everything-is-green" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Verify everything is green
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-open-browser-tabs-in-advance" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5 — Open browser tabs in advance
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#demo-flow-15-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Demo Flow (15 min)
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Demo Flow (15 min)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-platform-story-2-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      1 — Platform Story (2 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-developer-portal-3-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      2 — Developer Portal (3 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-golden-path-live-4-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      3 — Golden Path Live (4 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-observability-3-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      4 — Observability (3 min)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-talking-points" class="md-nav__link">
-    <span class="md-ellipsis">
-      Key Talking Points
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fallback-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fallback Options
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
-    <span class="md-ellipsis">
-      Teardown
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1165,7 +1114,7 @@
                   
 
   
-    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/demo-runbook.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/shift-left-demo-cheatsheet.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1173,196 +1122,294 @@
   
 
 
-<h1 id="idp-mvp-leadership-demo-runbook">IDP MVP — Leadership Demo Runbook<a class="headerlink" href="#idp-mvp-leadership-demo-runbook" title="Permanent link">&para;</a></h1>
-<p>A step-by-step guide for running a 15-minute live demo of the Internal Developer Platform.</p>
+<h1 id="shift-left-demo-cheatsheet">Shift-Left Demo Cheatsheet<a class="headerlink" href="#shift-left-demo-cheatsheet" title="Permanent link">&para;</a></h1>
+<p>A one-page presenter script for demoing the shift-left programme. Keep this open on a second monitor. Each row is one "beat" of the demo: what to click, what to break, what the audience should see catch it.</p>
+<p>For the why and the gate definitions, see <a href="../shift-left/">shift-left.md</a>. This page is the <em>what to do live</em>.</p>
 <hr />
-<h2 id="pre-demo-setup-t-30-min">Pre-Demo Setup (T-30 min)<a class="headerlink" href="#pre-demo-setup-t-30-min" title="Permanent link">&para;</a></h2>
-<p>Run these steps <strong>before</strong> the audience arrives. All commands from the repo root.</p>
-<h3 id="step-1-build-backstage-bundle-one-time-per-machine-5-min">Step 1 — Build Backstage bundle <em>(one-time per machine, ~5 min)</em><a class="headerlink" href="#step-1-build-backstage-bundle-one-time-per-machine-5-min" title="Permanent link">&para;</a></h3>
-<p>Required once after any backend source change. Skip if the bundle is already built and <code>dist/bundle.tar.gz</code> exists.</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app
-yarn<span class="w"> </span>install
-yarn<span class="w"> </span>build:backend
-<span class="nb">cd</span><span class="w"> </span>../..
-</code></pre></div></td></tr></table></div>
-<h3 id="step-2-bootstrap-the-local-platform-15-min">Step 2 — Bootstrap the local platform <em>(~15 min)</em><a class="headerlink" href="#step-2-bootstrap-the-local-platform-15-min" title="Permanent link">&para;</a></h3>
-<p>Starts a Kind cluster with nginx, metrics-server, Prometheus/Grafana, ArgoCD, OPA/Gatekeeper, DORA exporter, and deploys <code>hello-service</code>.</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh
-</code></pre></div></td></tr></table></div>
-<p>Faster option (skips observability — use only if Grafana is not part of the demo):</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs
-</code></pre></div></td></tr></table></div>
-<h3 id="step-3-start-backstage-2-min">Step 3 — Start Backstage <em>(~2 min)</em><a class="headerlink" href="#step-3-start-backstage-2-min" title="Permanent link">&para;</a></h3>
-<p>Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, and triggers catalog export:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
-<h3 id="step-4-verify-everything-is-green">Step 4 — Verify everything is green<a class="headerlink" href="#step-4-verify-everything-is-green" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage portal</span>
-curl<span class="w"> </span>-sf<span class="w"> </span>http://localhost:3000<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Backstage OK&quot;</span>
-
-<span class="c1"># hello-service in Kind</span>
-kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/hello-service<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--timeout<span class="o">=</span>60s
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services
-
-<span class="c1"># Grafana</span>
-curl<span class="w"> </span>-sf<span class="w"> </span>http://grafana.idp.local<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Grafana OK&quot;</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="step-5-open-browser-tabs-in-advance">Step 5 — Open browser tabs in advance<a class="headerlink" href="#step-5-open-browser-tabs-in-advance" title="Permanent link">&para;</a></h3>
+<h2 id="pre-flight-10-min-before">Pre-flight (10 min before)<a class="headerlink" href="#pre-flight-10-min-before" title="Permanent link">&para;</a></h2>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>bootstrap-local.sh --print-urls</code> — confirm all URLs resolve</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Open these tabs in order: Backstage → <code>/create</code>, Backstage scorecard tab on a sample service, Grafana scorecard dashboard, ArgoCD UI, a terminal in a throwaway service repo</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>docker ps</code> — Backstage + Postgres healthy</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage built from a freshly-built image (see <a href="../local-setup/">local-setup.md</a> — run <code>docker compose -f local/backstage/docker-compose.yml up -d backstage</code> if you just rebuilt)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Have a throwaway service repo at the ready (a previously-scaffolded <code>demo-svc</code>) — for the "break it" beats</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Mute Slack</li>
+</ul>
+<hr />
+<h2 id="the-demo-4-beats-15-minutes">The demo, 4 beats, ~15 minutes<a class="headerlink" href="#the-demo-4-beats-15-minutes" title="Permanent link">&para;</a></h2>
+<h3 id="beat-1-scaffold-lands-you-at-silver-3-min">Beat 1 — Scaffold lands you at Silver (3 min)<a class="headerlink" href="#beat-1-scaffold-lands-you-at-silver-3-min" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Tab</th>
-<th>URL</th>
+<th>Step</th>
+<th>Action</th>
+<th>What the audience sees</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Backstage portal</td>
-<td><a href="http://backstage.idp.local">http://backstage.idp.local</a></td>
+<td>1</td>
+<td>Backstage <code>/create</code> → pick <code>go-service</code> (or <code>nodejs-service</code>)</td>
+<td>Template form</td>
 </tr>
 <tr>
-<td>Backstage catalog</td>
-<td><a href="http://backstage.idp.local/catalog">http://backstage.idp.local/catalog</a></td>
+<td>2</td>
+<td>Fill <code>name: demo-svc</code>, owner, then <strong>Create</strong></td>
+<td>Scaffolder runs ~30s</td>
 </tr>
 <tr>
-<td>Backstage create</td>
-<td><a href="http://backstage.idp.local/create">http://backstage.idp.local/create</a></td>
+<td>3</td>
+<td>Open the new repo's <code>.github/workflows/ci.yml</code></td>
+<td>Lint + Trivy + coverage + container-smoke jobs already wired</td>
 </tr>
 <tr>
-<td>Tech Radar</td>
-<td><a href="http://backstage.idp.local/tech-radar">http://backstage.idp.local/tech-radar</a></td>
-</tr>
-<tr>
-<td>Grafana — hello-service</td>
-<td><a href="http://grafana.idp.local/d/idp-services">http://grafana.idp.local/d/idp-services</a></td>
-</tr>
-<tr>
-<td>Grafana — DORA</td>
-<td><a href="http://grafana.idp.local/d/dora-metrics-idp">http://grafana.idp.local/d/dora-metrics-idp</a></td>
-</tr>
-<tr>
-<td>ArgoCD</td>
-<td><a href="http://argocd.idp.local">http://argocd.idp.local</a></td>
+<td>4</td>
+<td>Open the entity in Backstage → <strong>Scorecard</strong> tab</td>
+<td>🥉 Bronze ✅, 🥈 Silver ✅, 🥇 Gold dimmed</td>
 </tr>
 </tbody>
 </table>
+<p><strong>The line:</strong> <em>"They didn't write a single CI file. They picked a template. They're already at Silver."</em></p>
 <hr />
-<h2 id="demo-flow-15-min">Demo Flow (15 min)<a class="headerlink" href="#demo-flow-15-min" title="Permanent link">&para;</a></h2>
-<h3 id="1-platform-story-2-min">1 — Platform Story (2 min)<a class="headerlink" href="#1-platform-story-2-min" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>"The platform's job is to turn 'I have an idea' into 'it's running in production' — without the developer needing to know Kubernetes, Terraform, or CI/CD."</strong></p>
-</blockquote>
-<ul>
-<li>Open <code>README.md</code> or <code>docs/architecture.md</code></li>
-<li>Show the architecture layers: Developer → Backstage → GitHub Actions → Helm → EKS/Kind → CloudWatch/Grafana</li>
-</ul>
-<h3 id="2-developer-portal-3-min">2 — Developer Portal (3 min)<a class="headerlink" href="#2-developer-portal-3-min" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Open <strong>Backstage catalog</strong> → show existing services, systems, APIs</li>
-<li>Click <strong>Tech Radar</strong> → highlight ADOPT ring (Go, Python, ArgoCD, Helm, Prometheus) vs TRIAL (OpenTelemetry, KEDA) vs HOLD (Java, Monorepo)</li>
-<li>Point out: "43 entries — this drives technology decisions across all teams"</li>
-</ul>
-<h3 id="3-golden-path-live-4-min">3 — Golden Path Live (4 min)<a class="headerlink" href="#3-golden-path-live-4-min" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>"Watch a developer go from zero to a working service with CI/CD in under 2 minutes."</strong></p>
-</blockquote>
-<ul>
-<li>Click <strong>Create</strong> → choose <strong>Node.js Service</strong></li>
-<li>Fill in: name=<code>demo-service</code>, description, owner=<code>platform-team</code></li>
-<li>Submit → show the scaffolded GitHub repo (or show <code>hello-service</code> as pre-built output)</li>
-<li>Open the GitHub Actions tab → show CI running (test → build → smoke test)</li>
-<li>Show the generated files: <code>Dockerfile</code>, <code>helm-values-local.yaml</code>, <code>catalog-info.yaml</code>, <code>ci.yml</code></li>
-</ul>
-<h3 id="4-observability-3-min">4 — Observability (3 min)<a class="headerlink" href="#4-observability-3-min" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>"Every service gets metrics, dashboards, and alerting pre-wired — zero configuration."</strong></p>
-</blockquote>
-<ul>
-<li>Open <strong>Grafana — hello-service</strong> → show HTTP request rate, latency, error rate</li>
-<li>Open <strong>Grafana — DORA</strong> → point to deploy frequency and lead time panels</li>
-<li>Say: "DORA metrics are how we measure platform success — not just uptime"</li>
-</ul>
-<hr />
-<h2 id="key-talking-points">Key Talking Points<a class="headerlink" href="#key-talking-points" title="Permanent link">&para;</a></h2>
+<h3 id="beat-2-pr-time-gate-catches-a-vulnerability-3-min">Beat 2 — PR-time gate catches a vulnerability (3 min)<a class="headerlink" href="#beat-2-pr-time-gate-catches-a-vulnerability-3-min" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Theme</th>
-<th>Message</th>
+<th>Step</th>
+<th>Action</th>
+<th>What the audience sees</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Developer Experience</strong></td>
-<td>From idea to production without Kubernetes knowledge</td>
+<td>1</td>
+<td>In <code>demo-svc</code>, edit <code>go.mod</code> (or <code>package.json</code>) to pin a known-vulnerable dep — e.g. <code>lodash@4.17.20</code></td>
+<td>—</td>
 </tr>
 <tr>
-<td><strong>Zero Friction</strong></td>
-<td>Bootstrap runs on a laptop — no AWS account needed for local demo</td>
+<td>2</td>
+<td>Open a PR</td>
+<td>GitHub Actions runs</td>
 </tr>
 <tr>
-<td><strong>Consistency</strong></td>
-<td>8 golden-path templates, one Helm chart, one CI pattern</td>
+<td>3</td>
+<td>Watch the <code>quality</code> job — Trivy step</td>
+<td><strong>FAILED</strong> with HIGH/CRITICAL CVE listed</td>
 </tr>
 <tr>
-<td><strong>Observability First</strong></td>
-<td>Prometheus + Grafana + DORA metrics are defaults, not afterthoughts</td>
-</tr>
-<tr>
-<td><strong>Platform KPIs</strong></td>
-<td>DORA metrics track platform impact — deploy frequency, lead time, CFR, MTTR</td>
-</tr>
-<tr>
-<td><strong>Tech Radar</strong></td>
-<td>Drives technology standardisation — 43 entries across adopt/trial/assess/hold</td>
+<td>4</td>
+<td>Try to merge</td>
+<td><code>publish</code> is blocked — <code>needs: [test, quality]</code></td>
 </tr>
 </tbody>
 </table>
+<p><strong>The line:</strong> <em>"This is a vuln that would have shipped six months ago. Now it doesn't leave the PR."</em></p>
+<blockquote>
+<p>If short on time, <strong>skip the PR open</strong> and just show a prior PR where this happened — keep a screenshot in your pocket.</p>
+</blockquote>
 <hr />
-<h2 id="fallback-options">Fallback Options<a class="headerlink" href="#fallback-options" title="Permanent link">&para;</a></h2>
+<h3 id="beat-3-deploy-time-gate-blocks-a-breaking-api-change-4-min">Beat 3 — Deploy-time gate blocks a breaking API change (4 min)<a class="headerlink" href="#beat-3-deploy-time-gate-blocks-a-breaking-api-change-4-min" title="Permanent link">&para;</a></h3>
+<p>This is the showstopper. Don't skip it.</p>
 <table>
 <thead>
 <tr>
-<th>What breaks</th>
-<th>Fallback</th>
+<th>Step</th>
+<th>Action</th>
+<th>What the audience sees</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Backstage won't start</td>
-<td>Show the GitHub repo directly + CI results</td>
+<td>1</td>
+<td>In Backstage <code>/create</code>, run <strong><code>enable-contract-testing</code></strong> against <code>demo-svc</code></td>
+<td>Scaffolder deploys contract-mcp-server (if not up), auto-registers the OpenAPI spec</td>
 </tr>
 <tr>
-<td>Kind cluster not ready</td>
-<td>Use screenshots of Grafana dashboards; explain architecture verbally</td>
+<td>2</td>
+<td>Show the new ArgoCD app — point at the <code>contract-check</code> PreSync hook in the manifest</td>
+<td>Hook job defined</td>
 </tr>
 <tr>
-<td>Scaffold fails</td>
-<td>Show pre-scaffolded <code>hello-service</code> as the reference output</td>
+<td>3</td>
+<td>In <code>demo-svc</code>, delete a field from a response schema in the OpenAPI spec → push → merge → ArgoCD syncs</td>
+<td>Sync starts</td>
 </tr>
 <tr>
-<td>Grafana blank</td>
-<td>Say "data populates once services send traffic" — show the dashboard structure</td>
+<td>4</td>
+<td>ArgoCD UI: the <code>contract-check</code> PreSync job runs first</td>
+<td><strong>FAILED</strong> — sync rejected. Show the job logs: "Breaking change: removed field <code>X</code> from <code>GET /widgets</code>"</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Revert the change → push → ArgoCD retries</td>
+<td>PreSync passes, deploy proceeds</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The line:</strong> <em>"The contract is registered automatically. The breaking change is detected automatically. The deploy is blocked automatically. Nobody wrote a Pact file."</em></p>
+<hr />
+<h3 id="beat-4-runtime-loop-closes-the-feedback-cycle-2-min">Beat 4 — Runtime loop closes the feedback cycle (2 min)<a class="headerlink" href="#beat-4-runtime-loop-closes-the-feedback-cycle-2-min" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Action</th>
+<th>What the audience sees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Open Grafana → Scorecard dashboard</td>
+<td><code>idp_scorecard_tier_silver</code> count incremented (your demo-svc lit up)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Open the per-check heatmap panel</td>
+<td>Green columns across the board</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Open the Flaky Tests panel</td>
+<td>If you have a flaky test from a prior run, point at the top row</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Click through to the Backstage <strong>Scorecard</strong> tab for any service</td>
+<td>Same data, surfaced where the team lives</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The line:</strong> <em>"Same metric, two audiences. Service teams see their tier in Backstage. Platform team sees the fleet roll-up in Grafana. Both update every 15 minutes."</em></p>
+<hr />
+<h2 id="template-to-stage-map-for-the-qa">Template-to-stage map (for the Q&amp;A)<a class="headerlink" href="#template-to-stage-map-for-the-qa" title="Permanent link">&para;</a></h2>
+<p>If someone asks "what about X?", here's what to point at without leaving the deck:</p>
+<table>
+<thead>
+<tr>
+<th>Audience question</th>
+<th>Template</th>
+<th>Stage it adds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"How do we add unit tests to an existing service?"</td>
+<td><code>unit-test-suite</code> (brownfield, language-aware)</td>
+<td>PR loop — unit + coverage gate</td>
+</tr>
+<tr>
+<td>"Component tests without spinning up a real DB?"</td>
+<td><code>component-test-suite</code> (WireMock-stubbed deps)</td>
+<td>PR loop — component tests</td>
+</tr>
+<tr>
+<td>"How do we test against a real database?"</td>
+<td><code>testcontainers-suite</code></td>
+<td>PR loop — integration tests</td>
+</tr>
+<tr>
+<td>"What about Terraform / IaC?"</td>
+<td><code>iac-test-suite</code> (tflint + Checkov + optional Terratest)</td>
+<td>PR loop — IaC gate</td>
+</tr>
+<tr>
+<td>"What about end-to-end?"</td>
+<td><code>playwright-e2e-suite</code></td>
+<td>PR loop — E2E (Gold tier)</td>
+</tr>
+<tr>
+<td>"API-only service, no UI?"</td>
+<td><code>newman-api-suite</code></td>
+<td>PR loop — E2E alternative</td>
+</tr>
+<tr>
+<td>"We need performance/load tests"</td>
+<td><code>k6-performance-suite</code></td>
+<td>PR loop — perf gate</td>
+</tr>
+<tr>
+<td>"What about security scanning beyond Trivy?"</td>
+<td><code>zap-dast-suite</code></td>
+<td>PR loop — DAST</td>
+</tr>
+<tr>
+<td>"We have an LLM agent"</td>
+<td><code>deepeval-llm-eval-suite</code></td>
+<td>PR loop — eval</td>
+</tr>
+<tr>
+<td>"Mobile app?"</td>
+<td><code>appium-mobile-suite</code></td>
+<td>PR loop — mobile E2E</td>
+</tr>
+<tr>
+<td>"Accessibility?"</td>
+<td><code>accessibility-suite</code> (axe-core)</td>
+<td>PR loop — a11y</td>
+</tr>
+<tr>
+<td>"Visual regression?"</td>
+<td><code>visual-regression-suite</code></td>
+<td>PR loop — visual</td>
+</tr>
+<tr>
+<td>"Chaos / resilience?"</td>
+<td><code>chaos-mesh-suite</code></td>
+<td>Runtime loop</td>
+</tr>
+<tr>
+<td>"Synthetic monitoring in prod?"</td>
+<td><code>datadog-synthetic-suite</code></td>
+<td>Runtime loop</td>
+</tr>
+<tr>
+<td>"Mutation testing?"</td>
+<td><code>mutation-testing-suite</code> (Stryker)</td>
+<td>PR loop — Gold+ aspiration</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
-</code></pre></div></td></tr></table></div>
+<h2 id="what-if-it-breaks-live-recovery-moves">"What if it breaks live?" recovery moves<a class="headerlink" href="#what-if-it-breaks-live-recovery-moves" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Move</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scaffolder spins forever</td>
+<td><code>docker logs backstage-backstage-1 \| tail -30</code> in a side terminal — usually a template form validation issue. Skip to Beat 2.</td>
+</tr>
+<tr>
+<td><code>enable-contract-testing</code> action errors out</td>
+<td>Fall back to the pre-recorded screencast (keep one ready). Don't debug live.</td>
+</tr>
+<tr>
+<td>ArgoCD sync wedged</td>
+<td><code>kubectl rollout restart deployment/argocd-application-controller -n argocd</code> — but really, just skip to Beat 4 and use a prior PR's screenshot.</td>
+</tr>
+<tr>
+<td>Grafana panel empty</td>
+<td>The 15-min exporter hasn't run yet. Open the prior week's snapshot.</td>
+</tr>
+<tr>
+<td>Backstage 500s after rebuild</td>
+<td>You forgot to recreate the container after <code>docker compose build</code>. Run <code>docker compose -f local/backstage/docker-compose.yml up -d backstage</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Golden rule for the demo:</strong> if something fails live, <strong>do not debug on stage</strong>. Cut to the screencast, finish the beat, and address it in Q&amp;A. The narrative beats the demo gods every time.</p>
+<hr />
+<h2 id="the-30-second-close">The 30-second close<a class="headerlink" href="#the-30-second-close" title="Permanent link">&para;</a></h2>
+<p>End on this, verbatim:</p>
+<blockquote>
+<p><em>"Three things changed. One: developers stopped writing CI — the template ships it. Two: the breaking-change conversation moved from a Slack thread after the incident, to a PreSync job before the deploy. Three: every team now sees the same scorecard the platform team sees. That's shift-left. The path to Gold is two scaffolder clicks."</em></p>
+</blockquote>
+<p>Then take questions. The template-to-stage map above is your safety net.</p>
 
 
 
@@ -1392,7 +1439,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../security/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security">
+          <a href="../shift-left/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Shift-Left Quality">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1402,20 +1449,20 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
                 Previous
               </span>
               <div class="md-ellipsis">
-                Security
+                Shift-Left Quality
               </div>
             </div>
           </a>
         
         
           
-          <a href="../roadmap/" class="md-footer__link md-footer__link--next" aria-label="Next: Roadmap">
+          <a href="../shift-left-pilot-kickoff/" class="md-footer__link md-footer__link--next" aria-label="Next: Shift-Left Pilot Kickoff">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Roadmap
+                Shift-Left Pilot Kickoff
               </div>
             </div>
             <div class="md-footer__button md-icon">

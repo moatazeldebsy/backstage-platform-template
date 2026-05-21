@@ -1,0 +1,1887 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../contract-testing/">
+      
+      
+        <link rel="next" href="../shift-left-demo-cheatsheet/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Shift-Left Quality - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#shift-left-quality-engineering" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Shift-Left Quality
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  Shift-Left Quality
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-tabs__link">
+        
+  
+    
+  
+  Shift-Left Demo Cheatsheet
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-tabs__link">
+        
+  
+    
+  
+  Shift-Left Pilot Kickoff
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why this exists
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-four-feedback-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      The four feedback loops
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-scorecard-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      The scorecard tiers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adoption-playbook-for-a-team-going-bronze-gold" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adoption playbook — for a team going Bronze → Gold
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adoption playbook — for a team going Bronze → Gold">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#day-1-land-at-silver" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 1 — Land at Silver
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-2-add-contract-testing-move-toward-gold" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 2 — Add contract testing (move toward Gold)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-3-add-e2e-suite-gold" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 3 — Add E2E suite (Gold)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-4-onward-operate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 4 onward — Operate
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-pyramid-recommendations-per-service-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test pyramid — recommendations per service type
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test pyramid — recommendations per service type">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-service-nodejs-go-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backend service (Node.js / Go / Python)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend-react" class="md-nav__link">
+    <span class="md-ellipsis">
+      Frontend (React)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llm-ai-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      LLM / AI agent
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-between-suites-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      Choosing between suites — decision tree
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gates-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gates Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gates Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local loop
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pr-loop-github-actions-on-push-pull_request" class="md-nav__link">
+    <span class="md-ellipsis">
+      PR loop (GitHub Actions on push / pull_request)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-loop-argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy loop (ArgoCD)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-loop-tech-insights-scorecard" class="md-nav__link">
+    <span class="md-ellipsis">
+      Runtime loop (Tech Insights scorecard)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flaky-test-detection-every-30-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flaky-test detection (every 30 min)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adoption-metrics-what-to-track-for-the-programme" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adoption metrics — what to track for the programme
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enablement-materials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enablement materials
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      FAQ
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Out of scope (yet)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changelog-for-this-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changelog for this page
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Shift-Left Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Shift-Left Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/shift-left.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="shift-left-quality-engineering">Shift-Left Quality Engineering<a class="headerlink" href="#shift-left-quality-engineering" title="Permanent link">&para;</a></h1>
+<p>This page is the programme overview for embedding quality earlier in the lifecycle on this platform. It is aimed at three audiences:</p>
+<ul>
+<li><strong>Service teams</strong> — what gates apply to your service, how to clear them, what tier you land at.</li>
+<li><strong>Platform team</strong> — what the IDP provides and how to extend it.</li>
+<li><strong>Programme owners</strong> — what to measure and how to track adoption.</li>
+</ul>
+<p>The TL;DR: the platform already enforces shift-left at scaffold, PR, and deploy time. This page tells you exactly where, and how to move a service from Bronze to Gold.</p>
+<h2 id="why-this-exists">Why this exists<a class="headerlink" href="#why-this-exists" title="Permanent link">&para;</a></h2>
+<p>Defects caught in production cost 10–100× what they cost in a developer's editor. Shift-left means moving detection upstream: into the IDE, the pre-commit hook, the PR build, the contract check at deploy time. The goal is faster feedback, fewer escaped defects, and confidence to release more often.</p>
+<p>The platform's contribution is <strong>paving the path</strong>: every gate below is wired into a scaffolder template, so adoption is "click the template" rather than "read this 40-page guide and reimplement it."</p>
+<h2 id="the-four-feedback-loops">The four feedback loops<a class="headerlink" href="#the-four-feedback-loops" title="Permanent link">&para;</a></h2>
+<p>Each loop runs against a different signal and at a different speed. They compose.</p>
+<table>
+<thead>
+<tr>
+<th>Loop</th>
+<th>Where it runs</th>
+<th>Latency</th>
+<th>What it catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Local</strong></td>
+<td>Developer machine</td>
+<td>&lt;1s</td>
+<td>Syntax, type errors, lint, format</td>
+</tr>
+<tr>
+<td><strong>PR</strong></td>
+<td>GitHub Actions on every push/PR</td>
+<td>2–5 min</td>
+<td>Coverage gaps, vulnerable deps, secrets, container smoke failures</td>
+</tr>
+<tr>
+<td><strong>Deploy</strong></td>
+<td>ArgoCD sync hook</td>
+<td>seconds</td>
+<td>Breaking API change, OPA policy violation</td>
+</tr>
+<tr>
+<td><strong>Runtime</strong></td>
+<td>Prometheus + Tech Insights scorecard</td>
+<td>15 min</td>
+<td>Drift from quality gates, missing runbook, scorecard regression</td>
+</tr>
+</tbody>
+</table>
+<p>Tools and gates for each loop are in the <a href="#gates-reference">Gates Reference</a> below.</p>
+<h2 id="the-scorecard-tiers">The scorecard tiers<a class="headerlink" href="#the-scorecard-tiers" title="Permanent link">&para;</a></h2>
+<p>Every Component in the Backstage catalog is scored against 11 checks. Tiers nest: Gold implies Silver implies Bronze.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Threshold</th>
+<th>Means</th>
+<th>What's checked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🥉 <strong>Bronze</strong></td>
+<td>4 / 11</td>
+<td>Baseline service hygiene</td>
+<td><code>has-owner</code>, <code>has-techdocs</code>, <code>has-health-probes</code>, <code>has-runbook-url</code>, <code>has-api-definition</code>, <code>uses-pinned-image-tag</code></td>
+</tr>
+<tr>
+<td>🥈 <strong>Silver</strong></td>
+<td>7 / 11</td>
+<td>+ Shift-left CI gates</td>
+<td>+ <code>has-coverage-gate</code>, <code>has-static-analysis</code>, <code>has-vuln-scan</code></td>
+</tr>
+<tr>
+<td>🥇 <strong>Gold</strong></td>
+<td>10 / 11</td>
+<td>+ Contract + E2E tests</td>
+<td>+ <code>has-contract-tests</code>, <code>has-e2e-tests</code></td>
+</tr>
+</tbody>
+</table>
+<p>Sources of truth:
+- Fact retriever: <code>backstage/app/packages/backend/src/modules/idpTechInsights.ts</code>
+- Exporter (Pushgateway / CloudWatch): <code>observability/tech-insights-exporter/exporter.py</code>
+- Grafana metrics: <code>idp_scorecard_tier_{bronze,silver,gold}</code>, <code>idp_scorecard_check_passed{check}</code></p>
+<p>A service scaffolded today from any language template lands at <strong>Silver</strong> automatically — the hardened CI provides coverage, static analysis, and vuln scanning out of the box. Moving to Gold takes two scaffolder runs (contract suite + e2e suite).</p>
+<h2 id="adoption-playbook-for-a-team-going-bronze-gold">Adoption playbook — for a team going Bronze → Gold<a class="headerlink" href="#adoption-playbook-for-a-team-going-bronze-gold" title="Permanent link">&para;</a></h2>
+<p>This is the path for a pilot team. Plan ~3 working days end-to-end; ~half a day if you only have one service.</p>
+<blockquote>
+<p>Running this as a formal pilot with two teams? See <strong><a href="../shift-left-pilot-kickoff/">Shift-Left Pilot Kickoff</a></strong> for the kickoff agenda, weekly cadence, and retro template.</p>
+</blockquote>
+<h3 id="day-1-land-at-silver">Day 1 — Land at Silver<a class="headerlink" href="#day-1-land-at-silver" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Scaffold the service</strong> through Backstage <code>/create</code> (or <code>idp scaffold service --name &lt;svc&gt; --type {nodejs,go,python}</code>). This gives you:<ul>
+<li>A repo on GitHub with the hardened CI (<code>/.github/workflows/ci.yml</code>) already wired.</li>
+<li><code>catalog-info.yaml</code> containing <code>idp.io/quality-gates: "coverage,static-analysis,vuln-scan"</code>.</li>
+<li><code>helm-values-{local,dev}.yaml</code> already declaring health probes and resource limits.</li>
+</ul>
+</li>
+<li><strong>Verify the scorecard</strong> — open the service in Backstage → Tech Insights tab. You should see Bronze + Silver tier lit; Gold dimmed.</li>
+<li><strong>Push a no-op commit</strong> to trigger CI. The new <code>quality</code> and <code>test</code> jobs should both go green; <code>publish</code> requires both.</li>
+<li><strong>Watch the DORA dashboard</strong> in Grafana (<code>http://grafana.idp.local/d/dora/dora-metrics</code>) — lead time for changes on your service starts logging.</li>
+</ol>
+<h3 id="day-2-add-contract-testing-move-toward-gold">Day 2 — Add contract testing (move toward Gold)<a class="headerlink" href="#day-2-add-contract-testing-move-toward-gold" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Run the <code>enable-contract-testing</code> Backstage template</strong> against your existing repo. This:<ul>
+<li>Adds <code>GET /openapi.json</code> to your service.</li>
+<li>Deploys the <code>contract-mcp-server</code> if not already in-cluster.</li>
+<li>Auto-registers your contract.</li>
+<li>Wires an ArgoCD PreSync hook that <strong>blocks any deploy that introduces a breaking API change</strong>.</li>
+<li>Adds <code>contract</code> to <code>idp.io/quality-gates</code>.</li>
+</ul>
+</li>
+<li><strong>Try to ship a breaking change</strong> in a feature branch — remove a field from your OpenAPI spec, push, watch ArgoCD reject the sync. This is the muscle the gate is meant to build.</li>
+</ol>
+<h3 id="day-3-add-e2e-suite-gold">Day 3 — Add E2E suite (Gold)<a class="headerlink" href="#day-3-add-e2e-suite-gold" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Run the <code>playwright-e2e-suite</code> template</strong> with <code>add to existing</code> mode targeting your service repo. The suite scaffolder opens a PR on the service repo that:<ul>
+<li>Adds Playwright TypeScript tests.</li>
+<li>Adds a <code>playwright</code> GitHub Actions workflow.</li>
+<li>Adds the <code>e2e</code> tag and <code>idp.io/quality-gates: ...,e2e</code> to your catalog-info.</li>
+</ul>
+</li>
+<li><strong>Merge the PR</strong>. The Tech Insights refresh (every 15 min) picks up the new annotation; the scorecard tips to Gold.</li>
+</ol>
+<h3 id="day-4-onward-operate">Day 4 onward — Operate<a class="headerlink" href="#day-4-onward-operate" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Set a weekly review cadence</strong>: 15 min looking at the team's panel in the IDP scorecard Grafana board. Any check that flipped from passing → failing is a regression and gets triaged.</li>
+<li><strong>Add a flaky-test quarantine policy</strong>: when CI flakes the same test twice in a week, the test is auto-quarantined and a Jira ticket created. (Flaky-test exporter is on the roadmap — see <a href="../roadmap/">docs/roadmap.md</a>.)</li>
+</ol>
+<h2 id="test-pyramid-recommendations-per-service-type">Test pyramid — recommendations per service type<a class="headerlink" href="#test-pyramid-recommendations-per-service-type" title="Permanent link">&para;</a></h2>
+<p>The platform doesn't <em>enforce</em> a pyramid shape, but here's the recommended starting mix.</p>
+<h3 id="backend-service-nodejs-go-python">Backend service (Node.js / Go / Python)<a class="headerlink" href="#backend-service-nodejs-go-python" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Suite</th>
+<th>When to add</th>
+<th>Maintained by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit</td>
+<td>Built into language skeleton — or <code>unit-test-suite</code> template for brownfield repos</td>
+<td>Day 1</td>
+<td>Service team</td>
+</tr>
+<tr>
+<td>Component</td>
+<td><code>component-test-suite</code> template (WireMock-stubbed deps)</td>
+<td>When the service has external HTTP calls but no real DB/Kafka in CI</td>
+<td>Service team</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td><code>testcontainers-suite</code> template</td>
+<td>When the service has a DB / Kafka / Redis dep</td>
+<td>Service team</td>
+</tr>
+<tr>
+<td>Contract</td>
+<td><code>enable-contract-testing</code> template</td>
+<td>Day 2</td>
+<td>Service team (Pact consumer + provider)</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td><code>playwright-e2e-suite</code> (golden path) or <code>newman-api-suite</code> (API-only)</td>
+<td>When the service is user-facing</td>
+<td>Service team</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td><code>k6-performance-suite</code> template</td>
+<td>Before any traffic increase ≥2×</td>
+<td>Service team, shared k6 baseline</td>
+</tr>
+<tr>
+<td>Security</td>
+<td><code>zap-dast-suite</code> template</td>
+<td>Before going public</td>
+<td>Service team + security</td>
+</tr>
+<tr>
+<td>IaC</td>
+<td><code>iac-test-suite</code> template (tflint + Checkov + optional Terratest)</td>
+<td>Any repo with Terraform</td>
+<td>Service team or platform team for shared modules</td>
+</tr>
+</tbody>
+</table>
+<h3 id="frontend-react">Frontend (React)<a class="headerlink" href="#frontend-react" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Suite</th>
+<th>When to add</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit</td>
+<td>Vitest (in skeleton)</td>
+<td>Day 1</td>
+</tr>
+<tr>
+<td>Component</td>
+<td>Vitest + React Testing Library (in skeleton)</td>
+<td>Day 1</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td><code>playwright-e2e-suite</code></td>
+<td>Day 2</td>
+</tr>
+<tr>
+<td>Visual</td>
+<td><code>visual-regression-suite</code></td>
+<td>Before any redesign</td>
+</tr>
+<tr>
+<td>Accessibility</td>
+<td><code>accessibility-suite</code> (axe-core)</td>
+<td>Day 2 — non-negotiable for any user-facing surface</td>
+</tr>
+</tbody>
+</table>
+<h3 id="llm-ai-agent">LLM / AI agent<a class="headerlink" href="#llm-ai-agent" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Suite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Eval</td>
+<td><code>deepeval-llm-eval-suite</code> — runs prompt regression + hallucination checks</td>
+</tr>
+<tr>
+<td>Behavioural</td>
+<td><code>bdd-cucumber-suite</code> — Gherkin specs for agent flows</td>
+</tr>
+</tbody>
+</table>
+<h2 id="choosing-between-suites-decision-tree">Choosing between suites — decision tree<a class="headerlink" href="#choosing-between-suites-decision-tree" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>You only need one contract suite per service.</strong> <code>enable-contract-testing</code> (MCP-driven, auto-discovery) is the platform default; <code>pact-contract-suite</code> is the legacy explicit-Pact template. Use the former unless you have a hard requirement on PactFlow broker.</p>
+</blockquote>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>Do you have an OpenAPI spec on the service?
+├── Yes → use enable-contract-testing (auto-discovery + breaking-change gate)
+└── No  → use pact-contract-suite (manual Pact contracts)
+</code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>Is the service user-facing?
+├── Yes → playwright-e2e-suite
+└── No  → newman-api-suite or skip — let contract tests carry it
+</code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>Does the service have a database or message bus?
+├── Yes → testcontainers-suite (real Postgres/Kafka in CI; no mocks)
+└── No  → skip, unit tests are enough
+</code></pre></div></td></tr></table></div>
+<h2 id="gates-reference">Gates Reference<a class="headerlink" href="#gates-reference" title="Permanent link">&para;</a></h2>
+<p>This is the canonical list of gates the platform enforces. Each row is one PR/deploy/runtime check.</p>
+<h3 id="local-loop">Local loop<a class="headerlink" href="#local-loop" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>How to run</th>
+<th>Where defined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pre-commit hooks</td>
+<td><code>pip install pre-commit &amp;&amp; pre-commit install</code> once per clone</td>
+<td><code>.pre-commit-config.yaml</code> in each language skeleton (shipped)</td>
+</tr>
+<tr>
+<td>Linter</td>
+<td>Same hook bundle (or <code>make lint</code> if you prefer)</td>
+<td>Per language: <code>golangci-lint</code> / <code>ruff</code> / <code>tsc</code> / <code>prettier</code></td>
+</tr>
+<tr>
+<td>Type check</td>
+<td>Pre-commit hook for TS; <code>mypy</code> runs in CI quality job for Python</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Secret scan</td>
+<td><code>gitleaks</code> runs in pre-commit</td>
+<td>Same</td>
+</tr>
+</tbody>
+</table>
+<p>Every language skeleton now ships with a <code>.pre-commit-config.yaml</code> covering <code>gitleaks</code> (always-on secret scan), language-specific formatters/linters (<code>ruff</code> + <code>ruff-format</code> for Python, <code>prettier</code> + <code>node --check</code>/<code>tsc</code> for JS/TS, <code>go-fmt</code> + <code>go-vet</code> + <code>go-mod-tidy</code> for Go), and the standard <code>pre-commit-hooks</code> set (trailing whitespace, large-file guard, merge-conflict marker check). It's <strong>opt-in per developer</strong> — adoption is <code>pre-commit install</code> once.</p>
+<h3 id="pr-loop-github-actions-on-push-pull_request">PR loop (GitHub Actions on push / pull_request)<a class="headerlink" href="#pr-loop-github-actions-on-push-pull_request" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Behavior</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quality</code> job: lint</td>
+<td>Blocks PR if <code>golangci-lint</code> / <code>ruff + mypy</code> / <code>tsc + prettier</code> fails</td>
+<td><code>backstage/catalog/templates/&lt;lang&gt;-service/skeleton/.github/workflows/ci.yml</code></td>
+</tr>
+<tr>
+<td><code>quality</code> job: dependency vuln</td>
+<td>Blocks on HIGH/CRITICAL: <code>govulncheck</code> / <code>npm audit</code> / <code>pip-audit</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td><code>quality</code> job: Trivy fs</td>
+<td>Blocks on HIGH/CRITICAL CVEs, leaked secrets, Dockerfile misconfig</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><code>test</code> job: coverage</td>
+<td>Blocks if coverage &lt;70% (lines/stmts/funcs)</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><code>test</code> job: container smoke</td>
+<td>Blocks if <code>/healthz</code> or <code>/ready</code> don't respond inside the freshly built image</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><code>publish</code>: requires both</td>
+<td><code>publish</code> job has <code>needs: [test, quality]</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Test artifacts</td>
+<td>JUnit XML + coverage report uploaded for 7 days</td>
+<td>Same</td>
+</tr>
+</tbody>
+</table>
+<h3 id="deploy-loop-argocd">Deploy loop (ArgoCD)<a class="headerlink" href="#deploy-loop-argocd" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Behavior</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OPA — deny <code>:latest</code> tags</td>
+<td>Rejects pods at admission</td>
+<td><code>kubernetes/opa-policies/deny-latest-tag.yaml</code></td>
+</tr>
+<tr>
+<td>OPA — require probes</td>
+<td>Rejects pods without <code>livenessProbe</code> + <code>readinessProbe</code></td>
+<td><code>kubernetes/opa-policies/require-health-probes.yaml</code></td>
+</tr>
+<tr>
+<td>OPA — require resource limits</td>
+<td>Rejects pods without <code>resources.limits</code></td>
+<td><code>kubernetes/opa-policies/require-resource-limits.yaml</code></td>
+</tr>
+<tr>
+<td>OPA — require cost labels</td>
+<td>Rejects pods without cost-allocation labels</td>
+<td><code>kubernetes/opa-policies/require-cost-tags.yaml</code></td>
+</tr>
+<tr>
+<td>Contract PreSync hook</td>
+<td>Blocks deploy on breaking API change</td>
+<td><code>helm/service-template/templates/contract-hook-job.yaml</code></td>
+</tr>
+<tr>
+<td>Contract PostSync hook</td>
+<td>Auto-registers spec; runs compatibility report</td>
+<td>Same</td>
+</tr>
+</tbody>
+</table>
+<h3 id="runtime-loop-tech-insights-scorecard">Runtime loop (Tech Insights scorecard)<a class="headerlink" href="#runtime-loop-tech-insights-scorecard" title="Permanent link">&para;</a></h3>
+<p>Runs every 15 minutes (<code>observability/tech-insights-exporter/cronjob.yaml</code>). Pushes metrics to:
+- Local: Prometheus Pushgateway (<code>pushgateway.idp.local</code>)
+- AWS: CloudWatch namespace <code>IDP/TechInsights</code></p>
+<p>Surfaced in:
+- <strong>Backstage</strong> — every Component entity has a <strong>Scorecard</strong> tab (custom UI in <code>backstage/app/packages/app/src/extensions.tsx</code>) showing the 11 checks grouped by Hygiene / Shift-Left CI / Test Coverage, a tier badge (Bronze/Silver/Gold), and a "cheapest unfilled check" hint pointing the team at the next step.
+- <strong>Grafana</strong> — Scorecard dashboard. Per-tier panels (<code>idp_scorecard_tier_{bronze,silver,gold}</code>) and per-check heatmap (<code>idp_scorecard_check_passed{check}</code>).</p>
+<h3 id="flaky-test-detection-every-30-min">Flaky-test detection (every 30 min)<a class="headerlink" href="#flaky-test-detection-every-30-min" title="Permanent link">&para;</a></h3>
+<p>A second runtime loop runs alongside the scorecard. The Flaky-Test Exporter (<code>observability/flaky-test-exporter/exporter.py</code>) pulls the last 10 GitHub Actions workflow runs per service repo, downloads each run's <code>test-results</code> JUnit artifact, and classifies every test:</p>
+<table>
+<thead>
+<tr>
+<th>Classification</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stable pass</td>
+<td>passed in every observed run</td>
+</tr>
+<tr>
+<td>Stable fail</td>
+<td>failed in every observed run (a real bug, not flake)</td>
+</tr>
+<tr>
+<td><strong>Flaky</strong></td>
+<td>passed at least once <strong>and</strong> failed at least once in the window</td>
+</tr>
+</tbody>
+</table>
+<p>Metrics published (Pushgateway local, CloudWatch on AWS):
+- <code>idp_test_flaky_count{service,team}</code> — headline number per service
+- <code>idp_test_flakiness_ratio{service,test,suite}</code> — emitted only for currently-flaky tests, capped at the top 20 per service to bound cardinality
+- <code>idp_test_pass_total{service}</code>, <code>idp_test_fail_total{service}</code> — window totals</p>
+<p>Surfaced in the QA Grafana dashboard ("Flaky Tests" panel, "Top Flaky Tests" table, "Test Outcomes in Window" timeseries).</p>
+<p><strong>Setup:</strong> requires a GitHub token with <code>actions:read</code> on the service repos. Local: set <code>GITHUB_TOKEN</code> in <code>local/.env</code> before <code>bootstrap-local.sh</code>. AWS: stored in <code>idp-mvp/backstage</code> Secrets Manager as <code>GITHUB_TOKEN</code>.</p>
+<h2 id="adoption-metrics-what-to-track-for-the-programme">Adoption metrics — what to track for the programme<a class="headerlink" href="#adoption-metrics-what-to-track-for-the-programme" title="Permanent link">&para;</a></h2>
+<p>These are the success-measure-3 numbers ("Improve CI feedback speed, test reliability, release confidence"). Each has a query you can paste into Grafana.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Promql</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Services at Silver tier or higher</td>
+<td><code>sum(idp_scorecard_tier_silver)</code></td>
+<td>Steady ↑</td>
+</tr>
+<tr>
+<td>Services at Gold tier</td>
+<td><code>sum(idp_scorecard_tier_gold)</code></td>
+<td>Steady ↑</td>
+</tr>
+<tr>
+<td>Coverage gate adoption rate</td>
+<td><code>avg(idp_scorecard_check_passed{check="has-coverage-gate"})</code></td>
+<td>→1.0</td>
+</tr>
+<tr>
+<td>CI P50 duration on PR</td>
+<td><code>histogram_quantile(0.50, sum(rate(github_actions_workflow_duration_seconds_bucket{workflow="CI",event="pull_request"}[7d])) by (le))</code></td>
+<td>&lt;5 min</td>
+</tr>
+<tr>
+<td>Change failure rate (DORA)</td>
+<td>Existing DORA dashboard panel</td>
+<td>↓</td>
+</tr>
+<tr>
+<td>Lead time for changes (DORA)</td>
+<td>Existing DORA dashboard panel</td>
+<td>↓</td>
+</tr>
+<tr>
+<td>Flaky tests per service</td>
+<td><code>idp_test_flaky_count</code></td>
+<td>≤2 per service</td>
+</tr>
+<tr>
+<td>Pass rate in flake window</td>
+<td><code>idp_test_pass_total / (idp_test_pass_total + idp_test_fail_total)</code></td>
+<td>&gt;0.95 per service</td>
+</tr>
+</tbody>
+</table>
+<h2 id="enablement-materials">Enablement materials<a class="headerlink" href="#enablement-materials" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>This document</strong> — programme overview (Success Measure 1 ✅).</li>
+<li><strong>Per-template TechDocs</strong> — every Backstage scaffolder template has its own MkDocs guide at <code>backstage/catalog/templates/&lt;name&gt;/docs/</code>.</li>
+<li><strong>Contract testing deep-dive</strong> — <a href="../contract-testing/">docs/contract-testing.md</a>.</li>
+<li><strong>Security posture</strong> — <a href="../security/">docs/security.md</a>.</li>
+<li><strong>Runbooks</strong> — <a href="../runbooks/">docs/runbooks/index.md</a>.</li>
+</ul>
+<h2 id="faq">FAQ<a class="headerlink" href="#faq" title="Permanent link">&para;</a></h2>
+<p><strong>Why 70% coverage and not 80% / 90%?</strong> Because a hard floor that teams can clear is more useful than an aspirational one they treat as advisory. 70% catches most regression cliffs without forcing tests of trivial getters. Teams can raise the threshold in their own <code>package.json</code> / <code>ci.yml</code> once they're comfortably above it.</p>
+<p><strong>My team has a legacy service that can't hit Silver. What now?</strong> Add the missing annotations to <code>catalog-info.yaml</code> <em>as TODOs</em> (e.g., omit <code>idp.io/quality-gates</code>) so the scorecard reflects reality. Then pick the cheapest gate to add — usually <code>has-vuln-scan</code> (just add the Trivy step) — and incrementally close the gap. The scorecard's job is to show progress, not to shame.</p>
+<p><strong>Can I disable a gate for my service?</strong> Locally: yes, remove the relevant step from your CI. Centrally enforced gates (OPA, ArgoCD PreSync) are not opt-out — they apply at cluster boundaries. If a gate is genuinely wrong for your service, raise an issue against the platform repo; we'd rather change the gate than make exceptions.</p>
+<p><strong>What about mutation testing?</strong> The <code>mutation-testing-suite</code> template exists (Stryker). It's currently opt-in and not part of any tier — mutation scores are noisy and slow. It's a Gold+ aspiration; recommend adding it after a service is stably at Gold.</p>
+<h2 id="out-of-scope-yet">Out of scope (yet)<a class="headerlink" href="#out-of-scope-yet" title="Permanent link">&para;</a></h2>
+<p>Tracking these in <code>docs/roadmap.md</code>:</p>
+<ul>
+<li><strong>Mutation testing in tier model</strong> — once teams have stabilised at Gold.</li>
+<li><strong>PR-time test impact analysis</strong> — only run perf/e2e on changes to relevant paths.</li>
+</ul>
+<h2 id="changelog-for-this-page">Changelog for this page<a class="headerlink" href="#changelog-for-this-page" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-05-20</td>
+<td>Initial publish — covers hardened skeleton CI, expanded scorecard tiers, contract + e2e gates.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../contract-testing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Contract Testing">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Contract Testing
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../shift-left-demo-cheatsheet/" class="md-footer__link md-footer__link--next" aria-label="Next: Shift-Left Demo Cheatsheet">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Shift-Left Demo Cheatsheet
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

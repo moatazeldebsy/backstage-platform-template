@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../security/">
+        <link rel="prev" href="../shift-left-pilot-kickoff/">
       
       
-        <link rel="next" href="../roadmap/">
+        <link rel="next" href="../demo-runbook/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Demo Runbook - Internal Developer Platform</title>
+        <title>Security - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#idp-mvp-leadership-demo-runbook" class="md-skip">
+        <a href="#security" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Demo Runbook
+              Security
             
           </span>
         </div>
@@ -325,9 +325,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../security/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -342,11 +344,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
         
   
     
@@ -681,26 +681,6 @@
       
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
     
   
   
@@ -717,7 +697,7 @@
           
   
   <span class="md-ellipsis">
-    Demo Runbook
+    Security
   </span>
   
 
@@ -728,7 +708,7 @@
         
   
   <span class="md-ellipsis">
-    Demo Runbook
+    Security
   </span>
   
 
@@ -750,55 +730,19 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pre-demo-setup-t-30-min" class="md-nav__link">
+  <a href="#dependency-vulnerability-remediation" class="md-nav__link">
     <span class="md-ellipsis">
-      Pre-Demo Setup (T-30 min)
+      Dependency vulnerability remediation
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Pre-Demo Setup (T-30 min)">
+    <nav class="md-nav" aria-label="Dependency vulnerability remediation">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-build-backstage-bundle-one-time-per-machine-5-min" class="md-nav__link">
+  <a href="#why-vm2-was-replaced-rather-than-upgraded" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1 — Build Backstage bundle (one-time per machine, ~5 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-bootstrap-the-local-platform-15-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Bootstrap the local platform (~15 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-start-backstage-2-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Start Backstage (~2 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-verify-everything-is-green" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Verify everything is green
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-open-browser-tabs-in-advance" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5 — Open browser tabs in advance
+      Why vm2 was replaced rather than upgraded
     </span>
   </a>
   
@@ -810,78 +754,36 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#demo-flow-15-min" class="md-nav__link">
+  <a href="#dependabot-policy" class="md-nav__link">
     <span class="md-ellipsis">
-      Demo Flow (15 min)
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Demo Flow (15 min)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-platform-story-2-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      1 — Platform Story (2 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-developer-portal-3-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      2 — Developer Portal (3 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-golden-path-live-4-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      3 — Golden Path Live (4 min)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-observability-3-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      4 — Observability (3 min)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-talking-points" class="md-nav__link">
-    <span class="md-ellipsis">
-      Key Talking Points
+      Dependabot policy
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#fallback-options" class="md-nav__link">
+  <a href="#container-supply-chain-hardening" class="md-nav__link">
     <span class="md-ellipsis">
-      Fallback Options
+      Container &amp; supply-chain hardening
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
+  <a href="#local-only-relaxations" class="md-nav__link">
     <span class="md-ellipsis">
-      Teardown
+      Local-only relaxations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reporting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reporting
     </span>
   </a>
   
@@ -891,6 +793,26 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1165,7 +1087,7 @@
                   
 
   
-    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/demo-runbook.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/security.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1173,196 +1095,79 @@
   
 
 
-<h1 id="idp-mvp-leadership-demo-runbook">IDP MVP — Leadership Demo Runbook<a class="headerlink" href="#idp-mvp-leadership-demo-runbook" title="Permanent link">&para;</a></h1>
-<p>A step-by-step guide for running a 15-minute live demo of the Internal Developer Platform.</p>
-<hr />
-<h2 id="pre-demo-setup-t-30-min">Pre-Demo Setup (T-30 min)<a class="headerlink" href="#pre-demo-setup-t-30-min" title="Permanent link">&para;</a></h2>
-<p>Run these steps <strong>before</strong> the audience arrives. All commands from the repo root.</p>
-<h3 id="step-1-build-backstage-bundle-one-time-per-machine-5-min">Step 1 — Build Backstage bundle <em>(one-time per machine, ~5 min)</em><a class="headerlink" href="#step-1-build-backstage-bundle-one-time-per-machine-5-min" title="Permanent link">&para;</a></h3>
-<p>Required once after any backend source change. Skip if the bundle is already built and <code>dist/bundle.tar.gz</code> exists.</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app
-yarn<span class="w"> </span>install
-yarn<span class="w"> </span>build:backend
-<span class="nb">cd</span><span class="w"> </span>../..
-</code></pre></div></td></tr></table></div>
-<h3 id="step-2-bootstrap-the-local-platform-15-min">Step 2 — Bootstrap the local platform <em>(~15 min)</em><a class="headerlink" href="#step-2-bootstrap-the-local-platform-15-min" title="Permanent link">&para;</a></h3>
-<p>Starts a Kind cluster with nginx, metrics-server, Prometheus/Grafana, ArgoCD, OPA/Gatekeeper, DORA exporter, and deploys <code>hello-service</code>.</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh
-</code></pre></div></td></tr></table></div>
-<p>Faster option (skips observability — use only if Grafana is not part of the demo):</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs
-</code></pre></div></td></tr></table></div>
-<h3 id="step-3-start-backstage-2-min">Step 3 — Start Backstage <em>(~2 min)</em><a class="headerlink" href="#step-3-start-backstage-2-min" title="Permanent link">&para;</a></h3>
-<p>Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, and triggers catalog export:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
-<h3 id="step-4-verify-everything-is-green">Step 4 — Verify everything is green<a class="headerlink" href="#step-4-verify-everything-is-green" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage portal</span>
-curl<span class="w"> </span>-sf<span class="w"> </span>http://localhost:3000<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Backstage OK&quot;</span>
-
-<span class="c1"># hello-service in Kind</span>
-kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/hello-service<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--timeout<span class="o">=</span>60s
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services
-
-<span class="c1"># Grafana</span>
-curl<span class="w"> </span>-sf<span class="w"> </span>http://grafana.idp.local<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Grafana OK&quot;</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="step-5-open-browser-tabs-in-advance">Step 5 — Open browser tabs in advance<a class="headerlink" href="#step-5-open-browser-tabs-in-advance" title="Permanent link">&para;</a></h3>
+<h1 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h1>
+<p>This page documents the security posture of the platform template — what has been hardened, where the remaining gaps are, and the rationale behind a few decisions that are not obvious from the code alone.</p>
+<p>For vulnerability disclosure, see <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/SECURITY.md"><code>SECURITY.md</code></a> at the repo root.</p>
+<h2 id="dependency-vulnerability-remediation">Dependency vulnerability remediation<a class="headerlink" href="#dependency-vulnerability-remediation" title="Permanent link">&para;</a></h2>
+<p>In May 2026 a full Dependabot sweep flagged 91 alerts across the Backstage frontend/backend, MCP servers, and scaffolded service templates. The current state is <strong>90 remediated, 2 dismissed (no upstream fix)</strong>.</p>
 <table>
 <thead>
 <tr>
-<th>Tab</th>
-<th>URL</th>
+<th>Bucket</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Backstage portal</td>
-<td><a href="http://backstage.idp.local">http://backstage.idp.local</a></td>
+<td>Backstage core</td>
+<td>Bumped to <strong>v1.50.4</strong> via <code>yarn backstage-cli versions:bump</code> — pulled patched versions of 104+ <code>@backstage/*</code> packages and their transitives</td>
 </tr>
 <tr>
-<td>Backstage catalog</td>
-<td><a href="http://backstage.idp.local/catalog">http://backstage.idp.local/catalog</a></td>
+<td><code>@backstage/plugin-scaffolder-node</code></td>
+<td>Bumped <code>^0.9.0</code> → <code>^0.13.2</code></td>
 </tr>
 <tr>
-<td>Backstage create</td>
-<td><a href="http://backstage.idp.local/create">http://backstage.idp.local/create</a></td>
+<td>Transitive npm deps</td>
+<td>27 <code>resolutions</code> pinned in <code>backstage/app/package.json</code> covering <code>axios</code>, <code>tar</code>, <code>undici</code>, <code>minimatch</code>, <code>protobufjs</code>, <code>jsonpath-plus</code>, <code>form-data</code>, <code>lodash</code>, <code>koa</code>, <code>dompurify</code>, <code>postcss</code>, <code>fast-uri</code>, <code>uuid</code>, <code>@octokit/*</code>, <code>qs</code>, <code>cookie</code>, <code>fast-xml-parser</code> (<code>^5.7.0</code>), <code>@tootallnate/once</code> (<code>^3.0.1</code>)</td>
 </tr>
 <tr>
-<td>Tech Radar</td>
-<td><a href="http://backstage.idp.local/tech-radar">http://backstage.idp.local/tech-radar</a></td>
+<td><code>vm2</code></td>
+<td><strong>Replaced with a local shim</strong> (<code>backstage/app/vm2-shim/</code>) — see below</td>
 </tr>
 <tr>
-<td>Grafana — hello-service</td>
-<td><a href="http://grafana.idp.local/d/idp-services">http://grafana.idp.local/d/idp-services</a></td>
+<td><code>services/idp-mcp-server</code></td>
+<td><code>hono</code> → 4.12.19, <code>ip-address</code> → 10.2.0</td>
 </tr>
 <tr>
-<td>Grafana — DORA</td>
-<td><a href="http://grafana.idp.local/d/dora-metrics-idp">http://grafana.idp.local/d/dora-metrics-idp</a></td>
+<td><code>react-frontend</code> scaffold skeleton</td>
+<td><code>vite</code> <code>^5.4.0</code> → <code>^6.4.2</code></td>
 </tr>
 <tr>
-<td>ArgoCD</td>
-<td><a href="http://argocd.idp.local">http://argocd.idp.local</a></td>
+<td>Dismissed</td>
+<td><code>elliptic</code> — no upstream fix available; <code>request</code> — deprecated and not exercised by our code paths</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="demo-flow-15-min">Demo Flow (15 min)<a class="headerlink" href="#demo-flow-15-min" title="Permanent link">&para;</a></h2>
-<h3 id="1-platform-story-2-min">1 — Platform Story (2 min)<a class="headerlink" href="#1-platform-story-2-min" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>"The platform's job is to turn 'I have an idea' into 'it's running in production' — without the developer needing to know Kubernetes, Terraform, or CI/CD."</strong></p>
-</blockquote>
+<p>The two commits implementing this are <code>5ff7971</code> (88 of 91) and <code>678d201</code> (final 2).</p>
+<h3 id="why-vm2-was-replaced-rather-than-upgraded">Why <code>vm2</code> was replaced rather than upgraded<a class="headerlink" href="#why-vm2-was-replaced-rather-than-upgraded" title="Permanent link">&para;</a></h3>
+<p><code>vm2</code> was reached transitively via <code>typescript-json-schema</code> ← <code>@backstage/config-loader</code>. Upstream <code>vm2</code> was abandoned with no plan to ship a fix for the known sandbox-escape CVEs. The shim at <code>backstage/app/vm2-shim/index.js</code> is a ~30-line wrapper around Node's built-in <code>vm</code> module that exposes the same surface (<code>VM</code>, <code>NodeVM</code>) used by <code>typescript-json-schema</code>. It is copied into the Backstage image <strong>before</strong> <code>yarn workspaces focus</code> runs (see <code>backstage/Dockerfile</code>, commit <code>b98c924</code>), so the focus step resolves the shim instead of trying to download the abandoned package.</p>
+<h2 id="dependabot-policy">Dependabot policy<a class="headerlink" href="#dependabot-policy" title="Permanent link">&para;</a></h2>
+<p>Automated version-update PRs are <strong>disabled</strong> in <code>.github/dependabot.yml</code> (<code>open-pull-requests-limit: 0</code> for the npm and Docker ecosystems). Security alerts still surface.</p>
+<p>The reason is incident-driven: two auto-bump PRs broke the working configuration in successive weeks —</p>
+<ol>
+<li><code>uuid</code> v9 → v10 silently dropped its default export, crashing every Backstage page that rendered a <code>@material-table/core</code> table.</li>
+<li><code>@backstage/plugin-scaffolder-node</code> moved an extension-point export from the main entry to <code>/alpha</code>, which caused our custom scaffold actions to crash at startup and left the catalog refresh loop stuck with 0 entities.</li>
+</ol>
+<p>Both required manual intervention (a yarn patch and an import-path revert). Until we have a CI signal that can catch these <em>before</em> the PR is merged, version-update PRs are off and dependency upgrades happen as scoped, reviewed batches.</p>
+<h2 id="container-supply-chain-hardening">Container &amp; supply-chain hardening<a class="headerlink" href="#container-supply-chain-hardening" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Open <code>README.md</code> or <code>docs/architecture.md</code></li>
-<li>Show the architecture layers: Developer → Backstage → GitHub Actions → Helm → EKS/Kind → CloudWatch/Grafana</li>
+<li>Backstage <code>Dockerfile</code> runs as non-root, uses a distroless-style runtime stage, and pins all base-image digests.</li>
+<li>GitHub Actions CI uses <code>aws-actions/configure-aws-credentials</code> with OIDC — no long-lived AWS keys in repo secrets.</li>
+<li>Trivy scans every image build; Cosign signs images pushed to ECR/GHCR.</li>
+<li>OPA/Gatekeeper policies in <code>kubernetes/opa-policies/</code> reject pods that pull <code>:latest</code>, lack resource limits, or omit cost-allocation labels.</li>
+<li>RDS security group restricts ingress to the VPC CIDR (no <code>0.0.0.0/0</code>).</li>
+<li>All namespaces enforce Pod Security Standards (<code>restricted</code> where possible, <code>baseline</code> for system namespaces).</li>
 </ul>
-<h3 id="2-developer-portal-3-min">2 — Developer Portal (3 min)<a class="headerlink" href="#2-developer-portal-3-min" title="Permanent link">&para;</a></h3>
+<h2 id="local-only-relaxations">Local-only relaxations<a class="headerlink" href="#local-only-relaxations" title="Permanent link">&para;</a></h2>
+<p>These exist to make the developer-loop experience usable on Kind/Rancher Desktop and <strong>must not</strong> be ported to a production cluster:</p>
 <ul>
-<li>Open <strong>Backstage catalog</strong> → show existing services, systems, APIs</li>
-<li>Click <strong>Tech Radar</strong> → highlight ADOPT ring (Go, Python, ArgoCD, Helm, Prometheus) vs TRIAL (OpenTelemetry, KEDA) vs HOLD (Java, Monorepo)</li>
-<li>Point out: "43 entries — this drives technology decisions across all teams"</li>
+<li><code>app-config.local.yaml</code>: <code>backend.auth.dangerouslyDisableDefaultAuthPolicy: true</code> — prevents a 401 flash before guest sign-in completes (Backstage v1.29+).</li>
+<li><code>kubernetes/kagent/ingress*.yaml</code>: plain HTTP with <code>ssl-redirect: "false"</code>.</li>
+<li>Local registry <code>localhost:5003</code> is HTTP and unauthenticated.</li>
 </ul>
-<h3 id="3-golden-path-live-4-min">3 — Golden Path Live (4 min)<a class="headerlink" href="#3-golden-path-live-4-min" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>"Watch a developer go from zero to a working service with CI/CD in under 2 minutes."</strong></p>
-</blockquote>
-<ul>
-<li>Click <strong>Create</strong> → choose <strong>Node.js Service</strong></li>
-<li>Fill in: name=<code>demo-service</code>, description, owner=<code>platform-team</code></li>
-<li>Submit → show the scaffolded GitHub repo (or show <code>hello-service</code> as pre-built output)</li>
-<li>Open the GitHub Actions tab → show CI running (test → build → smoke test)</li>
-<li>Show the generated files: <code>Dockerfile</code>, <code>helm-values-local.yaml</code>, <code>catalog-info.yaml</code>, <code>ci.yml</code></li>
-</ul>
-<h3 id="4-observability-3-min">4 — Observability (3 min)<a class="headerlink" href="#4-observability-3-min" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>"Every service gets metrics, dashboards, and alerting pre-wired — zero configuration."</strong></p>
-</blockquote>
-<ul>
-<li>Open <strong>Grafana — hello-service</strong> → show HTTP request rate, latency, error rate</li>
-<li>Open <strong>Grafana — DORA</strong> → point to deploy frequency and lead time panels</li>
-<li>Say: "DORA metrics are how we measure platform success — not just uptime"</li>
-</ul>
-<hr />
-<h2 id="key-talking-points">Key Talking Points<a class="headerlink" href="#key-talking-points" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Theme</th>
-<th>Message</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Developer Experience</strong></td>
-<td>From idea to production without Kubernetes knowledge</td>
-</tr>
-<tr>
-<td><strong>Zero Friction</strong></td>
-<td>Bootstrap runs on a laptop — no AWS account needed for local demo</td>
-</tr>
-<tr>
-<td><strong>Consistency</strong></td>
-<td>8 golden-path templates, one Helm chart, one CI pattern</td>
-</tr>
-<tr>
-<td><strong>Observability First</strong></td>
-<td>Prometheus + Grafana + DORA metrics are defaults, not afterthoughts</td>
-</tr>
-<tr>
-<td><strong>Platform KPIs</strong></td>
-<td>DORA metrics track platform impact — deploy frequency, lead time, CFR, MTTR</td>
-</tr>
-<tr>
-<td><strong>Tech Radar</strong></td>
-<td>Drives technology standardisation — 43 entries across adopt/trial/assess/hold</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="fallback-options">Fallback Options<a class="headerlink" href="#fallback-options" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>What breaks</th>
-<th>Fallback</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Backstage won't start</td>
-<td>Show the GitHub repo directly + CI results</td>
-</tr>
-<tr>
-<td>Kind cluster not ready</td>
-<td>Use screenshots of Grafana dashboards; explain architecture verbally</td>
-</tr>
-<tr>
-<td>Scaffold fails</td>
-<td>Show pre-scaffolded <code>hello-service</code> as the reference output</td>
-</tr>
-<tr>
-<td>Grafana blank</td>
-<td>Say "data populates once services send traffic" — show the dashboard structure</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
-</code></pre></div></td></tr></table></div>
+<p>The <a href="../readiness-checklist/">readiness checklist</a> calls these out before promoting to a real environment.</p>
+<h2 id="reporting">Reporting<a class="headerlink" href="#reporting" title="Permanent link">&para;</a></h2>
+<p>See <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/SECURITY.md"><code>SECURITY.md</code></a> for the private-disclosure process.</p>
 
 
 
@@ -1392,7 +1197,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../security/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security">
+          <a href="../shift-left-pilot-kickoff/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Shift-Left Pilot Kickoff">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1402,20 +1207,20 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
                 Previous
               </span>
               <div class="md-ellipsis">
-                Security
+                Shift-Left Pilot Kickoff
               </div>
             </div>
           </a>
         
         
           
-          <a href="../roadmap/" class="md-footer__link md-footer__link--next" aria-label="Next: Roadmap">
+          <a href="../demo-runbook/" class="md-footer__link md-footer__link--next" aria-label="Next: Demo Runbook">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Roadmap
+                Demo Runbook
               </div>
             </div>
             <div class="md-footer__button md-icon">

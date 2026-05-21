@@ -1,0 +1,1755 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../ai-assistant/">
+      
+      
+        <link rel="next" href="../shift-left/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Contract Testing - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#contract-testing-with-mcp" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Contract Testing
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../shift-left/" class="md-tabs__link">
+        
+  
+    
+  
+  Shift-Left Quality
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-tabs__link">
+        
+  
+    
+  
+  Shift-Left Demo Cheatsheet
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-tabs__link">
+        
+  
+    
+  
+  Shift-Left Pilot Kickoff
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    YOUR_GITHUB_ORG/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Problem
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Solution
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      Access Points
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-make-a-service-self-describing" class="md-nav__link">
+    <span class="md-ellipsis">
+      How to Make a Service Self-Describing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How to Make a Service Self-Describing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#go-reference-hello-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Go (reference: hello-service)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nodejs-express" class="md-nav__link">
+    <span class="md-ellipsis">
+      Node.js / Express
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workflows
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-auto-discover-contracts-for-an-entire-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      1 — Auto-discover contracts for an entire namespace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-pull-a-single-services-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      2 — Pull a single service's contract
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-consumer-driven-contract-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      3 — Generate consumer-driven contract tests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-validate-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      4 — Validate compatibility
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-detect-breaking-changes-before-a-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      5 — Detect breaking changes before a deploy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-full-compatibility-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      6 — Full compatibility report
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backstage-template-contract-testing-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backstage Template — contract-testing-suite
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helm-chart-hooks-argocd-self-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helm Chart Hooks — ArgoCD Self-Testing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helm Chart Hooks — ArgoCD Self-Testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#postsync-hook-self-describing-self-testing-after-every-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      PostSync hook (self-describing + self-testing after every deploy)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#presync-hook-block-deploy-on-breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      PreSync hook (block deploy on breaking changes)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contract-assistant-agent-quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contract-Assistant Agent — Quick Reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-tool-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      MCP Tool Reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Shift-Left Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Shift-Left Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/edit/master/docs/contract-testing.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="contract-testing-with-mcp">Contract Testing with MCP<a class="headerlink" href="#contract-testing-with-mcp" title="Permanent link">&para;</a></h1>
+<p>Self-describing, self-testing APIs on the IDP — powered by the <code>contract-mcp-server</code> and the <code>contract-assistant</code> KAgent agent.</p>
+<hr />
+<h2 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
+<p>Static OpenAPI specs drift. Manually maintained Pact suites break silently. Most teams only discover API incompatibilities in production.</p>
+<h2 id="the-solution">The Solution<a class="headerlink" href="#the-solution" title="Permanent link">&para;</a></h2>
+<p>Every service exposes its own live contract via <code>GET /openapi.json</code>. The <code>contract-mcp-server</code> collects those contracts, generates Pact consumer tests automatically, detects breaking changes between versions, and validates compatibility across the whole platform. The <code>contract-assistant</code> AI agent wraps all of this as natural-language workflows.</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code>Service deploys
+    │
+    ▼
+/openapi.json (self-describing)
+    │
+    ▼
+contract-mcp-server ─── register_contract ──► contract registry
+    │                                          (in-memory, port 3003)
+    ├── generate_contract_tests ─────────────► Pact JSON + TypeScript
+    ├── detect_breaking_changes ─────────────► diff two versions
+    ├── validate_compatibility ──────────────► consumer ✓/✗ provider
+    ├── get_compatibility_report ────────────► full matrix
+    ├── fetch_service_contract ──────────────► pull spec from live service
+    └── auto_discover_contracts ─────────────► scan entire namespace
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="access-points">Access Points<a class="headerlink" href="#access-points" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>URL</th>
+<th>What you can do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KAgent UI</td>
+<td><a href="http://kagent.idp.local">http://kagent.idp.local</a></td>
+<td>Chat with <code>contract-assistant</code> agent</td>
+</tr>
+<tr>
+<td>Backstage AI Assistant</td>
+<td><a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a></td>
+<td>Same agent, inside Backstage</td>
+</tr>
+<tr>
+<td>Backstage Catalog</td>
+<td><a href="http://backstage.idp.local/create">http://backstage.idp.local/create</a></td>
+<td>Run the <code>contract-testing-suite</code> scaffold template</td>
+</tr>
+<tr>
+<td>Contract MCP Server API</td>
+<td><a href="http://contract-mcp-server.idp.local">http://contract-mcp-server.idp.local</a></td>
+<td>Direct MCP tool calls (POST /mcp)</td>
+</tr>
+<tr>
+<td>Contract MCP Server health</td>
+<td><a href="http://contract-mcp-server.idp.local/healthz">http://contract-mcp-server.idp.local/healthz</a></td>
+<td>Health check</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="how-to-make-a-service-self-describing">How to Make a Service Self-Describing<a class="headerlink" href="#how-to-make-a-service-self-describing" title="Permanent link">&para;</a></h2>
+<p>Add a <code>GET /openapi.json</code> endpoint to your service. It must return a valid OpenAPI 3.x document.</p>
+<h3 id="go-reference-hello-service">Go (reference: hello-service)<a class="headerlink" href="#go-reference-hello-service" title="Permanent link">&para;</a></h3>
+<div class="language-go highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nx">mux</span><span class="p">.</span><span class="nx">HandleFunc</span><span class="p">(</span><span class="s">&quot;/openapi.json&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">handleOpenAPISpec</span><span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">handleOpenAPISpec</span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">spec</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span>
+<span class="w">        </span><span class="s">&quot;openapi&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3.0.3&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;info&quot;</span><span class="p">:</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span>
+<span class="w">            </span><span class="s">&quot;title&quot;</span><span class="p">:</span><span class="w">   </span><span class="s">&quot;My Service&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="nx">version</span><span class="p">,</span><span class="w"> </span><span class="c1">// inject the running binary version</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="s">&quot;paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span>
+<span class="w">            </span><span class="s">&quot;/healthz&quot;</span><span class="p">:</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span>
+<span class="w">                </span><span class="s">&quot;get&quot;</span><span class="p">:</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span>
+<span class="w">                    </span><span class="s">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Liveness probe&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="s">&quot;responses&quot;</span><span class="p">:</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span>
+<span class="w">                        </span><span class="s">&quot;200&quot;</span><span class="p">:</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">any</span><span class="p">{</span><span class="s">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;OK&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="c1">// ... add every route your service exposes</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">w</span><span class="p">.</span><span class="nx">Header</span><span class="p">().</span><span class="nx">Set</span><span class="p">(</span><span class="s">&quot;Content-Type&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">json</span><span class="p">.</span><span class="nx">NewEncoder</span><span class="p">(</span><span class="nx">w</span><span class="p">).</span><span class="nx">Encode</span><span class="p">(</span><span class="nx">spec</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="nodejs-express">Node.js / Express<a class="headerlink" href="#nodejs-express" title="Permanent link">&para;</a></h3>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/openapi.json&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">_req</span><span class="p">,</span><span class="w"> </span><span class="nx">res</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">res</span><span class="p">.</span><span class="nx">json</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">openapi</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;3.0.3&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">info</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;My Service&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.APP_VERSION</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s1">&#39;dev&#39;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">paths</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="s1">&#39;/healthz&#39;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">get</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">summary</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Health check&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">responses</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s1">&#39;200&#39;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">description</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;OK&#39;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></td></tr></table></div>
+<p>Once the endpoint exists, any deployed service is automatically discoverable by the contract platform.</p>
+<hr />
+<h2 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h2>
+<h3 id="1-auto-discover-contracts-for-an-entire-namespace">1 — Auto-discover contracts for an entire namespace<a class="headerlink" href="#1-auto-discover-contracts-for-an-entire-namespace" title="Permanent link">&para;</a></h3>
+<p>Ask the contract-assistant or call directly:</p>
+<p><strong>Agent prompt:</strong></p>
+<blockquote>
+<p>"Discover contracts for all services in the services-dev namespace"</p>
+</blockquote>
+<p><strong>Direct MCP call:</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://contract-mcp-server.idp.local/mcp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Accept: application/json, text/event-stream&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;tools/call&quot;,&quot;params&quot;:{&quot;name&quot;:&quot;auto_discover_contracts&quot;,&quot;arguments&quot;:{&quot;namespace&quot;:&quot;services-dev&quot;,&quot;port&quot;:80}}}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;^data:&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/^data: //&#39;</span>
+</code></pre></div></td></tr></table></div></p>
+<p>Every service that exposes <code>/openapi.json</code> is registered automatically. Services without the endpoint are listed as <code>no_spec</code> — add the endpoint to include them.</p>
+<hr />
+<h3 id="2-pull-a-single-services-contract">2 — Pull a single service's contract<a class="headerlink" href="#2-pull-a-single-services-contract" title="Permanent link">&para;</a></h3>
+<p><strong>Agent prompt:</strong></p>
+<blockquote>
+<p>"Fetch the contract for hello-service"</p>
+</blockquote>
+<p><strong>Direct call:</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://contract-mcp-server.idp.local/mcp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Accept: application/json, text/event-stream&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;tools/call&quot;,&quot;params&quot;:{&quot;name&quot;:&quot;fetch_service_contract&quot;,&quot;arguments&quot;:{&quot;service_name&quot;:&quot;hello-service-local-service-template&quot;,&quot;namespace&quot;:&quot;services-dev&quot;,&quot;port&quot;:80}}}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;^data:&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/^data: //&#39;</span>
+</code></pre></div></td></tr></table></div></p>
+<hr />
+<h3 id="3-generate-consumer-driven-contract-tests">3 — Generate consumer-driven contract tests<a class="headerlink" href="#3-generate-consumer-driven-contract-tests" title="Permanent link">&para;</a></h3>
+<p><strong>Agent prompt:</strong></p>
+<blockquote>
+<p>"Generate Pact tests for hello-service consumed by frontend-app"</p>
+</blockquote>
+<p>Returns two artifacts:
+- <strong><code>pactJson</code></strong> — drop into <code>./pacts/frontend-app-hello-service.json</code>, publishable to a Pact broker
+- <strong><code>testCode</code></strong> — TypeScript test file using <code>@pact-foundation/pact</code> v12</p>
+<hr />
+<h3 id="4-validate-compatibility">4 — Validate compatibility<a class="headerlink" href="#4-validate-compatibility" title="Permanent link">&para;</a></h3>
+<p><strong>Agent prompt:</strong></p>
+<blockquote>
+<p>"Is frontend-app compatible with the current hello-service spec?"</p>
+</blockquote>
+<p>Returns <code>✓ COMPATIBLE</code> or <code>✗ INCOMPATIBLE — missing paths: ["/api/v2/users"]</code>.</p>
+<hr />
+<h3 id="5-detect-breaking-changes-before-a-deploy">5 — Detect breaking changes before a deploy<a class="headerlink" href="#5-detect-breaking-changes-before-a-deploy" title="Permanent link">&para;</a></h3>
+<p>Register the new spec during CI (before deploying):</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># In your CI pipeline — after building the new version</span>
+<span class="nv">NEW_SPEC</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span>openapi.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-Rs<span class="w"> </span>.<span class="k">)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://contract-mcp-server.idp.local/mcp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Accept: application/json, text/event-stream&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s2">&quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;tools/call\&quot;,\&quot;params\&quot;:{\&quot;name\&quot;:\&quot;register_contract\&quot;,\&quot;arguments\&quot;:{\&quot;service_name\&quot;:\&quot;my-service\&quot;,\&quot;version\&quot;:\&quot;</span><span class="si">${</span><span class="nv">NEW_TAG</span><span class="si">}</span><span class="s2">\&quot;,\&quot;openapi_spec\&quot;:</span><span class="si">${</span><span class="nv">NEW_SPEC</span><span class="si">}</span><span class="s2">}}}&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;^data:&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/^data: //&#39;</span>
+</code></pre></div></td></tr></table></div>
+<p>Then check for breaking changes:</p>
+<p><strong>Agent prompt:</strong></p>
+<blockquote>
+<p>"Are there breaking changes between my-service v1.2.0 and v2.0.0?"</p>
+</blockquote>
+<p><strong>Direct call:</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://contract-mcp-server.idp.local/mcp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Accept: application/json, text/event-stream&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;tools/call&quot;,&quot;params&quot;:{&quot;name&quot;:&quot;detect_breaking_changes&quot;,&quot;arguments&quot;:{&quot;service_name&quot;:&quot;my-service&quot;,&quot;from_version&quot;:&quot;1.2.0&quot;,&quot;to_version&quot;:&quot;2.0.0&quot;}}}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;^data:&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/^data: //&#39;</span>
+</code></pre></div></td></tr></table></div></p>
+<p>Breaking changes detected: <code>type: path_removed</code>, <code>method_removed</code>, or <code>required_param_added</code>.</p>
+<hr />
+<h3 id="6-full-compatibility-report">6 — Full compatibility report<a class="headerlink" href="#6-full-compatibility-report" title="Permanent link">&para;</a></h3>
+<p><strong>Agent prompt:</strong></p>
+<blockquote>
+<p>"Show the compatibility report for hello-service"</p>
+</blockquote>
+<p>Returns a matrix: every registered service as a potential consumer, pass/fail, and missing paths if incompatible.</p>
+<hr />
+<h2 id="backstage-template-contract-testing-suite">Backstage Template — contract-testing-suite<a class="headerlink" href="#backstage-template-contract-testing-suite" title="Permanent link">&para;</a></h2>
+<p>Generate a full contract test project in one click.</p>
+<ol>
+<li>Open <strong>Backstage → Create</strong> → search <strong>"Contract Testing Suite"</strong></li>
+<li>Fill in:<ul>
+<li><strong>Consumer name</strong> — your service (the one making API calls)</li>
+<li><strong>Provider name</strong> — the service being contracted</li>
+<li><strong>Provider base URL</strong> — where the provider runs locally</li>
+</ul>
+</li>
+<li>Choose <strong>new-repository</strong> or <strong>add-to-existing</strong></li>
+<li>Click <strong>Create</strong></li>
+</ol>
+<p>The scaffold generates:
+- <code>contract/openapi.yaml</code> — consumer's expected contract (edit to match your actual API calls)
+- <code>tests/&lt;name&gt;.pact.spec.ts</code> — Pact V3 consumer tests
+- <code>.github/workflows/contract.yml</code> — CI workflow that runs tests and auto-registers the spec
+- <code>catalog-info.yaml</code> — registers in Backstage catalog</p>
+<hr />
+<h2 id="helm-chart-hooks-argocd-self-testing">Helm Chart Hooks — ArgoCD Self-Testing<a class="headerlink" href="#helm-chart-hooks-argocd-self-testing" title="Permanent link">&para;</a></h2>
+<p>Any service using <code>helm/service-template</code> can opt into automatic contract checking on every ArgoCD sync.</p>
+<h3 id="postsync-hook-self-describing-self-testing-after-every-deploy">PostSync hook (self-describing + self-testing after every deploy)<a class="headerlink" href="#postsync-hook-self-describing-self-testing-after-every-deploy" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># helm-values-local.yaml</span>
+<span class="nt">contractCheck</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">mcpServerUrl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://contract-mcp-server.services-dev.svc.cluster.local:3003&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>After every sync, ArgoCD runs a Job that:
+1. Calls <code>fetch_service_contract</code> — pulls <code>/openapi.json</code> and registers the running spec
+2. Calls <code>get_compatibility_report</code> — logs compatibility status for all consumers</p>
+<h3 id="presync-hook-block-deploy-on-breaking-changes">PreSync hook (block deploy on breaking changes)<a class="headerlink" href="#presync-hook-block-deploy-on-breaking-changes" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">contractCheck</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">checkBreaking</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">fromVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.2.0&quot;</span><span class="w">   </span><span class="c1"># currently deployed (set by CI)</span>
+<span class="w">  </span><span class="nt">toVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2.0.0&quot;</span><span class="w">     </span><span class="c1"># being deployed    (set by CI)</span>
+</code></pre></div></td></tr></table></div>
+<p>Before syncing, ArgoCD runs a Job that calls <code>detect_breaking_changes</code>. If any breaking change is found, the Job exits 1 — <strong>the sync is blocked</strong>.</p>
+<p>Typical CI pattern:</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># .github/workflows/build-and-deploy.yml</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Register new spec and check breaking changes</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">NEW_SPEC=$(kubectl exec -n services deploy/my-service -- wget -qO- http://localhost:8080/openapi.json | jq -Rs .)</span>
+<span class="w">    </span><span class="no"># register the new version</span>
+<span class="w">    </span><span class="no">curl -sf $CONTRACT_MCP_URL/mcp -H &quot;...&quot; -d &quot;{...register_contract v${NEW_TAG}...}&quot;</span>
+<span class="w">    </span><span class="no"># get current deployed version from image tag</span>
+<span class="w">    </span><span class="no">CURRENT_TAG=$(kubectl get deploy/my-service -n services -o jsonpath=&#39;{.spec.template.spec.containers[0].image}&#39; | cut -d: -f2)</span>
+<span class="w">    </span><span class="no"># pass versions to Helm for PreSync check</span>
+<span class="w">    </span><span class="no">helm upgrade my-service helm/service-template \</span>
+<span class="w">      </span><span class="no">--set contractCheck.fromVersion=${CURRENT_TAG} \</span>
+<span class="w">      </span><span class="no">--set contractCheck.toVersion=${NEW_TAG} \</span>
+<span class="w">      </span><span class="no">...</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="contract-assistant-agent-quick-reference">Contract-Assistant Agent — Quick Reference<a class="headerlink" href="#contract-assistant-agent-quick-reference" title="Permanent link">&para;</a></h2>
+<p>Open <a href="http://kagent.idp.local">http://kagent.idp.local</a> and select <strong>contract-assistant</strong>, or use the Backstage AI Assistant.</p>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Prompt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Make platform self-describing</td>
+<td><em>"Discover contracts for all services in services-dev"</em></td>
+</tr>
+<tr>
+<td>Pull one service's spec</td>
+<td><em>"Fetch the contract for hello-service"</em></td>
+</tr>
+<tr>
+<td>Generate Pact tests</td>
+<td><em>"Generate contract tests for hello-service consumer frontend-app"</em></td>
+</tr>
+<tr>
+<td>Check compatibility</td>
+<td><em>"Is frontend-app compatible with hello-service?"</em></td>
+</tr>
+<tr>
+<td>Detect breaking changes</td>
+<td><em>"Breaking changes between my-service v1.0.0 and v2.0.0?"</em></td>
+</tr>
+<tr>
+<td>Full audit</td>
+<td><em>"Show the compatibility report for hello-service"</em></td>
+</tr>
+<tr>
+<td>List all registered</td>
+<td><em>"List all registered contracts"</em></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="mcp-tool-reference">MCP Tool Reference<a class="headerlink" href="#mcp-tool-reference" title="Permanent link">&para;</a></h2>
+<p>All tools are callable via <code>POST /mcp</code> with <code>Accept: application/json, text/event-stream</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fetch_service_contract</code></td>
+<td>Pull <code>/openapi.json</code> from a running service and auto-register it</td>
+</tr>
+<tr>
+<td><code>auto_discover_contracts</code></td>
+<td>Scan every service in a namespace, register all that expose <code>/openapi.json</code></td>
+</tr>
+<tr>
+<td><code>register_contract</code></td>
+<td>Manually push an OpenAPI spec (JSON or YAML string)</td>
+</tr>
+<tr>
+<td><code>get_contract</code></td>
+<td>Retrieve a stored contract (latest or specific version)</td>
+</tr>
+<tr>
+<td><code>list_contracts</code></td>
+<td>List all registered services and their versions</td>
+</tr>
+<tr>
+<td><code>generate_contract_tests</code></td>
+<td>Return Pact JSON + TypeScript test code from a provider spec</td>
+</tr>
+<tr>
+<td><code>validate_compatibility</code></td>
+<td>Check if provider spec covers all consumer-expected paths</td>
+</tr>
+<tr>
+<td><code>detect_breaking_changes</code></td>
+<td>Diff two spec versions — removed paths, methods, new required params</td>
+</tr>
+<tr>
+<td><code>get_compatibility_report</code></td>
+<td>Full consumer/provider compatibility matrix for a service</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong><code>fetch_service_contract</code> returns "No OpenAPI spec found"</strong>
+The service does not expose <code>/openapi.json</code>. Add the endpoint (see above) and redeploy.</p>
+<p><strong><code>auto_discover_contracts</code> shows all services as <code>no_spec</code></strong>
+Either the services do not expose <code>/openapi.json</code>, or the port is wrong. Most services listen on port 80 via their K8s Service. Pass <code>"port": 80</code>.</p>
+<p><strong><code>detect_breaking_changes</code> says "version not found"</strong>
+The version must be pre-registered with <code>register_contract</code> before you can diff it. Register the new version in CI before deploying.</p>
+<p><strong>KAgent <code>contract-assistant</code> shows READY=False</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
+kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>contract-assistant
+</code></pre></div></td></tr></table></div></p>
+<p><strong>Redeploy contract-mcp-server after a code change:</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/contract-mcp-server
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/contract-mcp-server:0.1.0<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/contract-mcp-server:0.1.0
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/contract-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev
+</code></pre></div></td></tr></table></div></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../ai-assistant/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AI Assistant">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                AI Assistant
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../shift-left/" class="md-footer__link md-footer__link--next" aria-label="Next: Shift-Left Quality">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Shift-Left Quality
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>
