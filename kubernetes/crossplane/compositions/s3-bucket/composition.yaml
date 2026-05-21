@@ -1,0 +1,106 @@
+# Composition for XS3Bucket — bundles a Bucket, encryption config, public-
+# access block, and (optional) versioning into one Claim. App teams never
+# touch these resources directly; the abstract S3Bucket Claim is the
+# contract.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xs3bucket.aws
+  labels:
+    provider: aws
+    idp.platform/resource: s3
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XS3Bucket
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: bucket
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                forProvider:
+                  forceDestroy: false
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": s3-bucket
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: metadata.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.bucketArn
+
+          - name: bucket-encryption
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketServerSideEncryptionConfiguration
+              spec:
+                forProvider:
+                  rule:
+                    - applyServerSideEncryptionByDefault:
+                        - sseAlgorithm: AES256
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: spec.forProvider.bucketRef.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+
+          - name: bucket-public-access-block
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketPublicAccessBlock
+              spec:
+                forProvider:
+                  blockPublicAcls: true
+                  blockPublicPolicy: true
+                  ignorePublicAcls: true
+                  restrictPublicBuckets: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: spec.forProvider.bucketRef.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+
+          - name: bucket-versioning
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketVersioning
+              spec:
+                forProvider:
+                  versioningConfiguration:
+                    - status: Enabled
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: spec.forProvider.bucketRef.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.versioning
+                toFieldPath: spec.forProvider.versioningConfiguration[0].status
+                transforms:
+                  - type: map
+                    map:
+                      "true": Enabled
+                      "false": Suspended

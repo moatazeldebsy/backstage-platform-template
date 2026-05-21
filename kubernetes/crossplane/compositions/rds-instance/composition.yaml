@@ -1,0 +1,81 @@
+# RDS Postgres Composition. Generates the master password, stores it in the
+# Claim's connection Secret, and provisions an encrypted, private-subnet RDS
+# instance. The connection Secret keys (endpoint, port, username, password)
+# can be consumed by the service via envFrom in helm-values.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xrdsinstance.aws
+  labels:
+    provider: aws
+    idp.platform/resource: rds
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XRDSInstance
+  writeConnectionSecretsToNamespace: crossplane-system
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: instance
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta2
+              kind: Instance
+              spec:
+                forProvider:
+                  engine: postgres
+                  publiclyAccessible: false
+                  storageEncrypted: true
+                  skipFinalSnapshot: true
+                  autoGeneratePassword: true
+                  passwordSecretRef:
+                    namespace: crossplane-system
+                    key: password
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": rds-instance
+                providerConfigRef:
+                  name: default
+                writeConnectionSecretToRef:
+                  namespace: crossplane-system
+            patches:
+              - fromFieldPath: spec.parameters.instanceName
+                toFieldPath: metadata.name
+              - fromFieldPath: spec.parameters.instanceName
+                toFieldPath: spec.forProvider.passwordSecretRef.name
+                transforms:
+                  - type: string
+                    string:
+                      fmt: "%s-master-password"
+              - fromFieldPath: spec.parameters.dbName
+                toFieldPath: spec.forProvider.dbName
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.instanceClass
+                toFieldPath: spec.forProvider.instanceClass
+              - fromFieldPath: spec.parameters.engineVersion
+                toFieldPath: spec.forProvider.engineVersion
+              - fromFieldPath: spec.parameters.allocatedStorage
+                toFieldPath: spec.forProvider.allocatedStorage
+              - fromFieldPath: spec.parameters.multiAz
+                toFieldPath: spec.forProvider.multiAz
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              - fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.endpoint
+                toFieldPath: status.endpoint
+            connectionDetails:
+              - fromConnectionSecretKey: endpoint
+              - fromConnectionSecretKey: port
+              - fromConnectionSecretKey: username
+              - fromConnectionSecretKey: password

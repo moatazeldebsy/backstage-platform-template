@@ -1,0 +1,18 @@
+apiVersion: idp.platform/v1alpha1
+kind: RDSInstance
+metadata:
+  name: orders-postgres
+  namespace: services-dev
+spec:
+  writeConnectionSecretToRef:
+    name: orders-postgres-conn
+  parameters:
+    instanceName: orders-postgres
+    dbName: orders
+    owner: orders-team
+    region: eu-west-1
+    instanceClass: db.t4g.micro
+    engineVersion: "16.4"
+    allocatedStorage: 20
+    multiAz: false
+    costCenter: eng-orders

@@ -1,0 +1,53 @@
+# Kafka topic Composition — targets an existing MSK cluster (cluster lifecycle
+# is Terraform's job; topic lifecycle is Crossplane's job). Topic config is
+# encoded inline so retention / cleanup policy live in Git per topic.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xkafkatopic.aws
+  labels:
+    provider: aws
+    idp.platform/resource: kafka-topic
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XKafkaTopic
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: topic
+            base:
+              apiVersion: kafka.aws.upbound.io/v1beta1
+              kind: Topic
+              spec:
+                forProvider: {}
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.topicName
+                toFieldPath: metadata.name
+              - fromFieldPath: spec.parameters.topicName
+                toFieldPath: spec.forProvider.name
+              - fromFieldPath: spec.parameters.clusterArn
+                toFieldPath: spec.forProvider.clusterArn
+              - fromFieldPath: spec.parameters.partitions
+                toFieldPath: spec.forProvider.partitions
+              - fromFieldPath: spec.parameters.replicationFactor
+                toFieldPath: spec.forProvider.replicationFactor
+              - fromFieldPath: spec.parameters.cleanupPolicy
+                toFieldPath: spec.forProvider.config["cleanup.policy"]
+              - fromFieldPath: spec.parameters.retentionHours
+                toFieldPath: spec.forProvider.config["retention.ms"]
+                transforms:
+                  - type: math
+                    math:
+                      multiply: 3600000
+                  - type: convert
+                    convert:
+                      toType: string

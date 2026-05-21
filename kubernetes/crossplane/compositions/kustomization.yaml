@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Example claims (*/example-claim.yaml) are reference-only and excluded.
+resources:
+  - _function.yaml
+  - s3-bucket/xrd.yaml
+  - s3-bucket/composition.yaml
+  - rds-instance/xrd.yaml
+  - rds-instance/composition.yaml
+  - kafka-topic/xrd.yaml
+  - kafka-topic/composition.yaml
+  - dynamodb-table/xrd.yaml
+  - dynamodb-table/composition.yaml
+  - sqs-queue/xrd.yaml
+  - sqs-queue/composition.yaml

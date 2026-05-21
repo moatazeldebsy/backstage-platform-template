@@ -1,0 +1,29 @@
+# Shared runtime config for every AWS provider Pod. Annotates the auto-
+# generated ServiceAccount with the IRSA role ARN so the provider's AWS SDK
+# picks up cluster credentials without static keys.
+#
+# IRSA_ROLE_ARN is substituted by scripts/bootstrap.sh from the Terraform
+# output `crossplane_aws_role_arn` (see terraform/iam-crossplane.tf).
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-aws-irsa
+spec:
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        eks.amazonaws.com/role-arn: "IRSA_ROLE_ARN"
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 1Gi

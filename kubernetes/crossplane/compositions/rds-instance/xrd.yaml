@@ -1,0 +1,80 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xrdsinstances.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XRDSInstance
+    plural: xrdsinstances
+  claimNames:
+    kind: RDSInstance
+    plural: rdsinstances
+  defaultCompositionRef:
+    name: xrdsinstance.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters, writeConnectionSecretToRef]
+              properties:
+                writeConnectionSecretToRef:
+                  type: object
+                  description: K8s Secret to write connection details (host, port, username, password) into.
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                parameters:
+                  type: object
+                  required: [instanceName, dbName, owner]
+                  properties:
+                    instanceName:
+                      type: string
+                      description: DB instance identifier (lowercase, alphanum + hyphen).
+                      pattern: ^[a-z][a-z0-9-]{0,62}$
+                    dbName:
+                      type: string
+                      description: Initial database name.
+                    owner:
+                      type: string
+                      description: Owning team or service.
+                    region:
+                      type: string
+                      default: eu-west-1
+                    instanceClass:
+                      type: string
+                      default: db.t4g.micro
+                    engineVersion:
+                      type: string
+                      default: "16.4"
+                    allocatedStorage:
+                      type: integer
+                      default: 20
+                    multiAz:
+                      type: boolean
+                      default: false
+                    costCenter:
+                      type: string
+                      default: engineering
+            status:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+      additionalPrinterColumns:
+        - name: INSTANCE
+          type: string
+          jsonPath: .spec.parameters.instanceName
+        - name: ENGINE
+          type: string
+          jsonPath: .spec.parameters.engineVersion
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status

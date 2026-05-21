@@ -1,0 +1,10 @@
+# Default ProviderConfig used by every Composition. Credentials are sourced
+# from IRSA (the role ARN annotation set on the provider ServiceAccount by
+# DeploymentRuntimeConfig), so no static AWS keys live in the cluster.
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: IRSA

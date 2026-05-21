@@ -1,0 +1,67 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xkafkatopics.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XKafkaTopic
+    plural: xkafkatopics
+  claimNames:
+    kind: KafkaTopic
+    plural: kafkatopics
+  defaultCompositionRef:
+    name: xkafkatopic.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [topicName, clusterArn, owner]
+                  properties:
+                    topicName:
+                      type: string
+                      description: Kafka topic name.
+                      pattern: ^[a-zA-Z0-9._-]{1,249}$
+                    clusterArn:
+                      type: string
+                      description: ARN of the target MSK cluster (provisioned via Terraform).
+                    owner:
+                      type: string
+                    partitions:
+                      type: integer
+                      default: 6
+                      minimum: 1
+                    replicationFactor:
+                      type: integer
+                      default: 3
+                      minimum: 1
+                    retentionHours:
+                      type: integer
+                      default: 168
+                    cleanupPolicy:
+                      type: string
+                      enum: [delete, compact]
+                      default: delete
+                    costCenter:
+                      type: string
+                      default: engineering
+      additionalPrinterColumns:
+        - name: TOPIC
+          type: string
+          jsonPath: .spec.parameters.topicName
+        - name: PARTITIONS
+          type: integer
+          jsonPath: .spec.parameters.partitions
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status

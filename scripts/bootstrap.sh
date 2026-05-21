@@ -363,6 +363,25 @@ log "Phase 4.6: Applying ArgoCD ApplicationSet (GitOps)..."
 kubectl apply -f kubernetes/argocd/app-of-apps.yaml -n argocd
 log "  ApplicationSet applied — ArgoCD will sync services once image tags are set."
 
+# ── Phase 4.6a: Crossplane stack ─────────────────────────────────────────────
+# Substitute the IRSA role ARN (from Terraform output) into the provider
+# runtime config, then hand the stack to ArgoCD. ArgoCD owns reconciliation
+# from this point on; the substitution is a one-shot bootstrap step.
+log "Phase 4.6a: Bootstrapping Crossplane..."
+CROSSPLANE_ROLE_ARN=$(cd terraform && terraform output -raw crossplane_aws_role_arn 2>/dev/null || echo "")
+if [[ -n "$CROSSPLANE_ROLE_ARN" ]]; then
+  log "  Substituting Crossplane IRSA role ARN into deployment-runtime-config..."
+  sed "s|IRSA_ROLE_ARN|${CROSSPLANE_ROLE_ARN}|g" \
+    kubernetes/crossplane/providers/deployment-runtime-config.yaml \
+    | kubectl apply -f -
+  log "  Applying Crossplane stack (core + providers + compositions) via ArgoCD..."
+  kubectl apply -f kubernetes/argocd/crossplane.yaml
+  log "  Crossplane Applications registered. Check: kubectl get providers.pkg.crossplane.io"
+else
+  log "  WARNING: crossplane_aws_role_arn not found in TF state — skipping Crossplane bootstrap."
+  log "           Run 'terraform apply' first, then re-run this phase."
+fi
+
 # ── Phase 4.7: Create Backstage read-only API token for ArgoCD plugin ────────
 log "Phase 4.7: Generating ArgoCD API token for Backstage..."
 

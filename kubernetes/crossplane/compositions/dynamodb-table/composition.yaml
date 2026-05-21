@@ -1,0 +1,62 @@
+# DynamoDB Composition. Defaults to on-demand billing + point-in-time
+# recovery so most callers get a sensible production-ready table without
+# specifying any optional parameters.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xdynamotable.aws
+  labels:
+    provider: aws
+    idp.platform/resource: dynamodb-table
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XDynamoTable
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: table
+            base:
+              apiVersion: dynamodb.aws.upbound.io/v1beta2
+              kind: Table
+              spec:
+                forProvider:
+                  pointInTimeRecovery:
+                    - enabled: true
+                  serverSideEncryption:
+                    - enabled: true
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": dynamodb-table
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.tableName
+                toFieldPath: metadata.name
+              - fromFieldPath: spec.parameters.tableName
+                toFieldPath: spec.forProvider.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.billingMode
+                toFieldPath: spec.forProvider.billingMode
+              - fromFieldPath: spec.parameters.hashKey
+                toFieldPath: spec.forProvider.hashKey
+              - fromFieldPath: spec.parameters.rangeKey
+                toFieldPath: spec.forProvider.rangeKey
+              - fromFieldPath: spec.parameters.pointInTimeRecovery
+                toFieldPath: spec.forProvider.pointInTimeRecovery[0].enabled
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              # Attribute definitions are required for the hash/range keys
+              - fromFieldPath: spec.parameters.hashKey
+                toFieldPath: spec.forProvider.attribute[0].name
+              - fromFieldPath: spec.parameters.hashKeyType
+                toFieldPath: spec.forProvider.attribute[0].type

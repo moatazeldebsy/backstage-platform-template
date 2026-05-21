@@ -1,0 +1,60 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xsqsqueues.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XSQSQueue
+    plural: xsqsqueues
+  claimNames:
+    kind: SQSQueue
+    plural: sqsqueues
+  defaultCompositionRef:
+    name: xsqsqueue.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [queueName, owner]
+                  properties:
+                    queueName:
+                      type: string
+                      pattern: ^[a-zA-Z0-9_-]{1,80}$
+                    owner:
+                      type: string
+                    region:
+                      type: string
+                      default: eu-west-1
+                    fifo:
+                      type: boolean
+                      default: false
+                    visibilityTimeoutSeconds:
+                      type: integer
+                      default: 30
+                    messageRetentionSeconds:
+                      type: integer
+                      default: 345600
+                    costCenter:
+                      type: string
+                      default: engineering
+      additionalPrinterColumns:
+        - name: QUEUE
+          type: string
+          jsonPath: .spec.parameters.queueName
+        - name: FIFO
+          type: boolean
+          jsonPath: .spec.parameters.fifo
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status

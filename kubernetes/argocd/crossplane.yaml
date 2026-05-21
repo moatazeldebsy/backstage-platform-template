@@ -1,0 +1,119 @@
+# Crossplane stack — three ArgoCD Applications, ordered by sync-wave so the
+# core controllers come up before Providers, which come up before
+# Compositions that depend on the Provider CRDs.
+#
+#   -10  crossplane (Helm chart)           Crossplane core
+#    -5  crossplane-providers               AWS providers + IRSA config
+#     0  crossplane-compositions            XRDs + Compositions + functions
+#
+# Apply once via bootstrap.sh; ArgoCD owns reconciliation thereafter.
+#
+# Service-side Claim files (services/<svc>/claims/*.yaml) are already picked
+# up by the existing `idp-services` ApplicationSet in app-of-apps.yaml — no
+# extra ApplicationSet needed.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crossplane-system
+  labels:
+    app.kubernetes.io/name: crossplane
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.crossplane.io/stable
+    chart: crossplane
+    targetRevision: 1.17.2
+    helm:
+      releaseName: crossplane
+      values: |
+        replicas: 1
+        resourcesCrossplane:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        args:
+          - --enable-environment-configs
+          - --enable-usages
+        metrics:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-providers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+    targetRevision: HEAD
+    path: kubernetes/crossplane/providers
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        maxDuration: 2m
+        factor: 2
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-compositions
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+    targetRevision: HEAD
+    path: kubernetes/crossplane/compositions
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        maxDuration: 2m
+        factor: 2

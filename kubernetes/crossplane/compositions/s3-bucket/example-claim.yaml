@@ -1,0 +1,16 @@
+# Example Claim — copy this shape into a service's
+# `services/<svc>/claims/<name>.yaml` and ArgoCD will sync it.
+#
+# Reference only; not applied by the kustomization in this dir.
+apiVersion: idp.platform/v1alpha1
+kind: S3Bucket
+metadata:
+  name: example-uploads
+  namespace: services-dev
+spec:
+  parameters:
+    bucketName: idp-example-uploads-eu-west-1
+    region: eu-west-1
+    owner: platform-team
+    versioning: true
+    costCenter: eng-platform
