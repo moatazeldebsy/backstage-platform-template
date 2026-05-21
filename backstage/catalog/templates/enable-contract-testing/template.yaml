@@ -1,0 +1,218 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: enable-contract-testing
+  title: Enable Contract Testing (MCP-Powered)
+  description: >
+    One-click setup for self-describing, self-testing APIs on the IDP.
+    Deploys the contract-mcp-server, registers the contract-assistant KAgent agent,
+    auto-discovers your service's OpenAPI contract, and scaffolds a ready-to-run
+    consumer test suite — all in a single template run.
+  tags:
+    - contract-testing
+    - mcp
+    - self-describing
+    - kagent
+    - platform
+    - local
+spec:
+  owner: platform-team
+  type: platform-capability
+
+  parameters:
+    - title: Target Service
+      required:
+        - providerName
+        - consumerName
+        - owner
+      properties:
+        targetService:
+          title: Provider Service (in Backstage catalog)
+          type: string
+          description: The service whose API will be contracted (the provider)
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+              - kind: Component
+                spec.type: website
+        providerName:
+          title: Provider Service Name (Kubernetes)
+          type: string
+          description: Kubernetes service name of the provider (e.g. hello-service-local-service-template)
+        consumerName:
+          title: Consumer Service Name
+          type: string
+          description: Name of the service that will consume the provider API
+        targetNamespace:
+          title: Provider Kubernetes Namespace
+          type: string
+          description: Namespace where the provider runs
+          default: services-dev
+        targetPort:
+          title: Provider Service Port
+          type: number
+          description: Kubernetes Service port (usually 80 — routes to container port internally)
+          default: 80
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Infrastructure Options
+      properties:
+        skipDeploy:
+          title: Skip infrastructure deploy
+          type: boolean
+          description: Check this if the contract-mcp-server is already running (idempotent either way)
+          default: false
+        enableArgocdHooks:
+          title: Enable ArgoCD self-testing hooks
+          type: boolean
+          description: >
+            Generates a helm-values patch with contractCheck.enabled=true so every
+            ArgoCD sync auto-registers the contract and runs a compatibility report.
+          default: true
+
+    - title: Test Suite Repository
+      properties:
+        createTestRepo:
+          title: Create a contract test repository
+          type: boolean
+          description: Scaffold a new GitHub repo with the consumer Pact tests and CI workflow
+          default: true
+      dependencies:
+        createTestRepo:
+          oneOf:
+            - properties:
+                createTestRepo:
+                  enum: [true]
+                repoUrl:
+                  title: New Repository
+                  type: string
+                  ui:field: RepoUrlPicker
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - YOUR_GITHUB_ORG
+              required:
+                - repoUrl
+            - properties:
+                createTestRepo:
+                  enum: [false]
+
+  steps:
+    # ── Step 1: Generate contract test files ─────────────────────────────────
+    - id: fetch-template
+      name: Generate contract test skeleton
+      action: fetch:template
+      if: ${{ parameters.createTestRepo }}
+      input:
+        url: ../contract-testing-suite/skeleton
+        values:
+          name: ${{ parameters.consumerName }}-${{ parameters.providerName }}-contract
+          description: Contract tests for ${{ parameters.consumerName }} → ${{ parameters.providerName }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          consumerName: ${{ parameters.consumerName }}
+          providerName: ${{ parameters.providerName }}
+          providerBaseUrl: 'http://localhost:8080'
+          pactBrokerUrl: 'https://YOUR_GITHUB_ORG.pactflow.io'
+          contractMcpServerUrl: 'http://contract-mcp-server.idp.local'
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    # ── Step 2: Deploy platform + register contract ───────────────────────────
+    - id: setup-contract-testing
+      name: Deploy contract testing platform
+      action: idp:setup-contract-testing
+      input:
+        targetService: ${{ parameters.providerName }}
+        targetNamespace: ${{ parameters.targetNamespace }}
+        targetPort: ${{ parameters.targetPort }}
+        skipDeploy: ${{ parameters.skipDeploy }}
+
+    # ── Step 3: Generate ArgoCD hook values patch ─────────────────────────────
+    - id: fetch-hooks-patch
+      name: Generate ArgoCD hooks patch
+      action: fetch:template
+      if: ${{ parameters.enableArgocdHooks and parameters.createTestRepo }}
+      input:
+        url: ./skeleton-hooks
+        targetPath: helm-patches
+        values:
+          providerName: ${{ parameters.providerName }}
+
+    # ── Step 4: Publish test repo ─────────────────────────────────────────────
+    - id: publish
+      name: Publish contract test repo to GitHub
+      action: publish:github
+      continueOnError: true
+      if: ${{ parameters.createTestRepo }}
+      input:
+        description: Contract tests for ${{ parameters.consumerName }} → ${{ parameters.providerName }} (MCP-powered)
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "feat: enable MCP-powered contract testing via IDP"
+        topics:
+          - contract-testing
+          - pact
+          - mcp
+          - self-describing
+
+    # ── Step 5: Register in Backstage catalog (local fallback) ────────────────
+    - id: register-local
+      name: Register in local catalog
+      action: idp:catalog-register-local
+      continueOnError: true
+      input:
+        entityName: ${{ parameters.consumerName }}-${{ parameters.providerName }}-contract
+        entityKind: Component
+        entityType: test-suite
+        owner: ${{ parameters.owner }}
+        description: MCP-powered contract tests for ${{ parameters.consumerName }} → ${{ parameters.providerName }}
+
+    # ── Step 6: Register in catalog (GitHub path) ─────────────────────────────
+    - id: register
+      name: Register in Backstage catalog
+      action: catalog:register
+      continueOnError: true
+      if: ${{ parameters.createTestRepo }}
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    text:
+      - title: Contract Testing Platform — Ready
+        content: |
+          ## What was set up
+
+          | Component | Status |
+          |-----------|--------|
+          | contract-mcp-server | ${{ steps['setup-contract-testing'].output.contractServerUrl }} |
+          | contract-assistant (KAgent) | ${{ steps['setup-contract-testing'].output.agentUrl }} |
+          | Contract registered | ${{ steps['setup-contract-testing'].output.contractRegistered }} |
+          | Discovered paths | ${{ steps['setup-contract-testing'].output.discoveredPaths }} |
+
+          ## Next steps
+
+          1. **Chat with the agent** → open [KAgent UI](${{ steps['setup-contract-testing'].output.agentUrl }}) and select `contract-assistant`
+          2. **Run a compatibility check** → ask: *"Is ${{ parameters.consumerName }} compatible with ${{ parameters.providerName }}?"*
+          3. **Generate Pact tests** → ask: *"Generate contract tests for ${{ parameters.providerName }} consumer ${{ parameters.consumerName }}"*
+          4. **Auto-discover all services** → ask: *"Discover contracts for all services in ${{ parameters.targetNamespace }}"*
+    links:
+      - title: Contract MCP Server
+        url: ${{ steps['setup-contract-testing'].output.contractServerUrl }}
+      - title: KAgent contract-assistant
+        url: ${{ steps['setup-contract-testing'].output.agentUrl }}
+      - title: Test Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

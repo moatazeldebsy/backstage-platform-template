@@ -1,0 +1,21 @@
+openapi: "3.0.3"
+info:
+  title: "${{ values.consumerName }} → ${{ values.providerName }} Consumer Contract"
+  description: Consumer-driven contract: endpoints ${{ values.consumerName }} depends on from ${{ values.providerName }}.
+  version: "1.0.0"
+servers:
+  - url: ${{ values.providerBaseUrl }}
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Provider is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string

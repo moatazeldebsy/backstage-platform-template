@@ -1,0 +1,53 @@
+openapi: "3.0.3"
+info:
+  title: "${{ values.consumerName }} → ${{ values.providerName }} Consumer Contract"
+  description: |
+    This OpenAPI spec defines the subset of the ${{ values.providerName }} API
+    that ${{ values.consumerName }} depends on. It acts as the consumer-driven contract:
+    any endpoint listed here must remain compatible in the provider.
+
+    Register this spec with the IDP contract registry:
+      curl -X POST ${{ values.contractMcpServerUrl }}/mcp \
+        -H 'Content-Type: application/json' \
+        -d '{"method":"tools/call","params":{"name":"register_contract","arguments":{"service_name":"${{ values.consumerName }}","version":"1.0.0","openapi_spec":"<spec-content>"}}}'
+  version: "1.0.0"
+  contact:
+    name: ${{ values.owner }}
+
+servers:
+  - url: ${{ values.providerBaseUrl }}
+    description: Provider base URL
+
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      description: Returns provider health status. Consumer depends on this for readiness checks.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Provider is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # Add the provider endpoints your consumer actually calls here.
+  # Example:
+  # /api/v1/users/{id}:
+  #   get:
+  #     summary: Get user by ID
+  #     parameters:
+  #       - name: id
+  #         in: path
+  #         required: true
+  #         schema:
+  #           type: string
+  #     responses:
+  #       '200':
+  #         description: User found
