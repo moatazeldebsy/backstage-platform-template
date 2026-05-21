@@ -55,3 +55,6 @@ kubeconfig
 .playwright-cli/
 
 .claude/
+
+# macOS Finder / SMB lock-files (e.g. .!12345!handler.zip)
+.!*
