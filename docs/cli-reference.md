@@ -116,6 +116,9 @@ Scaffold a QA/testing suite. Supports 13 test types.
 | `chaos` | Chaos Mesh experiments | `--experiments`, `--chaos-duration` (1m) |
 | `mutation` | Stryker mutation testing | `--score` (70), `--test-runner` (jest\|mocha\|jasmine) |
 | `testcontainers` | Integration tests with containers | `--containers` (postgres) |
+| `unit` | Brownfield unit-test scaffold (Go / Node / Python) with coverage gate | Backstage API only |
+| `component` | Service-as-black-box tests with WireMock-stubbed deps | Backstage API only |
+| `iac` | Terraform IaC checks (tflint + Checkov + optional Terratest) | Backstage API only |
 
 **Examples:**
 

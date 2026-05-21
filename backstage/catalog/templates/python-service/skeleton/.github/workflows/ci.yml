@@ -14,7 +14,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  test:
+  quality:
+    name: Lint + Vulnerability Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,14 +24,68 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+          cache: 'pip'
+
+      - name: Install tooling
+        run: pip install ruff==0.7.* mypy==1.13.* pip-audit==2.7.*
+
+      - name: ruff (lint + format check)
+        run: |
+          ruff check src tests
+          ruff format --check src tests
+
+      - name: mypy (type check)
+        run: |
+          pip install -r requirements.txt
+          mypy src --ignore-missing-imports --no-strict-optional
+
+      - name: pip-audit (dependency vulnerabilities)
+        run: pip-audit -r requirements.txt --strict
+
+      - name: Trivy filesystem scan (deps + secrets)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln,secret,misconfig'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+
+  test:
+    name: Test + Coverage Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: 'pip'
 
       - name: Install dependencies
         run: pip install -r requirements.txt pytest httpx pytest-cov
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (70% threshold)
         run: |
-          pytest -v --cov=src --cov-report=xml --cov-fail-under=70; status=$?
+          pytest -v \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=70 \
+            --junit-xml=junit.xml; status=$?
+          # status 5 = no tests collected; accept it for greenfield services
           [ "$status" -eq 0 ] || [ "$status" -eq 5 ]
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            coverage.xml
+            junit.xml
+          retention-days: 7
 
       - name: Build Docker image (smoke check)
         run: docker build -t ${{ '${{ env.SERVICE_NAME }}' }}:ci .
@@ -47,7 +102,7 @@ jobs:
           docker stop svc && docker rm svc
 
   publish:
-    needs: test
+    needs: [test, quality]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -95,4 +150,3 @@ jobs:
           else
             echo "Values file not found at ${VALUES_FILE} — merge the Platform GitOps PR first"
           fi
-

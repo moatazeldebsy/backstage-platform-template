@@ -1,0 +1,50 @@
+name: Contract Tests (${{ values.name }})
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+
+env:
+  CONSUMER_NAME: '${{ values.consumerName }}'
+  PROVIDER_NAME: '${{ values.providerName }}'
+  CONTRACT_MCP_SERVER_URL: '${{ values.contractMcpServerUrl }}'
+  PACT_BROKER_URL: '${{ values.pactBrokerUrl }}'
+
+jobs:
+  contract:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-suites/${{ values.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Pact consumer tests
+        run: npm test
+
+      - name: Register contract with IDP registry
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          if [ -z "${CONTRACT_MCP_SERVER_URL}" ]; then exit 0; fi
+          SPEC=$(cat contract/openapi.yaml | jq -Rs .)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          curl -sf -X POST "${CONTRACT_MCP_SERVER_URL}/mcp" \
+            -H 'Content-Type: application/json' \
+            -d "{\"method\":\"tools/call\",\"params\":{\"name\":\"register_contract\",\"arguments\":{\"service_name\":\"${CONSUMER_NAME}\",\"version\":\"${SHORT_SHA}\",\"openapi_spec\":${SPEC}}}}" \
+            || echo "Warning: contract registration failed (non-blocking)"

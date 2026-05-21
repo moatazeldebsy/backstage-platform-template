@@ -43,6 +43,7 @@ func main() {
 	mux.HandleFunc("/", handleRoot)
 	mux.HandleFunc("/healthz", handleLiveness)
 	mux.HandleFunc("/ready", handleReadiness)
+	mux.HandleFunc("/openapi.json", handleOpenAPISpec)
 	mux.Handle("/metrics", promhttp.Handler())
 
 	srv := &http.Server{
@@ -113,6 +114,77 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		"version": version,
 		"message": "Hello from the IDP!",
 	})
+}
+
+func handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
+	spec := map[string]any{
+		"openapi": "3.0.3",
+		"info": map[string]any{
+			"title":       "Hello Service",
+			"description": "IDP reference service — greeting, health, and readiness endpoints",
+			"version":     version,
+			"contact":     map[string]any{"name": "platform-team"},
+		},
+		"paths": map[string]any{
+			"/": map[string]any{
+				"get": map[string]any{
+					"summary":     "Get greeting",
+					"operationId": "getGreeting",
+					"responses": map[string]any{
+						"200": map[string]any{
+							"description": "Greeting message with service metadata",
+							"content": map[string]any{
+								"application/json": map[string]any{
+									"schema": map[string]any{
+										"type":     "object",
+										"required": []string{"service", "version", "message"},
+										"properties": map[string]any{
+											"service": map[string]any{"type": "string", "example": "hello-service"},
+											"version": map[string]any{"type": "string", "example": "1.0.0"},
+											"message": map[string]any{"type": "string", "example": "Hello from the IDP!"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"/healthz": map[string]any{
+				"get": map[string]any{
+					"summary":     "Liveness probe",
+					"operationId": "healthCheck",
+					"responses": map[string]any{
+						"200": map[string]any{
+							"description": "Service is alive",
+							"content": map[string]any{
+								"application/json": map[string]any{
+									"schema": map[string]any{
+										"type": "object",
+										"properties": map[string]any{
+											"status": map[string]any{"type": "string", "example": "ok"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"/ready": map[string]any{
+				"get": map[string]any{
+					"summary":     "Readiness probe",
+					"operationId": "readinessCheck",
+					"responses": map[string]any{
+						"200": map[string]any{
+							"description": "Service is ready to receive traffic",
+						},
+					},
+				},
+			},
+		},
+	}
+	writeJSON(w, http.StatusOK, spec)
 }
 
 func handleLiveness(w http.ResponseWriter, r *http.Request) {

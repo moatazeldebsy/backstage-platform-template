@@ -1,0 +1,130 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: unit-test-suite
+  title: Unit Test Suite (brownfield)
+  description: Add a standardized unit-test scaffold + coverage gate (70%) + JUnit output to an existing service repo. Language-aware (Go, Node/TS, Python).
+  tags:
+    - unit-testing
+    - coverage
+    - qa
+    - shift-left
+    - local
+    - aws
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Target
+      required:
+        - language
+        - targetRepoUrl
+        - owner
+      properties:
+        language:
+          title: Language
+          type: string
+          enum: [go, nodejs, python]
+          enumNames:
+            - 'Go (go test + go-junit-report)'
+            - 'Node.js / TypeScript (Vitest)'
+            - 'Python (pytest + pytest-cov)'
+        targetRepoUrl:
+          title: Target Service Repository
+          type: string
+          description: 'Existing GitHub repo to open the PR against'
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - YOUR_GITHUB_ORG
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service (optional)
+          type: string
+          description: 'Backstage Component this suite belongs to (sets dependsOn)'
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+        coverageThreshold:
+          title: Coverage Threshold (%)
+          type: integer
+          description: Minimum line coverage required by the CI gate
+          default: 70
+
+  steps:
+    - id: fetch-go
+      name: Fetch Skeleton (Go)
+      action: fetch:template
+      if: ${{ parameters.language === 'go' }}
+      input:
+        url: ./skeleton-go
+        values:
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          coverageThreshold: ${{ parameters.coverageThreshold }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-node
+      name: Fetch Skeleton (Node.js)
+      action: fetch:template
+      if: ${{ parameters.language === 'nodejs' }}
+      input:
+        url: ./skeleton-node
+        values:
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          coverageThreshold: ${{ parameters.coverageThreshold }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-python
+      name: Fetch Skeleton (Python)
+      action: fetch:template
+      if: ${{ parameters.language === 'python' }}
+      input:
+        url: ./skeleton-python
+        values:
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          coverageThreshold: ${{ parameters.coverageThreshold }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'test: add unit test suite + coverage gate (${{ parameters.language }})'
+        branchName: feat/add-unit-test-suite
+        description: |
+          ## Add Unit Test Suite — ${{ parameters.language }}
+
+          Adds a standardized unit-test scaffold to this repo:
+
+          - GitHub Actions workflow at `.github/workflows/unit-tests.yml`
+          - Coverage gate at **${{ parameters.coverageThreshold }}%** (lines)
+          - JUnit XML output (feeds the platform's flaky-test exporter)
+          - `idp.io/quality-gates: unit` added to `catalog-info.yaml`
+
+          After merge, the Tech Insights scorecard's `has-coverage-gate` check turns green within 15 min.
+
+          > Scaffolded via the IDP QA Platform
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

@@ -37,8 +37,8 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 ### Backstage (developer portal)
 
 ```bash
-# After any change to backstage/app/packages/ — rebuild bundle then rebuild image
-cd backstage/app && yarn build:backend && cd ../..
+# After any change to backstage/app/packages/ — the Dockerfile is multi-stage,
+# so yarn install + yarn build:backend run INSIDE the image. No host build needed.
 docker compose -f local/backstage/docker-compose.yml build backstage
 docker compose -f local/backstage/docker-compose.yml up -d
 
@@ -65,7 +65,7 @@ yarn lint
 yarn build          # production build
 ```
 
-`yarn build:backend` uses esbuild in transpile-only mode — TypeScript type errors do not block the build.
+`yarn build:backend` uses esbuild in transpile-only mode — TypeScript type errors do not block the build. It runs inside the Backstage Docker builder stage; you do not need to run it on the host before `docker compose build backstage`.
 
 ### hello-service (Go reference service)
 
@@ -111,7 +111,7 @@ terraform init -backend=false && terraform validate
 ./scripts/bootstrap-ai.sh --destroy
 ```
 
-### MCP servers (idp-mcp-server, qa-mcp-server)
+### MCP servers (idp-mcp-server, qa-mcp-server, contract-mcp-server)
 
 These run in `services-dev` namespace and are managed by ArgoCD. On first install ArgoCD may not have the apps registered yet; `bootstrap-ai.sh` now falls back to direct Helm if the ArgoCD app is missing. To redeploy manually:
 
@@ -123,14 +123,20 @@ helm upgrade --install idp-mcp-server helm/service-template \
 helm upgrade --install qa-mcp-server helm/service-template \
   --namespace services-dev --create-namespace \
   --values services/qa-mcp-server/helm-values-local.yaml --wait
+
+helm upgrade --install contract-mcp-server helm/service-template \
+  --namespace services-dev --create-namespace \
+  --values services/contract-mcp-server/helm-values-local.yaml --wait
 ```
 
-After any code change to `services/idp-mcp-server/` or `services/qa-mcp-server/`, rebuild images and rolling-restart the deployment:
+After any code change, rebuild the image and rolling-restart:
 
 ```bash
-cd services/idp-mcp-server && docker build -t localhost:5003/idp-mcp-server:0.1.0 . && docker push localhost:5003/idp-mcp-server:0.1.0
-kubectl rollout restart deployment/idp-mcp-server -n services-dev
+cd services/contract-mcp-server && docker build -t localhost:5003/contract-mcp-server:0.1.0 . && docker push localhost:5003/contract-mcp-server:0.1.0
+kubectl rollout restart deployment/contract-mcp-server -n services-dev
 ```
+
+The `contract-mcp-server` exposes 9 tools: `fetch_service_contract`, `auto_discover_contracts`, `register_contract`, `get_contract`, `list_contracts`, `generate_contract_tests`, `validate_compatibility`, `detect_breaking_changes`, `get_compatibility_report`. See `docs/contract-testing.md` for full usage.
 
 ## Architecture Overview
 
@@ -143,7 +149,7 @@ Backstage Portal  ────────────────────�
   (backstage/app/packages/backend/src/modules/)              │
                                                              ▼
 Kind / Rancher Desktop (local) or EKS (AWS)
-  namespace: services-dev → idp-mcp-server, qa-mcp-server (Helm, managed by ArgoCD)
+  namespace: services-dev → idp-mcp-server, qa-mcp-server, contract-mcp-server (Helm, managed by ArgoCD)
   namespace: services     → Helm chart (helm/service-template)
   namespace: monitoring   → Prometheus + Grafana + Pushgateway
   namespace: argocd       → ArgoCD (App-of-Apps)
@@ -215,6 +221,10 @@ KAgent agents (`kubernetes/kagent/idp-agent.yaml`, `qa-agent.yaml`) reference to
 
 The `idp-mcp-server` exposes 6 tools: `catalog_search`, `get_service_metrics`, `get_template_params`, `scaffold_service`, `list_deployments`, `list_templates`. The `get_template_params` tool fetches a template's full parameter schema via `/api/catalog/entities/by-name/Template/<namespace>/<name>`.
 
+The `contract-mcp-server` exposes 9 tools for self-describing, self-testing APIs — see `docs/contract-testing.md`. It also has a KAgent `contract-assistant` agent (`kubernetes/kagent/contract-agent.yaml`). The `contract-assistant` uses all 9 contract tools plus `catalog_search` and `list_deployments` from idp-mcp-server.
+
+**Critical**: The `enable-contract-testing` scaffold template uses the custom action `idp:setup-contract-testing` (`backstage/app/packages/backend/src/modules/idpSetupContractTesting.ts`). This action deploys the contract-mcp-server via Helm (writing values to a temp file), applies the KAgent CRDs via kubectl, waits for health, then calls `fetch_service_contract` to auto-register the target service. The JSON Schema type errors in this module (and all other action modules) are pre-existing and harmless — esbuild (transpile-only) ignores them.
+
 To diagnose KAgent issues:
 ```bash
 kubectl get agents -n kagent                          # check READY status
@@ -252,7 +262,33 @@ Terraform in `terraform/` provisions EKS, VPC, ECR, IAM (OIDC + IRSA). CI/CD use
 
 1. Create `backstage/catalog/templates/<template-name>/template.yaml` + `skeleton/`
 2. Register in `backstage/app-config.yaml` under `catalog.locations`
-3. Rebuild Backstage: `yarn build:backend` → `docker compose build/up`
+3. Templates are bind-mounted; **no rebuild needed** — `docker compose -f local/backstage/docker-compose.yml restart backstage` is enough. Rebuild is only required if you changed `backstage/app/packages/`.
+
+**Test-suite templates** (under `backstage/catalog/templates/*-suite/` and `*-test-suite/`) follow a standard shape:
+
+- `template.yaml` — Backstage scaffolder form + steps
+- `skeleton/` (optional) — for "new repo" mode, scaffolds a standalone test repo
+- `skeleton-addon/test-suites/${{ values.name }}/` (or `skeleton-<lang>/`) — for "add to existing repo" mode, opens a PR against the target service's repo. This is the preferred mode for unit/component/IaC tests where the tests must live in the service repo.
+
+The full pyramid is covered by these templates (one row per layer):
+
+| Layer | Template(s) |
+|---|---|
+| Unit | language skeletons (`go-service`, `nodejs-service`, `python-service`); `unit-test-suite` for brownfield |
+| Component | `component-test-suite` (WireMock-stubbed deps) |
+| Integration | `testcontainers-suite` (real Postgres/Kafka in CI) |
+| Contract | `enable-contract-testing` (MCP-driven, preferred); `pact-contract-suite`/`contract-testing-suite` (legacy) |
+| E2E | `playwright-e2e-suite`, `newman-api-suite`, `bdd-cucumber-suite` |
+| Performance | `k6-performance-suite` |
+| Security (DAST) | `zap-dast-suite` |
+| Visual | `visual-regression-suite` |
+| Accessibility | `accessibility-suite` |
+| Mobile | `appium-mobile-suite` |
+| Chaos | `chaos-mesh-suite` |
+| LLM eval | `deepeval-llm-eval-suite` |
+| Mutation | `mutation-testing-suite` |
+| Synthetic | `datadog-synthetic-suite` |
+| IaC | `iac-test-suite` (tflint + Checkov + optional Terratest) |
 
 ## Backstage Catalog — How it works locally
 
@@ -300,4 +336,5 @@ Changes to `cli/` do **not** trigger CI.
 | AI Assistant | http://backstage.idp.local/ai-assistant |
 | IDP Assistant (A2A) | http://idp-assistant.idp.local |
 | MLflow | http://mlflow.idp.local |
+| Contract MCP Server | http://contract-mcp-server.idp.local |
 | Local registry | localhost:5003 |

@@ -4,8 +4,11 @@ metadata:
   name: hello-service
   description: Reference Go service
   annotations:
-    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=hello-service
-    backstage.io/kubernetes-namespace: services
+    # Match resources by the chart-set label backstage.io/kubernetes-id=<name>,
+    # independent of helm release name (which may be hello-service or
+    # hello-service-local depending on how it was installed).
+    backstage.io/kubernetes-id: hello-service
+    backstage.io/kubernetes-namespace: services-dev
     backstage.io/techdocs-ref: dir:.
 spec:
   type: service

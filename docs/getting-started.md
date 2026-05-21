@@ -31,7 +31,7 @@ aws sts get-caller-identity  # verify
 ### 2. Bootstrap the platform (~20 min)
 
 ```bash
-git clone https://github.com/YOUR_ORG/idp-mvp
+git clone https://github.com/YOUR_GITHUB_ORG/idp-mvp
 cd idp-mvp
 
 # Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)

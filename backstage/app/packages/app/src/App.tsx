@@ -7,7 +7,6 @@ import searchPlugin from '@backstage/plugin-search/alpha';
 import userSettingsPlugin from '@backstage/plugin-user-settings/alpha';
 import orgPlugin from '@backstage/plugin-org/alpha';
 import apiDocsPlugin from '@backstage/plugin-api-docs/alpha';
-import catalogGraphPlugin from '@backstage/plugin-catalog-graph/alpha';
 import catalogImportPlugin from '@backstage/plugin-catalog-import/alpha';
 import techdocsPlugin from '@backstage/plugin-techdocs/alpha';
 import kubernetesPlugin from '@backstage/plugin-kubernetes/alpha';
@@ -60,7 +59,6 @@ export default createApp({
     userSettingsPlugin,
     orgPlugin,
     apiDocsPlugin,
-    catalogGraphPlugin,
     catalogImportPlugin,
     techdocsPlugin,
     kubernetesPlugin,

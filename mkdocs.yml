@@ -1,7 +1,7 @@
 site_name: Internal Developer Platform
 site_description: Golden-path platform for building and deploying services on EKS
-repo_url: https://github.com/moatazeldebsy/backstage-platform-template
-repo_name: moatazeldebsy/backstage-platform-template
+repo_url: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template
+repo_name: YOUR_GITHUB_ORG/backstage-platform-template
 
 theme:
   name: material
@@ -22,6 +22,14 @@ nav:
   - Architecture: architecture.md
   - Golden Path: golden-path.md
   - Local Setup: local-setup.md
+  - CLI Reference: cli-reference.md
+  - AI Assistant: ai-assistant.md
+  - Contract Testing: contract-testing.md
+  - Shift-Left Quality: shift-left.md
+  - Shift-Left Demo Cheatsheet: shift-left-demo-cheatsheet.md
+  - Shift-Left Pilot Kickoff: shift-left-pilot-kickoff.md
+  - Security: security.md
+  - Demo Runbook: demo-runbook.md
   - Roadmap: roadmap.md
   - Readiness Checklist: readiness-checklist.md
   - Runbooks:
@@ -31,4 +39,5 @@ nav:
     - High Memory: runbooks/high-memory.md
     - High CPU: runbooks/high-cpu.md
     - Database Recovery: runbooks/db-recovery.md
+    - ImagePullBackOff: runbooks/image-pull-backoff.md
     - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md

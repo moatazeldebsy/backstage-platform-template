@@ -1,0 +1,105 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: component-test-suite
+  title: Component Test Suite (mocked deps)
+  description: Test a single service end-to-end with its external HTTP dependencies stubbed by WireMock. Faster than Testcontainers, more realistic than unit tests.
+  tags:
+    - component-testing
+    - wiremock
+    - qa
+    - shift-left
+    - local
+    - aws
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - targetRepoUrl
+        - owner
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          default: 'component'
+        targetRepoUrl:
+          title: Target Service Repository
+          type: string
+          description: 'Existing GitHub repo to open the PR against'
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - YOUR_GITHUB_ORG
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+        serviceContainerImage:
+          title: Service Container Image
+          type: string
+          description: 'Image tag the service is built to in CI (e.g. ghcr.io/<org>/<svc>:${{GITHUB_SHA}})'
+          default: 'ghcr.io/YOUR_GITHUB_ORG/<repo>:latest'
+        servicePort:
+          title: Service Port
+          type: integer
+          default: 8080
+
+  steps:
+    - id: fetch
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton-addon
+        values:
+          name: ${{ parameters.name }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          serviceContainerImage: ${{ parameters.serviceContainerImage }}
+          servicePort: ${{ parameters.servicePort }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'test: add component test suite (WireMock)'
+        branchName: feat/add-${{ parameters.name }}-component-suite
+        description: |
+          ## Add Component Test Suite — WireMock
+
+          Tests the service as a black box, with all external HTTP dependencies
+          stubbed by [WireMock](https://wiremock.org/) running as a Docker sidecar.
+
+          **What's included:**
+          - Test files at `test-suites/${{ parameters.name }}/`
+          - WireMock mappings at `test-suites/${{ parameters.name }}/wiremock/mappings/`
+          - GitHub Actions workflow at `.github/workflows/${{ parameters.name }}-tests.yml`
+          - `idp.io/quality-gates: component` added to catalog-info
+
+          > Scaffolded via the IDP QA Platform
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

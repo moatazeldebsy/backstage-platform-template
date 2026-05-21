@@ -10,6 +10,89 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+#### Shift-Left Quality Engineering programme
+- **Skeleton CI hardening** — `nodejs-service`, `go-service`, `python-service`, and `react-frontend` templates now ship with a parallel `quality` job (lint + type-check, dependency vuln scan via `govulncheck`/`npm audit`/`pip-audit`, and Trivy filesystem scan for CVEs + secrets + misconfig), a 70% coverage threshold gate on the `test` job, JUnit + coverage artifact upload (7-day retention), and a `publish` job that requires both gates to pass.
+- **Scorecard expansion (v0.2.0)** — `idpTechInsights.ts` retires the 6-check scorecard for an 11-check Bronze/Silver/Gold tier model. New facts: `has-coverage-gate`, `has-static-analysis`, `has-vuln-scan`, `has-contract-tests`, `has-e2e-tests`. Driven by the new `idp.io/quality-gates` annotation on every language skeleton's `catalog-info.yaml`.
+- **Per-tier exporter metrics** — `observability/tech-insights-exporter/exporter.py` now publishes `idp_scorecard_tier_{bronze,silver,gold}` (nested) and `idp_scorecard_check_passed{check}` to Pushgateway + CloudWatch.
+- **Flaky-test exporter** — `observability/flaky-test-exporter/` is a new K8s CronJob that pulls the last 10 GitHub Actions workflow runs per service repo, parses JUnit XML from the `test-results` artifact, and classifies tests as flaky (`passes > 0 AND fails > 0`). Publishes `idp_test_flaky_count`, `idp_test_flakiness_ratio`, `idp_test_pass_total`, `idp_test_fail_total` to Pushgateway / CloudWatch. Wired into both `bootstrap-local.sh` (Step 11a) and `bootstrap.sh` (Phase 4.4a2).
+- **QA Grafana dashboard panels** — three new panels in `observability/grafana/dashboards/qa/qa-metrics.json`: flaky-test stat, top-15 flaky-test table, pass/fail stacked timeseries.
+- **Programme documentation** — `docs/shift-left.md` (programme overview, tier model, adoption playbook, gates reference, success metrics), `docs/shift-left-pilot-kickoff.md` (one-page team brief, 2-hour kickoff agenda, 4-week cadence, week-4 retro format), and `docs/shift-left-demo-cheatsheet.md` (4-beat presenter script with template-to-stage Q&A map and live-failure recovery moves).
+- **Pyramid-completion test-suite templates** — three new scaffolder templates closing previously-implicit pyramid layers, all "add-to-existing repo" (open a PR):
+  - `unit-test-suite` — language-aware (Go / Node-Vitest / Python-pytest) with a configurable coverage gate (default 70%) and JUnit output for the flaky-test exporter. For brownfield repos that aren't using the platform's language skeletons.
+  - `component-test-suite` — service-under-test as a black box with external HTTP dependencies stubbed by a WireMock sidecar in CI. Faster than `testcontainers-suite`, more realistic than unit tests.
+  - `iac-test-suite` — `terraform fmt`/`validate` + tflint + Checkov (with SARIF upload to GitHub Security tab) + optional Terratest (real `terraform apply` against ephemeral AWS resources, OIDC-gated).
+- **CLI parity** — `idp scaffold test-suite --type` now accepts `unit`, `component`, and `iac` (Backstage API mode; `--local` not yet supported for these three).
+
+### Security
+
+#### Dependabot remediation — 90 of 91 alerts fixed (May 2026)
+- Bumped Backstage core to **v1.50.4** via `yarn backstage-cli versions:bump` (104+ `@backstage/*` packages and transitives).
+- Bumped `@backstage/plugin-scaffolder-node` `^0.9.0` → `^0.13.2`.
+- Added 27 yarn `resolutions` to pin patched versions of `axios`, `tar`, `undici`, `minimatch`, `protobufjs`, `jsonpath-plus`, `form-data`, `lodash`, `koa`, `dompurify`, `postcss`, `fast-uri`, `uuid`, `@octokit/*`, `qs`, `cookie`, `fast-xml-parser` (`^5.7.0`), `@tootallnate/once` (`^3.0.1`), and others.
+- **Replaced abandoned `vm2`** with a local shim at `backstage/app/vm2-shim/` (thin wrapper over Node's built-in `vm` module). Pulled in transitively via `typescript-json-schema` ← `@backstage/config-loader`; no upstream fix existed.
+- `services/idp-mcp-server`: `hono` → 4.12.19, `ip-address` → 10.2.0.
+- `react-frontend` scaffold: `vite` `^5.4.0` → `^6.4.2`.
+- Dismissed `elliptic` (no upstream fix) and `request` (deprecated, not used).
+- See `docs/security.md` for the full posture write-up.
+
+### Changed
+- `.github/dependabot.yml`: disabled automated version-update PRs (`open-pull-requests-limit: 0` for npm and Docker). Two prior auto-bumps (`uuid` v9→v10, `scaffolder-node` `/alpha` move) broke working configs. Security alerts still surface.
+
+### Fixed
+
+#### First-install / local-setup stabilisation (commit `1bde323`)
+- **Backstage**: imported `scaffolderActionsExtensionPoint` from `@backstage/plugin-scaffolder-node` main package (was `/alpha`, undefined) — the crash had blocked the catalog refresh loop and left `final_entities` at 0 on first install.
+- **Backstage**: registered `@backstage/plugin-notifications-backend` in `packages/backend/src/index.ts` (was installed but never `backend.add()`-ed, causing 404 on `/api/notifications`).
+- **Backstage**: yarn patch for `@material-table/core` v3 — rewrites `_uuid["default"].v4()` to `(_uuid["default"] || _uuid).v4()` so the catalog, api-docs, and techdocs pages don't crash on `uuid` v10.
+- **Backstage**: swapped the Backstage `Table` for `@material-ui/core` `Table` on the FinOps page (same uuid-default issue).
+- **Backstage**: added `dangerouslyDisableDefaultAuthPolicy: true` to `app-config.local.yaml` to prevent a 401 flash before guest sign-in completes (Backstage v1.29+).
+- **Backstage**: disabled standalone `/kubernetes` and `/catalog-graph` pages (both crash with "Entity context is not available"); entity-tab versions still work. Re-added `page:catalog` at `/` so the root is not a 404.
+- **idp-mcp-server**: implemented the `get_template_params` tool that was referenced in `idp-agent.yaml` `toolNames` but never implemented (caused "No description available" in the KAgent UI).
+- **`scripts/setup.sh`**: replaced `xargs -I{} _sed` with a `while`-read loop — `xargs` spawns subprocesses that can't see shell functions, so `YOUR_GITHUB_ORG` was never replaced in `local/argocd/app-of-apps-local.yaml`. Also narrowed the find scope from 258k files (including `node_modules`) to 542 targeted files.
+- **`scripts/bootstrap-local.sh`**: same `xargs`/`_sed` fix in `_apply_personalization`; also uninstall the stray `hello-service` from the `services` namespace after the ArgoCD ApplicationSet is applied so the nginx admission webhook stops rejecting the `services-dev` ingress.
+- **`scripts/bootstrap-ai.sh`**: fall back to direct Helm for `idp-mcp-server` and `qa-mcp-server` when the ArgoCD app doesn't exist yet (first-time install before app-of-apps runs).
+- **Grafana**: bumped memory limit 256Mi → 512Mi (request 128Mi → 256Mi) — pod was OOMKilled at ~326Mi on dashboard load. Added `proxy-next-upstream: http_503` and relaxed readiness/liveness probes (`failureThreshold` 3 → 10, `timeoutSeconds` 1 → 5).
+
+#### Docker & CI
+- `backstage/Dockerfile`: copy `vm2-shim/` **before** `yarn workspaces focus` so the focus step resolves the local shim instead of trying to fetch abandoned `vm2` (commit `b98c924`).
+- `.github/workflows/ci.yml`: suppress the harmless `protobufjs` dynamic-require warning that was failing the Backstage build under stricter Node settings (commit `dd4cd3b`).
+
+#### AWS bootstrap
+- `scripts/bootstrap.sh`: added the missing `fi` for the `SKIP_POLICIES` conditional opened at Phase 3.8. Without it the script failed `bash -n` and every phase after OPA install ran inside the conditional — meaning `--skip-policies` silently turned the entire AWS bootstrap into a no-op past Phase 3.7.
+- `scripts/bootstrap.sh`: dropped redundant host-side `yarn install --frozen-lockfile && yarn build:backend` from Phase 5.5 — the multi-stage `backstage/Dockerfile` does this inside the builder image.
+- `kubernetes/argocd/app-of-apps.yaml` + 10 other files: rewrote stale `backstage-idp-starter` repo URL to `backstage-platform-template` so the AWS ArgoCD ApplicationSet can actually clone the repo.
+- `services/contract-mcp-server/helm-values-dev.yaml`: new — unblocks the AWS deployment loop in `bootstrap-ai.sh:448`, which already iterates `contract-mcp-server` but had no values file to substitute the ECR placeholder into.
+- `observability/prometheus-stack-values-aws.yaml`: bumped Grafana to `replicas: 2`, disabled persistence (gp2 is RWO; can't share PVC), added lenient probes and ALB health-check config so dashboard reload no longer surfaces 503s.
+
+#### Runbooks
+- Added `docs/runbooks/kind-node-ip-mismatch.md` (commit `aaeee62`) — recovery procedure for the Docker/Rancher-crash failure mode where the Kind node IP drifts and `*.idp.local` stops resolving.
+
+### Added
+
+#### Contract Testing with MCP — Self-Describing, Self-Testing APIs
+
+- `services/contract-mcp-server/` — TypeScript MCP server (port 3003) with 9 tools:
+  - `fetch_service_contract` — pull `/openapi.json` from a live service and auto-register (self-describing pattern)
+  - `auto_discover_contracts` — scan an entire Kubernetes namespace, register every service that exposes a spec (one call makes the platform self-describing)
+  - `register_contract` — manually push an OpenAPI 3.x spec (JSON or YAML)
+  - `get_contract` / `list_contracts` — retrieve stored contracts
+  - `generate_contract_tests` — produce Pact V3 JSON + TypeScript test code from a provider spec
+  - `validate_compatibility` — check if a provider satisfies all consumer-expected paths
+  - `detect_breaking_changes` — diff two spec versions; surfaces removed paths, methods, and new required params
+  - `get_compatibility_report` — full consumer/provider compatibility matrix for a service
+- `kubernetes/kagent/contract-toolserver.yaml` — KAgent `RemoteMCPServer` pointing to the contract-mcp-server in-cluster endpoint
+- `kubernetes/kagent/contract-agent.yaml` — KAgent `contract-assistant` Agent with all 9 contract tools plus `catalog_search` and `list_deployments` from idp-mcp-server
+- `backstage/catalog/templates/contract-testing-suite/` — Backstage scaffolder template (new-repo and add-to-existing modes) that generates: consumer contract spec (`contract/openapi.yaml`), Pact V3 consumer tests, CI workflow with auto-registration, and catalog entity
+- `backstage/catalog/services/contract-mcp-server/catalog-info.yaml` — Backstage catalog entity for the contract-mcp-server component
+- `helm/service-template/templates/contract-hook-job.yaml` + `contractCheck` values — opt-in ArgoCD PostSync (auto-describe + compatibility report after every deploy) and PreSync (break deploy if breaking changes detected) hooks for any service using the golden-path Helm chart
+- `services/hello-service/src/main.go` — added `GET /openapi.json` handler so hello-service is self-describing out of the box; returns live OpenAPI 3.0 spec including the running binary version
+- `docs/contract-testing.md` — full how-to guide: making services self-describing, agent prompts, Helm hook configuration, MCP tool reference, troubleshooting
+- `local/hosts-append.txt` and `local/backstage/docker-compose.yml` — added `contract-mcp-server.idp.local` hostname and extra_hosts entry
+- `backstage/app-config.local.yaml` — added `/contract-mcp` Backstage proxy endpoint
+- `.github/workflows/ci.yml` — added `contract-mcp-server-build` job (TypeScript compile on every PR touching `services/contract-mcp-server/`)
+
+
+
 #### Local ↔ AWS environment parity (gap-fix)
 - `kubernetes/external-secrets/cluster-secret-store.yaml` — ClusterSecretStore backed by AWS Secrets Manager; required by all ExternalSecrets in the repo. ESO ServiceAccount is annotated with the Backstage IRSA role ARN at deploy time.
 - `observability/prometheus-stack-values-aws.yaml` — kube-prometheus-stack Helm values for AWS (ALB ingress, gp2 storage, 15-day retention, CloudWatch datasource, Grafana IRSA annotation, all three dashboard ConfigMap providers).
@@ -82,7 +165,7 @@ Initial open-source release of the backstage-platform-template template.
 
 ### Fixed
 - `YOUR_DISPLAY_NAME` placeholder restored in catalog-info.yaml (was hardcoded)
-- `YOUR_ORG`/`YOUR_REPO` documentation tokens now substituted by setup.sh
+- `YOUR_GITHUB_ORG`/`backstage-platform-template` documentation tokens now substituted by setup.sh
 - build-and-deploy.yml: graceful skip when `AWS_ROLE_ARN` secret is not set
 
 [Unreleased]: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/compare/v0.1.0...HEAD

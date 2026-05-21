@@ -4,16 +4,15 @@
 
 app:
   baseUrl: http://backstage.idp.local
-  # Disable the kubernetes standalone page — it requires an entity context and
-  # crashes with "Entity context is not available" when accessed directly.
+  # Disable the kubernetes standalone page — it requires an entity context
+  # and crashes with "Entity context is not available" when accessed directly.
   # Kubernetes info is still available via entity tabs in the catalog.
+  # catalog-graph plugin is fully removed from App.tsx (showed no data locally).
   extensions:
     - page:catalog:
         config:
           path: /
     - page:kubernetes:
-        disabled: true
-    - page:catalog-graph:
         disabled: true
 
 backend:
@@ -75,6 +74,10 @@ proxy:
         Authorization: Bearer ${GRAFANA_TOKEN}
     /kagent:
       target: http://kagent.idp.local
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+    /contract-mcp:
+      target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']
       changeOrigin: true
 

@@ -71,7 +71,7 @@ spec:
         platformRepo:
           title: Platform repo
           type: string
-          default: idp-mvp
+          default: backstage-platform-template
           description: The IDP platform repo where team manifests will be committed
 
   steps:

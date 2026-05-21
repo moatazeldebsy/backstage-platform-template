@@ -196,6 +196,29 @@ catalog:
       target: /catalog/templates/testcontainers-suite/template.yaml
       rules:
         - allow: [Template]
+    # Contract-testing templates intentionally disabled (hidden from end users).
+    # To re-enable, uncomment the two blocks below and re-deploy the contract
+    # KAgent agent (see scripts/bootstrap-ai.sh).
+    # - type: file
+    #   target: /catalog/templates/contract-testing-suite/template.yaml
+    #   rules:
+    #     - allow: [Template]
+    # - type: file
+    #   target: /catalog/templates/enable-contract-testing/template.yaml
+    #   rules:
+    #     - allow: [Template]
+    - type: file
+      target: /catalog/templates/unit-test-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/component-test-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/iac-test-suite/template.yaml
+      rules:
+        - allow: [Template]
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml
@@ -230,6 +253,11 @@ catalog:
       target: /catalog/services/idp-assistant/catalog-info.yaml
       rules:
         - allow: [Component]
+    # contract-mcp-server component intentionally hidden from the catalog.
+    # - type: file
+    #   target: /catalog/services/contract-mcp-server/catalog-info.yaml
+    #   rules:
+    #     - allow: [Component]
     # ── AI / ML / MCP Platform ───────────────────────────────────────────────
     - type: file
       target: /catalog/templates/ai-agent-kagent/template.yaml
@@ -304,55 +332,25 @@ kubernetes:
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
 
 techRadar:
-  url: https://raw.githubusercontent.com/YOUR_GITHUB_ORG/backstage-idp-starter/main/backstage/catalog/tech-radar.json
+  url: https://raw.githubusercontent.com/YOUR_GITHUB_ORG/backstage-platform-template/main/backstage/catalog/tech-radar.json
 
-# Tech Insights — developer scorecard fact collection
+# Tech Insights — developer scorecard fact collection.
+#
+# The 11-check Bronze/Silver/Gold scorecard is rendered by a custom entity-page
+# tab ("Scorecard") wired in backstage/app/packages/app/src/extensions.tsx.
+# That tab computes checks client-side from each entity's annotations.
+#
+# This config registers the fact retrievers themselves so the same facts are
+# also written to the Tech Insights backend DB, where the exporter
+# (observability/tech-insights-exporter) pushes them to Pushgateway/CloudWatch.
 techInsights:
   factRetrievers:
+    idp-entity-facts:
+      cadence: '*/30 * * * *'
     entityMetadataFactRetriever:
       cadence: '*/30 * * * *'
     entityOwnershipFactRetriever:
       cadence: '*/30 * * * *'
-  scorecards:
-    - id: golden-path-scorecard
-      name: Golden Path Scorecard
-      description: Checks that a service follows the IDP golden path
-      checks:
-        - id: has-owner
-          name: Has Owner
-          description: Component must have an owner group defined
-          factRef: entityMetadataFactRetriever:default/hasOwner
-          successCriteria:
-            - factOperator: IS_GREATER_THAN
-              value: 0
-        - id: has-lifecycle
-          name: Has Lifecycle
-          description: Component must have a lifecycle (development, production, deprecated)
-          factRef: entityMetadataFactRetriever:default/hasLifecycle
-          successCriteria:
-            - factOperator: IS_GREATER_THAN
-              value: 0
-        - id: has-techdocs
-          name: Has TechDocs
-          description: Component must have a backstage.io/techdocs-ref annotation
-          factRef: entityMetadataFactRetriever:default/hasTechDocs
-          successCriteria:
-            - factOperator: IS_GREATER_THAN
-              value: 0
-        - id: has-kubernetes-id
-          name: Has Kubernetes ID
-          description: Component must have backstage.io/kubernetes-id annotation for K8s plugin
-          factRef: entityMetadataFactRetriever:default/hasAnnotation/backstage.io/kubernetes-id
-          successCriteria:
-            - factOperator: IS_GREATER_THAN
-              value: 0
-        - id: has-grafana-link
-          name: Has Grafana Link
-          description: Component should have a Grafana dashboard link in metadata.links
-          factRef: entityMetadataFactRetriever:default/hasLinks
-          successCriteria:
-            - factOperator: IS_GREATER_THAN
-              value: 0
 
 ragSearch:
   voyageApiKey: ${VOYAGE_API_KEY}

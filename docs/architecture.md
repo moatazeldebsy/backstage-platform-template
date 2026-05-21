@@ -36,8 +36,15 @@
 │  ┌──────────────────────┐         ┌────────────────────────────────┐ │
 │  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
 │  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
-│  │ IDP MCP Server       │         │                                │ │
-│  └──────────────────────┘         └────────────────────────────────┘ │
+│  │ contract-assistant   │         │                                │ │
+│  │ IDP MCP Server       │         └────────────────────────────────┘ │
+│  │ QA MCP Server        │                                            │
+│  │ Contract MCP Server  │         namespace: services-dev            │
+│  └──────────────────────┘         ┌────────────────────────────────┐ │
+│                                   │ contract-mcp-server (port 3003)│ │
+│                                   │ idp-mcp-server (port 3001)     │ │
+│                                   │ qa-mcp-server  (port 3002)     │ │
+│                                   └────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────────────── ┘
                     │ (AWS only)
                     ▼

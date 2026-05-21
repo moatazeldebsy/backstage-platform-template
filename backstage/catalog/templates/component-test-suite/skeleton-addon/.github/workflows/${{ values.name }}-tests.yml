@@ -1,0 +1,68 @@
+name: Component Tests (${{ values.name }})
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'test-suites/${{ values.name }}/**'
+      - '.github/workflows/${{ values.name }}-tests.yml'
+  pull_request:
+    branches: [main]
+
+jobs:
+  component:
+    name: Component Tests
+    runs-on: ubuntu-latest
+    services:
+      wiremock:
+        image: wiremock/wiremock:3.9.1
+        ports:
+          - 8089:8080
+        volumes:
+          - ${{ '${{ github.workspace }}' }}/test-suites/${{ values.name }}/wiremock:/home/wiremock
+        options: --health-cmd="curl -fsS http://localhost:8080/__admin/health || exit 1" --health-interval=5s --health-retries=10
+
+      service-under-test:
+        image: ${{ values.serviceContainerImage }}
+        ports:
+          - ${{ values.servicePort }}:${{ values.servicePort }}
+        env:
+          # Point the service at WireMock for outbound HTTP. Override these env
+          # vars to match the names your service actually uses.
+          DOWNSTREAM_BASE_URL: http://wiremock:8080
+        options: --health-cmd="curl -fsS http://localhost:${{ values.servicePort }}/healthz || exit 1" --health-interval=5s --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install test deps
+        working-directory: test-suites/${{ values.name }}
+        run: npm ci || npm install
+
+      - name: Wait for stack
+        run: |
+          for url in http://localhost:8089/__admin/health http://localhost:${{ values.servicePort }}/healthz; do
+            for i in {1..30}; do
+              if curl -fsS "$url" >/dev/null; then echo "OK: $url"; break; fi
+              sleep 2
+            done
+          done
+
+      - name: Run component tests
+        working-directory: test-suites/${{ values.name }}
+        env:
+          SERVICE_URL: http://localhost:${{ values.servicePort }}
+          WIREMOCK_URL: http://localhost:8089
+        run: npx vitest run --reporter=junit --outputFile=test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-test-results
+          path: test-suites/${{ values.name }}/test-results.xml
+          retention-days: 7

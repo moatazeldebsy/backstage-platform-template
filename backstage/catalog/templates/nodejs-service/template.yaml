@@ -116,6 +116,24 @@ spec:
         repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
 
+    # Local-only safety net: when running without a real GITHUB_TOKEN the
+    # publish step above silently fails, so catalog:register has nothing to
+    # register. This action writes the entity directly to the local catalog
+    # so the new Component is visible immediately after scaffold.
+    - id: register-local
+      name: Register in Local Catalog (no-GitHub fallback)
+      action: idp:catalog-register-local
+      continueOnError: true
+      input:
+        entityName: ${{ parameters.name }}
+        entityKind: Component
+        entityType: service
+        owner: ${{ parameters.owner }}
+        description: ${{ parameters.description }}
+        annotations:
+          backstage.io/source-location: ${{ parameters.repoUrl }}
+          backstage.io/techdocs-ref: dir:.
+
     - id: register-api
       name: Register API in Catalog
       action: catalog:register

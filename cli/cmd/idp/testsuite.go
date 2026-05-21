@@ -23,6 +23,9 @@ var templateRef = map[string]string{
 	"chaos":          "chaos-mesh-suite",
 	"mutation":       "mutation-testing-suite",
 	"testcontainers": "testcontainers-suite",
+	"unit":           "unit-test-suite",
+	"component":      "component-test-suite",
+	"iac":            "iac-test-suite",
 }
 
 var (
@@ -85,7 +88,11 @@ Uses the Backstage Scaffolder API when reachable; falls back to generating
 files locally under test-suites/<name>/.
 
 Supported types: playwright | k6 | pact | newman | zap | datadog | visual |
-                 accessibility | cucumber | appium | chaos | mutation | testcontainers`,
+                 accessibility | cucumber | appium | chaos | mutation | testcontainers |
+                 unit | component | iac
+
+Note: 'unit', 'component', and 'iac' currently work only via the Backstage API
+(omit --local). They open a PR against an existing service/Terraform repo.`,
 	Example: `  # Playwright E2E suite for hello-service
   idp scaffold test-suite --name hello-e2e --type playwright --service hello-service
 

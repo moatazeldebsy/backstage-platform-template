@@ -108,7 +108,7 @@ spec:
           title: Pact Broker URL
           type: string
           description: URL of your PactFlow broker (leave blank to skip publishing)
-          default: 'https://YOUR_ORG.pactflow.io'
+          default: 'https://YOUR_GITHUB_ORG.pactflow.io'
         providerBaseUrl:
           title: Provider Base URL
           type: string

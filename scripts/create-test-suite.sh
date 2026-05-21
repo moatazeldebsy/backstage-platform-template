@@ -50,7 +50,7 @@ P95_THRESHOLD=500
 # pact
 CONSUMER_NAME=""
 PROVIDER_NAME=""
-PACT_BROKER_URL="https://YOUR_ORG.pactflow.io"
+PACT_BROKER_URL="https://${PACTFLOW_ORG:-YOUR_PACTFLOW_ORG}.pactflow.io"
 PROVIDER_BASE_URL="http://localhost:8080"
 
 # zap

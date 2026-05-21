@@ -11,6 +11,7 @@ metadata:
     backstage.io/adr-location: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/tree/main/docs/adr
     backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbooks/service.md
     cost-center: "${{ values.costCenter }}"
+    idp.io/quality-gates: "coverage,static-analysis,vuln-scan"
   links:
     - title: Grafana Dashboard
       url: http://grafana.idp.local/d/idp-services/idp-services-overview

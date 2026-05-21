@@ -1,0 +1,19 @@
+# Patch this into your service's helm-values-local.yaml to enable
+# automatic contract registration and compatibility checks on every ArgoCD sync.
+#
+# PostSync: after every deploy, pulls /openapi.json and registers the contract,
+#           then runs a full compatibility report against all known consumers.
+# PreSync:  (optional) set checkBreaking: true in CI with fromVersion/toVersion
+#           to block deploys that introduce breaking API changes.
+
+contractCheck:
+  enabled: true
+  mcpServerUrl: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
+  checkBreaking: false
+  # Enable PreSync breaking-change check from CI:
+  #   helm upgrade ${{ values.providerName }} ... \
+  #     --set contractCheck.checkBreaking=true \
+  #     --set contractCheck.fromVersion=<current-tag> \
+  #     --set contractCheck.toVersion=<new-tag>
+  fromVersion: ""
+  toVersion: ""

@@ -87,6 +87,8 @@ spec:
           ui:options:
             allowedHosts:
               - github.com
+            allowedOwners:
+              - YOUR_GITHUB_ORG
 
   steps:
     - id: fetch

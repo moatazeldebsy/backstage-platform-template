@@ -1,0 +1,225 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: contract-testing-suite
+  title: Contract Testing Suite (MCP-Powered)
+  description: >
+    Scaffold a self-describing, self-testing API contract suite. Generates an OpenAPI
+    consumer contract, Pact consumer tests, and a CI workflow that auto-registers the
+    spec with the IDP contract registry (contract-mcp-server) for AI-assisted compatibility checks.
+  tags:
+    - contract-testing
+    - pact
+    - mcp
+    - self-describing
+    - testing
+    - qa
+    - local
+    - aws
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Suite Details
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Suite Name
+          type: string
+          description: Unique name for this contract test suite (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          maxLength: 200
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        targetService:
+          title: Target Provider Service
+          type: string
+          description: The provider service this consumer contract targets
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+              - kind: Component
+                spec.type: website
+        deploymentMode:
+          title: Deployment Mode
+          type: string
+          enum: [new-repository, add-to-existing]
+          enumNames:
+            - 'Create a new repository'
+            - 'Add tests to an existing service repo (opens PR)'
+          default: new-repository
+      dependencies:
+        deploymentMode:
+          oneOf:
+            - properties:
+                deploymentMode:
+                  enum: [new-repository]
+                repoUrl:
+                  title: GitHub Repository
+                  type: string
+                  ui:field: RepoUrlPicker
+                  ui:help: 'Repository name must not already exist on GitHub.'
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - YOUR_GITHUB_ORG
+              required:
+                - repoUrl
+            - properties:
+                deploymentMode:
+                  enum: [add-to-existing]
+                targetRepoUrl:
+                  title: Target Service Repository
+                  type: string
+                  description: 'Pick the existing GitHub repo to open the PR against'
+                  ui:field: RepoUrlPicker
+                  ui:options:
+                    allowedHosts:
+                      - github.com
+                    allowedOwners:
+                      - YOUR_GITHUB_ORG
+              required:
+                - targetRepoUrl
+
+    - title: Contract Configuration
+      required:
+        - consumerName
+        - providerName
+      properties:
+        consumerName:
+          title: Consumer Name
+          type: string
+          description: Name of the consuming service (the one making API calls)
+        providerName:
+          title: Provider Name
+          type: string
+          description: Name of the provider service being contracted
+        providerBaseUrl:
+          title: Provider Base URL
+          type: string
+          description: 'Provider URL for local verification (e.g. http://localhost:8080)'
+          default: 'http://localhost:8080'
+        pactBrokerUrl:
+          title: Pact Broker URL
+          type: string
+          description: URL of your PactFlow broker (leave blank to skip publishing)
+          default: 'https://YOUR_GITHUB_ORG.pactflow.io'
+        contractMcpServerUrl:
+          title: Contract MCP Server URL
+          type: string
+          description: URL of the IDP contract registry for AI-assisted checks (leave blank to skip)
+          default: 'http://contract-mcp-server.idp.local'
+
+  steps:
+    - id: fetch-template-new-repo
+      name: Fetch Template (New Repo)
+      action: fetch:template
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          consumerName: ${{ parameters.consumerName }}
+          providerName: ${{ parameters.providerName }}
+          providerBaseUrl: ${{ parameters.providerBaseUrl }}
+          pactBrokerUrl: ${{ parameters.pactBrokerUrl }}
+          contractMcpServerUrl: ${{ parameters.contractMcpServerUrl }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-template-addon
+      name: Fetch Template (Add to Existing)
+      action: fetch:template
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        url: ./skeleton-addon
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          targetService: ${{ parameters.targetService }}
+          consumerName: ${{ parameters.consumerName }}
+          providerName: ${{ parameters.providerName }}
+          providerBaseUrl: ${{ parameters.providerBaseUrl }}
+          pactBrokerUrl: ${{ parameters.pactBrokerUrl }}
+          contractMcpServerUrl: ${{ parameters.contractMcpServerUrl }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - contract-testing
+          - pact
+          - mcp
+          - qa
+
+    - id: publish-pr
+      name: Open Pull Request on Service Repo
+      action: publish:github:pull-request
+      continueOnError: true
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'test: add ${{ parameters.name }} contract test suite'
+        branchName: feat/add-${{ parameters.name }}-contract-suite
+        description: |
+          ## Add ${{ parameters.name }} Contract Test Suite
+
+          Adds a self-describing contract test suite for `${{ parameters.consumerName }}` → `${{ parameters.providerName }}`.
+
+          **What's included:**
+          - `contract/openapi.yaml` — consumer's expected API contract (register with contract-mcp-server)
+          - `tests/${{ parameters.name }}.pact.spec.ts` — Pact consumer tests
+          - `.github/workflows/${{ parameters.name }}-contract.yml` — CI workflow with MCP registration
+          - `catalog-info.yaml` — Backstage entity registration
+
+          After merging, register the catalog entry via **Backstage → Catalog → Register existing component**.
+
+          > Scaffolded via the IDP Contract Testing Platform
+        sourcePath: .
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

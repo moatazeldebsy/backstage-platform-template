@@ -41,64 +41,145 @@ SKIP_DORA=false
 DESTROY=false
 UPDATE_BACKSTAGE_IP=false
 START_BACKSTAGE=false
+RUN_BACKSTAGE_AFTER=false
 INSTALL_PUSHGATEWAY=false
 INSTALL_ARGOCD=false
 PRINT_URLS=false
 # Read provider from env first; CLI --provider flag overrides below.
 PROVIDER="${KUBERNETES_PROVIDER:-kind}"
 
-# ── Source local/.env to pick up GITHUB_ORG and PLATFORM_REPO ────────────────
-# Then apply any remaining YOUR_GITHUB_ORG / YOUR_PLATFORM_REPO placeholders
-# so that templates and catalog files are always personalised on every bootstrap.
+# ── Apply personalisation from .idp-config.env or local/.env ─────────────────
+# Day-2 re-runs read the single-source-of-truth file written by setup.sh and
+# re-apply any YOUR_* placeholders that may have crept back in (e.g. after
+# `git pull`). Manifest-driven — adding a row to placeholders.conf is enough.
 _apply_personalization() {
-  local env_file="${ROOT_DIR}/local/.env"
-  if [[ ! -f "$env_file" ]]; then
-    warn "local/.env not found — skipping placeholder substitution."
-    warn "Run ./scripts/setup.sh first, or create local/.env from local/.env.example."
+  load_idp_config   # sources .idp-config.env into the shell if present
+
+  # Fallback: legacy local/.env (covers users who upgraded before setup.sh ran)
+  if [[ -z "${GITHUB_ORG:-}" ]]; then
+    local env_file="${ROOT_DIR}/local/.env"
+    if [[ -f "$env_file" ]]; then
+      GITHUB_ORG=$(grep -E '^GITHUB_ORG=' "$env_file" | cut -d= -f2- | tr -d '"' || true)
+      PLATFORM_REPO=$(grep -E '^PLATFORM_REPO=' "$env_file" | cut -d= -f2- | tr -d '"' || true)
+    fi
+  fi
+
+  if [[ -z "${GITHUB_ORG:-}" || "${GITHUB_ORG}" == "YOUR_GITHUB_ORG" ]]; then
+    warn "GITHUB_ORG not set (no .idp-config.env or local/.env) — skipping placeholder substitution."
+    warn "Run ./scripts/setup.sh first."
     return
   fi
 
-  local github_org platform_repo
-  github_org=$(grep -E '^GITHUB_ORG=' "$env_file" | cut -d= -f2- | tr -d '"' || true)
-  platform_repo=$(grep -E '^PLATFORM_REPO=' "$env_file" | cut -d= -f2- | tr -d '"' || true)
+  load_placeholder_manifest   # populates MANIFEST_* arrays
 
-  if [[ -z "$github_org" || "$github_org" == "YOUR_GITHUB_ORG" ]]; then
-    warn "GITHUB_ORG is not set in local/.env — skipping placeholder substitution."
+  # Build sed -e expressions and grep -F patterns from the manifest in one pass.
+  # The grep pre-filter narrows ~700 candidate files down to those that actually
+  # still contain a token, making day-2 reruns ~instant.
+  local sed_args=() grep_patterns=()
+  local i name placeholder literal value
+  for i in "${!MANIFEST_NAMES[@]}"; do
+    name="${MANIFEST_NAMES[$i]}"
+    placeholder="${MANIFEST_PLACEHOLDERS[$i]}"
+    literal="${MANIFEST_LITERALS[$i]}"
+    value="${!name:-}"
+    [[ -z "$value" || "$value" == "$placeholder" ]] && continue
+    # Use | as sed delimiter so values containing / (e.g. DOCS_REPO_URL = https://...)
+    # don't break the s/// expression.
+    sed_args+=(-e "s|${placeholder}|${value}|g")
+    sed_args+=(-e "s|\${{ ${placeholder} }}|${value}|g")
+    grep_patterns+=("${placeholder}")
+    if [[ -n "$literal" && "$value" != "$literal" ]]; then
+      sed_args+=(-e "s|${literal}|${value}|g")
+      grep_patterns+=("${literal}")
+    fi
+  done
+
+  # Legacy YOUR_ORG alias. Skip when PACTFLOW_ORG itself is still the placeholder
+  # (e.g. user opted out at setup) — otherwise we'd write the placeholder back into files.
+  local legacy_org=""
+  if [[ -n "${PACTFLOW_ORG:-}" && "$PACTFLOW_ORG" != "YOUR_PACTFLOW_ORG" ]]; then
+    legacy_org="$PACTFLOW_ORG"
+  elif [[ -n "${GITHUB_ORG:-}" && "$GITHUB_ORG" != "YOUR_GITHUB_ORG" ]]; then
+    legacy_org="$GITHUB_ORG"
+  fi
+  if [[ -n "$legacy_org" && "$legacy_org" != "YOUR_ORG" ]]; then
+    sed_args+=(-e "s|YOUR_ORG|${legacy_org}|g")
+    grep_patterns+=("YOUR_ORG")
+  fi
+
+  if [[ ${#sed_args[@]} -eq 0 ]]; then
+    log "Personalisation: no resolved values — nothing to apply."
     return
   fi
 
-  log "Applying personalisation: YOUR_GITHUB_ORG → ${github_org}"
-
+  # Prune large generated/vendored dirs with -prune (faster than -path filters,
+  # which still descend before rejecting). Also skip lockfiles and binary blobs
+  # that can't contain placeholders but are MB-sized.
   local targets
   targets=$(LC_ALL=C find \
     "${ROOT_DIR}/backstage/catalog" \
+    "${ROOT_DIR}/backstage/app" \
     "${ROOT_DIR}/backstage/app-config.yaml" \
     "${ROOT_DIR}/kubernetes" \
     "${ROOT_DIR}/local/argocd" \
     "${ROOT_DIR}/observability" \
     "${ROOT_DIR}/services" \
-    -type f \
-    ! -path '*/node_modules/*' \
-    ! -path '*/.yarn/cache/*' \
-    ! -path '*/dist/*' \
-    ! -name '*.png' ! -name '*.jpg' ! -name '*.ico' \
+    "${ROOT_DIR}/terraform" \
+    "${ROOT_DIR}/test-suites" \
+    "${ROOT_DIR}/.github/workflows" \
+    "${ROOT_DIR}/.github/CODEOWNERS" \
+    "${ROOT_DIR}/.github/pull_request_template.md" \
+    "${ROOT_DIR}/CONTRIBUTING.md" \
+    "${ROOT_DIR}/CHANGELOG.md" \
+    "${ROOT_DIR}/README.md" \
+    "${ROOT_DIR}/CLAUDE.md" \
+    "${ROOT_DIR}/mkdocs.yml" \
+    \( -type d \( \
+        -name node_modules -o \
+        -name .yarn -o \
+        -name dist -o \
+        -name dist-types -o \
+        -name .next -o \
+        -name build -o \
+        -name coverage \
+      \) -prune \) -o \
+    \( -type f \
+      ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
+      ! -name '*.gif' ! -name '*.svg' \
+      ! -name 'yarn.lock' ! -name 'package-lock.json' ! -name 'pnpm-lock.yaml' \
+      ! -name 'go.sum' \
+      ! -name '*.tsbuildinfo' ! -name '*.gz' ! -name '*.tgz' \
+      -print \) \
     2>/dev/null)
 
-  # Use a while-read loop so _sed (a shell function) is called in the current
-  # shell. xargs spawns subprocesses that cannot see shell functions.
-  while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    _sed "s/YOUR_GITHUB_ORG/${github_org}/g" "$f" 2>/dev/null || true
-  done <<< "$targets"
+  # Assemble -e args for grep from grep_patterns
+  local grep_e_args=()
+  for p in "${grep_patterns[@]}"; do
+    grep_e_args+=(-e "$p")
+  done
 
-  if [[ -n "$platform_repo" && "$platform_repo" != "YOUR_PLATFORM_REPO" && "$platform_repo" != "backstage-platform-template" ]]; then
-    while IFS= read -r f; do
-      [[ -z "$f" ]] && continue
-      _sed "s/backstage-platform-template/${platform_repo}/g" "$f" 2>/dev/null || true
-    done <<< "$targets"
+  # Pre-filter: only files containing at least one placeholder/literal token.
+  # NUL-delimit filenames so paths with spaces are handled correctly.
+  local matching
+  matching=$(printf '%s\n' "$targets" \
+    | grep -v '^$' \
+    | tr '\n' '\0' \
+    | xargs -0 grep -l -F "${grep_e_args[@]}" 2>/dev/null || true)
+
+  if [[ -z "$matching" ]]; then
+    log "Personalisation: no remaining placeholders (GITHUB_ORG=${GITHUB_ORG}) — skipping."
+    return
   fi
 
-  log "Personalisation applied."
+  local count=0
+  log "Applying personalisation from manifest (GITHUB_ORG=${GITHUB_ORG})"
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    _sed "${sed_args[@]}" "$f" 2>/dev/null || true
+    count=$((count + 1))
+  done <<< "$matching"
+
+  log "Personalisation applied to ${count} file(s)."
 }
 
 while [[ $# -gt 0 ]]; do
@@ -110,7 +191,7 @@ while [[ $# -gt 0 ]]; do
     --destroy)             DESTROY=true;            shift ;;
     --clean-docker)        CLEAN_DOCKER=true;       shift ;;
     --update-backstage-ip) UPDATE_BACKSTAGE_IP=true;  shift ;;
-    --full)                START_BACKSTAGE=true;       shift ;;
+    --full)                RUN_BACKSTAGE_AFTER=true;   shift ;;
     --start-backstage)     START_BACKSTAGE=true;       shift ;;
     --install-pushgateway) INSTALL_PUSHGATEWAY=true;   shift ;;
     --install-argocd)      INSTALL_ARGOCD=true;        shift ;;
@@ -181,11 +262,12 @@ _print_url_banner() {
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  AI / ML Platform  (install: ./scripts/bootstrap-ai.sh)                  ║"
-  echo "║  KAgent UI        http://kagent.idp.local                                ║"
-  echo "║  AI Assistant     http://backstage.idp.local/ai-assistant                ║"
-  echo "║  MLflow           http://mlflow.idp.local                                ║"
-  echo "║  IDP MCP Server   http://idp-mcp-server.idp.local/healthz                ║"
-  echo "║  QA MCP Server    http://qa-mcp-server.idp.local/healthz                 ║"
+  echo "║  KAgent UI           http://kagent.idp.local                            ║"
+  echo "║  AI Assistant        http://backstage.idp.local/ai-assistant            ║"
+  echo "║  MLflow              http://mlflow.idp.local                            ║"
+  echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz            ║"
+  echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz             ║"
+  echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz       ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Local registry   localhost:5003                                          ║"
   echo "╚═══════════════════════════════════════════════════════════════════════════╝"
@@ -452,15 +534,9 @@ _start_backstage() {
     kubectl config use-context rancher-desktop 2>/dev/null || true
   fi
 
-  local bundle="${ROOT_DIR}/backstage/app/packages/backend/dist/bundle.tar.gz"
-  if [[ ! -f "$bundle" ]]; then
-    log "Backend bundle not found — running yarn install + yarn build:backend..."
-    command -v yarn &>/dev/null || err "yarn not found. Install it with: npm install -g yarn"
-    (cd "${ROOT_DIR}/backstage/app" && yarn install && yarn build:backend) || \
-      err "Backstage backend build failed. Fix errors above and re-run --start-backstage."
-    log "Backend bundle built."
-  fi
-
+  # The Backstage Dockerfile is multi-stage — it runs `yarn install` and
+  # `yarn build:backend` inside the builder stage, so no host-side bundle
+  # build is needed. Steady-state rebuilds reuse BuildKit cache mounts.
   log "Building and starting Backstage Docker Compose..."
   ${COMPOSE_CMD} build backstage
   ${COMPOSE_CMD} up -d
@@ -563,7 +639,14 @@ if [[ ! -x "${ROOT_DIR}/bin/idp" ]]; then
 fi
 
 # ── Personalisation: replace any remaining YOUR_GITHUB_ORG placeholders ──────
-_apply_personalization
+# setup.sh exports IDP_PERSONALIZATION_DONE=1 after its own initial pass so we
+# don't repeat the ~700-file scan on first install. Day-2 standalone runs do
+# the pass to catch any placeholders that crept back in (e.g. after git pull).
+if [[ "${IDP_PERSONALIZATION_DONE:-0}" == "1" ]]; then
+  log "Personalisation: skipped (already applied by setup.sh)."
+else
+  _apply_personalization
+fi
 
 log "Starting local IDP MVP bootstrap (cluster=$CLUSTER_NAME)"
 
@@ -1038,6 +1121,32 @@ else
   log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."
 fi
 
+# ── Step 11a: Flaky-Test Exporter ────────────────────────────────────────────
+# Requires a GitHub token to read workflow run artifacts. Reuses GITHUB_TOKEN
+# from local/.env if present; otherwise creates an empty Secret and warns.
+if ! $SKIP_OBS; then
+  (
+    set -e
+    log "Step 11a: Deploying Flaky-Test Exporter CronJob..."
+    GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
+    if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+      warn "  GITHUB_TOKEN not set — Flaky-Test Exporter will deploy but skip every tick."
+      warn "  Set GITHUB_TOKEN in local/.env (needs 'actions:read' on service repos) and re-apply."
+      GH_TOKEN_FOR_FLAKE="placeholder-set-via-local-env"
+    fi
+    kubectl create secret generic flaky-test-exporter-github-token \
+      --from-literal=token="$GH_TOKEN_FOR_FLAKE" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create configmap flaky-test-exporter-script \
+      --from-file=exporter.py="${ROOT_DIR}/observability/flaky-test-exporter/exporter.py" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/cronjob.yaml"
+    log "  Flaky-Test Exporter deployed."
+  ) || warn "Step 11a (Flaky-Test Exporter) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+else
+  log "Step 11a: Skipping Flaky-Test Exporter (--skip-obs)."
+fi
+
 # ── Step 11b: ServiceMonitor — Prometheus scraping for services namespaces ────
 if ! $SKIP_OBS; then
   (
@@ -1131,3 +1240,8 @@ fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 _print_url_banner
+
+# ── --full: chain Backstage build + start after the main bootstrap ───────────
+if $RUN_BACKSTAGE_AFTER; then
+  _start_backstage
+fi
