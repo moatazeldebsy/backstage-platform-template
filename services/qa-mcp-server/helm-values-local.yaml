@@ -87,3 +87,8 @@ backstage:
 
 podLabels:
   backstage.io/kubernetes-id: qa-mcp-server
+
+# Local overlay: single replica, no HPA (chart default enables HPA for prod).
+replicaCount: 1
+autoscaling:
+  enabled: false
