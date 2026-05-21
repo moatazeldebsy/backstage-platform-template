@@ -10,6 +10,20 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+#### Crossplane alongside Terraform (per-service AWS provisioning)
+- **`terraform/iam-crossplane.tf`** — IRSA role assumed by Crossplane's upbound AWS providers (`StringLike` on `system:serviceaccount:crossplane-system:provider-aws-*`), with AWS-managed `*FullAccess` policies attached for S3, RDS, MSK, DynamoDB, SQS plus a tagging policy. New TF output `crossplane_aws_role_arn`.
+- **`kubernetes/crossplane/`** — in-cluster Crossplane stack:
+  - `providers/` — `provider-aws-{s3,rds,kafka,dynamodb,sqs}` pinned to v1.18.0, shared `DeploymentRuntimeConfig` for IRSA annotation, default `ProviderConfig` with `source: IRSA`.
+  - `compositions/` — XRDs + Compositions for `XS3Bucket`, `XRDSInstance`, `XKafkaTopic`, `XDynamoTable`, `XSQSQueue`. Opinionated defaults: encryption on, public-access blocked, PITR on, `idp:provisioner/owner/cost-center` tags.
+  - Reference `example-claim.yaml` per resource for hand-rolled testing.
+- **`kubernetes/argocd/crossplane.yaml`** — three ArgoCD Applications ordered by sync-wave: core Helm chart (-10), providers (-5), compositions (0).
+- **`scripts/bootstrap.sh` Phase 4.6a** — substitutes the TF-output IRSA role ARN into `deployment-runtime-config.yaml` and hands the stack to ArgoCD. Skips gracefully if TF state isn't present.
+- **Backstage scaffolder templates** (parallel to existing TF-PR templates):
+  - `s3-bucket-crossplane`, `rds-database-crossplane`, `kafka-topic-crossplane`
+  - `dynamodb-table-crossplane`, `sqs-queue-crossplane` (no TF equivalent; new resource types)
+  - Each opens a PR adding a single Claim YAML at `services/<ownerService>/claims/<name>.yaml`; ArgoCD's existing `idp-services` ApplicationSet picks them up automatically.
+- **Documentation** — `docs/crossplane.md` (end-to-end flow + bootstrap), `docs/crossplane-vs-terraform.md` (decision matrix and tool-boundary rationale), `CLAUDE.md` architecture section, `README.md` infrastructure summary, `docs/architecture.md` IaC subsection + component inventory, `docs/golden-path.md` template list, `docs/getting-started.md` verification steps, `docs/readiness-checklist.md` Crossplane checks.
+
 #### Shift-Left Quality Engineering programme
 - **Skeleton CI hardening** — `nodejs-service`, `go-service`, `python-service`, and `react-frontend` templates now ship with a parallel `quality` job (lint + type-check, dependency vuln scan via `govulncheck`/`npm audit`/`pip-audit`, and Trivy filesystem scan for CVEs + secrets + misconfig), a 70% coverage threshold gate on the `test` job, JUnit + coverage artifact upload (7-day retention), and a `publish` job that requires both gates to pass.
 - **Scorecard expansion (v0.2.0)** — `idpTechInsights.ts` retires the 6-check scorecard for an 11-check Bronze/Silver/Gold tier model. New facts: `has-coverage-gate`, `has-static-analysis`, `has-vuln-scan`, `has-contract-tests`, `has-e2e-tests`. Driven by the new `idp.io/quality-gates` annotation on every language skeleton's `catalog-info.yaml`.

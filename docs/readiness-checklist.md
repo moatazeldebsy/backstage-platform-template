@@ -33,6 +33,13 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] S3 buckets for TechDocs have bucket versioning and server-side encryption enabled
 - [ ] RDS egress security group rule restricts to VPC CIDR, not `0.0.0.0/0`
 
+### Infrastructure (Crossplane)
+- [ ] Crossplane IRSA role attaches AWS-managed `*FullAccess` policies — tighten to least-privilege custom policies before prod
+- [ ] All Crossplane-provisioned resources carry `idp:provisioner=crossplane`, `idp:owner`, `idp:cost-center` tags ✅ (enforced by Compositions)
+- [ ] No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)
+- [ ] `kubectl get providers.pkg.crossplane.io` shows all five providers `HEALTHY=True`
+- [ ] Backstage `*-crossplane` scaffolder templates produce PRs that sync within ~60s of merge
+
 ### Container & Kubernetes
 - [ ] Helm is installed from a pinned version with SHA256 checksum in Dockerfile ✅ (fixed)
 - [ ] `ml-platform` and `kagent` namespace PSS changed from `privileged` to `baseline` ✅ (fixed)

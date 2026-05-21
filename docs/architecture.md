@@ -83,6 +83,9 @@ Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManag
 ### AWS Load Balancer Controller (AWS)
 All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Balancer Controller. Supports `target-type: ip` (pod-level routing without NodePort).
 
+### IaC split: Terraform (foundation) + Crossplane (per-service)
+Both tools coexist by **lifecycle**, not by resource type. Terraform owns one-shot foundation (VPC, EKS, IAM, ECR, Secrets Manager scaffolding, **and** the IRSA role Crossplane providers assume). Crossplane owns day-2 per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) requested via Backstage scaffolder templates and reconciled in-cluster by ArgoCD — no manual `terraform apply` step. See [crossplane-vs-terraform.md](crossplane-vs-terraform.md) for the decision matrix and [crossplane.md](crossplane.md) for the end-to-end flow.
+
 ## AI/ML Platform
 
 ### How the AI Assistant works end-to-end
@@ -144,6 +147,9 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | VPC | `terraform/vpc.tf` | Network isolation |
 | ECR | `terraform/ecr.tf` | Cloud container registry |
 | IAM + OIDC | `terraform/iam.tf` | Keyless CI/CD auth |
+| Crossplane IRSA role | `terraform/iam-crossplane.tf` | IAM role assumed by Crossplane AWS providers |
+| Crossplane providers + Compositions | `kubernetes/crossplane/` | Per-service S3/RDS/MSK/DynamoDB/SQS via Claims |
+| ArgoCD Crossplane stack | `kubernetes/argocd/crossplane.yaml` | Sync-wave-ordered install: core → providers → compositions |
 | Service chart | `helm/service-template/` | Deployment template (local + AWS) |
 | Platform CI/CD | `.github/workflows/build-and-deploy.yml` | Root platform pipeline |
 | Backstage config | `backstage/app-config.yaml` | Portal configuration |

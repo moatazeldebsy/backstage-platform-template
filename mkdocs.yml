@@ -25,6 +25,8 @@ nav:
   - CLI Reference: cli-reference.md
   - AI Assistant: ai-assistant.md
   - Contract Testing: contract-testing.md
+  - Crossplane: crossplane.md
+  - Crossplane vs Terraform: crossplane-vs-terraform.md
   - Shift-Left Quality: shift-left.md
   - Shift-Left Demo Cheatsheet: shift-left-demo-cheatsheet.md
   - Shift-Left Pilot Kickoff: shift-left-pilot-kickoff.md
