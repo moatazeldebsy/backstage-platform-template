@@ -58,7 +58,7 @@ Backstage will:
 ### 2. Clone your new repo
 
 ```bash
-git clone https://github.com/YOUR_ORG/<service-name>
+git clone https://github.com/YOUR_GITHUB_ORG/<service-name>
 cd <service-name>
 ```
 
@@ -182,7 +182,7 @@ helm upgrade --install my-service ./helm/service-template \
 
 ## CLI: Scaffold a test suite
 
-The `idp scaffold test-suite` command generates a ready-to-run QA suite alongside your service. It supports 13 test types.
+The `idp scaffold test-suite` command generates a ready-to-run QA suite alongside your service. It supports 16 test types covering every pyramid layer.
 
 ```bash
 # Playwright E2E suite
@@ -202,4 +202,4 @@ idp scaffold test-suite --name my-svc-e2e --type playwright --service my-service
 
 Generated suites land in `test-suites/<name>/` and are auto-registered in the Backstage catalog via `catalog-info.yaml`.
 
-See [CLI Reference](cli-reference.md) for all 13 test suite types and their flags.
+See [CLI Reference](cli-reference.md) for all 16 test suite types and their flags.

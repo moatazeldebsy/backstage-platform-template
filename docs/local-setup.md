@@ -110,6 +110,17 @@ Backstage is then available at http://backstage.idp.local (or http://localhost:3
 
 > **Note:** Backstage uses `dangerouslyDisableDefaultAuthPolicy: true` in `app-config.local.yaml` so the catalog loads and is accessible before sign-in completes (prevents 401 flash on first page load in Backstage v1.29+).
 
+### Known platform patches
+
+The Backstage image bundles two repo-local patches that are applied automatically — you do not need to do anything, but knowing they exist saves debugging time:
+
+| Patch | Location | Why it exists |
+|---|---|---|
+| `@material-table/core` v3 → `uuid` v10 default-export shim | `backstage/app/.yarn/patches/@material-table-core-npm-3.2.5-*.patch` | `uuid` v10 dropped its default export; without the patch, the catalog, api-docs, and techdocs pages crash with `Cannot read properties of undefined (reading 'v4')`. Verify with `grep "uuid.*v4" backstage/app/node_modules/@material-table/core/dist/utils/data-manager.js` — expect `(_uuid["default"] \|\| _uuid).v4()`. |
+| `vm2-shim` (replacing abandoned `vm2`) | `backstage/app/vm2-shim/` | `vm2` was pulled in transitively via `typescript-json-schema` → `@backstage/config-loader` and has no upstream security fix. The shim is a thin wrapper over Node's built-in `vm` module and is copied into the image before `yarn workspaces focus` runs. |
+
+Both patches are tracked in git and re-applied automatically by `yarn install` and by the multi-stage `backstage/Dockerfile`. If you ever see catalog tables fail to render or scaffolder actions crash on startup, re-run `yarn install` inside `backstage/app/` and rebuild the image.
+
 ### Environment files (first time only)
 
 ```bash

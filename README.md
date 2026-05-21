@@ -43,6 +43,7 @@
 | **QA templates** | 13 testing scaffold templates — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual, a11y, Cucumber, Appium, Chaos Mesh, Stryker, Testcontainers |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
 | **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + IDP MCP Server (catalog/metrics/scaffolding tools for agents) + AI Assistant chat page embedded in Backstage |
+| **Contract testing** _(opt-in)_ | `contract-mcp-server` — self-describing, self-testing APIs; services expose `/openapi.json`, the AI agent auto-discovers contracts, generates Pact tests, detects breaking changes, and validates compatibility; ArgoCD PostSync/PreSync hooks run automatically on every deploy. **Disabled by default** — to enable, uncomment the contract-testing blocks in `backstage/app-config.yaml` and `scripts/bootstrap-ai.sh`. |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
 | **Infrastructure** | Terraform modules for EKS, VPC, ECR, IAM (OIDC + IRSA), RDS, S3, Secrets Manager |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
@@ -249,8 +250,9 @@ idp scaffold service --help
 ### Scaffold a test suite
 
 ```bash
-# 13 types: playwright | k6 | pact | newman | zap | datadog | visual |
-#           accessibility | cucumber | appium | chaos | mutation | testcontainers
+# 16 types: playwright | k6 | pact | newman | zap | datadog | visual |
+#           accessibility | cucumber | appium | chaos | mutation | testcontainers |
+#           unit | component | iac
 idp scaffold test-suite --name hello-e2e   --type playwright    --service hello-service
 idp scaffold test-suite --name hello-load  --type k6            --service hello-service --vus 50 --duration 5m
 idp scaffold test-suite --name hello-sec   --type zap           --service hello-service --scan-type baseline
