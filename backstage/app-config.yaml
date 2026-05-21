@@ -222,6 +222,30 @@ catalog:
       target: /catalog/templates/iac-test-suite/template.yaml
       rules:
         - allow: [Template]
+    # ── Crossplane Claim templates (parallel to TF-based ones above) ─────────
+    # Emit a Crossplane Claim YAML into services/<owner>/claims/ instead of a
+    # Terraform PR. ArgoCD picks the Claim up on merge; Crossplane reconciles
+    # it. See docs/crossplane.md for the boundary with Terraform.
+    - type: file
+      target: /catalog/templates/s3-bucket-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/rds-database-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/kafka-topic-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/dynamodb-table-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/sqs-queue-crossplane/template.yaml
+      rules:
+        - allow: [Template]
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml

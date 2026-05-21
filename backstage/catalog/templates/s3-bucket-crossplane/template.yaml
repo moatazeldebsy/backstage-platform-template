@@ -1,0 +1,123 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: s3-bucket-crossplane
+  title: S3 Object Bucket (Crossplane)
+  description: |
+    Request an S3 bucket via a Crossplane Claim. ArgoCD picks the Claim up
+    on merge; Crossplane reconciles it into a real bucket within a few
+    minutes. No `terraform apply` step.
+  tags:
+    - s3
+    - storage
+    - aws
+    - crossplane
+    - golden-path
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure
+      required:
+        - bucketName
+        - ownerService
+        - owner
+      properties:
+        bucketName:
+          title: Bucket name
+          type: string
+          description: Globally unique S3 bucket name (lowercase, hyphens, up to 63 chars)
+          pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$'
+          ui:autofocus: true
+        ownerService:
+          title: Owning service
+          type: string
+          description: Service that will consume this bucket — Claim lands in this service's claims/ directory
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          description: Team that owns this bucket
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        awsRegion:
+          title: AWS region
+          type: string
+          default: eu-west-1
+          enum: [us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-1]
+        versioning:
+          title: Versioning
+          type: boolean
+          default: true
+        costCenter:
+          title: Cost center
+          type: string
+          default: engineering
+
+    - title: Review
+      properties:
+        repoUrl:
+          title: Platform repo
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+            allowedOwners: [YOUR_GITHUB_ORG]
+            allowedRepos: [backstage-platform-template]
+
+  steps:
+    - id: fetch-template
+      name: Generate Crossplane Claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: services/${{ parameters.ownerService }}/claims
+        values:
+          bucketName: ${{ parameters.bucketName }}
+          ownerService: ${{ parameters.ownerService }}
+          owner: ${{ parameters.owner }}
+          awsRegion: ${{ parameters.awsRegion }}
+          versioning: ${{ parameters.versioning }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: open-pr
+      name: Open PR to register Crossplane Claim
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat(infra): S3 bucket ${{ parameters.bucketName }} via Crossplane"
+        branchName: crossplane/s3/${{ parameters.bucketName }}
+        description: |
+          Adds an `S3Bucket` Crossplane Claim at
+          `services/${{ parameters.ownerService }}/claims/${{ parameters.bucketName }}.yaml`.
+
+          | Parameter | Value |
+          |---|---|
+          | Bucket | `${{ parameters.bucketName }}` |
+          | Region | `${{ parameters.awsRegion }}` |
+          | Versioning | `${{ parameters.versioning }}` |
+          | Cost center | `${{ parameters.costCenter }}` |
+
+          **After merge:** ArgoCD syncs the Claim, Crossplane creates the
+          bucket. Check status with:
+
+          ```bash
+          kubectl get s3bucket ${{ parameters.bucketName }} -n services-dev
+          ```
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the PR.
+          2. ArgoCD syncs the Claim within ~1 min.
+          3. `kubectl get s3bucket ${{ parameters.bucketName }} -n services-dev` shows `READY=True` once the bucket is provisioned (~30–60 s).
+          4. Set `S3_BUCKET_NAME=${{ parameters.bucketName }}` in your service's env.

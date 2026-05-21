@@ -1,0 +1,16 @@
+apiVersion: idp.platform/v1alpha1
+kind: SQSQueue
+metadata:
+  name: ${{ values.queueName }}
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: ${{ values.ownerService }}
+spec:
+  parameters:
+    queueName: ${{ values.queueName }}
+    owner: ${{ values.owner }}
+    region: ${{ values.awsRegion }}
+    fifo: ${{ values.fifo }}
+    visibilityTimeoutSeconds: ${{ values.visibilityTimeoutSeconds }}
+    messageRetentionSeconds: ${{ values.messageRetentionSeconds }}
+    costCenter: ${{ values.costCenter }}

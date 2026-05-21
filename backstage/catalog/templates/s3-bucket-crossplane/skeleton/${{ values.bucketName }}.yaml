@@ -1,0 +1,14 @@
+apiVersion: idp.platform/v1alpha1
+kind: S3Bucket
+metadata:
+  name: ${{ values.bucketName }}
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: ${{ values.ownerService }}
+spec:
+  parameters:
+    bucketName: ${{ values.bucketName }}
+    region: ${{ values.awsRegion }}
+    owner: ${{ values.owner }}
+    versioning: ${{ values.versioning }}
+    costCenter: ${{ values.costCenter }}

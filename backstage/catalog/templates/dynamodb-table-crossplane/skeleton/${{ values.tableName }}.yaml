@@ -1,0 +1,17 @@
+apiVersion: idp.platform/v1alpha1
+kind: DynamoTable
+metadata:
+  name: ${{ values.tableName }}
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: ${{ values.ownerService }}
+spec:
+  parameters:
+    tableName: ${{ values.tableName }}
+    hashKey: ${{ values.hashKey }}
+    hashKeyType: ${{ values.hashKeyType }}
+    owner: ${{ values.owner }}
+    region: ${{ values.awsRegion }}
+    billingMode: ${{ values.billingMode }}
+    pointInTimeRecovery: ${{ values.pointInTimeRecovery }}
+    costCenter: ${{ values.costCenter }}

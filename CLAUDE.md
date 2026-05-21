@@ -155,7 +155,14 @@ Kind / Rancher Desktop (local) or EKS (AWS)
   namespace: argocd       → ArgoCD (App-of-Apps)
   namespace: kagent       → KAgent + idp-assistant + IDP MCP Server
   namespace: ml-platform  → MLflow tracking server
+  namespace: crossplane-system → Crossplane core + AWS providers (AWS only)
 ```
+
+### IaC: Terraform + Crossplane (overlap by lifecycle, not by tool)
+
+- **Terraform** (`terraform/`) — foundation: VPC, EKS, IAM/OIDC, ECR, Secrets Manager scaffolding, **and** the IRSA role Crossplane providers assume (`terraform/iam-crossplane.tf`). One-shot, platform-team-owned, applied from outside the cluster.
+- **Crossplane** (`kubernetes/crossplane/`) — per-service AWS resources requested via Backstage scaffolder templates: S3, RDS, Kafka topics, DynamoDB, SQS. Claims live at `services/<svc>/claims/*.yaml` and are synced by the existing `idp-services` ApplicationSet. AWS-only; the local Kind path is unchanged.
+- Scaffolder templates come in pairs: `s3-bucket` (TF PR + manual `terraform apply`) and `s3-bucket-crossplane` (writes a Claim, ArgoCD syncs it). Choose by lifecycle; see `docs/crossplane-vs-terraform.md`.
 
 ### Backstage plugin system
 
