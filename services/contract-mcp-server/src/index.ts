@@ -10,25 +10,42 @@ import { parseSpec, generatePactJson, generatePactTestCode, detectBreakingChange
 const PORT = parseInt(process.env.PORT ?? '3003', 10);
 const K8S_API = process.env.K8S_API ?? 'https://kubernetes.default.svc';
 const K8S_TOKEN = process.env.K8S_TOKEN ?? '';
+const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '8000', 10);
+const DISCOVER_PROBE_TIMEOUT_MS = parseInt(process.env.DISCOVER_PROBE_TIMEOUT_MS ?? '2500', 10);
+const DISCOVER_CONCURRENCY = parseInt(process.env.DISCOVER_CONCURRENCY ?? '10', 10);
 
-async function fetchK8s(path: string) {
-  const SA_TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
-  const token = K8S_TOKEN || (fs.existsSync(SA_TOKEN_PATH) ? fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim() : '');
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${K8S_API}${path}`, { headers } as RequestInit);
-  if (!res.ok) throw new Error(`K8s API error ${res.status} at ${path}`);
-  return res.json() as Promise<{ items: Array<Record<string, unknown>> }>;
-}
+// Service-account token is read once at boot; kubelet rotates the file
+// in-place, so re-reading per request just adds blocking I/O on the hot path.
+const SA_TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
+let cachedSaToken = '';
+try {
+  if (fs.existsSync(SA_TOKEN_PATH)) {
+    cachedSaToken = fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim();
+    fs.watch(SA_TOKEN_PATH, { persistent: false }, () => {
+      try {
+        cachedSaToken = fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim();
+      } catch { /* ignore — keep last good token until next rotation */ }
+    });
+  }
+} catch { /* not running in-cluster; K8S_TOKEN env var is used instead */ }
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs: number = HTTP_TIMEOUT_MS, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(id);
   }
+}
+
+async function fetchK8s(path: string) {
+  const token = K8S_TOKEN || cachedSaToken;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetchWithTimeout(`${K8S_API}${path}`, HTTP_TIMEOUT_MS, { headers } as RequestInit);
+  if (!res.ok) throw new Error(`K8s API error ${res.status} at ${path}`);
+  return res.json() as Promise<{ items: Array<Record<string, unknown>> }>;
 }
 
 collectDefaultMetrics();
@@ -412,42 +429,48 @@ function createServer() {
           error?: string;
         };
 
-        const results: DiscoveryResult[] = [];
+        // Probe each service in parallel (bounded). Sequential probing of N
+        // services × 2.5s per path made discovery O(N) on the wall clock and
+        // unusable in namespaces with many services.
+        const candidates = data.items
+          .map(svc => (svc['metadata'] as Record<string, unknown>)?.['name'] as string)
+          .filter(n => n && n !== 'kubernetes');
+        const tryPaths = ['/openapi.json', '/openapi.yaml'];
 
-        for (const svc of data.items) {
-          const meta = svc['metadata'] as Record<string, unknown>;
-          const serviceName = meta['name'] as string;
-          if (serviceName === 'kubernetes') continue;
-
-          const tryPaths = ['/openapi.json', '/openapi.yaml'];
+        async function probe(serviceName: string): Promise<DiscoveryResult> {
           const baseUrl = `http://${serviceName}.${namespace}.svc.cluster.local:${port}`;
-
-          let found = false;
           for (const p of tryPaths) {
             try {
-              const res = await fetchWithTimeout(`${baseUrl}${p}`, 2500);
+              const res = await fetchWithTimeout(`${baseUrl}${p}`, DISCOVER_PROBE_TIMEOUT_MS);
               if (res.ok) {
                 const specText = await res.text();
                 const parsed = parseSpec(specText);
                 const specVersion = parsed.info?.version ?? new Date().toISOString().slice(0, 10);
                 const entry = registerContract(serviceName, specVersion, specText);
-                results.push({
+                return {
                   serviceName,
                   status: 'discovered',
                   version: specVersion,
                   title: parsed.info?.title,
                   paths: entry.paths,
-                });
-                found = true;
-                break;
+                };
               }
             } catch {
               // try next path
             }
           }
+          return { serviceName, status: 'no_spec' };
+        }
 
-          if (!found) {
-            results.push({ serviceName, status: 'no_spec' });
+        const results: DiscoveryResult[] = [];
+        for (let i = 0; i < candidates.length; i += DISCOVER_CONCURRENCY) {
+          const batch = candidates.slice(i, i + DISCOVER_CONCURRENCY);
+          const settled = await Promise.allSettled(batch.map(probe));
+          for (let j = 0; j < settled.length; j++) {
+            const s = settled[j];
+            results.push(s.status === 'fulfilled'
+              ? s.value
+              : { serviceName: batch[j], status: 'error', error: String(s.reason) });
           }
         }
 

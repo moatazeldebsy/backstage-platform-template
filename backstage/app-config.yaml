@@ -55,7 +55,10 @@ integrations:
 techdocs:
   builder: 'local'
   generator:
-    runIn: 'docker'
+    # mkdocs-techdocs-core is installed in the Backstage runtime image
+    # (see backstage/Dockerfile). Building docs in-process avoids spawning a
+    # fresh Docker container per build (several seconds of startup overhead).
+    runIn: 'local'
   publisher:
     type: 'awsS3'
     awsS3:
@@ -303,8 +306,11 @@ catalog:
       rules:
         - allow: [Component]
 
-  # GitHub org auto-discovery — finds all repos with a catalog-info.yaml in
-  # YOUR_GITHUB_ORG automatically. New scaffolded services appear within 15 min.
+  # GitHub org auto-discovery — finds repos tagged with the `idp` topic that
+  # contain a catalog-info.yaml. Scaffolded services are tagged automatically;
+  # add the `idp` topic to any pre-existing repo you want imported. Limiting
+  # discovery by topic avoids scanning every fork/archived/tooling repo in the
+  # org every 15 minutes (GitHub API rate-limit pressure).
   # Requires GITHUB_TOKEN with read:org + repo scopes in local/.env.
   providers:
     github:
@@ -313,7 +319,8 @@ catalog:
         catalogPath: /catalog-info.yaml
         filters:
           branch: main
-          repository: '.*'
+          topic:
+            include: [idp]
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }
@@ -328,7 +335,9 @@ kubernetes:
           name: idp-mvp
           authProvider: 'serviceAccount'
           skipTLSVerify: true
-          skipMetricsLookup: false
+          # Entity pages render faster when we skip the metrics-server hop.
+          # Flip to false per-cluster if live CPU/mem on the K8s tab is required.
+          skipMetricsLookup: true
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
 
 techRadar:
@@ -344,13 +353,15 @@ techRadar:
 # also written to the Tech Insights backend DB, where the exporter
 # (observability/tech-insights-exporter) pushes them to Pushgateway/CloudWatch.
 techInsights:
+  # Cadences are staggered so all three retrievers don't write to the DB at the
+  # same minute — spreading the load across the 30-minute window.
   factRetrievers:
     idp-entity-facts:
       cadence: '*/30 * * * *'
     entityMetadataFactRetriever:
-      cadence: '*/30 * * * *'
+      cadence: '5-59/30 * * * *'
     entityOwnershipFactRetriever:
-      cadence: '*/30 * * * *'
+      cadence: '10-59/30 * * * *'
 
 ragSearch:
   voyageApiKey: ${VOYAGE_API_KEY}

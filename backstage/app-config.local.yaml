@@ -87,8 +87,8 @@ techRadar:
   url: http://localhost:7007/tech-radar.json
 
 techdocs:
-  builder: 'local'
-  generator:
-    runIn: 'local'   # use mkdocs installed in the container, not a separate Docker-in-Docker call
+  # Builder/generator already match the base config (local). Only the publisher
+  # differs from prod: store generated docs on the container filesystem
+  # instead of S3 so local doesn't need AWS credentials.
   publisher:
-    type: 'local'    # store generated docs on the container filesystem
+    type: 'local'

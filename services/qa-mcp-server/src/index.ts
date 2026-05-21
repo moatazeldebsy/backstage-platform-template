@@ -2,7 +2,7 @@ import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import fetch from 'node-fetch';
+import fetch, { RequestInit } from 'node-fetch';
 import { register, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
 
 const BACKSTAGE_URL = process.env.BACKSTAGE_URL ?? 'http://backstage:7007';
@@ -10,6 +10,19 @@ const BACKSTAGE_EXTERNAL_URL = process.env.BACKSTAGE_EXTERNAL_URL ?? 'http://bac
 const BACKSTAGE_TOKEN = process.env.BACKSTAGE_TOKEN ?? '';
 const PROMETHEUS_URL = process.env.PROMETHEUS_URL ?? 'http://prometheus-kube-prometheus-prometheus.monitoring:9090';
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
+const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '8000', 10);
+
+// fetchWithTimeout wraps node-fetch with an AbortSignal so an unresponsive
+// upstream can't hang a tool call forever.
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = HTTP_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 collectDefaultMetrics();
 const toolCalls = new Counter({ name: 'qa_mcp_tool_calls_total', help: 'Total QA MCP tool calls', labelNames: ['tool'] });
@@ -39,7 +52,7 @@ const TEST_SUITE_TEMPLATES = new Set([
 async function fetchCatalog(path: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (BACKSTAGE_TOKEN) headers['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
-  const res = await fetch(`${BACKSTAGE_URL}${path}`, { headers });
+  const res = await fetchWithTimeout(`${BACKSTAGE_URL}${path}`, { headers });
   if (!res.ok) throw new Error(`Backstage API error ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -48,7 +61,7 @@ async function fetchCatalog(path: string) {
 
 async function fetchPrometheus(query: string) {
   const url = `${PROMETHEUS_URL}/api/v1/query?query=${encodeURIComponent(query)}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error(`Prometheus error ${res.status}`);
   return res.json() as Promise<{ data: { result: Array<{ metric: Record<string, string>; value: [number, string] }> } }>;
 }
@@ -152,7 +165,7 @@ function createServer() {
 
         const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
         if (BACKSTAGE_TOKEN) authHeaders['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
-        const res = await fetch(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks`, {
+        const res = await fetchWithTimeout(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks`, {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({ templateRef: template_ref, values: enrichedValues }),
@@ -160,17 +173,21 @@ function createServer() {
         if (!res.ok) throw new Error(`Scaffolder error ${res.status}: ${await res.text()}`);
         const task = await res.json() as { id: string };
 
-        // Poll for task completion so callers don't need authenticated status requests.
+        // Poll for task completion with exponential backoff + jitter so many
+        // concurrent scaffolds don't produce synchronized API spikes.
         const pollHeaders: Record<string, string> = {};
         if (BACKSTAGE_TOKEN) pollHeaders['Authorization'] = `Bearer ${BACKSTAGE_TOKEN}`;
-        const POLL_INTERVAL_MS = 4000;
-        const POLL_TIMEOUT_MS = 180000; // 3 minutes
+        const POLL_TIMEOUT_MS = 180000; // 3 minutes total
         const deadline = Date.now() + POLL_TIMEOUT_MS;
         let taskStatus = 'processing';
         let taskOutput: unknown = undefined;
+        let attempt = 0;
         while (Date.now() < deadline) {
-          await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-          const statusRes = await fetch(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks/${task.id}`, { headers: pollHeaders });
+          const base = Math.min(4000, 500 * Math.pow(2, attempt));
+          const jitter = base * (0.8 + Math.random() * 0.4);
+          await new Promise(r => setTimeout(r, jitter));
+          attempt++;
+          const statusRes = await fetchWithTimeout(`${BACKSTAGE_URL}/api/scaffolder/v2/tasks/${task.id}`, { headers: pollHeaders });
           if (statusRes.ok) {
             const statusBody = await statusRes.json() as { status: string; output?: unknown };
             taskStatus = statusBody.status;

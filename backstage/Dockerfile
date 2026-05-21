@@ -51,9 +51,14 @@ RUN HELM_VERSION=3.17.3 && \
     mv /tmp/linux-amd64/helm /usr/local/bin/helm && \
     rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
 
-# Install kubectl
-RUN curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-    -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+# Install kubectl (pinned version with checksum verification — matches the helm
+# pattern above. Pinning removes the extra network round-trip to stable.txt on
+# every build and keeps the layer cache-friendly + supply-chain verifiable.)
+RUN KUBECTL_VERSION=v1.31.4 && \
+    KUBECTL_SHA256=298e19e9c6c17199011404278f0ff8168a7eca4217edad9097af577023a5620f && \
+    curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && \
+    echo "${KUBECTL_SHA256}  /usr/local/bin/kubectl" | sha256sum -c - && \
+    chmod +x /usr/local/bin/kubectl
 
 # Install docker CLI (for idp:seed-image scaffolder action — tags & pushes
 # placeholder images to the local Kind registry on behalf of new services)

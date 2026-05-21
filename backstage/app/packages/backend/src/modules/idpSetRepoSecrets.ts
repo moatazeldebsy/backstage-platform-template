@@ -109,13 +109,17 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
         key_id: string;
       };
 
-      // Encrypt and set each secret
-      const results: string[] = [];
-      for (const [name, value] of Object.entries(secrets)) {
+      // Encrypt + PUT each secret in parallel. The previous sequential loop
+      // made wall-clock time O(N × RTT); for ~5 secrets on a slow link this
+      // dominated scaffold latency.
+      const entries = Object.entries(secrets).filter(([name, value]) => {
         if (!value) {
           ctx.logger.warn(`Skipping secret ${name} — value is empty`);
-          continue;
+          return false;
         }
+        return true;
+      });
+      const settled = await Promise.allSettled(entries.map(async ([name, value]) => {
         const encryptedValue = await encryptSecret(publicKey, value);
         const setResp = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/actions/secrets/${name}`,
@@ -125,16 +129,25 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
             body: JSON.stringify({ encrypted_value: encryptedValue, key_id: keyId }),
           },
         );
-        if (setResp.ok || setResp.status === 201 || setResp.status === 204) {
+        if (!(setResp.ok || setResp.status === 201 || setResp.status === 204)) {
+          const body = await setResp.text();
+          throw new Error(`status=${setResp.status}: ${body}`);
+        }
+        return name;
+      }));
+      const results: string[] = [];
+      for (let i = 0; i < settled.length; i++) {
+        const s = settled[i];
+        const name = entries[i][0];
+        if (s.status === 'fulfilled') {
           ctx.logger.info(`Secret ${name} set on ${owner}/${repo}`);
           results.push(name);
         } else {
-          const body = await setResp.text();
-          ctx.logger.warn(`Failed to set secret ${name} (${setResp.status}): ${body}`);
+          ctx.logger.warn(`Failed to set secret ${name}: ${s.reason instanceof Error ? s.reason.message : String(s.reason)}`);
         }
       }
 
-      ctx.logger.info(`Done. Set ${results.length}/${Object.keys(secrets).length} secrets: ${results.join(', ')}`);
+      ctx.logger.info(`Done. Set ${results.length}/${entries.length} secrets: ${results.join(', ')}`);
     },
   });
 }

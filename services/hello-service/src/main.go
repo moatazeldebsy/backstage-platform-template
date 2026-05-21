@@ -21,19 +21,36 @@ var version = "dev"
 var httpRequestsTotal = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "http_requests_total",
-		Help: "Total number of HTTP requests by method, path, and status code.",
+		Help: "Total number of HTTP requests by method, route, and status code.",
 	},
-	[]string{"method", "path", "status_code"},
+	[]string{"method", "route", "status_code"},
 )
 
 var httpRequestDuration = promauto.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name:    "http_request_duration_seconds",
-		Help:    "HTTP request duration in seconds by method, path, and status code.",
+		Help:    "HTTP request duration in seconds by method, route, and status code.",
 		Buckets: prometheus.DefBuckets,
 	},
-	[]string{"method", "path", "status_code"},
+	[]string{"method", "route", "status_code"},
 )
+
+// knownRoutes bounds Prometheus label cardinality: only registered paths are
+// emitted as a label value; anything else collapses to "other". Without this,
+// adversarial or templated paths (e.g. /users/{id}) produce unbounded series.
+var knownRoutes = map[string]struct{}{
+	"/":             {},
+	"/healthz":      {},
+	"/ready":        {},
+	"/openapi.json": {},
+}
+
+func routeLabel(path string) string {
+	if _, ok := knownRoutes[path]; ok {
+		return path
+	}
+	return "other"
+}
 
 func main() {
 	port := getEnv("PORT", "8080")
@@ -88,8 +105,9 @@ func instrumentedMux(next http.Handler) http.Handler {
 		next.ServeHTTP(rw, r)
 		duration := time.Since(start).Seconds()
 		statusCodes := strconv.Itoa(rw.statusCode)
-		httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, statusCodes).Inc()
-		httpRequestDuration.WithLabelValues(r.Method, r.URL.Path, statusCodes).Observe(duration)
+		route := routeLabel(r.URL.Path)
+		httpRequestsTotal.WithLabelValues(r.Method, route, statusCodes).Inc()
+		httpRequestDuration.WithLabelValues(r.Method, route, statusCodes).Observe(duration)
 	})
 }
 
@@ -116,7 +134,11 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
+// openAPISpecBytes is pre-marshalled at startup; the document is static so we
+// avoid rebuilding the map and re-encoding on every request.
+var openAPISpecBytes = mustMarshalOpenAPISpec()
+
+func mustMarshalOpenAPISpec() []byte {
 	spec := map[string]any{
 		"openapi": "3.0.3",
 		"info": map[string]any{
@@ -184,7 +206,17 @@ func handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	}
-	writeJSON(w, http.StatusOK, spec)
+	b, err := json.Marshal(spec)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(openAPISpecBytes)
 }
 
 func handleLiveness(w http.ResponseWriter, r *http.Request) {

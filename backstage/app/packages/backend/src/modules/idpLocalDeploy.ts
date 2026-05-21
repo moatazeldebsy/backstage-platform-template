@@ -8,6 +8,12 @@ import * as path from 'path';
 
 const execAsync = promisify(exec);
 
+// Exec timeouts (ms). Surfaces a clear error instead of hanging the scaffolder
+// step forever when helm / kubectl / docker can't reach their endpoints.
+const EXEC_TIMEOUT_FAST_MS = 10_000;   // quick version/status checks
+const EXEC_TIMEOUT_DEPLOY_MS = 120_000; // helm upgrade --install can take a while on cold image pulls
+const EXEC_TIMEOUT_DOCKER_MS = 180_000; // docker pull/push for large images
+
 // Always pass KUBECONFIG explicitly so child processes use the rewritten
 // kubeconfig (host.docker.internal + insecure-skip-tls-verify) written at
 // container startup by the docker-compose command.
@@ -85,7 +91,7 @@ function createDeployLocalAction() {
 
       // Verify helm is available
       try {
-        const { stdout } = await execAsync('helm version --short', { env: kubeEnv });
+        const { stdout } = await execAsync('helm version --short', { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
         ctx.logger.info(`helm: ${stdout.trim()}`);
       } catch (e: any) {
         throw new Error(
@@ -98,7 +104,7 @@ function createDeployLocalAction() {
       try {
         const { stdout } = await execAsync(
           'kubectl cluster-info --request-timeout=5s',
-          { env: kubeEnv },
+          { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS },
         );
         ctx.logger.info(`Cluster: ${stdout.split('\n')[0]}`);
       } catch (e: any) {
@@ -134,7 +140,7 @@ function createDeployLocalAction() {
           `--set resources.limits.cpu=200m`,
           `--set resources.limits.memory=128Mi`,
         ].join(' '),
-        { env: kubeEnv },
+        { env: kubeEnv, timeout: EXEC_TIMEOUT_DEPLOY_MS },
       );
 
       if (helmOut) ctx.logger.info(helmOut);
@@ -144,7 +150,7 @@ function createDeployLocalAction() {
       try {
         const { stdout: pods } = await execAsync(
           `kubectl get pods -n ${namespace} -l app.kubernetes.io/instance=${serviceName} --no-headers`,
-          { env: kubeEnv },
+          { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS },
         );
         ctx.logger.info(`Pod status:\n${pods || '(no pods yet — image may still be pulling)'}`);
       } catch {
@@ -216,13 +222,13 @@ function createSeedImageAction() {
 
       try {
         // Pull source from host registry into the container's Docker daemon
-        const { stdout: pullOut } = await execAsync(`docker pull ${src}`);
+        const { stdout: pullOut } = await execAsync(`docker pull ${src}`, { timeout: EXEC_TIMEOUT_DOCKER_MS });
         if (pullOut) ctx.logger.info(pullOut.trim());
 
-        await execAsync(`docker tag ${src} ${dest}`);
+        await execAsync(`docker tag ${src} ${dest}`, { timeout: EXEC_TIMEOUT_FAST_MS });
         ctx.logger.info(`Tagged ${src} → ${dest}`);
 
-        const { stdout: pushOut } = await execAsync(`docker push ${dest}`);
+        const { stdout: pushOut } = await execAsync(`docker push ${dest}`, { timeout: EXEC_TIMEOUT_DOCKER_MS });
         if (pushOut) ctx.logger.info(pushOut.trim());
 
         ctx.logger.info(

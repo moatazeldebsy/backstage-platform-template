@@ -249,12 +249,19 @@ function AiAssistantPage() {
         if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
       } catch { /* ignore parse errors */ }
 
-      // If we don't have a sessionId yet, poll the sessions list
+      // If we don't have a sessionId yet, poll the sessions list with
+      // exponential backoff + jitter (200ms → 2s, total deadline ~15s) so
+      // concurrent chat sessions don't fan out a constant 2 req/s per user.
       if (!sessionId) {
         setStatusText('Waiting for agent…');
         const sentAt = Date.now();
-        for (let i = 0; i < 24 && !sessionId; i++) {
-          await new Promise(r => setTimeout(r, 500));
+        const sessionDeadline = Date.now() + 15_000;
+        let sAttempt = 0;
+        while (!sessionId && Date.now() < sessionDeadline) {
+          const base = Math.min(2000, 200 * Math.pow(2, sAttempt));
+          const jitter = base * (0.8 + Math.random() * 0.4);
+          await new Promise(r => setTimeout(r, jitter));
+          sAttempt++;
           const res = await fetchApi.fetch(`${proxyBase}/api/sessions`);
           if (res.ok) {
             const body = await res.json();
@@ -273,12 +280,19 @@ function AiAssistantPage() {
       contextIdRef.current = sessionId;
       if (userRef) localStorage.setItem(`ai-chat-ctx:${userRef}`, sessionId);
 
-      // Poll for agent response — events are newest-first, so agentEvents[0] is latest
-      // Scaffold can take up to 3 min (list_templates + get_template_params + scaffold_service)
+      // Poll for agent response with exponential backoff + jitter (500ms → 3s,
+      // total deadline ~5 min). Scaffold can take up to 3 min (list_templates +
+      // get_template_params + scaffold_service). Backoff replaces the previous
+      // fixed-500ms cadence that hit the proxy at 2 req/s × all active users.
       setStatusText('Agent is thinking…');
       let agentReply: string | null = null;
-      for (let i = 0; i < 600 && !agentReply; i++) {
-        await new Promise(r => setTimeout(r, 500));
+      const replyDeadline = Date.now() + 300_000; // 5 min
+      let rAttempt = 0;
+      while (!agentReply && Date.now() < replyDeadline) {
+        const base = Math.min(3000, 500 * Math.pow(2, rAttempt));
+        const jitter = base * (0.8 + Math.random() * 0.4);
+        await new Promise(r => setTimeout(r, jitter));
+        rAttempt++;
         const res = await fetchApi.fetch(`${proxyBase}/api/sessions/${sessionId}`);
         if (!res.ok) continue;
         const body = await res.json();
