@@ -1,0 +1,78 @@
+fullnameOverride: contract-mcp-server
+
+replicaCount: 1
+
+image:
+  repository: localhost:5003/contract-mcp-server
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3003
+  targetPort: 3003      # container listens on 3003
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: contract-mcp-server.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http            # 'http' is the named port (targetPort 3003)
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  - name: BACKSTAGE_URL
+    value: "http://host.docker.internal:3000"
+  - name: BACKSTAGE_EXTERNAL_URL
+    value: "http://backstage.idp.local"
+  - name: BACKSTAGE_TOKEN
+    value: "local-catalog-exporter-token"
+  - name: PORT
+    value: "3003"
+  - name: NODE_TLS_REJECT_UNAUTHORIZED
+    value: "0"
+  - name: K8S_API
+    value: "https://kubernetes.default.svc"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false   # Node.js needs writable tmp
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["services"]
+      verbs: ["get", "list"]
+
+backstage:
+  kubernetesId: contract-mcp-server
+
+podLabels:
+  backstage.io/kubernetes-id: contract-mcp-server
