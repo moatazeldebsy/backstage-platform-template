@@ -1,0 +1,128 @@
+{{- if .Values.contractCheck.enabled }}
+---
+# PostSync: after every deploy, self-describe (fetch own spec) + self-test (compatibility report)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "service-template.fullname" . }}-contract-postsync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "service-template.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: contract-postsync
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: contract-check
+          image: alpine/curl:latest
+          env:
+            - name: SERVICE_NAME
+              value: {{ include "service-template.fullname" . | quote }}
+            - name: NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: MCP_URL
+              value: {{ .Values.contractCheck.mcpServerUrl | quote }}
+            - name: PORT
+              value: {{ .Values.service.targetPort | default 8080 | quote }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "=== Self-describing: pulling /openapi.json from ${SERVICE_NAME} ==="
+              FETCH=$(curl -sf "${MCP_URL}/mcp" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json, text/event-stream" \
+                -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"fetch_service_contract\",\"arguments\":{\"service_name\":\"${SERVICE_NAME}\",\"namespace\":\"${NAMESPACE}\",\"port\":${PORT}}}}" \
+                | grep '^data:' | sed 's/^data: //' || echo '{}')
+              echo "${FETCH}"
+
+              echo ""
+              echo "=== Self-testing: compatibility report for ${SERVICE_NAME} ==="
+              REPORT=$(curl -sf "${MCP_URL}/mcp" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json, text/event-stream" \
+                -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"get_compatibility_report\",\"arguments\":{\"service_name\":\"${SERVICE_NAME}\"}}}" \
+                | grep '^data:' | sed 's/^data: //' || echo '{}')
+              echo "${REPORT}"
+              echo ""
+              echo "=== Contract check complete ==="
+
+{{- if .Values.contractCheck.checkBreaking }}
+---
+# PreSync: block deploy if new version has breaking changes vs current
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "service-template.fullname" . }}-contract-presync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "service-template.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: contract-presync
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: breaking-change-check
+          image: alpine/curl:latest
+          env:
+            - name: SERVICE_NAME
+              value: {{ include "service-template.fullname" . | quote }}
+            - name: MCP_URL
+              value: {{ .Values.contractCheck.mcpServerUrl | quote }}
+            - name: FROM_VERSION
+              value: {{ .Values.contractCheck.fromVersion | default "" | quote }}
+            - name: TO_VERSION
+              value: {{ .Values.contractCheck.toVersion | default "" | quote }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ -z "${FROM_VERSION}" ] || [ -z "${TO_VERSION}" ]; then
+                echo "FROM_VERSION or TO_VERSION not set — skipping breaking change check"
+                exit 0
+              fi
+
+              echo "=== PreSync: checking breaking changes ${SERVICE_NAME} v${FROM_VERSION} → v${TO_VERSION} ==="
+              RESULT=$(curl -sf "${MCP_URL}/mcp" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json, text/event-stream" \
+                -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"detect_breaking_changes\",\"arguments\":{\"service_name\":\"${SERVICE_NAME}\",\"from_version\":\"${FROM_VERSION}\",\"to_version\":\"${TO_VERSION}\"}}}" \
+                | grep '^data:' | sed 's/^data: //')
+
+              echo "${RESULT}"
+
+              # apk add python3 for JSON parsing
+              apk add --no-cache python3 -q 2>/dev/null || true
+              BREAKING=$(echo "${RESULT}" | python3 -c "
+              import sys, json
+              try:
+                d = json.load(sys.stdin)
+                t = json.loads(d.get('result',{}).get('content',[{}])[0].get('text','{}'))
+                print(len(t.get('breaking',[])))
+              except:
+                print(0)
+              " 2>/dev/null || echo "0")
+
+              if [ "${BREAKING}" -gt 0 ]; then
+                echo ""
+                echo "BLOCKED: ${BREAKING} breaking change(s) detected. Fix API before deploying."
+                exit 1
+              fi
+              echo "PASSED: No breaking changes — safe to deploy."
+{{- end }}
+{{- end }}

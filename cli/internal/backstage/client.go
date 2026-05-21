@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -180,12 +181,20 @@ type logBody struct {
 	StepID  string `json:"stepId"`
 }
 
+// Backstage scaffolder emits completion events with body:
+//   { "message": "Run completed with status: completed" | "...failed" | "...cancelled" }
+// The actual task status is on the task row, not in the event body — so we parse
+// it from the message string. See StorageTaskBroker.complete() in
+// @backstage/plugin-scaffolder-backend.
 type completionBody struct {
-	Status string `json:"status"`
-	Error  *struct {
+	Message string `json:"message"`
+	Error   *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
+
+// completionStatusRE captures the status word from a completion event message.
+var completionStatusRE = regexp.MustCompile(`Run completed with status:\s*(\S+)`)
 
 // streamTask reads the SSE event stream for a scaffolder task and prints log lines.
 func (c *Client) streamTask(ctx context.Context, taskID string) error {
@@ -263,18 +272,22 @@ func (c *Client) handleEvent(raw string) (completed bool, err error) {
 		if err := json.Unmarshal(ev.Body, &b); err != nil {
 			return false, fmt.Errorf("parsing completion event: %w", err)
 		}
-		switch b.Status {
+		status := ""
+		if m := completionStatusRE.FindStringSubmatch(b.Message); len(m) == 2 {
+			status = m[1]
+		}
+		switch status {
 		case "completed":
-			fmt.Printf("[idp] Task completed: %s\n", b.Status)
+			fmt.Printf("[idp] Task completed\n")
 			return true, nil
 		case "failed":
-			msg := b.Status
-			if b.Error != nil {
+			msg := b.Message
+			if b.Error != nil && b.Error.Message != "" {
 				msg = b.Error.Message
 			}
 			return false, fmt.Errorf("scaffolder task failed: %s", msg)
 		default:
-			return false, fmt.Errorf("scaffolder task ended with unexpected status %q", b.Status)
+			return false, fmt.Errorf("scaffolder task ended with unexpected status %q (message: %q)", status, b.Message)
 		}
 	}
 	return false, nil

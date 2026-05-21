@@ -126,6 +126,17 @@ securityContext:
     drop:
       - ALL
 
+# Contract testing hooks — self-describing + self-testing on every ArgoCD sync.
+# PostSync: pulls /openapi.json from the service and runs a compatibility report.
+# PreSync: blocks deploy if breaking changes detected (requires fromVersion + toVersion).
+contractCheck:
+  enabled: false
+  mcpServerUrl: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
+  # Set checkBreaking: true and provide versions to enable the PreSync blocking check.
+  checkBreaking: false
+  fromVersion: ""   # currently-deployed version (set in CI: --set contractCheck.fromVersion=1.0.0)
+  toVersion: ""     # version being deployed   (set in CI: --set contractCheck.toVersion=2.0.0)
+
 env: []
   # - name: LOG_LEVEL
   #   value: info

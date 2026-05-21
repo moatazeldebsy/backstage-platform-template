@@ -8,4 +8,4 @@ npm test                    # generate pacts/
 PROVIDER_BASE_URL=http://localhost:8080 npm run verify
 ```
 
-Set `PACT_BROKER_TOKEN` secret to publish to `https://YOUR_ORG.pactflow.io`.
+Set `PACT_BROKER_TOKEN` secret to publish to `https://YOUR_GITHUB_ORG.pactflow.io`.

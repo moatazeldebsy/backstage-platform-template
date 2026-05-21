@@ -31,7 +31,7 @@ spec:
         labels:
           category: availability
         annotations:
-          runbook: "https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/blob/main/docs/runbooks/deployment-rollback.md"
+          runbook: "https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/docs/runbooks/deployment-rollback.md"
         pageAlert:
           labels:
             severity: critical
@@ -53,7 +53,7 @@ spec:
         labels:
           category: latency
         annotations:
-          runbook: "https://github.com/YOUR_GITHUB_ORG/backstage-idp-starter/blob/main/docs/runbooks/high-cpu.md"
+          runbook: "https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/docs/runbooks/high-cpu.md"
         pageAlert:
           labels:
             severity: critical

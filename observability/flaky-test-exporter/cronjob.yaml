@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: flaky-test-exporter
+  namespace: monitoring
+  labels:
+    app: flaky-test-exporter
+    team: platform-team
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: flaky-test-exporter
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: exporter
+              image: python:3.12-slim
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  pip install requests --quiet && python /app/exporter.py
+              env:
+                - name: BACKSTAGE_URL
+                  value: "http://backstage.backstage.svc.cluster.local:7007"
+                - name: BACKSTAGE_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-catalog-exporter-token
+                      key: token
+                      optional: true
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: flaky-test-exporter-github-token
+                      key: token
+                - name: PUSHGATEWAY_URL
+                  value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
+                - name: MODE
+                  value: "pushgateway"
+                - name: WINDOW_SIZE
+                  value: "10"
+              volumeMounts:
+                - name: exporter-script
+                  mountPath: /app
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 384Mi
+          volumes:
+            - name: exporter-script
+              configMap:
+                name: flaky-test-exporter-script
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flaky-test-exporter-script
+  namespace: monitoring
+data:
+  exporter.py: |
+    # Mounted from observability/flaky-test-exporter/exporter.py
+    # Re-build this ConfigMap after editing the exporter:
+    #   kubectl create configmap flaky-test-exporter-script \
+    #     --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+    #     -n monitoring --dry-run=client -o yaml | kubectl apply -f -

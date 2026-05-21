@@ -1,0 +1,90 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: iac-test-suite
+  title: IaC Test Suite (Terraform)
+  description: Add tflint + Checkov (policy/security) + Terratest (real-apply) to an existing Terraform repo. Catches misconfigs before they ship.
+  tags:
+    - terraform
+    - iac
+    - checkov
+    - terratest
+    - tflint
+    - security
+    - shift-left
+    - aws
+spec:
+  owner: qa-team
+  type: test-suite
+
+  parameters:
+    - title: Target
+      required:
+        - targetRepoUrl
+        - owner
+      properties:
+        targetRepoUrl:
+          title: Target Terraform Repository
+          type: string
+          description: 'Existing Terraform repo to open the PR against'
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - YOUR_GITHUB_ORG
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        terraformDir:
+          title: Terraform Directory
+          type: string
+          description: 'Path within the repo containing the .tf files'
+          default: './'
+        runTerratest:
+          title: Include Terratest (real apply)
+          type: boolean
+          description: 'Adds a Go-based Terratest workflow that actually runs terraform apply against ephemeral resources. Disable if you only want static checks.'
+          default: false
+
+  steps:
+    - id: fetch
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton-addon
+        values:
+          owner: ${{ parameters.owner }}
+          terraformDir: ${{ parameters.terraformDir }}
+          runTerratest: ${{ parameters.runTerratest }}
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'test: add IaC test suite (tflint + checkov${{ parameters.runTerratest and " + terratest" or "" }})'
+        branchName: feat/add-iac-test-suite
+        description: |
+          ## Add IaC Test Suite
+
+          Adds static + dynamic IaC checks:
+
+          - **tflint** — Terraform linter, catches syntax issues and provider misuse
+          - **Checkov** — policy & security scan (CKV checks for AWS/GCP/Azure misconfigs)
+          - **Terratest** — ${{ parameters.runTerratest and "real `terraform apply` against ephemeral test resources (Go)" or "**disabled** — flip the form switch on the next scaffold to enable" }}
+          - `idp.io/quality-gates: iac` added to catalog-info
+
+          > Scaffolded via the IDP QA Platform
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

@@ -12,9 +12,46 @@ permissions:
 env:
   SERVICE_NAME: ${{ values.name }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  COVERAGE_MIN: '70'
 
 jobs:
+  quality:
+    name: Lint + Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: govulncheck (Go module vulnerabilities)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Trivy filesystem scan (deps + secrets)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln,secret,misconfig'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+
   test:
+    name: Test + Coverage Gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +68,30 @@ jobs:
           go mod verify
 
       - name: Run tests with coverage
-        run: go test ./src/... -coverprofile=coverage.out -covermode=atomic
+        run: go test ./src/... -coverprofile=coverage.out -covermode=atomic -v 2>&1 | tee test.out
+
+      - name: Enforce coverage threshold (${{ '${{ env.COVERAGE_MIN }}' }}%)
+        run: |
+          COV=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Coverage: $COV%"
+          awk -v cov="$COV" -v min="${{ '${{ env.COVERAGE_MIN }}' }}" \
+            'BEGIN { if (cov+0 < min+0) { print "FAIL: coverage "cov"% < "min"%"; exit 1 } }'
+
+      - name: Generate JUnit report
+        if: always()
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          go-junit-report -in test.out -out junit.xml || true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            coverage.out
+            junit.xml
+          retention-days: 7
 
       - name: Build Docker image (smoke check)
         run: docker build -t ${{ '${{ env.SERVICE_NAME }}' }}:ci .
@@ -49,7 +109,7 @@ jobs:
           docker stop svc && docker rm svc
 
   publish:
-    needs: test
+    needs: [test, quality]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -97,4 +157,3 @@ jobs:
           else
             echo "Values file not found at ${VALUES_FILE} — merge the Platform GitOps PR first"
           fi
-

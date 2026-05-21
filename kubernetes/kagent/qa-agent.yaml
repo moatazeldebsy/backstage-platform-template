@@ -33,6 +33,7 @@ spec:
 
       Contract Testing:
         - template:default/pact-contract-suite      — Pact consumer-driven contract tests with PactFlow broker
+        - template:default/contract-testing-suite   — MCP-powered self-describing contract suite with AI compatibility checks
 
       API Testing:
         - template:default/newman-api-suite         — Newman / Postman collection runner with CI env management

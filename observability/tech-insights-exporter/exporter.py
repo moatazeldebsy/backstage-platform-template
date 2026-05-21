@@ -31,7 +31,9 @@ AWS_REGION      = os.environ.get("AWS_REGION", "us-east-1")
 
 HEADERS = {"Authorization": f"Bearer {BACKSTAGE_TOKEN}"} if BACKSTAGE_TOKEN else {}
 
-SCORECARD_CHECKS = [
+# Scorecard checks — keep in sync with idpTechInsights.ts (the fact retriever).
+# Order matters only for human-readable logs.
+HYGIENE_CHECKS = [
     "has-owner",
     "has-techdocs",
     "has-health-probes",
@@ -39,8 +41,20 @@ SCORECARD_CHECKS = [
     "has-api-definition",
     "uses-pinned-image-tag",
 ]
+QUALITY_GATE_CHECKS = [
+    "has-coverage-gate",
+    "has-static-analysis",
+    "has-vuln-scan",
+    "has-contract-tests",
+    "has-e2e-tests",
+]
+SCORECARD_CHECKS = HYGIENE_CHECKS + QUALITY_GATE_CHECKS
 
-TIER_THRESHOLDS = {"bronze": 2, "silver": 4, "gold": 6}
+# Tier thresholds (out of 11 checks):
+#   Bronze ≥ 4  — baseline service hygiene (owner, techdocs, probes, …)
+#   Silver ≥ 7  — adds shift-left CI gates (coverage, lint, vuln scan)
+#   Gold   ≥ 10 — adds contract + e2e tests (full shift-left adoption)
+TIER_THRESHOLDS = {"bronze": 4, "silver": 7, "gold": 10}
 
 
 def fetch_entities():
@@ -61,11 +75,18 @@ def fetch_facts(entity_ref: str):
 
 def score_entity(facts: dict) -> dict:
     passed = sum(1 for c in SCORECARD_CHECKS if facts.get(c, {}).get("value") is True)
+    # Per-check booleans so the dashboard can drill into which gate failed.
+    check_results = {c: facts.get(c, {}).get("value") is True for c in SCORECARD_CHECKS}
     tier = "none"
     for t, threshold in sorted(TIER_THRESHOLDS.items(), key=lambda x: x[1]):
         if passed >= threshold:
             tier = t
-    return {"passed": passed, "total": len(SCORECARD_CHECKS), "tier": tier}
+    return {
+        "passed": passed,
+        "total": len(SCORECARD_CHECKS),
+        "tier": tier,
+        "checks": check_results,
+    }
 
 
 def push_to_pushgateway(metrics: list[dict]):
@@ -75,12 +96,29 @@ def push_to_pushgateway(metrics: list[dict]):
     for m in metrics:
         labels = f'service="{m["service"]}",team="{m["team"]}",tier="{m["tier"]}"'
         lines.append(f'idp_scorecard_checks_passed{{{labels}}} {m["passed"]}')
-    lines.append("# HELP idp_scorecard_tier_gold 1 if service has Gold scorecard tier")
-    lines.append("# TYPE idp_scorecard_tier_gold gauge")
+
+    # Per-tier gauges so the dashboard can show Bronze/Silver/Gold side-by-side.
+    for tier_name in ("bronze", "silver", "gold"):
+        lines.append(f"# HELP idp_scorecard_tier_{tier_name} 1 if service has reached {tier_name.title()} tier")
+        lines.append(f"# TYPE idp_scorecard_tier_{tier_name} gauge")
+        for m in metrics:
+            # Tiers nest: gold implies silver implies bronze.
+            tier_rank = {"none": 0, "bronze": 1, "silver": 2, "gold": 3}
+            target_rank = tier_rank[tier_name]
+            val = 1 if tier_rank.get(m["tier"], 0) >= target_rank else 0
+            labels = f'service="{m["service"]}",team="{m["team"]}"'
+            lines.append(f'idp_scorecard_tier_{tier_name}{{{labels}}} {val}')
+
+    # Per-check pass/fail so a dashboard can show "which gate is the weakest link?"
+    lines.append("# HELP idp_scorecard_check_passed 1 if a specific scorecard check passes for this service")
+    lines.append("# TYPE idp_scorecard_check_passed gauge")
     for m in metrics:
-        val = 1 if m["tier"] == "gold" else 0
-        labels = f'service="{m["service"]}",team="{m["team"]}"'
-        lines.append(f'idp_scorecard_tier_gold{{{labels}}} {val}')
+        for check, passed_bool in m["checks"].items():
+            labels = (
+                f'service="{m["service"]}",team="{m["team"]}",'
+                f'check="{check}"'
+            )
+            lines.append(f'idp_scorecard_check_passed{{{labels}}} {1 if passed_bool else 0}')
 
     payload = "\n".join(lines) + "\n"
     url = f"{PUSHGATEWAY_URL}/metrics/job/tech-insights-exporter"
@@ -92,18 +130,34 @@ def push_to_pushgateway(metrics: list[dict]):
 def push_to_cloudwatch(metrics: list[dict]):
     import boto3
     cw = boto3.client("cloudwatch", region_name=AWS_REGION)
+    tier_rank = {"none": 0, "bronze": 1, "silver": 2, "gold": 3}
     data = []
     for m in metrics:
+        base_dims = [
+            {"Name": "Service", "Value": m["service"]},
+            {"Name": "Team",    "Value": m["team"]},
+        ]
         data.append({
             "MetricName": "ScorecardChecksPassed",
-            "Dimensions": [
-                {"Name": "Service", "Value": m["service"]},
-                {"Name": "Team",    "Value": m["team"]},
-                {"Name": "Tier",    "Value": m["tier"]},
-            ],
+            "Dimensions": base_dims + [{"Name": "Tier", "Value": m["tier"]}],
             "Value": m["passed"],
             "Unit": "Count",
         })
+        for tier_name in ("bronze", "silver", "gold"):
+            target = tier_rank[tier_name]
+            data.append({
+                "MetricName": f"ScorecardTier{tier_name.title()}",
+                "Dimensions": base_dims,
+                "Value": 1 if tier_rank.get(m["tier"], 0) >= target else 0,
+                "Unit": "Count",
+            })
+        for check, passed_bool in m["checks"].items():
+            data.append({
+                "MetricName": "ScorecardCheckPassed",
+                "Dimensions": base_dims + [{"Name": "Check", "Value": check}],
+                "Value": 1 if passed_bool else 0,
+                "Unit": "Count",
+            })
     for i in range(0, len(data), 20):
         cw.put_metric_data(Namespace=CW_NAMESPACE, MetricData=data[i:i+20])
     log.info("Published %d service metrics to CloudWatch namespace %s", len(data), CW_NAMESPACE)

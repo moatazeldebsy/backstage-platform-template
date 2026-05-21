@@ -4,7 +4,7 @@ metadata:
   name: test-deepeval
   description: DeepEval LLM evaluation suite for the IDP assistant (Claude/Anthropic)
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/backstage-idp-starter
+    github.com/project-slug: YOUR_GITHUB_ORG/backstage-platform-template
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

@@ -43,7 +43,7 @@ spec:
         awsRegion:
           title: AWS region
           type: string
-          default: eu-west-1
+          default: us-east-1
           enum:
             - us-east-1
             - us-west-2

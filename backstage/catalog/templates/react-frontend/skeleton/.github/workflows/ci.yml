@@ -14,7 +14,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  test:
+  quality:
+    name: Lint + Vulnerability Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,12 +24,71 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Run tests
-        run: npm test -- --passWithNoTests
+      - name: TypeScript type-check (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Format check (prettier)
+        run: |
+          npx --yes prettier --check "src/**/*.{ts,tsx,js,jsx,json,css}" || \
+            { echo "Run 'npx prettier --write src' locally and commit."; exit 1; }
+
+      - name: npm audit (high+critical, prod deps only)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Trivy filesystem scan (deps + secrets)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln,secret,misconfig'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+
+  test:
+    name: Test + Coverage Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage (70% threshold)
+        run: |
+          npx vitest run \
+            --coverage \
+            --coverage.provider=v8 \
+            --coverage.reporter=text-summary \
+            --coverage.reporter=lcov \
+            --coverage.reporter=cobertura \
+            --coverage.thresholds.lines=70 \
+            --coverage.thresholds.statements=70 \
+            --coverage.thresholds.functions=70 \
+            --coverage.thresholds.branches=60 \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile.junit=junit.xml
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            coverage/
+            junit.xml
+          retention-days: 7
 
       - name: Build
         run: npm run build
@@ -47,7 +107,7 @@ jobs:
           docker stop app && docker rm app
 
   publish:
-    needs: test
+    needs: [test, quality]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
