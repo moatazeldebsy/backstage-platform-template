@@ -477,6 +477,21 @@ _setup_kind_registry_mirrors() {
   done
 }
 
+# ── Helper: raise inotify limits on Kind nodes ────────────────────────────────
+# Default Docker Desktop limits (128 instances) are too low for a multi-node
+# Kind cluster running Backstage + KAgent + ArgoCD + observability. When kube-proxy
+# hits "too many open files" it crashes, breaking cross-node Service routing and
+# manifesting as 502s in kagent UI and stuck DB migrations in kagent-controller.
+_raise_kind_inotify_limits() {
+  for node in $(kind get nodes --name "$CLUSTER_NAME" 2>/dev/null); do
+    docker exec --privileged "${node}" sysctl -w \
+      fs.inotify.max_user_instances=8192 \
+      fs.inotify.max_user_watches=524288 >/dev/null 2>&1 || \
+      warn "  Node ${node}: failed to raise inotify limits."
+  done
+  log "  Inotify limits raised on Kind nodes."
+}
+
 # ── Helper: apply Backstage K8s Service, Endpoints, and nginx Ingress ────────
 # Auto-detects the live container IP on the 'kind' Docker network so nginx can
 # proxy to the Docker Compose Backstage container. Falls back to the hardcoded
@@ -687,6 +702,9 @@ if [[ "$PROVIDER" == "kind" ]]; then
   # This uses hosts.toml (containerd v2 compatible) instead of the deprecated
   # containerdConfigPatches registry.mirrors syntax.
   _setup_kind_registry_mirrors
+
+  # Raise inotify limits — required for kube-proxy stability under load.
+  _raise_kind_inotify_limits
 
   # Annotate nodes so tools like kubectl know about the local registry.
   kubectl apply -f - <<EOF
