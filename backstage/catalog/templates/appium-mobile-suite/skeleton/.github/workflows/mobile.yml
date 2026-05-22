@@ -1,10 +1,12 @@
 name: Appium Mobile Tests
 
+# Hosted GitHub runners don't have a mobile device grid, so this workflow
+# runs only on demand or on a schedule. Wire APPIUM_SERVER to your grid
+# (e.g. BrowserStack / Sauce Labs) before triggering.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'
 
 env:
   APPIUM_SERVER: '${{ values.appiumServer }}'

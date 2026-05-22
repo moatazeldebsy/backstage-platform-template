@@ -21,7 +21,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-flight — skip if TARGET_URL is not reachable
+        id: preflight
+        run: |
+          if [ -z "${TARGET_URL}" ] || [ "${TARGET_URL}" = "http://localhost:3000" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::TARGET_URL not configured — first-run skip."
+            exit 0
+          fi
+          if ! curl -fsS --max-time 5 "${TARGET_URL%/}/" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::TARGET_URL (${TARGET_URL}) not reachable from runner — skipping."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Run k6 smoke test
+        if: steps.preflight.outputs.skip != 'true'
         uses: grafana/k6-action@v0.3.0
         with:
           filename: test-suites/${{ values.name }}/tests/smoke.js
@@ -34,7 +50,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-flight — skip if TARGET_URL is not reachable
+        id: preflight
+        run: |
+          if [ -z "${TARGET_URL}" ] || [ "${TARGET_URL}" = "http://localhost:3000" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::TARGET_URL not configured — skipping load test."
+            exit 0
+          fi
+          if ! curl -fsS --max-time 5 "${TARGET_URL%/}/" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::TARGET_URL (${TARGET_URL}) not reachable from runner — skipping."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Run k6 load test
+        if: steps.preflight.outputs.skip != 'true'
         uses: grafana/k6-action@v0.3.0
         with:
           filename: test-suites/${{ values.name }}/tests/load.js

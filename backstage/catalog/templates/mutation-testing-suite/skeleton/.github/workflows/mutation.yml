@@ -1,8 +1,9 @@
 name: Mutation Tests
 
+# Stryker has nothing to mutate until you add source code; run on demand
+# or weekly schedule once the suite is wired up.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
   schedule:
     - cron: '0 4 * * 0'
 

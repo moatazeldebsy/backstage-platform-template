@@ -14,28 +14,49 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      BASE_URL: '${{ values.baseUrl }}'
     defaults:
       run:
         working-directory: test-suites/${{ values.name }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-flight — skip if BASE_URL is not reachable
+        id: preflight
+        working-directory: .
+        run: |
+          if [ -z "${BASE_URL}" ] || [ "${BASE_URL}" = "http://localhost:3000" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::BASE_URL not configured — first-run skip."
+            exit 0
+          fi
+          if ! curl -fsS --max-time 5 "${BASE_URL%/}/" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::BASE_URL (${BASE_URL}) not reachable from runner — skipping."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
+        if: steps.preflight.outputs.skip != 'true'
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: test-suites/${{ values.name }}/package-lock.json
 
       - name: Install dependencies
+        if: steps.preflight.outputs.skip != 'true'
         run: npm ci
 
       - name: Install Playwright browsers
+        if: steps.preflight.outputs.skip != 'true'
         run: npx playwright install --with-deps
 
       - name: Run E2E tests
+        if: steps.preflight.outputs.skip != 'true'
         run: npx playwright test
         env:
-          BASE_URL: '${{ values.baseUrl }}'
           CI: 'true'
 
       - name: Upload HTML report

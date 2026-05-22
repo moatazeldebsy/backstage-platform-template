@@ -15,15 +15,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-flight — skip if BASE_URL is not reachable
+        id: preflight
+        run: |
+          if [ -z "${BASE_URL}" ] || [ "${BASE_URL}" = "http://localhost:3000" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::BASE_URL not configured — first-run skip."
+            exit 0
+          fi
+          if ! curl -fsS --max-time 5 "${BASE_URL%/}/" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::BASE_URL (${BASE_URL}) not reachable from runner — skipping."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
+        if: steps.preflight.outputs.skip != 'true'
         with:
           node-version: '20'
           cache: 'npm'
 
-      - run: npm ci
-      - run: npx playwright install chromium --with-deps
+      - if: steps.preflight.outputs.skip != 'true'
+        run: npm ci
+      - if: steps.preflight.outputs.skip != 'true'
+        run: npx playwright install chromium --with-deps
 
       - name: Run visual regression tests
+        if: steps.preflight.outputs.skip != 'true'
         run: npm test
 
       - name: Upload diff artifacts

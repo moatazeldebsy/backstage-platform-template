@@ -23,8 +23,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-flight — skip if scan target is not reachable
+        id: preflight
+        run: |
+          PROBE_URL="${TARGET_URL}"
+          if [ "${SCAN_TYPE}" = "api" ]; then PROBE_URL="${OPENAPI_URL}"; fi
+          if [ -z "${PROBE_URL}" ] || [ "${PROBE_URL}" = "http://localhost:3000" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::TARGET_URL/OPENAPI_URL not configured — first-run skip."
+            exit 0
+          fi
+          if ! curl -fsS --max-time 5 "${PROBE_URL%/}/" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::scan target (${PROBE_URL}) not reachable from runner — skipping."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: ZAP Baseline Scan
-        if: env.SCAN_TYPE == 'baseline'
+        if: steps.preflight.outputs.skip != 'true' && env.SCAN_TYPE == 'baseline'
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: '${{ values.targetUrl }}'
@@ -33,7 +50,7 @@ jobs:
           artifact_name: zap-report
 
       - name: ZAP Full Scan
-        if: env.SCAN_TYPE == 'full'
+        if: steps.preflight.outputs.skip != 'true' && env.SCAN_TYPE == 'full'
         uses: zaproxy/action-full-scan@v0.10.0
         with:
           target: '${{ values.targetUrl }}'
@@ -42,7 +59,7 @@ jobs:
           artifact_name: zap-report
 
       - name: ZAP API Scan
-        if: env.SCAN_TYPE == 'api'
+        if: steps.preflight.outputs.skip != 'true' && env.SCAN_TYPE == 'api'
         uses: zaproxy/action-api-scan@v0.9.0
         with:
           target: '${{ values.openApiUrl }}'

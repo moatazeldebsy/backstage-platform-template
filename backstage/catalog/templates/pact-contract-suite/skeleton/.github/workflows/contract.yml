@@ -65,4 +65,9 @@ jobs:
       - name: Verify provider against published pact
         env:
           PACT_BROKER_TOKEN: ${{ '${{ secrets.PACT_BROKER_TOKEN }}' }}
-        run: npm run verify
+        run: |
+          if [ -z "${PACT_BROKER_TOKEN}" ]; then
+            echo "::notice::PACT_BROKER_TOKEN not set — skipping provider verification."
+            exit 0
+          fi
+          npm run verify

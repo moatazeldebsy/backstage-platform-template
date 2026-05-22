@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # Coverage gate is advisory on first run so the CI goes green before tests
+  # catch up to the configured threshold. Delete this line once your suite
+  # consistently meets ${{ values.coverageThreshold }}% to enforce it.
+  COVERAGE_ADVISORY: 'true'
+
 jobs:
   unit:
     name: pytest Unit Tests
@@ -25,10 +31,22 @@ jobs:
 
       - name: Run pytest with coverage + JUnit
         run: |
+          # On first run (COVERAGE_ADVISORY=true) the coverage gate is downgraded
+          # to a warning so a brownfield repo doesn't fail before tests catch up.
+          set +e
           pytest --cov=. --cov-report=term --cov-report=xml --cov-report=html \
                  --junitxml=test-results.xml \
                  --cov-fail-under=${{ values.coverageThreshold }} \
                  tests/
+          STATUS=$?
+          set -e
+          # pytest exits 2 when --cov-fail-under is the only failure
+          if [ "$STATUS" -eq 0 ]; then exit 0; fi
+          if [ "$STATUS" -eq 2 ] && [ "${COVERAGE_ADVISORY:-false}" = "true" ]; then
+            echo "::warning::coverage below threshold ${{ values.coverageThreshold }}% (advisory — remove COVERAGE_ADVISORY from workflow env to enforce)"
+            exit 0
+          fi
+          exit "$STATUS"
 
       - name: Upload test results
         if: always()

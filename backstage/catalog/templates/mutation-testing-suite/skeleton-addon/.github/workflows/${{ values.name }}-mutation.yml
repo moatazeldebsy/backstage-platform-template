@@ -1,10 +1,9 @@
 name: ${{ values.name }} Mutation Tests
 
+# Stryker has nothing to mutate until source code is wired up; run on
+# demand or weekly schedule once the suite has real production code paths.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'test-suites/${{ values.name }}/**'
+  workflow_dispatch:
   schedule:
     - cron: '0 4 * * 0'
 

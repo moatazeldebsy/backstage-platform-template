@@ -1,10 +1,11 @@
 name: Datadog Synthetic Tests
 
+# Requires DD_API_KEY and DD_APP_KEY repo secrets and a Datadog account;
+# run on demand or on a schedule rather than every push.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
 
 env:
   DATADOG_SITE: '${{ values.datadogSite }}'
@@ -24,8 +25,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Check Datadog credentials
+        run: |
+          if [ -z "${DD_API_KEY}" ] || [ -z "${DD_APP_KEY}" ]; then
+            echo "::notice::DD_API_KEY/DD_APP_KEY not configured — skipping synthetic tests."
+            exit 0
+          fi
+
       - name: Install dependencies
+        if: env.DD_API_KEY != '' && env.DD_APP_KEY != ''
         run: npm ci
 
       - name: Run Datadog Synthetic Tests
+        if: env.DD_API_KEY != '' && env.DD_APP_KEY != ''
         run: npm test
