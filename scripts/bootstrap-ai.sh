@@ -430,6 +430,30 @@ fi
 #        manages the actual Kubernetes deployment via GitOps.
 # AWS:   build, push to ECR, and Helm-deploy directly (ArgoCD handles day-2).
 
+# Clean up stale MCP server resources from previous runs (ServiceAccount, Deployment, etc.)
+# that don't have Helm ownership metadata. Helm cannot "adopt" resources created outside
+# of Helm, so we must delete them first to allow helm upgrade --install to create them cleanly.
+cleanup_stale_mcp_resources() {
+  local svc="$1"
+  local ns="${2:-services-dev}"
+
+  # Check if ServiceAccount exists but lacks Helm metadata
+  if kubectl get sa "$svc" -n "$ns" &>/dev/null; then
+    local helm_release_label
+    helm_release_label=$(kubectl get sa "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)
+
+    # If the ServiceAccount exists but doesn't have Helm metadata, delete stale resources
+    if [[ -z "$helm_release_label" ]]; then
+      log "Cleaning up stale ${svc} resources (no Helm metadata — removing ServiceAccount, Deployment, Service)..."
+      kubectl delete serviceaccount "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
+      kubectl delete deployment "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
+      kubectl delete service "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
+      # Wait a moment for deletion to complete
+      sleep 2
+    fi
+  fi
+}
+
 if [[ "$SKIP_MCP" == "true" ]]; then
   info "Skipping IDP/QA MCP Servers (--skip-mcp)."
 else
@@ -457,6 +481,9 @@ else
   # contract-mcp-server intentionally excluded — hidden from end users.
   # To re-enable, add `contract-mcp-server` back to the list below.
   for SVC in idp-mcp-server qa-mcp-server; do
+    # Clean up stale resources from previous failed runs before deploying
+    cleanup_stale_mcp_resources "$SVC" "services-dev"
+
     info "Building ${SVC}..."
     (
       set -e
