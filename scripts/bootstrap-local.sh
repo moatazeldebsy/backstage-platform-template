@@ -402,15 +402,12 @@ if $DESTROY; then
       2>/dev/null || true
   fi
 
-  # ── Stop Backstage compose stack and local registry ───────────────────────
-  ${COMPOSE_CMD} down --volumes --remove-orphans 2>/dev/null || true
-  docker stop "$REGISTRY_NAME" 2>/dev/null || true
-  docker rm   "$REGISTRY_NAME" 2>/dev/null || true
-
-  # ── Clean up dangling images and volumes left by the local registry ───────
-  log "Pruning dangling Docker images and volumes..."
-  docker image prune -f 2>/dev/null || true
-  docker volume prune -f 2>/dev/null || true
+  # ── Stop compose stack, registry, and reclaim all IDP-related Docker state ─
+  # Reuses _clean_docker so destroy/reset/clean paths converge: removes the
+  # compose stack with --rmi all, prunes all unused images (not just dangling),
+  # drops anonymous volumes left by the local registry, and clears the buildx
+  # cache (Backstage builds alone can leave several GB behind).
+  _clean_docker
 
   log "Done."
   log ""
