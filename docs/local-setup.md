@@ -272,6 +272,17 @@ The AI Assistant at `/ai-assistant` is a **native React chat UI** (not an iframe
 ./scripts/bootstrap-ai.sh --destroy
 ```
 
+> **Certificate error on `kagent.idp.local` after `bootstrap-ai.sh`?** The
+> KAgent ingresses are HTTP-only as of commit `fe4fce2`. If you ran an earlier
+> version of this repo on the same machine, your browser may have cached HSTS
+> for `*.idp.local` from the old HTTPS-with-mkcert ingress and will keep
+> upgrading the request to HTTPS, against which nginx-ingress responds with a
+> fake default cert. Fix: open `chrome://net-internals/#hsts`, **Delete
+> domain security policies** for `kagent.idp.local` and
+> `idp-assistant.idp.local`, disable *Settings → Privacy → Always use secure
+> connections* (or exclude `*.idp.local`), and hard-reload. On a fresh clone
+> you'll never hit this.
+
 ### Using the AI Assistant in Backstage
 
 Open http://backstage.idp.local/ai-assistant (or click **AI Assistant** in the

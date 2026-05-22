@@ -77,6 +77,11 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"  2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
+  # Residue from the pre-fe4fce2 HTTPS-with-mkcert install. Harmless once the
+  # new HTTP-only ingress is applied, but its presence on second machines is a
+  # reliable fingerprint of "you upgraded across the TLS removal" — purge it
+  # so future debugging sessions don't chase a red herring.
+  kubectl delete secret kagent-tls -n kagent 2>/dev/null || true
 
   # MLflow
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
@@ -354,6 +359,13 @@ else
     check "KAgent UI ingress → ALB (AWS Load Balancer Controller)"
   else
     # Local: create API key secret directly + nginx ingresses (HTTP)
+    # Delete first: machines that ran the pre-fe4fce2 bootstrap-ai.sh have
+    # ingresses with a `tls:` block on disk in the cluster. `kubectl apply`
+    # uses server-side apply with a different field manager, which can leave
+    # the old `tls.secretName: kagent-tls` field behind — nginx then serves
+    # its fake default certificate for HTTPS requests and the browser shows
+    # a cert error. Recreating the ingress objects guarantees a clean spec.
+    kubectl delete ingress kagent-ui idp-assistant -n kagent --ignore-not-found 2>/dev/null || true
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress.yaml"
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-idp-assistant.yaml"
     check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
