@@ -85,6 +85,44 @@ load_placeholder_manifest() {
   unset -f _trim
 }
 
+# Append entries from a hosts-style file to /etc/hosts.
+#   $1 = path to source file (lines like "127.0.0.1 hostname.idp.local")
+#   $2 = optional ERE filter — only lines matching this regex are processed
+# Idempotent: skips entries already present. Flushes the macOS DNS cache when
+# anything was added. Returns 0 even if no changes were made.
+append_hosts_file() {
+  local file="$1" filter="${2:-}"
+  [[ -f "$file" ]] || { warn "append_hosts_file: $file not found"; return 0; }
+  local added=false line hostname
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    [[ -n "$filter" ]] && ! echo "$line" | grep -qE "$filter" && continue
+    hostname=$(awk '{print $2}' <<< "$line")
+    [[ -z "$hostname" ]] && continue
+    if ! grep -qF "$hostname" /etc/hosts 2>/dev/null; then
+      if sudo sh -c "echo '$line' >> /etc/hosts"; then
+        log "  Added to /etc/hosts: $hostname"
+        added=true
+      else
+        warn "  Could not add '$hostname' to /etc/hosts. Add manually:"
+        warn "  echo '$line' | sudo tee -a /etc/hosts"
+      fi
+    fi
+  done < "$file"
+
+  if $added; then
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sudo dscacheutil -flushcache 2>/dev/null || true
+      sudo killall -HUP mDNSResponder 2>/dev/null || true
+      log "  macOS DNS cache flushed."
+    elif command -v resolvectl &>/dev/null; then
+      sudo resolvectl flush-caches 2>/dev/null || true
+    fi
+  else
+    log "  /etc/hosts already up to date — no changes needed."
+  fi
+}
+
 _preflight_check_local() {
   local missing=()
   local required_cmds=(kubectl helm docker)

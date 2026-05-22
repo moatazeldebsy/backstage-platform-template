@@ -38,6 +38,13 @@ done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${REPO_ROOT}/local/.env"
+ROOT_DIR="$REPO_ROOT"
+
+# Source shared helpers (provides append_hosts_file). The loggers below
+# intentionally override lib.sh's plain log/warn so AI output stays prefixed
+# with [ai], which is used as a visual distinguisher throughout this script.
+# shellcheck source=scripts/lib.sh
+source "${REPO_ROOT}/scripts/lib.sh"
 
 info()  { echo "  [ai] $*"; }
 check() { echo "✓ $*"; }
@@ -508,29 +515,8 @@ fi
 # ── 8. /etc/hosts — AI platform entries ──────────────────────────────────────
 
 if [[ "$DEPLOY_MODE" == "local" ]]; then
-  HOSTS_ADDED=false
-  while IFS= read -r line; do
-    [[ -z "$line" || "$line" == \#* ]] && continue
-    # Only process AI/ML entries from hosts-append.txt
-    echo "$line" | grep -qE "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server" || continue
-    hostname=$(awk '{print $2}' <<< "$line")
-    [[ -z "$hostname" ]] && continue
-    if ! grep -qF "$hostname" /etc/hosts 2>/dev/null; then
-      if sudo sh -c "echo '$line' >> /etc/hosts"; then
-        log "  Added to /etc/hosts: $hostname"
-        HOSTS_ADDED=true
-      else
-        warn "  Could not add '$hostname' to /etc/hosts. Add manually:"
-        warn "  echo '$line' | sudo tee -a /etc/hosts"
-      fi
-    fi
-  done < "${REPO_ROOT}/local/hosts-append.txt"
-
-  if $HOSTS_ADDED && [[ "$(uname)" == "Darwin" ]]; then
-    sudo dscacheutil -flushcache 2>/dev/null || true
-    sudo killall -HUP mDNSResponder 2>/dev/null || true
-    log "  macOS DNS cache flushed."
-  fi
+  append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
+    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
