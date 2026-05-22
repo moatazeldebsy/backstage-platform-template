@@ -341,8 +341,8 @@ if $INSTALL_ARGOCD; then
 
   kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd || \
     warn "ApplicationSet apply failed — ArgoCD may need a moment to settle. Retry: kubectl apply -f local/argocd/app-of-apps-local.yaml -n argocd"
-  # Remove the bootstrap-deployed hello-service from 'services' so ArgoCD can
-  # manage it in 'services-dev' without an ingress hostname conflict.
+  # Belt-and-braces: clear any stale hello-service release from older bootstraps
+  # in the 'services' namespace so ArgoCD can manage it in 'services-dev'.
   helm uninstall hello-service -n services 2>/dev/null || true
   exit 0
 fi
@@ -735,11 +735,16 @@ mirrors:
 EOF
   log "  Restarting k3s to apply registry mirror..."
   rdctl shell sudo systemctl restart k3s
-  sleep 8
+  wait_kubectl_ready 90
 fi
 
 # ── Step 3: Namespaces ────────────────────────────────────────────────────────
 log "Step 3: Creating platform namespaces..."
+# A previous failed run can leave these in Terminating; wait briefly so
+# kubectl apply doesn't race with finaliser cleanup.
+for _ns in services services-dev monitoring argocd ingress-nginx gatekeeper-system opencost; do
+  wait_namespace_clear "$_ns" 60
+done
 kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
 kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
 
@@ -870,8 +875,13 @@ else
   log "Step 5b: Skipping OpenCost (--skip-obs)."
 fi
 
-# ── Step 6: Build and deploy hello-service ────────────────────────────────────
-log "Step 6: Building and deploying hello-service..."
+# ── Step 6: Build + push hello-service image (deploy is owned by ArgoCD) ─────
+# Previously this step also `helm upgrade --install`-ed hello-service into the
+# 'services' namespace just to have Step 13 uninstall it again so ArgoCD could
+# manage it in 'services-dev'. The throwaway install added ~30-60s and an
+# extra failure surface (helm --wait timeouts on first-boot image pulls) for
+# no real benefit — Step 13's ApplicationSet sync is the canonical deploy.
+log "Step 6: Building and pushing hello-service image..."
 IMAGE="localhost:${REGISTRY_PORT}/hello-service:local"
 
 docker build \
@@ -880,13 +890,6 @@ docker build \
   "${ROOT_DIR}/services/hello-service"
 
 docker push "$IMAGE"
-
-helm upgrade --install hello-service "${ROOT_DIR}/helm/service-template" \
-  --namespace services \
-  --set image.repository="localhost:${REGISTRY_PORT}/hello-service" \
-  --set image.tag=local \
-  --values "${ROOT_DIR}/services/hello-service/helm-values-local.yaml" \
-  --wait
 
 # Pre-load the nginx-prometheus-exporter sidecar image into the local registry.
 # Kind nodes pull from localhost:5003 to avoid Docker Hub rate limits and to
@@ -946,7 +949,7 @@ if ! $SKIP_GITOPS; then
       --create-namespace \
       --version 9.5.13 \
       --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
-      --wait --timeout 10m
+      --wait --timeout "$HELM_WAIT_MED"
 
     ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
       -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
@@ -979,14 +982,18 @@ if ! $SKIP_GITOPS; then
       warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
     fi
   ) || {
-    warn "Step 8 (ArgoCD) failed on first attempt — retrying once..."
-    sleep 10
+    warn "Step 8 (ArgoCD) failed on first attempt — retrying with extended timeout..."
+    # Wait for the API to settle in case the previous failure was a control-plane
+    # hiccup, then re-run with HELM_WAIT_LONG so slow first-boot image pulls don't
+    # trip the helm default again.
+    wait_kubectl_ready 60
     helm upgrade --install argocd argo/argo-cd \
       --namespace argocd \
       --create-namespace \
       --version 9.5.13 \
       --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
-      --wait --timeout 10m || warn "Step 8 (ArgoCD) failed after retry — run: ./scripts/bootstrap-local.sh --install-argocd"
+      --wait --timeout "$HELM_WAIT_LONG" \
+      || warn "Step 8 (ArgoCD) failed after retry — run: ./scripts/bootstrap-local.sh --install-argocd"
   }
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
@@ -1209,9 +1216,6 @@ if ! $SKIP_GITOPS; then
     log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
     kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
     log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
-    # Remove the bootstrap-deployed hello-service from 'services' so ArgoCD can
-    # manage it in 'services-dev' without an ingress hostname conflict.
-    helm uninstall hello-service -n services 2>/dev/null || true
   ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
 fi
 

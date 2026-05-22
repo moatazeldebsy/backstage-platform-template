@@ -170,21 +170,9 @@ echo ""
 # ── 1. Namespaces ─────────────────────────────────────────────────────────────
 
 # Wait for any of our target namespaces to finish terminating before re-applying.
-# A previous failed run can leave kagent/ml-platform stuck in "Terminating" if
-# finalisers were slow to clear; kubectl apply then succeeds on the namespace
-# object but subsequent resource creates fail with "namespace is being terminated".
-wait_for_namespace_clear() {
-  local ns="$1"
-  local phase
-  for _ in $(seq 1 60); do
-    phase=$(kubectl get ns "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-    [[ "$phase" != "Terminating" ]] && return 0
-    sleep 2
-  done
-  warn "Namespace $ns is still Terminating after 2m — continuing anyway, kubectl apply may fail."
-}
-wait_for_namespace_clear kagent
-wait_for_namespace_clear ml-platform
+# Uses the shared helper from lib.sh.
+wait_namespace_clear kagent
+wait_namespace_clear ml-platform
 
 info "Applying namespaces (ml-platform, kagent)..."
 # Retry on transient admission-webhook timeouts (gatekeeper or other validators

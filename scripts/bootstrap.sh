@@ -95,7 +95,7 @@ helm upgrade --install external-secrets external-secrets/external-secrets \
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true \
-  --wait
+  --wait --timeout 10m
 
 # ── Phase 3.6a: Create ClusterSecretStore (AWS Secrets Manager backend for ESO) ─
 log "Phase 3.6a: Creating ClusterSecretStore for AWS Secrets Manager..."
@@ -232,7 +232,7 @@ helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pu
   --set resources.limits.cpu=100m \
   --set resources.limits.memory=64Mi \
   --set "extraArgs[0]=--web.enable-admin-api" \
-  --wait
+  --wait --timeout 5m
 
 # ── Phase 4b: OpenCost ────────────────────────────────────────────────────────
 log "Phase 4b: Installing OpenCost (cluster cost visibility)..."

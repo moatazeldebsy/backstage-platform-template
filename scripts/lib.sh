@@ -4,6 +4,13 @@
 [[ -n "${_IDP_LIB_LOADED:-}" ]] && return 0
 _IDP_LIB_LOADED=1
 
+# ── Shared helm --wait timeouts ──────────────────────────────────────────────
+# Use these instead of hand-rolled --timeout values so a slow Docker pull on a
+# cold cluster doesn't silently trip the helm default (5m).
+HELM_WAIT_SHORT="${HELM_WAIT_SHORT:-5m}"
+HELM_WAIT_MED="${HELM_WAIT_MED:-10m}"
+HELM_WAIT_LONG="${HELM_WAIT_LONG:-15m}"
+
 BOLD='\033[1m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -85,6 +92,35 @@ load_placeholder_manifest() {
   unset -f _trim
 }
 
+# Wait for a namespace to leave the Terminating phase before re-applying it.
+# A previous failed run can leave namespaces stuck Terminating while finalisers
+# clear; subsequent creates fail with "namespace is being terminated".
+#   $1 = namespace name
+#   $2 = optional max wait seconds (default 120)
+wait_namespace_clear() {
+  local ns="$1" max="${2:-120}" phase elapsed=0
+  while (( elapsed < max )); do
+    phase=$(kubectl get ns "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+    [[ "$phase" != "Terminating" ]] && return 0
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  warn "Namespace $ns still Terminating after ${max}s — continuing anyway."
+}
+
+# Wait for the Kubernetes API to respond. Useful right after a control-plane
+# restart (e.g. k3s on Rancher Desktop) where kubectl racy-rejects requests.
+#   $1 = optional max wait seconds (default 60)
+wait_kubectl_ready() {
+  local max="${1:-60}" elapsed=0
+  while (( elapsed < max )); do
+    kubectl get --raw='/readyz' >/dev/null 2>&1 && return 0
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  warn "kubectl API not ready after ${max}s — continuing, downstream steps may fail."
+}
+
 # Append entries from a hosts-style file to /etc/hosts.
 #   $1 = path to source file (lines like "127.0.0.1 hostname.idp.local")
 #   $2 = optional ERE filter — only lines matching this regex are processed
@@ -134,5 +170,22 @@ _preflight_check_local() {
     err "Missing required tools: ${missing[*]}
 Install them and re-run, or run manually:
   ./scripts/bootstrap-local.sh"
+  fi
+
+  # Docker daemon must actually be running — `docker info` is the cheap check.
+  if ! docker info >/dev/null 2>&1; then
+    err "Docker daemon is not reachable. Start Docker Desktop / Rancher Desktop and re-run."
+  fi
+
+  # Free disk on the partition holding Docker storage — the Backstage build
+  # alone needs ~5GB, and the cluster + observability stack chews through more.
+  local free_gb
+  if [[ "$(uname)" == "Darwin" ]]; then
+    free_gb=$(df -g / 2>/dev/null | awk 'NR==2{print $4}')
+  else
+    free_gb=$(df -BG / 2>/dev/null | awk 'NR==2{gsub("G","",$4); print $4}')
+  fi
+  if [[ -n "${free_gb:-}" ]] && (( free_gb < 10 )); then
+    warn "Low free disk (${free_gb}G on /). Bootstrap needs ~10G headroom; consider freeing space before proceeding."
   fi
 }
