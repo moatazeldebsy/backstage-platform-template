@@ -1737,6 +1737,18 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <p><strong>Tear down AI/ML only</strong> (core platform stays up):
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
 </code></pre></div></td></tr></table></div></p>
+<blockquote>
+<p><strong>Certificate error on <code>kagent.idp.local</code> after <code>bootstrap-ai.sh</code>?</strong> The
+KAgent ingresses are HTTP-only as of commit <code>fe4fce2</code>. If you ran an earlier
+version of this repo on the same machine, your browser may have cached HSTS
+for <code>*.idp.local</code> from the old HTTPS-with-mkcert ingress and will keep
+upgrading the request to HTTPS, against which nginx-ingress responds with a
+fake default cert. Fix: open <code>chrome://net-internals/#hsts</code>, <strong>Delete
+domain security policies</strong> for <code>kagent.idp.local</code> and
+<code>idp-assistant.idp.local</code>, disable <em>Settings → Privacy → Always use secure
+connections</em> (or exclude <code>*.idp.local</code>), and hard-reload. On a fresh clone
+you'll never hit this.</p>
+</blockquote>
 <h3 id="using-the-ai-assistant-in-backstage">Using the AI Assistant in Backstage<a class="headerlink" href="#using-the-ai-assistant-in-backstage" title="Permanent link">&para;</a></h3>
 <p>Open <a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a> (or click <strong>AI Assistant</strong> in the
 sidebar). The assistant can:</p>
