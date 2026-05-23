@@ -100,6 +100,13 @@ helm upgrade --install external-secrets external-secrets/external-secrets \
 # ── Phase 3.6a: Create ClusterSecretStore (AWS Secrets Manager backend for ESO) ─
 log "Phase 3.6a: Creating ClusterSecretStore for AWS Secrets Manager..."
 
+# Wait for External Secrets Operator pods to be ready (critical timing fix)
+log "  Waiting for External Secrets Operator pods to be ready..."
+kubectl wait --for=condition=ready pod \
+  -l app.kubernetes.io/name=external-secrets \
+  -n external-secrets \
+  --timeout=300s || log "  WARNING: ESO pods not ready — proceeding anyway"
+
 # Annotate the ESO ServiceAccount with the Backstage IRSA role so it can
 # authenticate to Secrets Manager via pod identity (no static credentials).
 kubectl annotate serviceaccount external-secrets-sa \
@@ -512,13 +519,13 @@ done
 kubectl apply -f kubernetes/backstage/configmap.yaml
 kubectl apply -f kubernetes/backstage/deployment.yaml
 
-# Wait for Backstage LB to get a hostname (up to 3 min)
+# Wait for Backstage LB to get a hostname (up to 6 min)
 log "  Waiting for Backstage LoadBalancer hostname..."
-for i in $(seq 1 18); do
+for i in $(seq 1 36); do
   BACKSTAGE_URL=$(kubectl get svc backstage -n backstage \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -n "$BACKSTAGE_URL" ]] && break
-  [[ $i -eq 18 ]] && { log "  LoadBalancer hostname not ready — skipping URL patch."; BACKSTAGE_URL="PENDING"; }
+  [[ $i -eq 36 ]] && { log "  LoadBalancer hostname not ready — skipping URL patch."; BACKSTAGE_URL="PENDING"; }
   sleep 10
 done
 
@@ -573,6 +580,13 @@ log "  ArgoCD:         $(kubectl get ingress argocd-server -n argocd -o jsonpath
 log "  KAgent UI:      $(kubectl get ingress kagent-ui -n kagent -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'not deployed (--skip-ai)')"
 log "  MLflow:         $(kubectl get ingress mlflow -n ml-platform -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'not deployed (--skip-ai)')"
 log ""
+if [[ "$BACKSTAGE_URL" == "PENDING" ]]; then
+  log "⚠️  Backstage LoadBalancer hostname not ready. Run this to patch it later:"
+  log "  BACKSTAGE_URL=\$(kubectl get svc backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+  log "  kubectl get configmap backstage-config -n backstage -o json | sed \"s|BACKSTAGE_ALB_URL|\${BACKSTAGE_URL}|g\" | kubectl apply -f -"
+  log "  kubectl rollout restart deployment/backstage -n backstage"
+  log ""
+fi
 log "Next steps if GITHUB_TOKEN was not set:"
 log "  1. aws secretsmanager update-secret --secret-id idp-mvp/backstage \\"
 log "       --secret-string \"\$(aws secretsmanager get-secret-value --secret-id idp-mvp/backstage --query SecretString --output text | python3 -c \"import json,sys; s=json.load(sys.stdin); s['GITHUB_TOKEN']='<YOUR_TOKEN>'; print(json.dumps(s))\")\""

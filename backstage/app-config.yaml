@@ -15,9 +15,9 @@ organization:
   name: My Organization
 
 backend:
-  baseUrl: http://localhost:7007
+  baseUrl: http://localhost:3000
   listen:
-    port: 7007
+    port: 3000
   csp:
     connect-src: ["'self'", 'http:', 'https:']
     upgrade-insecure-requests: false
@@ -339,7 +339,7 @@ catalog:
   providers:
     github:
       idpOrg:
-        organization: YOUR_GITHUB_ORG
+        organization: moatazeldebsy
         catalogPath: /catalog-info.yaml
         filters:
           branch: main
@@ -365,7 +365,7 @@ kubernetes:
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
 
 techRadar:
-  url: https://raw.githubusercontent.com/YOUR_GITHUB_ORG/backstage-platform-template/main/backstage/catalog/tech-radar.json
+  url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json
 
 # Tech Insights — developer scorecard fact collection.
 #
@@ -392,12 +392,7 @@ ragSearch:
   indexIntervalMinutes: 30
   externalSources: []
 
-# KAgent AI assistant proxy — routes to the idp-assistant A2A agent (JSON-RPC over HTTP POST).
-proxy:
-  endpoints:
-    /kagent:
-      target: http://idp-assistant.kagent.svc.cluster.local:8080
-      allowedMethods: ['GET', 'POST']
-      changeOrigin: true
+# Note: KAgent proxy is configured in kubernetes/backstage/configmap.yaml for AWS deployments.
+# For local/Kind, it is configured in backstage/app-config.local.yaml using .idp.local hostnames.
 
 
