@@ -91,6 +91,9 @@ RUN --mount=type=cache,target=/root/.yarn/berry/cache \
 COPY --from=builder /app/packages/backend/dist/bundle.tar.gz ./bundle.tar.gz
 RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
 
+# 5. Copy configuration file (from build context parent directory)
+COPY ../app-config.yaml ./app-config.yaml
+
 # node:24-bookworm-slim already has uid 1000 as 'node'
 RUN chown -R node:node /app
 USER node
