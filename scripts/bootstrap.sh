@@ -242,6 +242,9 @@ helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pu
   --set "extraArgs[0]=--web.enable-admin-api" \
   --wait --timeout 5m
 
+kubectl apply -f kubernetes/monitoring/pushgateway-ingress-alb.yaml
+log "Pushgateway ALB ingress applied."
+
 # ── Phase 4b: OpenCost ────────────────────────────────────────────────────────
 log "Phase 4b: Installing OpenCost (cluster cost visibility)..."
 helm repo add opencost https://opencost.github.io/opencost-helm-chart 2>/dev/null || true
