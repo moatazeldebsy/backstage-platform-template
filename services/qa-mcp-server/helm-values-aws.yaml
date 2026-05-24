@@ -1,9 +1,10 @@
+# Helm overrides for qa-mcp-server — AWS dev environment
+# ECR_REGISTRY_PLACEHOLDER is substituted by bootstrap-ai.sh --aws
 fullnameOverride: qa-mcp-server
 
 replicaCount: 1
 
 image:
-  # ECR_REGISTRY_PLACEHOLDER is substituted by bootstrap-ai.sh --aws
   repository: ECR_REGISTRY_PLACEHOLDER/qa-mcp-server
   tag: "0.1.0"
   pullPolicy: Always
@@ -48,3 +49,40 @@ resources:
   limits:
     cpu: 200m
     memory: 256Mi
+
+env:
+  - name: BACKSTAGE_URL
+    value: "http://backstage.backstage.svc.cluster.local:7007"
+  - name: BACKSTAGE_EXTERNAL_URL
+    value: ""   # set to real domain when DNS is configured
+  - name: BACKSTAGE_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: mcp-backstage-token
+        key: token
+  - name: PROMETHEUS_URL
+    value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  - name: PORT
+    value: "3002"
+  - name: GITHUB_ORG
+    value: "moatazeldebsy"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch"]
+  capabilities:
+    drop:
+      - ALL
+
+backstage:
+  kubernetesId: qa-mcp-server
+
+podLabels:
+  backstage.io/kubernetes-id: qa-mcp-server

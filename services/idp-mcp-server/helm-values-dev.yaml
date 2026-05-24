@@ -1,11 +1,11 @@
 # Helm overrides for idp-mcp-server — AWS dev environment
-# ECR_REGISTRY_PLACEHOLDER is substituted by bootstrap-ai.sh --aws
+# 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp is substituted by bootstrap-ai.sh --aws
 fullnameOverride: idp-mcp-server
 
 replicaCount: 1
 
 image:
-  repository: ECR_REGISTRY_PLACEHOLDER/idp-mcp-server
+  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/idp-mcp-server
   tag: "0.1.0"
   pullPolicy: Always
 
