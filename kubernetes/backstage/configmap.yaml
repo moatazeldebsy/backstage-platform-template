@@ -34,6 +34,10 @@ data:
         credentials: true
       auth:
         dangerouslyDisableDefaultAuthPolicy: true
+      reading:
+        allow:
+          - host: raw.githubusercontent.com
+          - host: github.com
       database:
         client: pg
         connection:
@@ -86,11 +90,6 @@ data:
         email: idp-bot@example.com
       defaultCommitMessage: "chore: scaffold service via IDP"
 
-    reading:
-      allow:
-        - host: raw.githubusercontent.com
-        - host: github.com
-
     kubernetes:
       serviceLocatorMethod:
         type: 'multiTenant'
@@ -119,6 +118,9 @@ data:
       # Patched by bootstrap.sh after ALB is provisioned
       baseUrl: http://BACKSTAGE_ALB_URL
       extensions:
+        - page:catalog:
+            config:
+              path: /
         - page:kubernetes:
             disabled: true
 
