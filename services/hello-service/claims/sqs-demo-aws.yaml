@@ -1,0 +1,16 @@
+apiVersion: idp.platform/v1alpha1
+kind: SQSQueue
+metadata:
+  name: sqs-demo-aws
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: hello-service
+spec:
+  parameters:
+    queueName: sqs-demo-aws
+    owner: group:default/platform-team
+    region: us-east-1
+    fifo: true
+    visibilityTimeoutSeconds: 30
+    messageRetentionSeconds: 345600
+    costCenter: engineering
