@@ -18,7 +18,7 @@
     
     
       
-        <title>AWS Deployment Guide — Complete Checklist - Internal Developer Platform</title>
+        <title>AWS Deployment Guide - Internal Developer Platform</title>
       
     
     
@@ -60,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#aws-deployment-guide-complete-checklist" class="md-skip">
+        <a href="#aws-deployment-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +94,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              AWS Deployment Guide — Complete Checklist
+              AWS Deployment Guide
             
           </span>
         </div>
@@ -1063,53 +1063,154 @@
   
 
 
-<h1 id="aws-deployment-guide-complete-checklist">AWS Deployment Guide — Complete Checklist<a class="headerlink" href="#aws-deployment-guide-complete-checklist" title="Permanent link">&para;</a></h1>
-<p><strong>Last Updated</strong>: 2026-05-23<br />
-<strong>Status</strong>: Production-Ready with Known Issues &amp; Workarounds</p>
+<h1 id="aws-deployment-guide">AWS Deployment Guide<a class="headerlink" href="#aws-deployment-guide" title="Permanent link">&para;</a></h1>
+<p><strong>Last Updated</strong>: 2026-05-24
+<strong>Status</strong>: Production-Ready</p>
 <hr />
 <h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
 <ol>
 <li><a href="#pre-deployment-checklist">Pre-Deployment Checklist</a></li>
 <li><a href="#deployment-steps">Deployment Steps</a></li>
-<li><a href="#known-issues--workarounds">Known Issues &amp; Workarounds</a></li>
 <li><a href="#post-deployment-validation">Post-Deployment Validation</a></li>
+<li><a href="#known-issues--fixes">Known Issues &amp; Fixes</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 <li><a href="#production-hardening">Production Hardening</a></li>
+<li><a href="#cleanup--destroy">Cleanup &amp; Destroy</a></li>
 </ol>
 <hr />
 <h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
-<h3 id="prerequisites-one-time">Prerequisites (One-Time)<a class="headerlink" href="#prerequisites-one-time" title="Permanent link">&para;</a></h3>
+<h3 id="required-tools">Required Tools<a class="headerlink" href="#required-tools" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AWS Account with sufficient permissions (EC2, EKS, RDS, S3, IAM, Secrets Manager)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AWS CLI ≥ 2.15 installed and configured</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Terraform ≥ 1.5 installed</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> kubectl installed</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Helm ≥ 3.x installed</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Docker running (for local testing)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub CLI (<code>gh</code>) installed and authenticated</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub organization set up (for OIDC trust relationship)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Anthropic API key obtained (optional, for AI/ML features)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AWS CLI ≥ 2.15 (<code>aws sts get-caller-identity</code> works)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Terraform ≥ 1.5</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> kubectl</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Helm ≥ 3.x</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Docker (running, with <code>docker buildx</code> support)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub CLI (<code>gh</code>) authenticated</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>jq</code>, <code>python3</code>, <code>openssl</code> available</li>
 </ul>
-<h3 id="environment-setup">Environment Setup<a class="headerlink" href="#environment-setup" title="Permanent link">&para;</a></h3>
+<h3 id="required-credentials">Required Credentials<a class="headerlink" href="#required-credentials" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Credential</th>
+<th>Where to get it</th>
+<th>Where it goes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GITHUB_TOKEN</code></td>
+<td><a href="https://github.com/settings/tokens">https://github.com/settings/tokens</a> (scopes: <code>repo</code>, <code>read:org</code>)</td>
+<td><code>local/.env</code></td>
+</tr>
+<tr>
+<td><code>AUTH_GITHUB_CLIENT_ID</code></td>
+<td><a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → New OAuth App</td>
+<td><code>local/backstage/.env</code></td>
+</tr>
+<tr>
+<td><code>AUTH_GITHUB_CLIENT_SECRET</code></td>
+<td>Same OAuth App</td>
+<td><code>local/backstage/.env</code></td>
+</tr>
+<tr>
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td><a href="https://console.anthropic.com/settings/keys">https://console.anthropic.com/settings/keys</a></td>
+<td>Created in Secrets Manager by <code>setup.sh</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Auto-generated by bootstrap (no manual action needed):</strong>
+- <code>AUTH_SESSION_SECRET</code> — Terraform generates a 64-char random value
+- <code>BACKSTAGE_CATALOG_TOKEN</code> — bootstrap.sh generates and injects into Secrets Manager
+- <code>K8S_SERVICE_ACCOUNT_TOKEN</code> — bootstrap.sh reads from the cluster and injects into Secrets Manager</p>
+<h3 id="github-oauth-app-setup">GitHub OAuth App Setup<a class="headerlink" href="#github-oauth-app-setup" title="Permanent link">&para;</a></h3>
+<p>Create the OAuth app <strong>before</strong> running bootstrap so you have the credentials ready:</p>
+<ol>
+<li>Go to <a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → New OAuth App</li>
+<li>Set callback URL to: <code>http://YOUR_BACKSTAGE_ALB_URL/api/auth/github/handler/frame</code><br />
+<em>(Use a placeholder URL; update it after bootstrap outputs the real ALB hostname)</em></li>
+<li>Copy <code>Client ID</code> and <code>Client Secret</code> into <code>local/backstage/.env</code></li>
+</ol>
+<h3 id="verify-everything-before-deploying">Verify Everything Before Deploying<a class="headerlink" href="#verify-everything-before-deploying" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set environment variables</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_REGION</span><span class="o">=</span><span class="s2">&quot;us-east-1&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">CLUSTER_NAME</span><span class="o">=</span><span class="s2">&quot;idp-mvp&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">GITHUB_ORG</span><span class="o">=</span><span class="s2">&quot;your-github-org&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-api-key&quot;</span><span class="w">  </span><span class="c1"># Optional</span>
-
-<span class="c1"># Verify credentials</span>
-aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity
-aws<span class="w"> </span>ec2<span class="w"> </span>describe-availability-zones<span class="w"> </span>--region<span class="w"> </span><span class="nv">$AWS_REGION</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/verify-secrets.sh
+<span class="c1"># Expected: ✅ All critical checks passed!</span>
 </code></pre></div></td></tr></table></div>
-<h3 id="s3-terraform-state-bucket-must-exist-before-deployment">S3 Terraform State Bucket (Must Exist Before Deployment)<a class="headerlink" href="#s3-terraform-state-bucket-must-exist-before-deployment" title="Permanent link">&para;</a></h3>
+<hr />
+<h2 id="deployment-steps">Deployment Steps<a class="headerlink" href="#deployment-steps" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-personalize-configuration">Step 1: Personalize Configuration<a class="headerlink" href="#step-1-personalize-configuration" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
+</code></pre></div></td></tr></table></div>
+<p>Replaces <code>YOUR_GITHUB_ORG</code> and other placeholders across all template files, creates <code>.env</code> files, and generates <code>terraform/terraform.tfvars</code>.</p>
+<h3 id="step-2-bootstrap-aws-infrastructure">Step 2: Bootstrap AWS Infrastructure<a class="headerlink" href="#step-2-bootstrap-aws-infrastructure" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh
+</code></pre></div></td></tr></table></div>
+<p><strong>What it deploys (in order):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Duration</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Terraform</td>
+<td>15–25 min</td>
+<td>VPC, EKS (4× t3.medium), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager</td>
+</tr>
+<tr>
+<td>2 — Platform base</td>
+<td>5 min</td>
+<td>Namespaces, RBAC, External Secrets Operator, ClusterSecretStore</td>
+</tr>
+<tr>
+<td>3 — GitOps</td>
+<td>5 min</td>
+<td>ArgoCD, OPA/Gatekeeper, Crossplane</td>
+</tr>
+<tr>
+<td>4 — Observability</td>
+<td>10 min</td>
+<td>Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter</td>
+</tr>
+<tr>
+<td>4.6 — ArgoCD GitOps</td>
+<td>1 min</td>
+<td><code>idp-services</code> ApplicationSet (auto-discovers services/)</td>
+</tr>
+<tr>
+<td>5 — hello-service</td>
+<td>5 min</td>
+<td>Builds linux/amd64 image → ECR, ArgoCD deploys</td>
+</tr>
+<tr>
+<td>6 — Backstage</td>
+<td>5 min</td>
+<td>Deploys official image, injects real secrets</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total: ~45–60 minutes</strong></p>
+<h3 id="step-3-update-github-oauth-callback-url">Step 3: Update GitHub OAuth Callback URL<a class="headerlink" href="#step-3-update-github-oauth-callback-url" title="Permanent link">&para;</a></h3>
+<p>After bootstrap completes, the Backstage ALB URL is printed. Update your GitHub OAuth app:</p>
+<ol>
+<li>Go to <a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → your OAuth app → Edit</li>
+<li>Update callback URL: <code>http://&lt;BACKSTAGE_ALB_HOSTNAME&gt;/api/auth/github/handler/frame</code></li>
+</ol>
+<h3 id="step-4-optional-deploy-aiml-stack">Step 4: Optional — Deploy AI/ML Stack<a class="headerlink" href="#step-4-optional-deploy-aiml-stack" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh
+</code></pre></div></td></tr></table></div>
+<p>Deploys MLflow, KAgent, idp-assistant, and MCP servers. Requires <code>ANTHROPIC_API_KEY</code>.</p>
+<hr />
+<h2 id="post-deployment-validation">Post-Deployment Validation<a class="headerlink" href="#post-deployment-validation" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/validate-deployment.sh
+</code></pre></div></td></tr></table></div>
+<p>Runs 50+ automated checks. All should pass.</p>
+<h3 id="manual-smoke-tests">Manual Smoke Tests<a class="headerlink" href="#manual-smoke-tests" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -1126,316 +1227,214 @@ aws<span class="w"> </span>ec2<span class="w"> </span>describe-availability-zone
 <span class="normal">14</span>
 <span class="normal">15</span>
 <span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Create S3 bucket for Terraform state</span>
-<span class="nv">ACCOUNT_ID</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span class="w"> </span>--query<span class="w"> </span>Account<span class="w"> </span>--output<span class="w"> </span>text<span class="k">)</span>
-<span class="nv">BUCKET_NAME</span><span class="o">=</span><span class="s2">&quot;idp-mvp-terraform-state-</span><span class="si">${</span><span class="nv">ACCOUNT_ID</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="normal">17</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get all ALB URLs</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $2, $4}&#39;</span>
 
-aws<span class="w"> </span>s3api<span class="w"> </span>create-bucket<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--bucket<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BUCKET_NAME</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span><span class="nv">$AWS_REGION</span>
+<span class="c1"># Test Backstage root (should return HTTP 200 with HTML)</span>
+curl<span class="w"> </span>-I<span class="w"> </span>http://&lt;BACKSTAGE_ALB&gt;
 
-<span class="c1"># Enable versioning</span>
-aws<span class="w"> </span>s3api<span class="w"> </span>put-bucket-versioning<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--bucket<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BUCKET_NAME</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--versioning-configuration<span class="w"> </span><span class="nv">Status</span><span class="o">=</span>Enabled
+<span class="c1"># Verify catalog has entities (should return items array)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://&lt;BACKSTAGE_ALB&gt;/api/catalog/entities?limit<span class="o">=</span><span class="m">5</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import sys,json; d=json.load(sys.stdin); print(f&#39;Entities: {len(d)}&#39;)&quot;</span>
 
-<span class="c1"># Enable encryption</span>
-aws<span class="w"> </span>s3api<span class="w"> </span>put-bucket-encryption<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--bucket<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BUCKET_NAME</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--server-side-encryption-configuration<span class="w"> </span><span class="s1">&#39;{</span>
-<span class="s1">    &quot;Rules&quot;: [{</span>
-<span class="s1">      &quot;ApplyServerSideEncryptionByDefault&quot;: {</span>
-<span class="s1">        &quot;SSEAlgorithm&quot;: &quot;AES256&quot;</span>
-<span class="s1">      }</span>
-<span class="s1">    }]</span>
-<span class="s1">  }&#39;</span>
+<span class="c1"># Verify DORA metrics in Prometheus</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>svc/prometheus-kube-prometheus-prometheus<span class="w"> </span><span class="m">9090</span>:9090<span class="w"> </span><span class="p">&amp;</span>
+curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;http://localhost:9090/api/v1/query?query=dora_deploy_frequency_per_day&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import sys,json; d=json.load(sys.stdin); print(&#39;DORA series:&#39;, len(d.get(&#39;data&#39;,{}).get(&#39;result&#39;,[])))&quot;</span>
 
-<span class="c1"># Create DynamoDB lock table</span>
-aws<span class="w"> </span>dynamodb<span class="w"> </span>create-table<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--table-name<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLUSTER_NAME</span><span class="si">}</span><span class="s2">-terraform-locks&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--attribute-definitions<span class="w"> </span><span class="nv">AttributeName</span><span class="o">=</span>LockID,AttributeType<span class="o">=</span>S<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--key-schema<span class="w"> </span><span class="nv">AttributeName</span><span class="o">=</span>LockID,KeyType<span class="o">=</span>HASH<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--billing-mode<span class="w"> </span>PAY_PER_REQUEST<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span><span class="nv">$AWS_REGION</span>
+<span class="c1"># Verify QA metrics in Grafana</span>
+curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;http://localhost:9090/api/v1/query?query=e2e_pass_rate&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import sys,json; d=json.load(sys.stdin); print(&#39;QA series:&#39;, len(d.get(&#39;data&#39;,{}).get(&#39;result&#39;,[])))&quot;</span>
 </code></pre></div></td></tr></table></div>
+<h3 id="expected-service-urls">Expected Service URLs<a class="headerlink" href="#expected-service-urls" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>How to get URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backstage</td>
+<td><code>kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td><code>kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+<tr>
+<td>ArgoCD</td>
+<td><code>kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+<tr>
+<td>Prometheus</td>
+<td><code>kubectl get ingress -n monitoring -l app=prometheus -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+<tr>
+<td>Pushgateway</td>
+<td><code>kubectl get ingress prometheus-pushgateway -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+<tr>
+<td>OpenCost</td>
+<td><code>kubectl get ingress opencost-alb -n opencost -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+<tr>
+<td>hello-service</td>
+<td><code>kubectl get ingress -n services-dev -l app.kubernetes.io/instance=hello-service-dev -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
+</tr>
+</tbody>
+</table>
 <hr />
-<h2 id="deployment-steps">Deployment Steps<a class="headerlink" href="#deployment-steps" title="Permanent link">&para;</a></h2>
-<h3 id="step-1-personalize-configuration">Step 1: Personalize Configuration<a class="headerlink" href="#step-1-personalize-configuration" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
-</code></pre></div></td></tr></table></div>
-<p><strong>What it does:</strong>
-- Replaces <code>YOUR_*</code> placeholders with actual values
-- Creates <code>.idp-config.env</code> with cluster configuration
-- Generates <code>terraform.tfvars</code></p>
-<p><strong>Review files:</strong>
-- <code>terraform/terraform.tfvars</code> — set <code>github_org</code>, <code>anthropic_api_key</code>, etc.
-- <code>local/.env</code> — verify AWS region and cluster name</p>
-<h3 id="step-2-bootstrap-aws-infrastructure">Step 2: Bootstrap AWS Infrastructure<a class="headerlink" href="#step-2-bootstrap-aws-infrastructure" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh
-</code></pre></div></td></tr></table></div>
-<p><strong>Deployment timeline:</strong>
-- Phase 1 (Terraform): 15-25 minutes
-  - VPC, EKS cluster (2 nodes), RDS, ECR, IAM
-  - External Secrets Operator (waits for pods)
-  - Secrets Manager integration
-- Phase 2-4 (Platform): 10-15 minutes
-  - Prometheus, Grafana, Loki
-  - ArgoCD, OPA/Gatekeeper
-  - Application deployments
-- Phase 5 (Backstage): 5 minutes
-  - Download and deploy official image</p>
-<p><strong>Total time: ~45-60 minutes</strong></p>
-<h3 id="step-3-optional-deploy-aiml-stack">Step 3: Optional — Deploy AI/ML Stack<a class="headerlink" href="#step-3-optional-deploy-aiml-stack" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Requires ANTHROPIC_API_KEY in environment</span>
-./scripts/bootstrap-ai.sh
-</code></pre></div></td></tr></table></div>
-<p><strong>Deploys:</strong>
-- MLflow tracking server (S3 artifact backend)
-- KAgent v0.9.4 (with PostgreSQL database)
-- 12 pre-configured agents
-- idp-assistant (Backstage integration)</p>
+<h2 id="known-issues-fixes">Known Issues &amp; Fixes<a class="headerlink" href="#known-issues-fixes" title="Permanent link">&para;</a></h2>
+<p>All issues below are <strong>already fixed in the codebase</strong>. This section documents them for reference if you encounter them on a fresh environment.</p>
 <hr />
-<h2 id="known-issues-workarounds">Known Issues &amp; Workarounds<a class="headerlink" href="#known-issues-workarounds" title="Permanent link">&para;</a></h2>
-<h3 id="issue-1-backstage-port-configuration">⚠️ Issue 1: Backstage Port Configuration<a class="headerlink" href="#issue-1-backstage-port-configuration" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom:</strong> Backstage responds with 502 Bad Gateway on port 3000</p>
-<p><strong>Root Cause:</strong> Official <code>ghcr.io/backstage/backstage:latest</code> image ignores <code>listen.port</code> config and uses hardcoded port 7007</p>
-<p><strong>Solution:</strong>
+<h3 id="issue-1-backstage-shows-404-at-root">Issue 1: Backstage shows 404 at root <code>/</code><a class="headerlink" href="#issue-1-backstage-shows-404-at-root" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Navigating to the Backstage ALB URL shows "Looks like someone dropped the mic!" 404.</p>
+<p><strong>Root cause:</strong> Backstage config arrays replace rather than merge across config files. The production ConfigMap's <code>extensions</code> list overwrites the base config's <code>page:catalog: path: /</code> entry.</p>
+<p><strong>Fix (already applied):</strong> <code>kubernetes/backstage/configmap.yaml</code> production overrides now explicitly include <code>page:catalog: path: /</code> alongside <code>page:kubernetes: disabled: true</code>.</p>
+<hr />
+<h3 id="issue-2-backstage-catalog-returns-401-guest-login-broken">Issue 2: Backstage catalog returns 401 / guest login broken<a class="headerlink" href="#issue-2-backstage-catalog-returns-401-guest-login-broken" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> All API calls return 401. Guest sign-in doesn't work.</p>
+<p><strong>Root cause:</strong> <code>dangerouslyDisableDefaultAuthPolicy: true</code> must be under <code>backend.auth</code>, not the top-level <code>auth</code> key.</p>
+<p><strong>Fix (already applied):</strong> Correct placement in <code>kubernetes/backstage/configmap.yaml</code>:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">backend</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">dangerouslyDisableDefaultAuthPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></td></tr></table></div></p>
+<hr />
+<h3 id="issue-3-kubernetes-tab-shows-401-unauthorized">Issue 3: Kubernetes tab shows 401 UNAUTHORIZED<a class="headerlink" href="#issue-3-kubernetes-tab-shows-401-unauthorized" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> hello-service Kubernetes tab shows <code>UNAUTHORIZED_ERROR, status code: 401</code> for all resources.</p>
+<p><strong>Root cause:</strong> <code>K8S_SERVICE_ACCOUNT_TOKEN</code> in Secrets Manager was <code>REPLACE_ME</code> — never populated with the real cluster token.</p>
+<p><strong>Fix (already applied):</strong> <code>bootstrap.sh</code> reads the token from <code>backstage-sa-token</code> secret and injects it into Secrets Manager automatically.</p>
+<hr />
+<h3 id="issue-4-clustersecretstore-fails-external-secrets-sa-not-found">Issue 4: ClusterSecretStore fails — <code>external-secrets-sa not found</code><a class="headerlink" href="#issue-4-clustersecretstore-fails-external-secrets-sa-not-found" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>kubectl get clustersecretstore aws-secretsmanager</code> shows <code>InvalidProviderConfig</code>. DORA exporter secret never syncs.</p>
+<p><strong>Root cause:</strong> ESO Helm chart creates a ServiceAccount named <code>external-secrets</code>, but the IAM trust policy and ClusterSecretStore both reference <code>external-secrets-sa</code> (which doesn't exist by default).</p>
+<p><strong>Fix (already applied):</strong> <code>bootstrap.sh</code> explicitly creates <code>external-secrets-sa</code> and annotates it with the IRSA role before applying the ClusterSecretStore.</p>
+<hr />
+<h3 id="issue-5-dora-metrics-missing-from-grafana">Issue 5: DORA metrics missing from Grafana<a class="headerlink" href="#issue-5-dora-metrics-missing-from-grafana" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> DORA Metrics dashboard shows "No data".</p>
+<p><strong>Root cause:</strong> <code>dora-exporter.py</code> was writing to CloudWatch only, but the Grafana dashboard queries Prometheus for <code>dora_deploy_frequency_per_day</code>.</p>
+<p><strong>Fix (already applied):</strong> Exporter now pushes to Pushgateway using the exact metric names the dashboard expects. CloudWatch publishing is retained as a secondary path.</p>
+<hr />
+<h3 id="issue-6-hello-service-imagepullbackoff-on-eks">Issue 6: hello-service ImagePullBackOff on EKS<a class="headerlink" href="#issue-6-hello-service-imagepullbackoff-on-eks" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> hello-service pods show <code>ImagePullBackOff</code> or <code>no match for platform in manifest</code>.</p>
+<p><strong>Root causes:</strong>
+- Image was in private GHCR (403 Forbidden)
+- Image built on Apple Silicon (arm64) but EKS nodes are amd64</p>
+<p><strong>Fix (already applied):</strong> <code>helm-values-dev.yaml</code> points to ECR. Build for the correct platform:
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/hello-service
+docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-t<span class="w"> </span><span class="m">967825954374</span>.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--push<span class="w"> </span>.
+</code></pre></div></td></tr></table></div></p>
+<hr />
+<h3 id="issue-7-techdocs-404-for-hello-service">Issue 7: TechDocs 404 for hello-service<a class="headerlink" href="#issue-7-techdocs-404-for-hello-service" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> hello-service Docs tab shows "no index.md in the root of the docs directory".</p>
+<p><strong>Root cause:</strong> <code>dir:../../../services/hello-service</code> relative traversal from a GitHub-URL-loaded catalog entity is unreliable.</p>
+<p><strong>Fix (already applied):</strong> <code>backstage/catalog/services/hello-service/catalog-info.yaml</code> uses an explicit GitHub URL:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">backstage.io/techdocs-ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">url:https://github.com/moatazeldebsy/backstage-platform-template/tree/main/services/hello-service</span>
+</code></pre></div></td></tr></table></div></p>
+<hr />
+<h3 id="issue-8-argocd-idp-services-applicationset-missing">Issue 8: ArgoCD <code>idp-services</code> ApplicationSet missing<a class="headerlink" href="#issue-8-argocd-idp-services-applicationset-missing" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Services don't appear in ArgoCD. <code>platform-services</code> app shows <code>ComparisonError: app path does not exist</code>.</p>
+<p><strong>Root cause:</strong> The <code>idp-services</code> ApplicationSet (which auto-discovers <code>services/*/</code>) was never applied.</p>
+<p><strong>Fix (already applied):</strong> <code>bootstrap.sh</code> Phase 4.6 applies <code>kubernetes/argocd/app-of-apps.yaml</code>.</p>
+<hr />
+<h3 id="issue-9-opencost-and-pushgateway-have-no-alb-ingress">Issue 9: OpenCost and Pushgateway have no ALB ingress<a class="headerlink" href="#issue-9-opencost-and-pushgateway-have-no-alb-ingress" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> No public URL for OpenCost or Pushgateway after deployment.</p>
+<p><strong>Fix (already applied):</strong>
+- <code>kubernetes/finops/opencost.yaml</code> includes an ALB ingress (<code>opencost-alb</code>)
+- <code>kubernetes/monitoring/pushgateway-ingress-alb.yaml</code> provides the Pushgateway ALB ingress
+- Both are applied by <code>bootstrap.sh</code></p>
+<hr />
+<h3 id="issue-10-tech-radar-shows-empty-not-allowed-to-read">Issue 10: Tech Radar shows empty / "not allowed to read"<a class="headerlink" href="#issue-10-tech-radar-shows-empty-not-allowed-to-read" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Tech Radar page is blank or shows a reading permission error.</p>
+<p><strong>Root cause:</strong> <code>backend.reading.allow</code> was missing from the ConfigMap, so Backstage blocked reads from <code>raw.githubusercontent.com</code>.</p>
+<p><strong>Fix (already applied):</strong> <code>kubernetes/backstage/configmap.yaml</code> includes:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Service automatically configures for port 7007</span>
-<span class="c1"># No action needed — already fixed in bootstrap.sh</span>
-
-<span class="c1"># Verify:</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>service<span class="w"> </span>backstage<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.ports[*].targetPort}&#39;</span>
-<span class="c1"># Should output: 7007</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">backend</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">reading</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">allow</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raw.githubusercontent.com</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github.com</span>
 </code></pre></div></td></tr></table></div></p>
 <hr />
-<h3 id="issue-2-rds-deletion-protection-blocks-cleanup">⚠️ Issue 2: RDS Deletion Protection Blocks Cleanup<a class="headerlink" href="#issue-2-rds-deletion-protection-blocks-cleanup" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom:</strong> <code>terraform destroy</code> fails with "Cannot delete protected DB Instance"</p>
-<p><strong>Root Cause:</strong> RDS deletion protection enabled by default in <code>rds.tf</code></p>
-<p><strong>Solution:</strong> Already fixed — <code>rds.tf</code> now conditionally disables protection for dev/test environments:
-<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="na">deletion_protection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">var.environment</span><span class="w"> </span><span class="p">==</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="no">true</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">false</span>
-<span class="na">skip_final_snapshot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">var.environment</span><span class="w"> </span><span class="p">==</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="no">false</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">true</span>
-</code></pre></div></td></tr></table></div></p>
-<p>For <strong>production</strong> deployments, set <code>environment="prod"</code> in <code>terraform.tfvars</code>:
-<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="na">environment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span>
-</code></pre></div></td></tr></table></div></p>
-<hr />
-<h3 id="issue-3-external-secrets-operator-timing">⚠️ Issue 3: External Secrets Operator Timing<a class="headerlink" href="#issue-3-external-secrets-operator-timing" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom:</strong> ClusterSecretStore creation fails because ESO pods aren't ready</p>
-<p><strong>Root Cause:</strong> Bootstrap tried to apply manifests before External Secrets Operator pods reached Running state</p>
-<p><strong>Solution:</strong> Fixed in <code>bootstrap.sh</code> — adds explicit wait:
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>external-secrets<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--timeout<span class="o">=</span>300s
-</code></pre></div></td></tr></table></div></p>
-<hr />
-<h3 id="issue-4-load-balancers-not-cleaned-up">⚠️ Issue 4: Load Balancers Not Cleaned Up<a class="headerlink" href="#issue-4-load-balancers-not-cleaned-up" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom:</strong> After <code>terraform destroy</code>, 9 ALBs remain (Backstage, ArgoCD, Grafana, MLflow, KAgent, Prometheus, AlertManager, services)</p>
-<p><strong>Root Cause:</strong> Kubernetes services create ALBs dynamically; Terraform doesn't track them as dependencies</p>
-<p><strong>Solution:</strong> Use new cleanup script:
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
-</code></pre></div></td></tr></table></div></p>
-<p>The cleanup script:
-1. Deletes all <code>k8s-*</code> load balancers first
-2. Waits 15 seconds for ALBs to detach from EKS
-3. Runs terraform destroy
-4. Verifies all resources are gone</p>
-<hr />
-<h2 id="post-deployment-validation">Post-Deployment Validation<a class="headerlink" href="#post-deployment-validation" title="Permanent link">&para;</a></h2>
-<h3 id="check-all-services-are-running">Check All Services Are Running<a class="headerlink" href="#check-all-services-are-running" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Wait for all pods to be Ready</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Running
-
-<span class="c1"># Should show 0 rows (all pods Running)</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="verify-access-urls">Verify Access URLs<a class="headerlink" href="#verify-access-urls" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Print all service URLs</span>
-./scripts/bootstrap.sh<span class="w"> </span>--print-urls
-
-<span class="c1"># Example output:</span>
-<span class="c1"># Backstage: http://k8s-backstag-*.elb.us-east-1.amazonaws.com</span>
-<span class="c1"># Grafana: http://k8s-monitori-*.elb.us-east-1.amazonaws.com</span>
-<span class="c1"># ArgoCD: http://k8s-argocd-*.elb.us-east-1.amazonaws.com</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="test-backstage-portal">Test Backstage Portal<a class="headerlink" href="#test-backstage-portal" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">BACKSTAGE_URL</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>service<span class="w"> </span>backstage<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[0].hostname}&#39;</span><span class="k">)</span>
-
-<span class="c1"># Should return HTTP 200 with HTML content</span>
-curl<span class="w"> </span>-I<span class="w"> </span>http://<span class="nv">$BACKSTAGE_URL</span>/
-
-<span class="c1"># Verify database connected</span>
-curl<span class="w"> </span>-s<span class="w"> </span>http://<span class="nv">$BACKSTAGE_URL</span>/api/health<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-</code></pre></div></td></tr></table></div>
-<h3 id="verify-aiml-stack-if-deployed">Verify AI/ML Stack (If Deployed)<a class="headerlink" href="#verify-aiml-stack-if-deployed" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check KAgent agents status</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent
-
-<span class="c1"># Expected: All agents should show READY=True</span>
-
-<span class="c1"># Test MLflow</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span>ml-platform
-curl<span class="w"> </span>-I<span class="w"> </span>http://&lt;mlflow-alb-url&gt;/
-
-<span class="c1"># Test idp-assistant agent</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://&lt;idp-assistant-url&gt;/a2a/idp-assistant<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;tools/list&quot;,&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1}&#39;</span>
-</code></pre></div></td></tr></table></div>
+<h3 id="issue-11-grafana-login-fails-with-multiple-replicas">Issue 11: Grafana login fails with multiple replicas<a class="headerlink" href="#issue-11-grafana-login-fails-with-multiple-replicas" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Logging into Grafana succeeds but immediately redirects to login again.</p>
+<p><strong>Root cause:</strong> 2 Grafana replicas with ALB (no sticky sessions) — session created on pod A, next request hits pod B.</p>
+<p><strong>Fix (already applied):</strong> <code>observability/prometheus-stack-values-aws.yaml</code> sets <code>replicas: 1</code>.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="backstage-not-responding-502-bad-gateway">Backstage Not Responding (502 Bad Gateway)<a class="headerlink" href="#backstage-not-responding-502-bad-gateway" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check pod status</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>backstage
-kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>deployment/backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
-
-<span class="c1"># Common issues:</span>
-<span class="c1"># 1. Database not connected → check POSTGRES_* env vars</span>
-<span class="c1"># 2. Config file not mounted → verify ConfigMap</span>
-<span class="c1"># 3. Port mismatch → should be 7007, not 3000</span>
-
-<span class="c1"># Force restart</span>
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
+<h3 id="backstage-pod-not-starting">Backstage pod not starting<a class="headerlink" href="#backstage-pod-not-starting" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>deployment/backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;error|Error|FATAL&quot;</span>
+kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>backstage<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Events:&quot;</span>
 </code></pre></div></td></tr></table></div>
-<h3 id="stale-terraform-lock">Stale Terraform Lock<a class="headerlink" href="#stale-terraform-lock" title="Permanent link">&para;</a></h3>
+<p>Common causes:
+- Database not ready: check <code>kubectl get pods -n backstage | grep postgres</code>
+- Secret not synced: <code>kubectl get externalsecret backstage-secrets -n backstage</code>
+- Config YAML parse error: check logs for <code>YAMLException</code></p>
+<h3 id="stale-terraform-lock">Stale Terraform lock<a class="headerlink" href="#stale-terraform-lock" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>terraform
+terraform<span class="w"> </span>force-unlock<span class="w"> </span>&lt;lock-id&gt;
+</code></pre></div></td></tr></table></div>
+<h3 id="eks-nodes-not-ready">EKS nodes not ready<a class="headerlink" href="#eks-nodes-not-ready" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># During bootstrap.sh, if it hangs on Terraform apply:</span>
-terraform<span class="w"> </span>force-unlock<span class="w"> </span>&lt;lock-id&gt;
-terraform<span class="w"> </span>apply<span class="w"> </span>-var<span class="w"> </span><span class="s2">&quot;cluster_name=idp-mvp&quot;</span><span class="w"> </span>-auto-approve
-</code></pre></div></td></tr></table></div>
-<h3 id="eks-nodes-not-ready">EKS Nodes Not Ready<a class="headerlink" href="#eks-nodes-not-ready" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check node status</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-kubectl<span class="w"> </span>describe<span class="w"> </span>nodes
-
-<span class="c1"># Common causes:</span>
-<span class="c1"># - Insufficient quota in AWS account (need 4× t3.medium)</span>
-<span class="c1"># - Insufficient IAM permissions</span>
-<span class="c1"># - VPC or subnet issues</span>
-
-<span class="c1"># Wait for nodes to become Ready (5-10 minutes after creation)</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+kubectl<span class="w"> </span>describe<span class="w"> </span>nodes<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;Conditions:&quot;</span>
 kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>Ready<span class="w"> </span>node<span class="w"> </span>--all<span class="w"> </span>--timeout<span class="o">=</span>600s
 </code></pre></div></td></tr></table></div>
-<h3 id="load-balancer-stuck-in-provisioning">Load Balancer Stuck in Provisioning<a class="headerlink" href="#load-balancer-stuck-in-provisioning" title="Permanent link">&para;</a></h3>
+<h3 id="re-seed-qa-metrics-after-pushgateway-restart">Re-seed QA metrics after Pushgateway restart<a class="headerlink" href="#re-seed-qa-metrics-after-pushgateway-restart" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># ALBs take 3-5 minutes to provision</span>
-<span class="c1"># Check status</span>
-aws<span class="w"> </span>elbv2<span class="w"> </span>describe-load-balancers<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--query<span class="w"> </span><span class="s1">&#39;LoadBalancers[?contains(LoadBalancerName, `backstag`)]&#39;</span>
-
-<span class="c1"># If stuck, manually delete and redeploy service</span>
-kubectl<span class="w"> </span>delete<span class="w"> </span>service<span class="w"> </span>backstage<span class="w"> </span>-n<span class="w"> </span>backstage
-kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/backstage/service.yaml
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">PUSHGATEWAY_URL</span><span class="o">=</span>http://<span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>prometheus-pushgateway<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[0].hostname}&#39;</span><span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>./scripts/seed-qa-metrics.sh
+</code></pre></div></td></tr></table></div>
+<h3 id="trigger-dora-metrics-collection-manually">Trigger DORA metrics collection manually<a class="headerlink" href="#trigger-dora-metrics-collection-manually" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>dora-manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--from<span class="o">=</span>cronjob/dora-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span>job-name<span class="o">=</span>dora-manual-*<span class="w"> </span>--tail<span class="o">=</span><span class="m">20</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="force-backstage-catalog-refresh">Force Backstage catalog refresh<a class="headerlink" href="#force-backstage-catalog-refresh" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
+<span class="c1"># Catalog repopulates within ~60 seconds</span>
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="production-hardening">Production Hardening<a class="headerlink" href="#production-hardening" title="Permanent link">&para;</a></h2>
-<h3 id="1-enable-rds-encryption-backups">1. Enable RDS Encryption &amp; Backups<a class="headerlink" href="#1-enable-rds-encryption-backups" title="Permanent link">&para;</a></h3>
+<h3 id="scale-eks-for-production-load">Scale EKS for production load<a class="headerlink" href="#scale-eks-for-production-load" title="Permanent link">&para;</a></h3>
 <div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># In terraform/terraform.tfvars</span>
-<span class="na">environment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span>
-
-<span class="c1"># Enables:</span>
-<span class="c1"># - Deletion protection</span>
-<span class="c1"># - Final snapshot before deletion (7 days retention)</span>
-<span class="c1"># - Storage encryption (AES256)</span>
-<span class="c1"># - Backup retention = 7 days</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
+<span class="na">node_instance_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;t3.large&quot;</span><span class="p">]</span>
+<span class="na">node_group_min_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4</span>
+<span class="na">node_group_max_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">12</span>
 </code></pre></div></td></tr></table></div>
-<h3 id="2-configure-aws-budgets-alert">2. Configure AWS Budgets Alert<a class="headerlink" href="#2-configure-aws-budgets-alert" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<h3 id="enable-rds-deletion-protection">Enable RDS deletion protection<a class="headerlink" href="#enable-rds-deletion-protection" title="Permanent link">&para;</a></h3>
+<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set email for budget alerts</span>
-aws<span class="w"> </span>budgets<span class="w"> </span>create-budget<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--account-id<span class="w"> </span><span class="k">$(</span>aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span class="w"> </span>--query<span class="w"> </span>Account<span class="w"> </span>--output<span class="w"> </span>text<span class="k">)</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--budget<span class="w"> </span>file://budget.json<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--notifications-with-subscribers<span class="w"> </span>file://notifications.json
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
+<span class="na">environment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span>
+<span class="c1"># Enables deletion_protection=true, skip_final_snapshot=false, backup_retention=7</span>
 </code></pre></div></td></tr></table></div>
-<p>Budget limits: $300/month (adjust for your team size)</p>
-<h3 id="3-enable-cloudwatch-alarms">3. Enable CloudWatch Alarms<a class="headerlink" href="#3-enable-cloudwatch-alarms" title="Permanent link">&para;</a></h3>
+<h3 id="enable-alb-sticky-sessions-if-scaling-grafana">Enable ALB sticky sessions (if scaling Grafana)<a class="headerlink" href="#enable-alb-sticky-sessions-if-scaling-grafana" title="Permanent link">&para;</a></h3>
+<p>Add to Grafana ALB ingress annotations:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">alb.ingress.kubernetes.io/target-group-attributes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400</span>
+</code></pre></div></td></tr></table></div></p>
+<h3 id="rotate-github-token">Rotate GitHub token<a class="headerlink" href="#rotate-github-token" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -1445,51 +1444,20 @@ aws<span class="w"> </span>budgets<span class="w"> </span>create-budget<span cla
 <span class="normal"> 7</span>
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
-<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># CPU utilization &gt; 80%</span>
-aws<span class="w"> </span>cloudwatch<span class="w"> </span>put-metric-alarm<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--alarm-name<span class="w"> </span>idp-high-cpu<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--alarm-description<span class="w"> </span><span class="s2">&quot;Alert when cluster CPU &gt; 80%&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--metric-name<span class="w"> </span>CPUUtilization<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--namespace<span class="w"> </span>AWS/ECS<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--statistic<span class="w"> </span>Average<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--period<span class="w"> </span><span class="m">300</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--threshold<span class="w"> </span><span class="m">80</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--comparison-operator<span class="w"> </span>GreaterThanThreshold
-</code></pre></div></td></tr></table></div>
-<h3 id="4-enable-rds-automated-backups">4. Enable RDS Automated Backups<a class="headerlink" href="#4-enable-rds-automated-backups" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Already configured in terraform/rds.tf</span>
-<span class="nv">backup_retention_period</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">7</span><span class="w">  </span><span class="c1"># Production should use ≥ 30</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="5-rotate-api-keys-monthly">5. Rotate API Keys Monthly<a class="headerlink" href="#5-rotate-api-keys-monthly" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Update ANTHROPIC_API_KEY</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>update-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;new-key&quot;}&#39;</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import sys, json</span>
+<span class="s2">d = json.load(sys.stdin)</span>
+<span class="s2">d[&#39;GITHUB_TOKEN&#39;] = &#39;ghp_NEW_TOKEN_HERE&#39;</span>
+<span class="s2">print(json.dumps(d))</span>
+<span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span>--secret-string<span class="w"> </span>file:///dev/stdin
 
-<span class="c1"># Restart KAgent to pick up new key</span>
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
+kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>backstage-secrets<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
 </code></pre></div></td></tr></table></div>
-<h3 id="6-scale-eks-for-production-load">6. Scale EKS for Production Load<a class="headerlink" href="#6-scale-eks-for-production-load" title="Permanent link">&para;</a></h3>
-<p>Current configuration: 4× t3.medium nodes (sufficient for dev/test)</p>
-<p><strong>For production:</strong>
-<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># In terraform/terraform.tfvars</span>
-<span class="na">node_instance_types</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;t3.large&quot;</span><span class="p">]</span><span class="c1">      # Larger instances</span>
-<span class="na">node_group_min_size</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="m">4</span>
-<span class="na">node_group_max_size</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="m">12</span>
-<span class="na">enable_autoscaling</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="no">true</span>
-</code></pre></div></td></tr></table></div></p>
-<h3 id="7-enable-pod-disruption-budgets">7. Enable Pod Disruption Budgets<a class="headerlink" href="#7-enable-pod-disruption-budgets" title="Permanent link">&para;</a></h3>
+<h3 id="pod-disruption-budgets">Pod Disruption Budgets<a class="headerlink" href="#pod-disruption-budgets" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -1501,9 +1469,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <span class="normal"> 9</span>
 <span class="normal">10</span>
 <span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Prevent simultaneous pod termination during node updates</span>
-kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
 <span class="s">apiVersion: policy/v1</span>
 <span class="s">kind: PodDisruptionBudget</span>
 <span class="s">metadata:</span>
@@ -1518,93 +1484,12 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="cleanup-destroy">Cleanup &amp; Destroy<a class="headerlink" href="#cleanup-destroy" title="Permanent link">&para;</a></h2>
-<p><strong>Important:</strong> Save any critical data from S3 buckets before destroying.</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Safe cleanup with verification</span>
-./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp
-
-<span class="c1"># What gets deleted:</span>
-<span class="c1"># ✓ EKS cluster (4 nodes)</span>
-<span class="c1"># ✓ RDS database</span>
-<span class="c1"># ✓ VPC &amp; networking</span>
-<span class="c1"># ✓ All load balancers</span>
-<span class="c1"># ✓ ECR images (except those tagged as keep)</span>
-
-<span class="c1"># What&#39;s preserved:</span>
-<span class="c1"># - S3 Terraform state bucket</span>
-<span class="c1"># - Local code &amp; configs</span>
-<span class="c1"># - CloudWatch logs (30-day retention)</span>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Safe teardown — deletes ALBs first, then runs terraform destroy</span>
+./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
 </code></pre></div></td></tr></table></div>
-<hr />
-<h2 id="support-escalation">Support &amp; Escalation<a class="headerlink" href="#support-escalation" title="Permanent link">&para;</a></h2>
-<h3 id="common-commands">Common Commands<a class="headerlink" href="#common-commands" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get cluster info</span>
-kubectl<span class="w"> </span>cluster-info
-kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-kubectl<span class="w"> </span>top<span class="w"> </span>nodes
-
-<span class="c1"># View all deployments</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>deployments<span class="w"> </span>-A
-
-<span class="c1"># View recent errors</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>-A<span class="w"> </span>--sort-by<span class="o">=</span><span class="s1">&#39;.lastTimestamp&#39;</span>
-
-<span class="c1"># Check Terraform state</span>
-terraform<span class="w"> </span>state<span class="w"> </span>list
-terraform<span class="w"> </span>state<span class="w"> </span>show<span class="w"> </span>aws_eks_cluster.this
-
-<span class="c1"># View resource costs</span>
-aws<span class="w"> </span>ce<span class="w"> </span>get-cost-and-usage<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--time-period<span class="w"> </span><span class="nv">Start</span><span class="o">=</span><span class="m">2026</span>-05-01,End<span class="o">=</span><span class="m">2026</span>-05-31<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--granularity<span class="w"> </span>MONTHLY<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--metrics<span class="w"> </span>BlendedCost
-</code></pre></div></td></tr></table></div>
-<h3 id="documentation-links">Documentation Links<a class="headerlink" href="#documentation-links" title="Permanent link">&para;</a></h3>
-<ul>
-<li><a href="https://backstage.io/docs/overview/what-is-backstage">Backstage Admin Guide</a></li>
-<li><a href="https://aws.github.io/aws-eks-best-practices/">EKS Best Practices</a></li>
-<li><a href="https://www.kagentai.io">KAgent Documentation</a></li>
-<li><a href="https://mlflow.org/docs/latest/model-registry.html">MLflow Model Registry</a></li>
-</ul>
-<hr />
-<p><strong>Next Steps:</strong>
-1. Run pre-deployment checklist
-2. Execute <code>./scripts/setup.sh</code>
-3. Execute <code>./scripts/bootstrap.sh</code>
-4. Run validation tests
-5. Configure production settings
-6. Invite team members to Backstage</p>
+<p><strong>What gets deleted:</strong> EKS cluster, RDS, VPC, all ALBs, ECR images<br />
+<strong>What's preserved:</strong> S3 Terraform state bucket, CloudWatch logs (30-day retention), local code</p>
 
 
 

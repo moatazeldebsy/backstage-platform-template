@@ -18,7 +18,7 @@
     
     
       
-        <title>Pre-Deployment Secrets Verification — AWS Setup - Internal Developer Platform</title>
+        <title>Pre-Deployment Checklist — AWS Setup - Internal Developer Platform</title>
       
     
     
@@ -60,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pre-deployment-secrets-verification-aws-setup" class="md-skip">
+        <a href="#pre-deployment-checklist-aws-setup" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +94,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pre-Deployment Secrets Verification — AWS Setup
+              Pre-Deployment Checklist — AWS Setup
             
           </span>
         </div>
@@ -1063,9 +1063,8 @@
   
 
 
-<h1 id="pre-deployment-secrets-verification-aws-setup">Pre-Deployment Secrets Verification — AWS Setup<a class="headerlink" href="#pre-deployment-secrets-verification-aws-setup" title="Permanent link">&para;</a></h1>
-<p><strong>Last Updated:</strong> 2026-05-23<br />
-<strong>Purpose:</strong> Prevent deployment failures due to missing or invalid credentials</p>
+<h1 id="pre-deployment-checklist-aws-setup">Pre-Deployment Checklist — AWS Setup<a class="headerlink" href="#pre-deployment-checklist-aws-setup" title="Permanent link">&para;</a></h1>
+<p><strong>Last Updated:</strong> 2026-05-24</p>
 <hr />
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -1074,127 +1073,125 @@
 <span class="normal">4</span>
 <span class="normal">5</span>
 <span class="normal">6</span>
-<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Set your credentials (see below for details)</span>
-<span class="c1"># 2. Run the verification script</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Set credentials (see below)</span>
+<span class="c1"># 2. Verify everything is in place</span>
 ./scripts/verify-secrets.sh
+<span class="c1"># Expected: ✅ All critical checks passed!</span>
 
-<span class="c1"># 3. If all ✅, proceed with deployment</span>
+<span class="c1"># 3. Deploy</span>
 ./scripts/setup.sh
 ./scripts/bootstrap.sh
 </code></pre></div></td></tr></table></div>
 <hr />
-<h2 id="required-credentials">Required Credentials<a class="headerlink" href="#required-credentials" title="Permanent link">&para;</a></h2>
-<h3 id="1-anthropic_api_key-critical-for-kagent">1️⃣ ANTHROPIC_API_KEY (Critical for KAgent)<a class="headerlink" href="#1-anthropic_api_key-critical-for-kagent" title="Permanent link">&para;</a></h3>
-<p><strong>Why needed:</strong> Powers AI agents and the idp-assistant chatbot in Backstage</p>
-<p><strong>Get it:</strong>
-1. Visit <a href="https://console.anthropic.com/settings/keys">https://console.anthropic.com/settings/keys</a>
-2. Generate or copy existing API key (format: <code>sk-ant-...</code>)</p>
-<p><strong>Set it in AWS:</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Create the secret for the first time</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--name<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;sk-ant-YOUR_ACTUAL_KEY&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-
-<span class="c1"># Update an existing secret</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>update-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;sk-ant-YOUR_ACTUAL_KEY&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-
-<span class="c1"># Verify it was set correctly</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1<span class="w"> </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-</code></pre></div></td></tr></table></div></p>
-<p><strong>Status:</strong> ☐ Created / ☐ Updated / ☐ Verified</p>
+<h2 id="what-you-need-before-deploying">What You Need Before Deploying<a class="headerlink" href="#what-you-need-before-deploying" title="Permanent link">&para;</a></h2>
+<h3 id="auto-generated-no-action-required">Auto-generated — No Action Required<a class="headerlink" href="#auto-generated-no-action-required" title="Permanent link">&para;</a></h3>
+<p>These are created automatically during bootstrap:</p>
+<table>
+<thead>
+<tr>
+<th>Credential</th>
+<th>How it's created</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTH_SESSION_SECRET</code></td>
+<td>Terraform generates a 64-char random value</td>
+</tr>
+<tr>
+<td><code>BACKSTAGE_CATALOG_TOKEN</code></td>
+<td>bootstrap.sh generates and injects into Secrets Manager</td>
+</tr>
+<tr>
+<td><code>K8S_SERVICE_ACCOUNT_TOKEN</code></td>
+<td>bootstrap.sh reads from cluster, injects into Secrets Manager</td>
+</tr>
+<tr>
+<td><code>POSTGRES_HOST/PORT/USER/PASSWORD</code></td>
+<td>Terraform creates RDS and stores credentials</td>
+</tr>
+</tbody>
+</table>
+<h3 id="required-you-must-set-these">Required — You Must Set These<a class="headerlink" href="#required-you-must-set-these" title="Permanent link">&para;</a></h3>
 <hr />
-<h3 id="2-github_token-required">2️⃣ GITHUB_TOKEN (Required)<a class="headerlink" href="#2-github_token-required" title="Permanent link">&para;</a></h3>
-<p><strong>Why needed:</strong> 
-- GitHub Actions CI/CD authentication
-- ArgoCD syncing with GitHub repos
-- Backstage catalog refresh</p>
-<p><strong>Get it:</strong>
-1. Visit <a href="https://github.com/settings/tokens">https://github.com/settings/tokens</a>
-2. Click "Generate new token (classic)"
-3. Scopes needed: <code>repo</code>, <code>read:org</code>, <code>gist</code>
-4. Copy the token (you only see it once)</p>
-<p><strong>Set it in local/.env:</strong>
+<h4 id="1-github_token">1. GITHUB_TOKEN<a class="headerlink" href="#1-github_token" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Backstage catalog refresh, ArgoCD repo sync, DORA metrics</p>
+<p><strong>Scopes needed:</strong> <code>repo</code>, <code>read:org</code>, <code>gist</code></p>
+<p><strong>Get it:</strong> <a href="https://github.com/settings/tokens">https://github.com/settings/tokens</a> → Generate new token (classic)</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Edit local/.env</span>
-<span class="nv">GITHUB_TOKEN</span><span class="o">=</span>ghp_YOUR_TOKEN_HERE
-</code></pre></div></td></tr></table></div></p>
-<p><strong>Verify:</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;^GITHUB_TOKEN=&quot;</span><span class="w"> </span>local/.env
-<span class="c1"># Should show: GITHUB_TOKEN=ghp_...</span>
-</code></pre></div></td></tr></table></div></p>
-<p><strong>Status:</strong> ☐ Set in local/.env / ☐ Verified</p>
-<hr />
-<h3 id="3-github-oauth-credentials-required-for-backstage-login">3️⃣ GitHub OAuth Credentials (Required for Backstage Login)<a class="headerlink" href="#3-github-oauth-credentials-required-for-backstage-login" title="Permanent link">&para;</a></h3>
-<p><strong>Why needed:</strong> Enable GitHub sign-in for Backstage portal</p>
-<p><strong>Get it:</strong>
-1. Visit <a href="https://github.com/settings/developers">https://github.com/settings/developers</a>
-2. Click "New OAuth App"
-3. Fill in:
-   - Application name: <code>Backstage IDP</code>
-   - Authorization callback URL: <code>http://YOUR_BACKSTAGE_ALB_URL/api/auth/github/handler/frame</code></p>
-<p>⚠️ <strong>Note:</strong> Use the ALB URL from <code>./scripts/bootstrap.sh</code> output, or use temporary URL like <code>http://localhost:3000/api/auth/github/handler/frame</code></p>
-<ol>
-<li>Copy <code>Client ID</code> and <code>Client Secret</code></li>
-</ol>
-<p><strong>Set it in local/backstage/.env:</strong>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/.env</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;GITHUB_TOKEN=ghp_YOUR_TOKEN&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>local/.env
+</code></pre></div></td></tr></table></div>
+<p>Also update Secrets Manager after bootstrap:
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Edit local/backstage/.env</span>
-<span class="nv">AUTH_GITHUB_CLIENT_ID</span><span class="o">=</span>your-client-id-here
-<span class="nv">AUTH_GITHUB_CLIENT_SECRET</span><span class="o">=</span>your-client-secret-here
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># bootstrap.sh does this automatically if GITHUB_TOKEN is in local/.env</span>
+<span class="c1"># To update manually:</span>
+aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import sys,json,os; d=json.load(sys.stdin); d[&#39;GITHUB_TOKEN&#39;]=os.environ[&#39;GITHUB_TOKEN&#39;]; print(json.dumps(d))</span>
+<span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--secret-string<span class="w"> </span>file:///dev/stdin
 </code></pre></div></td></tr></table></div></p>
-<p><strong>Verify:</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;^AUTH_GITHUB_CLIENT&quot;</span><span class="w"> </span>local/backstage/.env
-<span class="c1"># Should show both CLIENT_ID and CLIENT_SECRET</span>
-</code></pre></div></td></tr></table></div></p>
-<p><strong>Status:</strong> ☐ OAuth app created / ☐ Set in local/backstage/.env / ☐ Verified</p>
+<p><strong>Status:</strong> ☐ Set in <code>local/.env</code></p>
 <hr />
-<h3 id="4-slack-webhook-optional-for-cost-alerts">4️⃣ Slack Webhook (Optional - for Cost Alerts)<a class="headerlink" href="#4-slack-webhook-optional-for-cost-alerts" title="Permanent link">&para;</a></h3>
-<p><strong>Why needed:</strong> Get Slack notifications for cost budget alerts</p>
+<h4 id="2-github-oauth-app-for-backstage-github-login">2. GitHub OAuth App (for Backstage GitHub login)<a class="headerlink" href="#2-github-oauth-app-for-backstage-github-login" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Enables GitHub sign-in in Backstage</p>
 <p><strong>Get it:</strong>
-1. Create Slack app: <a href="https://api.slack.com/apps">https://api.slack.com/apps</a>
-2. Enable "Incoming Webhooks"
-3. Click "Add New Webhook to Workspace"
-4. Copy the webhook URL (format: <code>https://hooks.slack.com/services/...</code>)</p>
-<p><strong>Set it in AWS:</strong>
+1. <a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → New OAuth App
+2. Fill in:
+   - <strong>Application name:</strong> <code>Backstage IDP</code>
+   - <strong>Homepage URL:</strong> <code>http://localhost:3000</code> (update after deploy)
+   - <strong>Callback URL:</strong> <code>http://YOUR_BACKSTAGE_ALB_URL/api/auth/github/handler/frame</code><br />
+<em>(Use a placeholder — update after bootstrap prints the real ALB URL)</em>
+3. Copy <code>Client ID</code> and generate <code>Client Secret</code></p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/backstage/.env</span>
+<span class="nv">AUTH_GITHUB_CLIENT_ID</span><span class="o">=</span>your-client-id
+<span class="nv">AUTH_GITHUB_CLIENT_SECRET</span><span class="o">=</span>your-client-secret
+</code></pre></div></td></tr></table></div>
+<p><strong>After bootstrap:</strong> Update the OAuth app callback URL with the real ALB hostname.</p>
+<p><strong>Status:</strong> ☐ App created / ☐ Credentials set in <code>local/backstage/.env</code> / ☐ Callback URL updated post-deploy</p>
+<hr />
+<h4 id="3-anthropic_api_key-optional-required-for-ai-features">3. ANTHROPIC_API_KEY (optional — required for AI features)<a class="headerlink" href="#3-anthropic_api_key-optional-required-for-ai-features" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Powers KAgent AI agents and the idp-assistant chatbot</p>
+<p><strong>Get it:</strong> <a href="https://console.anthropic.com/settings/keys">https://console.anthropic.com/settings/keys</a></p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/.env</span>
+<span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span>sk-ant-YOUR_KEY
+
+<span class="c1"># Also create in Secrets Manager (bootstrap.sh reads from local/.env)</span>
+aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-string<span class="w"> </span><span class="s2">&quot;{\&quot;ANTHROPIC_API_KEY\&quot;:\&quot;sk-ant-YOUR_KEY\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>us-east-1
+</code></pre></div></td></tr></table></div>
+<p><strong>Status:</strong> ☐ Optional / ☐ Set if using AI features</p>
+<hr />
+<h4 id="4-slack-webhook-optional-for-cost-alerts">4. Slack Webhook (optional — for cost alerts)<a class="headerlink" href="#4-slack-webhook-optional-for-cost-alerts" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Budget alert notifications</p>
+<p><strong>Get it:</strong> <a href="https://api.slack.com/apps">https://api.slack.com/apps</a> → Incoming Webhooks</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--name<span class="w"> </span>idp-mvp/slack<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;SLACK_WEBHOOK_URL&quot;:&quot;https://hooks.slack.com/services/YOUR/WEBHOOK&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>idp-mvp/slack-webhook<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-string<span class="w"> </span><span class="s2">&quot;{\&quot;SLACK_WEBHOOK_URL\&quot;:\&quot;https://hooks.slack.com/services/YOUR/WEBHOOK\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--region<span class="w"> </span>us-east-1
-</code></pre></div></td></tr></table></div></p>
-<p><strong>Status:</strong> ☐ Optional / ☐ Created / ☐ Verified</p>
-<hr />
-<h2 id="verification-script">Verification Script<a class="headerlink" href="#verification-script" title="Permanent link">&para;</a></h2>
-<p>Run this to check all secrets before deployment:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/verify-secrets.sh
 </code></pre></div></td></tr></table></div>
-<p><strong>Expected output when everything is correct:</strong>
+<p><strong>Status:</strong> ☐ Optional</p>
+<hr />
+<h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -1217,86 +1214,54 @@ aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-valu
 <span class="normal">20</span>
 <span class="normal">21</span>
 <span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code>🔍 Verifying AWS Secrets &amp; Configuration...
-   Region: us-east-1
-   Cluster: idp-mvp
+<span class="normal">23</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
+  [ ] aws sts get-caller-identity   → works, shows correct account
+  [ ] terraform -version            → ≥ 1.5
+  [ ] kubectl version               → installed
+  [ ] helm version                  → ≥ 3.x
+  [ ] docker info                   → running, buildx available
+  [ ] gh auth status                → authenticated
+  [ ] jq --version                  → installed
+  [ ] python3 --version             → installed
 
-┌─────────────────────────────────────────────────────────┐
-│ 1. ANTHROPIC_API_KEY (KAgent AI Agents)                │
-└─────────────────────────────────────────────────────────┘
-✅ ANTHROPIC_API_KEY found and valid
+AWS:
+  [ ] AWS region confirmed (default: us-east-1)
+  [ ] Sufficient EC2 quota: 4× t3.medium + 4× t3.large in your region
+  [ ] S3 Terraform state bucket created (setup.sh does this)
 
-┌─────────────────────────────────────────────────────────┐
-│ 2. GITHUB_TOKEN (local/.env)                            │
-└─────────────────────────────────────────────────────────┘
-✅ GITHUB_TOKEN found in local/.env
+Credentials:
+  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)
+  [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
+  [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
+  [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
 
-┌─────────────────────────────────────────────────────────┐
-│ 3. GitHub OAuth Credentials (local/backstage/.env)      │
-└─────────────────────────────────────────────────────────┘
-✅ GitHub OAuth credentials found in local/backstage/.env
-
-...
-
-✅ All critical checks passed!
-
-You can now proceed with:
-  ./scripts/setup.sh
-  ./scripts/bootstrap.sh
-  ./scripts/validate-deployment.sh
-</code></pre></div></td></tr></table></div></p>
+Verification:
+  [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!
+</code></pre></div></td></tr></table></div>
 <hr />
-<h2 id="file-locations">File Locations<a class="headerlink" href="#file-locations" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Credential</th>
-<th>Location</th>
-<th>Stored in</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>ANTHROPIC_API_KEY</td>
-<td>AWS Secrets Manager</td>
-<td><code>idp-mvp/kagent</code></td>
-</tr>
-<tr>
-<td>GITHUB_TOKEN</td>
-<td><code>local/.env</code></td>
-<td>Local file (git-ignored)</td>
-</tr>
-<tr>
-<td>AUTH_GITHUB_CLIENT_ID</td>
-<td><code>local/backstage/.env</code></td>
-<td>Local file (git-ignored)</td>
-</tr>
-<tr>
-<td>AUTH_GITHUB_CLIENT_SECRET</td>
-<td><code>local/backstage/.env</code></td>
-<td>Local file (git-ignored)</td>
-</tr>
-<tr>
-<td>SLACK_WEBHOOK_URL</td>
-<td>AWS Secrets Manager</td>
-<td><code>idp-mvp/slack</code> (optional)</td>
-</tr>
-<tr>
-<td>RDS Password</td>
-<td>AWS Secrets Manager</td>
-<td>Auto-created by Terraform</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="common-issues-fixes">Common Issues &amp; Fixes<a class="headerlink" href="#common-issues-fixes" title="Permanent link">&para;</a></h2>
-<h3 id="kagent-returns-error-code-401-invalid_x-api-key">❌ KAgent returns "Error code: 401 - invalid_x-api-key"<a class="headerlink" href="#kagent-returns-error-code-401-invalid_x-api-key" title="Permanent link">&para;</a></h3>
-<p><strong>Cause:</strong> ANTHROPIC_API_KEY is missing, invalid, or secret is malformed JSON</p>
-<p><strong>Fix:</strong>
+<h2 id="common-errors-before-deployment">Common Errors Before Deployment<a class="headerlink" href="#common-errors-before-deployment" title="Permanent link">&para;</a></h2>
+<h3 id="verify-secretssh-fails-on-github_token"><code>verify-secrets.sh</code> fails on GITHUB_TOKEN<a class="headerlink" href="#verify-secretssh-fails-on-github_token" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check local/.env has the token</span>
+grep<span class="w"> </span><span class="s2">&quot;^GITHUB_TOKEN=&quot;</span><span class="w"> </span>local/.env
+<span class="c1"># Should print: GITHUB_TOKEN=ghp_...</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="github-oauth-login-fails-after-deploy">GitHub OAuth login fails after deploy<a class="headerlink" href="#github-oauth-login-fails-after-deploy" title="Permanent link">&para;</a></h3>
+<p>The OAuth callback URL must exactly match the Backstage ALB URL:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get the real URL</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>backstage<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[0].hostname}&#39;</span>
+
+<span class="c1"># Update your GitHub OAuth app at:</span>
+<span class="c1"># https://github.com/settings/developers → your app → Edit</span>
+<span class="c1"># Callback URL: http://&lt;above-hostname&gt;/api/auth/github/handler/frame</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="kagent-invalid_x-api-key">KAgent "invalid_x-api-key"<a class="headerlink" href="#kagent-invalid_x-api-key" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -1306,95 +1271,17 @@ You can now proceed with:
 <span class="normal"> 7</span>
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Verify secret exists</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span>--region<span class="w"> </span>us-east-1
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>us-east-1<span class="w"> </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+<span class="c1"># Verify ANTHROPIC_API_KEY value is correct (starts with sk-ant-)</span>
 
-<span class="c1"># 2. Check JSON format</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-
-<span class="c1"># 3. Update with correct key</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>update-secret<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Update if needed:</span>
+aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;sk-ant-YOUR_KEY&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;sk-ant-NEW_KEY&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--region<span class="w"> </span>us-east-1
-
-<span class="c1"># 4. Restart KAgent</span>
 kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
-</code></pre></div></td></tr></table></div></p>
-<hr />
-<h3 id="backstage-shows-github-login-unavailable">❌ Backstage shows "GitHub login unavailable"<a class="headerlink" href="#backstage-shows-github-login-unavailable" title="Permanent link">&para;</a></h3>
-<p><strong>Cause:</strong> GitHub OAuth credentials missing or callback URL mismatch</p>
-<p><strong>Fix:</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Verify credentials in local/backstage/.env</span>
-grep<span class="w"> </span><span class="s2">&quot;^AUTH_GITHUB&quot;</span><span class="w"> </span>local/backstage/.env
-
-<span class="c1"># 2. Update GitHub OAuth app with correct callback URL</span>
-<span class="c1"># Visit https://github.com/settings/developers and update the callback URL to match:</span>
-<span class="c1"># http://YOUR_ACTUAL_BACKSTAGE_ALB_URL/api/auth/github/handler/frame</span>
-
-<span class="c1"># 3. Restart Backstage</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-<span class="c1"># OR for AWS:</span>
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
-</code></pre></div></td></tr></table></div></p>
-<hr />
-<h3 id="secret-not-found-during-bootstrap">❌ "Secret not found" during bootstrap<a class="headerlink" href="#secret-not-found-during-bootstrap" title="Permanent link">&para;</a></h3>
-<p><strong>Cause:</strong> Secret created in wrong region or under wrong name</p>
-<p><strong>Fix:</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># List all secrets in your region</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>list-secrets<span class="w"> </span>--region<span class="w"> </span>us-east-1
-
-<span class="c1"># Check if secret exists with correct name</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>describe-secret<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span>--region<span class="w"> </span>us-east-1
-
-<span class="c1"># Recreate if needed</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--name<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;sk-ant-YOUR_KEY&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-</code></pre></div></td></tr></table></div></p>
-<hr />
-<h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
-<p>Before running <code>./scripts/setup.sh</code>:</p>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AWS credentials configured (<code>aws sts get-caller-identity</code> works)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AWS region set correctly (default: us-east-1)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ANTHROPIC_API_KEY obtained from <a href="https://console.anthropic.com/settings/keys">https://console.anthropic.com/settings/keys</a></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ANTHROPIC_API_KEY created in AWS Secrets Manager (<code>idp-mvp/kagent</code>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GITHUB_TOKEN obtained from <a href="https://github.com/settings/tokens">https://github.com/settings/tokens</a></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GITHUB_TOKEN set in <code>local/.env</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub OAuth app created at <a href="https://github.com/settings/developers">https://github.com/settings/developers</a></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub OAuth credentials set in <code>local/backstage/.env</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Slack webhook (optional) created and set in AWS Secrets Manager</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Verification script passes: <code>./scripts/verify-secrets.sh</code> → All ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Required tools installed: aws, terraform, kubectl, helm, docker, jq</li>
-</ul>
+</code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="deployment-order">Deployment Order<a class="headerlink" href="#deployment-order" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
@@ -1412,41 +1299,24 @@ aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<s
 <span class="normal">13</span>
 <span class="normal">14</span>
 <span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Verify all secrets</span>
+<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Verify secrets</span>
 ./scripts/verify-secrets.sh
-<span class="c1"># Expected: ✅ All critical checks passed!</span>
 
-<span class="c1"># 2. Personalize configuration (first time only)</span>
+<span class="c1"># 2. Personalise (first time only — replaces YOUR_GITHUB_ORG placeholders)</span>
 ./scripts/setup.sh
-<span class="c1"># When prompted for environment, choose &quot;aws&quot;</span>
 
-<span class="c1"># 3. Deploy to AWS (~45-60 minutes)</span>
+<span class="c1"># 3. Deploy full stack (~45–60 min)</span>
 ./scripts/bootstrap.sh
-<span class="c1"># Monitor output, note the Backstage ALB URL</span>
 
-<span class="c1"># 4. Validate all components</span>
+<span class="c1"># 4. Update GitHub OAuth callback URL with the printed ALB hostname</span>
+
+<span class="c1"># 5. Run validation</span>
 ./scripts/validate-deployment.sh
-<span class="c1"># Expected: ✅ DEPLOYMENT VALIDATION PASSED</span>
 
-<span class="c1"># 5. (Optional) Deploy AI/ML stack</span>
+<span class="c1"># 6. Optional: deploy AI/ML stack</span>
 ./scripts/bootstrap-ai.sh
-
-<span class="c1"># 6. Access Backstage</span>
-<span class="c1"># Update GitHub OAuth callback URL if needed (see above)</span>
-<span class="c1"># Open the ALB URL in browser and sign in with GitHub</span>
 </code></pre></div></td></tr></table></div>
-<hr />
-<h2 id="support">Support<a class="headerlink" href="#support" title="Permanent link">&para;</a></h2>
-<p><strong>For detailed deployment guide:</strong> See <code>docs/DEPLOYMENT_GUIDE.md</code><br />
-<strong>For troubleshooting:</strong> See <code>docs/DEPLOYMENT_GUIDE.md</code> → Troubleshooting<br />
-<strong>For production hardening:</strong> See <code>docs/DEPLOYMENT_GUIDE.md</code> → Production Hardening  </p>
-<p>Questions? Check the verification script output for specific fix commands.</p>
+<p>See <code>docs/DEPLOYMENT_GUIDE.md</code> for full details, known issues, and troubleshooting.</p>
 
 
 
