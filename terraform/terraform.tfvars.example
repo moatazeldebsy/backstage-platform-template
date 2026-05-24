@@ -8,7 +8,7 @@ node_instance_types     = ["t3.medium"]
 node_group_min_size     = 2
 node_group_max_size     = 5
 node_group_desired_size = 2
-ecr_repositories        = ["hello-service"]
+ecr_repositories        = ["hello-service", "idp-mcp-server", "qa-mcp-server", "contract-mcp-server"]
 
 # ── FinOps ────────────────────────────────────────────────────────────────────
 budget_monthly_limit_usd = "500"

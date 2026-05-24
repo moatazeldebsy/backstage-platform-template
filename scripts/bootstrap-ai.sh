@@ -135,6 +135,18 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws sts get-caller-identity &>/dev/null || die "AWS credentials not configured"
   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
   REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CLUSTER_NAME}"
+  # Ensure ECR repos exist for all MCP server images (idempotent)
+  for _repo in idp-mcp-server qa-mcp-server contract-mcp-server; do
+    aws ecr describe-repositories --region "${AWS_REGION}" --repository-names "${_repo}" &>/dev/null || \
+      aws ecr create-repository \
+        --repository-name "${_repo}" \
+        --region "${AWS_REGION}" \
+        --image-scanning-configuration scanOnPush=true \
+        --image-tag-mutability MUTABLE \
+        --query 'repository.repositoryUri' --output text \
+      && info "Created ECR repository: ${_repo}"
+  done
+
   # Login to ECR once; subsequent docker push calls reuse the session
   aws ecr get-login-password --region "${AWS_REGION}" | \
     docker login --username AWS --password-stdin \
