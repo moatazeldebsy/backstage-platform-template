@@ -1,315 +1,220 @@
-# Pre-Deployment Secrets Verification — AWS Setup
+# Pre-Deployment Checklist — AWS Setup
 
-**Last Updated:** 2026-05-23  
-**Purpose:** Prevent deployment failures due to missing or invalid credentials
+**Last Updated:** 2026-05-24
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1. Set your credentials (see below for details)
-# 2. Run the verification script
+# 1. Set credentials (see below)
+# 2. Verify everything is in place
 ./scripts/verify-secrets.sh
+# Expected: ✅ All critical checks passed!
 
-# 3. If all ✅, proceed with deployment
+# 3. Deploy
 ./scripts/setup.sh
 ./scripts/bootstrap.sh
 ```
 
 ---
 
-## Required Credentials
+## What You Need Before Deploying
 
-### 1️⃣ ANTHROPIC_API_KEY (Critical for KAgent)
+### Auto-generated — No Action Required
 
-**Why needed:** Powers AI agents and the idp-assistant chatbot in Backstage
+These are created automatically during bootstrap:
+
+| Credential | How it's created |
+|-----------|-----------------|
+| `AUTH_SESSION_SECRET` | Terraform generates a 64-char random value |
+| `BACKSTAGE_CATALOG_TOKEN` | bootstrap.sh generates and injects into Secrets Manager |
+| `K8S_SERVICE_ACCOUNT_TOKEN` | bootstrap.sh reads from cluster, injects into Secrets Manager |
+| `POSTGRES_HOST/PORT/USER/PASSWORD` | Terraform creates RDS and stores credentials |
+
+### Required — You Must Set These
+
+---
+
+#### 1. GITHUB_TOKEN
+
+**Why:** Backstage catalog refresh, ArgoCD repo sync, DORA metrics
+
+**Scopes needed:** `repo`, `read:org`, `gist`
+
+**Get it:** https://github.com/settings/tokens → Generate new token (classic)
+
+```bash
+# Set in local/.env
+echo "GITHUB_TOKEN=ghp_YOUR_TOKEN" >> local/.env
+```
+
+Also update Secrets Manager after bootstrap:
+```bash
+# bootstrap.sh does this automatically if GITHUB_TOKEN is in local/.env
+# To update manually:
+aws secretsmanager get-secret-value --secret-id idp-mvp/backstage --region us-east-1 \
+  --query SecretString --output text | python3 -c "
+import sys,json,os; d=json.load(sys.stdin); d['GITHUB_TOKEN']=os.environ['GITHUB_TOKEN']; print(json.dumps(d))
+" | aws secretsmanager put-secret-value --secret-id idp-mvp/backstage --secret-string file:///dev/stdin
+```
+
+**Status:** ☐ Set in `local/.env`
+
+---
+
+#### 2. GitHub OAuth App (for Backstage GitHub login)
+
+**Why:** Enables GitHub sign-in in Backstage
 
 **Get it:**
-1. Visit https://console.anthropic.com/settings/keys
-2. Generate or copy existing API key (format: `sk-ant-...`)
+1. https://github.com/settings/developers → New OAuth App
+2. Fill in:
+   - **Application name:** `Backstage IDP`
+   - **Homepage URL:** `http://localhost:3000` (update after deploy)
+   - **Callback URL:** `http://YOUR_BACKSTAGE_ALB_URL/api/auth/github/handler/frame`  
+     *(Use a placeholder — update after bootstrap prints the real ALB URL)*
+3. Copy `Client ID` and generate `Client Secret`
 
-**Set it in AWS:**
 ```bash
-# Create the secret for the first time
+# Set in local/backstage/.env
+AUTH_GITHUB_CLIENT_ID=your-client-id
+AUTH_GITHUB_CLIENT_SECRET=your-client-secret
+```
+
+**After bootstrap:** Update the OAuth app callback URL with the real ALB hostname.
+
+**Status:** ☐ App created / ☐ Credentials set in `local/backstage/.env` / ☐ Callback URL updated post-deploy
+
+---
+
+#### 3. ANTHROPIC_API_KEY (optional — required for AI features)
+
+**Why:** Powers KAgent AI agents and the idp-assistant chatbot
+
+**Get it:** https://console.anthropic.com/settings/keys
+
+```bash
+# Set in local/.env
+ANTHROPIC_API_KEY=sk-ant-YOUR_KEY
+
+# Also create in Secrets Manager (bootstrap.sh reads from local/.env)
 aws secretsmanager create-secret \
   --name idp-mvp/kagent \
-  --secret-string '{"ANTHROPIC_API_KEY":"sk-ant-YOUR_ACTUAL_KEY"}' \
+  --secret-string "{\"ANTHROPIC_API_KEY\":\"sk-ant-YOUR_KEY\"}" \
   --region us-east-1
-
-# Update an existing secret
-aws secretsmanager update-secret \
-  --secret-id idp-mvp/kagent \
-  --secret-string '{"ANTHROPIC_API_KEY":"sk-ant-YOUR_ACTUAL_KEY"}' \
-  --region us-east-1
-
-# Verify it was set correctly
-aws secretsmanager get-secret-value \
-  --secret-id idp-mvp/kagent \
-  --region us-east-1 --query SecretString --output text | jq .
 ```
 
-**Status:** ☐ Created / ☐ Updated / ☐ Verified
+**Status:** ☐ Optional / ☐ Set if using AI features
 
 ---
 
-### 2️⃣ GITHUB_TOKEN (Required)
+#### 4. Slack Webhook (optional — for cost alerts)
 
-**Why needed:** 
-- GitHub Actions CI/CD authentication
-- ArgoCD syncing with GitHub repos
-- Backstage catalog refresh
+**Why:** Budget alert notifications
 
-**Get it:**
-1. Visit https://github.com/settings/tokens
-2. Click "Generate new token (classic)"
-3. Scopes needed: `repo`, `read:org`, `gist`
-4. Copy the token (you only see it once)
+**Get it:** https://api.slack.com/apps → Incoming Webhooks
 
-**Set it in local/.env:**
-```bash
-# Edit local/.env
-GITHUB_TOKEN=ghp_YOUR_TOKEN_HERE
-```
-
-**Verify:**
-```bash
-grep "^GITHUB_TOKEN=" local/.env
-# Should show: GITHUB_TOKEN=ghp_...
-```
-
-**Status:** ☐ Set in local/.env / ☐ Verified
-
----
-
-### 3️⃣ GitHub OAuth Credentials (Required for Backstage Login)
-
-**Why needed:** Enable GitHub sign-in for Backstage portal
-
-**Get it:**
-1. Visit https://github.com/settings/developers
-2. Click "New OAuth App"
-3. Fill in:
-   - Application name: `Backstage IDP`
-   - Authorization callback URL: `http://YOUR_BACKSTAGE_ALB_URL/api/auth/github/handler/frame`
-   
-   ⚠️ **Note:** Use the ALB URL from `./scripts/bootstrap.sh` output, or use temporary URL like `http://localhost:3000/api/auth/github/handler/frame`
-
-4. Copy `Client ID` and `Client Secret`
-
-**Set it in local/backstage/.env:**
-```bash
-# Edit local/backstage/.env
-AUTH_GITHUB_CLIENT_ID=your-client-id-here
-AUTH_GITHUB_CLIENT_SECRET=your-client-secret-here
-```
-
-**Verify:**
-```bash
-grep "^AUTH_GITHUB_CLIENT" local/backstage/.env
-# Should show both CLIENT_ID and CLIENT_SECRET
-```
-
-**Status:** ☐ OAuth app created / ☐ Set in local/backstage/.env / ☐ Verified
-
----
-
-### 4️⃣ Slack Webhook (Optional - for Cost Alerts)
-
-**Why needed:** Get Slack notifications for cost budget alerts
-
-**Get it:**
-1. Create Slack app: https://api.slack.com/apps
-2. Enable "Incoming Webhooks"
-3. Click "Add New Webhook to Workspace"
-4. Copy the webhook URL (format: `https://hooks.slack.com/services/...`)
-
-**Set it in AWS:**
 ```bash
 aws secretsmanager create-secret \
-  --name idp-mvp/slack \
-  --secret-string '{"SLACK_WEBHOOK_URL":"https://hooks.slack.com/services/YOUR/WEBHOOK"}' \
+  --name idp-mvp/slack-webhook \
+  --secret-string "{\"SLACK_WEBHOOK_URL\":\"https://hooks.slack.com/services/YOUR/WEBHOOK\"}" \
   --region us-east-1
 ```
 
-**Status:** ☐ Optional / ☐ Created / ☐ Verified
-
----
-
-## Verification Script
-
-Run this to check all secrets before deployment:
-
-```bash
-./scripts/verify-secrets.sh
-```
-
-**Expected output when everything is correct:**
-```
-🔍 Verifying AWS Secrets & Configuration...
-   Region: us-east-1
-   Cluster: idp-mvp
-
-┌─────────────────────────────────────────────────────────┐
-│ 1. ANTHROPIC_API_KEY (KAgent AI Agents)                │
-└─────────────────────────────────────────────────────────┘
-✅ ANTHROPIC_API_KEY found and valid
-
-┌─────────────────────────────────────────────────────────┐
-│ 2. GITHUB_TOKEN (local/.env)                            │
-└─────────────────────────────────────────────────────────┘
-✅ GITHUB_TOKEN found in local/.env
-
-┌─────────────────────────────────────────────────────────┐
-│ 3. GitHub OAuth Credentials (local/backstage/.env)      │
-└─────────────────────────────────────────────────────────┘
-✅ GitHub OAuth credentials found in local/backstage/.env
-
-...
-
-✅ All critical checks passed!
-
-You can now proceed with:
-  ./scripts/setup.sh
-  ./scripts/bootstrap.sh
-  ./scripts/validate-deployment.sh
-```
-
----
-
-## File Locations
-
-| Credential | Location | Stored in |
-|-----------|----------|-----------|
-| ANTHROPIC_API_KEY | AWS Secrets Manager | `idp-mvp/kagent` |
-| GITHUB_TOKEN | `local/.env` | Local file (git-ignored) |
-| AUTH_GITHUB_CLIENT_ID | `local/backstage/.env` | Local file (git-ignored) |
-| AUTH_GITHUB_CLIENT_SECRET | `local/backstage/.env` | Local file (git-ignored) |
-| SLACK_WEBHOOK_URL | AWS Secrets Manager | `idp-mvp/slack` (optional) |
-| RDS Password | AWS Secrets Manager | Auto-created by Terraform |
-
----
-
-## Common Issues & Fixes
-
-### ❌ KAgent returns "Error code: 401 - invalid_x-api-key"
-
-**Cause:** ANTHROPIC_API_KEY is missing, invalid, or secret is malformed JSON
-
-**Fix:**
-```bash
-# 1. Verify secret exists
-aws secretsmanager get-secret-value --secret-id idp-mvp/kagent --region us-east-1
-
-# 2. Check JSON format
-aws secretsmanager get-secret-value --secret-id idp-mvp/kagent --region us-east-1 \
-  --query SecretString --output text | jq .
-
-# 3. Update with correct key
-aws secretsmanager update-secret \
-  --secret-id idp-mvp/kagent \
-  --secret-string '{"ANTHROPIC_API_KEY":"sk-ant-YOUR_KEY"}' \
-  --region us-east-1
-
-# 4. Restart KAgent
-kubectl rollout restart deployment/kagent-controller -n kagent
-```
-
----
-
-### ❌ Backstage shows "GitHub login unavailable"
-
-**Cause:** GitHub OAuth credentials missing or callback URL mismatch
-
-**Fix:**
-```bash
-# 1. Verify credentials in local/backstage/.env
-grep "^AUTH_GITHUB" local/backstage/.env
-
-# 2. Update GitHub OAuth app with correct callback URL
-# Visit https://github.com/settings/developers and update the callback URL to match:
-# http://YOUR_ACTUAL_BACKSTAGE_ALB_URL/api/auth/github/handler/frame
-
-# 3. Restart Backstage
-./scripts/bootstrap-local.sh --start-backstage
-# OR for AWS:
-kubectl rollout restart deployment/backstage -n backstage
-```
-
----
-
-### ❌ "Secret not found" during bootstrap
-
-**Cause:** Secret created in wrong region or under wrong name
-
-**Fix:**
-```bash
-# List all secrets in your region
-aws secretsmanager list-secrets --region us-east-1
-
-# Check if secret exists with correct name
-aws secretsmanager describe-secret --secret-id idp-mvp/kagent --region us-east-1
-
-# Recreate if needed
-aws secretsmanager create-secret \
-  --name idp-mvp/kagent \
-  --secret-string '{"ANTHROPIC_API_KEY":"sk-ant-YOUR_KEY"}' \
-  --region us-east-1
-```
+**Status:** ☐ Optional
 
 ---
 
 ## Pre-Deployment Checklist
 
-Before running `./scripts/setup.sh`:
+```
+Tools:
+  [ ] aws sts get-caller-identity   → works, shows correct account
+  [ ] terraform -version            → ≥ 1.5
+  [ ] kubectl version               → installed
+  [ ] helm version                  → ≥ 3.x
+  [ ] docker info                   → running, buildx available
+  [ ] gh auth status                → authenticated
+  [ ] jq --version                  → installed
+  [ ] python3 --version             → installed
 
-- [ ] AWS credentials configured (`aws sts get-caller-identity` works)
-- [ ] AWS region set correctly (default: us-east-1)
-- [ ] ANTHROPIC_API_KEY obtained from https://console.anthropic.com/settings/keys
-- [ ] ANTHROPIC_API_KEY created in AWS Secrets Manager (`idp-mvp/kagent`)
-- [ ] GITHUB_TOKEN obtained from https://github.com/settings/tokens
-- [ ] GITHUB_TOKEN set in `local/.env`
-- [ ] GitHub OAuth app created at https://github.com/settings/developers
-- [ ] GitHub OAuth credentials set in `local/backstage/.env`
-- [ ] Slack webhook (optional) created and set in AWS Secrets Manager
-- [ ] Verification script passes: `./scripts/verify-secrets.sh` → All ✅
-- [ ] Required tools installed: aws, terraform, kubectl, helm, docker, jq
+AWS:
+  [ ] AWS region confirmed (default: us-east-1)
+  [ ] Sufficient EC2 quota: 4× t3.medium + 4× t3.large in your region
+  [ ] S3 Terraform state bucket created (setup.sh does this)
+
+Credentials:
+  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)
+  [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
+  [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
+  [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
+
+Verification:
+  [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!
+```
+
+---
+
+## Common Errors Before Deployment
+
+### `verify-secrets.sh` fails on GITHUB_TOKEN
+
+```bash
+# Check local/.env has the token
+grep "^GITHUB_TOKEN=" local/.env
+# Should print: GITHUB_TOKEN=ghp_...
+```
+
+### GitHub OAuth login fails after deploy
+
+The OAuth callback URL must exactly match the Backstage ALB URL:
+
+```bash
+# Get the real URL
+kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+# Update your GitHub OAuth app at:
+# https://github.com/settings/developers → your app → Edit
+# Callback URL: http://<above-hostname>/api/auth/github/handler/frame
+```
+
+### KAgent "invalid_x-api-key"
+
+```bash
+aws secretsmanager get-secret-value --secret-id idp-mvp/kagent \
+  --region us-east-1 --query SecretString --output text | jq .
+# Verify ANTHROPIC_API_KEY value is correct (starts with sk-ant-)
+
+# Update if needed:
+aws secretsmanager put-secret-value \
+  --secret-id idp-mvp/kagent \
+  --secret-string '{"ANTHROPIC_API_KEY":"sk-ant-NEW_KEY"}' \
+  --region us-east-1
+kubectl rollout restart deployment/kagent-controller -n kagent
+```
 
 ---
 
 ## Deployment Order
 
 ```bash
-# 1. Verify all secrets
+# 1. Verify secrets
 ./scripts/verify-secrets.sh
-# Expected: ✅ All critical checks passed!
 
-# 2. Personalize configuration (first time only)
+# 2. Personalise (first time only — replaces YOUR_GITHUB_ORG placeholders)
 ./scripts/setup.sh
-# When prompted for environment, choose "aws"
 
-# 3. Deploy to AWS (~45-60 minutes)
+# 3. Deploy full stack (~45–60 min)
 ./scripts/bootstrap.sh
-# Monitor output, note the Backstage ALB URL
 
-# 4. Validate all components
+# 4. Update GitHub OAuth callback URL with the printed ALB hostname
+
+# 5. Run validation
 ./scripts/validate-deployment.sh
-# Expected: ✅ DEPLOYMENT VALIDATION PASSED
 
-# 5. (Optional) Deploy AI/ML stack
+# 6. Optional: deploy AI/ML stack
 ./scripts/bootstrap-ai.sh
-
-# 6. Access Backstage
-# Update GitHub OAuth callback URL if needed (see above)
-# Open the ALB URL in browser and sign in with GitHub
 ```
 
----
-
-## Support
-
-**For detailed deployment guide:** See `docs/DEPLOYMENT_GUIDE.md`  
-**For troubleshooting:** See `docs/DEPLOYMENT_GUIDE.md` → Troubleshooting  
-**For production hardening:** See `docs/DEPLOYMENT_GUIDE.md` → Production Hardening  
-
-Questions? Check the verification script output for specific fix commands.
+See `docs/DEPLOYMENT_GUIDE.md` for full details, known issues, and troubleshooting.
