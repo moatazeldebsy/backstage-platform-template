@@ -1,14 +1,18 @@
 apiVersion: backstage.io/v1alpha1
-kind: System
+kind: Resource
 metadata:
-  name: internal-developer-platform
-  title: Internal Developer Platform
-  description: Golden-path platform for building and deploying services on EKS
+  name: my-eks-cluster
+  description: EKS cluster my-eks-cluster (k8s 1.31) in us-east-1
   annotations:
-    backstage.io/techdocs-ref: dir:.
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-platform-template/blob/main/terraform/infra/eks-clusters/my-eks-cluster/
+  labels:
+    aws-region: us-east-1
+    kubernetes-version: 1.31
   tags:
-    - platform
-    - aws
+    - eks
     - kubernetes
+    - aws
 spec:
-  owner: platform-team
+  type: kubernetes-cluster
+  owner: group:default/platform-team
+  system: internal-developer-platform
