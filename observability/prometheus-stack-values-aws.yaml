@@ -66,14 +66,10 @@ alertmanager:
 
 grafana:
   # Password set via --set grafana.adminPassword at install time (from Secrets Manager / env var)
-  # HA: 2 replicas so an ALB target is always healthy during rollouts.
-  # Persistence is disabled because gp2 is ReadWriteOnce — two replicas cannot share
-  # the same PVC. This is safe here: dashboards come from ConfigMaps and datasources
-  # from this values file, so Grafana state is fully reproducible from config.
-  # User-created dashboards and sessions will be lost on pod restart; if that becomes
-  # a requirement, switch to an external Postgres backend (`grafana.database.*`) and
-  # re-enable persistence with EFS (ReadWriteMany).
-  replicas: 2
+  # 1 replica — ALB has no sticky sessions, so multiple replicas cause session routing
+  # failures (login succeeds on pod A, next request hits pod B, session not found).
+  # To scale out, either enable ALB sticky sessions or configure a Postgres session backend.
+  replicas: 1
   serviceAccount:
     annotations:
       # Populated by bootstrap.sh: eks.amazonaws.com/role-arn = grafana_role_arn terraform output
@@ -86,59 +82,21 @@ grafana:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
-      # Mirror local/observability/prometheus-stack-values.yaml: retry on transient
-      # 503s so a Grafana restart never surfaces to the user during dashboard reload.
       alb.ingress.kubernetes.io/success-codes: "200-399"
       alb.ingress.kubernetes.io/healthcheck-path: /api/health
       alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "10"
       alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     hosts: []
 
-  # Lenient probes — Grafana can be slow to start when loading dashboard ConfigMaps.
-  # Mirrors the local values file to keep behaviour at parity.
-  readinessProbe:
-    httpGet:
-      path: /api/health
-      port: 3000
-    initialDelaySeconds: 30
-    timeoutSeconds: 5
-    periodSeconds: 10
-    failureThreshold: 10
-  livenessProbe:
-    httpGet:
-      path: /api/health
-      port: 3000
-    initialDelaySeconds: 60
-    timeoutSeconds: 30
-    periodSeconds: 10
-    failureThreshold: 10
-
+  # kube-prometheus-stack automatically provisions the Prometheus datasource (uid: prometheus,
+  # isDefault: true) via the prometheus-kube-prometheus-grafana-datasource ConfigMap.
+  # Do NOT add a datasource here — a second isDefault entry crashes Grafana on startup.
   datasources:
     datasources.yaml:
       apiVersion: 1
-      datasources:
-        - name: Prometheus
-          uid: prometheus
-          type: prometheus
-          access: proxy
-          url: http://prometheus-operated.monitoring:9090
-          isDefault: true
-        - name: AlertManager
-          uid: alertmanager
-          type: alertmanager
-          access: proxy
-          url: http://prometheus-kube-prometheus-alertmanager.monitoring:9093
-          jsonData:
-            implementation: prometheus
-        - name: CloudWatch
-          uid: cloudwatch
-          type: cloudwatch
-          access: proxy
-          jsonData:
-            authType: default
-            # Region substituted by bootstrap.sh
-            defaultRegion: "us-east-1"
+      datasources: []
 
+  # Dashboard folder providers — one entry per ConfigMap.
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -159,14 +117,31 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/qa
 
-  # ConfigMap names must match what bootstrap.sh creates via kubectl create configmap
+  # ConfigMap names must match what bootstrap.sh creates via kubectl create configmap.
+  # Each key must match the provider name above.
   dashboardsConfigMaps:
     idp: grafana-dashboards-idp
     dora: grafana-dashboards-dora
     qa: grafana-qa-dashboard
 
-  # Disabled to allow 2 replicas (see note above). gp2 is RWO; enabling persistence
-  # would pin the deployment to a single replica.
+  # Lenient probes — Grafana can be slow to start when loading dashboard ConfigMaps.
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 10
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 60
+    timeoutSeconds: 30
+    periodSeconds: 10
+    failureThreshold: 10
+
   persistence:
     enabled: false
 

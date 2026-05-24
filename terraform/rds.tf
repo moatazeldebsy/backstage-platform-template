@@ -53,9 +53,9 @@ resource "aws_db_instance" "backstage" {
 
   backup_retention_period   = 7
   storage_encrypted         = true
-  skip_final_snapshot       = false
+  skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-backstage-final"
-  deletion_protection       = true
+  deletion_protection       = var.environment == "prod" ? true : false
 
   tags = {
     Name = "${var.cluster_name}-backstage-db"

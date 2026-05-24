@@ -79,7 +79,7 @@ See [crossplane.md](crossplane.md) for the full flow.
 ### 2. Clone your new repo
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_ORG/<service-name>
+git clone https://github.com/moatazeldebsy/<service-name>
 cd <service-name>
 ```
 

@@ -15,11 +15,15 @@
 
 See [docs/local-setup.md](local-setup.md) for the full local walkthrough including Backstage, the `idp:deploy-local` action, and Kind deployment.
 
-`./scripts/setup.sh` **must be run before** `bootstrap-local.sh`. It replaces `YOUR_GITHUB_ORG` and other placeholders across 542 targeted files (excluding node_modules). Without it, the ArgoCD ApplicationSet will have an unresolved placeholder and generate no apps.
+`./scripts/setup.sh` **must be run before** `bootstrap-local.sh`. It replaces `moatazeldebsy` and other placeholders across 542 targeted files (excluding node_modules). Without it, the ArgoCD ApplicationSet will have an unresolved placeholder and generate no apps.
 
-> **Important:** `setup.sh` uses targeted file scanning and `while`-loop replacement (not `xargs`) to reliably update placeholders. If you previously ran an older version and ArgoCD shows no apps, check that `local/argocd/app-of-apps-local.yaml` contains your GitHub org (not `YOUR_GITHUB_ORG`), then re-run `setup.sh`.
+> **Important:** `setup.sh` uses targeted file scanning and `while`-loop replacement (not `xargs`) to reliably update placeholders. If you previously ran an older version and ArgoCD shows no apps, check that `local/argocd/app-of-apps-local.yaml` contains your GitHub org (not `moatazeldebsy`), then re-run `setup.sh`.
 
 ## AWS Setup
+
+> **🔐 CRITICAL - First:** Read [docs/PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md) and verify all API keys are set correctly. Run `./scripts/verify-secrets.sh` to validate before deployment.
+
+> **⚠️ NEW:** Then read [docs/DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: **45–60 minutes**.
 
 ### 1. Configure AWS
 
@@ -28,10 +32,10 @@ aws configure  # or use aws sso login
 aws sts get-caller-identity  # verify
 ```
 
-### 2. Bootstrap the platform (~20 min)
+### 2. Bootstrap the platform
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_ORG/idp-mvp
+git clone https://github.com/moatazeldebsy/idp-mvp
 cd idp-mvp
 
 # Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)
@@ -44,10 +48,41 @@ Or, if you have already run `setup.sh` for personalisation and want to re-run th
 ```bash
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 # Edit terraform/terraform.tfvars — update cluster_name, region if needed
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh  # ~45–60 min
 ```
 
-This provisions EKS, ECR, IAM (including the Crossplane IRSA role from `terraform/iam-crossplane.tf`), deploys observability, deploys `hello-service`, and applies the Crossplane stack (core + AWS providers + Compositions) via ArgoCD. After bootstrap, per-service AWS resources can be requested through Backstage with no further `terraform apply` — see [crossplane.md](crossplane.md).
+### 3. Validate deployment
+
+After `bootstrap.sh` completes, run the validation script to verify all components:
+
+```bash
+./scripts/validate-deployment.sh
+```
+
+This runs 50+ automated tests across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.
+
+### 4. Clean up (when done)
+
+To safely tear down all AWS resources:
+
+```bash
+./scripts/cleanup.sh --cluster-name idp-mvp
+```
+
+This script deletes orphaned load balancers first, then runs `terraform destroy` with verification.
+
+---
+
+**What gets provisioned:**
+- EKS cluster (4× t3.medium nodes, 1.29)
+- RDS PostgreSQL (for Backstage)
+- ECR repository + S3 bucket (for artifacts)
+- IAM roles + OIDC (for GitHub Actions and Crossplane)
+- All platform components (Prometheus, Grafana, ArgoCD, OPA/Gatekeeper, External Secrets Operator)
+- Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
+- `hello-service` reference deployment
+
+**Cost:** ~$248/month for a development environment (4 nodes running continuously). See [IMPROVEMENTS_SUMMARY.md](IMPROVEMENTS_SUMMARY.md) for cost optimization strategies.
 
 ### 3. GitHub Actions secrets
 

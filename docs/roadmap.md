@@ -42,7 +42,7 @@ Status is updated as work progresses.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Fix `YOUR_DISPLAY_NAME` in `catalog-info.yaml` | ✅ | Resolved in personalisation pass during `setup.sh` |
+| Fix `Moataz Nabil` in `catalog-info.yaml` | ✅ | Resolved in personalisation pass during `setup.sh` |
 | Correct README template count | ✅ | README updated to reflect 28 templates |
 | Add `SECURITY.md` | ✅ | `SECURITY.md` added — vulnerability disclosure policy |
 | Add Dependabot config | ✅ | `.github/dependabot.yml` present |

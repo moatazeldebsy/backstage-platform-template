@@ -2,7 +2,7 @@
 
 This page documents the security posture of the platform template — what has been hardened, where the remaining gaps are, and the rationale behind a few decisions that are not obvious from the code alone.
 
-For vulnerability disclosure, see [`SECURITY.md`](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/SECURITY.md) at the repo root.
+For vulnerability disclosure, see [`SECURITY.md`](https://github.com/moatazeldebsy/backstage-platform-template/blob/main/SECURITY.md) at the repo root.
 
 ## Dependency vulnerability remediation
 
@@ -56,4 +56,4 @@ The [readiness checklist](readiness-checklist.md) calls these out before promoti
 
 ## Reporting
 
-See [`SECURITY.md`](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/SECURITY.md) for the private-disclosure process.
+See [`SECURITY.md`](https://github.com/moatazeldebsy/backstage-platform-template/blob/main/SECURITY.md) for the private-disclosure process.

@@ -8,7 +8,7 @@ Runs as a Kubernetes CronJob every 15 minutes.
 
 Environment variables:
   GITHUB_TOKEN      — GitHub PAT with repo + actions:read scope
-  GITHUB_ORG        — GitHub organisation (e.g. YOUR_GITHUB_ORG)
+  GITHUB_ORG        — GitHub organisation (e.g. moatazeldebsy)
   AWS_REGION        — AWS region for CloudWatch (e.g. us-east-1)
   LOOKBACK_HOURS    — how far back to query (default: 24)
   CLOUDWATCH_NS     — CloudWatch namespace (default: IDP/DORA)
@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 GITHUB_TOKEN   = os.environ["GITHUB_TOKEN"]
-GITHUB_ORG     = os.environ.get("GITHUB_ORG", "YOUR_GITHUB_ORG")
+GITHUB_ORG     = os.environ.get("GITHUB_ORG", "moatazeldebsy")
 AWS_REGION     = os.environ.get("AWS_REGION", "us-east-1")
 LOOKBACK_HOURS = int(os.environ.get("LOOKBACK_HOURS", "24"))
 CW_NAMESPACE   = os.environ.get("CLOUDWATCH_NS", "IDP/DORA")

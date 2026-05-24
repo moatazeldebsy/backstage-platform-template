@@ -16,7 +16,7 @@ spec:
         generators:
           # Generator 1: discover services from the platform repo
           - git:
-              repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+              repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
               revision: HEAD
               directories:
                 - path: services/*
@@ -38,7 +38,7 @@ spec:
     spec:
       project: default
       sources:
-        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
           targetRevision: HEAD
           path: helm/service-template
           helm:
@@ -47,7 +47,7 @@ spec:
                 value: "{{path.basename}}"
             valueFiles:
               - $values/services/{{path.basename}}/{{valuesFile}}
-        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
           targetRevision: HEAD
           ref: values
       destination:

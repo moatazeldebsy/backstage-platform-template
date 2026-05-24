@@ -51,7 +51,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       TECHDOCS_S3_BUCKET_NAME: ${TECHDOCS_S3_BUCKET_NAME:-}
       CATALOG_EXPORTER_TOKEN: ${CATALOG_EXPORTER_TOKEN:-local-catalog-exporter-token}
-      GITHUB_ORG: ${GITHUB_ORG:-YOUR_GITHUB_ORG}
+      GITHUB_ORG: ${GITHUB_ORG:-moatazeldebsy}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
     ports:
       - "3000:7007"   # frontend + backend both served from 7007 inside the container
@@ -99,9 +99,9 @@ services:
           -e 's/127\.0\.0\.1/host.docker.internal/g' \
           -e 's/certificate-authority-data:.*/insecure-skip-tls-verify: true/' \
           /home/node/.kube/config > /tmp/kubeconfig &&
-        if [ -n "${GITHUB_ORG}" ] && [ "${GITHUB_ORG}" != "YOUR_GITHUB_ORG" ]; then
+        if [ -n "${GITHUB_ORG}" ] && [ "${GITHUB_ORG}" != "moatazeldebsy" ]; then
           find /catalog -name "*.yaml" \
-            -exec sed -i "s/YOUR_GITHUB_ORG/${GITHUB_ORG}/g" {} \;
+            -exec sed -i "s/moatazeldebsy/${GITHUB_ORG}/g" {} \;
         fi &&
         node packages/backend \
           --config app-config.yaml \

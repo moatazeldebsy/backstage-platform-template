@@ -113,22 +113,24 @@ resource "aws_ce_anomaly_monitor" "cluster" {
   monitor_dimension = "SERVICE"
 }
 
-resource "aws_ce_anomaly_subscription" "cluster" {
-  name      = "${var.cluster_name}-anomaly-subscription"
-  frequency = "DAILY"
-
-  monitor_arn_list = [aws_ce_anomaly_monitor.cluster.arn]
-
-  subscriber {
-    type    = "SNS"
-    address = aws_sns_topic.cost_alerts.arn
-  }
-
-  threshold_expression {
-    dimension {
-      key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
-      values        = ["20"]
-      match_options = ["GREATER_THAN_OR_EQUAL"]
-    }
-  }
-}
+# Disabled: AWS requires Email subscriptions for DAILY frequency, not SNS
+# TODO: Reconfigure with email subscriber or use REALTIME frequency with SNS
+# resource "aws_ce_anomaly_subscription" "cluster" {
+#   name      = "${var.cluster_name}-anomaly-subscription"
+#   frequency = "DAILY"
+#
+#   monitor_arn_list = [aws_ce_anomaly_monitor.cluster.arn]
+#
+#   subscriber {
+#     type    = "SNS"
+#     address = aws_sns_topic.cost_alerts.arn
+#   }
+#
+#   threshold_expression {
+#     dimension {
+#       key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+#       values        = ["20"]
+#       match_options = ["GREATER_THAN_OR_EQUAL"]
+#     }
+#   }
+# }

@@ -2,6 +2,8 @@
 
 Use this checklist before promoting the IDP to a production environment.
 
+> **Quick validation:** Run `./scripts/validate-deployment.sh` after deployment to verify all 50+ platform components are healthy. This automated check covers AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and resource usage. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for more.
+
 ---
 
 ## Security
@@ -56,7 +58,7 @@ Use this checklist before promoting the IDP to a production environment.
 ## Functionality
 
 ### Backstage Portal
-- [ ] `setup.sh` was run **before** `bootstrap-local.sh` (required for `YOUR_GITHUB_ORG` placeholder replacement)
+- [ ] `setup.sh` was run **before** `bootstrap-local.sh` (required for `moatazeldebsy` placeholder replacement)
 - [ ] ArgoCD has 3 apps synced: `hello-service-local`, `idp-mcp-server-local`, `qa-mcp-server-local` (run `kubectl get applications -n argocd`)
 - [ ] `idp-mcp-server` and `qa-mcp-server` pods are running in `services-dev` namespace
 - [ ] KAgent agents show `READY=True` for both `idp-assistant` and `qa-assistant` (run `kubectl get agents -n kagent`)
@@ -105,7 +107,7 @@ Use this checklist before promoting the IDP to a production environment.
 
 ## Template Readiness (before sharing publicly)
 
-- [ ] `YOUR_GITHUB_ORG` placeholder present in all catalog/template files ✅
+- [ ] `moatazeldebsy` placeholder present in all catalog/template files ✅
 - [ ] No personal tokens or credentials in git history (`git log --all -S "ghp_" --oneline`)
 - [ ] `setup.sh` tested end-to-end on a clean clone
 - [ ] `.env.example` files cover all required variables ✅

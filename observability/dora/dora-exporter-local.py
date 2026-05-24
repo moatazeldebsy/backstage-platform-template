@@ -8,7 +8,7 @@ Runs as a Kubernetes CronJob every 15 minutes.
 
 Environment variables:
   GITHUB_TOKEN      — GitHub PAT with repo + actions:read scope
-  GITHUB_ORG        — GitHub organisation (e.g. YOUR_GITHUB_ORG)
+  GITHUB_ORG        — GitHub organisation (e.g. moatazeldebsy)
   PUSHGATEWAY_URL   — Prometheus Pushgateway endpoint (default: http://prometheus-pushgateway.monitoring.svc.cluster.local:9091)
   LOOKBACK_HOURS    — how far back to query (default: 24)
 """
@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 GITHUB_TOKEN    = os.environ["GITHUB_TOKEN"]
-GITHUB_ORG      = os.environ.get("GITHUB_ORG", "YOUR_GITHUB_ORG")
+GITHUB_ORG      = os.environ.get("GITHUB_ORG", "moatazeldebsy")
 PUSHGATEWAY_URL = os.environ.get(
     "PUSHGATEWAY_URL",
     "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091",

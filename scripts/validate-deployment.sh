@@ -112,7 +112,7 @@ PROMETHEUS_URL=$(kubectl get ingress -n monitoring -l app.kubernetes.io/name=pro
 
 # Check if Prometheus is scraping targets
 PROMETHEUS_TARGETS=$(kubectl exec -n monitoring -l app.kubernetes.io/name=prometheus -c prometheus -- \
-  curl -s localhost:9090/api/v1/targets 2>/dev/null | grep -o '"state":"up"' | wc -l || echo "0")
+  curl -s localhost:9090/api/v1/targets 2>/dev/null | grep -o '"state":"up"' | wc -l | xargs || echo "0")
 [[ $PROMETHEUS_TARGETS -gt 0 ]] && log "Prometheus scraping $PROMETHEUS_TARGETS targets" || err "Prometheus not scraping"
 
 # Check Grafana (via ALB Ingress)
@@ -199,7 +199,7 @@ log "Active load balancers: $ALB_COUNT"
 
 # Check DNS resolution from cluster
 TEST_POD=$(kubectl run -it --rm test-dns --image=alpine --restart=Never -- \
-  nslookup kubernetes.default 2>/dev/null | grep "Name:" | wc -l || echo "0")
+  nslookup kubernetes.default 2>/dev/null | grep "Name:" | wc -l | xargs || echo "0")
 [[ "$TEST_POD" -gt 0 ]] && log "DNS resolution working" || err "DNS resolution failed"
 
 # ── 9. Storage & Persistence Tests ───────────────────────────────────────────

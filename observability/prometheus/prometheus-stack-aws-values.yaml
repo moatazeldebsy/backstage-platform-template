@@ -20,6 +20,8 @@ prometheus:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/healthcheck-path: /-/healthy
+      alb.ingress.kubernetes.io/success-codes: "200-399"
     hosts: []   # matches any hostname; set real domain when Route53/DNS is configured
     paths:
       - /
@@ -52,6 +54,7 @@ alertmanager:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/success-codes: "200-399"
     hosts: []
     paths:
       - /
@@ -83,16 +86,16 @@ grafana:
       #     eks.amazonaws.com/role-arn=<grafana_role_arn>
       eks.amazonaws.com/role-arn: "REPLACE_WITH_GRAFANA_IRSA_ARN"
 
+  sidecar:
+    datasources:
+      # Disable the sidecar's auto-generated prometheus.yaml — it creates a second
+      # unnamed Prometheus datasource with isDefault: true that conflicts with the
+      # chart's own datasource.yaml (uid: prometheus) on fresh Grafana installs.
+      defaultDatasourceEnabled: false
+
   datasources:
     datasources.yaml:
       apiVersion: 1
-      deleteDatasources:
-        - name: CloudWatch
-          orgId: 1
-        - name: Prometheus
-          orgId: 1
-        - name: AlertManager
-          orgId: 1
       datasources:
         - name: CloudWatch
           uid: cloudwatch
@@ -101,19 +104,7 @@ grafana:
           jsonData:
             authType: default
             defaultRegion: us-east-1
-          isDefault: true
-        - name: Prometheus
-          uid: prometheus
-          type: prometheus
-          access: proxy
-          url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
-        - name: AlertManager
-          uid: alertmanager
-          type: alertmanager
-          access: proxy
-          url: http://prometheus-kube-prometheus-alertmanager.monitoring:9093
-          jsonData:
-            implementation: prometheus
+          isDefault: false
 
   dashboardProviders:
     dashboardproviders.yaml:
@@ -144,6 +135,13 @@ grafana:
     enabled: true
     storageClassName: gp2
     size: 5Gi
+
+  grafana.ini:
+    security:
+      # Grafana 13+ uses __Host- prefixed cookies which require HTTPS.
+      # Override to a plain name so the cookie works over HTTP (ALB without TLS).
+      login_cookie_name: grafana_session
+      cookie_secure: false
 
   ingress:
     enabled: true

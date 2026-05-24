@@ -25,7 +25,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "idp-mvp-terraform-state-YOUR_AWS_ACCOUNT_ID"
+    bucket         = "idp-mvp-terraform-state-967825954374"
     key            = "platform/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "idp-mvp-terraform-locks"

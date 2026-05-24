@@ -16,7 +16,7 @@ spec:
       serviceAccountName: backstage
       containers:
         - name: backstage
-          image: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/backstage:latest
+          image: 967825954374.dkr.ecr.us-east-1.amazonaws.com/backstage:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 7007
@@ -102,13 +102,13 @@ spec:
               memory: 1Gi
           readinessProbe:
             httpGet:
-              path: /healthcheck
+              path: /ready
               port: 7007
             initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /healthcheck
+              path: /healthz
               port: 7007
             initialDelaySeconds: 60
             periodSeconds: 30
