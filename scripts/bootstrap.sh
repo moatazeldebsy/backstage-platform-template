@@ -109,6 +109,10 @@ kubectl wait --for=condition=ready pod \
 
 # Annotate the ESO ServiceAccount with the Backstage IRSA role so it can
 # authenticate to Secrets Manager via pod identity (no static credentials).
+# The IAM trust policy references external-secrets-sa (not the default external-secrets SA).
+# Create it if missing so the ClusterSecretStore IRSA authentication succeeds.
+kubectl create serviceaccount external-secrets-sa -n external-secrets \
+  --dry-run=client -o yaml | kubectl apply -f -
 kubectl annotate serviceaccount external-secrets-sa \
   -n external-secrets \
   "eks.amazonaws.com/role-arn=${BACKSTAGE_ROLE_ARN}" \
@@ -244,6 +248,11 @@ helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pu
 
 kubectl apply -f kubernetes/monitoring/pushgateway-ingress-alb.yaml
 log "Pushgateway ALB ingress applied."
+
+# Seed QA demo metrics so the Grafana QA Platform dashboard has data immediately
+PUSHGATEWAY_INTERNAL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
+PUSHGATEWAY_URL="${PUSHGATEWAY_INTERNAL}" bash scripts/seed-qa-metrics.sh \
+  || log "  WARNING: QA metrics seed failed — run scripts/seed-qa-metrics.sh manually after deploy."
 
 # ── Phase 4b: OpenCost ────────────────────────────────────────────────────────
 log "Phase 4b: Installing OpenCost (cluster cost visibility)..."
