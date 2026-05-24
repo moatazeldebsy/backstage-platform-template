@@ -4,7 +4,7 @@ metadata:
   name: test-accessibility
   description: accessibility test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-accessibility
+    github.com/project-slug: moatazeldebsy/test-accessibility
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

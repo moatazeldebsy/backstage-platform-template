@@ -3,7 +3,7 @@
 # To enable a feature, set the relevant env vars in local/backstage/.env
 
 app:
-  baseUrl: http://backstage.idp.local
+  baseUrl: http://backstage.idp.local:3000
   # Disable the kubernetes standalone page — it requires an entity context
   # and crashes with "Entity context is not available" when accessed directly.
   # Kubernetes info is still available via entity tabs in the catalog.
@@ -16,10 +16,10 @@ app:
         disabled: true
 
 backend:
-  # All traffic (frontend + API) is served through port 3000 → 7007 in container
-  baseUrl: http://backstage.idp.local
+  # All traffic (frontend + API) is served through port 3000 (docker port mapping)
+  baseUrl: http://backstage.idp.local:3000
   cors:
-    origin: http://backstage.idp.local
+    origin: http://backstage.idp.local:3000
   database:
     connection:
       ssl: false   # local Postgres container has no SSL; override the production default
@@ -74,15 +74,17 @@ proxy:
         Authorization: Bearer ${GRAFANA_TOKEN}
     /kagent:
       target: http://kagent.idp.local
-      allowedMethods: ['GET', 'POST']
+      allowedMethods: ['GET', 'POST', 'HEAD']
       changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/kagent': ''
     /contract-mcp:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']
       changeOrigin: true
 
 # Serve tech radar from the locally mounted catalog volume instead of GitHub raw URL.
-# This avoids the YOUR_GITHUB_ORG placeholder issue and works without a GitHub token.
+# This avoids the moatazeldebsy placeholder issue and works without a GitHub token.
 techRadar:
   url: http://localhost:7007/tech-radar.json
 

@@ -14,7 +14,7 @@ Thank you for your interest in contributing! This project is a community-maintai
 1. Clone the repo and run the one-time setup:
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+git clone https://github.com/moatazeldebsy/backstage-platform-template.git
 cd backstage-platform-template
 ./scripts/setup.sh
 ```

@@ -1,0 +1,76 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: decommission-service
+  title: Decommission Service
+  description: |
+    Remove a service from the IDP. This template allows GitHub organization admins to:
+    - Archive a service repo on GitHub (freezes it as read-only, reversible)
+    - Permanently delete a service repo on GitHub (irreversible)
+    - Automatically unregister the service from the Backstage catalog
+
+    **Warning**: Deletion is permanent and cannot be undone. Archive if you want to preserve history.
+  tags:
+    - admin
+    - decommission
+    - dangerous
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Select Service to Decommission
+      required:
+        - entityRef
+      properties:
+        entityRef:
+          title: Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+
+    - title: Choose Action
+      required:
+        - action
+      properties:
+        action:
+          title: Decommission Action
+          type: string
+          enum: [archive, delete]
+          enumNames:
+            - 'Archive — freeze repo read-only on GitHub (reversible)'
+            - 'Delete — permanently remove repo from GitHub (IRREVERSIBLE)'
+          default: archive
+          description: |
+            **Archive** (recommended): Marks the repo as read-only on GitHub. Can be un-archived later if needed.
+
+            **Delete** (dangerous): Permanently removes the repo from GitHub and cannot be recovered.
+
+    - title: Confirm Decommissioning
+      description: |
+        **WARNING**: This action cannot be fully undone for "Delete".
+
+        To proceed, type the exact service name below.
+      required:
+        - confirmationText
+      properties:
+        confirmationText:
+          title: Confirm by typing the service name
+          type: string
+          ui:autofocus: true
+
+  steps:
+    - id: decommission
+      name: Decommission Service
+      action: idp:decommission-service
+      input:
+        entityRef: ${{ parameters.entityRef }}
+        action: ${{ parameters.action }}
+        confirmationText: ${{ parameters.confirmationText }}
+
+  output:
+    text:
+      - title: Decommission Result
+        content: ${{ steps.decommission.output.summary }}

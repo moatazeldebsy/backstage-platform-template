@@ -70,7 +70,7 @@ spec:
             allowedHosts:
               - github.com
             allowedOwners:
-              - YOUR_GITHUB_ORG
+              - moatazeldebsy
 
   steps:
     - id: fetch

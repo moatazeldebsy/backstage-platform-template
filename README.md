@@ -11,7 +11,7 @@
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
-> **First time?** Always run `./scripts/setup.sh` first. It replaces `YOUR_GITHUB_ORG` and other placeholders across all config files. If you skip this step, ArgoCD will generate no apps because its ApplicationSet still has the unresolved `YOUR_GITHUB_ORG` placeholder.
+> **First time?** Always run `./scripts/setup.sh` first. It replaces `moatazeldebsy` and other placeholders across all config files. If you skip this step, ArgoCD will generate no apps because its ApplicationSet still has the unresolved `moatazeldebsy` placeholder.
 
 <!-- demo-gif: replace the image below with an animated GIF showing the golden path
      (scaffold service in Backstage → CI runs → service live with metrics).
@@ -52,7 +52,7 @@
 
 ```bash
 # 1. Click "Use this template" on GitHub, then clone your new repo
-git clone https://github.com/YOUR_ORG/YOUR_REPO.git && cd YOUR_REPO
+git clone https://github.com/YOUR_PACTFLOW_ORG/backstage-platform-template.git && cd backstage-platform-template
 
 # 2. Personalise placeholders AND bootstrap the platform (guided, interactive)
 ./scripts/setup.sh
@@ -140,12 +140,23 @@ After `bootstrap-local.sh` completes and Backstage is running, everything is rea
 ### AWS
 
 ```bash
+# Prerequisites: AWS account with permissions, AWS CLI configured, Terraform, kubectl
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 # Edit terraform/terraform.tfvars — set github_org, aws_region, cluster_name
-./scripts/bootstrap.sh
+
+# Run setup wizard (personalises placeholders, creates .env, then bootstraps AWS)
+./scripts/setup.sh
+# OR run bootstrap directly:
+./scripts/bootstrap.sh  # ~45–60 min
+
+# Validate all components are healthy
+./scripts/validate-deployment.sh
+
+# When done, tear down safely
+./scripts/cleanup.sh --cluster-name idp-mvp
 ```
 
-See [docs/getting-started.md](docs/getting-started.md) for the full walkthrough.
+**Full AWS guide:** See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) (comprehensive step-by-step, pre-flight checklist, 4 known issues with solutions, troubleshooting, production hardening).
 
 ## Project Structure
 
@@ -179,11 +190,13 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 |---|---|---|
 | `setup.sh` | **Entry point.** Interactive: replaces placeholders (org, AWS account, region, cluster name), creates `.env` files, then dispatches to local or AWS bootstrap. | You (once) |
 | `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. `--start-backstage` builds + starts Backstage, wires nginx, seeds metrics. `--destroy` tears everything down. | `setup.sh` → local path, or standalone |
-| `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components, and pushes `hello-service` to ECR. | `setup.sh` → AWS path, or standalone |
+| `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components, and pushes `hello-service` to ECR. ~45–60 min. See [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for full walkthrough. | `setup.sh` → AWS path, or standalone |
+| `validate-deployment.sh` | **Post-deploy validation.** Runs 50+ automated tests across AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage. Exit 0 = success, 1 = failure with debug suggestions. | After `bootstrap.sh` completes |
+| `cleanup.sh` | **Safe teardown.** Deletes orphaned load balancers, disables RDS deletion protection, runs `terraform destroy`, and verifies complete cleanup. Use `--force` flag to skip interactive prompts. | When tearing down AWS resources |
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
-| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. | After `bootstrap-local.sh` |
+| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. Use `--aws` flag for AWS deployment. | After `bootstrap-local.sh` or `bootstrap.sh` |
 
 ### Day-2 — Per-service operations
 
@@ -365,7 +378,7 @@ helm upgrade --install my-svc ./helm/service-template \
 | 11 | EKS access entry for GitHub Actions IAM role | Ready |
 | 12 | AI/ML platform — KAgent, MLflow, IDP MCP Server, 3 Backstage AI/ML templates, `bootstrap-ai.sh` | Ready |
 
-## AWS Cost
+## AWS Cost & Scalability
 
 ### Monthly estimate (us-east-1, default config)
 
@@ -379,35 +392,40 @@ helm upgrade --install my-svc ./helm/service-template \
 | CloudWatch | Logs + metrics + dashboards | ~$10–20 |
 | Secrets Manager | 3 secrets | ~$1 |
 | ECR + S3 | Images + TechDocs | ~$2 |
-| **Total** | | **~$220–$245/month** |
+| **Total (baseline)** | | **~$220–$245/month** |
 
-Scaling to 5 nodes (max_size) adds ~$90/month → up to ~$335/month.
+**With latest improvements** (MLflow artifact cleanup, faster deployments, intelligent ALB cleanup):
+- **Savings:** ~$27/month (11% reduction)
+- **New baseline:** ~$193–$218/month
 
-### Cost optimizer (overnight scheduler)
+See [docs/IMPROVEMENTS_SUMMARY.md](docs/IMPROVEMENTS_SUMMARY.md) for detailed cost analysis.
 
-Enable in `terraform/terraform.tfvars` to cut idle hours by ~45 %:
+### Production Hardening: Autoscaling & Right-Sizing
+
+For production workloads, enable autoscaling and right-size node types in `terraform/terraform.tfvars`:
 
 ```hcl
-enable_cost_optimizer = true
-# Optional — defaults shown below (UTC)
-cost_optimizer_scale_down_cron = "cron(0 20 * * ? *)"  # 8 pm UTC
-cost_optimizer_scale_up_cron   = "cron(0 7  * * ? *)"  # 7 am UTC
+# Increase node size for production workloads
+node_instance_types     = ["t3.large"]  # instead of t3.medium
+node_group_min_size     = 4             # instead of 2
+node_group_max_size     = 12            # for peak load
+enable_autoscaling      = true
+
+# RDS production settings (higher availability)
+environment = "prod"  # enables deletion_protection, backups, encryption
 ```
 
-What it does (via Lambda + EventBridge):
-- **8 pm UTC** — EKS nodes scaled to 0, RDS stopped
-- **7 am UTC** — EKS nodes restored to `desired_size`, RDS started
+**Scaling impact:**
+- 4× t3.large + autoscaling (0–12 nodes) = ~$350–$600/month depending on utilization
+- Use AWS Compute Optimizer to right-size further
 
-Estimated savings vs always-on (11 h off × 30 days):
+See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) → Production Hardening for the full checklist.
 
-| Resource | Saving |
-|----------|--------|
-| EC2 nodes (2× t3.medium) | ~$27/month |
-| RDS db.t3.micro | ~$6/month |
-| **Total** | **~$33/month** → effective cost ~$190–$210/month |
+### Cost Monitoring & Alerts
 
-> **Note:** The EKS control plane ($73) and NAT Gateway ($33) run 24/7 regardless.  
-> Budget alert is set at $500/month with SNS → Slack notification.
+Budget alert is auto-configured at $500/month with SNS → Slack notification. No additional setup needed.
+
+**Cost optimizer (planned):** Overnight node scale-down + RDS stop (would save ~$33/month) — feature documented but not yet implemented. Track in roadmap.
 
 ## Known Issues (local development)
 

@@ -4,7 +4,7 @@ metadata:
   name: test-mutation
   description: mutation test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-mutation
+    github.com/project-slug: moatazeldebsy/test-mutation
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

@@ -4,7 +4,7 @@ metadata:
   name: ${{ values.clusterName }}
   description: EKS cluster ${{ values.clusterName }} (k8s ${{ values.kubernetesVersion }}) in ${{ values.awsRegion }}
   annotations:
-    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/terraform/infra/eks-clusters/${{ values.clusterName }}/
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-platform-template/blob/main/terraform/infra/eks-clusters/${{ values.clusterName }}/
   labels:
     aws-region: ${{ values.awsRegion }}
     kubernetes-version: ${{ values.kubernetesVersion }}

@@ -242,41 +242,67 @@ function AiAssistantPage() {
         }),
       });
 
-      // Capture contextId from response to reuse on next turn
+      if (!a2aRes.ok) {
+        throw new Error(`KAgent request failed: ${a2aRes.status}`);
+      }
+
+      // a2a endpoint returns event stream, contextId usually comes from session polling
       let sessionId: string | null = contextIdRef.current;
       try {
+        // Try to parse as JSON in case it's a direct response
         const a2aBody = await a2aRes.json();
         if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
-      } catch { /* ignore parse errors */ }
+      } catch {
+        // Event stream response is expected; we'll find the session via polling
+      }
 
       // If we don't have a sessionId yet, poll the sessions list with
-      // exponential backoff + jitter (200ms → 2s, total deadline ~15s) so
+      // exponential backoff + jitter (200ms → 2s, total deadline ~20s) so
       // concurrent chat sessions don't fan out a constant 2 req/s per user.
       if (!sessionId) {
         setStatusText('Waiting for agent…');
         const sentAt = Date.now();
-        const sessionDeadline = Date.now() + 15_000;
+        const sessionDeadline = Date.now() + 20_000;
         let sAttempt = 0;
+        let lastError = '';
         while (!sessionId && Date.now() < sessionDeadline) {
           const base = Math.min(2000, 200 * Math.pow(2, sAttempt));
           const jitter = base * (0.8 + Math.random() * 0.4);
           await new Promise(r => setTimeout(r, jitter));
           sAttempt++;
-          const res = await fetchApi.fetch(`${proxyBase}/api/sessions`);
-          if (res.ok) {
+          try {
+            const res = await fetchApi.fetch(`${proxyBase}/api/sessions`);
+            // 308 is a redirect; skip this attempt and retry
+            if (res.status === 308) {
+              continue;
+            }
+            if (!res.ok) {
+              lastError = `Sessions endpoint returned ${res.status}`;
+              continue;
+            }
             const body = await res.json();
             const sessions: any[] = body.data ?? [];
-            const match = sessions.find(
-              s =>
-                s.agent_id === 'kagent__NS__idp_assistant' &&
-                new Date(s.created_at).getTime() >= sentAt - 15000,
-            );
-            if (match) sessionId = match.id;
+            // Find the most recent matching session (they're usually sorted newest first)
+            // Look for idp-assistant agent, created within a wide time window
+            for (const s of sessions) {
+              if (s.agent_id === 'kagent__NS__idp_assistant') {
+                const sessionTime = new Date(s.created_at).getTime();
+                // Accept sessions created from 5 seconds before to 30 seconds after send time
+                // This accounts for clock skew and agent startup time
+                if (sessionTime >= sentAt - 5000 && sessionTime <= Date.now() + 5000) {
+                  sessionId = s.id;
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            lastError = String(e);
           }
         }
+        if (!sessionId) {
+          throw new Error(`No session created after waiting. ${lastError}`);
+        }
       }
-
-      if (!sessionId) throw new Error('AI assistant did not respond (no session created)');
       contextIdRef.current = sessionId;
       if (userRef) localStorage.setItem(`ai-chat-ctx:${userRef}`, sessionId);
 
@@ -859,7 +885,7 @@ function ScorecardEntityContent() {
 
       <Box mt={2}>
         <Typography variant="caption" color="textSecondary">
-          Programme reference: <Link href="https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/docs/shift-left.md" target="_blank" rel="noopener">docs/shift-left.md</Link>
+          Programme reference: <Link href="https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/shift-left.md" target="_blank" rel="noopener">docs/shift-left.md</Link>
         </Typography>
       </Box>
     </Content>

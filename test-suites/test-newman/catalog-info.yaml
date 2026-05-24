@@ -4,7 +4,7 @@ metadata:
   name: test-newman
   description: newman test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-newman
+    github.com/project-slug: moatazeldebsy/test-newman
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

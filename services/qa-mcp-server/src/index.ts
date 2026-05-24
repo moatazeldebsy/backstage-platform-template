@@ -112,7 +112,7 @@ function createServer() {
     'scaffold_test_suite',
     'Scaffold a QA test suite from a Backstage template. Only test-suite templates are accepted. ' +
     'IMPORTANT: values must include "repoUrl" in Backstage RepoUrlPicker format: ' +
-    '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=YOUR_GITHUB_ORG&repo=my-pact-tests"). ' +
+    '"github.com?owner=OWNER&repo=REPO_NAME" (e.g. "github.com?owner=moatazeldebsy&repo=my-pact-tests"). ' +
     'Required values: name, description, owner (Backstage group ref, e.g. "group:default/qa-team"), ' +
     'repoUrl (RepoUrlPicker format). ' +
     'Call list_test_suites first to pick the right templateRef.',
@@ -149,7 +149,7 @@ function createServer() {
         const enrichedValues: Record<string, unknown> = { ...values };
         const repoName = (enrichedValues['name'] as string | undefined) ?? '';
         const rawOwner = (enrichedValues['owner'] as string | undefined) ?? '';
-        const ghOwner = rawOwner.includes('/') ? rawOwner.split('/').pop()! : (rawOwner || process.env.GITHUB_ORG || 'YOUR_GITHUB_ORG');
+        const ghOwner = rawOwner.includes('/') ? rawOwner.split('/').pop()! : (rawOwner || process.env.GITHUB_ORG || 'moatazeldebsy');
 
         if (!enrichedValues['repoUrl']) {
           enrichedValues['repoUrl'] = `github.com?owner=${encodeURIComponent(ghOwner)}&repo=${encodeURIComponent(repoName)}`;

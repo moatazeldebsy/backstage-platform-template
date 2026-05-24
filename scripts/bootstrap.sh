@@ -166,9 +166,9 @@ else
     --secret-id "$BACKSTAGE_SECRET_ARN" \
     --query SecretString --output text)
 
-  # Generate a random token for Backstage external access (used by MCP servers
-  # and catalog exporter). Must match backend.auth.externalAccess in configmap.yaml.
+  # Generate random tokens for Backstage session signing and external access.
   BACKSTAGE_CATALOG_TOKEN=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
+  AUTH_SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
 
   UPDATED_SECRET=$(echo "$CURRENT_SECRET" | python3 -c "
 import json, sys, os
@@ -187,8 +187,9 @@ grafana_pw = os.environ.get('GRAFANA_ADMIN_PASSWORD', '')
 if grafana_pw:
     s['GRAFANA_ADMIN_PASSWORD'] = grafana_pw
 s['BACKSTAGE_CATALOG_TOKEN'] = os.environ['BACKSTAGE_CATALOG_TOKEN']
+s['AUTH_SESSION_SECRET'] = os.environ['AUTH_SESSION_SECRET']
 print(json.dumps(s))
-" K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN")
+" K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET")
 
   aws secretsmanager update-secret \
     --secret-id "$BACKSTAGE_SECRET_ARN" \
@@ -515,9 +516,11 @@ for i in $(seq 1 12); do
   sleep 5
 done
 
-# Apply configmaps (base-config + production overrides) and deployment
+# Apply configmaps (base-config + production overrides) and deployment.
+# Substitute the real ECR image into the deployment manifest before applying.
 kubectl apply -f kubernetes/backstage/configmap.yaml
-kubectl apply -f kubernetes/backstage/deployment.yaml
+sed "s|image: .*backstage:latest|image: ${BACKSTAGE_IMAGE}:latest|g" \
+  kubernetes/backstage/deployment.yaml | kubectl apply -f -
 
 # Wait for Backstage LB to get a hostname (up to 6 min)
 log "  Waiting for Backstage LoadBalancer hostname..."

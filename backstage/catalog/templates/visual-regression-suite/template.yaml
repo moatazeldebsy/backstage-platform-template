@@ -72,7 +72,7 @@ spec:
                     allowedHosts:
                       - github.com
                     allowedOwners:
-                      - YOUR_GITHUB_ORG
+                      - moatazeldebsy
               required:
                 - repoUrl
             - properties:
@@ -87,7 +87,7 @@ spec:
                     allowedHosts:
                       - github.com
                     allowedOwners:
-                      - YOUR_GITHUB_ORG
+                      - moatazeldebsy
               required:
                 - targetRepoUrl
 

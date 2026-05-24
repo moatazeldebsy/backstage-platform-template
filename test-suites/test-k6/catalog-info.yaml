@@ -4,7 +4,7 @@ metadata:
   name: test-k6
   description: k6 test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-k6
+    github.com/project-slug: moatazeldebsy/test-k6
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

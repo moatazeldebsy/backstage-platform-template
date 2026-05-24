@@ -4,7 +4,7 @@ metadata:
   name: test-pact
   description: pact test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-pact
+    github.com/project-slug: moatazeldebsy/test-pact
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

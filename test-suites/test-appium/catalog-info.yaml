@@ -4,7 +4,7 @@ metadata:
   name: test-appium
   description: appium test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-appium
+    github.com/project-slug: moatazeldebsy/test-appium
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

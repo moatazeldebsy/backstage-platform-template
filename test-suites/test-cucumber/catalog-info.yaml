@@ -4,7 +4,7 @@ metadata:
   name: test-cucumber
   description: cucumber test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-cucumber
+    github.com/project-slug: moatazeldebsy/test-cucumber
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

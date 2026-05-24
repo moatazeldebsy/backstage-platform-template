@@ -4,7 +4,7 @@ metadata:
   name: ${{ values.topicName | replace('.', '-') }}
   description: Kafka topic ${{ values.topicName }} on ${{ values.mskCluster }} — owned by ${{ values.ownerService }}
   annotations:
-    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/terraform/infra/kafka-topics/${{ values.topicName | replace('.', '-') }}/
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-platform-template/blob/main/terraform/infra/kafka-topics/${{ values.topicName | replace('.', '-') }}/
   labels:
     msk-cluster: ${{ values.mskCluster }}
   tags:

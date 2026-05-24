@@ -1,3 +1,8 @@
+resource "random_password" "backstage_session" {
+  length  = 64
+  special = false
+}
+
 resource "aws_secretsmanager_secret" "backstage" {
   name                    = "idp-mvp/backstage"
   description             = "Backstage IDP platform credentials"
@@ -15,6 +20,7 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     GITHUB_TOKEN              = "REPLACE_ME"
     AUTH_GITHUB_CLIENT_ID     = "REPLACE_ME" # GitHub OAuth App client ID
     AUTH_GITHUB_CLIENT_SECRET = "REPLACE_ME" # GitHub OAuth App client secret
+    AUTH_SESSION_SECRET       = random_password.backstage_session.result
     K8S_CLUSTER_URL           = module.eks.cluster_endpoint
     K8S_SERVICE_ACCOUNT_TOKEN = "REPLACE_ME"
     TECHDOCS_S3_BUCKET_NAME   = aws_s3_bucket.techdocs.id

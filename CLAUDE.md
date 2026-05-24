@@ -8,7 +8,32 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 
 ## Common Commands
 
-### Platform bootstrap
+### AWS Deployment (Production)
+
+```bash
+# See: docs/PRE_DEPLOYMENT_CHECKLIST.md + docs/DEPLOYMENT_GUIDE.md
+
+# CRITICAL: Verify all API keys are set (before deployment!)
+./scripts/verify-secrets.sh
+# Expected: ✅ All critical checks passed!
+
+# First-time: personalise configuration and create S3 state bucket
+./scripts/setup.sh
+
+# Deploy full stack to AWS EKS (45-60 minutes)
+./scripts/bootstrap.sh
+
+# Validate deployment (50+ automated checks)
+./scripts/validate-deployment.sh
+
+# Deploy AI/ML stack (optional, requires ANTHROPIC_API_KEY)
+./scripts/bootstrap-ai.sh
+
+# Safe cleanup when done
+./scripts/cleanup.sh --cluster-name idp-mvp --force
+```
+
+### Local/Kind Deployment (Development)
 
 ```bash
 # First-time setup — personalises placeholders, creates .env files, boots cluster
@@ -299,7 +324,7 @@ The full pyramid is covered by these templates (one row per layer):
 
 ## Backstage Catalog — How it works locally
 
-The catalog reads entity files from `/catalog/...` (bind-mounted from `backstage/catalog/` on the host). At container startup, `YOUR_GITHUB_ORG` placeholders are replaced in-place with `$GITHUB_ORG` from `local/backstage/.env`.
+The catalog reads entity files from `/catalog/...` (bind-mounted from `backstage/catalog/` on the host). At container startup, `moatazeldebsy` placeholders are replaced in-place with `$GITHUB_ORG` from `local/backstage/.env`.
 
 Catalog state is in PostgreSQL (`backstage_plugin_catalog` database). Each plugin uses its own database (`backstage_plugin_<name>`). To diagnose empty catalog:
 

@@ -62,7 +62,7 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Backstage**: added `dangerouslyDisableDefaultAuthPolicy: true` to `app-config.local.yaml` to prevent a 401 flash before guest sign-in completes (Backstage v1.29+).
 - **Backstage**: disabled standalone `/kubernetes` and `/catalog-graph` pages (both crash with "Entity context is not available"); entity-tab versions still work. Re-added `page:catalog` at `/` so the root is not a 404.
 - **idp-mcp-server**: implemented the `get_template_params` tool that was referenced in `idp-agent.yaml` `toolNames` but never implemented (caused "No description available" in the KAgent UI).
-- **`scripts/setup.sh`**: replaced `xargs -I{} _sed` with a `while`-read loop — `xargs` spawns subprocesses that can't see shell functions, so `YOUR_GITHUB_ORG` was never replaced in `local/argocd/app-of-apps-local.yaml`. Also narrowed the find scope from 258k files (including `node_modules`) to 542 targeted files.
+- **`scripts/setup.sh`**: replaced `xargs -I{} _sed` with a `while`-read loop — `xargs` spawns subprocesses that can't see shell functions, so `moatazeldebsy` was never replaced in `local/argocd/app-of-apps-local.yaml`. Also narrowed the find scope from 258k files (including `node_modules`) to 542 targeted files.
 - **`scripts/bootstrap-local.sh`**: same `xargs`/`_sed` fix in `_apply_personalization`; also uninstall the stray `hello-service` from the `services` namespace after the ArgoCD ApplicationSet is applied so the nginx admission webhook stops rejecting the `services-dev` ingress.
 - **`scripts/bootstrap-ai.sh`**: fall back to direct Helm for `idp-mcp-server` and `qa-mcp-server` when the ArgoCD app doesn't exist yet (first-time install before app-of-apps runs).
 - **Grafana**: bumped memory limit 256Mi → 512Mi (request 128Mi → 256Mi) — pod was OOMKilled at ~326Mi on dashboard load. Added `proxy-next-upstream: http_503` and relaxed readiness/liveness probes (`failureThreshold` 3 → 10, `timeoutSeconds` 1 → 5).
@@ -178,9 +178,9 @@ Initial open-source release of the backstage-platform-template template.
 - Dependabot config for GitHub Actions, npm, and Go dependencies
 
 ### Fixed
-- `YOUR_DISPLAY_NAME` placeholder restored in catalog-info.yaml (was hardcoded)
-- `YOUR_GITHUB_ORG`/`backstage-platform-template` documentation tokens now substituted by setup.sh
+- `Moataz Nabil` placeholder restored in catalog-info.yaml (was hardcoded)
+- `moatazeldebsy`/`backstage-platform-template` documentation tokens now substituted by setup.sh
 - build-and-deploy.yml: graceful skip when `AWS_ROLE_ARN` secret is not set
 
-[Unreleased]: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/releases/tag/v0.1.0
+[Unreleased]: https://github.com/moatazeldebsy/backstage-platform-template/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/moatazeldebsy/backstage-platform-template/releases/tag/v0.1.0

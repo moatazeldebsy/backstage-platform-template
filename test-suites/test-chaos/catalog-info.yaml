@@ -4,7 +4,7 @@ metadata:
   name: test-chaos
   description: chaos test suite for hello-service
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/test-chaos
+    github.com/project-slug: moatazeldebsy/test-chaos
     backstage.io/techdocs-ref: dir:.
 spec:
   type: test-suite

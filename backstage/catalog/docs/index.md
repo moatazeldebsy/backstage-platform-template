@@ -80,5 +80,5 @@ All scaffolded suites land in `test-suites/<name>/`, get a `catalog-info.yaml`, 
 ## Links
 
 - [QA Metrics Dashboard](http://grafana.idp.local/d/qa-metrics/qa-metrics)
-- [Playwright E2E Reports](https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/actions)
+- [Playwright E2E Reports](https://github.com/moatazeldebsy/backstage-platform-template/actions)
 - [Datadog Synthetics](https://app.datadoghq.eu/synthetics)

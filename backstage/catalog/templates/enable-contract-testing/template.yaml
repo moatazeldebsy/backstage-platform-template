@@ -99,7 +99,7 @@ spec:
                     allowedHosts:
                       - github.com
                     allowedOwners:
-                      - YOUR_GITHUB_ORG
+                      - moatazeldebsy
               required:
                 - repoUrl
             - properties:
@@ -122,7 +122,7 @@ spec:
           consumerName: ${{ parameters.consumerName }}
           providerName: ${{ parameters.providerName }}
           providerBaseUrl: 'http://localhost:8080'
-          pactBrokerUrl: 'https://YOUR_GITHUB_ORG.pactflow.io'
+          pactBrokerUrl: 'https://moatazeldebsy.pactflow.io'
           contractMcpServerUrl: 'http://contract-mcp-server.idp.local'
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}

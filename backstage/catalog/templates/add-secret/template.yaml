@@ -93,7 +93,7 @@ spec:
       action: publish:github:pull-request
       continueOnError: true
       input:
-        repoUrl: github.com?repo=backstage-platform-template&owner=YOUR_GITHUB_ORG
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
         title: "feat(${{ parameters.serviceName }}): add ${{ parameters.secretKey }} secret"
         branchName: secret/${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}
         description: |
