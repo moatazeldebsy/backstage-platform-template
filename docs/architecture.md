@@ -164,7 +164,7 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | ClusterSecretStore | `kubernetes/external-secrets/cluster-secret-store.yaml` | ESO → AWS Secrets Manager backend |
 | Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
 | DORA exporter (local) | `observability/dora/dora-cronjob-local.yaml` | DORA metrics → Pushgateway (local) |
-| DORA exporter (AWS) | `observability/dora/dora-cronjob.yaml` | DORA metrics → CloudWatch (AWS) |
+| DORA exporter (AWS) | `observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch (AWS) |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 | material-table patch | `backstage/app/.yarn/patches/` | Fixes `uuid` v10 compatibility crash in catalog, api-docs, and techdocs pages |
 
@@ -200,3 +200,215 @@ Host ~/.kube/config         docker-compose mounts as read-only
                                                                    /tmp/kubeconfig
                                                           KUBECONFIG=/tmp/kubeconfig (env)
 ```
+
+---
+
+## AWS Architecture
+
+### Network Topology
+
+```
+AWS Region: us-east-1
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  VPC  10.0.0.0/16                                                           │
+│                                                                             │
+│  ┌──────────────────────┐  ┌──────────────────────┐  ┌───────────────────┐ │
+│  │  Public Subnet       │  │  Public Subnet       │  │  Public Subnet    │ │
+│  │  10.0.64.0/20 (AZ-a) │  │  10.0.80.0/20 (AZ-b) │  │  10.0.96.0/20(AZ-c)│ │
+│  │  NAT Gateway         │  │  NAT Gateway         │  │  NAT Gateway      │ │
+│  │  ALB targets         │  │  ALB targets         │  │  ALB targets      │ │
+│  └──────────┬───────────┘  └──────────┬───────────┘  └────────┬──────────┘ │
+│             │ private route            │                       │            │
+│  ┌──────────▼───────────┐  ┌──────────▼───────────┐  ┌────────▼──────────┐ │
+│  │  Private Subnet      │  │  Private Subnet      │  │  Private Subnet   │ │
+│  │  10.0.0.0/20  (AZ-a) │  │  10.0.16.0/20 (AZ-b) │  │  10.0.32.0/20(AZ-c)│ │
+│  │  EKS nodes           │  │  EKS nodes           │  │  EKS nodes        │ │
+│  │  RDS (primary)       │  │  RDS (standby)       │  │                   │ │
+│  └──────────────────────┘  └──────────────────────┘  └───────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+          │
+          │  Internet-facing ALBs (one per service with ingressClassName: alb)
+          ▼
+┌─────────────────────────────────┐
+│  Internet / Developer Browser   │
+│  Backstage  · Grafana · ArgoCD  │
+│  Prometheus · Pushgateway       │
+│  OpenCost   · hello-service     │
+└─────────────────────────────────┘
+```
+
+### AWS Services Used
+
+| Service | Config | Purpose |
+|---------|--------|---------|
+| **EKS** | `idp-mvp`, t3.medium nodes, 2–5 in autoscaling group | Kubernetes control plane + worker nodes |
+| **RDS** | PostgreSQL 17, `idp-mvp-backstage`, private subnet | Backstage plugin databases |
+| **ECR** | `idp-mvp/backstage`, `idp-mvp/hello-service`, etc. | Container image registry |
+| **Secrets Manager** | `idp-mvp/*` namespace | Runtime credentials (see secrets flow below) |
+| **S3** | `idp-mvp-terraform-state-*` | Terraform remote state |
+| **IAM / OIDC** | OIDC provider for EKS, IRSA module | Keyless pod-level AWS access |
+| **AWS Load Balancer Controller** | Installed via Helm in `kube-system` | Creates ALBs from `ingressClassName: alb` resources |
+| **EBS CSI Driver** | Managed addon | Persistent volumes (gp2) for Prometheus, Grafana, MLflow |
+| **CloudWatch** | `IDP/DORA` namespace | Secondary DORA metrics destination (alerting) |
+
+### EKS Namespace Map
+
+```
+EKS Cluster: idp-mvp (us-east-1)
+│
+├── kube-system
+│   ├── aws-load-balancer-controller  (creates ALBs from Ingress resources)
+│   ├── ebs-csi-controller            (persistent volumes)
+│   └── coredns, kube-proxy
+│
+├── backstage                         (developer portal)
+│   ├── deployment/backstage          (official Backstage image, 1 replica)
+│   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
+│   └── service/backstage             (ALB ingress)
+│
+├── argocd                            (GitOps controller)
+│   ├── argocd-server                 (UI + API, ALB ingress)
+│   ├── ApplicationSet: idp-services  (auto-discovers services/*/)
+│   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
+│
+├── monitoring                        (observability stack)
+│   ├── prometheus-kube-prometheus-prometheus  (metrics store, ALB ingress)
+│   ├── prometheus-grafana                     (dashboards, ALB ingress)
+│   ├── prometheus-pushgateway                 (push endpoint, ALB ingress)
+│   ├── cronjob/dora-exporter                  (GitHub → Pushgateway + CloudWatch)
+│   └── cronjob/tech-insights-exporter         (scorecard metrics → Pushgateway)
+│
+├── external-secrets                  (ESO)
+│   ├── external-secrets              (ESO controller, created by Helm)
+│   └── external-secrets-sa           (SA created by bootstrap.sh, annotated with IRSA)
+│
+├── services                          (manually deployed services)
+│   └── deployment/hello-service      (reference Go service)
+│
+├── services-dev                      (ArgoCD-managed dev services)
+│   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
+│   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
+│   ├── deployment/qa-mcp-server      (QA MCP server)
+│   └── deployment/contract-mcp-server (contract testing tools)
+│
+├── kagent                            (AI agents)
+│   ├── deployment/kagent-controller  (KAgent operator)
+│   ├── deployment/kagent-ui          (KAgent web UI, ALB ingress)
+│   ├── Agent/idp-assistant           (IDP assistant A2A agent)
+│   ├── Agent/qa-agent                (QA agent)
+│   └── Agent/contract-assistant      (contract testing agent)
+│
+├── ml-platform                       (MLflow)
+│   └── deployment/mlflow             (tracking server, ALB ingress)
+│
+├── opencost                          (FinOps)
+│   └── deployment/opencost           (cost visibility, ALB ingress)
+│
+├── crossplane-system                 (Crossplane)
+│   ├── crossplane                    (core controller)
+│   └── provider-aws-*               (AWS provider — S3, RDS, SQS, MSK, DynamoDB)
+│
+└── gatekeeper-system                 (OPA/Gatekeeper policy enforcement)
+    └── gatekeeper-controller-manager
+```
+
+### Secrets Flow (AWS Secrets Manager → Pods)
+
+```
+Terraform
+  └── creates placeholders in AWS Secrets Manager
+        idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
+                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET
+        idp-mvp/dora-exporter → GITHUB_TOKEN
+        idp-mvp/kagent      → ANTHROPIC_API_KEY
+        idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
+
+bootstrap.sh
+  └── injects real values (reads from local/.env and cluster)
+        K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
+        BACKSTAGE_CATALOG_TOKEN   ← generated random value
+        GITHUB_TOKEN              ← read from local/.env
+
+External Secrets Operator (ESO)
+  ├── ClusterSecretStore: aws-secretsmanager
+  │     auth: IRSA via external-secrets-sa (annotated with idp-mvp-backstage IAM role)
+  │     → assumes role → calls secretsmanager:GetSecretValue
+  │
+  └── ExternalSecret (per namespace)
+        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage
+        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter
+        kagent-secret (namespace: kagent)           → idp-mvp/kagent
+              │
+              ▼ syncs every 1h (or on force-sync annotation)
+        Kubernetes Secret → mounted as env vars into pods
+```
+
+### IRSA Roles (IAM Roles for Service Accounts)
+
+| Role name | Trusted SA | Permissions |
+|-----------|-----------|-------------|
+| `idp-mvp-backstage` | `backstage:backstage-sa` + `external-secrets:external-secrets-sa` | `secretsmanager:GetSecretValue` on `idp-mvp/*` |
+| `idp-mvp-dora-exporter` | `monitoring:dora-exporter-sa` | `cloudwatch:PutMetricData` on `IDP/DORA` |
+| `idp-mvp-grafana` | `monitoring:grafana` | `cloudwatch:ListMetrics`, `cloudwatch:GetMetricData` (read-only) |
+| `idp-mvp-db-init` | `services:db-init-sa` | `secretsmanager:GetSecretValue` on `idp-mvp/backstage` |
+| `idp-mvp-crossplane` | `crossplane-system:provider-aws-*` | PowerUser + IAM (for provisioning per-service resources) |
+| `ebs-csi-driver` | `kube-system:ebs-csi-controller-sa` | `ec2:*Volume*`, `ec2:*Snapshot*` |
+| `github-actions` | GitHub OIDC (org-level) | PowerUser + IAM + S3 tfstate (for CI/CD) |
+
+### Bootstrap Sequence
+
+```
+./scripts/setup.sh
+  └── replaces YOUR_GITHUB_ORG placeholders, creates terraform.tfvars, local/.env
+
+./scripts/bootstrap.sh
+  ├── Phase 1 — Terraform (~20 min)
+  │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
+  │
+  ├── Phase 2 — Platform base (~5 min)
+  │     Namespaces · RBAC · AWS Load Balancer Controller
+  │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
+  │
+  ├── Phase 3 — GitOps (~5 min)
+  │     ArgoCD · OPA/Gatekeeper · Crossplane
+  │     idp-services ApplicationSet (auto-discovers services/*/)
+  │
+  ├── Phase 4 — Observability (~10 min)
+  │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
+  │     Pushgateway + ALB ingress
+  │     OpenCost + ALB ingress
+  │     DORA exporter CronJob
+  │     seed-qa-metrics.sh (seeds demo QA metrics into Pushgateway)
+  │
+  ├── Phase 5 — hello-service (~5 min)
+  │     docker buildx build --platform linux/amd64 → ECR push
+  │     ArgoCD syncs hello-service-dev
+  │
+  └── Phase 6 — Backstage (~5 min)
+        Build + push Backstage image to ECR
+        kubectl apply -f kubernetes/backstage/
+        ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
+
+./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)
+  └── KAgent · idp-assistant · MLflow · MCP servers (idp, qa, contract)
+```
+
+### ALB Ingress Map
+
+All ingresses use `ingressClassName: alb` with `alb.ingress.kubernetes.io/scheme: internet-facing` and `target-type: ip`. Get the hostname for any service:
+
+```bash
+kubectl get ingress -A --no-headers | awk '{printf "%-30s %-20s %s\n", $1, $2, $4}'
+```
+
+| Namespace | Ingress name | Backend service:port |
+|-----------|-------------|---------------------|
+| `backstage` | `backstage` | `backstage:7007` |
+| `argocd` | `argocd-server` | `argocd-server:80` |
+| `monitoring` | (grafana) | `prometheus-grafana:80` |
+| `monitoring` | (prometheus) | `prometheus-kube-prometheus-prometheus:9090` |
+| `monitoring` | `prometheus-pushgateway` | `prometheus-pushgateway:9091` |
+| `opencost` | `opencost-alb` | `opencost:9090` |
+| `services-dev` | (hello-service) | `hello-service-dev:80` |
+| `kagent` | `kagent-ui` | `kagent-ui:8080` |
+| `ml-platform` | `mlflow` | `mlflow:5000` |
