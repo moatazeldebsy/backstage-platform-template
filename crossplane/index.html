@@ -722,18 +722,36 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#local-development" class="md-nav__link">
+  <a href="#resources-covered" class="md-nav__link">
     <span class="md-ellipsis">
-      Local development
+      Resources covered
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#resources-covered" class="md-nav__link">
+  <a href="#iam-least-privilege-provider-roles" class="md-nav__link">
     <span class="md-ellipsis">
-      Resources covered
+      IAM: least-privilege provider roles
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-defaults-in-all-compositions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Safety defaults in all Compositions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaffolder-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffolder templates
     </span>
   </a>
   
@@ -761,6 +779,24 @@
   <a href="#drift-correction" class="md-nav__link">
     <span class="md-ellipsis">
       Drift correction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decommissioning-a-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decommissioning a resource
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local development
     </span>
   </a>
   
@@ -1248,24 +1284,21 @@ human running <code>terraform apply</code>. No manual step between "PR merged" a
    versioning, cost center.</li>
 <li>Backstage opens a PR adding
    <code>services/&lt;ownerService&gt;/claims/&lt;bucketName&gt;.yaml</code> (an <code>S3Bucket</code>
-   Claim).</li>
+   Claim) <strong>and</strong> a <code>catalog-info-&lt;bucketName&gt;.yaml</code> that registers the
+   resource in the Backstage Service Catalog.</li>
 <li>Reviewer merges. The <code>idp-services</code> ApplicationSet in
-   <code>kubernetes/argocd/app-of-apps.yaml</code> already watches <code>services/*/</code>, so
+   <code>aws/argocd/app-of-apps.yaml</code> already watches <code>services/*/</code>, so
    ArgoCD syncs the Claim within ~60 s.</li>
 <li>The XRD <code>xs3buckets.idp.platform</code> matches the Claim; the Composition
    <code>xs3bucket.aws</code> creates a <code>Bucket</code>, <code>BucketServerSideEncryptionConfig</code>,
    <code>BucketPublicAccessBlock</code>, and <code>BucketVersioning</code> — all tagged
    <code>idp:provisioner=crossplane</code>, <code>idp:owner=&lt;team&gt;</code>, <code>idp:cost-center=…</code>.</li>
-<li><code>provider-aws-s3</code> assumes the IRSA role
-   (<code>terraform/iam-crossplane.tf</code>) and creates the bucket in AWS.</li>
+<li><code>provider-aws-s3</code> assumes the IRSA role (<code>terraform/iam-crossplane.tf</code>,
+   least-privilege inline policy scoped to <code>arn:aws:s3:::idp-*</code>) and
+   creates the bucket in AWS.</li>
 <li>Verify: <code>kubectl get s3bucket &lt;bucketName&gt; -n services-dev</code> →
    <code>READY=True</code> within ~60 s of merge.</li>
 </ol>
-<h2 id="local-development">Local development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
-<p>Crossplane runs in EKS only. The local Kind path stays unchanged — docker-
-compose-backed Postgres/Kafka are the substitutes for local dev.
-Cloud-only resources (real S3, DynamoDB, SQS) are not testable locally;
-write integration tests that hit AWS or LocalStack in CI instead.</p>
 <h2 id="resources-covered">Resources covered<a class="headerlink" href="#resources-covered" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1274,6 +1307,7 @@ write integration tests that hit AWS or LocalStack in CI instead.</p>
 <th>XRD kind</th>
 <th>Claim kind</th>
 <th>Template</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
@@ -1282,61 +1316,176 @@ write integration tests that hit AWS or LocalStack in CI instead.</p>
 <td><code>XS3Bucket</code></td>
 <td><code>S3Bucket</code></td>
 <td><code>s3-bucket-crossplane</code></td>
+<td>AES256 encrypted, public-access blocked, versioning configurable</td>
 </tr>
 <tr>
 <td>RDS Postgres</td>
 <td><code>XRDSInstance</code></td>
 <td><code>RDSInstance</code></td>
 <td><code>rds-database-crossplane</code></td>
+<td>Encrypted at rest, connection secret auto-written, backup retention 30 days default</td>
 </tr>
 <tr>
 <td>MSK topic</td>
 <td><code>XKafkaTopic</code></td>
 <td><code>KafkaTopic</code></td>
 <td><code>kafka-topic-crossplane</code></td>
+<td>Targets existing Terraform-managed MSK cluster via <code>clusterArn</code></td>
 </tr>
 <tr>
 <td>DynamoDB table</td>
 <td><code>XDynamoTable</code></td>
 <td><code>DynamoTable</code></td>
 <td><code>dynamodb-table-crossplane</code></td>
+<td>PITR on by default; supports optional sort key (<code>rangeKey</code> + <code>rangeKeyType</code>)</td>
 </tr>
 <tr>
 <td>SQS queue</td>
 <td><code>XSQSQueue</code></td>
 <td><code>SQSQueue</code></td>
 <td><code>sqs-queue-crossplane</code></td>
+<td>SSE enabled by default; FIFO opt-in</td>
 </tr>
 </tbody>
 </table>
-<p>All five Compositions live in <code>kubernetes/crossplane/compositions/</code>. Adding
+<p>All five Compositions live in <code>aws/crossplane/compositions/</code>. Adding
 a new resource type is a matter of dropping in another <code>xrd.yaml</code> +
 <code>composition.yaml</code> pair plus a matching scaffolder template.</p>
-<h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Phase 1 — Terraform (provisions IRSA role)</span>
-<span class="nb">cd</span><span class="w"> </span>terraform
-terraform<span class="w"> </span>apply
-terraform<span class="w"> </span>output<span class="w"> </span>crossplane_aws_role_arn
-
-<span class="c1"># Phase 2 — substitute the role ARN into the runtime config and apply the</span>
-<span class="c1"># ArgoCD stack. scripts/bootstrap.sh does this automatically.</span>
-<span class="nv">ROLE_ARN</span><span class="o">=</span><span class="k">$(</span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>crossplane_aws_role_arn<span class="k">)</span>
-sed<span class="w"> </span><span class="s2">&quot;s|IRSA_ROLE_ARN|</span><span class="si">${</span><span class="nv">ROLE_ARN</span><span class="si">}</span><span class="s2">|g&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>kubernetes/crossplane/providers/deployment-runtime-config.yaml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
-kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/argocd/crossplane.yaml
+<h2 id="iam-least-privilege-provider-roles">IAM: least-privilege provider roles<a class="headerlink" href="#iam-least-privilege-provider-roles" title="Permanent link">&para;</a></h2>
+<p>The Crossplane IRSA role (<code>terraform/iam-crossplane.tf</code>) uses one <strong>inline
+policy per resource family</strong>, each scoped to the minimum actions the
+Composition actually performs and restricted to <code>idp-*</code> ARN prefixes:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Key actions</th>
+<th>ARN scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crossplane_s3</code></td>
+<td>CreateBucket, PutEncryptionConfiguration, PutBucketVersioning, …</td>
+<td><code>arn:aws:s3:::idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_rds</code></td>
+<td>CreateDBInstance, DeleteDBInstance, CreateDBSubnetGroup, …</td>
+<td><code>arn:aws:rds:*:*:db:idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_kafka</code></td>
+<td>CreateTopic, DeleteTopic, DescribeCluster, …</td>
+<td><code>arn:aws:kafka:*:*:cluster/idp-*/*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_dynamodb</code></td>
+<td>CreateTable, DeleteTable, UpdateContinuousBackups, …</td>
+<td><code>arn:aws:dynamodb:*:*:table/idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_sqs</code></td>
+<td>CreateQueue, DeleteQueue, SetQueueAttributes, …</td>
+<td><code>arn:aws:sqs:*:*:idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_tagging</code></td>
+<td>tag:TagResources, tag:GetResources, …</td>
+<td><code>*</code> (required by tagging API)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Why <code>idp-*</code> scope?</strong> XRD <code>pattern</code> fields enforce the same prefix on
+resource names, so a Claim can never request a name that falls outside the
+policy's resource scope.</p>
+</blockquote>
+<h2 id="safety-defaults-in-all-compositions">Safety defaults in all Compositions<a class="headerlink" href="#safety-defaults-in-all-compositions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Behaviour</th>
+<th>Value</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deletionPolicy</code></td>
+<td><code>Orphan</code></td>
+<td>Deleting a Claim does <strong>not</strong> delete the AWS resource. Prevents data loss from accidental <code>kubectl delete</code>. Manual decommission via <code>cleanup.sh</code> or AWS console required.</td>
+</tr>
+<tr>
+<td><code>skipFinalSnapshot</code> (RDS)</td>
+<td><code>false</code></td>
+<td>A final DB snapshot is taken before the instance is deleted.</td>
+</tr>
+<tr>
+<td><code>backupRetentionDays</code> (RDS)</td>
+<td><code>30</code> (configurable, 1–35)</td>
+<td>Automated RDS backups retained 30 days by default.</td>
+</tr>
+<tr>
+<td><code>storageEncrypted</code> (RDS)</td>
+<td><code>true</code></td>
+<td>Always encrypted at rest.</td>
+</tr>
+<tr>
+<td><code>publiclyAccessible</code> (RDS)</td>
+<td><code>false</code></td>
+<td>VPC-only; never exposed to the internet.</td>
+</tr>
+<tr>
+<td><code>sqsManagedSseEnabled</code> (SQS)</td>
+<td><code>true</code></td>
+<td>Server-side encryption always on.</td>
+</tr>
+<tr>
+<td><code>pointInTimeRecovery</code> (DynamoDB)</td>
+<td><code>true</code></td>
+<td>PITR enabled by default.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="scaffolder-templates">Scaffolder templates<a class="headerlink" href="#scaffolder-templates" title="Permanent link">&para;</a></h2>
+<p>All five Crossplane templates follow the same flow:</p>
+<ol>
+<li>Fill the form → Backstage generates a PR with two files:<ul>
+<li><code>services/&lt;ownerService&gt;/claims/&lt;name&gt;.yaml</code> — the Crossplane Claim</li>
+<li><code>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml</code> — Backstage Resource entity</li>
+</ul>
+</li>
+<li>Merge → ArgoCD syncs → Crossplane provisions → resource appears in catalog</li>
+</ol>
+<p><strong>DynamoDB composite keys:</strong> The template exposes optional <code>rangeKey</code> and
+<code>rangeKeyType</code> fields. Leave them blank for hash-only tables. When set, the
+Composition patches both <code>attribute[0]</code> (hash key) and <code>attribute[1]</code>
+(range key) definitions — both are required by the DynamoDB API.</p>
+<p><strong>Kafka <code>clusterArn</code>:</strong> The template validates the ARN format
+(<code>^arn:aws:kafka:</code>) and shows an in-form help note. To find your MSK
+cluster ARN:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>kafka<span class="w"> </span>list-clusters<span class="w"> </span>--query<span class="w"> </span><span class="s2">&quot;ClusterInfoList[*].ClusterArn&quot;</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div></td></tr></table></div>
+<h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Phase 1 — Terraform provisions the IRSA role (validates ARN format before applying)</span>
+<span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>apply
+terraform<span class="w"> </span>output<span class="w"> </span>crossplane_aws_role_arn<span class="w">   </span><span class="c1"># confirm ARN looks valid</span>
+
+<span class="c1"># Phase 2 — bootstrap.sh substitutes the ARN and registers the ArgoCD stack</span>
+<span class="c1"># (also validates the ARN starts with arn:aws:iam:: before substitution)</span>
+./scripts/bootstrap.sh
+</code></pre></div></td></tr></table></div>
+<p>The <code>deployment-runtime-config.yaml</code> IRSA substitution is validated at
+bootstrap time — if <code>terraform output</code> returns a non-ARN value, bootstrap
+fails with a clear error rather than silently starting providers with a
+broken annotation.</p>
 <h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
@@ -1367,16 +1516,55 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Delete the bucket directly in AWS (or via kubectl)</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Delete the bucket directly in AWS (or via kubectl)</span>
 aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force
-<span class="c1"># Within ~30s, Crossplane recreates it</span>
+<span class="c1"># Within ~30s, Crossplane recreates it (because deletionPolicy: Orphan</span>
+<span class="c1"># means Crossplane still owns the desired state even if the Claim persists)</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-w
 </code></pre></div></td></tr></table></div>
+<h2 id="decommissioning-a-resource">Decommissioning a resource<a class="headerlink" href="#decommissioning-a-resource" title="Permanent link">&para;</a></h2>
+<p>Because <code>deletionPolicy: Orphan</code> is set, deleting the Claim <strong>does not</strong>
+delete the AWS resource. To fully decommission:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Delete the Claim (removes Crossplane tracking only)</span>
+kubectl<span class="w"> </span>delete<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev
+
+<span class="c1"># 2. Manually delete the AWS resource</span>
+aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force<span class="w">        </span><span class="c1"># S3</span>
+aws<span class="w"> </span>rds<span class="w"> </span>delete-db-instance<span class="w"> </span>--db-instance-identifier<span class="w"> </span>&lt;id&gt;<span class="w"> </span>--skip-final-snapshot<span class="w">  </span><span class="c1"># RDS</span>
+aws<span class="w"> </span>dynamodb<span class="w"> </span>delete-table<span class="w"> </span>--table-name<span class="w"> </span>&lt;name&gt;<span class="w">   </span><span class="c1"># DynamoDB</span>
+aws<span class="w"> </span>sqs<span class="w"> </span>delete-queue<span class="w"> </span>--queue-url<span class="w"> </span>&lt;url&gt;<span class="w">           </span><span class="c1"># SQS</span>
+
+<span class="c1"># 3. Remove the claim YAML from the repo to prevent ArgoCD re-creating it</span>
+git<span class="w"> </span>rm<span class="w"> </span>services/&lt;ownerService&gt;/claims/&lt;name&gt;.yaml
+git<span class="w"> </span>rm<span class="w"> </span>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: decommission &lt;name&gt;&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Environment teardown uses <code>cleanup.sh</code> which automates steps 2 for all
+<code>idp:provisioner=crossplane</code>-tagged resources. See the
+<a href="../DEPLOYMENT_GUIDE/#cleanup--destroy">Deployment Guide</a> for details.</p>
+<h2 id="local-development">Local development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
+<p>Crossplane runs in EKS only. The local Kind path stays unchanged — Docker-
+Compose-backed Postgres/Kafka are the substitutes for local dev.
+Cloud-only resources (real S3, DynamoDB, SQS) are not testable locally;
+write integration tests that hit AWS or LocalStack in CI instead.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> — decision matrix</li>
-<li><code>kubernetes/crossplane/README.md</code> — operator notes</li>
-<li><code>kubernetes/crossplane/compositions/*/example-claim.yaml</code> — hand-rolled Claim references</li>
+<li><code>aws/crossplane/README.md</code> — operator notes</li>
+<li><code>aws/crossplane/compositions/*/example-claim.yaml</code> — hand-rolled Claim references</li>
 </ul>
 
 

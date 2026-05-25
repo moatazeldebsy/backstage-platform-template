@@ -751,6 +751,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#iam-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      IAM boundary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deletion-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deletion behaviour
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-same-resource-different-tool-pitfall" class="md-nav__link">
     <span class="md-ellipsis">
       The "same resource, different tool" pitfall
@@ -1284,6 +1302,10 @@
 </tr>
 </tbody>
 </table>
+<h2 id="iam-boundary">IAM boundary<a class="headerlink" href="#iam-boundary" title="Permanent link">&para;</a></h2>
+<p>Terraform provisions the <strong>single shared IRSA role</strong> (<code>terraform/iam-crossplane.tf</code>) that all Crossplane providers assume. The role uses least-privilege <strong>inline policies</strong> — one per resource family — scoped to <code>idp-*</code> ARN prefixes. No <code>*FullAccess</code> managed policies are attached. See <a href="../crossplane/#iam-least-privilege-provider-roles">crossplane.md § IAM</a> for the full permission matrix.</p>
+<h2 id="deletion-behaviour">Deletion behaviour<a class="headerlink" href="#deletion-behaviour" title="Permanent link">&para;</a></h2>
+<p>Crossplane Compositions use <code>deletionPolicy: Orphan</code>. Deleting a Claim removes Crossplane's tracking of the resource but <strong>does not delete the underlying AWS resource</strong>. Intentional — prevents data loss from accidental <code>kubectl delete</code>. Full decommission requires a manual AWS deletion step. See <a href="../crossplane/#decommissioning-a-resource">crossplane.md § Decommissioning</a>.</p>
 <h2 id="the-same-resource-different-tool-pitfall">The "same resource, different tool" pitfall<a class="headerlink" href="#the-same-resource-different-tool-pitfall" title="Permanent link">&para;</a></h2>
 <p>A Crossplane <code>RDSInstance</code> Claim and a Terraform <code>aws_db_instance</code> block
 can both create RDS. Don't point them at the same instance name. The

@@ -1663,11 +1663,63 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <hr />
 <h2 id="cleanup-destroy">Cleanup &amp; Destroy<a class="headerlink" href="#cleanup-destroy" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Safe teardown — deletes ALBs first, then runs terraform destroy</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Safe teardown — runs all phases in the correct order</span>
 ./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
 </code></pre></div></td></tr></table></div>
-<p><strong>What gets deleted:</strong> EKS cluster, RDS, VPC, all ALBs, ECR images<br />
-<strong>What's preserved:</strong> S3 Terraform state bucket, CloudWatch logs (30-day retention), local code</p>
+<p><code>cleanup.sh</code> runs seven ordered phases:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — ALBs</td>
+<td>Deletes Kubernetes-managed ALBs (<code>k8s-*</code> prefix) — they block VPC deletion</td>
+</tr>
+<tr>
+<td>2 — RDS protection</td>
+<td>Disables deletion protection on the Backstage RDS instance</td>
+</tr>
+<tr>
+<td>3 — Crossplane resources</td>
+<td>Finds all resources tagged <code>idp:provisioner=crossplane</code> via Resource Groups Tagging API and deletes them: S3 buckets (all versions + delete markers), RDS instances, DynamoDB tables, SQS queues. MSK topics are destroyed implicitly with the cluster in Phase 5.</td>
+</tr>
+<tr>
+<td>4 — S3 + ECR empty</td>
+<td>Empties Terraform-managed S3 buckets (TechDocs, MLflow artifacts) and ECR repos — AWS blocks <code>terraform destroy</code> if either contains objects/images</td>
+</tr>
+<tr>
+<td>5 — Terraform destroy</td>
+<td>Destroys all Terraform-managed resources: EKS, VPC, IAM, Backstage RDS, ECR repos, Secrets Manager</td>
+</tr>
+<tr>
+<td>6 — CloudWatch</td>
+<td>Deletes EKS-generated log groups (<code>/aws/eks/&lt;cluster&gt;</code>, <code>/aws/containerinsights/&lt;cluster&gt;</code>) — these persist and accumulate cost after cluster deletion</td>
+</tr>
+<tr>
+<td>7 — Verify</td>
+<td>Checks EKS, RDS, ALBs, Crossplane-tagged resources, and CloudWatch log groups are all zero</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What gets deleted:</strong> Everything above<br />
+<strong>What's preserved:</strong> S3 Terraform state bucket (<code>&lt;cluster&gt;-terraform-state-*</code>), local code and config</p>
+<blockquote>
+<p><strong>Note on Crossplane resources:</strong> Because all Compositions use
+<code>deletionPolicy: Orphan</code>, Crossplane resources survive Claim deletion.
+Phase 3 of <code>cleanup.sh</code> handles them automatically by querying the
+<code>idp:provisioner=crossplane</code> tag. RDS deletions are asynchronous —
+the script initiates them and notes it in the summary.</p>
+</blockquote>
+<p>To tear down only the AI/ML components without touching the core platform:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
+</code></pre></div></td></tr></table></div>
+<p>To tear down only the local Kind/Rancher cluster (no AWS resources are affected):</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+</code></pre></div></td></tr></table></div>
 
 
 

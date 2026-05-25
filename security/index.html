@@ -837,6 +837,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#crossplane-iam-least-privilege-provider-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Crossplane IAM: least-privilege provider roles
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#crossplane-data-safety-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      Crossplane data-safety defaults
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#container-supply-chain-hardening" class="md-nav__link">
     <span class="md-ellipsis">
       Container &amp; supply-chain hardening
@@ -1223,6 +1241,59 @@
 <li><code>@backstage/plugin-scaffolder-node</code> moved an extension-point export from the main entry to <code>/alpha</code>, which caused our custom scaffold actions to crash at startup and left the catalog refresh loop stuck with 0 entities.</li>
 </ol>
 <p>Both required manual intervention (a yarn patch and an import-path revert). Until we have a CI signal that can catch these <em>before</em> the PR is merged, version-update PRs are off and dependency upgrades happen as scoped, reviewed batches.</p>
+<h2 id="crossplane-iam-least-privilege-provider-roles">Crossplane IAM: least-privilege provider roles<a class="headerlink" href="#crossplane-iam-least-privilege-provider-roles" title="Permanent link">&para;</a></h2>
+<p>The Crossplane IRSA role (<code>terraform/iam-crossplane.tf</code>) was previously
+attached to five AWS-managed <code>*FullAccess</code> policies. These have been replaced
+with <strong>scoped inline policies</strong> — one per resource family:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crossplane_s3</code></td>
+<td>Bucket create/delete/configure — restricted to <code>arn:aws:s3:::idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_rds</code></td>
+<td>Instance + subnet-group lifecycle — restricted to <code>arn:aws:rds:*:*:db:idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_kafka</code></td>
+<td>Topic lifecycle on <code>arn:aws:kafka:*:*:cluster/idp-*/*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_dynamodb</code></td>
+<td>Table lifecycle — restricted to <code>arn:aws:dynamodb:*:*:table/idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_sqs</code></td>
+<td>Queue lifecycle — restricted to <code>arn:aws:sqs:*:*:idp-*</code></td>
+</tr>
+<tr>
+<td><code>crossplane_tagging</code></td>
+<td><code>tag:*</code> on <code>*</code> (required by the Resource Groups Tagging API)</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>idp-*</code> prefix constraint aligns with the <code>pattern</code> validations in each XRD, so a Claim can never request a resource name that falls outside the policy scope.</p>
+<h2 id="crossplane-data-safety-defaults">Crossplane data-safety defaults<a class="headerlink" href="#crossplane-data-safety-defaults" title="Permanent link">&para;</a></h2>
+<p>All five Compositions (<code>aws/crossplane/compositions/*/composition.yaml</code>) ship
+with these safety defaults:</p>
+<ul>
+<li><strong><code>deletionPolicy: Orphan</code></strong> — deleting a Claim never deletes the underlying
+  AWS resource. Accidental <code>kubectl delete</code> cannot cause data loss. Full
+  decommission requires an explicit manual step.</li>
+<li><strong><code>skipFinalSnapshot: false</code></strong> (RDS) — a final snapshot is created before any
+  RDS instance is deleted, even when triggered by <code>cleanup.sh</code>.</li>
+<li><strong><code>backupRetentionDays: 30</code></strong> (RDS, configurable) — automated backups kept
+  for 30 days by default.</li>
+<li><strong><code>storageEncrypted: true</code></strong> (RDS) and <strong><code>sqsManagedSseEnabled: true</code></strong> (SQS)
+  — encryption at rest is non-optional.</li>
+</ul>
 <h2 id="container-supply-chain-hardening">Container &amp; supply-chain hardening<a class="headerlink" href="#container-supply-chain-hardening" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Backstage <code>Dockerfile</code> runs as non-root, uses a distroless-style runtime stage, and pins all base-image digests.</li>
