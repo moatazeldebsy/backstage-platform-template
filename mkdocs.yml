@@ -27,9 +27,11 @@ nav:
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
   - Crossplane vs Terraform: crossplane-vs-terraform.md
-  - Shift-Left Quality: shift-left.md
-  - Shift-Left Demo Cheatsheet: shift-left-demo-cheatsheet.md
-  - Shift-Left Pilot Kickoff: shift-left-pilot-kickoff.md
+  - Shift-Left Quality:
+    - For Leadership: shift-left-leadership.md
+    - Programme Overview: shift-left.md
+    - Pilot Kickoff: shift-left-pilot-kickoff.md
+    - Demo Cheatsheet: shift-left-demo-cheatsheet.md
   - Security: security.md
   - Demo Runbook: demo-runbook.md
   - Roadmap: roadmap.md
