@@ -35,6 +35,38 @@ The reason is incident-driven: two auto-bump PRs broke the working configuration
 
 Both required manual intervention (a yarn patch and an import-path revert). Until we have a CI signal that can catch these *before* the PR is merged, version-update PRs are off and dependency upgrades happen as scoped, reviewed batches.
 
+## Crossplane IAM: least-privilege provider roles
+
+The Crossplane IRSA role (`terraform/iam-crossplane.tf`) was previously
+attached to five AWS-managed `*FullAccess` policies. These have been replaced
+with **scoped inline policies** — one per resource family:
+
+| Policy | Scope |
+|---|---|
+| `crossplane_s3` | Bucket create/delete/configure — restricted to `arn:aws:s3:::idp-*` |
+| `crossplane_rds` | Instance + subnet-group lifecycle — restricted to `arn:aws:rds:*:*:db:idp-*` |
+| `crossplane_kafka` | Topic lifecycle on `arn:aws:kafka:*:*:cluster/idp-*/*` |
+| `crossplane_dynamodb` | Table lifecycle — restricted to `arn:aws:dynamodb:*:*:table/idp-*` |
+| `crossplane_sqs` | Queue lifecycle — restricted to `arn:aws:sqs:*:*:idp-*` |
+| `crossplane_tagging` | `tag:*` on `*` (required by the Resource Groups Tagging API) |
+
+The `idp-*` prefix constraint aligns with the `pattern` validations in each XRD, so a Claim can never request a resource name that falls outside the policy scope.
+
+## Crossplane data-safety defaults
+
+All five Compositions (`aws/crossplane/compositions/*/composition.yaml`) ship
+with these safety defaults:
+
+- **`deletionPolicy: Orphan`** — deleting a Claim never deletes the underlying
+  AWS resource. Accidental `kubectl delete` cannot cause data loss. Full
+  decommission requires an explicit manual step.
+- **`skipFinalSnapshot: false`** (RDS) — a final snapshot is created before any
+  RDS instance is deleted, even when triggered by `cleanup.sh`.
+- **`backupRetentionDays: 30`** (RDS, configurable) — automated backups kept
+  for 30 days by default.
+- **`storageEncrypted: true`** (RDS) and **`sqsManagedSseEnabled: true`** (SQS)
+  — encryption at rest is non-optional.
+
 ## Container & supply-chain hardening
 
 - Backstage `Dockerfile` runs as non-root, uses a distroless-style runtime stage, and pins all base-image digests.

@@ -38,6 +38,14 @@ Both tools can provision the same AWS resource types. We split them by
 | RDS **per-service** instances | Crossplane | Self-serve via scaffolder. |
 | S3 / DynamoDB / SQS | Crossplane | Per-service. No bootstrap dependency. |
 
+## IAM boundary
+
+Terraform provisions the **single shared IRSA role** (`terraform/iam-crossplane.tf`) that all Crossplane providers assume. The role uses least-privilege **inline policies** — one per resource family — scoped to `idp-*` ARN prefixes. No `*FullAccess` managed policies are attached. See [crossplane.md § IAM](./crossplane.md#iam-least-privilege-provider-roles) for the full permission matrix.
+
+## Deletion behaviour
+
+Crossplane Compositions use `deletionPolicy: Orphan`. Deleting a Claim removes Crossplane's tracking of the resource but **does not delete the underlying AWS resource**. Intentional — prevents data loss from accidental `kubectl delete`. Full decommission requires a manual AWS deletion step. See [crossplane.md § Decommissioning](./crossplane.md#decommissioning-a-resource).
+
 ## The "same resource, different tool" pitfall
 
 A Crossplane `RDSInstance` Claim and a Terraform `aws_db_instance` block

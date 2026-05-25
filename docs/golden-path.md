@@ -59,17 +59,19 @@ Backstage will:
 
 **Per-service infra (Crossplane, AWS)**
 
-| Template | Resource |
-|---|---|
-| S3 Object Bucket (Crossplane) | S3 bucket with encryption + public-access block |
-| RDS Postgres (Crossplane) | RDS instance + connection Secret |
-| Kafka Topic (Crossplane) | MSK topic on an existing cluster |
-| DynamoDB Table (Crossplane) | DynamoDB table with PITR |
-| SQS Queue (Crossplane) | SQS queue (FIFO opt-in) |
+| Template | Resource | Notes |
+|---|---|---|
+| S3 Object Bucket (Crossplane) | S3 bucket with encryption + public-access block | Versioning configurable |
+| RDS Postgres (Crossplane) | RDS instance + connection Secret | 30-day backup retention default; `backupRetentionDays` param |
+| Kafka Topic (Crossplane) | MSK topic on an existing cluster | Requires MSK cluster ARN; form validates `arn:aws:kafka:` prefix |
+| DynamoDB Table (Crossplane) | DynamoDB table with PITR | Optional `rangeKey` + `rangeKeyType` for composite primary keys |
+| SQS Queue (Crossplane) | SQS queue (FIFO opt-in) | SSE always enabled |
 
-These open a PR adding a Crossplane Claim YAML at
-`services/<ownerService>/claims/<name>.yaml`. ArgoCD syncs on merge and
-Crossplane provisions the AWS resource — no `terraform apply` step.
+Each template opens a PR with **two files**:
+- `services/<ownerService>/claims/<name>.yaml` — the Crossplane Claim
+- `services/<ownerService>/claims/catalog-info-<name>.yaml` — registers the resource in the Backstage catalog
+
+ArgoCD syncs on merge, Crossplane provisions the AWS resource — no `terraform apply` step.
 See [crossplane.md](crossplane.md) for the full flow.
 
 > The legacy Terraform-PR templates (`s3-bucket`, `rds-database`,

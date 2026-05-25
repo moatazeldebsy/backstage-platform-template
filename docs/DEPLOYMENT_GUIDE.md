@@ -518,9 +518,39 @@ EOF
 ## Cleanup & Destroy
 
 ```bash
-# Safe teardown — deletes ALBs first, then runs terraform destroy
+# Safe teardown — runs all phases in the correct order
 ./scripts/cleanup.sh --cluster-name idp-mvp --force
 ```
 
-**What gets deleted:** EKS cluster, RDS, VPC, all ALBs, ECR images  
-**What's preserved:** S3 Terraform state bucket, CloudWatch logs (30-day retention), local code
+`cleanup.sh` runs seven ordered phases:
+
+| Phase | What it does |
+|---|---|
+| 1 — ALBs | Deletes Kubernetes-managed ALBs (`k8s-*` prefix) — they block VPC deletion |
+| 2 — RDS protection | Disables deletion protection on the Backstage RDS instance |
+| 3 — Crossplane resources | Finds all resources tagged `idp:provisioner=crossplane` via Resource Groups Tagging API and deletes them: S3 buckets (all versions + delete markers), RDS instances, DynamoDB tables, SQS queues. MSK topics are destroyed implicitly with the cluster in Phase 5. |
+| 4 — S3 + ECR empty | Empties Terraform-managed S3 buckets (TechDocs, MLflow artifacts) and ECR repos — AWS blocks `terraform destroy` if either contains objects/images |
+| 5 — Terraform destroy | Destroys all Terraform-managed resources: EKS, VPC, IAM, Backstage RDS, ECR repos, Secrets Manager |
+| 6 — CloudWatch | Deletes EKS-generated log groups (`/aws/eks/<cluster>`, `/aws/containerinsights/<cluster>`) — these persist and accumulate cost after cluster deletion |
+| 7 — Verify | Checks EKS, RDS, ALBs, Crossplane-tagged resources, and CloudWatch log groups are all zero |
+
+**What gets deleted:** Everything above  
+**What's preserved:** S3 Terraform state bucket (`<cluster>-terraform-state-*`), local code and config
+
+> **Note on Crossplane resources:** Because all Compositions use
+> `deletionPolicy: Orphan`, Crossplane resources survive Claim deletion.
+> Phase 3 of `cleanup.sh` handles them automatically by querying the
+> `idp:provisioner=crossplane` tag. RDS deletions are asynchronous —
+> the script initiates them and notes it in the summary.
+
+To tear down only the AI/ML components without touching the core platform:
+
+```bash
+./scripts/bootstrap-ai.sh --destroy
+```
+
+To tear down only the local Kind/Rancher cluster (no AWS resources are affected):
+
+```bash
+./scripts/bootstrap-local.sh --destroy
+```
