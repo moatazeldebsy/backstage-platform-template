@@ -14,6 +14,24 @@ resource "aws_s3_bucket_versioning" "techdocs" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "techdocs" {
+  bucket = aws_s3_bucket.techdocs.id
+
+  rule {
+    id     = "expire-old-versions"
+    status = "Enabled"
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "techdocs" {
   bucket = aws_s3_bucket.techdocs.id
 
