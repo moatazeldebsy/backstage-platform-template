@@ -281,9 +281,11 @@ fi
 if [[ "$SKIP_KAGENT" == "true" ]]; then
   info "Skipping KAgent (--skip-kagent)."
 else
-  # Pinned to a known-good release. Bump deliberately after testing — unpinned
-  # installs pulled a breaking chart version that crashes /agents/new and /prompts/new.
-  KAGENT_CHART_VERSION="0.9.2"
+  # Pinned to the verified latest release (0.9.4).
+  # 0.9.4 has two missing HTTP handlers (/api/modelproviderconfigs, /api/promptlibraries)
+  # that return plain-text 404 and crash the Next.js UI. The nginx intercept patch below
+  # fixes this by returning {"error":false,"data":[]} before requests reach the controller.
+  KAGENT_CHART_VERSION="0.9.4"
 
   info "Installing KAgent via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
   helm upgrade --install kagent-crds \
@@ -420,6 +422,35 @@ else
     # local/kagent/values.yaml → kagent-controller.kagent.svc.cluster.local:8083
     # No hostAliases patch needed; the controller is reached directly in-cluster.
     check "kagent-ui SSR → kagent-controller.kagent.svc.cluster.local:8083"
+  fi
+
+  # ── 5e. Patch nginx to fix KAgent v0.9.4 broken UI pages ────────────────────
+  # /agents/new and /prompts/new crash because the controller returns plain-text
+  # "404 page not found" for /api/modelproviderconfigs and /api/promptlibraries.
+  # Next.js JSON.parse("404 page not found") throws → React error boundary fires.
+  # Fix: intercept those two paths at nginx and return {"error":false,"data":[]}.
+  info "Patching nginx config to fix /agents/new and /prompts/new (KAgent v0.9.4 bug)..."
+  existing_conf=$(kubectl get configmap kagent-ui-config -n kagent \
+    -o jsonpath='{.data.nginx\.conf}' 2>/dev/null || echo "")
+  if [[ -n "$existing_conf" ]] && ! echo "$existing_conf" | grep -q "modelproviderconfigs"; then
+    patched_conf=$(echo "$existing_conf" | sed '/location \/api\/ {/i\
+            # KAgent v0.9.4: missing API handlers — return empty JSON to unblock UI.\
+            location = /api/modelproviderconfigs {\
+                add_header Content-Type application/json;\
+                return 200 '"'"'{"error":false,"data":[]}'"'"';\
+            }\
+\
+            location = /api/promptlibraries {\
+                add_header Content-Type application/json;\
+                return 200 '"'"'{"error":false,"data":[]}'"'"';\
+            }\
+')
+    kubectl patch configmap kagent-ui-config -n kagent --type merge \
+      -p "{\"data\":{\"nginx.conf\": $(python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))" <<< "$patched_conf")}}" \
+      && check "nginx patched: /api/modelproviderconfigs and /api/promptlibraries return empty JSON" \
+      || warn "nginx patch failed — /agents/new and /prompts/new may still show errors"
+  else
+    check "nginx already patched (idempotent)"
   fi
 
   # Restart kagent-ui so its Next.js SSR cache is rebuilt against the now-ready
