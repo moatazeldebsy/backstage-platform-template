@@ -425,14 +425,21 @@ else
   fi
 
   # ── 5e. Patch nginx to fix KAgent v0.9.4 broken UI pages ────────────────────
-  # /agents/new and /prompts/new crash because the controller returns plain-text
-  # "404 page not found" for /api/modelproviderconfigs and /api/promptlibraries.
-  # Next.js JSON.parse("404 page not found") throws → React error boundary fires.
+  # Two bugs in v0.9.4:
+  #
+  # Bug 1: /api/modelproviderconfigs and /api/promptlibraries return plain-text
+  # "404 page not found". Next.js JSON.parse("404…") throws → error boundary.
   # Fix: intercept those two paths at nginx and return {"error":false,"data":[]}.
-  info "Patching nginx config to fix /agents/new and /prompts/new (KAgent v0.9.4 bug)..."
+  #
+  # Bug 2: KAgent UI calls crypto.randomUUID() which requires a secure context
+  # (HTTPS). Over plain HTTP the function is undefined → TypeError crash.
+  # Fix: inject a polyfill via nginx sub_filter before </head> that implements
+  # randomUUID() using crypto.getRandomValues() which works over HTTP.
+  info "Patching nginx config to fix /agents/new and /prompts/new (KAgent v0.9.4 bugs)..."
   existing_conf=$(kubectl get configmap kagent-ui-config -n kagent \
     -o jsonpath='{.data.nginx\.conf}' 2>/dev/null || echo "")
   if [[ -n "$existing_conf" ]] && ! echo "$existing_conf" | grep -q "modelproviderconfigs"; then
+    # Step 1: add empty-JSON intercepts for missing API endpoints
     patched_conf=$(echo "$existing_conf" | sed '/location \/api\/ {/i\
             # KAgent v0.9.4: missing API handlers — return empty JSON to unblock UI.\
             location = /api/modelproviderconfigs {\
@@ -445,9 +452,12 @@ else
                 return 200 '"'"'{"error":false,"data":[]}'"'"';\
             }\
 ')
+    # Step 2: inject crypto.randomUUID polyfill into every HTML page (HTTP-safe)
+    patched_conf=$(echo "$patched_conf" | sed \
+      's|proxy_pass http://kagent_ui;|proxy_pass http://kagent_ui;\n                proxy_set_header Accept-Encoding "";\n                sub_filter '"'"'</head>'"'"' '"'"'<script>if(!window.crypto)window.crypto={};if(!window.crypto.randomUUID)window.crypto.randomUUID=function(){return"10000000-1000-4000-8000-100000000000".replace(/[018]/g,function(c){return(+c^crypto.getRandomValues(new Uint8Array(1))[0]\&15>>+c\/4).toString(16)});};<\/script><\/head>'"'"';\n                sub_filter_once on;|')
     kubectl patch configmap kagent-ui-config -n kagent --type merge \
       -p "{\"data\":{\"nginx.conf\": $(python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))" <<< "$patched_conf")}}" \
-      && check "nginx patched: /api/modelproviderconfigs and /api/promptlibraries return empty JSON" \
+      && check "nginx patched: empty-JSON intercepts + crypto.randomUUID polyfill injected" \
       || warn "nginx patch failed — /agents/new and /prompts/new may still show errors"
   else
     check "nginx already patched (idempotent)"
