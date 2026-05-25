@@ -1,7 +1,9 @@
 # ── backstage-base-config ─────────────────────────────────────────────────────
-# Contains all non-URL settings. Catalog locations are intentionally absent here
-# so the production config can own them with GitHub URLs (works on EKS without
-# any catalog volume mount).
+# Mirrors backstage/app-config.yaml (the env-agnostic shared base).
+# Keep in sync with that file. Future: generate via:
+#   kubectl create configmap backstage-base-config \
+#     --from-file=app-config.yaml=backstage/app-config.yaml \
+#     -n backstage --dry-run=client -o yaml | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,7 +13,6 @@ data:
   app-config.yaml: |
     app:
       title: IDP Developer Portal
-      baseUrl: http://localhost:3000
       packages: all
       extensions:
         - page:catalog:
@@ -22,22 +23,15 @@ data:
       name: My Organization
 
     backend:
-      baseUrl: http://localhost:7007
-      listen:
-        port: 7007
       csp:
         connect-src: ["'self'", 'http:', 'https:']
         upgrade-insecure-requests: false
       cors:
-        origin: http://localhost:3000
         methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
         credentials: true
       auth:
-        dangerouslyDisableDefaultAuthPolicy: true
-      reading:
-        allow:
-          - host: raw.githubusercontent.com
-          - host: github.com
+        keys:
+          - secret: ${BACKSTAGE_AUTH_SECRET:-dev-secret-change-in-production}
       database:
         client: pg
         connection:
@@ -47,6 +41,12 @@ data:
           password: ${POSTGRES_PASSWORD}
           ssl:
             rejectUnauthorized: false
+        knexConfig:
+          pool:
+            min: 3
+            max: 20
+            acquireTimeoutMillis: 60000
+            idleTimeoutMillis: 30000
 
     integrations:
       github:
@@ -58,31 +58,21 @@ data:
       generator:
         runIn: 'local'
       publisher:
-        type: 'awsS3'
-        awsS3:
-          bucketName: ${TECHDOCS_S3_BUCKET_NAME}
-          region: ${AWS_REGION}
+        type: 'local'
 
     auth:
-      environment: production
-      session:
-        secret: ${AUTH_SESSION_SECRET:-backstage-session-secret}
       providers:
         guest: {}
         github:
-          production:
-            clientId: ${AUTH_GITHUB_CLIENT_ID}
-            clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+          development:
+            clientId: ${AUTH_GITHUB_CLIENT_ID:-not-configured}
+            clientSecret: ${AUTH_GITHUB_CLIENT_SECRET:-not-configured}
             signIn:
               resolvers:
                 - resolver: usernameMatchingUserEntityName
                   dangerouslyAllowSignInWithoutUserInCatalog: true
                 - resolver: emailMatchingUserEntityProfileEmail
                   dangerouslyAllowSignInWithoutUserInCatalog: true
-
-    grafana:
-      domain: /api/proxy/grafana/api
-      unifiedAlerting: false
 
     scaffolder:
       defaultAuthor:
@@ -100,20 +90,37 @@ data:
               name: idp-mvp
               authProvider: 'serviceAccount'
               skipTLSVerify: true
-              skipMetricsLookup: false
+              skipMetricsLookup: true
               serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
+
+    techInsights:
+      factRetrievers:
+        idp-entity-facts:
+          cadence: '*/30 * * * *'
+        entityMetadataFactRetriever:
+          cadence: '5-59/30 * * * *'
+        entityOwnershipFactRetriever:
+          cadence: '10-59/30 * * * *'
+
+    ragSearch:
+      voyageApiKey: ${VOYAGE_API_KEY}
+      indexIntervalMinutes: 30
+      externalSources: []
 ---
-# ── backstage-config (production overrides) ───────────────────────────────────
-# Sets the real ALB URL and all catalog locations as GitHub URLs.
-# Using GitHub URLs means templates are always in sync with the main branch —
-# no image rebuild or volume mount needed when templates change.
+# ── backstage-config (AWS overrides) ─────────────────────────────────────────
+# Mirrors backstage/app-config.aws.yaml (AWS/EKS-specific overrides).
+# bootstrap.sh patches BACKSTAGE_ALB_URL after the ALB is provisioned.
+# Keep in sync with that file. Future: generate via:
+#   kubectl create configmap backstage-config \
+#     --from-file=app-config.aws.yaml=backstage/app-config.aws.yaml \
+#     -n backstage --dry-run=client -o yaml | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: backstage-config
   namespace: backstage
 data:
-  app-config.production.yaml: |
+  app-config.aws.yaml: |
     app:
       # Patched by bootstrap.sh after ALB is provisioned
       baseUrl: http://BACKSTAGE_ALB_URL
@@ -126,6 +133,7 @@ data:
 
     backend:
       baseUrl: http://BACKSTAGE_ALB_URL
+      listen: ':7007'
       cors:
         origin: http://BACKSTAGE_ALB_URL
       auth:
@@ -134,6 +142,24 @@ data:
             options:
               token: ${BACKSTAGE_CATALOG_TOKEN}
               subject: catalog-exporter
+
+    auth:
+      environment: production
+      session:
+        secret: ${AUTH_SESSION_SECRET:-backstage-session-secret}
+      providers:
+        guest:
+          dangerouslyAllowOutsideDevelopment: true
+        github:
+          production:
+            clientId: ${AUTH_GITHUB_CLIENT_ID}
+            clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+            signIn:
+              resolvers:
+                - resolver: usernameMatchingUserEntityName
+                  dangerouslyAllowSignInWithoutUserInCatalog: true
+                - resolver: emailMatchingUserEntityProfileEmail
+                  dangerouslyAllowSignInWithoutUserInCatalog: true
 
     proxy:
       endpoints:
@@ -153,11 +179,20 @@ data:
           changeOrigin: true
           allowedHeaders: ['Authorization']
         /kagent:
-          target: http://kagent-controller.kagent.svc.cluster.local:8080
+          target: http://kagent-ui.kagent.svc.cluster.local:8080
           changeOrigin: true
+          pathRewrite:
+            ^/api/proxy/kagent: ''
 
     techRadar:
       url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json
+
+    techdocs:
+      publisher:
+        type: 'awsS3'
+        awsS3:
+          bucketName: ${TECHDOCS_S3_BUCKET_NAME}
+          region: ${AWS_REGION}
 
     catalog:
       import:
@@ -183,7 +218,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/react-frontend/template.yaml
           rules:
             - allow: [Template]
-        # ── Infrastructure & cloud resource templates ────────────────────────
+        # ── Infrastructure & cloud resource templates ─────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/terraform-module/template.yaml
           rules:
@@ -224,7 +259,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/eks-cluster/template.yaml
           rules:
             - allow: [Template]
-        # ── Platform self-service templates ──────────────────────────────────
+        # ── Platform self-service templates ───────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/team-namespace/template.yaml
           rules:
@@ -241,7 +276,8 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/decommission-service/template.yaml
           rules:
             - allow: [Template]
-        # ── AI / ML templates ────────────────────────────────────────────────
+        # deploy-to-kind template is local-only — not registered on AWS
+        # ── AI / ML templates ─────────────────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/ai-agent-kagent/template.yaml
           rules:
@@ -250,12 +286,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mlflow-experiment/template.yaml
           rules:
             - allow: [Template]
-        # ── Local deploy template (Kind only — still visible for reference) ──
-        - type: url
-          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/deploy-to-kind/template.yaml
-          rules:
-            - allow: [Template]
-        # ── QA Platform: E2E & API testing ───────────────────────────────────
+        # ── QA Platform: E2E & API testing ────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/playwright-e2e-suite/template.yaml
           rules:
@@ -268,12 +299,12 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/bdd-cucumber-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: Performance ─────────────────────────────────────────
+        # ── QA Platform: Performance ──────────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/k6-performance-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: Contract testing ────────────────────────────────────
+        # ── QA Platform: Contract testing ──────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/pact-contract-suite/template.yaml
           rules:
@@ -286,7 +317,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/enable-contract-testing/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: Unit & component ───────────────────────────────────
+        # ── QA Platform: Unit & component ─────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/unit-test-suite/template.yaml
           rules:
@@ -299,7 +330,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/testcontainers-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: Security & quality ─────────────────────────────────
+        # ── QA Platform: Security & quality ───────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/zap-dast-suite/template.yaml
           rules:
@@ -312,7 +343,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mutation-testing-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: Accessibility, visual & mobile ──────────────────────
+        # ── QA Platform: Accessibility, visual & mobile ────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/accessibility-suite/template.yaml
           rules:
@@ -325,7 +356,7 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/appium-mobile-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: Chaos & synthetic ───────────────────────────────────
+        # ── QA Platform: Chaos & synthetic ────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/chaos-mesh-suite/template.yaml
           rules:
@@ -334,12 +365,12 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/datadog-synthetic-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── QA Platform: LLM eval ────────────────────────────────────────────
+        # ── QA Platform: LLM eval ──────────────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/deepeval-llm-eval-suite/template.yaml
           rules:
             - allow: [Template]
-        # ── Platform entities ────────────────────────────────────────────────
+        # ── Platform entities ──────────────────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/catalog-info.yaml
           rules:
@@ -364,8 +395,42 @@ data:
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/services/contract-mcp-server/catalog-info.yaml
           rules:
             - allow: [Component]
-        # ── QA Platform catalog ──────────────────────────────────────────────
+        # ── QA Platform catalog ────────────────────────────────────────────────
         - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/qa-catalog.yaml
           rules:
             - allow: [Component, Group, User, Resource]
+        # ── AI / ML Platform ───────────────────────────────────────────────────
+        - type: url
+          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/resources/ai-platform.yaml
+          rules:
+            - allow: [Resource, Component]
+        - type: url
+          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/idp-mcp-server/catalog-info.yaml
+          rules:
+            - allow: [Component]
+        - type: url
+          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/idp-mcp-server/api.yaml
+          rules:
+            - allow: [API]
+        - type: url
+          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/qa-mcp-server/catalog-info.yaml
+          rules:
+            - allow: [Component]
+        - type: url
+          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/test-suites/test-deepeval/catalog-info.yaml
+          rules:
+            - allow: [Component]
+
+      providers:
+        github:
+          idpOrg:
+            organization: moatazeldebsy
+            catalogPath: /catalog-info.yaml
+            filters:
+              branch: main
+              topic:
+                include: [idp]
+            schedule:
+              frequency: { minutes: 15 }
+              timeout: { minutes: 3 }
