@@ -587,16 +587,46 @@ if [[ "$SKIP_AI" != "true" ]]; then
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
+_alb() {
+  # Usage: _alb <ingress-name> <namespace>
+  kubectl get ingress "$1" -n "$2" \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null \
+    | grep -v '^$' || echo "pending..."
+}
+
 log ""
-log "Bootstrap complete! Platform summary:"
-log "  Cluster:        $(kubectl config current-context)"
-log "  hello-service:  $(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
-log "  Backstage:      http://${BACKSTAGE_URL:-PENDING}"
-log "  Grafana:        $(kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
-log "  TechDocs S3:    s3://${TECHDOCS_BUCKET}"
-log "  ArgoCD:         $(kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
-log "  KAgent UI:      $(kubectl get ingress kagent-ui -n kagent -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'not deployed (--skip-ai)')"
-log "  MLflow:         $(kubectl get ingress mlflow -n ml-platform -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'not deployed (--skip-ai)')"
+log "╔══════════════════════════════════════════════════════════════════════════════╗"
+log "║                     Bootstrap complete — AWS platform URLs                  ║"
+log "╠══════════════════════════════════════════════════════════════════════════════╣"
+log "║  Cluster        $(kubectl config current-context)"
+log "╠══════════════════════════════════════════════════════════════════════════════╣"
+log "║  DEVELOPER PORTAL"
+log "║    Backstage       http://${BACKSTAGE_URL:-PENDING}"
+log "║    AI Assistant    http://${BACKSTAGE_URL:-PENDING}/ai-assistant"
+log "╠══════════════════════════════════════════════════════════════════════════════╣"
+log "║  PLATFORM SERVICES"
+log "║    ArgoCD          http://$(_alb argocd-server argocd)"
+log "║    Grafana         http://$(_alb grafana monitoring)"
+log "║    Prometheus      http://$(_alb prometheus monitoring)"
+log "║    AlertManager    http://$(_alb alertmanager monitoring)"
+log "║    Pushgateway     http://$(_alb prometheus-pushgateway monitoring)"
+log "║    OpenCost        http://$(_alb opencost-alb opencost)"
+log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
+log "╠══════════════════════════════════════════════════════════════════════════════╣"
+log "║  APPLICATION SERVICES"
+log "║    hello-service   http://$(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
+log "╠══════════════════════════════════════════════════════════════════════════════╣"
+if [[ "$SKIP_AI" != "true" ]]; then
+log "║  AI/ML PLATFORM"
+log "║    KAgent UI           http://$(_alb kagent-ui kagent)"
+log "║    IDP Assistant (A2A) http://$(_alb idp-assistant kagent)"
+log "║    MLflow              http://$(_alb mlflow ml-platform)"
+log "║    IDP MCP Server      http://$(_alb idp-mcp-server services-dev)"
+log "║    QA MCP Server       http://$(_alb qa-mcp-server services-dev)"
+log "║    Contract MCP Server http://$(_alb contract-mcp-server services-dev)"
+log "╠══════════════════════════════════════════════════════════════════════════════╣"
+fi
+log "╚══════════════════════════════════════════════════════════════════════════════╝"
 log ""
 if [[ "$BACKSTAGE_URL" == "PENDING" ]]; then
   log "⚠️  Backstage LoadBalancer hostname not ready. Run this to patch it later:"

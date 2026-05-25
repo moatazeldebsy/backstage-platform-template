@@ -631,27 +631,36 @@ fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 
+_alb_ai() {
+  kubectl get ingress "$1" -n "$2" \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null \
+    | grep -v '^$' || echo "pending..."
+}
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════════════════╗"
 echo "║               AI/ML Platform Bootstrap Complete                          ║"
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           ALB DNS  (kubectl get ingress -n kagent)         ║"
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              ALB DNS  (kubectl get ingress -n ml-platform)    ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      ALB DNS  (kubectl get ingress -n services-dev)   ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       ALB DNS  (kubectl get ingress -n services-dev)   ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server ALB DNS  (kubectl get ingress -n services-dev)   ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://$(_alb_ai kagent-ui kagent)"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  IDP Assistant (A2A) http://$(_alb_ai idp-assistant kagent)"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://$(_alb_ai mlflow ml-platform)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://$(_alb_ai idp-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://$(_alb_ai qa-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://$(_alb_ai contract-mcp-server services-dev)"
 else
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local                         ║"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant         ║"
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://mlflow.idp.local                         ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz         ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz          ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz    ║"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local"
+  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://mlflow.idp.local"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz"
 fi
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"
+if [[ "$DEPLOY_MODE" == "local" ]]; then
 echo "║  All platform URLs: ./scripts/bootstrap-local.sh --print-urls            ║"
+fi
 echo "╚═══════════════════════════════════════════════════════════════════════════╝"
 echo ""
 if [[ "$SKIP_MCP" == "false" && "$DEPLOY_MODE" == "local" ]]; then
