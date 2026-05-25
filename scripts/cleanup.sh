@@ -46,13 +46,14 @@ log "Starting cleanup for cluster=$CLUSTER_NAME, region=$AWS_REGION"
 # ── Phase 1: Delete Load Balancers created by Kubernetes services ─────────────
 log "Phase 1: Cleaning up Load Balancers..."
 
+# ALBs/NLBs (v2) — created by aws-load-balancer-controller, prefixed k8s-
 ALB_COUNT=$(aws elbv2 describe-load-balancers \
   --region "${AWS_REGION}" \
-  --query "LoadBalancers[?contains(LoadBalancerName, 'k8s-')].LoadBalancerArn" \
-  --output text | wc -w)
+  --query "length(LoadBalancers[?contains(LoadBalancerName, 'k8s-')])" \
+  --output text 2>/dev/null || echo 0)
 
 if [[ $ALB_COUNT -gt 0 ]]; then
-  log "  Found $ALB_COUNT Kubernetes-managed load balancers"
+  log "  Found $ALB_COUNT ALB/NLB load balancers (k8s-*)"
   aws elbv2 describe-load-balancers \
     --region "${AWS_REGION}" \
     --query "LoadBalancers[?contains(LoadBalancerName, 'k8s-')].LoadBalancerArn" \
@@ -62,10 +63,54 @@ if [[ $ALB_COUNT -gt 0 ]]; then
       aws elbv2 delete-load-balancer --load-balancer-arn "$arn" --region "${AWS_REGION}" 2>/dev/null || true
     }
   done
-  log "  Waiting for ALBs to be deleted..."
-  sleep 15
 else
-  log "  No Kubernetes load balancers found"
+  log "  No ALB/NLB load balancers found"
+fi
+
+# Classic ELBs (v1) — created by nginx-ingress on older K8s versions.
+# These use the aws elb API and are not caught by elbv2 above.
+CLASSIC_COUNT=$(aws elb describe-load-balancers \
+  --region "${AWS_REGION}" \
+  --query "length(LoadBalancerDescriptions)" \
+  --output text 2>/dev/null || echo 0)
+
+if [[ $CLASSIC_COUNT -gt 0 ]]; then
+  log "  Found $CLASSIC_COUNT Classic (v1) load balancers — deleting all in this account/region"
+  aws elb describe-load-balancers \
+    --region "${AWS_REGION}" \
+    --query "LoadBalancerDescriptions[*].LoadBalancerName" \
+    --output text | tr '\t' '\n' | while read -r name; do
+    [[ -n "$name" ]] && {
+      log "  Deleting Classic ELB: $name"
+      aws elb delete-load-balancer --load-balancer-name "$name" --region "${AWS_REGION}" 2>/dev/null || true
+    }
+  done
+else
+  log "  No Classic load balancers found"
+fi
+
+if [[ $ALB_COUNT -gt 0 || $CLASSIC_COUNT -gt 0 ]]; then
+  log "  Waiting 20s for ENIs to be released after LB deletion..."
+  sleep 20
+fi
+
+# Stale k8s-managed security groups — EKS does not always clean these up on
+# cluster delete, and they block VPC deletion with DependencyViolation.
+log "  Cleaning up stale k8s-managed security groups..."
+VPC_ID=$(aws ec2 describe-vpcs --region "${AWS_REGION}" \
+  --filters "Name=tag:Name,Values=${CLUSTER_NAME}-vpc" \
+  --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
+if [[ -n "$VPC_ID" && "$VPC_ID" != "None" ]]; then
+  aws ec2 describe-security-groups --region "${AWS_REGION}" \
+    --filters "Name=vpc-id,Values=${VPC_ID}" \
+    --query "SecurityGroups[?starts_with(GroupName,'k8s-')].GroupId" \
+    --output text | tr '\t' '\n' | while read -r sg; do
+    [[ -z "$sg" ]] && continue
+    log "    Deleting stale SG: $sg"
+    aws ec2 delete-security-group --group-id "$sg" --region "${AWS_REGION}" 2>/dev/null || true
+  done
+else
+  log "  VPC not found by name tag — skipping stale SG cleanup"
 fi
 
 # ── Phase 2: Disable RDS deletion protection (Backstage DB) ──────────────────
@@ -209,6 +254,32 @@ TF_BUCKETS=$(aws s3 ls 2>/dev/null \
   | awk '{print $3}' \
   | grep -E "^${CLUSTER_NAME}-" || true)
 
+_empty_versioned_bucket() {
+  local bucket="$1"
+  local total=0
+  # Loop: delete up to 500 versions+markers per iteration until bucket is empty.
+  # aws s3 rm --recursive only removes current-version objects; it silently
+  # ignores non-current versions and delete markers in versioned buckets.
+  while true; do
+    local payload
+    payload=$(aws s3api list-object-versions --bucket "$bucket" \
+      --region "${AWS_REGION}" --output json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+objs=[{'Key':v['Key'],'VersionId':v['VersionId']} for v in d.get('Versions',[])[:500]]
+objs+=[{'Key':m['Key'],'VersionId':m['VersionId']} for m in d.get('DeleteMarkers',[])[:500]]
+print(json.dumps({'Objects':objs,'Quiet':True}) if objs else '')
+" 2>/dev/null)
+    [[ -z "$payload" ]] && break
+    aws s3api delete-objects --bucket "$bucket" --region "${AWS_REGION}" \
+      --delete "$payload" >/dev/null 2>&1
+    local count
+    count=$(echo "$payload" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('Objects',[])))" 2>/dev/null || echo 0)
+    total=$((total + count))
+  done
+  log "    Deleted $total versioned objects from s3://${bucket}"
+}
+
 while IFS= read -r bucket; do
   [[ -z "$bucket" ]] && continue
   # Skip the Terraform state bucket — it must be preserved
@@ -217,7 +288,7 @@ while IFS= read -r bucket; do
     continue
   }
   log "    Emptying s3://${bucket}"
-  aws s3 rm "s3://${bucket}" --recursive --region "${AWS_REGION}" 2>/dev/null || true
+  _empty_versioned_bucket "${bucket}"
 done <<< "$TF_BUCKETS"
 
 # ── 4b: ECR repositories ─────────────────────────────────────────────────────
