@@ -33,6 +33,10 @@ Status is updated as work progresses.
 | DORA metrics | Deployment frequency, lead time, MTTR, change failure rate — CloudWatch (AWS) + Pushgateway (local) |
 | Community health | CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates, PR template, CODEOWNERS |
 | GitOps | ArgoCD app-of-apps for local and AWS; image tag commit loop via `build-and-deploy.yml` |
+| Test suite template library | 14 templates covering the full pyramid: unit, component, integration, contract, E2E, performance, security (DAST), visual, accessibility, mobile, chaos, LLM eval, mutation, synthetic, IaC |
+| Contract testing stack | `contract-mcp-server` (9 tools), `contract-assistant` KAgent agent, `enable-contract-testing` scaffold template |
+| QA MCP server | `qa-mcp-server` deployed alongside `idp-mcp-server`; QA-specific tools exposed as MCP |
+| Three-way repo split | `local/` (Kind-only), `aws/` (EKS-only), `kubernetes/` (shared) — enforced by bootstrap scripts; no cross-reads |
 
 ---
 
@@ -154,9 +158,38 @@ one-click PR. This is the most-requested feature after first scaffold.
 | `mcp-server` template | ✅ | Model Context Protocol server skeleton; `backstage/catalog/templates/mcp-server/` |
 | KAgent platform deployment | ✅ | KAgent installed on local Kind + AWS EKS; ingress at `kagent.idp.local` / AWS ALB |
 | MLflow tracking server | ✅ | MLflow installed on local Kind + AWS EKS; ingress at `mlflow.idp.local` / AWS ALB |
-| IDP MCP Server | ✅ | `services/idp-mcp-server/` — exposes IDP operations as MCP tools; `bootstrap-ai.sh` bootstraps the full stack |
+| IDP MCP Server | ✅ | `services/idp-mcp-server/` — exposes 6 IDP operations as MCP tools; `bootstrap-ai.sh` bootstraps the full stack |
+| QA MCP Server | ✅ | `services/qa-mcp-server/` — QA-specific tools (test generation, result analysis); managed by ArgoCD in `services-dev` |
+| Contract MCP Server | ✅ | `services/contract-mcp-server/` — 9 tools: `fetch_service_contract`, `auto_discover_contracts`, `register_contract`, `validate_compatibility`, `detect_breaking_changes`, and more |
+| `contract-assistant` KAgent agent | ✅ | `kubernetes/kagent/contract-agent.yaml` — uses all 9 contract tools + `catalog_search` + `list_deployments` |
+| `enable-contract-testing` template | ✅ | Scaffold template that deploys `contract-mcp-server`, applies KAgent CRDs, and auto-registers the target service |
+| Scaffold actions: deploy-agent, run-training-job, deploy-mcp-server | ✅ | `idpDeployAgent`, `idpRunTrainingJob`, `idpDeployMcpServer` modules in `backstage/app/packages/backend/src/modules/` |
 | `model-serving-api` template | 📋 | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var |
 | `ml-training-job` template | 📋 | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
+
+---
+
+## Phase 7b — Test Automation Golden Path ✅
+
+**Goal:** Every team has a one-click path to add any layer of the test pyramid to an existing service, with CI wired automatically.
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Unit test suites (Go, Node.js, Python) | ✅ | Language skeletons include tests; `unit-test-suite` template for brownfield |
+| Component test suite (WireMock) | ✅ | `component-test-suite` — stubs deps, runs in CI |
+| Integration test suite (Testcontainers) | ✅ | `testcontainers-suite` — real Postgres/Kafka in CI |
+| Contract testing (`enable-contract-testing`) | ✅ | MCP-driven preferred path; `pact-contract-suite` / `contract-testing-suite` as legacy |
+| E2E suites | ✅ | `playwright-e2e-suite`, `newman-api-suite`, `bdd-cucumber-suite` |
+| Performance suite (k6) | ✅ | `k6-performance-suite` |
+| Security DAST suite (ZAP) | ✅ | `zap-dast-suite` |
+| Visual regression suite | ✅ | `visual-regression-suite` |
+| Accessibility suite | ✅ | `accessibility-suite` |
+| Mobile suite (Appium) | ✅ | `appium-mobile-suite` |
+| Chaos suite (Chaos Mesh) | ✅ | `chaos-mesh-suite` |
+| LLM eval suite (DeepEval) | ✅ | `deepeval-llm-eval-suite` |
+| Mutation testing suite | ✅ | `mutation-testing-suite` |
+| Synthetic monitoring suite | ✅ | `datadog-synthetic-suite` |
+| IaC test suite | ✅ | `iac-test-suite` — tflint + Checkov + optional Terratest |
 
 ---
 
@@ -284,6 +317,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 | M5: OSS launch | Q2 2026 🚧 | Phase 5 | `milestone/m5-oss-launch` |
 | M6: Multi-env GitOps | Q3 2026 | Phase 6 | `milestone/m6-gitops` |
 | M7: AI/ML platform | Q2 2026 🚧 | Phase 7 | `milestone/m7-aiml` |
+| M7b: Test automation golden path | Q2 2026 ✅ | Phase 7b | `milestone/m7b-test-golden-path` |
 | M8: Developer experience | Q3 2026 | Phase 8 | `milestone/m8-dx` |
 | M9: Advanced platform | Q4 2026 | Phase 9 | `milestone/m9-advanced` |
 | M10: Multi-team production scale | Q3 2026 | Phase 10 | `milestone/m10-scale` |
