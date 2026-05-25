@@ -51,7 +51,7 @@ resource "aws_db_instance" "backstage" {
   db_subnet_group_name   = aws_db_subnet_group.backstage.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  backup_retention_period   = 7
+  backup_retention_period   = 1
   storage_encrypted         = true
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-backstage-final"

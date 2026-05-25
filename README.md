@@ -380,52 +380,69 @@ helm upgrade --install my-svc ./helm/service-template \
 
 ## AWS Cost & Scalability
 
-### Monthly estimate (us-east-1, default config)
+### Free-tier reality check
+
+EKS is **not free-tier compatible** — the control plane costs $0.10/hr (~$73/month) regardless of node count, and the NAT Gateway adds ~$33/month with no free tier. The minimum you'll spend with EKS running continuously is ~$120–150/month.
+
+**To stay near $0:** use `./scripts/bootstrap-local.sh --full` for daily development. Reserve AWS for demos only, then run cleanup. The overnight cost optimizer (enabled by default) shuts nodes down at 8 PM UTC and brings them back at 7 AM, cutting EC2 costs by ~60%.
+
+### Monthly estimate — optimized config (default)
 
 | Service | Config | Est. cost/month |
 |---------|--------|-----------------|
 | EKS control plane | 1 cluster | ~$73 |
-| EC2 worker nodes | 2× t3.medium (desired) | ~$61 |
+| EC2 worker nodes | 1× t3.medium + overnight scale-to-0 | ~$16 |
 | NAT Gateway | 1× single gateway | ~$33 + data |
-| RDS PostgreSQL | db.t3.micro, 20 GB, no Multi-AZ | ~$15 |
-| ALB | 1–2 Application Load Balancers | ~$25–40 |
-| CloudWatch | Logs + metrics + dashboards | ~$10–20 |
-| Secrets Manager | 3 secrets | ~$1 |
+| RDS PostgreSQL | db.t3.micro, 20 GB — free tier 750 h (yr 1) | ~$0–15 |
+| ALB / NLB | Load balancers (free tier: 750 h for 1 ALB) | ~$18–36 |
+| EBS | Prometheus 5 Gi gp3 + MLflow 1 Gi | ~$1 |
+| CloudWatch | Logs + custom metrics | ~$5–10 |
+| Secrets Manager | 5 secrets × $0.40 | ~$2 |
 | ECR + S3 | Images + TechDocs | ~$2 |
-| **Total (baseline)** | | **~$220–$245/month** |
+| **Total (optimized)** | | **~$150–$187/month** |
 
-**With latest improvements** (MLflow artifact cleanup, faster deployments, intelligent ALB cleanup):
-- **Savings:** ~$27/month (11% reduction)
-- **New baseline:** ~$193–$218/month
+> **Without optimization** (3 nodes, no scaler, 20 Gi Prometheus, gp2): ~$300–400/month.
 
-See [docs/IMPROVEMENTS_SUMMARY.md](docs/IMPROVEMENTS_SUMMARY.md) for detailed cost analysis.
+### Cost optimizer (enabled by default)
 
-### Production Hardening: Autoscaling & Right-Sizing
-
-For production workloads, enable autoscaling and right-size node types in `terraform/terraform.tfvars`:
+`terraform/terraform.tfvars` ships with:
 
 ```hcl
-# Increase node size for production workloads
-node_instance_types     = ["t3.large"]  # instead of t3.medium
-node_group_min_size     = 4             # instead of 2
-node_group_max_size     = 12            # for peak load
-enable_autoscaling      = true
-
-# RDS production settings (higher availability)
-environment = "prod"  # enables deletion_protection, backups, encryption
+node_group_min_size     = 0        # allows scale-to-zero
+node_group_desired_size = 1        # single node during the day
+enable_cost_optimizer   = true     # EventBridge Lambdas: nodes→0 at 8 PM UTC, back at 7 AM
+budget_monthly_limit_usd = "100"   # SNS alert at $80 actual / $100 forecasted
 ```
 
-**Scaling impact:**
-- 4× t3.large + autoscaling (0–12 nodes) = ~$350–$600/month depending on utilization
-- Use AWS Compute Optimizer to right-size further
+To adjust the schedule (e.g. keep nodes up later):
+```hcl
+cost_optimizer_scale_down_cron = "cron(0 22 * * ? *)"  # 10 PM UTC
+cost_optimizer_scale_up_cron   = "cron(0 6  * * ? *)"  # 6 AM UTC
+```
 
-See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) → Production Hardening for the full checklist.
+### Skip optional components to save more
 
-### Cost Monitoring & Alerts
+The AI/ML stack (KAgent, MLflow, MCP servers) adds ~2–4 extra ALBs and ~6 Gi EBS. Skip it unless you need it:
 
-Budget alert is auto-configured at $500/month with SNS → Slack notification. No additional setup needed.
+```bash
+./scripts/bootstrap.sh               # core platform only (no AI/ML)
+./scripts/bootstrap-ai.sh --aws      # add AI/ML stack later (opt-in)
+```
 
-**Cost optimizer (planned):** Overnight node scale-down + RDS stop (would save ~$33/month) — feature documented but not yet implemented. Track in roadmap.
+### Production hardening: right-sizing
+
+For production, increase node capacity after confirming cost impact:
+
+```hcl
+node_instance_types     = ["t3.large"]
+node_group_min_size     = 2
+node_group_desired_size = 3
+node_group_max_size     = 8
+enable_cost_optimizer   = false   # keep nodes up 24/7
+environment             = "prod"  # enables RDS deletion protection + 7-day backup
+```
+
+See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) → Cost Optimization and Production Hardening for the full checklist.
 
 ## Known Issues (local development)
 

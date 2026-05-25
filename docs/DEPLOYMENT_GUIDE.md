@@ -12,8 +12,9 @@
 3. [Post-Deployment Validation](#post-deployment-validation)
 4. [Known Issues & Fixes](#known-issues--fixes)
 5. [Troubleshooting](#troubleshooting)
-6. [Production Hardening](#production-hardening)
-7. [Cleanup & Destroy](#cleanup--destroy)
+6. [Cost Optimization](#cost-optimization)
+7. [Production Hardening](#production-hardening)
+8. [Cleanup & Destroy](#cleanup--destroy)
 
 ---
 
@@ -81,7 +82,7 @@ Replaces `YOUR_GITHUB_ORG` and other placeholders across all template files, cre
 
 | Phase | Duration | What |
 |-------|----------|------|
-| 1 — Terraform | 15–25 min | VPC, EKS (4× t3.medium), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager |
+| 1 — Terraform | 15–25 min | VPC, EKS (1× t3.medium, scales to 0 overnight), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager |
 | 2 — Platform base | 5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore |
 | 3 — GitOps | 5 min | ArgoCD, OPA/Gatekeeper, Crossplane |
 | 4 — Observability | 10 min | Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter |
@@ -221,7 +222,7 @@ backend:
 - Image was in private GHCR (403 Forbidden)
 - Image built on Apple Silicon (arm64) but EKS nodes are amd64
 
-**Fix (already applied):** `helm-values-dev.yaml` points to ECR. Build for the correct platform:
+**Fix (already applied):** `helm-values-aws.yaml` points to ECR. Build for the correct platform:
 ```bash
 cd services/hello-service
 docker buildx build --platform linux/amd64 \
@@ -250,7 +251,7 @@ backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platfo
 
 **Root cause:** The `idp-services` ApplicationSet (which auto-discovers `services/*/`) was never applied.
 
-**Fix (already applied):** `bootstrap.sh` Phase 4.6 applies `kubernetes/argocd/app-of-apps.yaml`.
+**Fix (already applied):** `bootstrap.sh` Phase 4.6 applies `aws/argocd/app-of-apps.yaml`.
 
 ---
 
@@ -260,7 +261,7 @@ backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platfo
 
 **Fix (already applied):**
 - `kubernetes/finops/opencost.yaml` includes an ALB ingress (`opencost-alb`)
-- `kubernetes/monitoring/pushgateway-ingress-alb.yaml` provides the Pushgateway ALB ingress
+- `aws/monitoring/pushgateway-ingress.yaml` provides the Pushgateway ALB ingress
 - Both are applied by `bootstrap.sh`
 
 ---
@@ -288,7 +289,7 @@ backend:
 
 **Root cause:** 2 Grafana replicas with ALB (no sticky sessions) — session created on pod A, next request hits pod B.
 
-**Fix (already applied):** `observability/prometheus-stack-values-aws.yaml` sets `replicas: 1`.
+**Fix (already applied):** `aws/observability/prometheus-stack-values.yaml` sets `replicas: 1`.
 
 ---
 
@@ -345,23 +346,131 @@ kubectl rollout restart deployment/backstage -n backstage
 
 ---
 
+## Cost Optimization
+
+### Free-tier reality
+
+EKS is not free-tier compatible. Fixed monthly costs that cannot be eliminated while the cluster is running:
+
+| Resource | Monthly floor | Free tier? |
+|---|---|---|
+| EKS control plane | ~$73 | No |
+| NAT Gateway | ~$33 + data | No |
+| Secrets Manager (5 secrets) | ~$2 | No |
+
+**Lowest cost approach:** use `./scripts/bootstrap-local.sh --full` for daily development. Deploy to AWS only for demos, then clean up immediately.
+
+### Default cost-optimized settings
+
+`terraform/terraform.tfvars` is pre-configured for minimum spend:
+
+```hcl
+node_group_min_size      = 0        # scale-to-zero allowed
+node_group_desired_size  = 1        # single node (not 2–3)
+node_group_max_size      = 2
+enable_cost_optimizer    = true     # overnight Lambda scaler (see below)
+budget_monthly_limit_usd = "100"    # SNS alert at $80 actual / $100 forecasted
+```
+
+### Overnight node scaler
+
+When `enable_cost_optimizer = true`, two EventBridge-triggered Lambdas run on schedule:
+
+| Lambda | Schedule (UTC) | Action |
+|---|---|---|
+| EKS node scaler | 8 PM daily | Scale node group → 0 |
+| RDS scheduler | 8 PM daily | Stop RDS instance |
+| Both | 7 AM daily | Scale back to desired / start RDS |
+
+This saves ~60% of EC2 and RDS costs (assuming 9 h active / 24 h). To adjust the schedule:
+
+```hcl
+# terraform/terraform.tfvars
+cost_optimizer_scale_down_cron = "cron(0 22 * * ? *)"  # 10 PM UTC
+cost_optimizer_scale_up_cron   = "cron(0 6  * * ? *)"  # 6 AM UTC
+```
+
+To disable entirely (always-on cluster):
+```hcl
+enable_cost_optimizer = false
+```
+
+### Prometheus storage (already optimized)
+
+`aws/observability/prometheus-stack-values.yaml` ships with cost-optimized defaults:
+
+```yaml
+prometheusSpec:
+  retention: 3d          # was 15d — reduce scrape history
+  storageSpec:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: gp3   # 20% cheaper than gp2
+        resources:
+          requests:
+            storage: 5Gi        # was 20Gi — stays within 30Gi EBS free tier
+```
+
+For production, increase retention and storage:
+```yaml
+retention: 15d
+storage: 20Gi
+```
+
+### Skip the AI/ML stack
+
+KAgent + MLflow + MCP servers add 2–4 extra ALBs (~$36–72/month) and ~6 Gi EBS. Skip them unless needed:
+
+```bash
+# Core platform only (no AI/ML)
+./scripts/bootstrap.sh
+
+# Add AI/ML later when needed
+./scripts/bootstrap-ai.sh --aws
+# Remove it
+./scripts/bootstrap-ai.sh --aws --destroy
+```
+
+### Estimated monthly cost by configuration
+
+| Config | EC2 nodes | Cost optimizer | AI/ML | Est. monthly |
+|---|---|---|---|---|
+| Default (optimized) | 1× t3.medium | On (9 h/day) | Off | ~$150–180 |
+| Always-on, no AI | 1× t3.medium | Off | Off | ~$185–220 |
+| Always-on + AI | 1× t3.medium | Off | On | ~$240–290 |
+| Production | 3× t3.large | Off | Optional | ~$400–600 |
+
+### Budget alert
+
+A budget is provisioned in Terraform at `$100/month` with SNS alerts at:
+- **80% actual** (~$80 spent) — early warning
+- **100% forecasted** — projected overage
+
+Set `budget_alert_email` in `terraform/terraform.tfvars` to receive email alerts directly. The SNS → Slack Lambda bridge fires if `idp-mvp/slack-webhook` is populated in Secrets Manager.
+
+---
+
 ## Production Hardening
 
 ### Scale EKS for production load
 
 ```hcl
 # terraform/terraform.tfvars
-node_instance_types = ["t3.large"]
-node_group_min_size = 4
-node_group_max_size = 12
+node_instance_types     = ["t3.large"]
+node_group_min_size     = 2
+node_group_desired_size = 3
+node_group_max_size     = 8
+enable_cost_optimizer   = false   # keep nodes up 24/7 for production
 ```
 
-### Enable RDS deletion protection
+### Enable RDS deletion protection and backups
 
 ```hcl
 # terraform/terraform.tfvars
-environment = "prod"
-# Enables deletion_protection=true, skip_final_snapshot=false, backup_retention=7
+environment             = "prod"   # enables deletion_protection=true, skip_final_snapshot=false
+# Note: backup_retention_period is currently set to 1 (cost-optimized default).
+# For production, increase it in terraform/rds.tf:
+#   backup_retention_period = 7
 ```
 
 ### Enable ALB sticky sessions (if scaling Grafana)

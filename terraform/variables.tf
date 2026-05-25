@@ -40,21 +40,21 @@ variable "node_instance_types" {
 }
 
 variable "node_group_min_size" {
-  description = "Minimum number of nodes"
+  description = "Minimum number of nodes (0 allows scale-to-zero via cost optimizer)"
   type        = number
-  default     = 2
+  default     = 0
 }
 
 variable "node_group_max_size" {
   description = "Maximum number of nodes"
   type        = number
-  default     = 5
+  default     = 2
 }
 
 variable "node_group_desired_size" {
   description = "Desired number of nodes"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "ecr_repositories" {
@@ -85,7 +85,7 @@ variable "rds_username" {
 variable "budget_monthly_limit_usd" {
   description = "Monthly AWS budget cap in USD. An alert fires at 80% (actual) and 100% (forecasted)."
   type        = string
-  default     = "500"
+  default     = "100"
 }
 
 variable "budget_alert_email" {
@@ -104,7 +104,7 @@ variable "slack_webhook_secret_name" {
 variable "enable_cost_optimizer" {
   description = "Enable overnight EKS node scale-down and RDS stop/start to reduce idle costs"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "cost_optimizer_scale_down_cron" {

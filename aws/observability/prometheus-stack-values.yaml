@@ -1,8 +1,9 @@
 # kube-prometheus-stack Helm values for AWS EKS deployment.
 # Mirrors local/observability/prometheus-stack-values.yaml with:
 #   - ALB ingress (instead of nginx)
-#   - gp2 persistent volumes (EKS default StorageClass)
-#   - 15-day Prometheus retention (production-grade)
+#   - gp3 persistent volumes (20% cheaper than gp2)
+#   - 3-day Prometheus retention (cost-optimised; use 15d for production)
+#   - 5Gi Prometheus storage (within EBS 30Gi free tier)
 #   - Grafana IRSA annotation for CloudWatch datasource
 #   - All three dashboard ConfigMaps wired (IDP, DORA, QA)
 #
@@ -24,7 +25,7 @@ prometheus:
     hosts: []   # empty = match any ALB hostname; set to real domain when DNS is configured
     servicePort: 9090
   prometheusSpec:
-    retention: 15d
+    retention: 3d
     resources:
       requests:
         cpu: 200m
@@ -35,12 +36,12 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: gp2
+          storageClassName: gp3
           accessModes:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 20Gi
+              storage: 5Gi
 
 alertmanager:
   enabled: true

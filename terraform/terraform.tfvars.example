@@ -5,17 +5,17 @@ cluster_name            = "idp-mvp"
 cluster_version         = "1.32"
 vpc_cidr                = "10.0.0.0/16"
 node_instance_types     = ["t3.medium"]
-node_group_min_size     = 2
-node_group_max_size     = 5
-node_group_desired_size = 2
+node_group_min_size     = 0   # 0 allows scale-to-zero via cost optimizer
+node_group_max_size     = 2
+node_group_desired_size = 1   # single node; increase for production
 ecr_repositories        = ["hello-service", "idp-mcp-server", "qa-mcp-server", "contract-mcp-server"]
 
 # ── FinOps ────────────────────────────────────────────────────────────────────
-budget_monthly_limit_usd = "500"
-budget_alert_email       = "platform-team@example.com"
+budget_monthly_limit_usd = "100"   # alert at $80 actual / $100 forecasted
+budget_alert_email       = ""       # set to receive email alerts directly
 
 # ── Cost Optimizer (overnight node scale-down + RDS stop) ────────────────────
-# Saves ~$33/month. Lambdas fire on schedule; nodes go to 0, RDS stops at night.
-enable_cost_optimizer          = false   # set to true to activate
+# Nodes scale to 0 at 8 PM UTC, back to 1 at 7 AM UTC — saves ~60% of EC2 cost.
+enable_cost_optimizer          = true
 # cost_optimizer_scale_down_cron = "cron(0 20 * * ? *)"  # 8 pm UTC
 # cost_optimizer_scale_up_cron   = "cron(0 7  * * ? *)"  # 7 am UTC
