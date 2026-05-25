@@ -1,6 +1,6 @@
 app:
   title: IDP Developer Portal
-  baseUrl: http://localhost:3000
+  # baseUrl is env-specific — set in app-config.local.yaml or app-config.aws.yaml
 
   # Auto-discover all frontend plugins listed in packages/app/package.json
   packages: all
@@ -15,14 +15,15 @@ organization:
   name: My Organization
 
 backend:
-  baseUrl: http://localhost:3000
-  listen:
-    port: 3000
+  # baseUrl and listen.port are env-specific — set in app-config.local.yaml or app-config.aws.yaml
+  reading:
+    allow:
+      - host: raw.githubusercontent.com
   csp:
     connect-src: ["'self'", 'http:', 'https:']
     upgrade-insecure-requests: false
   cors:
-    origin: http://localhost:3000
+    # origin is env-specific — set in app-config.local.yaml or app-config.aws.yaml
     methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
     credentials: true
   # Required for Backstage v1.29+ token-based auth system.
@@ -60,13 +61,11 @@ techdocs:
     # fresh Docker container per build (several seconds of startup overhead).
     runIn: 'local'
   publisher:
-    type: 'awsS3'
-    awsS3:
-      bucketName: ${TECHDOCS_S3_BUCKET_NAME}
-      region: ${AWS_REGION}
+    # type defaults to 'local' (filesystem); overridden to 'awsS3' in app-config.aws.yaml
+    type: 'local'
 
 auth:
-  environment: development
+  # environment is env-specific — set in app-config.local.yaml (development) or app-config.aws.yaml (production)
   providers:
     guest: {}
     github:
@@ -142,10 +141,7 @@ catalog:
       target: /catalog/templates/s3-bucket/template.yaml
       rules:
         - allow: [Template]
-    - type: file
-      target: /catalog/templates/eks-cluster/template.yaml
-      rules:
-        - allow: [Template]
+    # eks-cluster template is AWS-only (creates EKS clusters) — registered in app-config.aws.yaml
     # QA golden-path testing scaffolds
     - type: file
       target: /catalog/templates/playwright-e2e-suite/template.yaml
@@ -222,30 +218,8 @@ catalog:
       target: /catalog/templates/iac-test-suite/template.yaml
       rules:
         - allow: [Template]
-    # ── Crossplane Claim templates (parallel to TF-based ones above) ─────────
-    # Emit a Crossplane Claim YAML into services/<owner>/claims/ instead of a
-    # Terraform PR. ArgoCD picks the Claim up on merge; Crossplane reconciles
-    # it. See docs/crossplane.md for the boundary with Terraform.
-    - type: file
-      target: /catalog/templates/s3-bucket-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/rds-database-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/kafka-topic-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/dynamodb-table-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: file
-      target: /catalog/templates/sqs-queue-crossplane/template.yaml
-      rules:
-        - allow: [Template]
+    # Crossplane Claim templates are AWS-only (Crossplane runs on EKS, not locally).
+    # They are registered in app-config.aws.yaml.
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
     - type: file
       target: /catalog/catalog-info.yaml
@@ -392,7 +366,8 @@ ragSearch:
   indexIntervalMinutes: 30
   externalSources: []
 
-# Note: KAgent proxy is configured in kubernetes/backstage/configmap.yaml for AWS deployments.
-# For local/Kind, it is configured in backstage/app-config.local.yaml using .idp.local hostnames.
+# Proxy endpoints are env-specific:
+#   local → app-config.local.yaml  (*.idp.local ingress hostnames)
+#   AWS   → app-config.aws.yaml    (*.svc.cluster.local DNS)
 
 
