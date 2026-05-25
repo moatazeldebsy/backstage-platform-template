@@ -1074,6 +1074,7 @@
 <li><a href="#post-deployment-validation">Post-Deployment Validation</a></li>
 <li><a href="#known-issues--fixes">Known Issues &amp; Fixes</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#cost-optimization">Cost Optimization</a></li>
 <li><a href="#production-hardening">Production Hardening</a></li>
 <li><a href="#cleanup--destroy">Cleanup &amp; Destroy</a></li>
 </ol>
@@ -1160,7 +1161,7 @@
 <tr>
 <td>1 — Terraform</td>
 <td>15–25 min</td>
-<td>VPC, EKS (4× t3.medium), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager</td>
+<td>VPC, EKS (1× t3.medium, scales to 0 overnight), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager</td>
 </tr>
 <tr>
 <td>2 — Platform base</td>
@@ -1324,7 +1325,7 @@ curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;htt
 <p><strong>Root causes:</strong>
 - Image was in private GHCR (403 Forbidden)
 - Image built on Apple Silicon (arm64) but EKS nodes are amd64</p>
-<p><strong>Fix (already applied):</strong> <code>helm-values-dev.yaml</code> points to ECR. Build for the correct platform:
+<p><strong>Fix (already applied):</strong> <code>helm-values-aws.yaml</code> points to ECR. Build for the correct platform:
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -1344,13 +1345,13 @@ docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"
 <h3 id="issue-8-argocd-idp-services-applicationset-missing">Issue 8: ArgoCD <code>idp-services</code> ApplicationSet missing<a class="headerlink" href="#issue-8-argocd-idp-services-applicationset-missing" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> Services don't appear in ArgoCD. <code>platform-services</code> app shows <code>ComparisonError: app path does not exist</code>.</p>
 <p><strong>Root cause:</strong> The <code>idp-services</code> ApplicationSet (which auto-discovers <code>services/*/</code>) was never applied.</p>
-<p><strong>Fix (already applied):</strong> <code>bootstrap.sh</code> Phase 4.6 applies <code>kubernetes/argocd/app-of-apps.yaml</code>.</p>
+<p><strong>Fix (already applied):</strong> <code>bootstrap.sh</code> Phase 4.6 applies <code>aws/argocd/app-of-apps.yaml</code>.</p>
 <hr />
 <h3 id="issue-9-opencost-and-pushgateway-have-no-alb-ingress">Issue 9: OpenCost and Pushgateway have no ALB ingress<a class="headerlink" href="#issue-9-opencost-and-pushgateway-have-no-alb-ingress" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> No public URL for OpenCost or Pushgateway after deployment.</p>
 <p><strong>Fix (already applied):</strong>
 - <code>kubernetes/finops/opencost.yaml</code> includes an ALB ingress (<code>opencost-alb</code>)
-- <code>kubernetes/monitoring/pushgateway-ingress-alb.yaml</code> provides the Pushgateway ALB ingress
+- <code>aws/monitoring/pushgateway-ingress.yaml</code> provides the Pushgateway ALB ingress
 - Both are applied by <code>bootstrap.sh</code></p>
 <hr />
 <h3 id="issue-10-tech-radar-shows-empty-not-allowed-to-read">Issue 10: Tech Radar shows empty / "not allowed to read"<a class="headerlink" href="#issue-10-tech-radar-shows-empty-not-allowed-to-read" title="Permanent link">&para;</a></h3>
@@ -1371,7 +1372,7 @@ docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"
 <h3 id="issue-11-grafana-login-fails-with-multiple-replicas">Issue 11: Grafana login fails with multiple replicas<a class="headerlink" href="#issue-11-grafana-login-fails-with-multiple-replicas" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> Logging into Grafana succeeds but immediately redirects to login again.</p>
 <p><strong>Root cause:</strong> 2 Grafana replicas with ALB (no sticky sessions) — session created on pod A, next request hits pod B.</p>
-<p><strong>Fix (already applied):</strong> <code>observability/prometheus-stack-values-aws.yaml</code> sets <code>replicas: 1</code>.</p>
+<p><strong>Fix (already applied):</strong> <code>aws/observability/prometheus-stack-values.yaml</code> sets <code>replicas: 1</code>.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="backstage-pod-not-starting">Backstage pod not starting<a class="headerlink" href="#backstage-pod-not-starting" title="Permanent link">&para;</a></h3>
@@ -1413,22 +1414,199 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 <span class="c1"># Catalog repopulates within ~60 seconds</span>
 </code></pre></div></td></tr></table></div>
 <hr />
+<h2 id="cost-optimization">Cost Optimization<a class="headerlink" href="#cost-optimization" title="Permanent link">&para;</a></h2>
+<h3 id="free-tier-reality">Free-tier reality<a class="headerlink" href="#free-tier-reality" title="Permanent link">&para;</a></h3>
+<p>EKS is not free-tier compatible. Fixed monthly costs that cannot be eliminated while the cluster is running:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Monthly floor</th>
+<th>Free tier?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EKS control plane</td>
+<td>~$73</td>
+<td>No</td>
+</tr>
+<tr>
+<td>NAT Gateway</td>
+<td>~$33 + data</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Secrets Manager (5 secrets)</td>
+<td>~$2</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Lowest cost approach:</strong> use <code>./scripts/bootstrap-local.sh --full</code> for daily development. Deploy to AWS only for demos, then clean up immediately.</p>
+<h3 id="default-cost-optimized-settings">Default cost-optimized settings<a class="headerlink" href="#default-cost-optimized-settings" title="Permanent link">&para;</a></h3>
+<p><code>terraform/terraform.tfvars</code> is pre-configured for minimum spend:</p>
+<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="na">node_group_min_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="c1">        # scale-to-zero allowed</span>
+<span class="na">node_group_desired_size</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="c1">        # single node (not 2–3)</span>
+<span class="na">node_group_max_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">2</span>
+<span class="na">enable_cost_optimizer</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="no">true</span><span class="c1">     # overnight Lambda scaler (see below)</span>
+<span class="na">budget_monthly_limit_usd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="c1">    # SNS alert at $80 actual / $100 forecasted</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="overnight-node-scaler">Overnight node scaler<a class="headerlink" href="#overnight-node-scaler" title="Permanent link">&para;</a></h3>
+<p>When <code>enable_cost_optimizer = true</code>, two EventBridge-triggered Lambdas run on schedule:</p>
+<table>
+<thead>
+<tr>
+<th>Lambda</th>
+<th>Schedule (UTC)</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EKS node scaler</td>
+<td>8 PM daily</td>
+<td>Scale node group → 0</td>
+</tr>
+<tr>
+<td>RDS scheduler</td>
+<td>8 PM daily</td>
+<td>Stop RDS instance</td>
+</tr>
+<tr>
+<td>Both</td>
+<td>7 AM daily</td>
+<td>Scale back to desired / start RDS</td>
+</tr>
+</tbody>
+</table>
+<p>This saves ~60% of EC2 and RDS costs (assuming 9 h active / 24 h). To adjust the schedule:</p>
+<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
+<span class="na">cost_optimizer_scale_down_cron</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cron(0 22 * * ? *)&quot;</span><span class="c1">  # 10 PM UTC</span>
+<span class="na">cost_optimizer_scale_up_cron</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cron(0 6  * * ? *)&quot;</span><span class="c1">  # 6 AM UTC</span>
+</code></pre></div></td></tr></table></div>
+<p>To disable entirely (always-on cluster):
+<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="na">enable_cost_optimizer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">false</span>
+</code></pre></div></td></tr></table></div></p>
+<h3 id="prometheus-storage-already-optimized">Prometheus storage (already optimized)<a class="headerlink" href="#prometheus-storage-already-optimized" title="Permanent link">&para;</a></h3>
+<p><code>aws/observability/prometheus-stack-values.yaml</code> ships with cost-optimized defaults:</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">prometheusSpec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3d</span><span class="w">          </span><span class="c1"># was 15d — reduce scrape history</span>
+<span class="w">  </span><span class="nt">storageSpec</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">volumeClaimTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gp3</span><span class="w">   </span><span class="c1"># 20% cheaper than gp2</span>
+<span class="w">        </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5Gi</span><span class="w">        </span><span class="c1"># was 20Gi — stays within 30Gi EBS free tier</span>
+</code></pre></div></td></tr></table></div>
+<p>For production, increase retention and storage:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15d</span>
+<span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20Gi</span>
+</code></pre></div></td></tr></table></div></p>
+<h3 id="skip-the-aiml-stack">Skip the AI/ML stack<a class="headerlink" href="#skip-the-aiml-stack" title="Permanent link">&para;</a></h3>
+<p>KAgent + MLflow + MCP servers add 2–4 extra ALBs (~$36–72/month) and ~6 Gi EBS. Skip them unless needed:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Core platform only (no AI/ML)</span>
+./scripts/bootstrap.sh
+
+<span class="c1"># Add AI/ML later when needed</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws
+<span class="c1"># Remove it</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--destroy
+</code></pre></div></td></tr></table></div>
+<h3 id="estimated-monthly-cost-by-configuration">Estimated monthly cost by configuration<a class="headerlink" href="#estimated-monthly-cost-by-configuration" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Config</th>
+<th>EC2 nodes</th>
+<th>Cost optimizer</th>
+<th>AI/ML</th>
+<th>Est. monthly</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default (optimized)</td>
+<td>1× t3.medium</td>
+<td>On (9 h/day)</td>
+<td>Off</td>
+<td>~$150–180</td>
+</tr>
+<tr>
+<td>Always-on, no AI</td>
+<td>1× t3.medium</td>
+<td>Off</td>
+<td>Off</td>
+<td>~$185–220</td>
+</tr>
+<tr>
+<td>Always-on + AI</td>
+<td>1× t3.medium</td>
+<td>Off</td>
+<td>On</td>
+<td>~$240–290</td>
+</tr>
+<tr>
+<td>Production</td>
+<td>3× t3.large</td>
+<td>Off</td>
+<td>Optional</td>
+<td>~$400–600</td>
+</tr>
+</tbody>
+</table>
+<h3 id="budget-alert">Budget alert<a class="headerlink" href="#budget-alert" title="Permanent link">&para;</a></h3>
+<p>A budget is provisioned in Terraform at <code>$100/month</code> with SNS alerts at:
+- <strong>80% actual</strong> (~$80 spent) — early warning
+- <strong>100% forecasted</strong> — projected overage</p>
+<p>Set <code>budget_alert_email</code> in <code>terraform/terraform.tfvars</code> to receive email alerts directly. The SNS → Slack Lambda bridge fires if <code>idp-mvp/slack-webhook</code> is populated in Secrets Manager.</p>
+<hr />
 <h2 id="production-hardening">Production Hardening<a class="headerlink" href="#production-hardening" title="Permanent link">&para;</a></h2>
 <h3 id="scale-eks-for-production-load">Scale EKS for production load<a class="headerlink" href="#scale-eks-for-production-load" title="Permanent link">&para;</a></h3>
 <div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
-<span class="na">node_instance_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;t3.large&quot;</span><span class="p">]</span>
-<span class="na">node_group_min_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4</span>
-<span class="na">node_group_max_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">12</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
+<span class="na">node_instance_types</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;t3.large&quot;</span><span class="p">]</span>
+<span class="na">node_group_min_size</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="m">2</span>
+<span class="na">node_group_desired_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">3</span>
+<span class="na">node_group_max_size</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="m">8</span>
+<span class="na">enable_cost_optimizer</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="no">false</span><span class="c1">   # keep nodes up 24/7 for production</span>
 </code></pre></div></td></tr></table></div>
-<h3 id="enable-rds-deletion-protection">Enable RDS deletion protection<a class="headerlink" href="#enable-rds-deletion-protection" title="Permanent link">&para;</a></h3>
+<h3 id="enable-rds-deletion-protection-and-backups">Enable RDS deletion protection and backups<a class="headerlink" href="#enable-rds-deletion-protection-and-backups" title="Permanent link">&para;</a></h3>
 <div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
-<span class="na">environment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span>
-<span class="c1"># Enables deletion_protection=true, skip_final_snapshot=false, backup_retention=7</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform/terraform.tfvars</span>
+<span class="na">environment</span><span class="w">             </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span><span class="c1">   # enables deletion_protection=true, skip_final_snapshot=false</span>
+<span class="c1"># Note: backup_retention_period is currently set to 1 (cost-optimized default).</span>
+<span class="c1"># For production, increase it in terraform/rds.tf:</span>
+<span class="c1">#   backup_retention_period = 7</span>
 </code></pre></div></td></tr></table></div>
 <h3 id="enable-alb-sticky-sessions-if-scaling-grafana">Enable ALB sticky sessions (if scaling Grafana)<a class="headerlink" href="#enable-alb-sticky-sessions-if-scaling-grafana" title="Permanent link">&para;</a></h3>
 <p>Add to Grafana ALB ingress annotations:
