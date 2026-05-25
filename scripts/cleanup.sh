@@ -292,7 +292,9 @@ while IFS= read -r bucket; do
 done <<< "$TF_BUCKETS"
 
 # ── 4b: ECR repositories ─────────────────────────────────────────────────────
-log "  4b: Emptying ECR repositories (terraform destroy fails on non-empty repos)..."
+# Match both flat names (idp-mvp-foo) and nested paths (idp-mvp/foo) since
+# bootstrap-ai.sh creates repos under ${CLUSTER_NAME}/<service> path.
+log "  4b: Deleting ECR repositories..."
 ECR_REPOS=$(aws ecr describe-repositories \
   --region "${AWS_REGION}" \
   --query "repositories[?contains(repositoryName, '${CLUSTER_NAME}')].repositoryName" \
@@ -300,21 +302,14 @@ ECR_REPOS=$(aws ecr describe-repositories \
 
 while IFS= read -r repo; do
   [[ -z "$repo" || "$repo" == "None" ]] && continue
-  log "    Deleting all images in ECR repo: ${repo}"
-  IMAGE_IDS=$(aws ecr list-images \
+  log "    Deleting ECR repo: ${repo}"
+  # --force deletes all images and the repo in one call.
+  # Repos created by bootstrap-ai.sh (idp-mvp/<svc>) are not in Terraform
+  # state, so they must be deleted explicitly here rather than by terraform destroy.
+  aws ecr delete-repository \
     --repository-name "${repo}" \
     --region "${AWS_REGION}" \
-    --query 'imageIds[*]' \
-    --output json 2>/dev/null || echo "[]")
-  if [[ "$IMAGE_IDS" != "[]" && -n "$IMAGE_IDS" ]]; then
-    aws ecr batch-delete-image \
-      --repository-name "${repo}" \
-      --region "${AWS_REGION}" \
-      --image-ids "${IMAGE_IDS}" 2>/dev/null || true
-    log "    Cleared: ${repo}"
-  else
-    log "    Already empty: ${repo}"
-  fi
+    --force 2>/dev/null && log "    Deleted: ${repo}" || log "    Already gone: ${repo}"
 done <<< "$ECR_REPOS"
 
 log "  Phase 4 complete."
