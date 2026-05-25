@@ -1773,9 +1773,20 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 ./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mcp<span class="w">      </span><span class="c1"># skip IDP MCP Server build</span>
 </code></pre></div></td></tr></table></div></p>
 <p><strong>Tear down AI/ML only</strong> (core platform stays up):
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Local Kind/Rancher Desktop — removes only local/ ingresses and manifests</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
+
+<span class="c1"># AWS/EKS — removes aws/ ingresses and MLflow AWS overlay</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--destroy
 </code></pre></div></td></tr></table></div></p>
 <blockquote>
+<p><strong>Warning:</strong> <code>bootstrap-ai.sh --destroy</code> scopes deletions to the active
+environment (<code>--aws</code> flag). Running without <code>--aws</code> while <code>KUBECONFIG</code> points
+at EKS will target AWS resources unintentionally.</p>
 <p><strong>Certificate error on <code>kagent.idp.local</code> after <code>bootstrap-ai.sh</code>?</strong> The
 KAgent ingresses are HTTP-only as of commit <code>fe4fce2</code>. If you ran an earlier
 version of this repo on the same machine, your browser may have cached HSTS
@@ -1845,8 +1856,14 @@ troubleshooting guide.</p>
 </table>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
-<span class="c1"># Removes Kind cluster and local registry container</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+<span class="c1"># Removes Kind cluster and local registry container.</span>
+<span class="c1"># If the kagent/ml-platform/services-dev namespaces exist it calls</span>
+<span class="c1"># bootstrap-ai.sh --destroy automatically (local scope only — aws/ manifests</span>
+<span class="c1"># are never touched by this path).</span>
 </code></pre></div></td></tr></table></div>
 
 

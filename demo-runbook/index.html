@@ -1471,10 +1471,27 @@ curl<span class="w"> </span>-sf<span class="w"> </span>http://grafana.idp.local<
 </table>
 <hr />
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
+<p><strong>Local cluster:</strong>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
 docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
-</code></pre></div></td></tr></table></div>
+</code></pre></div></td></tr></table></div></p>
+<blockquote>
+<p><code>bootstrap-local.sh --destroy</code> automatically cleans up AI/ML components
+(local scope only — it never touches AWS resources, even if <code>KUBECONFIG</code>
+is set to an EKS cluster).</p>
+</blockquote>
+<p><strong>AWS cluster:</strong>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Remove AI/ML stack only (keeps EKS running)</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--destroy
+
+<span class="c1"># Full teardown</span>
+./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
+</code></pre></div></td></tr></table></div></p>
 
 
 
