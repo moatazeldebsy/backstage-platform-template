@@ -1704,7 +1704,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Safe teardown — runs all phases in the correct order</span>
 ./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
 </code></pre></div></td></tr></table></div>
-<p><code>cleanup.sh</code> runs seven ordered phases:</p>
+<p><code>cleanup.sh</code> runs eight ordered phases:</p>
 <table>
 <thead>
 <tr>
@@ -1728,6 +1728,10 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <tr>
 <td>4 — S3 + ECR empty</td>
 <td>Empties Terraform-managed S3 buckets (TechDocs, MLflow artifacts) and ECR repos — AWS blocks <code>terraform destroy</code> if either contains objects/images</td>
+</tr>
+<tr>
+<td>4.5 — Scaffolded services</td>
+<td>Auto-discovers all user-scaffolded services in <code>services/</code> (excludes built-ins: <code>hello-service</code>, <code>idp-mcp-server</code>, <code>qa-mcp-server</code>, <code>contract-mcp-server</code>). Deletes their ArgoCD Applications (cascade-deletes K8s resources), uninstalls Helm releases, removes <code>services/&lt;name&gt;/</code> directories from the repo, and commits + pushes the deletion. Runs while EKS is still up so ArgoCD can cascade-delete cleanly.</td>
 </tr>
 <tr>
 <td>5 — Terraform destroy</td>
@@ -1765,6 +1769,7 @@ points at EKS — it will target the wrong cluster.</p>
 <p>To tear down only the local Kind/Rancher cluster (no AWS resources are affected):</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
 </code></pre></div></td></tr></table></div>
+<p>This runs the same scaffolded-service cleanup logic (ArgoCD Applications deleted, Helm releases uninstalled, <code>services/&lt;name&gt;/</code> directories removed and committed) before the Kind cluster or Rancher Desktop namespaces are deleted.</p>
 
 
 

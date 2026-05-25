@@ -1855,16 +1855,21 @@ troubleshooting guide.</p>
 </tbody>
 </table>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
-<span class="c1"># Removes Kind cluster and local registry container.</span>
-<span class="c1"># If the kagent/ml-platform/services-dev namespaces exist it calls</span>
-<span class="c1"># bootstrap-ai.sh --destroy automatically (local scope only — aws/ manifests</span>
-<span class="c1"># are never touched by this path).</span>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
 </code></pre></div></td></tr></table></div>
+<p>The destroy sequence runs in this order:</p>
+<ol>
+<li><strong>AI/ML teardown</strong> — if <code>kagent</code>, <code>ml-platform</code>, or <code>services-dev</code> namespaces exist, calls <code>bootstrap-ai.sh --destroy</code> (local scope only; <code>aws/</code> manifests are never touched).</li>
+<li><strong>Scaffolded service cleanup</strong> — auto-discovers every service in <code>services/</code> that is not a platform built-in (<code>hello-service</code>, <code>idp-mcp-server</code>, <code>qa-mcp-server</code>, <code>contract-mcp-server</code>). For each one:<ul>
+<li>Deletes the ArgoCD Application (cascade-deletes all managed K8s resources)</li>
+<li>Uninstalls the Helm release from <code>services-dev</code> / <code>services</code></li>
+<li>Removes the <code>services/&lt;name&gt;/</code> directory from the repo and commits + pushes it (<code>[skip ci]</code>)</li>
+</ul>
+</li>
+<li><strong>Cluster deletion</strong> — Kind: <code>kind delete cluster</code>; Rancher Desktop: deletes all platform namespaces.</li>
+<li><strong>Docker cleanup</strong> — stops the Backstage compose stack, prunes images and volumes.</li>
+<li><strong><code>/etc/hosts</code> cleanup</strong> — removes all IDP hostname entries.</li>
+</ol>
 
 
 
