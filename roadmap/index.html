@@ -309,50 +309,17 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../shift-left/" class="md-tabs__link">
-        
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
+          
   
   Shift-Left Quality
 
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-tabs__link">
-        
-  
+        </a>
+      </li>
     
-  
-  Shift-Left Demo Cheatsheet
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../shift-left-pilot-kickoff/" class="md-tabs__link">
-        
-  
-    
-  
-  Shift-Left Pilot Kickoff
-
-      </a>
-    </li>
   
 
       
@@ -697,32 +664,52 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../shift-left/" class="md-nav__link">
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
   
   <span class="md-ellipsis">
     Shift-Left Quality
   </span>
   
 
-      </a>
-    </li>
-  
-
-    
-      
-      
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+      <a href="../shift-left-leadership/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Shift-Left Demo Cheatsheet
+    For Leadership
   </span>
   
 
@@ -730,9 +717,31 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
   
   
   
@@ -742,11 +751,40 @@
         
   
   <span class="md-ellipsis">
-    Shift-Left Pilot Kickoff
+    Pilot Kickoff
   </span>
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -928,6 +966,15 @@
   <a href="#phase-7-aiml-platform" class="md-nav__link">
     <span class="md-ellipsis">
       Phase 7 — AI/ML Platform 🚧
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-7b-test-automation-golden-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7b — Test Automation Golden Path ✅
     </span>
   </a>
   
@@ -1127,10 +1174,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
         
           
-          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1141,8 +1188,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_18">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1432,6 +1479,22 @@ Project syncs from them.</p>
 <td>GitOps</td>
 <td>ArgoCD app-of-apps for local and AWS; image tag commit loop via <code>build-and-deploy.yml</code></td>
 </tr>
+<tr>
+<td>Test suite template library</td>
+<td>14 templates covering the full pyramid: unit, component, integration, contract, E2E, performance, security (DAST), visual, accessibility, mobile, chaos, LLM eval, mutation, synthetic, IaC</td>
+</tr>
+<tr>
+<td>Contract testing stack</td>
+<td><code>contract-mcp-server</code> (9 tools), <code>contract-assistant</code> KAgent agent, <code>enable-contract-testing</code> scaffold template</td>
+</tr>
+<tr>
+<td>QA MCP server</td>
+<td><code>qa-mcp-server</code> deployed alongside <code>idp-mcp-server</code>; QA-specific tools exposed as MCP</td>
+</tr>
+<tr>
+<td>Three-way repo split</td>
+<td><code>local/</code> (Kind-only), <code>aws/</code> (EKS-only), <code>kubernetes/</code> (shared) — enforced by bootstrap scripts; no cross-reads</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -1660,8 +1723,8 @@ directly affects GitHub discoverability, first-run experience, or contributor co
 </tr>
 <tr>
 <td>GitHub Pages deployment (MkDocs)</td>
-<td>📋</td>
-<td><code>mkdocs.yml</code> is configured but docs aren't published; zero discoverability without it</td>
+<td>✅</td>
+<td>Published via <code>docs.yml</code> GitHub Actions workflow; served at GitHub Pages. Covers architecture, golden path, shift-left (incl. leadership guide), contract testing, Crossplane, AI assistant, runbooks, and roadmap</td>
 </tr>
 <tr>
 <td>Trivy + Cosign in CI</td>
@@ -1775,7 +1838,32 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 <tr>
 <td>IDP MCP Server</td>
 <td>✅</td>
-<td><code>services/idp-mcp-server/</code> — exposes IDP operations as MCP tools; <code>bootstrap-ai.sh</code> bootstraps the full stack</td>
+<td><code>services/idp-mcp-server/</code> — exposes 6 IDP operations as MCP tools; <code>bootstrap-ai.sh</code> bootstraps the full stack</td>
+</tr>
+<tr>
+<td>QA MCP Server</td>
+<td>✅</td>
+<td><code>services/qa-mcp-server/</code> — QA-specific tools (test generation, result analysis); managed by ArgoCD in <code>services-dev</code></td>
+</tr>
+<tr>
+<td>Contract MCP Server</td>
+<td>✅</td>
+<td><code>services/contract-mcp-server/</code> — 9 tools: <code>fetch_service_contract</code>, <code>auto_discover_contracts</code>, <code>register_contract</code>, <code>validate_compatibility</code>, <code>detect_breaking_changes</code>, and more</td>
+</tr>
+<tr>
+<td><code>contract-assistant</code> KAgent agent</td>
+<td>✅</td>
+<td><code>kubernetes/kagent/contract-agent.yaml</code> — uses all 9 contract tools + <code>catalog_search</code> + <code>list_deployments</code></td>
+</tr>
+<tr>
+<td><code>enable-contract-testing</code> template</td>
+<td>✅</td>
+<td>Scaffold template that deploys <code>contract-mcp-server</code>, applies KAgent CRDs, and auto-registers the target service</td>
+</tr>
+<tr>
+<td>Scaffold actions: deploy-agent, run-training-job, deploy-mcp-server</td>
+<td>✅</td>
+<td><code>idpDeployAgent</code>, <code>idpRunTrainingJob</code>, <code>idpDeployMcpServer</code> modules in <code>backstage/app/packages/backend/src/modules/</code></td>
 </tr>
 <tr>
 <td><code>model-serving-api</code> template</td>
@@ -1786,6 +1874,95 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 <td><code>ml-training-job</code> template</td>
 <td>📋</td>
 <td>Argo Workflows <code>workflow.yaml</code>; MLflow run logging; CronJob variant</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-7b-test-automation-golden-path">Phase 7b — Test Automation Golden Path ✅<a class="headerlink" href="#phase-7b-test-automation-golden-path" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Every team has a one-click path to add any layer of the test pyramid to an existing service, with CI wired automatically.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit test suites (Go, Node.js, Python)</td>
+<td>✅</td>
+<td>Language skeletons include tests; <code>unit-test-suite</code> template for brownfield</td>
+</tr>
+<tr>
+<td>Component test suite (WireMock)</td>
+<td>✅</td>
+<td><code>component-test-suite</code> — stubs deps, runs in CI</td>
+</tr>
+<tr>
+<td>Integration test suite (Testcontainers)</td>
+<td>✅</td>
+<td><code>testcontainers-suite</code> — real Postgres/Kafka in CI</td>
+</tr>
+<tr>
+<td>Contract testing (<code>enable-contract-testing</code>)</td>
+<td>✅</td>
+<td>MCP-driven preferred path; <code>pact-contract-suite</code> / <code>contract-testing-suite</code> as legacy</td>
+</tr>
+<tr>
+<td>E2E suites</td>
+<td>✅</td>
+<td><code>playwright-e2e-suite</code>, <code>newman-api-suite</code>, <code>bdd-cucumber-suite</code></td>
+</tr>
+<tr>
+<td>Performance suite (k6)</td>
+<td>✅</td>
+<td><code>k6-performance-suite</code></td>
+</tr>
+<tr>
+<td>Security DAST suite (ZAP)</td>
+<td>✅</td>
+<td><code>zap-dast-suite</code></td>
+</tr>
+<tr>
+<td>Visual regression suite</td>
+<td>✅</td>
+<td><code>visual-regression-suite</code></td>
+</tr>
+<tr>
+<td>Accessibility suite</td>
+<td>✅</td>
+<td><code>accessibility-suite</code></td>
+</tr>
+<tr>
+<td>Mobile suite (Appium)</td>
+<td>✅</td>
+<td><code>appium-mobile-suite</code></td>
+</tr>
+<tr>
+<td>Chaos suite (Chaos Mesh)</td>
+<td>✅</td>
+<td><code>chaos-mesh-suite</code></td>
+</tr>
+<tr>
+<td>LLM eval suite (DeepEval)</td>
+<td>✅</td>
+<td><code>deepeval-llm-eval-suite</code></td>
+</tr>
+<tr>
+<td>Mutation testing suite</td>
+<td>✅</td>
+<td><code>mutation-testing-suite</code></td>
+</tr>
+<tr>
+<td>Synthetic monitoring suite</td>
+<td>✅</td>
+<td><code>datadog-synthetic-suite</code></td>
+</tr>
+<tr>
+<td>IaC test suite</td>
+<td>✅</td>
+<td><code>iac-test-suite</code> — tflint + Checkov + optional Terratest</td>
 </tr>
 </tbody>
 </table>
@@ -2184,6 +2361,12 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 <td>Q2 2026 🚧</td>
 <td>Phase 7</td>
 <td><code>milestone/m7-aiml</code></td>
+</tr>
+<tr>
+<td>M7b: Test automation golden path</td>
+<td>Q2 2026 ✅</td>
+<td>Phase 7b</td>
+<td><code>milestone/m7b-test-golden-path</code></td>
 </tr>
 <tr>
 <td>M8: Developer experience</td>
