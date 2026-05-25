@@ -34,6 +34,8 @@ spec:
           title: MSK cluster ARN
           type: string
           description: ARN of the target MSK cluster (provisioned via Terraform).
+          pattern: '^arn:aws:kafka:'
+          ui:help: 'Find it in the AWS Console → Amazon MSK → Clusters, or run: aws kafka list-clusters --query "ClusterInfoList[*].ClusterArn" --output text'
         owner:
           title: Owner
           type: string
@@ -106,13 +108,19 @@ spec:
           Adds a `KafkaTopic` Crossplane Claim at
           `services/${{ parameters.ownerService }}/claims/${{ parameters.topicName }}.yaml`.
 
-          Partitions `${{ parameters.partitions }}` · replication
-          `${{ parameters.replicationFactor }}` · retention
-          `${{ parameters.retentionHours }} h` · cleanup
-          `${{ parameters.cleanupPolicy }}`.
+          | Parameter | Value |
+          |---|---|
+          | Topic | `${{ parameters.topicName }}` |
+          | Cluster ARN | `${{ parameters.clusterArn }}` |
+          | Partitions | `${{ parameters.partitions }}` |
+          | Replication | `${{ parameters.replicationFactor }}` |
+          | Retention | `${{ parameters.retentionHours }} h` |
+          | Cleanup | `${{ parameters.cleanupPolicy }}` |
+
+          **After merge:** ArgoCD syncs, Crossplane creates the topic (~15 s). Check status:
 
           ```bash
-          kubectl get kafkatopic ${{ parameters.topicName }} -n services-dev
+          kubectl get kafkatopic ${{ parameters.topicName }} -n services-dev -w
           ```
         targetBranchName: main
 
@@ -120,3 +128,9 @@ spec:
     links:
       - title: Pull Request
         url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the PR. ArgoCD syncs the Claim within ~1 min.
+          2. Kafka topic provisions in ~15 s. Watch with `kubectl get kafkatopic ${{ parameters.topicName }} -n services-dev -w`.
+          3. Use the MSK bootstrap brokers from `aws kafka get-bootstrap-brokers --cluster-arn ${{ parameters.clusterArn }}` in your service config.

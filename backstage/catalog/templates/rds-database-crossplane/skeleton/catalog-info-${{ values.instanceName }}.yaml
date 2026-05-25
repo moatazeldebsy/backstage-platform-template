@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.instanceName }}
+  description: Postgres RDS instance ${{ values.instanceName }} (${{ values.dbName }}) — managed by Crossplane
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.instanceName }}.yaml
+  labels:
+    engine: postgres
+    provisioner: crossplane
+  tags:
+    - rds
+    - postgres
+    - database
+    - aws
+    - crossplane
+spec:
+  type: database
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependencyOf:
+    - component:${{ values.ownerService }}

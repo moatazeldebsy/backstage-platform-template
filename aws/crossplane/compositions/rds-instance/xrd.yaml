@@ -60,6 +60,12 @@ spec:
                     multiAz:
                       type: boolean
                       default: false
+                    backupRetentionDays:
+                      type: integer
+                      description: Number of days to retain automated RDS backups (1–35).
+                      default: 30
+                      minimum: 1
+                      maximum: 35
                     costCenter:
                       type: string
                       default: engineering

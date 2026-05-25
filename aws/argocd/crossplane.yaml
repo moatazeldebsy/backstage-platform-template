@@ -71,7 +71,7 @@ spec:
   source:
     repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
     targetRevision: HEAD
-    path: kubernetes/crossplane/providers
+    path: aws/crossplane/providers
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
@@ -101,7 +101,7 @@ spec:
   source:
     repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
     targetRevision: HEAD
-    path: kubernetes/crossplane/compositions
+    path: aws/crossplane/compositions
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system

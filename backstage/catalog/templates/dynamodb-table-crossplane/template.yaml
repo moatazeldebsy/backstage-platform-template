@@ -56,6 +56,17 @@ spec:
           title: Point-in-time recovery
           type: boolean
           default: true
+        rangeKey:
+          title: Sort key (optional)
+          type: string
+          description: Leave empty for a simple hash-only table. Required for tables with composite primary keys.
+          ui:placeholder: "e.g. createdAt"
+        rangeKeyType:
+          title: Sort key type
+          type: string
+          default: S
+          enum: [S, N, B]
+          enumNames: [String, Number, Binary]
         costCenter:
           title: Cost center
           type: string
@@ -88,6 +99,8 @@ spec:
           awsRegion: ${{ parameters.awsRegion }}
           billingMode: ${{ parameters.billingMode }}
           pointInTimeRecovery: ${{ parameters.pointInTimeRecovery }}
+          rangeKey: ${{ parameters.rangeKey }}
+          rangeKeyType: ${{ parameters.rangeKeyType }}
           costCenter: ${{ parameters.costCenter }}
 
     - id: open-pr
@@ -102,12 +115,18 @@ spec:
           Adds a `DynamoTable` Crossplane Claim at
           `services/${{ parameters.ownerService }}/claims/${{ parameters.tableName }}.yaml`.
 
-          Partition key `${{ parameters.hashKey }}` (`${{ parameters.hashKeyType }}`) ·
-          billing `${{ parameters.billingMode }}` · PITR
-          `${{ parameters.pointInTimeRecovery }}`.
+          | Parameter | Value |
+          |---|---|
+          | Table | `${{ parameters.tableName }}` |
+          | Partition key | `${{ parameters.hashKey }}` (`${{ parameters.hashKeyType }}`) |
+          | Sort key | `${{ parameters.rangeKey || '—' }}` (`${{ parameters.rangeKeyType }}`) |
+          | Billing | `${{ parameters.billingMode }}` |
+          | PITR | `${{ parameters.pointInTimeRecovery }}` |
+
+          **After merge:** ArgoCD syncs the Claim, Crossplane creates the table (~30 s). Check status:
 
           ```bash
-          kubectl get dynamotable ${{ parameters.tableName }} -n services-dev
+          kubectl get dynamotable ${{ parameters.tableName }} -n services-dev -w
           ```
         targetBranchName: main
 
@@ -115,3 +134,9 @@ spec:
     links:
       - title: Pull Request
         url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the PR. ArgoCD syncs the Claim within ~1 min.
+          2. DynamoDB table provisions in ~30 s. Watch with `kubectl get dynamotable ${{ parameters.tableName }} -n services-dev -w`.
+          3. Set `DYNAMODB_TABLE_NAME=${{ parameters.tableName }}` in your service's env.

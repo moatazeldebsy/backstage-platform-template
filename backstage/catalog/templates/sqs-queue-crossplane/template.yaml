@@ -97,8 +97,18 @@ spec:
           Adds an `SQSQueue` Crossplane Claim at
           `services/${{ parameters.ownerService }}/claims/${{ parameters.queueName }}.yaml`.
 
+          | Parameter | Value |
+          |---|---|
+          | Queue | `${{ parameters.queueName }}` |
+          | Region | `${{ parameters.awsRegion }}` |
+          | FIFO | `${{ parameters.fifo }}` |
+          | Visibility timeout | `${{ parameters.visibilityTimeoutSeconds }} s` |
+          | Retention | `${{ parameters.messageRetentionSeconds }} s` |
+
+          **After merge:** ArgoCD syncs, Crossplane creates the queue (~10 s). Check status:
+
           ```bash
-          kubectl get sqsqueue ${{ parameters.queueName }} -n services-dev
+          kubectl get sqsqueue ${{ parameters.queueName }} -n services-dev -w
           ```
         targetBranchName: main
 
@@ -106,3 +116,9 @@ spec:
     links:
       - title: Pull Request
         url: ${{ steps['open-pr'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          1. Merge the PR. ArgoCD syncs the Claim within ~1 min.
+          2. SQS queue provisions in ~10 s. Watch with `kubectl get sqsqueue ${{ parameters.queueName }} -n services-dev -w`.
+          3. Set `SQS_QUEUE_URL` from `aws sqs get-queue-url --queue-name ${{ parameters.queueName }}` in your service's env.

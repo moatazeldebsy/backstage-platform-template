@@ -26,6 +26,7 @@ spec:
               apiVersion: dynamodb.aws.upbound.io/v1beta2
               kind: Table
               spec:
+                deletionPolicy: Orphan
                 forProvider:
                   pointInTimeRecovery:
                     - enabled: true
@@ -60,3 +61,12 @@ spec:
                 toFieldPath: spec.forProvider.attribute[0].name
               - fromFieldPath: spec.parameters.hashKeyType
                 toFieldPath: spec.forProvider.attribute[0].type
+              # Range key attributes — only applied when rangeKey is set
+              - fromFieldPath: spec.parameters.rangeKey
+                toFieldPath: spec.forProvider.attribute[1].name
+                policy:
+                  fromFieldPath: Optional
+              - fromFieldPath: spec.parameters.rangeKeyType
+                toFieldPath: spec.forProvider.attribute[1].type
+                policy:
+                  fromFieldPath: Optional

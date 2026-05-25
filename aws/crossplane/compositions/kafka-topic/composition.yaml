@@ -26,6 +26,7 @@ spec:
               apiVersion: kafka.aws.upbound.io/v1beta1
               kind: Topic
               spec:
+                deletionPolicy: Orphan
                 forProvider: {}
                 providerConfigRef:
                   name: default

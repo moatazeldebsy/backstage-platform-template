@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.queueName }}
+  description: SQS queue ${{ values.queueName }} — managed by Crossplane
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.queueName }}.yaml
+  labels:
+    provisioner: crossplane
+  tags:
+    - sqs
+    - messaging
+    - aws
+    - crossplane
+spec:
+  type: queue
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependencyOf:
+    - component:${{ values.ownerService }}

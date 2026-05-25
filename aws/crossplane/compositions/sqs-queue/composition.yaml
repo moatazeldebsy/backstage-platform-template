@@ -25,6 +25,7 @@ spec:
               apiVersion: sqs.aws.upbound.io/v1beta1
               kind: Queue
               spec:
+                deletionPolicy: Orphan
                 forProvider:
                   sqsManagedSseEnabled: true
                   tags:

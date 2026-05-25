@@ -28,11 +28,12 @@ spec:
               apiVersion: rds.aws.upbound.io/v1beta2
               kind: Instance
               spec:
+                deletionPolicy: Orphan
                 forProvider:
                   engine: postgres
                   publiclyAccessible: false
                   storageEncrypted: true
-                  skipFinalSnapshot: true
+                  skipFinalSnapshot: false
                   autoGeneratePassword: true
                   passwordSecretRef:
                     namespace: crossplane-system
@@ -65,6 +66,8 @@ spec:
                 toFieldPath: spec.forProvider.allocatedStorage
               - fromFieldPath: spec.parameters.multiAz
                 toFieldPath: spec.forProvider.multiAz
+              - fromFieldPath: spec.parameters.backupRetentionDays
+                toFieldPath: spec.forProvider.backupRetentionPeriod
               - fromFieldPath: spec.parameters.owner
                 toFieldPath: spec.forProvider.tags["idp:owner"]
               - fromFieldPath: spec.parameters.costCenter

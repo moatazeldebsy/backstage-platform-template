@@ -14,4 +14,8 @@ spec:
     region: ${{ values.awsRegion }}
     billingMode: ${{ values.billingMode }}
     pointInTimeRecovery: ${{ values.pointInTimeRecovery }}
+    {%- if values.rangeKey %}
+    rangeKey: ${{ values.rangeKey }}
+    rangeKeyType: ${{ values.rangeKeyType }}
+    {%- endif %}
     costCenter: ${{ values.costCenter }}

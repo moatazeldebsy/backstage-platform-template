@@ -77,7 +77,7 @@ kubectl annotate serviceaccount backstage \
 
 # DB-init ServiceAccount (IRSA for Secrets Manager access)
 DB_INIT_ROLE_ARN=$(cd terraform && terraform output -raw db_init_role_arn)
-kubectl apply -f kubernetes/backstage/db-init-sa.yaml
+kubectl apply -f aws/backstage/db-init-sa.yaml
 kubectl annotate serviceaccount db-init-sa \
   -n services \
   "eks.amazonaws.com/role-arn=${DB_INIT_ROLE_ARN}" \
@@ -119,7 +119,7 @@ kubectl annotate serviceaccount external-secrets-sa \
   --overwrite
 
 # Substitute the AWS region placeholder and apply
-sed "s/YOUR_AWS_REGION/${AWS_REGION}/g" kubernetes/external-secrets/cluster-secret-store.yaml \
+sed "s/YOUR_AWS_REGION/${AWS_REGION}/g" aws/external-secrets/cluster-secret-store.yaml \
   | kubectl apply -f -
 
 # Wait up to 60s for the ClusterSecretStore to become Ready
@@ -223,7 +223,7 @@ tmp_obs_values=$(mktemp /tmp/prometheus-stack-values-aws.XXXXXX.yaml)
 sed \
   -e "s|YOUR_AWS_REGION|${AWS_REGION}|g" \
   -e "s|GRAFANA_IRSA_ROLE_ARN|${GRAFANA_ROLE_ARN}|g" \
-  observability/prometheus-stack-values-aws.yaml > "${tmp_obs_values}"
+  aws/observability/prometheus-stack-values.yaml > "${tmp_obs_values}"
 
 helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
@@ -246,7 +246,7 @@ helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pu
   --set "extraArgs[0]=--web.enable-admin-api" \
   --wait --timeout 5m
 
-kubectl apply -f kubernetes/monitoring/pushgateway-ingress-alb.yaml
+kubectl apply -f aws/monitoring/pushgateway-ingress.yaml
 log "Pushgateway ALB ingress applied."
 
 # Seed QA demo metrics so the Grafana QA Platform dashboard has data immediately
@@ -369,7 +369,7 @@ helm repo update
 helm upgrade --install argocd argo/argo-cd \
   --namespace argocd \
   --create-namespace \
-  --values kubernetes/argocd/argocd-helm-values.yaml \
+  --values aws/argocd/argocd-helm-values.yaml \
   --wait \
   --timeout 5m
 
@@ -380,7 +380,7 @@ log "  ArgoCD admin password: ${ARGOCD_ADMIN_PASSWORD}"
 
 # ── Phase 4.6: Apply the GitOps ApplicationSet ───────────────────────────────
 log "Phase 4.6: Applying ArgoCD ApplicationSet (GitOps)..."
-kubectl apply -f kubernetes/argocd/app-of-apps.yaml -n argocd
+kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
 log "  ApplicationSet applied — ArgoCD will sync services once image tags are set."
 
 # ── Phase 4.6a: Crossplane stack ─────────────────────────────────────────────
@@ -390,12 +390,15 @@ log "  ApplicationSet applied — ArgoCD will sync services once image tags are 
 log "Phase 4.6a: Bootstrapping Crossplane..."
 CROSSPLANE_ROLE_ARN=$(cd terraform && terraform output -raw crossplane_aws_role_arn 2>/dev/null || echo "")
 if [[ -n "$CROSSPLANE_ROLE_ARN" ]]; then
+  if [[ "$CROSSPLANE_ROLE_ARN" != arn:aws:iam::* ]]; then
+    err "crossplane_aws_role_arn doesn't look like an IAM role ARN: '${CROSSPLANE_ROLE_ARN}'"
+  fi
   log "  Substituting Crossplane IRSA role ARN into deployment-runtime-config..."
   sed "s|IRSA_ROLE_ARN|${CROSSPLANE_ROLE_ARN}|g" \
-    kubernetes/crossplane/providers/deployment-runtime-config.yaml \
+    aws/crossplane/providers/deployment-runtime-config.yaml \
     | kubectl apply -f -
   log "  Applying Crossplane stack (core + providers + compositions) via ArgoCD..."
-  kubectl apply -f kubernetes/argocd/crossplane.yaml
+  kubectl apply -f aws/argocd/crossplane.yaml
   log "  Crossplane Applications registered. Check: kubectl get providers.pkg.crossplane.io"
 else
   log "  WARNING: crossplane_aws_role_arn not found in TF state — skipping Crossplane bootstrap."
@@ -475,10 +478,10 @@ docker build \
 docker push "${IMAGE_REPO}:${IMAGE_TAG}"
 docker push "${IMAGE_REPO}:latest"
 
-# Write seed image tag into helm-values-dev.yaml so ArgoCD syncs immediately
+# Write seed image tag into helm-values-aws.yaml so ArgoCD syncs immediately
 IMAGE_REPO_ESC="${IMAGE_REPO}" IMAGE_TAG_ESC="${IMAGE_TAG}" python3 - <<'PYEOF'
 import os, re
-f = 'services/hello-service/helm-values-dev.yaml'
+f = 'services/hello-service/helm-values-aws.yaml'
 content = open(f).read()
 content = re.sub(r'(repository:\s*)\S+', r'\g<1>' + os.environ['IMAGE_REPO_ESC'], content)
 content = re.sub(r'(tag:\s*)\S+',        r'\g<1>' + os.environ['IMAGE_TAG_ESC'],  content)
@@ -486,7 +489,7 @@ open(f, 'w').write(content)
 PYEOF
 git config user.name  "idp-bot" 2>/dev/null || true
 git config user.email "idp-bot@platform" 2>/dev/null || true
-git add services/hello-service/helm-values-dev.yaml
+git add services/hello-service/helm-values-aws.yaml
 git diff --staged --quiet || \
   git commit -m "chore(gitops): hello-service seed image ${IMAGE_TAG} [skip ci]" && \
   git push 2>/dev/null || log "  (git push skipped — not in a git repo or no remote)"
@@ -513,7 +516,7 @@ log "Backstage image pushed to ECR."
 log "Phase 5.6: Deploying Backstage..."
 
 # Apply External Secrets (creates backstage-secrets K8s Secret from Secrets Manager)
-kubectl apply -f kubernetes/backstage/external-secret.yaml
+kubectl apply -f aws/backstage/external-secret.yaml
 
 # Wait for ESO to sync the secret (up to 60s)
 log "  Waiting for ExternalSecret to sync..."
@@ -532,7 +535,7 @@ done
 # Substitute the real ECR image into the deployment manifest before applying.
 kubectl apply -f kubernetes/backstage/configmap.yaml
 sed "s|image: .*backstage:latest|image: ${BACKSTAGE_IMAGE}:latest|g" \
-  kubernetes/backstage/deployment.yaml | kubectl apply -f -
+  aws/backstage/deployment.yaml | kubectl apply -f -
 
 # Wait for Backstage LB to get a hostname (up to 6 min)
 log "  Waiting for Backstage LoadBalancer hostname..."

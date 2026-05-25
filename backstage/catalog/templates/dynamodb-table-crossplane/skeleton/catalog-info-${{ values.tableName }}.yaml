@@ -1,0 +1,21 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.tableName }}
+  description: DynamoDB table ${{ values.tableName }} — managed by Crossplane
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.tableName }}.yaml
+  labels:
+    billing-mode: ${{ values.billingMode }}
+    provisioner: crossplane
+  tags:
+    - dynamodb
+    - database
+    - aws
+    - crossplane
+spec:
+  type: database
+  owner: ${{ values.owner }}
+  system: internal-developer-platform
+  dependencyOf:
+    - component:${{ values.ownerService }}
