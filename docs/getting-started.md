@@ -11,6 +11,79 @@
 | Docker | ≥ 24 | docker.com |
 | Node.js | ≥ 22 | `brew install node` (for Backstage build) |
 
+## How long does it take?
+
+### Local (Kind / Rancher Desktop) — ~15–20 minutes
+
+`./scripts/bootstrap-local.sh` runs end-to-end without AWS credentials.
+
+| Phase | What happens | Time |
+|---|---|---|
+| Kind cluster creation | `kind create cluster`, load balancer, kubeconfig | ~2 min |
+| nginx ingress controller | Helm install + wait for pods | ~1 min |
+| ArgoCD | Helm install + wait for pods + register GitHub credentials | ~3 min |
+| Prometheus + Grafana | `kube-prometheus-stack` Helm install | ~4 min |
+| Backstage | Docker Compose build + container start + DB migrations | ~4 min |
+| DORA exporter + seed metrics | CronJob apply + one-shot job | ~1 min |
+| **Total** | | **~15–20 min** |
+
+`--skip-obs` (skip Prometheus/Grafana) saves ~4 minutes.
+
+Adding the AI/ML stack (`./scripts/bootstrap-ai.sh`) takes an additional **10–15 minutes**:
+
+| Component | Time |
+|---|---|
+| KAgent controller + idp-assistant agent | ~4 min |
+| MLflow tracking server | ~3 min |
+| IDP + QA + Contract MCP servers (3×) | ~4 min |
+| `/etc/hosts` entries + port-forward | <1 min |
+
+`--skip-mlflow`, `--skip-mcp`, `--skip-kagent` each save ~3–4 minutes from the AI stack.
+
+---
+
+### AWS (EKS) — ~45–60 minutes
+
+`./scripts/bootstrap.sh` provisions from scratch. Most of the time is AWS control-plane and ALB provisioning, which cannot be parallelised.
+
+| Phase | What happens | Time |
+|---|---|---|
+| Terraform | VPC, EKS control plane + node groups, RDS, ECR, IAM/OIDC, Crossplane IRSA role | ~20–25 min |
+| ArgoCD + app-of-apps | Helm install + GitHub credentials + first sync | ~5 min |
+| External Secrets Operator | Helm install + ClusterSecretStore ready | ~3 min |
+| Prometheus + Grafana | `kube-prometheus-stack` + ALB ingress provisioning | ~5 min |
+| OPA/Gatekeeper | CRDs + constraints | ~2 min |
+| Crossplane | Core + AWS providers healthy + compositions applied | ~5 min |
+| Backstage | ECR image push + K8s deploy + ExternalSecret sync + ALB | ~8 min |
+| hello-service + ALB | Helm install + ALB DNS propagation | ~3 min |
+| **Total** | | **~45–60 min** |
+
+> EKS control plane creation (~10 min) and ALB provisioning (~3–5 min per ingress) are the longest waits and are entirely AWS-side — no script change can speed them up.
+
+Adding the AI/ML stack on AWS takes an additional **15–20 minutes**:
+
+| Component | Time |
+|---|---|
+| KAgent controller + idp-assistant + ALB ingresses | ~5 min |
+| MLflow (S3 backend) + ALB | ~5 min |
+| IDP + QA + Contract MCP servers + ALBs | ~5 min |
+| Backstage proxy config patch + restart | ~2 min |
+
+**Re-bootstrap (cluster already exists):** If you're re-running `bootstrap.sh` against an existing EKS cluster, Terraform applies only the diff (usually <2 min) and the rest of the phases take ~15–20 minutes total — ALB re-provisioning is skipped if the ingresses already exist.
+
+---
+
+### Quick comparison
+
+| | Local (full) | Local + AI/ML | AWS (full) | AWS + AI/ML |
+|---|---|---|---|---|
+| First run | ~15–20 min | ~25–35 min | ~45–60 min | ~60–80 min |
+| Re-bootstrap | ~5–8 min | ~10–15 min | ~15–20 min | ~20–25 min |
+| Prerequisites | Docker, Kind | + `ANTHROPIC_API_KEY` | AWS account, Terraform | + `ANTHROPIC_API_KEY` |
+| Cost | Free | Free | ~$8/day | ~$8/day |
+
+---
+
 ## Local Setup (no AWS needed)
 
 See [docs/local-setup.md](local-setup.md) for the full local walkthrough including Backstage, the `idp:deploy-local` action, and Kind deployment.
