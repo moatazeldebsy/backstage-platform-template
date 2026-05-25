@@ -122,7 +122,7 @@ directly affects GitHub discoverability, first-run experience, or contributor co
 | Item | Status | Notes |
 |------|--------|-------|
 | Demo GIF / screenshot in README | 📋 | #1 driver of GitHub stars; shows the golden path end-to-end in 30 seconds |
-| GitHub Pages deployment (MkDocs) | 📋 | `mkdocs.yml` is configured but docs aren't published; zero discoverability without it |
+| GitHub Pages deployment (MkDocs) | ✅ | Published via `docs.yml` GitHub Actions workflow; served at GitHub Pages. Covers architecture, golden path, shift-left (incl. leadership guide), contract testing, Crossplane, AI assistant, runbooks, and roadmap |
 | Trivy + Cosign in CI | ✅ | Trivy vulnerability scan + Cosign image signing in CI pipeline |
 | Compatibility matrix | 📋 | Backstage v1.49, K8s 1.32, Helm 3.x, Kind 0.27 — to be declared |
 | Semantic versioning + `CHANGELOG.md` | ✅ | `CHANGELOG.md` follows Keep-a-Changelog format; v0.1.0 tagged |
