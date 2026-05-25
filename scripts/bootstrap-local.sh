@@ -1100,9 +1100,9 @@ if ! $SKIP_DORA; then
     fi
 
     kubectl create configmap dora-exporter-script \
-      --from-file=dora-exporter.py="${ROOT_DIR}/observability/dora/dora-exporter-local.py" \
+      --from-file=dora-exporter.py="${ROOT_DIR}/local/observability/dora/dora-exporter.py" \
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-    kubectl apply -f "${ROOT_DIR}/observability/dora/dora-cronjob-local.yaml"
+    kubectl apply -f "${ROOT_DIR}/local/observability/dora/dora-cronjob.yaml"
     log "DORA exporter deployed."
 
     kubectl create job "dora-exporter-init-$(date +%s)" \

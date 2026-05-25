@@ -60,7 +60,7 @@
 Every service gets the same: container registry, CI workflow, Helm chart structure, health check paths, namespace, and monitoring. Developers don't configure these — they inherit them from the golden path.
 
 ### Helm as the single deployment abstraction
-The `helm/service-template` chart is the single deployment unit for both local (Kind) and cloud (EKS). Service teams only override their `helm-values.yaml` or `helm-values-local.yaml` — no raw Kubernetes YAML.
+The `helm/service-template` chart is the single deployment unit for both local (Kind) and cloud (EKS). Service teams override only two files — `helm-values-local.yaml` (Kind/nginx) or `helm-values-aws.yaml` (EKS/ALB) — no raw Kubernetes YAML.
 
 ### CI only in GitHub Actions (for now)
 Scaffolded service workflows run `test` on `ubuntu-latest`. No self-hosted runners are required. CD is handled by the `idp:deploy-local` Backstage action (local) or will be added as an AWS deploy job when secrets are configured.
@@ -85,6 +85,32 @@ All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Bala
 
 ### IaC split: Terraform (foundation) + Crossplane (per-service)
 Both tools coexist by **lifecycle**, not by resource type. Terraform owns one-shot foundation (VPC, EKS, IAM, ECR, Secrets Manager scaffolding, **and** the IRSA role Crossplane providers assume). Crossplane owns day-2 per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) requested via Backstage scaffolder templates and reconciled in-cluster by ArgoCD — no manual `terraform apply` step. See [crossplane-vs-terraform.md](crossplane-vs-terraform.md) for the decision matrix and [crossplane.md](crossplane.md) for the end-to-end flow.
+
+## Repository Layout
+
+The repository is split into three top-level directories based on deployment target:
+
+```
+local/          → 100% local-only (Kind / Rancher Desktop)
+aws/            → 100% AWS-only  (EKS / Terraform / Secrets Manager)
+kubernetes/     → 100% shared    (applied by both bootstrap scripts)
+```
+
+| Directory | Owned by | Contains |
+|-----------|----------|----------|
+| `local/` | `bootstrap-local.sh` | Kind cluster config, nginx ingress values, Docker Compose for Backstage, local ArgoCD ApplicationSet, local Prometheus values, DORA exporter (local) |
+| `aws/` | `bootstrap.sh` | ArgoCD values + app-of-apps, External Secrets Operator, Crossplane providers + compositions, Backstage K8s deployment + external secret, KAgent AWS values/ingress/secret, ALB ingresses, MLflow (S3 backend), DORA exporter (AWS), AWS Prometheus values |
+| `kubernetes/` | Both scripts | Namespaces, RBAC, OPA/Gatekeeper policies, team entities, shared monitoring dashboards (ConfigMaps), KAgent agent CRDs, Backstage RBAC + configmap |
+| `terraform/` | Manual (`terraform apply`) | EKS, VPC, RDS, ECR, IAM/OIDC, Secrets Manager scaffolding |
+| `helm/service-template/` | Both | Single Helm chart used by every service |
+| `services/<svc>/` | Per-service CI | Source, Dockerfile, `helm-values-local.yaml` (Kind), `helm-values-aws.yaml` (EKS) |
+| `observability/` | Both | Shared alerting rules, Grafana dashboards, DORA/tech-insights exporters |
+| `backstage/` | Both | Portal source, `app-config.yaml` (base), `app-config.local.yaml` (local overrides), catalog templates |
+| `scripts/` | Both | `bootstrap-local.sh` (local), `bootstrap.sh` (AWS), `bootstrap-ai.sh` (both), shared `lib.sh` |
+
+**Bootstrap script ownership:**
+- `bootstrap-local.sh` reads from `local/` + `kubernetes/` only — never touches `aws/`
+- `bootstrap.sh` reads from `aws/` + `kubernetes/` only — never touches `local/`
 
 ## AI/ML Platform
 
@@ -148,8 +174,8 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | ECR | `terraform/ecr.tf` | Cloud container registry |
 | IAM + OIDC | `terraform/iam.tf` | Keyless CI/CD auth |
 | Crossplane IRSA role | `terraform/iam-crossplane.tf` | IAM role assumed by Crossplane AWS providers |
-| Crossplane providers + Compositions | `kubernetes/crossplane/` | Per-service S3/RDS/MSK/DynamoDB/SQS via Claims |
-| ArgoCD Crossplane stack | `kubernetes/argocd/crossplane.yaml` | Sync-wave-ordered install: core → providers → compositions |
+| Crossplane providers + Compositions | `aws/crossplane/` | Per-service S3/RDS/MSK/DynamoDB/SQS via Claims |
+| ArgoCD Crossplane stack | `aws/argocd/crossplane.yaml` | Sync-wave-ordered install: core → providers → compositions |
 | Service chart | `helm/service-template/` | Deployment template (local + AWS) |
 | Platform CI/CD | `.github/workflows/build-and-deploy.yml` | Root platform pipeline |
 | Backstage config | `backstage/app-config.yaml` | Portal configuration |
@@ -160,11 +186,11 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | `idp:deploy-local` action | `backstage/app/packages/backend/src/modules/idpLocalDeploy.ts` | Custom scaffolder action |
 | Backstage image | `backstage/Dockerfile` | Production image (pre-built bundle) |
 | kube-prometheus-stack values (local) | `local/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (nginx, local storage) |
-| kube-prometheus-stack values (AWS) | `observability/prometheus-stack-values-aws.yaml` | Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention) |
-| ClusterSecretStore | `kubernetes/external-secrets/cluster-secret-store.yaml` | ESO → AWS Secrets Manager backend |
+| kube-prometheus-stack values (AWS) | `aws/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention) |
+| ClusterSecretStore | `aws/external-secrets/cluster-secret-store.yaml` | ESO → AWS Secrets Manager backend |
 | Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
-| DORA exporter (local) | `observability/dora/dora-cronjob-local.yaml` | DORA metrics → Pushgateway (local) |
-| DORA exporter (AWS) | `observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch (AWS) |
+| DORA exporter (local) | `local/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway (local) |
+| DORA exporter (AWS) | `aws/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch (AWS) |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 | material-table patch | `backstage/app/.yarn/patches/` | Fixes `uuid` v10 compatibility crash in catalog, api-docs, and techdocs pages |
 
@@ -386,7 +412,9 @@ External Secrets Operator (ESO)
   │
   └── Phase 6 — Backstage (~5 min)
         Build + push Backstage image to ECR
-        kubectl apply -f kubernetes/backstage/
+        kubectl apply -f kubernetes/backstage/rbac.yaml  (shared RBAC)
+        kubectl apply -f aws/backstage/external-secret.yaml
+        kubectl apply -f aws/backstage/deployment.yaml
         ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
 
 ./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)

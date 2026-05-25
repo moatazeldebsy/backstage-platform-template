@@ -337,7 +337,7 @@ jobs:
           git config --global user.name "IDP CI Bot"
           git clone https://x-access-token:\${GH_TOKEN}@github.com/${GH_ORG}/${PLATFORM_REPO}.git /tmp/platform
           cd /tmp/platform
-          VALUES_FILE="services/${SERVICE_NAME}/helm-values-dev.yaml"
+          VALUES_FILE="services/${SERVICE_NAME}/helm-values-aws.yaml"
           if [ -f "\${VALUES_FILE}" ]; then
             sed -i "s|^  tag: .*|  tag: \\"\${SHORT_SHA}\\"|" "\${VALUES_FILE}"
             git add "\${VALUES_FILE}"
@@ -413,7 +413,7 @@ securityContext:
 EOF
 
 # Dev helm values (GHCR image, nginx ingress)
-cat > "${TARGET_DIR}/helm-values-dev.yaml" <<EOF
+cat > "${TARGET_DIR}/helm-values-aws.yaml" <<EOF
 replicaCount: 1
 
 image:

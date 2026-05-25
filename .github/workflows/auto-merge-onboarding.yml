@@ -2,7 +2,7 @@ name: Auto-merge service onboarding PRs
 
 # Triggered by the publish:github:pull-request step in every service template.
 # All such PRs are titled "feat: onboard <name> to GitOps" and only add
-# services/<name>/helm-values-dev.yaml — a safe, bounded change.
+# services/<name>/helm-values-aws.yaml — a safe, bounded change.
 # Once this workflow approves and enables auto-merge, the PR lands as soon
 # as CI passes and the ArgoCD ApplicationSet auto-discovers the new service.
 #

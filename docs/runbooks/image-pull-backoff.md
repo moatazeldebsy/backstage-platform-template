@@ -8,7 +8,7 @@
 
 ## Root Cause
 
-The image referenced in `helm-values-dev.yaml` (or `helm-values-local.yaml`) does not exist in the local registry at `localhost:5003`. This happens when:
+The image referenced in `helm-values-aws.yaml` (or `helm-values-local.yaml`) does not exist in the local registry at `localhost:5003`. This happens when:
 
 1. A new service was scaffolded via Backstage or `create-service.sh` and the PR was merged — but the Docker image was **never built and pushed** to the local registry.
 2. The local Kind cluster was destroyed and recreated (`bootstrap-local.sh --destroy` + re-bootstrap) — all registry contents are lost.

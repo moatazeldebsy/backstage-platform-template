@@ -1,0 +1,55 @@
+# KAgent PostgreSQL Backup Strategy
+# This file documents backup configuration for the KAgent database
+# The KAgent uses an in-cluster PostgreSQL database that stores agent state and configuration
+
+---
+# EBS Volume backup using AWS Backup (optional, requires IAM role)
+# To enable automated backups of the KAgent PVC:
+#
+# 1. Create an AWS Backup Plan that targets EBS volumes with tag:
+#    Key: "karpenter.sh/do-not-evict" Value: "true"
+#
+# 2. Label the KAgent PVC's underlying EBS volume:
+#    aws ec2 create-tags --resources vol-xxxxx --tags Key=karpenter.sh/do-not-evict,Value=true
+#
+# 3. AWS Backup will automatically snapshot the volume daily
+#
+# Alternative: Use Velero for Kubernetes-native backups
+# See: https://velero.io/docs/latest/
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kagent-postgresql
+  namespace: kagent
+  labels:
+    app: kagent-postgresql
+  annotations:
+    # Enable AWS Backup protection (requires AWS Backup agent in cluster)
+    # backup.velero.io/backup-volumes: "postgres-data"
+    description: "KAgent PostgreSQL database - contains agent state and configuration"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# Backup Strategy Documentation
+#
+# Daily snapshots: AWS Backup service (when configured)
+# Retention: 7 days (configurable)
+# Recovery RTO: 1 hour (from EBS snapshot)
+# Recovery RPO: 1 hour (snapshot frequency)
+#
+# Manual backup commands:
+#   kubectl exec -n kagent <postgres-pod> -- pg_dump -U postgres > backup.sql
+#   kubectl exec -n kagent <postgres-pod> -- pg_basebackup -D /tmp/backup
+#
+# For production, use:
+# - AWS RDS for KAgent database (instead of in-cluster PostgreSQL)
+# - Automatic backups with 30-day retention
+# - Read replica for failover

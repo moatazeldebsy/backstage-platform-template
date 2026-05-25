@@ -67,7 +67,7 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 docker compose -f local/backstage/docker-compose.yml build backstage
 docker compose -f local/backstage/docker-compose.yml up -d
 
-# Config-only changes (app-config.yaml / app-config.local.yaml) just need a restart:
+# Config-only changes (app-config.yaml / app-config.local.yaml / app-config.aws.yaml) just need a restart:
 docker compose -f local/backstage/docker-compose.yml restart backstage
 
 # Shortcut: rebuild + restart in one step
@@ -165,6 +165,17 @@ The `contract-mcp-server` exposes 9 tools: `fetch_service_contract`, `auto_disco
 
 ## Architecture Overview
 
+### Repository layout (three-way split)
+
+| Directory | Owned by | Purpose |
+|-----------|----------|---------|
+| `local/` | `bootstrap-local.sh` | Kind cluster config, nginx values, Docker Compose, local ArgoCD app-of-apps, local Prometheus values, DORA exporter (local) |
+| `aws/` | `bootstrap.sh` | EKS-specific: ArgoCD values + app-of-apps, External Secrets, Crossplane, Backstage K8s deployment, KAgent AWS values/ingress, ALB ingresses, MLflow (S3), Prometheus values (AWS), DORA exporter (AWS) |
+| `kubernetes/` | Both | Shared only: namespaces, RBAC, OPA/Gatekeeper policies, teams, monitoring dashboards, KAgent agent CRDs |
+| `services/<svc>/` | Per-service CI | Source, Dockerfile, `helm-values-local.yaml` (Kind/nginx), `helm-values-aws.yaml` (EKS/ALB) |
+
+**Rule:** `bootstrap-local.sh` only reads `local/` + `kubernetes/`. `bootstrap.sh` only reads `aws/` + `kubernetes/`. No cross-reads.
+
 ### Deployment layers
 
 ```
@@ -186,7 +197,7 @@ Kind / Rancher Desktop (local) or EKS (AWS)
 ### IaC: Terraform + Crossplane (overlap by lifecycle, not by tool)
 
 - **Terraform** (`terraform/`) — foundation: VPC, EKS, IAM/OIDC, ECR, Secrets Manager scaffolding, **and** the IRSA role Crossplane providers assume (`terraform/iam-crossplane.tf`). One-shot, platform-team-owned, applied from outside the cluster.
-- **Crossplane** (`kubernetes/crossplane/`) — per-service AWS resources requested via Backstage scaffolder templates: S3, RDS, Kafka topics, DynamoDB, SQS. Claims live at `services/<svc>/claims/*.yaml` and are synced by the existing `idp-services` ApplicationSet. AWS-only; the local Kind path is unchanged.
+- **Crossplane** (`aws/crossplane/`) — per-service AWS resources requested via Backstage scaffolder templates: S3, RDS, Kafka topics, DynamoDB, SQS. Claims live at `services/<svc>/claims/*.yaml` and are synced by the existing `idp-services` ApplicationSet. AWS-only; the local Kind path is unchanged.
 - Scaffolder templates come in pairs: `s3-bucket` (TF PR + manual `terraform apply`) and `s3-bucket-crossplane` (writes a Claim, ArgoCD syncs it). Choose by lifecycle; see `docs/crossplane-vs-terraform.md`.
 
 ### Backstage plugin system
@@ -209,12 +220,24 @@ All custom Backstage backend scaffold actions are registered in `backstage/app/p
 
 ### Config layering
 
-`backstage/app-config.yaml` is the base. `backstage/app-config.local.yaml` overrides for local dev (guest auth, SSL off, proxy targets redirected from in-cluster DNS to ingress hostnames). Both are bind-mounted read-only by `local/backstage/docker-compose.yml`.
+Three-file split — each env only reads what it needs:
+
+| File | Used by | Purpose |
+|------|---------|---------|
+| `backstage/app-config.yaml` | Both | Env-agnostic base: DB, integrations, scaffolder, catalog rules, file: locations (volume-mounted locally), techInsights |
+| `backstage/app-config.local.yaml` | Local/Docker Compose | Overrides: `.idp.local` baseUrls, listen port 3000, guest auth, SSL off, proxy → ingress hostnames, local techdocs |
+| `backstage/app-config.aws.yaml` | AWS/EKS | Overrides: ALB URL, listen :7007, production auth, in-cluster DNS proxies, S3 techdocs, GitHub URL catalog locations |
+
+The AWS deployment command is:
+```
+node packages/backend --config /config/app-config.yaml --config /config/app-config.aws.yaml
+```
+Both files are mounted as ConfigMaps (`backstage-base-config` and `backstage-config`) by `kubernetes/backstage/configmap.yaml`. `bootstrap.sh` patches the `BACKSTAGE_ALB_URL` placeholder in `backstage-config` after the ALB is provisioned.
 
 Key local-only settings in `app-config.local.yaml`:
 - `backend.auth.dangerouslyDisableDefaultAuthPolicy: true` — prevents 401 flash before sign-in completes
 - `app.extensions: page:kubernetes: disabled: true` — disables the broken kubernetes standalone page (entity-tab K8s still works)
-- `app.extensions: page:catalog-graph: disabled: true` — disabled (broken standalone page)
+- `backend.listen.port: 3000` — Docker Compose maps port 3000; AWS uses :7007
 
 ### material-table / uuid patch
 
@@ -232,12 +255,11 @@ If the patch ever disappears, re-apply with:
 cd backstage/app && yarn install  # applies patches from .yarn/patches/
 ```
 
-**Critical local proxy override pattern:** The Backstage container runs in Docker and cannot reach `*.svc.cluster.local` DNS. All proxy targets that use in-cluster DNS in `app-config.yaml` must be overridden in `app-config.local.yaml` to use the corresponding `*.idp.local` ingress hostname instead. The `extra_hosts` block in `local/backstage/docker-compose.yml` maps these hostnames to `host-gateway` so the container can reach them.
-
-When adding a new in-cluster proxy target for local use:
-1. Add the `*.idp.local` hostname override to the proxy endpoint in `app-config.local.yaml`
-2. Add `- "hostname.idp.local:host-gateway"` to `extra_hosts` in `local/backstage/docker-compose.yml`
-3. Add `127.0.0.1  hostname.idp.local` to `local/hosts-append.txt`
+**Adding a new proxy target:** Proxy endpoints are fully env-specific (no proxy in the base config). When adding a new in-cluster service:
+1. Add the in-cluster DNS target to `proxy.endpoints` in `backstage/app-config.aws.yaml` (and mirror into `kubernetes/backstage/configmap.yaml` `backstage-config`)
+2. Add the `*.idp.local` hostname override to `proxy.endpoints` in `backstage/app-config.local.yaml`
+3. Add `- "hostname.idp.local:host-gateway"` to `extra_hosts` in `local/backstage/docker-compose.yml`
+4. Add `127.0.0.1  hostname.idp.local` to `local/hosts-append.txt`
 
 ### AI Assistant architecture
 
@@ -293,7 +315,9 @@ Terraform in `terraform/` provisions EKS, VPC, ECR, IAM (OIDC + IRSA). CI/CD use
 ## Adding a Software Template
 
 1. Create `backstage/catalog/templates/<template-name>/template.yaml` + `skeleton/`
-2. Register in `backstage/app-config.yaml` under `catalog.locations`
+2. Register in **both** config files under `catalog.locations`:
+   - `backstage/app-config.yaml` — add a `file:` entry (used locally via volume mount)
+   - `backstage/app-config.aws.yaml` + `kubernetes/backstage/configmap.yaml` (`backstage-config`) — add a `url:` entry pointing to the GitHub raw URL (used by AWS)
 3. Templates are bind-mounted; **no rebuild needed** — `docker compose -f local/backstage/docker-compose.yml restart backstage` is enough. Rebuild is only required if you changed `backstage/app/packages/`.
 
 **Test-suite templates** (under `backstage/catalog/templates/*-suite/` and `*-test-suite/`) follow a standard shape:
@@ -344,7 +368,7 @@ If `refresh_state` has entries but `final_entities` is 0, the catalog refresh lo
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `ci.yml` | Push/PR to `services/`, `helm/`, `kubernetes/`, `terraform/`, `backstage/app/` | Go tests, `helm lint`, kubeconform, Backstage backend compile + Docker build, Terraform validate |
+| `ci.yml` | Push/PR to `services/`, `helm/`, `kubernetes/`, `aws/`, `terraform/`, `backstage/app/` | Go tests, `helm lint`, kubeconform, Backstage backend compile + Docker build, Terraform validate |
 | `build-and-deploy.yml` | Push to service directories | Change detection → runtime matrix → GHCR image → ArgoCD sync |
 | `auto-merge-onboarding.yml` | PRs titled "feat: onboard …" | Auto-approves if only `helm-values-*.yaml` changed; requires `GH_PAT` |
 | `docs.yml` | Changes to `docs/` or `mkdocs.yml` | MkDocs → GitHub Pages |

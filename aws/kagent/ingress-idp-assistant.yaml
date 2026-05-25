@@ -1,0 +1,29 @@
+# IDP Assistant A2A ingress — AWS/EKS variant (AWS Load Balancer Controller / ALB).
+# Exposes the KAgent-managed idp-assistant service for direct A2A access.
+# No TLS at the ingress level; ALB handles SSL termination.
+# Applied by: scripts/bootstrap-ai.sh --aws
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: idp-assistant
+  namespace: kagent
+  labels:
+    app: idp-assistant
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/proxy-read-timeout: "120"
+    alb.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: idp-assistant
+                port:
+                  number: 8080

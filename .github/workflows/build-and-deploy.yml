@@ -200,7 +200,7 @@ jobs:
 
   # ─── GitOps: write image tag to git, ArgoCD deploys ────────────────────────
   # CI no longer calls helm directly. It commits the new image tag into
-  # services/<name>/helm-values-dev.yaml. ArgoCD detects the change and syncs.
+  # services/<name>/helm-values-aws.yaml. ArgoCD detects the change and syncs.
   # Promotion to staging/prod is done by opening a PR that updates those files.
   update-image-tag:
     needs: [detect-changes, build-and-push]
@@ -242,16 +242,16 @@ jobs:
         if: steps.guard.outputs.has_aws == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Update image tag in helm-values-dev.yaml
+      - name: Update image tag in helm-values-aws.yaml
         if: steps.guard.outputs.has_aws == 'true'
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           IMAGE_REPO: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
         run: |
           yq -i ".image.repository = \"${IMAGE_REPO}\"" \
-            services/${{ matrix.service }}/helm-values-dev.yaml
+            services/${{ matrix.service }}/helm-values-aws.yaml
           yq -i ".image.tag = \"${IMAGE_TAG}\"" \
-            services/${{ matrix.service }}/helm-values-dev.yaml
+            services/${{ matrix.service }}/helm-values-aws.yaml
 
       - name: Commit and push image tag
         if: steps.guard.outputs.has_aws == 'true'
@@ -260,7 +260,7 @@ jobs:
         run: |
           git config user.name "idp-bot"
           git config user.email "idp-bot@platform"
-          git add services/${{ matrix.service }}/helm-values-dev.yaml
+          git add services/${{ matrix.service }}/helm-values-aws.yaml
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore(gitops): ${{ matrix.service }} → ${IMAGE_TAG} [dev] [skip ci]"
           git push

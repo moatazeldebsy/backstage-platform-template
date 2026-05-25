@@ -71,7 +71,7 @@ services/<name>/
 ├── README.md
 ├── helm-values.yaml        # AWS / ALB overrides
 ├── helm-values-local.yaml  # Kind / nginx overrides
-├── helm-values-dev.yaml
+├── helm-values-aws.yaml
 ├── helm-values-staging.yaml
 ├── catalog-info.yaml       # Backstage registration
 └── .github/

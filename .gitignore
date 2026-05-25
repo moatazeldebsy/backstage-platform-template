@@ -58,3 +58,19 @@ kubeconfig
 
 # macOS Finder / SMB lock-files (e.g. .!12345!handler.zip)
 .!*
+
+# Deployment status snapshots and generated URL files (not canonical — use docs/ instead)
+AWS_*.md
+LOCAL_*.md
+LOCAL_VS_AWS_URLS.md
+DEMO_*.md
+DEPLOYMENT_*.md
+FINAL_*.md
+AIML_*.md
+SERVICE_URLS.md
+PRODUCTION_*.md
+SETUP_PRODUCTION_*.md
+WORKING_*.txt
+LIVE_*.txt
+AWS_PUBLIC_URLS.txt
+*.log

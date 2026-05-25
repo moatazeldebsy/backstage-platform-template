@@ -136,8 +136,8 @@ one-click PR. This is the most-requested feature after first scaffold.
 | Item | Priority | Notes |
 |------|----------|-------|
 | ArgoCD app-of-apps for staging | 🔴 High | `local/argocd/app-of-apps-staging.yaml`; watches `helm-values-staging.yaml` |
-| ArgoCD app-of-apps for prod | 🔴 High | `kubernetes/argocd/app-of-apps-prod.yaml`; watches `helm-values-prod.yaml` |
-| `update-image-tag` CI step (multi-env) | 🔴 High | CI writes SHA tag to `helm-values-dev.yaml`; promotion PR updates staging/prod values |
+| ArgoCD app-of-apps for prod | 🔴 High | `aws/argocd/app-of-apps-prod.yaml`; watches `helm-values-prod.yaml` |
+| `update-image-tag` CI step (multi-env) | 🔴 High | CI writes SHA tag to `helm-values-aws.yaml`; promotion PR updates staging/prod values |
 | Namespace isolation per environment | 🟡 Medium | `services-staging` and `services-prod` with OPA policies matching `services-dev` |
 | Environment promotion Backstage template | 🟡 Medium | Scaffolder action opens a PR updating `helm-values-<target>.yaml` |
 
@@ -206,7 +206,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| TLS on all ingresses | 🔴 High | Deploy cert-manager; add `tls:` sections to all ingress resources in `kubernetes/ingress/` |
+| TLS on all ingresses | 🔴 High | Deploy cert-manager; add `tls:` sections to all ingress resources in `aws/ingress/` |
 | Backstage auth: disable guest + production mode | 🔴 High | Set `auth.environment: production`, remove guest provider, configure real GitHub OAuth (`backstage/app-config.yaml:65–82`) |
 | PostgreSQL SSL strict mode | 🔴 High | `rejectUnauthorized: true` in `kubernetes/backstage/configmap.yaml:43` |
 | K8s API TLS verification | 🔴 High | `skipTLSVerify: false` + CA bundle in `backstage/app-config.yaml:302` |
@@ -220,7 +220,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 | Item | Priority | Notes |
 |------|----------|-------|
 | Backstage: scale to 3+ replicas | 🔴 High | `kubernetes/backstage/deployment.yaml` — add replicas, PodDisruptionBudget, anti-affinity |
-| ArgoCD HA mode | 🔴 High | `kubernetes/argocd/argocd-helm-values.yaml` — replicaCount ≥ 3 for server, repo-server, applicationSet |
+| ArgoCD HA mode | 🔴 High | `aws/argocd/argocd-helm-values.yaml` — replicaCount ≥ 3 for server, repo-server, applicationSet |
 | PodDisruptionBudgets | 🟡 Medium | Add PDB manifests for Backstage, ArgoCD, and monitoring stack |
 | Enable HPA by default | 🟡 Medium | `helm/service-template/values.yaml:75` — set `autoscaling.enabled: true` with 70% CPU target |
 | Multi-NAT Gateway | 🔴 High | Remove `single_nat_gateway = true` in `terraform/vpc.tf:24`; add per-AZ NAT GW for HA |

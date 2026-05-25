@@ -173,7 +173,7 @@ deploy:
           --namespace services --create-namespace \
           --set image.repository=$REGISTRY/${{ env.SERVICE_NAME }} \
           --set image.tag=${{ github.sha }} \
-          --values helm-values.yaml \
+          --values helm-values-aws.yaml \
           --wait --timeout 120s
 ```
 
