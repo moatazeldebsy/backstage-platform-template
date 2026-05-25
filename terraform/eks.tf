@@ -12,6 +12,10 @@ module "eks" {
   # Enable IRSA (IAM Roles for Service Accounts)
   enable_irsa = true
 
+  # Disable control plane logging — audit/API logs ingest at $0.50/GB and accumulate fast.
+  # Enable selectively for production: ["api", "audit", "authenticator"]
+  cluster_enabled_log_types = []
+
   cluster_addons = {
     coredns    = { most_recent = true }
     kube-proxy = { most_recent = true }
@@ -98,4 +102,16 @@ resource "helm_release" "aws_load_balancer_controller" {
   }
 
   depends_on = [module.eks]
+}
+
+# Retention policy for the EKS control plane log group.
+# Without this, logs never expire (AWS default) and cost $0.03/GB/month indefinitely.
+resource "aws_cloudwatch_log_group" "eks_cluster" {
+  name              = "/aws/eks/${var.cluster_name}/cluster"
+  retention_in_days = 7
+
+  tags = {
+    "idp:component" = "eks-control-plane"
+    "idp:env"       = var.environment
+  }
 }
