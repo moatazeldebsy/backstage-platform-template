@@ -7,7 +7,7 @@
 [![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 13 QA testing scaffold templates + 5 Crossplane Claim templates, AI/ML platform (KAgent + MLflow + MCP Server), Prometheus + Grafana observability, AWS EKS via Terraform, and per-service cloud resources via Crossplane. Runs locally on Kind in minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 14 QA/test scaffold templates + 5 Crossplane Claim templates, AI/ML platform (KAgent + MLflow + 3 MCP servers), shift-left quality programme (Bronze/Silver/Gold scorecard + contract testing), Prometheus + Grafana observability, AWS EKS via Terraform, and per-service cloud resources via Crossplane. Runs locally on Kind in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -40,10 +40,10 @@
 |---|---|
 | **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, and custom scaffolder actions |
 | **Software templates** | 12 golden-path service templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace, RDS, Add-secret, AI Agent, ML Experiment, MCP Server) |
-| **QA templates** | 13 testing scaffold templates — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual, a11y, Cucumber, Appium, Chaos Mesh, Stryker, Testcontainers |
+| **QA / test templates** | 14 testing scaffold templates — Playwright E2E, k6 Performance, Pact Contract, Newman API, ZAP DAST, Datadog Synthetic, Visual Regression, Accessibility (axe), BDD Cucumber, Appium Mobile, Chaos Mesh, Stryker Mutation, Testcontainers Integration, DeepEval LLM Eval — plus `enable-contract-testing` for MCP-driven contract gates |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
-| **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + IDP MCP Server (catalog/metrics/scaffolding tools for agents) + AI Assistant chat page embedded in Backstage |
-| **Contract testing** _(opt-in)_ | `contract-mcp-server` — self-describing, self-testing APIs; services expose `/openapi.json`, the AI agent auto-discovers contracts, generates Pact tests, detects breaking changes, and validates compatibility; ArgoCD PostSync/PreSync hooks run automatically on every deploy. **Disabled by default** — to enable, uncomment the contract-testing blocks in `backstage/app-config.yaml` and `scripts/bootstrap-ai.sh`. |
+| **Shift-left quality** | Bronze/Silver/Gold scorecard (11 checks, visible in Backstage Tech Insights + Grafana); PR gates for coverage ≥70%, vuln scan, static analysis; ArgoCD PreSync contract gate blocks breaking API changes. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) for the programme overview. |
+| **AI/ML platform** | KAgent (Kubernetes-native AI agents via Anthropic Claude API) + MLflow experiment tracking + **IDP MCP Server** (catalog/metrics/scaffolding) + **QA MCP Server** (test generation/analysis) + **Contract MCP Server** (9 contract tools) + AI Assistant chat page embedded in Backstage |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
 | **Infrastructure** | **Terraform** for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3, Secrets Manager) + **Crossplane** for per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) via in-cluster Claims reconciled by ArgoCD. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) for the boundary. |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
@@ -67,7 +67,7 @@ git clone https://github.com/YOUR_PACTFLOW_ORG/backstage-platform-template.git &
 `setup.sh` walks you through placeholder substitution (GitHub org, AWS account, region, cluster name), bootstraps the Kind cluster, and starts Backstage — all in one flow. Steps 2 and 3 can also be run independently for day-2 cluster recreates:
 
 ```bash
-./scripts/bootstrap-local.sh              # cluster + platform (~10–15 min)
+./scripts/bootstrap-local.sh              # cluster + platform (~15–20 min)
 ./scripts/bootstrap-local.sh --start-backstage  # Backstage (~2 min)
 ```
 
@@ -127,12 +127,15 @@ After `bootstrap-local.sh` completes and Backstage is running, everything is rea
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(run `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" \| base64 -d`)* |
 | **Prometheus** | http://prometheus.idp.local | — |
 | **OpenCost** | http://opencost.idp.local | — |
+| **Pushgateway** | http://pushgateway.idp.local | — |
 | **KAgent UI** | http://kagent.idp.local | — (requires `bootstrap-ai.sh`) |
 | **AI Assistant** | http://backstage.idp.local/ai-assistant | — (requires `bootstrap-ai.sh`) |
 | **AI Search** | http://backstage.idp.local/ai-search | — (requires `VOYAGE_API_KEY` in `local/backstage/.env`) |
 | **IDP Assistant (A2A)** | http://idp-assistant.idp.local | — (requires `bootstrap-ai.sh`) |
 | **MLflow UI** | http://mlflow.idp.local | — (requires `bootstrap-ai.sh`) |
 | **IDP MCP Server** | http://idp-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
+| **QA MCP Server** | http://qa-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
+| **Contract MCP Server** | http://contract-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 > `/etc/hosts` entries are added to `127.0.0.1` by `bootstrap-local.sh`. You may need `sudo` on first run.
@@ -189,10 +192,10 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | Script | Purpose | Called by |
 |---|---|---|
 | `setup.sh` | **Entry point.** Interactive: replaces placeholders (org, AWS account, region, cluster name), creates `.env` files, then dispatches to local or AWS bootstrap. | You (once) |
-| `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. `--start-backstage` builds + starts Backstage, wires nginx, seeds metrics. `--destroy` tears everything down. | `setup.sh` → local path, or standalone |
+| `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. `--start-backstage` builds + starts Backstage, wires nginx, seeds metrics. `--destroy` tears everything down: removes scaffolded services from ArgoCD + Helm + git, then deletes the cluster. | `setup.sh` → local path, or standalone |
 | `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components, and pushes `hello-service` to ECR. ~45–60 min. See [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for full walkthrough. | `setup.sh` → AWS path, or standalone |
 | `validate-deployment.sh` | **Post-deploy validation.** Runs 50+ automated tests across AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage. Exit 0 = success, 1 = failure with debug suggestions. | After `bootstrap.sh` completes |
-| `cleanup.sh` | **Safe teardown.** Deletes orphaned load balancers, disables RDS deletion protection, runs `terraform destroy`, and verifies complete cleanup. Use `--force` flag to skip interactive prompts. | When tearing down AWS resources |
+| `cleanup.sh` | **Safe teardown.** Runs eight ordered phases: delete ALBs → disable RDS protection → clean Crossplane resources → empty S3/ECR → **remove scaffolded services from ArgoCD + Helm + git** → terraform destroy → delete CloudWatch log groups → verify. Use `--force` to skip prompts. | When tearing down AWS resources |
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |

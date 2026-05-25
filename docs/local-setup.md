@@ -337,8 +337,15 @@ troubleshooting guide.
 
 ```bash
 ./scripts/bootstrap-local.sh --destroy
-# Removes Kind cluster and local registry container.
-# If the kagent/ml-platform/services-dev namespaces exist it calls
-# bootstrap-ai.sh --destroy automatically (local scope only — aws/ manifests
-# are never touched by this path).
 ```
+
+The destroy sequence runs in this order:
+
+1. **AI/ML teardown** — if `kagent`, `ml-platform`, or `services-dev` namespaces exist, calls `bootstrap-ai.sh --destroy` (local scope only; `aws/` manifests are never touched).
+2. **Scaffolded service cleanup** — auto-discovers every service in `services/` that is not a platform built-in (`hello-service`, `idp-mcp-server`, `qa-mcp-server`, `contract-mcp-server`). For each one:
+   - Deletes the ArgoCD Application (cascade-deletes all managed K8s resources)
+   - Uninstalls the Helm release from `services-dev` / `services`
+   - Removes the `services/<name>/` directory from the repo and commits + pushes it (`[skip ci]`)
+3. **Cluster deletion** — Kind: `kind delete cluster`; Rancher Desktop: deletes all platform namespaces.
+4. **Docker cleanup** — stops the Backstage compose stack, prunes images and volumes.
+5. **`/etc/hosts` cleanup** — removes all IDP hostname entries.

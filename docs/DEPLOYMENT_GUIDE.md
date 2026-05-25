@@ -522,7 +522,7 @@ EOF
 ./scripts/cleanup.sh --cluster-name idp-mvp --force
 ```
 
-`cleanup.sh` runs seven ordered phases:
+`cleanup.sh` runs eight ordered phases:
 
 | Phase | What it does |
 |---|---|
@@ -530,6 +530,7 @@ EOF
 | 2 — RDS protection | Disables deletion protection on the Backstage RDS instance |
 | 3 — Crossplane resources | Finds all resources tagged `idp:provisioner=crossplane` via Resource Groups Tagging API and deletes them: S3 buckets (all versions + delete markers), RDS instances, DynamoDB tables, SQS queues. MSK topics are destroyed implicitly with the cluster in Phase 5. |
 | 4 — S3 + ECR empty | Empties Terraform-managed S3 buckets (TechDocs, MLflow artifacts) and ECR repos — AWS blocks `terraform destroy` if either contains objects/images |
+| 4.5 — Scaffolded services | Auto-discovers all user-scaffolded services in `services/` (excludes built-ins: `hello-service`, `idp-mcp-server`, `qa-mcp-server`, `contract-mcp-server`). Deletes their ArgoCD Applications (cascade-deletes K8s resources), uninstalls Helm releases, removes `services/<name>/` directories from the repo, and commits + pushes the deletion. Runs while EKS is still up so ArgoCD can cascade-delete cleanly. |
 | 5 — Terraform destroy | Destroys all Terraform-managed resources: EKS, VPC, IAM, Backstage RDS, ECR repos, Secrets Manager |
 | 6 — CloudWatch | Deletes EKS-generated log groups (`/aws/eks/<cluster>`, `/aws/containerinsights/<cluster>`) — these persist and accumulate cost after cluster deletion |
 | 7 — Verify | Checks EKS, RDS, ALBs, Crossplane-tagged resources, and CloudWatch log groups are all zero |
@@ -560,3 +561,5 @@ To tear down only the local Kind/Rancher cluster (no AWS resources are affected)
 ```bash
 ./scripts/bootstrap-local.sh --destroy
 ```
+
+This runs the same scaffolded-service cleanup logic (ArgoCD Applications deleted, Helm releases uninstalled, `services/<name>/` directories removed and committed) before the Kind cluster or Rancher Desktop namespaces are deleted.
