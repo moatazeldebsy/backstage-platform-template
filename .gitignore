@@ -53,8 +53,12 @@ backstage/catalog/scaffolded/*/
 kubeconfig
 
 .playwright-cli/
+.playwright-mcp/
 
 .claude/
+
+# MkDocs build output
+site/
 
 # macOS Finder / SMB lock-files (e.g. .!12345!handler.zip)
 .!*
@@ -64,6 +68,7 @@ AWS_*.md
 LOCAL_*.md
 LOCAL_VS_AWS_URLS.md
 DEMO_*.md
+DEMO_*.sh
 DEPLOYMENT_*.md
 FINAL_*.md
 AIML_*.md
