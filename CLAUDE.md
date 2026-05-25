@@ -51,7 +51,7 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 ./scripts/bootstrap-local.sh --install-pushgateway        # install/repair Pushgateway + seed QA metrics
 ./scripts/bootstrap-local.sh --install-argocd             # install/repair ArgoCD + register GitHub creds
 ./scripts/bootstrap-local.sh --print-urls                 # print all service URLs without bootstrapping
-./scripts/bootstrap-local.sh --destroy                    # tear everything down
+./scripts/bootstrap-local.sh --destroy                    # tear everything down (see Cleanup / Destroy below)
 ```
 
 **Rancher Desktop prerequisites (one-time):**
@@ -135,6 +135,50 @@ terraform init -backend=false && terraform validate
 ./scripts/bootstrap-ai.sh --skip-mlflow | --skip-mcp | --skip-kagent
 ./scripts/bootstrap-ai.sh --destroy
 ```
+
+### Cleanup / Destroy
+
+#### Local (Kind / Rancher Desktop)
+
+```bash
+./scripts/bootstrap-local.sh --destroy
+```
+
+Destroy sequence (in order, while the cluster is still up):
+1. AI/ML teardown — calls `bootstrap-ai.sh --destroy` if `kagent`, `ml-platform`, or `services-dev` exist.
+2. **Scaffolded service cleanup** — `_cleanup_scaffolded_services "local"` (defined in `scripts/lib.sh`):
+   - Auto-discovers every `services/*/` directory that is not a platform built-in.
+   - Platform built-ins never touched: `hello-service`, `idp-mcp-server`, `qa-mcp-server`, `contract-mcp-server`.
+   - For each scaffolded service: deletes the ArgoCD Application (`<name>-local`, cascade), uninstalls the Helm release from `services-dev` and `services`, removes `services/<name>/` from the repo, commits + pushes (`[skip ci]`).
+3. Kind cluster deleted (`kind delete cluster`) — or Rancher Desktop namespaces deleted.
+4. Docker compose stack stopped; images and volumes pruned.
+5. `/etc/hosts` entries removed.
+
+**Not cleaned up (intentional):**
+- `kubernetes/teams/<name>/` — team/org structure; safe and desirable to reapply on a new cluster.
+- GitHub repos of scaffolded services — external, never auto-deleted.
+- `test-suites/` — pre-committed demo content, not dynamically scaffolded into the platform repo.
+
+#### AWS
+
+```bash
+./scripts/cleanup.sh --cluster-name idp-mvp --force
+```
+
+Eight ordered phases (while EKS is still up through Phase 4.5):
+
+| Phase | What |
+|---|---|
+| 1 | Delete ALBs / Classic ELBs |
+| 2 | Disable RDS deletion protection |
+| 3 | Delete Crossplane-tagged resources (S3, RDS, DynamoDB, SQS) |
+| 4 | Empty Terraform-managed S3 buckets + ECR repos |
+| **4.5** | **Scaffolded service cleanup** — same logic as local: ArgoCD Applications deleted (cascade), Helm releases uninstalled, `services/<name>/` removed and committed |
+| 5 | `terraform destroy` |
+| 6 | Delete CloudWatch log groups |
+| 7 | Verify all resources gone |
+
+**Adding cleanup for a new scaffold type:** If a new template writes files into the platform repo under a directory other than `services/`, extend `_cleanup_scaffolded_services` in `scripts/lib.sh` to scan that directory too.
 
 ### MCP servers (idp-mcp-server, qa-mcp-server, contract-mcp-server)
 
