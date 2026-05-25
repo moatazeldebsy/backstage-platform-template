@@ -133,5 +133,5 @@ spec:
         icon: catalog
         entityRef: ${{ steps.catalog.output.entityRef }}
       - title: KAgent UI
-        url: http://kagent.idp.local
+        url: ${{ steps.deploy.output.agentUrl }}
         icon: dashboard

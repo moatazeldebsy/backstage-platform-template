@@ -91,6 +91,10 @@ spec:
               value: "http://MLFLOW_ALB_URL"
             - name: APP_BASE_URL
               value: "http://BACKSTAGE_ALB_URL"
+            - name: KAGENT_EXTERNAL_URL
+              value: "http://KAGENT_ALB_URL"
+            - name: CONTRACT_MCP_EXTERNAL_URL
+              value: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
             - name: PGSSLMODE
               value: require
             - name: NODE_ENV

@@ -121,8 +121,9 @@ function createDeployAgentAction() {
         await fs.unlink(tmpFile).catch(() => undefined);
       }
 
-      ctx.logger.info(`✓ Agent '${name}' is live — open http://kagent.idp.local to chat with it`);
-      ctx.output('agentUrl', 'http://kagent.idp.local');
+      const kagentUrl = process.env.KAGENT_EXTERNAL_URL ?? 'http://kagent.idp.local';
+      ctx.logger.info(`✓ Agent '${name}' is live — open ${kagentUrl} to chat with it`);
+      ctx.output('agentUrl', kagentUrl);
     },
   });
 }

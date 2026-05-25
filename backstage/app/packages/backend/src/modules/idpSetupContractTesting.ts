@@ -8,10 +8,36 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 
 const execAsync = promisify(exec);
+const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
 const kubeEnv = {
   ...process.env,
-  KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
+  KUBECONFIG: KUBECONFIG_PATH,
 };
+
+async function ensureKubeconfig(): Promise<void> {
+  const k8sUrl = process.env.K8S_CLUSTER_URL;
+  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
+  if (!k8sUrl || !k8sToken) return;
+  const kubeconfig = `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: ${k8sUrl}
+    insecure-skip-tls-verify: true
+  name: cluster
+contexts:
+- context:
+    cluster: cluster
+    user: backstage
+  name: default
+current-context: default
+users:
+- name: backstage
+  user:
+    token: ${k8sToken}
+`;
+  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
+}
 
 const CONTRACT_MCP_HELM_VALUES = `
 fullnameOverride: contract-mcp-server
@@ -248,15 +274,16 @@ function createSetupContractTestingAction() {
       const skipDeploy = (ctx.input['skipDeploy'] as boolean | undefined) ?? false;
 
       // ── Step 1: Verify cluster is reachable ───────────────────────────────
-      ctx.logger.info('Verifying Kind cluster is reachable...');
+      ctx.logger.info('Verifying Kubernetes cluster is reachable...');
+      await ensureKubeconfig();
       try {
         await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
       } catch (e: any) {
-        throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
+        throw new Error(`Cannot reach the Kubernetes cluster: ${e.message}`);
       }
 
       // ── Step 2: Deploy contract-mcp-server (idempotent) ───────────────────
-      const contractServerUrl = 'http://contract-mcp-server.idp.local';
+      const contractServerUrl = process.env.CONTRACT_MCP_EXTERNAL_URL ?? 'http://contract-mcp-server.idp.local';
       const alreadyDeployed = await isHelmReleaseDeployed('contract-mcp-server', 'services-dev');
 
       if (skipDeploy || alreadyDeployed) {
@@ -362,12 +389,13 @@ function createSetupContractTestingAction() {
         }
       }
 
+      const kagentUrl = process.env.KAGENT_EXTERNAL_URL ?? 'http://kagent.idp.local';
       ctx.logger.info(`✓ Contract testing platform is live`);
       ctx.logger.info(`  MCP Server: ${contractServerUrl}`);
-      ctx.logger.info(`  Agent UI:   http://kagent.idp.local (contract-assistant)`);
+      ctx.logger.info(`  Agent UI:   ${kagentUrl} (contract-assistant)`);
 
       ctx.output('contractServerUrl', contractServerUrl);
-      ctx.output('agentUrl', 'http://kagent.idp.local');
+      ctx.output('agentUrl', kagentUrl);
       ctx.output('contractRegistered', String(contractRegistered));
       ctx.output('discoveredPaths', JSON.stringify(discoveredPaths));
     },
