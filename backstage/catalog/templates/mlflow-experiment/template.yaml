@@ -90,8 +90,8 @@ spec:
   output:
     links:
       - title: MLflow UI
-        url: http://mlflow.idp.local
+        url: ${{ steps.train.output.mlflowUrl }}
         icon: dashboard
       - title: Open in Catalog
-        url: http://backstage.idp.local/catalog/default/component/${{ parameters.name }}
+        url: ${{ steps.train.output.catalogUrl }}
         icon: catalog

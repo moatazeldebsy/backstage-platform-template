@@ -89,6 +89,8 @@ spec:
                   key: VOYAGE_API_KEY
             - name: MLFLOW_EXTERNAL_URL
               value: "http://MLFLOW_ALB_URL"
+            - name: APP_BASE_URL
+              value: "http://BACKSTAGE_ALB_URL"
             - name: PGSSLMODE
               value: require
             - name: NODE_ENV

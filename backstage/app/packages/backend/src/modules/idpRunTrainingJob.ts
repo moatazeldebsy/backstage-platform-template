@@ -216,11 +216,13 @@ function createRunTrainingJobAction() {
       }
 
       const mlflowExternalUrl = process.env.MLFLOW_EXTERNAL_URL ?? 'http://mlflow.idp.local';
+      const backstageBaseUrl = process.env.APP_BASE_URL ?? process.env.BACKSTAGE_URL ?? 'http://backstage.idp.local';
       ctx.logger.info(`✓ Job '${jobName}' submitted to ml-platform namespace`);
       ctx.logger.info(`  Training will appear at ${mlflowExternalUrl} once the pod completes (~60–90s for image pull + training)`);
       ctx.logger.info(`  Monitor: kubectl get pods -n ml-platform -l app=${name}`);
 
       ctx.output('mlflowUrl', mlflowExternalUrl);
+      ctx.output('catalogUrl', `${backstageBaseUrl}/catalog/default/component/${name}`);
       ctx.output('jobName', jobName);
     },
   });
