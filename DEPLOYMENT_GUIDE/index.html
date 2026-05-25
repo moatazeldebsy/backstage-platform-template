@@ -1219,7 +1219,7 @@
 <tr>
 <td>4.6 — ArgoCD GitOps</td>
 <td>1 min</td>
-<td><code>idp-services</code> ApplicationSet (auto-discovers services/)</td>
+<td><code>idp-services</code> ApplicationSet auto-discovers <code>services/*</code> and deploys <code>hello-service</code>, <code>idp-mcp-server</code>, <code>qa-mcp-server</code> to <code>services-dev</code>. <code>contract-mcp-server</code> is excluded — deployed only by <code>bootstrap-ai.sh --aws</code>.</td>
 </tr>
 <tr>
 <td>5 — hello-service</td>

@@ -1442,7 +1442,7 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 </tr>
 <tr>
 <td>13</td>
-<td>Applies ArgoCD ApplicationSet (manages hello-service, idp-mcp-server, qa-mcp-server in services-dev) and removes the bootstrap-deployed hello-service from services namespace</td>
+<td>Applies ArgoCD <code>idp-services</code> ApplicationSet — auto-discovers <code>services/*</code> and deploys <code>hello-service</code>, <code>idp-mcp-server</code>, and <code>qa-mcp-server</code> to <code>services-dev</code>. <code>contract-mcp-server</code> is <strong>excluded</strong> from the ApplicationSet and is only deployed by <code>bootstrap-ai.sh</code>. Removes the bootstrap-deployed <code>hello-service</code> from the <code>services</code> namespace.</td>
 </tr>
 </tbody>
 </table>
