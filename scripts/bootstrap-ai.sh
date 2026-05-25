@@ -64,9 +64,10 @@ if $DESTROY; then
   info "Tearing down AI/ML platform components (core platform untouched)..."
 
   # Ingresses first — deleting the namespace races with finalizer cleanup
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ingress.yaml"              2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ingress-idp-assistant.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ingress-aws.yaml"          2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/local/kagent/ingress.yaml"              2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/local/kagent/ingress-idp-assistant.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/kagent/ingress.yaml"                   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/kagent/ingress-idp-assistant.yaml"    2>/dev/null || true
 
   # KAgent Helm releases + resources
   helm uninstall kagent      --namespace kagent 2>/dev/null || true
@@ -85,7 +86,7 @@ if $DESTROY; then
 
   # MLflow
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow-aws.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
 
   # KAgent contract resources
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml" 2>/dev/null || true
@@ -135,16 +136,19 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws sts get-caller-identity &>/dev/null || die "AWS credentials not configured"
   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
   REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CLUSTER_NAME}"
-  # Ensure ECR repos exist for all MCP server images (idempotent)
+  # Ensure ECR repos exist for all MCP server images (idempotent).
+  # Repo names must match the Terraform convention: ${CLUSTER_NAME}/${repo}
+  # so that the REGISTRY path (…/${CLUSTER_NAME}/${repo}) resolves correctly.
   for _repo in idp-mcp-server qa-mcp-server contract-mcp-server; do
-    aws ecr describe-repositories --region "${AWS_REGION}" --repository-names "${_repo}" &>/dev/null || \
+    _full_repo="${CLUSTER_NAME}/${_repo}"
+    aws ecr describe-repositories --region "${AWS_REGION}" --repository-names "${_full_repo}" &>/dev/null || \
       aws ecr create-repository \
-        --repository-name "${_repo}" \
+        --repository-name "${_full_repo}" \
         --region "${AWS_REGION}" \
         --image-scanning-configuration scanOnPush=true \
         --image-tag-mutability MUTABLE \
         --query 'repository.repositoryUri' --output text \
-      && info "Created ECR repository: ${_repo}"
+      && info "Created ECR repository: ${_full_repo}"
   done
 
   # Login to ECR once; subsequent docker push calls reuse the session
@@ -258,7 +262,7 @@ else
     MLFLOW_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw mlflow_role_arn 2>/dev/null || echo "")
     [[ -n "$MLFLOW_ROLE_ARN" ]] || die "Could not read mlflow_role_arn from Terraform outputs."
     sed "s|MLFLOW_ARTIFACTS_BUCKET_PLACEHOLDER|${MLFLOW_BUCKET}|g" \
-      "${REPO_ROOT}/kubernetes/ml-platform/mlflow-aws.yaml" | kubectl apply -f -
+      "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" | kubectl apply -f -
     kubectl annotate serviceaccount mlflow \
       -n ml-platform \
       "eks.amazonaws.com/role-arn=${MLFLOW_ROLE_ARN}" \
@@ -277,22 +281,28 @@ fi
 if [[ "$SKIP_KAGENT" == "true" ]]; then
   info "Skipping KAgent (--skip-kagent)."
 else
-  info "Installing KAgent via Helm (OCI registry)..."
+  # Pinned to a known-good release. Bump deliberately after testing — unpinned
+  # installs pulled a breaking chart version that crashes /agents/new and /prompts/new.
+  KAGENT_CHART_VERSION="0.9.2"
+
+  info "Installing KAgent via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
   helm upgrade --install kagent-crds \
     oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds \
+    --version "${KAGENT_CHART_VERSION}" \
     --namespace kagent \
     --create-namespace \
     --wait \
     --timeout 5m
 
   KAGENT_VALUES="${REPO_ROOT}/local/kagent/values.yaml"
-  [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/kubernetes/kagent/values-aws.yaml"
+  [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/aws/kagent/values.yaml"
 
   # --force-conflicts: Helm v4 uses server-side apply; the kubectl patches below
   # take field ownership on first install, so subsequent helm upgrades would
   # fail with "conflict with kubectl-patch" without this flag.
   helm upgrade --install kagent \
     oci://ghcr.io/kagent-dev/kagent/helm/kagent \
+    --version "${KAGENT_CHART_VERSION}" \
     --namespace kagent \
     --values "${KAGENT_VALUES}" \
     --force-conflicts
@@ -301,7 +311,7 @@ else
   kubectl rollout status deployment/kagent-controller -n kagent --timeout=5m || \
     warn "kagent-controller not ready yet — pods are starting, will self-heal. Continuing..."
 
-  check "KAgent installed"
+  check "KAgent installed (v${KAGENT_CHART_VERSION})"
 
   # ── 4b. Patch PostgreSQL to use pgvector image ───────────────────────────────
   # The KAgent helm chart (v0.9.2) does not propagate postgres.bundled.image or
@@ -342,6 +352,25 @@ else
     warn "kagent-controller rollout slow — continuing; pod will become ready shortly."
   check "pgvector extension enabled → memory table will be created on controller start"
 
+  # Wait for the controller HTTP API to be serving before applying resources.
+  # rollout status only checks the pod readiness probe; the API needs extra seconds
+  # to initialize its DB schema. Without this wait, SSR calls from kagent-ui to
+  # /agents/new and /prompts/new hit the API before it's ready → "This page couldn't load".
+  info "Waiting for KAgent controller API to be ready..."
+  _ctrl_pod=""
+  for i in $(seq 1 40); do
+    _ctrl_pod=$(kubectl get pod -n kagent --no-headers 2>/dev/null | awk '/kagent-controller-/{print $1;exit}')
+    if [[ -n "$_ctrl_pod" ]]; then
+      if kubectl exec -n kagent "$_ctrl_pod" -- \
+          wget -qO- http://127.0.0.1:8083/healthz &>/dev/null 2>&1; then
+        break
+      fi
+    fi
+    sleep 5
+  done
+  [[ -n "$_ctrl_pod" ]] && check "KAgent controller API healthy" || \
+    warn "KAgent controller API health check timed out — UI pages may show errors on first load"
+
   # ── 5. KAgent resources ─────────────────────────────────────────────────────
 
   info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
@@ -360,15 +389,17 @@ else
     KAGENT_ESO_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw kagent_eso_role_arn 2>/dev/null || echo "")
     [[ -n "$KAGENT_ESO_ROLE_ARN" ]] || die "Could not read kagent_eso_role_arn from Terraform outputs."
     sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
-      "${REPO_ROOT}/kubernetes/kagent/external-secret-aws.yaml" | kubectl apply -f -
+      "${REPO_ROOT}/aws/kagent/external-secret.yaml" | kubectl apply -f -
     kubectl annotate serviceaccount kagent-eso-sa \
       -n kagent \
       "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" \
       --overwrite
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-aws.yaml"
+    kubectl apply -f "${REPO_ROOT}/aws/kagent/ingress.yaml"
+    kubectl apply -f "${REPO_ROOT}/aws/kagent/ingress-idp-assistant.yaml"
     check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
     check "KAgent ExternalSecret → idp-mvp/kagent (Secrets Manager)"
     check "KAgent UI ingress → ALB (AWS Load Balancer Controller)"
+    check "IDP Assistant A2A ingress → ALB (AWS Load Balancer Controller)"
   else
     # Local: create API key secret directly + nginx ingresses (HTTP)
     # Delete first: machines that ran the pre-fe4fce2 bootstrap-ai.sh have
@@ -378,8 +409,8 @@ else
     # its fake default certificate for HTTPS requests and the browser shows
     # a cert error. Recreating the ingress objects guarantees a clean spec.
     kubectl delete ingress kagent-ui idp-assistant -n kagent --ignore-not-found 2>/dev/null || true
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress.yaml"
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/ingress-idp-assistant.yaml"
+    kubectl apply -f "${REPO_ROOT}/local/kagent/ingress.yaml"
+    kubectl apply -f "${REPO_ROOT}/local/kagent/ingress-idp-assistant.yaml"
     check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
     check "KAgent UI ingress → http://kagent.idp.local"
     check "IDP Assistant ingress → http://idp-assistant.idp.local"
@@ -390,6 +421,16 @@ else
     # No hostAliases patch needed; the controller is reached directly in-cluster.
     check "kagent-ui SSR → kagent-controller.kagent.svc.cluster.local:8083"
   fi
+
+  # Restart kagent-ui so its Next.js SSR cache is rebuilt against the now-ready
+  # controller. Without this, the cached SSR state from startup reflects the
+  # pre-ready controller, causing /agents/new and /prompts/new to crash until
+  # the pod is manually restarted.
+  info "Restarting kagent-ui to pick up ready controller state..."
+  kubectl rollout restart deployment/kagent-ui -n kagent 2>/dev/null || true
+  kubectl rollout status  deployment/kagent-ui -n kagent --timeout=3m 2>/dev/null || \
+    warn "kagent-ui restart slow — /agents/new and /prompts/new should load once it's ready."
+  check "kagent-ui restarted → SSR cache rebuilt against ready controller"
 
   # ── 5d. Self-heal stuck RemoteMCPServers ─────────────────────────────────────
   # Known kagent bug: the reconciler's tool-refresh transaction (DELETE + INSERT)
@@ -508,7 +549,7 @@ else
         docker push "${REGISTRY}/${SVC}:0.1.0"
         docker push "${REGISTRY}/${SVC}:latest"
         sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
-          "${REPO_ROOT}/services/${SVC}/helm-values-dev.yaml" \
+          "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
           | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
               --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
         check "${SVC} deployed → ALB"
@@ -567,9 +608,9 @@ echo "╠═══════════════════════�
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           ALB DNS  (kubectl get ingress -n kagent)         ║"
   [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              ALB DNS  (kubectl get ingress -n ml-platform)    ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      ALB DNS  (kubectl get ingress -n services)       ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       ALB DNS  (kubectl get ingress -n services)       ║"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server ALB DNS  (kubectl get ingress -n services)       ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      ALB DNS  (kubectl get ingress -n services-dev)   ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       ALB DNS  (kubectl get ingress -n services-dev)   ║"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server ALB DNS  (kubectl get ingress -n services-dev)   ║"
 else
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local                         ║"
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant         ║"
