@@ -1227,7 +1227,7 @@
 <li>ArgoCD shows the app as <code>Degraded</code></li>
 </ul>
 <h2 id="root-cause">Root Cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h2>
-<p>The image referenced in <code>helm-values-dev.yaml</code> (or <code>helm-values-local.yaml</code>) does not exist in the local registry at <code>localhost:5003</code>. This happens when:</p>
+<p>The image referenced in <code>helm-values-aws.yaml</code> (or <code>helm-values-local.yaml</code>) does not exist in the local registry at <code>localhost:5003</code>. This happens when:</p>
 <ol>
 <li>A new service was scaffolded via Backstage or <code>create-service.sh</code> and the PR was merged — but the Docker image was <strong>never built and pushed</strong> to the local registry.</li>
 <li>The local Kind cluster was destroyed and recreated (<code>bootstrap-local.sh --destroy</code> + re-bootstrap) — all registry contents are lost.</li>

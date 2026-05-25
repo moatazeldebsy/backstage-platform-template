@@ -1468,7 +1468,7 @@ docker<span class="w"> </span>push<span class="w"> </span>&lt;ECR_URI&gt;/backst
 <span class="w">          </span><span class="no">--namespace services --create-namespace \</span>
 <span class="w">          </span><span class="no">--set image.repository=$REGISTRY/${{ env.SERVICE_NAME }} \</span>
 <span class="w">          </span><span class="no">--set image.tag=${{ github.sha }} \</span>
-<span class="w">          </span><span class="no">--values helm-values.yaml \</span>
+<span class="w">          </span><span class="no">--values helm-values-aws.yaml \</span>
 <span class="w">          </span><span class="no">--wait --timeout 120s</span>
 </code></pre></div></td></tr></table></div>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>

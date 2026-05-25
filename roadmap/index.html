@@ -1716,12 +1716,12 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 <tr>
 <td>ArgoCD app-of-apps for prod</td>
 <td>🔴 High</td>
-<td><code>kubernetes/argocd/app-of-apps-prod.yaml</code>; watches <code>helm-values-prod.yaml</code></td>
+<td><code>aws/argocd/app-of-apps-prod.yaml</code>; watches <code>helm-values-prod.yaml</code></td>
 </tr>
 <tr>
 <td><code>update-image-tag</code> CI step (multi-env)</td>
 <td>🔴 High</td>
-<td>CI writes SHA tag to <code>helm-values-dev.yaml</code>; promotion PR updates staging/prod values</td>
+<td>CI writes SHA tag to <code>helm-values-aws.yaml</code>; promotion PR updates staging/prod values</td>
 </tr>
 <tr>
 <td>Namespace isolation per environment</td>
@@ -1901,7 +1901,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 <tr>
 <td>TLS on all ingresses</td>
 <td>🔴 High</td>
-<td>Deploy cert-manager; add <code>tls:</code> sections to all ingress resources in <code>kubernetes/ingress/</code></td>
+<td>Deploy cert-manager; add <code>tls:</code> sections to all ingress resources in <code>aws/ingress/</code></td>
 </tr>
 <tr>
 <td>Backstage auth: disable guest + production mode</td>
@@ -1958,7 +1958,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 <tr>
 <td>ArgoCD HA mode</td>
 <td>🔴 High</td>
-<td><code>kubernetes/argocd/argocd-helm-values.yaml</code> — replicaCount ≥ 3 for server, repo-server, applicationSet</td>
+<td><code>aws/argocd/argocd-helm-values.yaml</code> — replicaCount ≥ 3 for server, repo-server, applicationSet</td>
 </tr>
 <tr>
 <td>PodDisruptionBudgets</td>

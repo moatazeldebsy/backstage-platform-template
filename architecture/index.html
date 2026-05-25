@@ -698,6 +698,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#repository-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repository Layout
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#aiml-platform" class="md-nav__link">
     <span class="md-ellipsis">
       AI/ML Platform
@@ -1465,7 +1474,7 @@
 <h3 id="convention-over-configuration">Convention over configuration<a class="headerlink" href="#convention-over-configuration" title="Permanent link">&para;</a></h3>
 <p>Every service gets the same: container registry, CI workflow, Helm chart structure, health check paths, namespace, and monitoring. Developers don't configure these — they inherit them from the golden path.</p>
 <h3 id="helm-as-the-single-deployment-abstraction">Helm as the single deployment abstraction<a class="headerlink" href="#helm-as-the-single-deployment-abstraction" title="Permanent link">&para;</a></h3>
-<p>The <code>helm/service-template</code> chart is the single deployment unit for both local (Kind) and cloud (EKS). Service teams only override their <code>helm-values.yaml</code> or <code>helm-values-local.yaml</code> — no raw Kubernetes YAML.</p>
+<p>The <code>helm/service-template</code> chart is the single deployment unit for both local (Kind) and cloud (EKS). Service teams override only two files — <code>helm-values-local.yaml</code> (Kind/nginx) or <code>helm-values-aws.yaml</code> (EKS/ALB) — no raw Kubernetes YAML.</p>
 <h3 id="ci-only-in-github-actions-for-now">CI only in GitHub Actions (for now)<a class="headerlink" href="#ci-only-in-github-actions-for-now" title="Permanent link">&para;</a></h3>
 <p>Scaffolded service workflows run <code>test</code> on <code>ubuntu-latest</code>. No self-hosted runners are required. CD is handled by the <code>idp:deploy-local</code> Backstage action (local) or will be added as an AWS deploy job when secrets are configured.</p>
 <h3 id="custom-backstage-action-for-local-deploy">Custom Backstage action for local deploy<a class="headerlink" href="#custom-backstage-action-for-local-deploy" title="Permanent link">&para;</a></h3>
@@ -1482,6 +1491,73 @@
 <p>All <code>Ingress</code> resources use <code>ingressClassName: alb</code>, backed by the AWS Load Balancer Controller. Supports <code>target-type: ip</code> (pod-level routing without NodePort).</p>
 <h3 id="iac-split-terraform-foundation-crossplane-per-service">IaC split: Terraform (foundation) + Crossplane (per-service)<a class="headerlink" href="#iac-split-terraform-foundation-crossplane-per-service" title="Permanent link">&para;</a></h3>
 <p>Both tools coexist by <strong>lifecycle</strong>, not by resource type. Terraform owns one-shot foundation (VPC, EKS, IAM, ECR, Secrets Manager scaffolding, <strong>and</strong> the IRSA role Crossplane providers assume). Crossplane owns day-2 per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) requested via Backstage scaffolder templates and reconciled in-cluster by ArgoCD — no manual <code>terraform apply</code> step. See <a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> for the decision matrix and <a href="../crossplane/">crossplane.md</a> for the end-to-end flow.</p>
+<h2 id="repository-layout">Repository Layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
+<p>The repository is split into three top-level directories based on deployment target:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>local/          → 100% local-only (Kind / Rancher Desktop)
+aws/            → 100% AWS-only  (EKS / Terraform / Secrets Manager)
+kubernetes/     → 100% shared    (applied by both bootstrap scripts)
+</code></pre></div></td></tr></table></div>
+<table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>Owned by</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>local/</code></td>
+<td><code>bootstrap-local.sh</code></td>
+<td>Kind cluster config, nginx ingress values, Docker Compose for Backstage, local ArgoCD ApplicationSet, local Prometheus values, DORA exporter (local)</td>
+</tr>
+<tr>
+<td><code>aws/</code></td>
+<td><code>bootstrap.sh</code></td>
+<td>ArgoCD values + app-of-apps, External Secrets Operator, Crossplane providers + compositions, Backstage K8s deployment + external secret, KAgent AWS values/ingress/secret, ALB ingresses, MLflow (S3 backend), DORA exporter (AWS), AWS Prometheus values</td>
+</tr>
+<tr>
+<td><code>kubernetes/</code></td>
+<td>Both scripts</td>
+<td>Namespaces, RBAC, OPA/Gatekeeper policies, team entities, shared monitoring dashboards (ConfigMaps), KAgent agent CRDs, Backstage RBAC + configmap</td>
+</tr>
+<tr>
+<td><code>terraform/</code></td>
+<td>Manual (<code>terraform apply</code>)</td>
+<td>EKS, VPC, RDS, ECR, IAM/OIDC, Secrets Manager scaffolding</td>
+</tr>
+<tr>
+<td><code>helm/service-template/</code></td>
+<td>Both</td>
+<td>Single Helm chart used by every service</td>
+</tr>
+<tr>
+<td><code>services/&lt;svc&gt;/</code></td>
+<td>Per-service CI</td>
+<td>Source, Dockerfile, <code>helm-values-local.yaml</code> (Kind), <code>helm-values-aws.yaml</code> (EKS)</td>
+</tr>
+<tr>
+<td><code>observability/</code></td>
+<td>Both</td>
+<td>Shared alerting rules, Grafana dashboards, DORA/tech-insights exporters</td>
+</tr>
+<tr>
+<td><code>backstage/</code></td>
+<td>Both</td>
+<td>Portal source, <code>app-config.yaml</code> (base), <code>app-config.local.yaml</code> (local overrides), catalog templates</td>
+</tr>
+<tr>
+<td><code>scripts/</code></td>
+<td>Both</td>
+<td><code>bootstrap-local.sh</code> (local), <code>bootstrap.sh</code> (AWS), <code>bootstrap-ai.sh</code> (both), shared <code>lib.sh</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bootstrap script ownership:</strong>
+- <code>bootstrap-local.sh</code> reads from <code>local/</code> + <code>kubernetes/</code> only — never touches <code>aws/</code>
+- <code>bootstrap.sh</code> reads from <code>aws/</code> + <code>kubernetes/</code> only — never touches <code>local/</code></p>
 <h2 id="aiml-platform">AI/ML Platform<a class="headerlink" href="#aiml-platform" title="Permanent link">&para;</a></h2>
 <h3 id="how-the-ai-assistant-works-end-to-end">How the AI Assistant works end-to-end<a class="headerlink" href="#how-the-ai-assistant-works-end-to-end" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
@@ -1606,12 +1682,12 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </tr>
 <tr>
 <td>Crossplane providers + Compositions</td>
-<td><code>kubernetes/crossplane/</code></td>
+<td><code>aws/crossplane/</code></td>
 <td>Per-service S3/RDS/MSK/DynamoDB/SQS via Claims</td>
 </tr>
 <tr>
 <td>ArgoCD Crossplane stack</td>
-<td><code>kubernetes/argocd/crossplane.yaml</code></td>
+<td><code>aws/argocd/crossplane.yaml</code></td>
 <td>Sync-wave-ordered install: core → providers → compositions</td>
 </tr>
 <tr>
@@ -1666,12 +1742,12 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </tr>
 <tr>
 <td>kube-prometheus-stack values (AWS)</td>
-<td><code>observability/prometheus-stack-values-aws.yaml</code></td>
+<td><code>aws/observability/prometheus-stack-values.yaml</code></td>
 <td>Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention)</td>
 </tr>
 <tr>
 <td>ClusterSecretStore</td>
-<td><code>kubernetes/external-secrets/cluster-secret-store.yaml</code></td>
+<td><code>aws/external-secrets/cluster-secret-store.yaml</code></td>
 <td>ESO → AWS Secrets Manager backend</td>
 </tr>
 <tr>
@@ -1681,12 +1757,12 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </tr>
 <tr>
 <td>DORA exporter (local)</td>
-<td><code>observability/dora/dora-cronjob-local.yaml</code></td>
+<td><code>local/observability/dora/dora-cronjob.yaml</code></td>
 <td>DORA metrics → Pushgateway (local)</td>
 </tr>
 <tr>
 <td>DORA exporter (AWS)</td>
-<td><code>observability/dora/dora-cronjob.yaml</code></td>
+<td><code>aws/observability/dora/dora-cronjob.yaml</code></td>
 <td>DORA metrics → Pushgateway + CloudWatch (AWS)</td>
 </tr>
 <tr>
@@ -2109,7 +2185,9 @@ External Secrets Operator (ESO)
 <span class="normal">30</span>
 <span class="normal">31</span>
 <span class="normal">32</span>
-<span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
   └── replaces YOUR_GITHUB_ORG placeholders, creates terraform.tfvars, local/.env
 
 ./scripts/bootstrap.sh
@@ -2137,7 +2215,9 @@ External Secrets Operator (ESO)
   │
   └── Phase 6 — Backstage (~5 min)
         Build + push Backstage image to ECR
-        kubectl apply -f kubernetes/backstage/
+        kubectl apply -f kubernetes/backstage/rbac.yaml  (shared RBAC)
+        kubectl apply -f aws/backstage/external-secret.yaml
+        kubectl apply -f aws/backstage/deployment.yaml
         ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
 
 ./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)
