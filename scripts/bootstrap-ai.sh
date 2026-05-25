@@ -63,11 +63,16 @@ command -v docker  >/dev/null || die "docker not found"
 if $DESTROY; then
   info "Tearing down AI/ML platform components (core platform untouched)..."
 
-  # Ingresses first — deleting the namespace races with finalizer cleanup
-  kubectl delete -f "${REPO_ROOT}/local/kagent/ingress.yaml"              2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/local/kagent/ingress-idp-assistant.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/aws/kagent/ingress.yaml"                   2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/aws/kagent/ingress-idp-assistant.yaml"    2>/dev/null || true
+  # Ingresses first — deleting the namespace races with finalizer cleanup.
+  # Only delete ingresses for the active DEPLOY_MODE so a local destroy never
+  # touches aws/ manifests (and vice versa).
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    kubectl delete -f "${REPO_ROOT}/aws/kagent/ingress.yaml"                2>/dev/null || true
+    kubectl delete -f "${REPO_ROOT}/aws/kagent/ingress-idp-assistant.yaml"  2>/dev/null || true
+  else
+    kubectl delete -f "${REPO_ROOT}/local/kagent/ingress.yaml"              2>/dev/null || true
+    kubectl delete -f "${REPO_ROOT}/local/kagent/ingress-idp-assistant.yaml" 2>/dev/null || true
+  fi
 
   # KAgent Helm releases + resources
   helm uninstall kagent      --namespace kagent 2>/dev/null || true
@@ -84,9 +89,11 @@ if $DESTROY; then
   # so future debugging sessions don't chase a red herring.
   kubectl delete secret kagent-tls -n kagent 2>/dev/null || true
 
-  # MLflow
-  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"     2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
+  # MLflow — shared manifest + env-specific overlay
+  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml" 2>/dev/null || true
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
+  fi
 
   # KAgent contract resources
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml" 2>/dev/null || true

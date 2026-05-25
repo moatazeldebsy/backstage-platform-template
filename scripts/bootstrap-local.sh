@@ -385,8 +385,10 @@ if $DESTROY; then
   log "Destroying local IDP platform..."
 
   # ── Tear down AI/ML components first (while cluster is still up) ──────────
+  # IMPORTANT: pass no --aws flag so bootstrap-ai.sh destroy only removes local/
+  # manifests. Never call this with --aws from a local teardown path.
   if kubectl get namespace kagent ml-platform services-dev &>/dev/null 2>&1; then
-    log "AI/ML components detected — running bootstrap-ai.sh --destroy first..."
+    log "AI/ML components detected — running bootstrap-ai.sh --destroy (local only)..."
     bash "${ROOT_DIR}/scripts/bootstrap-ai.sh" --destroy || true
   fi
 
