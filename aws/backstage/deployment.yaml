@@ -20,7 +20,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 7007
-          command: ["node", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.production.yaml"]
+          command: ["node", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
           env:
             - name: POSTGRES_HOST
               valueFrom:
@@ -82,6 +82,13 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: BACKSTAGE_CATALOG_TOKEN
+            - name: VOYAGE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: VOYAGE_API_KEY
+            - name: MLFLOW_EXTERNAL_URL
+              value: "http://MLFLOW_ALB_URL"
             - name: PGSSLMODE
               value: require
             - name: NODE_ENV
@@ -91,8 +98,8 @@ spec:
               mountPath: /config/app-config.yaml
               subPath: app-config.yaml
             - name: prod-config
-              mountPath: /config/app-config.production.yaml
-              subPath: app-config.production.yaml
+              mountPath: /config/app-config.aws.yaml
+              subPath: app-config.aws.yaml
           resources:
             requests:
               cpu: 200m

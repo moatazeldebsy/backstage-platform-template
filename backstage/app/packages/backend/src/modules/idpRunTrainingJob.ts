@@ -9,10 +9,37 @@ import * as fs from 'fs/promises';
 
 const execAsync = promisify(exec);
 
+const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
+
 const kubeEnv = {
   ...process.env,
-  KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
+  KUBECONFIG: KUBECONFIG_PATH,
 };
+
+async function ensureKubeconfig(): Promise<void> {
+  const k8sUrl = process.env.K8S_CLUSTER_URL;
+  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
+  if (!k8sUrl || !k8sToken) return; // local dev — caller has their own kubeconfig
+  const kubeconfig = `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: ${k8sUrl}
+    insecure-skip-tls-verify: true
+  name: cluster
+contexts:
+- context:
+    cluster: cluster
+    user: backstage
+  name: default
+current-context: default
+users:
+- name: backstage
+  user:
+    token: ${k8sToken}
+`;
+  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
+}
 
 const frameworkDeps: Record<string, string> = {
   sklearn: 'scikit-learn numpy',
@@ -167,11 +194,13 @@ function createRunTrainingJobAction() {
 
       ctx.logger.info(`Creating training job '${jobName}' in ml-platform (framework: ${framework}, python: ${pythonVersion})...`);
 
+      await ensureKubeconfig();
+
       // Verify cluster is reachable
       try {
         await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
-        throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
+        throw new Error(`Cannot reach the Kubernetes cluster: ${e.message}`);
       }
 
       const yaml = buildManifests({ name, experimentName, framework, pythonVersion, trainScript, deps });
@@ -186,11 +215,12 @@ function createRunTrainingJobAction() {
         await fs.unlink(tmpFile).catch(() => undefined);
       }
 
+      const mlflowExternalUrl = process.env.MLFLOW_EXTERNAL_URL ?? 'http://mlflow.idp.local';
       ctx.logger.info(`✓ Job '${jobName}' submitted to ml-platform namespace`);
-      ctx.logger.info(`  Training will appear at http://mlflow.idp.local once the pod completes (~60–90s for image pull + training)`);
+      ctx.logger.info(`  Training will appear at ${mlflowExternalUrl} once the pod completes (~60–90s for image pull + training)`);
       ctx.logger.info(`  Monitor: kubectl get pods -n ml-platform -l app=${name}`);
 
-      ctx.output('mlflowUrl', 'http://mlflow.idp.local');
+      ctx.output('mlflowUrl', mlflowExternalUrl);
       ctx.output('jobName', jobName);
     },
   });
