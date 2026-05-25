@@ -543,11 +543,17 @@ EOF
 > `idp:provisioner=crossplane` tag. RDS deletions are asynchronous —
 > the script initiates them and notes it in the summary.
 
-To tear down only the AI/ML components without touching the core platform:
+To tear down only the AI/ML components on **AWS** without touching the core platform:
 
 ```bash
-./scripts/bootstrap-ai.sh --destroy
+./scripts/bootstrap-ai.sh --aws --destroy
 ```
+
+> **Important — local vs AWS separation:** `bootstrap-ai.sh --destroy` scopes
+> deletions to the active environment. Passing `--aws` removes `aws/` ingresses
+> and the MLflow AWS overlay; omitting it removes only `local/` ingresses.
+> Never run `bootstrap-ai.sh --destroy` (without `--aws`) while `KUBECONFIG`
+> points at EKS — it will target the wrong cluster.
 
 To tear down only the local Kind/Rancher cluster (no AWS resources are affected):
 

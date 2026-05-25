@@ -269,8 +269,16 @@ The AI Assistant at `/ai-assistant` is a **native React chat UI** (not an iframe
 
 **Tear down AI/ML only** (core platform stays up):
 ```bash
+# Local Kind/Rancher Desktop — removes only local/ ingresses and manifests
 ./scripts/bootstrap-ai.sh --destroy
+
+# AWS/EKS — removes aws/ ingresses and MLflow AWS overlay
+./scripts/bootstrap-ai.sh --aws --destroy
 ```
+
+> **Warning:** `bootstrap-ai.sh --destroy` scopes deletions to the active
+> environment (`--aws` flag). Running without `--aws` while `KUBECONFIG` points
+> at EKS will target AWS resources unintentionally.
 
 > **Certificate error on `kagent.idp.local` after `bootstrap-ai.sh`?** The
 > KAgent ingresses are HTTP-only as of commit `fe4fce2`. If you ran an earlier
@@ -329,5 +337,8 @@ troubleshooting guide.
 
 ```bash
 ./scripts/bootstrap-local.sh --destroy
-# Removes Kind cluster and local registry container
+# Removes Kind cluster and local registry container.
+# If the kagent/ml-platform/services-dev namespaces exist it calls
+# bootstrap-ai.sh --destroy automatically (local scope only — aws/ manifests
+# are never touched by this path).
 ```

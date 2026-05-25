@@ -130,7 +130,21 @@ curl -sf http://grafana.idp.local > /dev/null && echo "Grafana OK"
 
 ## Teardown
 
+**Local cluster:**
 ```bash
 ./scripts/bootstrap-local.sh --destroy
 docker compose -f local/backstage/docker-compose.yml down -v
+```
+
+> `bootstrap-local.sh --destroy` automatically cleans up AI/ML components
+> (local scope only — it never touches AWS resources, even if `KUBECONFIG`
+> is set to an EKS cluster).
+
+**AWS cluster:**
+```bash
+# Remove AI/ML stack only (keeps EKS running)
+./scripts/bootstrap-ai.sh --aws --destroy
+
+# Full teardown
+./scripts/cleanup.sh --cluster-name idp-mvp --force
 ```
