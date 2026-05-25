@@ -86,7 +86,7 @@ Replaces `YOUR_GITHUB_ORG` and other placeholders across all template files, cre
 | 2 — Platform base | 5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore |
 | 3 — GitOps | 5 min | ArgoCD, OPA/Gatekeeper, Crossplane |
 | 4 — Observability | 10 min | Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter |
-| 4.6 — ArgoCD GitOps | 1 min | `idp-services` ApplicationSet (auto-discovers services/) |
+| 4.6 — ArgoCD GitOps | 1 min | `idp-services` ApplicationSet auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server`, `qa-mcp-server` to `services-dev`. `contract-mcp-server` is excluded — deployed only by `bootstrap-ai.sh --aws`. |
 | 5 — hello-service | 5 min | Builds linux/amd64 image → ECR, ArgoCD deploys |
 | 6 — Backstage | 5 min | Deploys official image, injects real secrets |
 

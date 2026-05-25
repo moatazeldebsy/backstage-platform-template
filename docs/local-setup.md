@@ -46,7 +46,7 @@ What it does (in order):
 | 10 | Installs Prometheus Pushgateway + DORA exporter CronJob + catalog exporter CronJob |
 | 11 | Deploys Tech Insights Exporter CronJob (scorecard metrics → Pushgateway every 15 min) |
 | 12 | Wires AlertManager Slack webhook (if `SLACK_WEBHOOK_URL` is set) |
-| 13 | Applies ArgoCD ApplicationSet (manages hello-service, idp-mcp-server, qa-mcp-server in services-dev) and removes the bootstrap-deployed hello-service from services namespace |
+| 13 | Applies ArgoCD `idp-services` ApplicationSet — auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server`, and `qa-mcp-server` to `services-dev`. `contract-mcp-server` is **excluded** from the ApplicationSet and is only deployed by `bootstrap-ai.sh`. Removes the bootstrap-deployed `hello-service` from the `services` namespace. |
 
 ### Faster startup flags
 

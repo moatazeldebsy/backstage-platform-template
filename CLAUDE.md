@@ -182,7 +182,18 @@ Eight ordered phases (while EKS is still up through Phase 4.5):
 
 ### MCP servers (idp-mcp-server, qa-mcp-server, contract-mcp-server)
 
-These run in `services-dev` namespace and are managed by ArgoCD. On first install ArgoCD may not have the apps registered yet; `bootstrap-ai.sh` now falls back to direct Helm if the ArgoCD app is missing. To redeploy manually:
+**GitOps coverage of built-in services on a fresh install:**
+
+| Service | Deployed by | ArgoCD ApplicationSet | Requires `bootstrap-ai.sh` |
+|---|---|---|---|
+| `hello-service` | ArgoCD (auto) | ✅ `services/hello-service/` picked up automatically | No |
+| `idp-mcp-server` | ArgoCD (auto) + Helm fallback | ✅ `services/idp-mcp-server/` picked up automatically | No |
+| `qa-mcp-server` | ArgoCD (auto) + Helm fallback | ✅ `services/qa-mcp-server/` picked up automatically | No |
+| `contract-mcp-server` | `bootstrap-ai.sh` only | ❌ Explicitly excluded from ApplicationSet | Yes |
+
+`contract-mcp-server` is excluded from the `idp-services` ApplicationSet in both `local/argocd/app-of-apps-local.yaml` and `aws/argocd/app-of-apps.yaml` — it is intentionally hidden from end users and only deployed as part of the AI/ML stack. Do not remove the exclusion rule without also updating `bootstrap-ai.sh`.
+
+These run in `services-dev` namespace. On first install ArgoCD may not have the apps registered yet; `bootstrap-ai.sh` now falls back to direct Helm if the ArgoCD app is missing. To redeploy manually:
 
 ```bash
 helm upgrade --install idp-mcp-server helm/service-template \
@@ -229,7 +240,8 @@ Backstage Portal  ────────────────────�
   (backstage/app/packages/backend/src/modules/)              │
                                                              ▼
 Kind / Rancher Desktop (local) or EKS (AWS)
-  namespace: services-dev → idp-mcp-server, qa-mcp-server, contract-mcp-server (Helm, managed by ArgoCD)
+  namespace: services-dev → hello-service, idp-mcp-server, qa-mcp-server (ArgoCD ApplicationSet via services/*)
+                          → contract-mcp-server (Helm only via bootstrap-ai.sh — excluded from ApplicationSet)
   namespace: services     → Helm chart (helm/service-template)
   namespace: monitoring   → Prometheus + Grafana + Pushgateway
   namespace: argocd       → ArgoCD (App-of-Apps)
