@@ -43,6 +43,34 @@ fi
 
 log "Starting cleanup for cluster=$CLUSTER_NAME, region=$AWS_REGION"
 
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
+# Delete all versioned objects and delete markers from an S3 bucket in batches.
+# aws s3 rm --recursive only removes current-version objects and silently
+# ignores non-current versions and delete markers in versioned buckets.
+_empty_versioned_bucket() {
+  local bucket="$1"
+  local total=0
+  while true; do
+    local payload
+    payload=$(aws s3api list-object-versions --bucket "$bucket" \
+      --region "${AWS_REGION}" --output json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+objs=[{'Key':v['Key'],'VersionId':v['VersionId']} for v in d.get('Versions',[])[:500]]
+objs+=[{'Key':m['Key'],'VersionId':m['VersionId']} for m in d.get('DeleteMarkers',[])[:500]]
+print(json.dumps({'Objects':objs,'Quiet':True}) if objs else '')
+" 2>/dev/null)
+    [[ -z "$payload" ]] && break
+    aws s3api delete-objects --bucket "$bucket" --region "${AWS_REGION}" \
+      --delete "$payload" >/dev/null 2>&1
+    local count
+    count=$(echo "$payload" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('Objects',[])))" 2>/dev/null || echo 0)
+    total=$((total + count))
+  done
+  log "    Deleted $total versioned objects from s3://${bucket}"
+}
+
 # ── Phase 1: Delete Load Balancers created by Kubernetes services ─────────────
 log "Phase 1: Cleaning up Load Balancers..."
 
@@ -155,37 +183,7 @@ while IFS= read -r bucket_arn; do
   [[ -z "$bucket_arn" || "$bucket_arn" == "None" ]] && continue
   bucket_name="${bucket_arn##*:::}"
   log "    Emptying and deleting s3://${bucket_name}"
-  # Remove all current-version objects
-  aws s3 rm "s3://${bucket_name}" --recursive --region "${AWS_REGION}" 2>/dev/null || true
-  # Remove all versioned objects and delete markers (versioning-enabled buckets)
-  aws s3api list-object-versions \
-    --bucket "${bucket_name}" \
-    --region "${AWS_REGION}" \
-    --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
-    --output json 2>/dev/null \
-    | grep -q '"Key"' && \
-    aws s3api delete-objects \
-      --bucket "${bucket_name}" \
-      --region "${AWS_REGION}" \
-      --delete "$(aws s3api list-object-versions \
-        --bucket "${bucket_name}" \
-        --region "${AWS_REGION}" \
-        --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
-        --output json)" 2>/dev/null || true
-  aws s3api list-object-versions \
-    --bucket "${bucket_name}" \
-    --region "${AWS_REGION}" \
-    --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' \
-    --output json 2>/dev/null \
-    | grep -q '"Key"' && \
-    aws s3api delete-objects \
-      --bucket "${bucket_name}" \
-      --region "${AWS_REGION}" \
-      --delete "$(aws s3api list-object-versions \
-        --bucket "${bucket_name}" \
-        --region "${AWS_REGION}" \
-        --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' \
-        --output json)" 2>/dev/null || true
+  _empty_versioned_bucket "${bucket_name}"
   aws s3api delete-bucket --bucket "${bucket_name}" --region "${AWS_REGION}" 2>/dev/null || true
   log "    Deleted: ${bucket_name}"
 done < <(_crossplane_arns "s3" | tr '\t' '\n')
@@ -253,32 +251,6 @@ log "  4a: Emptying Terraform-managed S3 buckets..."
 TF_BUCKETS=$(aws s3 ls 2>/dev/null \
   | awk '{print $3}' \
   | grep -E "^${CLUSTER_NAME}-" || true)
-
-_empty_versioned_bucket() {
-  local bucket="$1"
-  local total=0
-  # Loop: delete up to 500 versions+markers per iteration until bucket is empty.
-  # aws s3 rm --recursive only removes current-version objects; it silently
-  # ignores non-current versions and delete markers in versioned buckets.
-  while true; do
-    local payload
-    payload=$(aws s3api list-object-versions --bucket "$bucket" \
-      --region "${AWS_REGION}" --output json 2>/dev/null | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-objs=[{'Key':v['Key'],'VersionId':v['VersionId']} for v in d.get('Versions',[])[:500]]
-objs+=[{'Key':m['Key'],'VersionId':m['VersionId']} for m in d.get('DeleteMarkers',[])[:500]]
-print(json.dumps({'Objects':objs,'Quiet':True}) if objs else '')
-" 2>/dev/null)
-    [[ -z "$payload" ]] && break
-    aws s3api delete-objects --bucket "$bucket" --region "${AWS_REGION}" \
-      --delete "$payload" >/dev/null 2>&1
-    local count
-    count=$(echo "$payload" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('Objects',[])))" 2>/dev/null || echo 0)
-    total=$((total + count))
-  done
-  log "    Deleted $total versioned objects from s3://${bucket}"
-}
 
 while IFS= read -r bucket; do
   [[ -z "$bucket" ]] && continue
@@ -378,8 +350,16 @@ RDS_INSTANCES=$(aws rds describe-db-instances --region "${AWS_REGION}" \
   --output text | wc -w)
 
 REMAINING_ALBS=$(aws elbv2 describe-load-balancers --region "${AWS_REGION}" \
-  --query "LoadBalancers[?contains(LoadBalancerName, 'k8s-')].LoadBalancerArn" \
-  --output text | wc -w)
+  --query "length(LoadBalancers[?contains(LoadBalancerName, 'k8s-')])" \
+  --output text 2>/dev/null || echo 0)
+
+REMAINING_CLASSIC=$(aws elb describe-load-balancers --region "${AWS_REGION}" \
+  --query "length(LoadBalancerDescriptions)" \
+  --output text 2>/dev/null || echo 0)
+
+REMAINING_ECR=$(aws ecr describe-repositories --region "${AWS_REGION}" \
+  --query "length(repositories[?contains(repositoryName,'${CLUSTER_NAME}')])" \
+  --output text 2>/dev/null || echo 0)
 
 CROSSPLANE_REMAINING=$(aws resourcegroupstaggingapi get-resources \
   --region "${AWS_REGION}" \
@@ -399,14 +379,18 @@ log "║                    CLEANUP VERIFICATION                       ║"
 log "╚════════════════════════════════════════════════════════════════╝"
 log "  EKS Clusters remaining:             $EKS_CLUSTERS (should be 0)"
 log "  RDS Instances remaining:            $RDS_INSTANCES (should be 0)"
-log "  Load Balancers remaining:           $REMAINING_ALBS (should be 0)"
+log "  ALB/NLB load balancers remaining:   $REMAINING_ALBS (should be 0)"
+log "  Classic ELBs remaining:             $REMAINING_CLASSIC (should be 0)"
+log "  ECR repositories remaining:         $REMAINING_ECR (should be 0)"
 log "  Crossplane resources remaining:     $CROSSPLANE_REMAINING (should be 0)"
 log "  CloudWatch log groups remaining:    $REMAINING_LOG_GROUPS (should be 0)"
 
 CLEAN=true
-[[ $EKS_CLUSTERS -gt 0 ]]        && CLEAN=false
-[[ $RDS_INSTANCES -gt 0 ]]       && CLEAN=false
-[[ $REMAINING_ALBS -gt 0 ]]      && CLEAN=false
+[[ $EKS_CLUSTERS -gt 0 ]]          && CLEAN=false
+[[ $RDS_INSTANCES -gt 0 ]]         && CLEAN=false
+[[ $REMAINING_ALBS -gt 0 ]]        && CLEAN=false
+[[ $REMAINING_CLASSIC -gt 0 ]]     && CLEAN=false
+[[ $REMAINING_ECR -gt 0 ]]         && CLEAN=false
 [[ "$CROSSPLANE_REMAINING" -gt 0 ]] && CLEAN=false
 
 if $CLEAN; then
@@ -426,7 +410,11 @@ else
   warn "⚠️  Some resources may not have been cleaned up"
   warn "  Run again with --force to retry, or manually:"
   [[ $REMAINING_ALBS -gt 0 ]] && \
-    warn "  aws elbv2 delete-load-balancer (for remaining ALBs)"
+    warn "  aws elbv2 delete-load-balancer --load-balancer-arn <arn> (ALBs)"
+  [[ $REMAINING_CLASSIC -gt 0 ]] && \
+    warn "  aws elb delete-load-balancer --load-balancer-name <name> (Classic ELBs)"
+  [[ $REMAINING_ECR -gt 0 ]] && \
+    warn "  aws ecr delete-repository --repository-name <name> --force (ECR repos)"
   [[ $RDS_INSTANCES -gt 0 ]] && \
     warn "  aws rds delete-db-instance --skip-final-snapshot (for RDS)"
   [[ $EKS_CLUSTERS -gt 0 ]] && \
