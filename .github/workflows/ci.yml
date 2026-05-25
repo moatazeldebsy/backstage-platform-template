@@ -12,6 +12,8 @@ on:
       - 'backstage/app-config*.yaml'
       - 'backstage/Dockerfile'
       - 'observability/**'
+      - 'local/observability/**'
+      - 'aws/observability/**'
       - 'cli/**'
       - '.github/workflows/ci.yml'
   pull_request:
@@ -25,6 +27,8 @@ on:
       - 'backstage/app-config*.yaml'
       - 'backstage/Dockerfile'
       - 'observability/**'
+      - 'local/observability/**'
+      - 'aws/observability/**'
       - 'cli/**'
       - '.github/workflows/ci.yml'
 
@@ -97,9 +101,10 @@ jobs:
 
       - name: Syntax check observability scripts
         run: |
-          python -m py_compile observability/dora/dora-exporter-local.py
-          python -m py_compile observability/dora/dora-exporter.py
+          python -m py_compile local/observability/dora/dora-exporter.py
+          python -m py_compile aws/observability/dora/dora-exporter.py
           python -m py_compile observability/tech-insights-exporter/exporter.py
+          python -m py_compile observability/flaky-test-exporter/exporter.py
 
   helm-lint:
     runs-on: ubuntu-latest

@@ -71,9 +71,9 @@ resource "aws_iam_role_policy" "crossplane_s3" {
         Resource = "arn:aws:s3:::idp-*"
       },
       {
-        Sid    = "S3List"
-        Effect = "Allow"
-        Action = ["s3:ListAllMyBuckets"]
+        Sid      = "S3List"
+        Effect   = "Allow"
+        Action   = ["s3:ListAllMyBuckets"]
         Resource = "*"
       },
     ]
@@ -207,9 +207,9 @@ resource "aws_iam_role_policy" "crossplane_dynamodb" {
         Resource = "arn:aws:dynamodb:*:*:table/idp-*"
       },
       {
-        Sid    = "DynamoList"
-        Effect = "Allow"
-        Action = ["dynamodb:ListTables"]
+        Sid      = "DynamoList"
+        Effect   = "Allow"
+        Action   = ["dynamodb:ListTables"]
         Resource = "*"
       },
     ]
@@ -239,9 +239,9 @@ resource "aws_iam_role_policy" "crossplane_sqs" {
         Resource = "arn:aws:sqs:*:*:idp-*"
       },
       {
-        Sid    = "SQSList"
-        Effect = "Allow"
-        Action = ["sqs:ListQueues"]
+        Sid      = "SQSList"
+        Effect   = "Allow"
+        Action   = ["sqs:ListQueues"]
         Resource = "*"
       },
     ]
