@@ -293,6 +293,7 @@ log "Applying substitutions..."
 # Build the file list. xargs cannot call shell functions, so we use a
 # while-read loop in _replace_all instead.
 TARGETS=$(LC_ALL=C find \
+  "${ROOT_DIR}/aws" \
   "${ROOT_DIR}/backstage/catalog" \
   "${ROOT_DIR}/backstage/app" \
   "${ROOT_DIR}/backstage/app-config.yaml" \

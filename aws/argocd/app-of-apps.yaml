@@ -1,6 +1,6 @@
 # ArgoCD ApplicationSet — creates one Application per service per environment.
 # Watches the services/ directory of the platform repo. Each service must have:
-#   services/<name>/helm-values-dev.yaml
+#   services/<name>/helm-values-aws.yaml
 #   services/<name>/helm-values-staging.yaml
 #   services/<name>/helm-values.yaml   (prod)
 #
@@ -16,7 +16,7 @@ spec:
         generators:
           # Generator 1: discover services from the platform repo
           - git:
-              repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+              repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
               revision: HEAD
               directories:
                 - path: services/*
@@ -28,7 +28,7 @@ spec:
               elements:
                 - env: dev
                   namespace: services-dev
-                  valuesFile: helm-values-dev.yaml
+                  valuesFile: helm-values-aws.yaml
   template:
     metadata:
       name: "{{path.basename}}-{{env}}"
@@ -38,7 +38,7 @@ spec:
     spec:
       project: default
       sources:
-        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
           targetRevision: HEAD
           path: helm/service-template
           helm:
@@ -47,7 +47,7 @@ spec:
                 value: "{{path.basename}}"
             valueFiles:
               - $values/services/{{path.basename}}/{{valuesFile}}
-        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        - repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
           targetRevision: HEAD
           ref: values
       destination:

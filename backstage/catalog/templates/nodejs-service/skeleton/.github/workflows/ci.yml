@@ -145,7 +145,7 @@ jobs:
           PLATFORM_DIR=$(mktemp -d)
           git clone https://x-access-token:${GH_TOKEN}@github.com/${{ values.githubOrg }}/backstage-platform-template.git "$PLATFORM_DIR"
           cd "$PLATFORM_DIR"
-          VALUES_FILE="services/${{ values.name }}/helm-values-dev.yaml"
+          VALUES_FILE="services/${{ values.name }}/helm-values-aws.yaml"
           if [ -f "${VALUES_FILE}" ]; then
             sed -i "s|^  tag: .*|  tag: \"${SHORT_SHA}\"|" "${VALUES_FILE}"
             git add "${VALUES_FILE}"

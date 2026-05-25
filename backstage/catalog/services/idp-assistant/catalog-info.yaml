@@ -5,7 +5,7 @@ metadata:
   title: IDP Assistant
   description: KAgent AI assistant for the Internal Developer Platform — helps engineers discover services, check metrics, and scaffold workloads
   annotations:
-    github.com/project-slug: moatazeldebsy/backstage-platform-template
+    github.com/project-slug: YOUR_GITHUB_ORG/backstage-platform-template
     backstage.io/kubernetes-id: idp-assistant
 spec:
   type: ai-agent

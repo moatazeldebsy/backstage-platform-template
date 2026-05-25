@@ -61,7 +61,7 @@ spec:
             allowedHosts:
               - github.com
             allowedOwners:
-              - moatazeldebsy
+              - YOUR_GITHUB_ORG
 
   steps:
     - id: fetch-template

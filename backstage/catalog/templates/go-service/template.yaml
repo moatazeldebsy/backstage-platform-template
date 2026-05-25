@@ -70,7 +70,22 @@ spec:
             allowedHosts:
               - github.com
             allowedOwners:
-              - moatazeldebsy
+              - YOUR_GITHUB_ORG
+
+    - title: Deployment Target
+      properties:
+        deployTarget:
+          title: Where will this service run?
+          type: string
+          default: local
+          enum: [local, aws]
+          enumNames: ['Local (Kind / Rancher Desktop)', 'AWS (EKS)']
+          ui:widget: radio
+        awsRoleArn:
+          title: AWS IAM Role ARN for CI/CD (AWS only)
+          type: string
+          description: "OIDC role ARN used by GitHub Actions to push images to ECR. Example: arn:aws:iam::123456789012:role/idp-mvp-github-actions"
+          ui:help: "Leave blank for local deployments."
 
   steps:
     - id: fetch-template
@@ -100,13 +115,13 @@ spec:
           - idp-service
 
     - id: set-repo-secrets
-      name: Configure CI/CD Secrets
+      name: Configure CI/CD Secrets (AWS only)
+      if: ${{ parameters.deployTarget === 'aws' }}
       action: idp:repo:set-secrets
-      continueOnError: true
       input:
         repoUrl: ${{ steps.publish.output.remoteUrl }}
         secrets:
-          AWS_ROLE_ARN: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/idp-mvp-github-actions"
+          AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
 
     - id: register
       name: Register in Catalog
@@ -142,7 +157,7 @@ spec:
       action: publish:github:pull-request
       continueOnError: true
       input:
-        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        repoUrl: github.com?repo=backstage-platform-template&owner=YOUR_GITHUB_ORG
         title: "feat: onboard ${{ parameters.name }} to GitOps"
         branchName: feat/onboard-${{ parameters.name }}
         description: |
@@ -155,8 +170,8 @@ spec:
 
     - id: seed-image
       name: Seed placeholder image in local registry
+      if: ${{ parameters.deployTarget === 'local' }}
       action: idp:seed-image
-      continueOnError: true
       input:
         serviceName: ${{ parameters.name }}
 

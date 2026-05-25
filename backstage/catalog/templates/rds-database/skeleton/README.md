@@ -36,7 +36,7 @@ into the `${{ values.serviceName }}-db-secret` Kubernetes secret.
 Your service should consume it as an environment variable:
 
 ```yaml
-# In your Helm values (helm-values-dev.yaml)
+# In your Helm values (helm-values-aws.yaml)
 extraEnvFrom:
   - secretRef:
       name: ${{ values.serviceName }}-db-secret

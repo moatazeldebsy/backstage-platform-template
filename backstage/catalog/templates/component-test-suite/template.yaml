@@ -36,7 +36,7 @@ spec:
             allowedHosts:
               - github.com
             allowedOwners:
-              - moatazeldebsy
+              - YOUR_GITHUB_ORG
         owner:
           title: Owner
           type: string
@@ -56,7 +56,7 @@ spec:
           title: Service Container Image
           type: string
           description: 'Image tag the service is built to in CI (e.g. ghcr.io/<org>/<svc>:${{GITHUB_SHA}})'
-          default: 'ghcr.io/moatazeldebsy/<repo>:latest'
+          default: 'ghcr.io/YOUR_GITHUB_ORG/<repo>:latest'
         servicePort:
           title: Service Port
           type: integer

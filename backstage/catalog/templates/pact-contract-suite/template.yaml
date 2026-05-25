@@ -72,7 +72,7 @@ spec:
                     allowedHosts:
                       - github.com
                     allowedOwners:
-                      - moatazeldebsy
+                      - YOUR_GITHUB_ORG
               required:
                 - repoUrl
             - properties:
@@ -87,7 +87,7 @@ spec:
                     allowedHosts:
                       - github.com
                     allowedOwners:
-                      - moatazeldebsy
+                      - YOUR_GITHUB_ORG
               required:
                 - targetRepoUrl
 
@@ -108,7 +108,7 @@ spec:
           title: Pact Broker URL
           type: string
           description: URL of your PactFlow broker (leave blank to skip publishing)
-          default: 'https://moatazeldebsy.pactflow.io'
+          default: 'https://YOUR_GITHUB_ORG.pactflow.io'
         providerBaseUrl:
           title: Provider Base URL
           type: string

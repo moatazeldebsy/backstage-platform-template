@@ -102,7 +102,7 @@ Push to main (this repo)
         ├─ pytest
         ├─ docker build + smoke-test /healthz
         ├─ docker push → GHCR (ghcr.io/${{ values.githubOrg }}/${{ values.name }})
-        └─ updates helm-values-dev.yaml in backstage-platform-template  ← platform repo
+        └─ updates helm-values-aws.yaml in backstage-platform-template  ← platform repo
               └─▶ ArgoCD detects the change and deploys to the Kind/EKS cluster
 ```
 
