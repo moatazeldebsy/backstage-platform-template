@@ -424,44 +424,33 @@ else
     check "kagent-ui SSR → kagent-controller.kagent.svc.cluster.local:8083"
   fi
 
-  # ── 5e. Patch nginx to fix KAgent v0.9.4 broken UI pages ────────────────────
-  # Two bugs in v0.9.4:
+  # ── 5e. Apply repo-managed nginx config to fix KAgent v0.9.4 broken UI pages ─
+  # aws/kagent/nginx.conf (committed) contains two bug fixes for v0.9.4:
+  #   Bug 1: /api/modelproviderconfigs + /api/promptlibraries return plain-text
+  #          404 → JSON.parse() throws in Next.js → pages crash. Fixed with
+  #          nginx intercept returning {"error":false,"data":[]}.
+  #   Bug 2: crypto.randomUUID() requires HTTPS (secure context). Over HTTP the
+  #          function is undefined → TypeError crash. Fixed with a sub_filter
+  #          polyfill injected before </head>.
   #
-  # Bug 1: /api/modelproviderconfigs and /api/promptlibraries return plain-text
-  # "404 page not found". Next.js JSON.parse("404…") throws → error boundary.
-  # Fix: intercept those two paths at nginx and return {"error":false,"data":[]}.
-  #
-  # Bug 2: KAgent UI calls crypto.randomUUID() which requires a secure context
-  # (HTTPS). Over plain HTTP the function is undefined → TypeError crash.
-  # Fix: inject a polyfill via nginx sub_filter before </head> that implements
-  # randomUUID() using crypto.getRandomValues() which works over HTTP.
-  info "Patching nginx config to fix /agents/new and /prompts/new (KAgent v0.9.4 bugs)..."
-  existing_conf=$(kubectl get configmap kagent-ui-config -n kagent \
-    -o jsonpath='{.data.nginx\.conf}' 2>/dev/null || echo "")
-  if [[ -n "$existing_conf" ]] && ! echo "$existing_conf" | grep -q "modelproviderconfigs"; then
-    # Step 1: add empty-JSON intercepts for missing API endpoints
-    patched_conf=$(echo "$existing_conf" | sed '/location \/api\/ {/i\
-            # KAgent v0.9.4: missing API handlers — return empty JSON to unblock UI.\
-            location = /api/modelproviderconfigs {\
-                add_header Content-Type application/json;\
-                return 200 '"'"'{"error":false,"data":[]}'"'"';\
-            }\
-\
-            location = /api/promptlibraries {\
-                add_header Content-Type application/json;\
-                return 200 '"'"'{"error":false,"data":[]}'"'"';\
-            }\
-')
-    # Step 2: inject crypto.randomUUID polyfill into every HTML page (HTTP-safe)
-    patched_conf=$(echo "$patched_conf" | sed \
-      's|proxy_pass http://kagent_ui;|proxy_pass http://kagent_ui;\n                proxy_set_header Accept-Encoding "";\n                sub_filter '"'"'</head>'"'"' '"'"'<script>if(!window.crypto)window.crypto={};if(!window.crypto.randomUUID)window.crypto.randomUUID=function(){return"10000000-1000-4000-8000-100000000000".replace(/[018]/g,function(c){return(+c^crypto.getRandomValues(new Uint8Array(1))[0]\&15>>+c\/4).toString(16)});};<\/script><\/head>'"'"';\n                sub_filter_once on;|')
-    kubectl patch configmap kagent-ui-config -n kagent --type merge \
-      -p "{\"data\":{\"nginx.conf\": $(python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))" <<< "$patched_conf")}}" \
-      && check "nginx patched: empty-JSON intercepts + crypto.randomUUID polyfill injected" \
-      || warn "nginx patch failed — /agents/new and /prompts/new may still show errors"
-  else
-    check "nginx already patched (idempotent)"
-  fi
+  # After applying, we remove the Helm management annotations so that
+  # `helm upgrade kagent` does NOT overwrite this ConfigMap. The source of truth
+  # is aws/kagent/nginx.conf in the repo; bootstrap-ai.sh re-applies it each run.
+  NGINX_CONF_SRC="${REPO_ROOT}/aws/kagent/nginx.conf"
+  info "Applying repo nginx config to fix /agents/new and /prompts/new (KAgent v0.9.4 bugs)..."
+  kubectl create configmap kagent-ui-config \
+    --namespace kagent \
+    --from-file=nginx.conf="${NGINX_CONF_SRC}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  # Disown from Helm so helm upgrade kagent does not overwrite this ConfigMap.
+  kubectl annotate configmap kagent-ui-config -n kagent \
+    meta.helm.sh/release-name- \
+    meta.helm.sh/release-namespace- \
+    --overwrite 2>/dev/null || true
+  kubectl label configmap kagent-ui-config -n kagent \
+    app.kubernetes.io/managed-by- \
+    --overwrite 2>/dev/null || true
+  check "nginx config applied from repo + disowned from Helm (upgrade-safe)"
 
   # Restart kagent-ui so its Next.js SSR cache is rebuilt against the now-ready
   # controller. Without this, the cached SSR state from startup reflects the
