@@ -159,6 +159,74 @@ append_hosts_file() {
   fi
 }
 
+# Discover and remove user-scaffolded services from ArgoCD, Helm, and the git repo.
+# Built-in platform services are never touched. Safe to call while the cluster is up;
+# all cluster operations are best-effort (|| true) so failure never aborts a destroy.
+#   $1 = env_suffix: "local" (Kind/Rancher) | "dev" (AWS)
+_cleanup_scaffolded_services() {
+  local env_suffix="${1:-local}"
+  local PLATFORM_BUILTINS=("hello-service" "idp-mcp-server" "qa-mcp-server" "contract-mcp-server")
+  local svc builtin skip
+
+  local SCAFFOLDED=()
+  if [[ -d "${ROOT_DIR}/services" ]]; then
+    while IFS= read -r svc; do
+      skip=false
+      for builtin in "${PLATFORM_BUILTINS[@]}"; do
+        [[ "$svc" == "$builtin" ]] && { skip=true; break; }
+      done
+      $skip || SCAFFOLDED+=("$svc")
+    done < <(find "${ROOT_DIR}/services" -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
+  fi
+
+  if [[ ${#SCAFFOLDED[@]} -eq 0 ]]; then
+    log "  No scaffolded services found — nothing to clean up."
+    return 0
+  fi
+
+  log "  Found ${#SCAFFOLDED[@]} scaffolded service(s): ${SCAFFOLDED[*]}"
+
+  # Delete ArgoCD Applications (cascade-deletes all managed K8s resources).
+  for svc in "${SCAFFOLDED[@]}"; do
+    local app_name="${svc}-${env_suffix}"
+    log "  Deleting ArgoCD Application: ${app_name}"
+    if command -v argocd &>/dev/null; then
+      argocd app delete "${app_name}" --cascade --yes --grpc-web 2>/dev/null || true
+    fi
+    kubectl delete application "${app_name}" -n argocd --ignore-not-found 2>/dev/null || true
+  done
+
+  # Uninstall Helm releases (belt-and-suspenders for services deployed via idp:deploy-local).
+  for svc in "${SCAFFOLDED[@]}"; do
+    log "  Uninstalling Helm release: ${svc}"
+    helm uninstall "${svc}" -n services-dev 2>/dev/null || true
+    helm uninstall "${svc}" -n services    2>/dev/null || true
+  done
+
+  # Remove services/ directories and commit so new clusters don't re-discover them.
+  local removed=()
+  for svc in "${SCAFFOLDED[@]}"; do
+    if [[ -d "${ROOT_DIR}/services/${svc}" ]]; then
+      rm -rf "${ROOT_DIR}/services/${svc}"
+      removed+=("$svc")
+      log "  Removed: services/${svc}/"
+    fi
+  done
+
+  if [[ ${#removed[@]} -gt 0 ]]; then
+    git -C "${ROOT_DIR}" add -A -- services/ 2>/dev/null || true
+    if ! git -C "${ROOT_DIR}" diff --cached --quiet -- services/ 2>/dev/null; then
+      git -C "${ROOT_DIR}" commit \
+        -m "chore(cleanup): remove scaffolded services from platform repo [skip ci]" \
+        2>/dev/null || true
+      git -C "${ROOT_DIR}" push 2>/dev/null \
+        || warn "  Could not push service cleanup to remote — commit the services/ deletions manually: ${removed[*]}"
+    fi
+  fi
+
+  log "  Scaffolded service cleanup complete."
+}
+
 _preflight_check_local() {
   local missing=()
   local required_cmds=(kubectl helm docker)

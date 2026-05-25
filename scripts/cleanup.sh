@@ -19,6 +19,10 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform"
 FORCE="${FORCE:-false}"
 
+# shellcheck source=scripts/lib.sh
+source "${ROOT_DIR}/scripts/lib.sh"
+
+# Plain-text overrides — no ANSI colour codes for easier CI log parsing.
 log()  { echo "[$(date +%T)] INFO  $*"; }
 warn() { echo "[$(date +%T)] WARN  $*" >&2; }
 err()  { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
@@ -285,6 +289,12 @@ while IFS= read -r repo; do
 done <<< "$ECR_REPOS"
 
 log "  Phase 4 complete."
+
+# ── Phase 4.5: Clean up scaffolded services ──────────────────────────────────
+# Must run while EKS is still up so ArgoCD can cascade-delete K8s resources,
+# and so kubectl/helm can reach the cluster. Runs before terraform destroy.
+log "Phase 4.5: Cleaning up scaffolded services from ArgoCD, Helm, and git repo..."
+_cleanup_scaffolded_services "dev"
 
 # ── Phase 5: Terraform destroy ────────────────────────────────────────────────
 log "Phase 5: Running terraform destroy..."

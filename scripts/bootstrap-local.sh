@@ -392,6 +392,10 @@ if $DESTROY; then
     bash "${ROOT_DIR}/scripts/bootstrap-ai.sh" --destroy || true
   fi
 
+  # ── Clean up user-scaffolded services before the cluster is deleted ──────────
+  log "Cleaning up scaffolded services from ArgoCD, Helm, and git repo..."
+  _cleanup_scaffolded_services "local"
+
   if [[ "$PROVIDER" == "kind" ]]; then
     # Delete the Kind cluster — removes all namespaces, Helm state, and workloads.
     kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
