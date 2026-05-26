@@ -7,6 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 
+# Run as non-root (Trivy DS-0002 / container hardening)
+RUN useradd --create-home --uid 10001 appuser
+USER appuser
+
 EXPOSE ${{ values.port }}
 
 ENV PYTHONUNBUFFERED=1
