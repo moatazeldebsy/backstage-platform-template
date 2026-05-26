@@ -98,7 +98,7 @@ jobs:
 
       - name: Smoke-test container
         run: |
-          docker run -d --name app -p 8080:80 ${{ '${{ env.APP_NAME }}' }}:ci
+          docker run -d --name app -p 8080:8080 ${{ '${{ env.APP_NAME }}' }}:ci
           sleep 3
           curl -sf --retry 5 --retry-delay 2 --retry-connrefused \
             http://localhost:8080/healthz
