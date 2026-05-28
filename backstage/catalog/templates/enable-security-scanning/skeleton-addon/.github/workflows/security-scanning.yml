@@ -1,0 +1,53 @@
+name: Security Scanning (SonarCloud + Snyk)
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+env:
+  # Optional security tooling — empty values cause the related steps to skip.
+  # Generate tokens and add them as repo secrets (Settings → Secrets and variables → Actions):
+  #   SONAR_TOKEN   https://sonarcloud.io/account/security
+  #   SNYK_TOKEN    https://app.snyk.io/account
+  SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+  SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Quality Gate
+    runs-on: ubuntu-latest
+    if: env.SONAR_TOKEN != ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+          SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+
+  snyk:
+    name: Snyk Dependency Scan
+    runs-on: ubuntu-latest
+    if: env.SNYK_TOKEN != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Snyk test
+        uses: snyk/actions/setup@master
+      - run: snyk test --severity-threshold=${{ values.snykSeverityThreshold }} --all-projects || true
+        env:
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+
+      - name: Snyk monitor (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: snyk monitor --all-projects || true
+        env:
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}

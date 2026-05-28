@@ -47,6 +47,18 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: GITHUB_TOKEN
+            - name: SONAR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: SONAR_TOKEN
+                  optional: true
+            - name: SNYK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: SNYK_TOKEN
+                  optional: true
             - name: K8S_CLUSTER_URL
               valueFrom:
                 secretKeyRef:

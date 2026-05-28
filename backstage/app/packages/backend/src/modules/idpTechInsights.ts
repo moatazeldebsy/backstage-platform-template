@@ -20,6 +20,8 @@ const QUALITY_GATES = [
   'llm-eval',          // AI service has LLM evaluation suite (deepeval or equivalent)
   'bias-check',        // AI model has bias/fairness evaluation
   'rag-eval',          // RAG system has retrieval quality evaluation
+  'sonar-scanning',    // CI runs SonarCloud quality gate
+  'snyk-scanning',     // CI runs Snyk SCA scan
 ] as const;
 
 function parseGates(raw: string | undefined): Set<string> {
@@ -94,6 +96,14 @@ const entityFactRetriever: FactRetriever = {
       type: 'boolean',
       description: 'AI service has observability configured (backstage.io/kubernetes-id annotation AND "ai" tag present)',
     },
+    'has-sonar-scanning': {
+      type: 'boolean',
+      description: 'Service is wired up to SonarCloud (idp.io/quality-gates contains "sonar-scanning" OR sonarcloud.io/project-key annotation present)',
+    },
+    'has-snyk-scanning': {
+      type: 'boolean',
+      description: 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)',
+    },
   },
   handler: async ({ entities, discovery, auth }) => {
     const { token } = await auth.getPluginRequestToken({
@@ -148,6 +158,14 @@ const entityFactRetriever: FactRetriever = {
       const isAiService = tags.some(t => t.toLowerCase() === 'ai');
       const hasAiObservability = hasHealthProbes && isAiService;
 
+      // Sonar/Snyk: opt in via quality-gates list OR via tool-specific annotation.
+      const hasSonarScanning =
+        declaredGates.has('sonar-scanning') ||
+        Boolean(annotations['sonarcloud.io/project-key']);
+      const hasSnykScanning =
+        declaredGates.has('snyk-scanning') ||
+        Boolean(annotations['snyk.io/org-slug']);
+
       facts.push({
         entity: {
           namespace: entity.metadata.namespace ?? 'default',
@@ -169,6 +187,8 @@ const entityFactRetriever: FactRetriever = {
           'has-model-card':        hasModelCard,
           'has-eval-suite':        hasEvalSuite,
           'has-ai-observability':  hasAiObservability,
+          'has-sonar-scanning':    hasSonarScanning,
+          'has-snyk-scanning':     hasSnykScanning,
         },
       });
     }

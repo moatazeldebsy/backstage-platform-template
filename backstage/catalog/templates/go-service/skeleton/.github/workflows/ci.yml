@@ -13,6 +13,9 @@ env:
   SERVICE_NAME: ${{ values.name }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   COVERAGE_MIN: '70'
+  # Optional security tooling — empty values cause the related CI steps to skip.
+  SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+  SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
 
 jobs:
   quality:
@@ -40,6 +43,35 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+
+      # SonarCloud + Snyk run only when tokens are configured, and are non-blocking
+      # (continue-on-error) so a service builds green before the SonarCloud/Snyk org +
+      # project exist. See docs/security-scanning.md for one-time setup.
+      - name: SonarCloud Scan
+        if: env.SONAR_TOKEN != ''
+        continue-on-error: true
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+          SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+
+      - name: Snyk dependency scan
+        if: env.SNYK_TOKEN != ''
+        continue-on-error: true
+        uses: snyk/actions/golang@master
+        env:
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Snyk monitor (main only)
+        if: env.SNYK_TOKEN != '' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        continue-on-error: true
+        uses: snyk/actions/golang@master
+        env:
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+        with:
+          command: monitor
 
       - name: Trivy filesystem scan (deps + secrets)
         uses: aquasecurity/trivy-action@v0.36.0

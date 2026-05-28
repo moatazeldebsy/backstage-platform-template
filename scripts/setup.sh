@@ -317,6 +317,7 @@ TARGETS=$(LC_ALL=C find \
   ! -path '*/node_modules/*' \
   ! -path '*/.yarn/cache/*' \
   ! -path '*/dist/*' \
+  ! -path '*/.terraform/*' \
   ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
   ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' ! -name '*.eot' \
   ! -name '*.gz' ! -name '*.zip' ! -name '*.tar' \
@@ -385,6 +386,8 @@ fi
 #   - .env.example files (intentional fill-in markers)
 #   - skeleton/ paths    (Backstage Nunjucks templates may keep YOUR_* for output)
 #   - placeholders.conf  (the manifest itself)
+#   - .terraform/        (downloaded provider binaries match the pattern by coincidence)
+#   - docs/ and README   (user-facing instructions legitimately reference YOUR_* tokens)
 _verify_no_remaining() {
   local remaining=()
   while IFS= read -r f; do
@@ -392,6 +395,9 @@ _verify_no_remaining() {
     [[ "$f" == *.env.example ]] && continue
     [[ "$f" == */skeleton/* ]] && continue
     [[ "$f" == */placeholders.conf ]] && continue
+    [[ "$f" == */.terraform/* ]] && continue
+    [[ "$f" == */docs/* ]] && continue
+    [[ "$f" == */README.md ]] && continue
     LC_ALL=C grep -ql 'YOUR_[A-Z_]*' "$f" 2>/dev/null && remaining+=("$f")
   done <<< "$TARGETS"
   if [[ ${#remaining[@]} -gt 0 ]]; then

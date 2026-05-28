@@ -53,6 +53,11 @@ services:
       CATALOG_EXPORTER_TOKEN: ${CATALOG_EXPORTER_TOKEN:-local-catalog-exporter-token}
       GITHUB_ORG: ${GITHUB_ORG:-moatazeldebsy}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      # External SaaS proxy tokens — empty values render an empty state in the Security tab.
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+      SNYK_TOKEN: ${SNYK_TOKEN:-}
+      # Grafana viewer token — referenced by the /grafana/api proxy.
+      GRAFANA_TOKEN: ${GRAFANA_TOKEN:-}
     ports:
       - "3000:3000"   # Backstage backend (Node.js) listens on port 3000
     extra_hosts:

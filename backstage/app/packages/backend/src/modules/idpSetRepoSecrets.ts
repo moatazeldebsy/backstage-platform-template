@@ -6,8 +6,16 @@
  * GitHub REST API with libsodium-wrappers encryption (required by GitHub).
  *
  * Secrets set on every service repo:
- *   AWS_ROLE_ARN       — OIDC role for ECR push + EKS deploy
- *   IDP_PLATFORM_TOKEN — PAT for checking out platform Helm chart
+ *   AWS_ROLE_ARN       — OIDC role for ECR push + EKS deploy (from template input)
+ *   IDP_PLATFORM_TOKEN — PAT for checking out platform Helm chart (auto from $GITHUB_TOKEN)
+ *   SONAR_TOKEN        — SonarCloud analysis upload (auto from $SONAR_TOKEN, if set)
+ *   SNYK_TOKEN         — Snyk test/monitor (auto from $SNYK_TOKEN, if set)
+ *
+ * Auto-injected secrets are pulled from the Backstage backend pod's environment
+ * (local: docker-compose env file; AWS: K8s secret backstage-secrets). When the
+ * env var is unset the secret is skipped — the per-service CI workflows already
+ * guard their Sonar/Snyk steps on `env.SONAR_TOKEN != ''`, so missing tokens are
+ * silently skipped rather than failed.
  */
 import { createBackendModule, coreServices } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
@@ -54,12 +62,17 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
     async handler(ctx) {
       const repoUrl = ctx.input['repoUrl'] as string;
 
-      // Auto-inject IDP_PLATFORM_TOKEN from the pod's GITHUB_TOKEN env var
-      // (set via K8s secret backstage-secrets → idp-mvp/backstage in Secrets Manager)
-      const platformToken = process.env.GITHUB_TOKEN;
+      // Auto-inject platform-wide secrets from the backend pod's environment.
+      // GITHUB_TOKEN / SONAR_TOKEN / SNYK_TOKEN are sourced from local/backstage/.env
+      // locally and K8s secret backstage-secrets (Secrets Manager: idp-mvp/backstage) on AWS.
       const secrets: Record<string, string> = { ...(ctx.input['secrets'] as Record<string, string>) };
-      if (platformToken && !secrets['IDP_PLATFORM_TOKEN']) {
-        secrets['IDP_PLATFORM_TOKEN'] = platformToken;
+      const autoInject: Array<[string, string | undefined]> = [
+        ['IDP_PLATFORM_TOKEN', process.env.GITHUB_TOKEN],
+        ['SONAR_TOKEN', process.env.SONAR_TOKEN],
+        ['SNYK_TOKEN', process.env.SNYK_TOKEN],
+      ];
+      for (const [name, value] of autoInject) {
+        if (value && !secrets[name]) secrets[name] = value;
       }
 
       // Parse owner/repo from either:

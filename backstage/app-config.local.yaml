@@ -84,6 +84,20 @@ proxy:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']
       changeOrigin: true
+    # External SaaS — same endpoints in local and AWS. Empty token = 401 from upstream,
+    # which the Security entity tab renders gracefully as "Unable to load…".
+    /sonarcloud:
+      target: https://sonarcloud.io
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${SONAR_TOKEN}
+    /snyk:
+      target: https://api.snyk.io
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: token ${SNYK_TOKEN}
 
 # Serve tech radar from the locally mounted catalog volume instead of GitHub raw URL.
 # This avoids the moatazeldebsy placeholder issue and works without a GitHub token.

@@ -62,6 +62,20 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+    # External SaaS — same endpoints in local and AWS. Tokens are loaded via
+    # External Secrets from AWS Secrets Manager (see aws/external-secrets/backstage.yaml).
+    /sonarcloud:
+      target: https://sonarcloud.io
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${SONAR_TOKEN}
+    /snyk:
+      target: https://api.snyk.io
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: token ${SNYK_TOKEN}
 
 techRadar:
   url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json
@@ -212,6 +226,10 @@ catalog:
     # ── QA Platform: Security & quality ──────────────────────────────────────
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/zap-dast-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/enable-security-scanning/template.yaml
       rules:
         - allow: [Template]
     - type: url

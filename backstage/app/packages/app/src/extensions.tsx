@@ -692,12 +692,14 @@ type CheckKey =
   | 'has-e2e-tests'
   | 'has-model-card'
   | 'has-eval-suite'
-  | 'has-ai-observability';
+  | 'has-ai-observability'
+  | 'has-sonar-scanning'
+  | 'has-snyk-scanning';
 
 interface CheckDef {
   id: CheckKey;
   label: string;
-  group: 'Hygiene' | 'Shift-Left CI' | 'Test Coverage' | 'AI Governance';
+  group: 'Hygiene' | 'Shift-Left CI' | 'Test Coverage' | 'AI Governance' | 'Security';
   remediation: string;
 }
 
@@ -716,6 +718,8 @@ const CHECKS: CheckDef[] = [
   { id: 'has-model-card',        group: 'AI Governance', label: 'Has model card',            remediation: 'Add annotation backstage.io/model-card-url documenting the model, its training data, and performance.' },
   { id: 'has-eval-suite',        group: 'AI Governance', label: 'LLM eval suite in CI',      remediation: 'Add "llm-eval" to idp.io/quality-gates and run the deepeval-llm-eval-suite scaffolder.' },
   { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id and tag the entity with "ai" to enable Grafana dashboards.' },
+  { id: 'has-sonar-scanning',    group: 'Security',      label: 'SonarCloud quality gate',   remediation: 'Run the enable-security-scanning scaffolder, or add a sonarcloud.io/project-key annotation.' },
+  { id: 'has-snyk-scanning',     group: 'Security',      label: 'Snyk SCA scan',             remediation: 'Run the enable-security-scanning scaffolder, or add a snyk.io/org-slug annotation.' },
 ];
 
 type TierName = 'none' | 'bronze' | 'silver' | 'gold';
@@ -782,6 +786,8 @@ function computeScorecard(entity: Entity): ScorecardResult {
     'has-model-card':        isAiEntity && Boolean(annotations['backstage.io/model-card-url']),
     'has-eval-suite':        isAiEntity && gates.has('llm-eval'),
     'has-ai-observability':  isAiEntity && hasKubernetesId,
+    'has-sonar-scanning':    gates.has('sonar-scanning') || Boolean(annotations['sonarcloud.io/project-key']),
+    'has-snyk-scanning':     gates.has('snyk-scanning') || Boolean(annotations['snyk.io/org-slug']),
   };
 
   const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
@@ -944,6 +950,171 @@ const scorecardEntityContent = EntityContentBlueprint.make({
   },
 });
 
+// ── Security tab (SonarCloud + Snyk) ───────────────────────────────────────────
+// Reads the sonarcloud.io/project-key and snyk.io/org-slug annotations from the
+// entity and fetches live results via the Backstage proxy. Empty state when
+// annotations are missing (e.g. before the team runs enable-security-scanning).
+
+interface SonarMeasures {
+  qualityGate: 'OK' | 'WARN' | 'ERROR' | 'NONE' | null;
+  coverage?: string;
+  bugs?: string;
+  vulnerabilities?: string;
+  codeSmells?: string;
+  securityHotspots?: string;
+}
+
+function SonarCloudCard({ projectKey }: { projectKey: string }) {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const [data, setData]       = useState<SonarMeasures | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    const baseUrl = configApi.getString('backend.baseUrl');
+    const metricKeys = 'coverage,bugs,vulnerabilities,code_smells,security_hotspots';
+    const gateUrl    = `${baseUrl}/api/proxy/sonarcloud/api/qualitygates/project_status?projectKey=${encodeURIComponent(projectKey)}`;
+    const measUrl    = `${baseUrl}/api/proxy/sonarcloud/api/measures/component?component=${encodeURIComponent(projectKey)}&metricKeys=${metricKeys}`;
+
+    Promise.all([fetchApi.fetch(gateUrl), fetchApi.fetch(measUrl)])
+      .then(async ([gR, mR]) => {
+        if (!gR.ok) throw new Error(`SonarCloud quality gate: ${gR.status}`);
+        if (!mR.ok) throw new Error(`SonarCloud measures: ${mR.status}`);
+        const gateJson = await gR.json();
+        const measJson = await mR.json();
+        const measures: Record<string, string> = {};
+        for (const m of measJson?.component?.measures ?? []) measures[m.metric] = m.value;
+        setData({
+          qualityGate: gateJson?.projectStatus?.status ?? 'NONE',
+          coverage:         measures.coverage,
+          bugs:             measures.bugs,
+          vulnerabilities:  measures.vulnerabilities,
+          codeSmells:       measures.code_smells,
+          securityHotspots: measures.security_hotspots,
+        });
+        setLoading(false);
+      })
+      .catch((err: Error) => { setError(err.message); setLoading(false); });
+  }, [fetchApi, configApi, projectKey]);
+
+  const dashboardUrl = `https://sonarcloud.io/dashboard?id=${encodeURIComponent(projectKey)}`;
+  const gateColor = data?.qualityGate === 'OK' ? '#4caf50'
+    : data?.qualityGate === 'WARN' ? '#ff9800'
+    : data?.qualityGate === 'ERROR' ? '#f44336' : '#9e9e9e';
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        SonarCloud — <code>{projectKey}</code>
+      </Typography>
+      <Paper style={{ padding: 16 }}>
+        {loading && <Progress />}
+        {!loading && error && (
+          <Typography variant="body2" color="textSecondary">
+            Unable to load SonarCloud data: <strong>{error}</strong>. Verify
+            <code> SONAR_TOKEN</code> is set and the projectKey exists.
+            <Box mt={1}><Link href={dashboardUrl} target="_blank" rel="noopener">Open SonarCloud dashboard ↗</Link></Box>
+          </Typography>
+        )}
+        {!loading && !error && data && (
+          <Box>
+            <Box display="flex" alignItems="center" style={{ gap: 12, marginBottom: 12 }}>
+              <Chip
+                label={`Quality gate: ${data.qualityGate}`}
+                style={{ backgroundColor: gateColor, color: 'white' }}
+              />
+              <Link href={dashboardUrl} target="_blank" rel="noopener">Open in SonarCloud ↗</Link>
+            </Box>
+            <TableContainer>
+              <MuiTable size="small">
+                <TableBody>
+                  <TableRow><TableCell>Coverage</TableCell><TableCell>{data.coverage ? `${data.coverage}%` : '—'}</TableCell></TableRow>
+                  <TableRow><TableCell>Bugs</TableCell><TableCell>{data.bugs ?? '—'}</TableCell></TableRow>
+                  <TableRow><TableCell>Vulnerabilities</TableCell><TableCell>{data.vulnerabilities ?? '—'}</TableCell></TableRow>
+                  <TableRow><TableCell>Security hotspots</TableCell><TableCell>{data.securityHotspots ?? '—'}</TableCell></TableRow>
+                  <TableRow><TableCell>Code smells</TableCell><TableCell>{data.codeSmells ?? '—'}</TableCell></TableRow>
+                </TableBody>
+              </MuiTable>
+            </TableContainer>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function SnykCard({ orgSlug, repoSlug }: { orgSlug: string; repoSlug?: string }) {
+  // The Snyk REST API requires a project ID we don't have at scaffold time;
+  // we link out to the org/project dashboard and surface the org/repo it's
+  // scoped to. Live counts can be wired in later via the /reporting endpoint.
+  const orgUrl     = `https://app.snyk.io/org/${encodeURIComponent(orgSlug)}`;
+  const projectUrl = repoSlug
+    ? `https://app.snyk.io/org/${encodeURIComponent(orgSlug)}/projects?searchQuery=${encodeURIComponent(repoSlug)}`
+    : orgUrl;
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        Snyk — <code>{orgSlug}</code>
+      </Typography>
+      <Paper style={{ padding: 16 }}>
+        <Typography variant="body2" color="textSecondary">
+          Snyk monitors this service for dependency, container, and IaC vulnerabilities.
+          The <code>Snyk monitor</code> CI step uploads scan results on every push to main.
+        </Typography>
+        <Box mt={2} display="flex" style={{ gap: 16 }}>
+          <Link href={projectUrl} target="_blank" rel="noopener">Open project in Snyk ↗</Link>
+          <Link href={orgUrl} target="_blank" rel="noopener">Org dashboard ↗</Link>
+        </Box>
+      </Paper>
+    </Box>
+  );
+}
+
+function SecurityEntityContent() {
+  const { entity } = useEntity();
+  const annotations = entity.metadata.annotations ?? {};
+  const projectKey = annotations['sonarcloud.io/project-key'];
+  const orgSlug    = annotations['snyk.io/org-slug'];
+  const repoSlug   = annotations['github.com/project-slug']?.split('/')[1];
+
+  const configured = Boolean(projectKey || orgSlug);
+
+  return (
+    <Content>
+      {!configured && (
+        <Box mb={3}>
+          <Paper style={{ padding: 24, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>Security scanning not configured</Typography>
+            <Typography variant="body2" color="textSecondary">
+              This service does not have SonarCloud or Snyk annotations yet.
+              Run the <strong>Enable Security Scanning</strong> scaffolder template
+              (Catalog → Create → search "security") to open a PR that wires both
+              into this service's CI.
+            </Typography>
+            <Box mt={2}>
+              <Link href="/create" target="_self">Open scaffolder ↗</Link>
+            </Box>
+          </Paper>
+        </Box>
+      )}
+      {projectKey && <SonarCloudCard projectKey={projectKey} />}
+      {orgSlug     && <SnykCard orgSlug={orgSlug} repoSlug={repoSlug} />}
+    </Content>
+  );
+}
+
+const securityEntityContent = EntityContentBlueprint.make({
+  name: 'security-scanning',
+  params: {
+    path: '/security',
+    title: 'Security',
+    filter: 'kind:component',
+    loader: async () => <SecurityEntityContent />,
+  },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
@@ -958,5 +1129,6 @@ export const customPagesPlugin = createFrontendPlugin({
     semanticSearchPage,
     semanticSearchNavItem,
     scorecardEntityContent,
+    securityEntityContent,
   ],
 });

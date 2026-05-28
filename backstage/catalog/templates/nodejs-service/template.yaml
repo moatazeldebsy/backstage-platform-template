@@ -115,8 +115,7 @@ spec:
           - idp-service
 
     - id: set-repo-secrets
-      name: Configure CI/CD Secrets (AWS only)
-      if: ${{ parameters.deployTarget === 'aws' }}
+      name: Configure CI/CD Secrets
       action: idp:repo:set-secrets
       input:
         repoUrl: ${{ steps.publish.output.remoteUrl }}
