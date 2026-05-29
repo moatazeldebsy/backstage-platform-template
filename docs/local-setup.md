@@ -42,19 +42,22 @@ What it does (in order):
 | 6 | Builds and deploys `hello-service` via the golden-path Helm chart |
 | 7 | Writes `/etc/hosts` entries for `*.idp.local` and flushes DNS cache |
 | 8 | Installs ArgoCD |
+| 8b | (Optional) Installs Argo Workflows for ML pipeline orchestration (use `--install-argo-workflows` flag) |
 | 9 | Installs OPA/Gatekeeper and applies all five policy constraints |
 | 10 | Installs Prometheus Pushgateway + DORA exporter CronJob + catalog exporter CronJob |
 | 11 | Deploys Tech Insights Exporter CronJob (scorecard metrics → Pushgateway every 15 min) |
 | 12 | Wires AlertManager Slack webhook (if `SLACK_WEBHOOK_URL` is set) |
 | 13 | Applies ArgoCD `idp-services` ApplicationSet — auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server`, and `qa-mcp-server` to `services-dev`. `contract-mcp-server` is **excluded** from the ApplicationSet and is only deployed by `bootstrap-ai.sh`. Removes the bootstrap-deployed `hello-service` from the `services` namespace. |
 
-### Faster startup flags
+### Bootstrap flags
 
 ```bash
-./scripts/bootstrap-local.sh --skip-obs       # skip Prometheus + Grafana
-./scripts/bootstrap-local.sh --skip-gitops    # skip ArgoCD
-./scripts/bootstrap-local.sh --skip-policies  # skip OPA/Gatekeeper
-./scripts/bootstrap-local.sh --skip-dora      # skip DORA exporter
+./scripts/bootstrap-local.sh --skip-obs             # skip Prometheus + Grafana
+./scripts/bootstrap-local.sh --skip-gitops          # skip ArgoCD
+./scripts/bootstrap-local.sh --skip-policies        # skip OPA/Gatekeeper
+./scripts/bootstrap-local.sh --skip-dora            # skip DORA exporter
+./scripts/bootstrap-local.sh --install-argo-workflows # (optional) install Argo Workflows for ML pipeline orchestration
+./scripts/bootstrap-local.sh --start-backstage      # start Backstage (requires cluster already running)
 ```
 
 Flags can be combined: `--skip-obs --skip-gitops` cuts bootstrap time roughly in half.
@@ -70,12 +73,16 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
+| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (integrated in Backstage) |
 | **hello-service** | http://hello-service.idp.local | — (managed by ArgoCD in `services-dev` as `hello-service-local-service-template`) |
 | **Grafana** | http://grafana.idp.local | `admin` / `admin` |
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |
 | **Prometheus** | http://prometheus.idp.local | — |
 | **OpenCost** | http://opencost.idp.local | — |
 | **Pushgateway** | http://pushgateway.idp.local | — |
+| **KAgent UI** | http://kagent.idp.local | — (agent management) |
+| **MLflow** | http://mlflow.idp.local | — (experiment tracking & model registry) |
+| **Argo Workflows** | http://argo-workflows.idp.local | — (if `--install-argo-workflows` flag used) |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 ArgoCD initial admin password:
@@ -127,10 +134,16 @@ Both patches are tracked in git and re-applied automatically by `yarn install` a
 cp local/.env.example local/.env
 cp local/backstage/.env.example local/backstage/.env
 # Edit both and fill in:
-#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION
+#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION, ANTHROPIC_API_KEY (optional for AI), OPENAI_API_KEY (optional for OpenAI models)
 #   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,
 #                          BACKSTAGE_AUTH_SECRET (any string locally)
 ```
+
+**AI/ML Platform (Optional):**
+- `ANTHROPIC_API_KEY` — Required to enable Claude API for KAgent agents (used by `bootstrap-ai.sh`)
+- `OPENAI_API_KEY` — Required to enable OpenAI GPT-4o support via the `modelconfig-openai` CRD (used by `bootstrap-ai.sh`)
+
+If these are not set, the AI/ML platform still deploys but agents/models using those providers will fail gracefully.
 
 > K8s credentials (`K8S_CLUSTER_URL`, `K8S_SERVICE_ACCOUNT_TOKEN`, `K8S_CLUSTER_CA_DATA`) are written to `local/backstage/.env` automatically by `bootstrap-local.sh` via `get-k8s-credentials.sh`. No manual step needed if you bootstrapped with that script.
 
@@ -238,13 +251,74 @@ helm upgrade --install my-svc ./helm/service-template \
 
 The Helm chart (`helm/service-template`) is **identical** for both. Only the values file differs.
 
-## AI/ML stack (optional)
+## AI/ML Stack (Optional)
 
 After `bootstrap-local.sh` (and optionally `--start-backstage`) completes, boot the AI/ML platform:
 
 ```bash
-# Requires ANTHROPIC_API_KEY in local/.env
+# Requires ANTHROPIC_API_KEY in local/.env (and optionally OPENAI_API_KEY for multi-model support)
 ./scripts/bootstrap-ai.sh
+```
+
+What it installs:
+- **KAgent platform** — Kubernetes-native AI agents with `idp-assistant`, `qa-assistant`, `contract-assistant` agents
+- **MCP servers** — Model Context Protocol servers: `idp-mcp-server` (6 IDP tools), `qa-mcp-server` (QA tools), `contract-mcp-server` (contract testing tools)
+- **MLflow** — Experiment tracking and model registry at http://mlflow.idp.local
+- **OpenAI ModelConfig** — GPT-4o support if `OPENAI_API_KEY` is set; Claude Anthropic support if `ANTHROPIC_API_KEY` is set
+- **AI Observability** — Grafana dashboard with MCP tool metrics, latency, cost attribution per server
+
+### AI-Native Platform Features (Phase 7a Complete)
+
+#### Priority 1: AI Platform Foundations ✅
+- **OpenAI ModelConfig CRD** — Deploy agents using GPT-4o in addition to Claude
+- **AI Observability Dashboard** — Monitor MCP tool calls, latency, error rates in Grafana
+- **RAG Document Indexing** — AI search across TechDocs and runbooks via `/ai-search` page
+
+#### Priority 2: AI Service Lifecycle ✅
+- **Model Serving API Template** — Deploy Ollama (local) or vLLM (AWS) inference servers via Backstage
+- **AI Platform Scorecard** — Tech Insights checks for model cards, eval suites, observability (Bronze/Silver/Gold)
+- **Prompt Lifecycle Management** — System prompts in ConfigMaps for zero-downtime updates
+
+#### Priority 3: ML Workflows & Cost Attribution ✅
+- **Argo Workflows** — Multi-step ML pipeline orchestration (optional; use `--install-argo-workflows` flag in bootstrap-local.sh)
+- **Cost Attribution** — Team labels on agents, `ai_api_calls_total` metrics for cost tracking per model
+
+### Scaffold AI services
+
+After `bootstrap-ai.sh` completes, use the templates from Backstage:
+
+```bash
+# 1. AI Agent (KAgent-based)
+# Backstage → Create → AI Agent (KAgent)
+# Fill: name, owner, KAgent to deploy, tools to expose
+
+# 2. Model Serving API
+# Backstage → Create → Model Serving API
+# Fill: name, model name (llama3.2, mistral, etc.), target (local/aws)
+
+# 3. MCP Server (Model Context Protocol)
+# Backstage → Create → MCP Server
+# Fill: name, tools to expose, KAgent to link
+
+# 4. Contract Testing (with contract-mcp-server)
+# Backstage → Create → Enable Contract Testing
+# Select target service; scaffolds contract testing and deploys contract-mcp-server
+```
+
+### Monitor AI Platform
+
+```bash
+# View agent status
+kubectl get agents -n kagent
+
+# Monitor MCP server metrics
+kubectl logs -n services-dev deployment/idp-mcp-server | grep -i metric
+
+# Check Grafana AI dashboard
+# http://grafana.idp.local → search "AI Platform"
+
+# View cost attribution (if using labels)
+kubectl get agents -n kagent -L team
 ```
 
 This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.

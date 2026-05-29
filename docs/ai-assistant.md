@@ -247,6 +247,125 @@ This was caused by two bugs, both now fixed:
 
 **Fix applied:** Both issues are now fixed in the source: `get_template_params` is implemented in `services/idp-mcp-server/src/index.ts` and listed in `kubernetes/kagent/idp-agent.yaml` toolNames. Rule 4 + Rule 5 now require immediate `scaffold_service` invocation.
 
+---
+
+## AI-Native Platform (Phase 7a Complete)
+
+The platform has been enhanced with comprehensive AI capabilities beyond the chat assistant:
+
+### Multi-Provider Model Support ✅
+
+Deploy agents using **Claude Anthropic** (default) or **OpenAI GPT-4o**:
+
+```bash
+# Both ModelConfigs available via kubernetes/kagent/
+# - modelconfig-anthropic.yaml (Claude Haiku / Sonnet)
+# - modelconfig-openai.yaml (GPT-4o)
+
+# Use in agent spec:
+#   modelConfig: claude-anthropic
+#   # or
+#   modelConfig: openai-prod
+```
+
+**Setup:** Set `OPENAI_API_KEY` in `local/.env` before running `./scripts/bootstrap-ai.sh`.
+
+### Model Serving & Inference ✅
+
+Deploy trained models as inference APIs:
+
+```bash
+# Via Backstage:
+# Create → Model Serving API
+# → Ollama (local Kind) or vLLM (AWS EKS with GPU)
+
+# Manually:
+helm upgrade --install my-model helm/service-template \
+  --set image.repository=localhost:5003/my-model \
+  --namespace ml-platform
+```
+
+Custom action: `idp:deploy-model-server` with secure TLS verification.
+
+### AI Platform Scorecard ✅
+
+Quality gates for AI services (Bronze/Silver/Gold tiers):
+
+- **Bronze:** Agent deployed + health checks passing
+- **Silver:** + deepeval CI eval suite + Grafana observability dashboard
+- **Gold:** + cost attribution labels + system prompt versioned in ConfigMap
+
+View in Backstage **Tech Insights** tab on any service entity. Three new checks: `has-model-card`, `has-eval-suite`, `has-ai-observability`.
+
+### Prompt Lifecycle Management ✅
+
+System prompts extracted to ConfigMaps in `kubernetes/kagent/prompts/`:
+
+- Zero-downtime prompt updates (no pod restart)
+- Version history via Git history
+- Rollback via ArgoCD revert
+
+```bash
+# Update via Backstage:
+# Create → Update Agent Prompt → PR to kubernetes/kagent/prompts/<agent>-prompt.yaml
+# Or edit directly: kubectl edit configmap idp-assistant-prompt -n kagent
+```
+
+### ML Workflows (Argo Workflows) ✅
+
+Multi-step training + evaluation pipelines:
+
+```bash
+# Install (optional):
+./scripts/bootstrap-local.sh --install-argo-workflows
+
+# Access at: http://argo-workflows.idp.local
+
+# Scaffold pipeline:
+# Create → ML Training Job → outputs Argo Workflow YAML
+```
+
+### Cost Attribution ✅
+
+Track AI API spend per team:
+
+- Team labels on all Agent CRDs (`team: platform`, `team: quality`)
+- `ai_api_calls_total` metric with `{server, model, tool}` labels
+- Grafana dashboard: cost per team / model
+
+### RAG Semantic Search ✅
+
+AI search across TechDocs, runbooks, catalog:
+
+```bash
+# Via Backstage AI Assistant:
+/ai-search
+
+# Search query: "how to debug deployment failures"
+# → Returns relevant runbooks, ADRs, documentation
+```
+
+Backend: Voyage AI embeddings + pgvector (`kubernetes/pgvector.yaml`).
+
+### AI Observability Dashboard ✅
+
+Monitor MCP servers in Grafana:
+
+- Tool call rate per server (idp, qa, contract)
+- Call latency P50/P95/P99
+- Error rates and retry patterns
+- Token usage per model (if available)
+
+Dashboard: **Grafana** → "AI Platform"
+
+---
+
+## Next Steps (Phase 7b)
+
+- `ml-training-job` template — Argo Workflows scaffold with MLflow logging
+- Automated `deepeval` CI gate — block PRs if LLM eval score < threshold
+- Contract testing via `contract-mcp-server` — auto-register services + validate compatibility
+
 To re-apply after a cluster rebuild:
 ```bash
 kubectl apply -f kubernetes/kagent/idp-agent.yaml

@@ -127,14 +127,34 @@ terraform init -backend=false && terraform validate
 ./bin/idp scaffold service --name my-svc --type go --local  # offline/local generation
 ```
 
-### AI/ML platform (KAgent + MLflow)
+### AI/ML Platform (KAgent + MLflow)
+
+**Prerequisites:**
+- `ANTHROPIC_API_KEY` in `local/.env` (for Claude API via KAgent)
+- `OPENAI_API_KEY` in `local/.env` (optional; for GPT-4o support via `modelconfig-openai`)
 
 ```bash
-# Prerequisites: ANTHROPIC_API_KEY in local/.env
+# Full AI/ML stack: KAgent, MLflow, MCP servers, OpenAI ModelConfig (if OPENAI_API_KEY set)
 ./scripts/bootstrap-ai.sh
-./scripts/bootstrap-ai.sh --skip-mlflow | --skip-mcp | --skip-kagent
+
+# Selective deployment
+./scripts/bootstrap-ai.sh --skip-mlflow     # skip MLflow tracking server
+./scripts/bootstrap-ai.sh --skip-mcp        # skip MCP servers (idp, qa, contract)
+./scripts/bootstrap-ai.sh --skip-kagent     # skip KAgent platform
+
+# Teardown
 ./scripts/bootstrap-ai.sh --destroy
 ```
+
+**AI-Native Platform Features (Phase 7a):**
+- OpenAI ModelConfig CRD + GPT-4o support
+- AI Observability Grafana dashboard (MCP tool metrics, latency, cost attribution)
+- RAG doc indexing for semantic search across TechDocs
+- Model Serving API template (Ollama local / vLLM AWS)
+- AI Platform Scorecard (Bronze/Silver/Gold tiers with AI governance checks)
+- Prompt Lifecycle Management (system prompts in ConfigMaps)
+- Argo Workflows integration (ML pipeline orchestration)
+- AI Cost Attribution (team labels + `ai_api_calls_total` metrics)
 
 ### Cleanup / Destroy
 
@@ -242,11 +262,14 @@ Backstage Portal  ────────────────────�
 Kind / Rancher Desktop (local) or EKS (AWS)
   namespace: services-dev → hello-service, idp-mcp-server, qa-mcp-server (ArgoCD ApplicationSet via services/*)
                           → contract-mcp-server (Helm only via bootstrap-ai.sh — excluded from ApplicationSet)
+                          → MCP servers emit mcp_tool_calls_total, mcp_tool_duration_seconds, ai_api_calls_total metrics
   namespace: services     → Helm chart (helm/service-template)
-  namespace: monitoring   → Prometheus + Grafana + Pushgateway
+  namespace: monitoring   → Prometheus + Grafana + Pushgateway + ServiceMonitor (kagent namespace scraped for cost attribution)
   namespace: argocd       → ArgoCD (App-of-Apps)
-  namespace: kagent       → KAgent + idp-assistant + IDP MCP Server
-  namespace: ml-platform  → MLflow tracking server
+  namespace: kagent       → KAgent agents (idp-assistant, qa-assistant, contract-assistant) with team labels for cost tracking
+                          → ModelConfig CRDs (claude-anthropic, openai-prod)
+  namespace: ml-platform  → MLflow tracking server, model inference servers (Ollama/vLLM)
+  namespace: argo-workflows → Argo Workflows controller (optional; install with --install-argo-workflows flag)
   namespace: crossplane-system → Crossplane core + AWS providers (AWS only)
 ```
 
@@ -267,10 +290,12 @@ All custom Backstage backend scaffold actions are registered in `backstage/app/p
 | `idpLocalDeploy.ts` | `idp:deploy-local` | `helm upgrade --install` to Kind via `host.docker.internal` |
 | `idpProvisionSecret.ts` | `idp:provision-secret` | Create a Kubernetes Secret |
 | `idpSetRepoSecrets.ts` | `idp:set-repo-secrets` | Write GitHub Actions secrets |
-| `idpTechInsights.ts` | `idp:tech-insights` | Push metrics to Prometheus Pushgateway |
+| `idpTechInsights.ts` | `idp:tech-insights` | Push metrics to Prometheus Pushgateway; includes AI scorecard checks (v0.3.0+) |
 | `idpDeployAgent.ts` | `idp:deploy-agent` | Deploy a KAgent Agent CRD |
 | `idpRunTrainingJob.ts` | `idp:run-training-job` | Launch an MLflow training job |
 | `idpDeployMcpServer.ts` | `idp:deploy-mcp-server` | Deploy an MCP server via Helm |
+| `idpDeployModelServer.ts` | `idp:deploy-model-server` | Deploy a model inference server (Ollama local / vLLM AWS) with TLS verification |
+| `idpRagSearch.ts` | (backend module) | Semantic search over catalog + TechDocs via RAG (Voyage AI + pgvector) |
 
 **Critical**: All custom action modules import `scaffolderActionsExtensionPoint` from `@backstage/plugin-scaffolder-node` (the main package, **not** `/alpha`). The alpha export only has `scaffolderTemplatingExtensionPoint` which is a different extension point. Using the wrong import path causes the scaffolder plugin to crash at startup, which prevents the catalog refresh loop from running and leaves the catalog empty.
 

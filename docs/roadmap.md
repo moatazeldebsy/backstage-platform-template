@@ -147,9 +147,11 @@ one-click PR. This is the most-requested feature after first scaffold.
 
 ---
 
-## Phase 7 — AI/ML Platform 🚧
+## Phase 7 — AI/ML Platform ✅
 
 **Goal:** Every developer persona — including ML engineers and AI teams — has a golden path.
+
+### Phase 7 Core AI/ML Capabilities (✅ Completed)
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -164,8 +166,38 @@ one-click PR. This is the most-requested feature after first scaffold.
 | `contract-assistant` KAgent agent | ✅ | `kubernetes/kagent/contract-agent.yaml` — uses all 9 contract tools + `catalog_search` + `list_deployments` |
 | `enable-contract-testing` template | ✅ | Scaffold template that deploys `contract-mcp-server`, applies KAgent CRDs, and auto-registers the target service |
 | Scaffold actions: deploy-agent, run-training-job, deploy-mcp-server | ✅ | `idpDeployAgent`, `idpRunTrainingJob`, `idpDeployMcpServer` modules in `backstage/app/packages/backend/src/modules/` |
-| `model-serving-api` template | 📋 | FastAPI skeleton; `prediction_latency_seconds` histogram; `MODEL_URI` env var |
-| `ml-training-job` template | 📋 | Argo Workflows `workflow.yaml`; MLflow run logging; CronJob variant |
+
+### Phase 7a — AI-Native Platform Enhancements (✅ Completed Q2 2026)
+
+**Priority 1 — AI Platform Foundations:**
+
+| Item | Status | Notes |
+|---|---|---|
+| OpenAI ModelConfig CRD | ✅ | `kubernetes/kagent/modelconfig-openai.yaml` with GPT-4o support; OPENAI_API_KEY secret auto-provisioned in `bootstrap-ai.sh` |
+| AI Observability Dashboard | ✅ | Grafana dashboard (`observability/grafana/dashboards/ai/ai-platform.json`) with MCP tool call metrics, latency distribution, error rates, cost attribution per server |
+| RAG Document Indexing | ✅ | `idpRagSearch.ts` extended with `indexMarkdownFiles()` for semantic search across TechDocs, runbooks, and platform documentation |
+
+**Priority 2 — AI Service Lifecycle:**
+
+| Item | Status | Notes |
+|---|---|---|
+| `model-serving-api` template | ✅ | Scaffolder template for Ollama (local Kind) and vLLM (AWS EKS) model servers; `idp:deploy-model-server` action with secure TLS verification and input validation |
+| AI Platform Scorecard | ✅ | 3 new Tech Insights checks: `has-model-card`, `has-eval-suite`, `has-ai-observability`; updated Bronze/Silver/Gold tiers (14 checks total) with AI Governance group |
+| Prompt Lifecycle Management | ✅ | System prompts extracted to ConfigMaps (`kubernetes/kagent/prompts/`) and referenced by Agent CRDs for zero-downtime prompt updates |
+
+**Priority 3 — ML Workflows & Cost Attribution:**
+
+| Item | Status | Notes |
+|---|---|---|
+| Argo Workflows orchestration | ✅ | `local/argo-workflows/values.yaml` + `aws/argo-workflows/values.yaml` with S3 artifact storage (AWS IRSA); integrated into `bootstrap-local.sh` (--install-argo-workflows flag) and `bootstrap.sh` (Phase 6a) |
+| AI Cost Attribution | ✅ | MCP server metrics enhanced with `server` label; `ai_api_calls_total` counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking |
+
+### Phase 7 Successor Items (📋 Planned)
+
+| Item | Status | Notes |
+|---|---|---|
+| `ml-training-job` template | 📋 | Argo Workflows scaffold with MLflow experiment logging; CronJob variant for scheduled model training |
+| Automated deepeval CI gate | 📋 | GitHub Actions workflow on PR to Agent prompts; blocks merge if AnswerRelevancy < 0.7 or ToolCorrectness < 0.8 |
 
 ---
 
@@ -316,7 +348,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 | M4: Developer excellence | Q2 2026 | Phase 4 | `milestone/m4-scorecards` |
 | M5: OSS launch | Q2 2026 🚧 | Phase 5 | `milestone/m5-oss-launch` |
 | M6: Multi-env GitOps | Q3 2026 | Phase 6 | `milestone/m6-gitops` |
-| M7: AI/ML platform | Q2 2026 🚧 | Phase 7 | `milestone/m7-aiml` |
+| M7: AI/ML platform | Q2 2026 ✅ | Phase 7 | `milestone/m7-aiml` |
 | M7b: Test automation golden path | Q2 2026 ✅ | Phase 7b | `milestone/m7b-test-golden-path` |
 | M8: Developer experience | Q3 2026 | Phase 8 | `milestone/m8-dx` |
 | M9: Advanced platform | Q4 2026 | Phase 9 | `milestone/m9-advanced` |
