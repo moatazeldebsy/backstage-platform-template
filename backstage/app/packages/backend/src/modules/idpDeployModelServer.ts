@@ -1,13 +1,13 @@
 import { createBackendModule } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
 
@@ -19,13 +19,16 @@ const kubeEnv = {
 async function ensureKubeconfig(): Promise<void> {
   const k8sUrl = process.env.K8S_CLUSTER_URL;
   const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
+  const k8sCa = process.env.K8S_CLUSTER_CA_B64;
   if (!k8sUrl || !k8sToken) return;
+  if (!k8sCa) throw new Error('K8S_CLUSTER_CA_B64 env var required for secure TLS connections');
+
   const kubeconfig = `apiVersion: v1
 kind: Config
 clusters:
 - cluster:
     server: ${k8sUrl}
-    insecure-skip-tls-verify: true
+    certificate-authority-data: ${k8sCa}
   name: cluster
 contexts:
 - context:
@@ -326,6 +329,21 @@ function createDeployModelServerAction() {
       const modelName = ctx.input['modelName'] as string;
       const target = ctx.input['target'] as string;
 
+      // Strict input validation to prevent injection attacks
+      const k8sNameRegex = /^[a-z][a-z0-9-]{2,30}$/;
+      const modelNameRegex = /^[a-z0-9-]+$/;
+      const targetRegex = /^(local|aws)$/;
+
+      if (!k8sNameRegex.test(name)) {
+        throw new Error(`Invalid name: must match pattern ${k8sNameRegex}. Got: ${name}`);
+      }
+      if (!modelNameRegex.test(modelName)) {
+        throw new Error(`Invalid modelName: must match pattern ${modelNameRegex}. Got: ${modelName}`);
+      }
+      if (!targetRegex.test(target)) {
+        throw new Error(`Invalid target: must be 'local' or 'aws'. Got: ${target}`);
+      }
+
       ctx.logger.info(`Deploying model server '${name}' (model: ${modelName}, target: ${target})...`);
 
       // Verify cluster is reachable
@@ -333,7 +351,7 @@ function createDeployModelServerAction() {
         if (target === 'aws') {
           await ensureKubeconfig();
         }
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
+        await execFileAsync('kubectl', ['cluster-info', '--request-timeout=5s'], { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
         throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
@@ -346,7 +364,7 @@ function createDeployModelServerAction() {
       const tmpFile = path.join(os.tmpdir(), `model-server-${name}-${Date.now()}.yaml`);
       try {
         await fs.writeFile(tmpFile, yaml, 'utf8');
-        const { stdout, stderr } = await execAsync(`kubectl apply -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
+        const { stdout, stderr } = await execFileAsync('kubectl', ['apply', '-f', tmpFile], { env: kubeEnv, timeout: 30_000 });
         if (stdout) ctx.logger.info(stdout.trim());
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
@@ -357,8 +375,7 @@ function createDeployModelServerAction() {
       ctx.logger.info(`Waiting for ${target === 'local' ? 'Ollama' : 'vLLM'} deployment to be ready...`);
       const deploymentName = target === 'local' ? `${name}-ollama` : `${name}-vllm`;
       try {
-        await execAsync(
-          `kubectl rollout status deployment/${deploymentName} -n ml-platform --timeout=120s`,
+        await execFileAsync('kubectl', ['rollout', 'status', `deployment/${deploymentName}`, '-n', 'ml-platform', '--timeout=120s'],
           { env: kubeEnv, timeout: 130_000 },
         );
       } catch (e: any) {
