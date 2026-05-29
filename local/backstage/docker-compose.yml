@@ -54,7 +54,7 @@ services:
       GITHUB_ORG: ${GITHUB_ORG:-moatazeldebsy}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
     ports:
-      - "3000:7007"   # frontend + backend both served from 7007 inside the container
+      - "3000:3000"   # Backstage backend (Node.js) listens on port 3000
     extra_hosts:
       - "backstage.idp.local:host-gateway"
       - "hello-service.idp.local:host-gateway"
