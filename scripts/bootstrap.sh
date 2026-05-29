@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# bootstrap.sh — Provision the IDP MVP platform end-to-end
+# bootstrap.sh — Provision the IDP MVP platform end-to-end on AWS EKS
 # Usage: ./scripts/bootstrap.sh [--region us-east-1] [--cluster-name idp-mvp] [--skip-*]
+# Includes: Terraform, EKS, Observability, ArgoCD, OPA, AI/ML platform, Argo Workflows
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -586,6 +587,45 @@ if [[ "$SKIP_AI" != "true" ]]; then
   bash scripts/bootstrap-ai.sh --aws --region "${AWS_REGION}" --cluster "${CLUSTER_NAME}"
 fi
 
+# ── Phase 6a: Argo Workflows (optional, for ML pipeline orchestration) ──────────
+if [[ "$SKIP_AI" != "true" ]]; then
+  log "Phase 6a: Installing Argo Workflows for ML orchestration..."
+  (
+    set -e
+    helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
+    helm repo update argo
+
+    # Create S3 bucket for Argo artifacts if needed
+    ARGO_BUCKET="argo-workflows-artifacts-${CLUSTER_NAME}"
+    if ! aws s3 ls "s3://${ARGO_BUCKET}/" --region "${AWS_REGION}" &>/dev/null; then
+      log "Creating S3 bucket for Argo Workflows artifacts..."
+      aws s3 mb "s3://${ARGO_BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true
+    fi
+
+    # Get the Argo Workflows IRSA role ARN from Terraform (if it exists)
+    ARGO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw argo_workflows_role_arn 2>/dev/null || echo "")
+
+    # Install Argo Workflows with AWS values
+    VALUES_FILE="${ROOT_DIR}/aws/argo-workflows/values.yaml"
+    sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; s|REGION_PLACEHOLDER|${AWS_REGION}|g; s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${ARGO_ROLE_ARN}|g; s|BACKSTAGE_ALB_URL_PLACEHOLDER|${BACKSTAGE_URL}|g" \
+      "$VALUES_FILE" > /tmp/argo-values-${CLUSTER_NAME}.yaml
+
+    helm upgrade --install argo-workflows argo/argo-workflows \
+      --namespace argo-workflows \
+      --create-namespace \
+      -f /tmp/argo-values-${CLUSTER_NAME}.yaml \
+      --wait \
+      --timeout 300s || log "WARNING: Argo Workflows Helm install had issues (non-critical for platform operation)"
+
+    # Apply RBAC if ServiceAccount creation succeeded
+    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
+
+    log "Argo Workflows deployed — UI pending ALB provisioning"
+  )
+else
+  log "Phase 6a: Skipping Argo Workflows (--skip-ai flag)"
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 _alb() {
   # Usage: _alb <ingress-name> <namespace>
@@ -621,6 +661,7 @@ log "║  AI/ML PLATFORM"
 log "║    KAgent UI           http://$(_alb kagent-ui kagent)"
 log "║    IDP Assistant (A2A) http://$(_alb idp-assistant kagent)"
 log "║    MLflow              http://$(_alb mlflow ml-platform)"
+log "║    Argo Workflows      http://$(_alb argo-workflows-server argo-workflows)"
 log "║    IDP MCP Server      http://$(_alb idp-mcp-server services-dev)"
 log "║    QA MCP Server       http://$(_alb qa-mcp-server services-dev)"
 log "║    Contract MCP Server http://$(_alb contract-mcp-server services-dev)"

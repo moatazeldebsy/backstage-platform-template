@@ -1,0 +1,61 @@
+# Argo Workflows Helm values for AWS EKS deployment
+# Install: helm upgrade --install argo-workflows argo/argo-workflows --namespace argo-workflows --create-namespace -f aws/argo-workflows/values.yaml --wait
+
+server:
+  extraArgs:
+    - "--auth-mode=client"  # Use proper OAuth/OIDC in production
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    hosts:
+      - argo-workflows.BACKSTAGE_ALB_URL_PLACEHOLDER
+    paths:
+      - path: /
+        pathType: Prefix
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+
+controller:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+
+executor:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+persistence:
+  enabled: true
+  storageClassName: gp2
+  size: 5Gi
+
+workflow:
+  rbac:
+    create: true
+
+artifactRepository:
+  s3:
+    bucket: argo-workflows-artifacts-CLUSTER_NAME_PLACEHOLDER
+    region: REGION_PLACEHOLDER
+    roleARN: ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER
+  archiveLogs: true
