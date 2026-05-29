@@ -422,9 +422,16 @@ else
   # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
+    # Apply ServiceMonitor for Prometheus scraping of MCP servers
+  info "Applying Prometheus ServiceMonitor for kagent namespace..."
+  kubectl apply -f "${REPO_ROOT}/kubernetes/monitoring/servicemonitor-kagent.yaml"
+  check "ServiceMonitor applied — MCP metrics now scraped by Prometheus"
+
+  # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
     KAGENT_ESO_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw kagent_eso_role_arn 2>/dev/null || echo "")
     [[ -n "$KAGENT_ESO_ROLE_ARN" ]] || die "Could not read kagent_eso_role_arn from Terraform outputs."
+  fi
     sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
       "${REPO_ROOT}/aws/kagent/external-secret.yaml" | kubectl apply -f -
     kubectl annotate serviceaccount kagent-eso-sa \

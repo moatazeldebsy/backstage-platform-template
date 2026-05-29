@@ -10,6 +10,7 @@
 #   ./scripts/bootstrap-local.sh --start-backstage            # Backstage only (cluster already up)
 #   ./scripts/bootstrap-local.sh --install-pushgateway        # install/fix Pushgateway + seed QA metrics
 #   ./scripts/bootstrap-local.sh --install-argocd             # install/fix ArgoCD + register GitHub creds
+#   ./scripts/bootstrap-local.sh --install-argo-workflows     # install Argo Workflows for ML pipeline orchestration
 #   ./scripts/bootstrap-local.sh --update-backstage-ip        # refresh Backstage endpoint IP after compose up
 #   ./scripts/bootstrap-local.sh --destroy                    # tear everything down (prompts for confirmation)
 #   ./scripts/bootstrap-local.sh --clean-docker               # stop Backstage + prune all Docker resources
@@ -44,6 +45,7 @@ START_BACKSTAGE=false
 RUN_BACKSTAGE_AFTER=false
 INSTALL_PUSHGATEWAY=false
 INSTALL_ARGOCD=false
+INSTALL_ARGO_WORKFLOWS=false
 PRINT_URLS=false
 # Read provider from env first; CLI --provider flag overrides below.
 PROVIDER="${KUBERNETES_PROVIDER:-kind}"
@@ -195,6 +197,7 @@ while [[ $# -gt 0 ]]; do
     --start-backstage)     START_BACKSTAGE=true;       shift ;;
     --install-pushgateway) INSTALL_PUSHGATEWAY=true;   shift ;;
     --install-argocd)      INSTALL_ARGOCD=true;        shift ;;
+    --install-argo-workflows) INSTALL_ARGO_WORKFLOWS=true; shift ;;
     --provider)            PROVIDER="$2";              shift 2 ;;
     --print-urls)          PRINT_URLS=true;            shift ;;
     *) err "Unknown flag: $1" ;;
@@ -1003,6 +1006,28 @@ if ! $SKIP_GITOPS; then
   }
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
+fi
+
+# ── Step 8b: Argo Workflows (optional) ────────────────────────────────────────
+if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
+  log "Step 8b: Installing Argo Workflows..."
+  (
+    set -e
+    helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
+    helm repo update argo
+
+    helm upgrade --install argo-workflows argo/argo-workflows \
+      --namespace argo-workflows \
+      --create-namespace \
+      -f "${REPO_ROOT}/local/argo-workflows/values.yaml" \
+      --wait \
+      --timeout 300s || die "Argo Workflows Helm install failed"
+
+    kubectl apply -f "${REPO_ROOT}/kubernetes/argo-workflows/rbac.yaml"
+    check "Argo Workflows installed — UI at http://argo-workflows.idp.local"
+  )
+else
+  log "Step 8b: Skipping Argo Workflows (use --install-argo-workflows to enable)."
 fi
 
 # ── Step 9: OPA/Gatekeeper ───────────────────────────────────────────────────
