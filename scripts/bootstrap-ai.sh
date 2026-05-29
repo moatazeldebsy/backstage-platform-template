@@ -82,7 +82,9 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"   2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"  2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"  2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
+  kubectl delete secret kagent-openai -n kagent 2>/dev/null || true
   # Residue from the pre-fe4fce2 HTTPS-with-mkcert install. Harmless once the
   # new HTTP-only ingress is applied, but its presence on second machines is a
   # reliable fingerprint of "you upgraded across the TLS removal" — purge it
@@ -162,13 +164,21 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws ecr get-login-password --region "${AWS_REGION}" | \
     docker login --username AWS --password-stdin \
       "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-  # Fetch ANTHROPIC_API_KEY from Secrets Manager (if not already in env)
+  # Fetch ANTHROPIC_API_KEY and OPENAI_API_KEY from Secrets Manager (if not already in env)
   if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
     ANTHROPIC_API_KEY=$(aws secretsmanager get-secret-value \
       --secret-id "idp-mvp/kagent" \
       --region "${AWS_REGION}" \
       --query 'SecretString' --output text 2>/dev/null \
       | python3 -c "import json,sys; print(json.load(sys.stdin).get('ANTHROPIC_API_KEY',''))" \
+      2>/dev/null || echo "")
+  fi
+  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+    OPENAI_API_KEY=$(aws secretsmanager get-secret-value \
+      --secret-id "idp-mvp/kagent" \
+      --region "${AWS_REGION}" \
+      --query 'SecretString' --output text 2>/dev/null \
+      | python3 -c "import json,sys; print(json.load(sys.stdin).get('OPENAI_API_KEY',''))" \
       2>/dev/null || echo "")
   fi
 else
@@ -184,13 +194,18 @@ else
     kubectl cluster-info --context rancher-desktop &>/dev/null || \
       die "Rancher Desktop cluster not reachable. Start Rancher Desktop and run ./scripts/bootstrap-local.sh --provider rancher-desktop first."
   fi
-  # Load ANTHROPIC_API_KEY from local/.env if not already set
+  # Load ANTHROPIC_API_KEY and OPENAI_API_KEY from local/.env if not already set
   if [[ -f "${ENV_FILE}" ]]; then
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
+    OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
   fi
 fi
 
 [[ -n "${ANTHROPIC_API_KEY:-}" ]] || die "ANTHROPIC_API_KEY is not set. Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
+# OPENAI_API_KEY is optional; warn if not set but allow bootstrap to continue
+if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+  warn "OPENAI_API_KEY is not set. OpenAI ModelConfig will not be functional. Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS) to enable OpenAI agents."
+fi
 
 info "Starting AI platform bootstrap (Claude API, mode=${DEPLOY_MODE})..."
 echo ""
@@ -256,6 +271,16 @@ kubectl create secret generic kagent-anthropic \
   --from-literal=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
   --dry-run=client -o yaml | kubectl apply -f -
 check "Secret kagent-anthropic ready"
+
+# Create OpenAI secret if API key is provided
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  info "Creating kagent-openai secret in kagent namespace..."
+  kubectl create secret generic kagent-openai \
+    --namespace kagent \
+    --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret kagent-openai ready"
+fi
 
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────
 
@@ -384,6 +409,9 @@ else
 
   info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"
+  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"
+  fi
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"

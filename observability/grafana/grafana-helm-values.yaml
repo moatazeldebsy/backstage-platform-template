@@ -60,10 +60,16 @@ dashboardProviders:
         type: file
         options:
           path: /var/lib/grafana/dashboards/qa
+      - name: ai
+        folder: AI Platform
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards/ai
 dashboardsConfigMaps:
   idp: grafana-dashboards-idp
   dora: grafana-dashboards-dora
   qa: grafana-qa-dashboard
+  ai: grafana-dashboards-ai
 
 persistence:
   enabled: true

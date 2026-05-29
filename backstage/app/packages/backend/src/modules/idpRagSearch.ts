@@ -1,5 +1,7 @@
 import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api';
 import express, { Router } from 'express';
+import fs from 'fs';
+import path from 'path';
 
 const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
 const VOYAGE_MODEL = 'voyage-3-lite';
@@ -160,10 +162,56 @@ export const ragSearchPlugin = createBackendPlugin({
           if (docs.length) await upsertDocs(docs);
         }
 
+        async function indexMarkdownFiles() {
+          const docs: { id: string; title: string; kind: string; url: string; content: string }[] = [];
+          const catalogDir = '/catalog';
+          const appBaseUrl = config.getString('app.baseUrl');
+
+          if (!fs.existsSync(catalogDir)) {
+            logger.debug('RAG: /catalog directory does not exist, skipping markdown indexing');
+            return;
+          }
+
+          function walkDir(dir: string): void {
+            try {
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory() && !entry.name.startsWith('.')) {
+                  walkDir(fullPath);
+                } else if (entry.isFile() && entry.name.endsWith('.md')) {
+                  try {
+                    const content = fs.readFileSync(fullPath, 'utf-8');
+                    const relPath = path.relative(catalogDir, fullPath);
+                    const title = entry.name.replace('.md', '');
+                    const url = `${appBaseUrl}/catalog/docs/${relPath}`;
+                    docs.push({
+                      id: `docs:${relPath}`,
+                      title,
+                      kind: 'Documentation',
+                      url,
+                      content: truncate(content),
+                    });
+                  } catch (err: any) {
+                    logger.debug(`RAG: failed to read ${fullPath}: ${err.message}`);
+                  }
+                }
+              }
+            } catch (err: any) {
+              logger.warn(`RAG: failed to walk ${dir}: ${err.message}`);
+            }
+          }
+
+          walkDir(catalogDir);
+          if (docs.length) await upsertDocs(docs);
+          logger.info(`RAG: indexed ${docs.length} markdown files from /catalog`);
+        }
+
         async function runIndex() {
           logger.info('RAG: starting index run');
           await indexCatalog();
           await indexExternalSources();
+          await indexMarkdownFiles();
           logger.info('RAG: index run complete');
         }
 
