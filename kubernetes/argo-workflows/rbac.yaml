@@ -1,0 +1,59 @@
+# RBAC for Argo Workflows to run workflows in ml-platform namespace
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-workflows
+  namespace: ml-platform
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-workflows
+  namespace: ml-platform
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create", "get"]
+- apiGroups: ["argoproj.io"]
+  resources: ["workflows", "workflows/finalizers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-workflows
+  namespace: ml-platform
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-workflows
+subjects:
+- kind: ServiceAccount
+  name: argo-workflows
+  namespace: ml-platform
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-workflows-exec
+  namespace: argo-workflows
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-workflows-admin
+subjects:
+- kind: ServiceAccount
+  name: argo-workflows
+  namespace: ml-platform

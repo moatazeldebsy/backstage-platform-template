@@ -17,6 +17,9 @@ const QUALITY_GATES = [
   'vuln-scan',         // CI runs dependency + secret scan (govulncheck / npm audit / pip-audit + Trivy fs)
   'contract',          // service has a registered OpenAPI/Pact contract
   'e2e',               // service has an associated end-to-end test suite
+  'llm-eval',          // AI service has LLM evaluation suite (deepeval or equivalent)
+  'bias-check',        // AI model has bias/fairness evaluation
+  'rag-eval',          // RAG system has retrieval quality evaluation
 ] as const;
 
 function parseGates(raw: string | undefined): Set<string> {
@@ -26,7 +29,7 @@ function parseGates(raw: string | undefined): Set<string> {
 
 const entityFactRetriever: FactRetriever = {
   id: 'idp-entity-facts',
-  version: '0.2.0',
+  version: '0.3.0',
   title: 'IDP Entity Facts',
   description:
     'Collects Bronze/Silver/Gold scorecard facts — service hygiene plus shift-left quality gates',
@@ -78,6 +81,19 @@ const entityFactRetriever: FactRetriever = {
       type: 'boolean',
       description: 'Service has an end-to-end test suite registered in the catalog (annotation OR consumesApi from a test-suite component)',
     },
+    // — AI/ML service governance (Gold tier) —
+    'has-model-card': {
+      type: 'boolean',
+      description: 'AI service has a backstage.io/model-card-url annotation documenting the model',
+    },
+    'has-eval-suite': {
+      type: 'boolean',
+      description: 'AI agent or model has LLM evaluation suite in CI (idp.io/quality-gates contains "llm-eval")',
+    },
+    'has-ai-observability': {
+      type: 'boolean',
+      description: 'AI service has observability configured (backstage.io/kubernetes-id annotation AND "ai" tag present)',
+    },
   },
   handler: async ({ entities, discovery, auth }) => {
     const { token } = await auth.getPluginRequestToken({
@@ -126,6 +142,12 @@ const entityFactRetriever: FactRetriever = {
       const hasE2eTests =
         declaredGates.has('e2e') || hasE2eTagged || hasE2eRelation;
 
+      // AI/ML service governance facts
+      const hasModelCard = Boolean(annotations['backstage.io/model-card-url']);
+      const hasEvalSuite = declaredGates.has('llm-eval');
+      const isAiService = tags.some(t => t.toLowerCase() === 'ai');
+      const hasAiObservability = hasHealthProbes && isAiService;
+
       facts.push({
         entity: {
           namespace: entity.metadata.namespace ?? 'default',
@@ -144,6 +166,9 @@ const entityFactRetriever: FactRetriever = {
           'has-vuln-scan':         hasVulnScan,
           'has-contract-tests':    hasContractTests,
           'has-e2e-tests':         hasE2eTests,
+          'has-model-card':        hasModelCard,
+          'has-eval-suite':        hasEvalSuite,
+          'has-ai-observability':  hasAiObservability,
         },
       });
     }

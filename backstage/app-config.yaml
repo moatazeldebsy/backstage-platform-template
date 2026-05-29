@@ -277,9 +277,17 @@ catalog:
       rules:
         - allow: [Template]
     - type: file
+      target: /catalog/templates/model-serving-api/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
       target: /catalog/resources/ai-platform.yaml
       rules:
         - allow: [Resource, Component]
+    - type: file
+      target: /catalog/resources/argo-workflows.yaml
+      rules:
+        - allow: [Resource]
     - type: file
       target: /services/idp-mcp-server/catalog-info.yaml
       rules:

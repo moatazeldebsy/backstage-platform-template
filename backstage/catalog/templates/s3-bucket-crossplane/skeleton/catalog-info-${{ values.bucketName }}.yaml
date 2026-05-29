@@ -4,7 +4,7 @@ metadata:
   name: ${{ values.bucketName }}
   description: S3 bucket ${{ values.bucketName }} in ${{ values.awsRegion }} — managed by Crossplane
   annotations:
-    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.bucketName }}.yaml
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.bucketName }}.yaml
   labels:
     aws-region: ${{ values.awsRegion }}
     provisioner: crossplane

@@ -1,0 +1,25 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: argo-workflows
+  title: Argo Workflows
+  description: Kubernetes-native workflow engine for orchestrating multi-step data and ML pipelines
+  tags:
+    - workflow
+    - orchestration
+    - ml
+    - ai
+    - ci-cd
+  links:
+    - url: http://argo-workflows.idp.local
+      title: Argo Workflows UI
+    - url: https://argoproj.github.io/argo-workflows/
+      title: Documentation
+
+spec:
+  type: ci-cd
+  owner: platform-team
+  system: idp-platform
+  dependsOn:
+    - resource:mlflow
+    - resource:kagent

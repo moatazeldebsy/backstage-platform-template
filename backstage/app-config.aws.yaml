@@ -249,6 +249,11 @@ catalog:
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/deepeval-llm-eval-suite/template.yaml
       rules:
         - allow: [Template]
+    # ── AI/ML: Model serving ──────────────────────────────────────────────────
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/model-serving-api/template.yaml
+      rules:
+        - allow: [Template]
     # ── Platform entities ─────────────────────────────────────────────────────
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/catalog-info.yaml

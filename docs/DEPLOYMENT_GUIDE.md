@@ -70,7 +70,7 @@ Create the OAuth app **before** running bootstrap so you have the credentials re
 ./scripts/setup.sh
 ```
 
-Replaces `YOUR_GITHUB_ORG` and other placeholders across all template files, creates `.env` files, and generates `terraform/terraform.tfvars`.
+Replaces `moatazeldebsy` and other placeholders across all template files, creates `.env` files, and generates `terraform/terraform.tfvars`.
 
 ### Step 2: Bootstrap AWS Infrastructure
 

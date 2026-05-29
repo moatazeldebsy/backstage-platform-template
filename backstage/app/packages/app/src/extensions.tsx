@@ -684,12 +684,15 @@ type CheckKey =
   | 'has-static-analysis'
   | 'has-vuln-scan'
   | 'has-contract-tests'
-  | 'has-e2e-tests';
+  | 'has-e2e-tests'
+  | 'has-model-card'
+  | 'has-eval-suite'
+  | 'has-ai-observability';
 
 interface CheckDef {
   id: CheckKey;
   label: string;
-  group: 'Hygiene' | 'Shift-Left CI' | 'Test Coverage';
+  group: 'Hygiene' | 'Shift-Left CI' | 'Test Coverage' | 'AI Governance';
   remediation: string;
 }
 
@@ -705,14 +708,17 @@ const CHECKS: CheckDef[] = [
   { id: 'has-vuln-scan',         group: 'Shift-Left CI', label: 'Vuln scan in CI',           remediation: 'Add "vuln-scan" to idp.io/quality-gates annotation.' },
   { id: 'has-contract-tests',    group: 'Test Coverage', label: 'Contract tests',            remediation: 'Run the enable-contract-testing scaffolder template, or add "contract" to idp.io/quality-gates.' },
   { id: 'has-e2e-tests',         group: 'Test Coverage', label: 'End-to-end tests',          remediation: 'Run the playwright-e2e-suite scaffolder, or tag the entity with e2e/playwright.' },
+  { id: 'has-model-card',        group: 'AI Governance', label: 'Has model card',            remediation: 'Add annotation backstage.io/model-card-url documenting the model, its training data, and performance.' },
+  { id: 'has-eval-suite',        group: 'AI Governance', label: 'LLM eval suite in CI',      remediation: 'Add "llm-eval" to idp.io/quality-gates and run the deepeval-llm-eval-suite scaffolder.' },
+  { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id and tag the entity with "ai" to enable Grafana dashboards.' },
 ];
 
 type TierName = 'none' | 'bronze' | 'silver' | 'gold';
 
 const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 4,
-  silver: 7,
-  gold:   10,
+  bronze: 5,   // 36% of 14 checks
+  silver: 9,   // 64% of 14 checks
+  gold:   12,  // 86% of 14 checks
 };
 
 interface ScorecardResult {
@@ -743,10 +749,13 @@ function computeScorecard(entity: Entity): ScorecardResult {
     ['e2e', 'playwright', 'cypress', 'appium'].includes(t.toLowerCase()),
   );
 
+  const hasKubernetesId = Boolean(annotations['backstage.io/kubernetes-id']);
+  const isAiService = tags.some(t => t.toLowerCase() === 'ai');
+
   const results: Record<CheckKey, boolean> = {
     'has-owner':             hasOwner,
     'has-techdocs':          Boolean(annotations['backstage.io/techdocs-ref']),
-    'has-health-probes':     Boolean(annotations['backstage.io/kubernetes-id']),
+    'has-health-probes':     hasKubernetesId,
     'has-runbook-url':       Boolean(annotations['backstage.io/runbook-url']),
     'has-api-definition':    hasApiDefinition,
     'uses-pinned-image-tag': imageTag !== '' && imageTag !== 'latest',
@@ -755,6 +764,9 @@ function computeScorecard(entity: Entity): ScorecardResult {
     'has-vuln-scan':         gates.has('vuln-scan'),
     'has-contract-tests':    gates.has('contract') || hasApiDefinition,
     'has-e2e-tests':         gates.has('e2e') || hasE2eTagged || relations.some(r => r.type === 'consumesApi'),
+    'has-model-card':        Boolean(annotations['backstage.io/model-card-url']),
+    'has-eval-suite':        gates.has('llm-eval'),
+    'has-ai-observability':  hasKubernetesId && isAiService,
   };
 
   const passed = Object.values(results).filter(Boolean).length;

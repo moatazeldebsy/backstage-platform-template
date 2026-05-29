@@ -69,7 +69,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+    repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
     targetRevision: HEAD
     path: aws/crossplane/providers
   destination:
@@ -99,7 +99,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template.git
+    repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
     targetRevision: HEAD
     path: aws/crossplane/compositions
   destination:

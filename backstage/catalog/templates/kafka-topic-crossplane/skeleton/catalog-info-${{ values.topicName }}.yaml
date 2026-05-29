@@ -4,7 +4,7 @@ metadata:
   name: ${{ values.topicName }}
   description: Kafka topic ${{ values.topicName }} (partitions=${{ values.partitions }}, retention=${{ values.retentionHours }}h) — managed by Crossplane
   annotations:
-    backstage.io/managed-by-location: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.topicName }}.yaml
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/${{ values.ownerService }}/claims/${{ values.topicName }}.yaml
   labels:
     provisioner: crossplane
   tags:

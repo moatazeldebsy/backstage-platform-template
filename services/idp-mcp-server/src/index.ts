@@ -44,8 +44,9 @@ try {
 } catch { /* not running in-cluster; K8S_TOKEN env var is used instead */ }
 
 collectDefaultMetrics();
-const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['tool'] });
-const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['tool'] });
+const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['server', 'tool'] });
+const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['server', 'tool'] });
+const aiApiCalls = new Counter({ name: 'ai_api_calls_total', help: 'Total AI API calls by model', labelNames: ['server', 'model', 'tool'] });
 
 const app = express();
 

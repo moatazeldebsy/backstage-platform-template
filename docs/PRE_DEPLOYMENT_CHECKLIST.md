@@ -202,7 +202,7 @@ kubectl rollout restart deployment/kagent-controller -n kagent
 # 1. Verify secrets
 ./scripts/verify-secrets.sh
 
-# 2. Personalise (first time only — replaces YOUR_GITHUB_ORG placeholders)
+# 2. Personalise (first time only — replaces moatazeldebsy placeholders)
 ./scripts/setup.sh
 
 # 3. Deploy full stack (~45–60 min)

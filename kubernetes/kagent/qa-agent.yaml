@@ -3,6 +3,8 @@ kind: Agent
 metadata:
   name: qa-assistant
   namespace: kagent
+  labels:
+    team: quality
 spec:
   type: Declarative
   description: "QA platform assistant — discovers and scaffolds test suites, searches the testing catalog, and queries test metrics."

@@ -80,7 +80,7 @@ spec:
           ui:field: RepoUrlPicker
           ui:options:
             allowedHosts: [github.com]
-            allowedOwners: [YOUR_GITHUB_ORG]
+            allowedOwners: [moatazeldebsy]
             allowedRepos: [backstage-platform-template]
 
   steps:

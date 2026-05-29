@@ -14,6 +14,7 @@ import { idpTechInsightsModule } from './modules/idpTechInsights';
 import { idpDeployAgentModule } from './modules/idpDeployAgent';
 import { idpRunTrainingJobModule } from './modules/idpRunTrainingJob';
 import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
+import { idpDeployModelServerModule } from './modules/idpDeployModelServer';
 import { idpSetupContractTestingModule } from './modules/idpSetupContractTesting';
 import { ragSearchPlugin } from './modules/idpRagSearch';
 
@@ -33,6 +34,7 @@ backend.add(idpTechInsightsModule);
 backend.add(idpDeployAgentModule);
 backend.add(idpRunTrainingJobModule);
 backend.add(idpDeployMcpServerModule);
+backend.add(idpDeployModelServerModule);
 backend.add(idpSetupContractTestingModule);
 backend.add(ragSearchPlugin);
 

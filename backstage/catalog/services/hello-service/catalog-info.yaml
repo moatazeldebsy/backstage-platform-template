@@ -9,9 +9,9 @@ metadata:
     # hello-service-local depending on how it was installed).
     backstage.io/kubernetes-id: hello-service
     backstage.io/kubernetes-namespace: services-dev
-    backstage.io/techdocs-ref: url:https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/tree/main/services/hello-service
-    backstage.io/runbook-url: https://github.com/YOUR_GITHUB_ORG/backstage-platform-template/blob/main/docs/runbooks/index.md
-    github.com/project-slug: YOUR_GITHUB_ORG/backstage-platform-template
+    backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platform-template/tree/main/services/hello-service
+    backstage.io/runbook-url: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/runbooks/index.md
+    github.com/project-slug: moatazeldebsy/backstage-platform-template
 spec:
   type: service
   lifecycle: production

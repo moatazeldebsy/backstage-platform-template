@@ -748,7 +748,7 @@ fi
 log "Step 3: Creating platform namespaces..."
 # A previous failed run can leave these in Terminating; wait briefly so
 # kubectl apply doesn't race with finaliser cleanup.
-for _ns in services services-dev monitoring argocd ingress-nginx gatekeeper-system opencost; do
+for _ns in services services-dev monitoring argocd ingress-nginx gatekeeper-system opencost argo-workflows; do
   wait_namespace_clear "$_ns" 60
 done
 kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"

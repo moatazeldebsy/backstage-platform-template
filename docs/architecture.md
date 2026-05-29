@@ -385,7 +385,7 @@ External Secrets Operator (ESO)
 
 ```
 ./scripts/setup.sh
-  └── replaces YOUR_GITHUB_ORG placeholders, creates terraform.tfvars, local/.env
+  └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
 
 ./scripts/bootstrap.sh
   ├── Phase 1 — Terraform (~20 min)

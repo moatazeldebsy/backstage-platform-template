@@ -1,0 +1,20 @@
+# ServiceMonitor for AI/ML platform metrics scraping
+# Enables Prometheus to scrape MCP servers and KAgent metrics from the kagent namespace
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kagent-services
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: mcp-server
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+  namespaceSelector:
+    matchNames:
+    - kagent

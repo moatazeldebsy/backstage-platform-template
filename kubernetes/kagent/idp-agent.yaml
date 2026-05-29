@@ -3,6 +3,8 @@ kind: Agent
 metadata:
   name: idp-assistant
   namespace: kagent
+  labels:
+    team: platform
 spec:
   type: Declarative
   description: "IDP platform assistant — searches the service catalog, checks Prometheus metrics, scaffolds new services, and lists running deployments."

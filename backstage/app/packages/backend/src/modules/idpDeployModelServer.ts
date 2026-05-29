@@ -1,0 +1,391 @@
+import { createBackendModule } from '@backstage/backend-plugin-api';
+import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
+import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs/promises';
+
+const execAsync = promisify(exec);
+
+const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
+
+const kubeEnv = {
+  ...process.env,
+  KUBECONFIG: KUBECONFIG_PATH,
+};
+
+async function ensureKubeconfig(): Promise<void> {
+  const k8sUrl = process.env.K8S_CLUSTER_URL;
+  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
+  if (!k8sUrl || !k8sToken) return;
+  const kubeconfig = `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: ${k8sUrl}
+    insecure-skip-tls-verify: true
+  name: cluster
+contexts:
+- context:
+    cluster: cluster
+    user: backstage
+  name: default
+current-context: default
+users:
+- name: backstage
+  user:
+    token: ${k8sToken}
+`;
+  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
+}
+
+function buildOllamaYaml(name: string, modelName: string): string {
+  return `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${name}-ollama
+  namespace: ml-platform
+  labels:
+    backstage.io/kubernetes-id: ${name}
+    app.kubernetes.io/name: ${name}
+    app.kubernetes.io/component: model-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ${name}
+      app.kubernetes.io/instance: ollama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ${name}
+        app.kubernetes.io/instance: ollama
+        backstage.io/kubernetes-id: ${name}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MODEL_NAME
+          value: "${modelName}"
+        ports:
+        - name: api
+          containerPort: 11434
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        livenessProbe:
+          httpGet:
+            path: /api/tags
+            port: api
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/tags
+            port: api
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${name}-ollama
+  namespace: ml-platform
+  labels:
+    app.kubernetes.io/name: ${name}
+spec:
+  type: ClusterIP
+  ports:
+  - name: api
+    port: 11434
+    targetPort: api
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: ${name}
+    app.kubernetes.io/instance: ollama
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${name}-ollama
+  namespace: ml-platform
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ${name}.idp.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ${name}-ollama
+            port:
+              number: 11434
+`;
+}
+
+function buildVllmYaml(name: string, modelName: string): string {
+  return `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${name}-vllm
+  namespace: ml-platform
+  labels:
+    backstage.io/kubernetes-id: ${name}
+    app.kubernetes.io/name: ${name}
+    app.kubernetes.io/component: model-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ${name}
+      app.kubernetes.io/instance: vllm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ${name}
+        app.kubernetes.io/instance: vllm
+        backstage.io/kubernetes-id: ${name}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: accelerator
+                operator: In
+                values:
+                - nvidia-tesla-t4
+                - nvidia-tesla-v100
+                - nvidia-tesla-a100
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MODEL_NAME
+          value: "${modelName}"
+        - name: PORT
+          value: "8000"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        ports:
+        - name: api
+          containerPort: 8000
+          protocol: TCP
+        - name: metrics
+          containerPort: 8001
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 8Gi
+            nvidia.com/gpu: 1
+          limits:
+            cpu: 4000m
+            memory: 16Gi
+            nvidia.com/gpu: 1
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: api
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: api
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${name}-vllm
+  namespace: ml-platform
+  labels:
+    app.kubernetes.io/name: ${name}
+spec:
+  type: ClusterIP
+  ports:
+  - name: api
+    port: 8000
+    targetPort: api
+    protocol: TCP
+  - name: metrics
+    port: 8001
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: ${name}
+    app.kubernetes.io/instance: vllm
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ${name}-vllm
+  namespace: ml-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ${name}-vllm
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+`;
+}
+
+function createDeployModelServerAction() {
+  return createTemplateAction({
+    id: 'idp:deploy-model-server',
+    description: 'Deploy an ML model as a REST API (Ollama for local Kind, vLLM for AWS EKS) to the ml-platform namespace.',
+    schema: {
+      input: {
+        required: ['name', 'modelName', 'target'],
+        type: 'object',
+        properties: {
+          name: { type: 'string', title: 'Model server name (k8s-safe)' },
+          modelName: { type: 'string', title: 'Model name (e.g., llama3.2, mistral)' },
+          target: {
+            type: 'string',
+            title: 'Deployment target (local or aws)',
+            enum: ['local', 'aws'],
+          },
+        },
+      },
+      output: {
+        type: 'object',
+        properties: {
+          serverUrl: { type: 'string', title: 'Model Server URL' },
+          namespace: { type: 'string', title: 'Kubernetes namespace' },
+          deploymentName: { type: 'string', title: 'Deployment name' },
+        },
+      },
+    },
+
+    async handler(ctx) {
+      const name = ctx.input['name'] as string;
+      const modelName = ctx.input['modelName'] as string;
+      const target = ctx.input['target'] as string;
+
+      ctx.logger.info(`Deploying model server '${name}' (model: ${modelName}, target: ${target})...`);
+
+      // Verify cluster is reachable
+      try {
+        if (target === 'aws') {
+          await ensureKubeconfig();
+        }
+        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
+      } catch (e: any) {
+        throw new Error(`Cannot reach the cluster: ${e.message}`);
+      }
+
+      // Build the appropriate YAML based on target
+      const yaml = target === 'local'
+        ? buildOllamaYaml(name, modelName)
+        : buildVllmYaml(name, modelName);
+
+      const tmpFile = path.join(os.tmpdir(), `model-server-${name}-${Date.now()}.yaml`);
+      try {
+        await fs.writeFile(tmpFile, yaml, 'utf8');
+        const { stdout, stderr } = await execAsync(`kubectl apply -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
+        if (stdout) ctx.logger.info(stdout.trim());
+        if (stderr) ctx.logger.warn(stderr.trim());
+      } finally {
+        await fs.unlink(tmpFile).catch(() => undefined);
+      }
+
+      // Wait for deployment to be ready
+      ctx.logger.info(`Waiting for ${target === 'local' ? 'Ollama' : 'vLLM'} deployment to be ready...`);
+      const deploymentName = target === 'local' ? `${name}-ollama` : `${name}-vllm`;
+      try {
+        await execAsync(
+          `kubectl rollout status deployment/${deploymentName} -n ml-platform --timeout=120s`,
+          { env: kubeEnv, timeout: 130_000 },
+        );
+      } catch (e: any) {
+        ctx.logger.warn(`Deployment may still be rolling out: ${e.message}`);
+      }
+
+      const serverUrl = target === 'local'
+        ? `http://${name}.idp.local`
+        : `https://${name}.prod.company.com`;
+
+      ctx.logger.info(`✓ Model server '${name}' is deployed — ${serverUrl}`);
+      ctx.output('serverUrl', serverUrl);
+      ctx.output('namespace', 'ml-platform');
+      ctx.output('deploymentName', deploymentName);
+    },
+  });
+}
+
+export const idpDeployModelServerModule = createBackendModule({
+  pluginId: 'scaffolder',
+  moduleId: 'idp-deploy-model-server',
+  register(env) {
+    env.registerInit({
+      deps: { scaffolder: scaffolderActionsExtensionPoint },
+      async init({ scaffolder }) {
+        scaffolder.addActions(createDeployModelServerAction());
+      },
+    });
+  },
+});

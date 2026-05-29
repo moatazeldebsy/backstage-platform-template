@@ -9,6 +9,7 @@
 127.0.0.1  alertmanager.idp.local
 127.0.0.1  backstage.idp.local
 127.0.0.1  argocd.idp.local
+127.0.0.1  argo-workflows.idp.local
 127.0.0.1  opencost.idp.local
 # QA / Observability
 127.0.0.1  pushgateway.idp.local

@@ -8,8 +8,9 @@ metadata:
     Exposes tools for registering OpenAPI contracts, generating Pact consumer tests,
     detecting breaking changes, and validating provider/consumer compatibility.
   annotations:
-    github.com/project-slug: YOUR_GITHUB_ORG/backstage-platform-template
+    github.com/project-slug: moatazeldebsy/backstage-platform-template
     backstage.io/kubernetes-id: contract-mcp-server
+    idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
   tags:
     - mcp
     - contract-testing

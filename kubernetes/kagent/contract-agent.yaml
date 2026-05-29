@@ -3,6 +3,8 @@ kind: Agent
 metadata:
   name: contract-assistant
   namespace: kagent
+  labels:
+    team: platform
 spec:
   type: Declarative
   description: "Contract Testing assistant — registers API specs, detects breaking changes, generates Pact consumer tests, and validates provider/consumer compatibility."
