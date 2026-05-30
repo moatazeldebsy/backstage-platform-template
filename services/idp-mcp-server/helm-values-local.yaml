@@ -68,7 +68,7 @@ env:
   - name: NODE_TLS_REJECT_UNAUTHORIZED
     value: "0"
   - name: GITHUB_ORG
-    value: "moatazeldebsy"
+    value: "YOUR_GITHUB_ORG"
 
 securityContext:
   allowPrivilegeEscalation: false

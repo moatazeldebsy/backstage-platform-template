@@ -67,7 +67,7 @@ env:
   - name: PORT
     value: "3001"
   - name: GITHUB_ORG
-    value: "moatazeldebsy"
+    value: "YOUR_GITHUB_ORG"
 
 securityContext:
   allowPrivilegeEscalation: false

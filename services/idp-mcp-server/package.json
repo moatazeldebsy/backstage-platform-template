@@ -1,6 +1,6 @@
 {
   "name": "idp-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server exposing IDP capabilities as AI tools",
   "type": "module",
   "main": "dist/index.js",

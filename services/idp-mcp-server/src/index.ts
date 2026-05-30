@@ -44,6 +44,7 @@ try {
 } catch { /* not running in-cluster; K8S_TOKEN env var is used instead */ }
 
 collectDefaultMetrics();
+const SERVER_NAME = 'idp-mcp-server';
 const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['server', 'tool'] });
 const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['server', 'tool'] });
 const aiApiCalls = new Counter({ name: 'ai_api_calls_total', help: 'Total AI API calls by model', labelNames: ['server', 'model', 'tool'] });
@@ -94,8 +95,8 @@ server.tool(
     kind: z.enum(['Component', 'Resource', 'API', 'System']).optional().describe('Limit results to this entity kind'),
   },
   async ({ query, kind }) => {
-    const end = toolDuration.startTimer({ tool: 'catalog_search' });
-    toolCalls.inc({ tool: 'catalog_search' });
+    const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'catalog_search' });
+    toolCalls.inc({ server: SERVER_NAME, tool: 'catalog_search' });
     try {
       // Backstage catalog API: all filters go through filter=key=value pairs (comma-separated for AND).
       // The `kind` param is NOT a top-level query param — it must be filter=kind=Component.
@@ -148,8 +149,8 @@ server.tool(
     metric: z.string().optional().describe('Specific metric name (default: http_requests_total)'),
   },
   async ({ service_name, metric = 'http_requests_total' }) => {
-    const end = toolDuration.startTimer({ tool: 'get_service_metrics' });
-    toolCalls.inc({ tool: 'get_service_metrics' });
+    const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_service_metrics' });
+    toolCalls.inc({ server: SERVER_NAME, tool: 'get_service_metrics' });
     try {
       const query = `${metric}{job="${service_name}"}`;
       const data = await fetchPrometheus(query);
@@ -188,8 +189,8 @@ server.tool(
     ),
   },
   async ({ template_ref, values }) => {
-    const end = toolDuration.startTimer({ tool: 'scaffold_service' });
-    toolCalls.inc({ tool: 'scaffold_service' });
+    const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'scaffold_service' });
+    toolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_service' });
     try {
       // Ensure repoUrl is in Backstage RepoUrlPicker format: github.com?owner=X&repo=Y
       // The AI may omit it entirely, or pass a full https://github.com/... URL — normalise both.
@@ -266,33 +267,48 @@ server.tool(
 
 server.tool(
   'list_deployments',
-  'List Kubernetes Deployments and their readiness status',
+  'List Kubernetes Deployments and their readiness status. ' +
+  'Queries services-dev (ArgoCD-managed workloads) and services by default. ' +
+  'Pass a specific namespace to narrow results.',
   {
-    namespace: z.string().optional().describe('Kubernetes namespace (default: services)'),
+    namespace: z.string().optional().describe(
+      'Kubernetes namespace to query. Omit to query both services-dev and services.'
+    ),
   },
-  async ({ namespace = 'services' }) => {
-    const end = toolDuration.startTimer({ tool: 'list_deployments' });
-    toolCalls.inc({ tool: 'list_deployments' });
+  async ({ namespace }) => {
+    const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'list_deployments' });
+    toolCalls.inc({ server: SERVER_NAME, tool: 'list_deployments' });
     try {
-      const data = await fetchK8s(`/apis/apps/v1/namespaces/${namespace}/deployments`);
-      const deployments = data.items.map((d: Record<string, unknown>) => {
-        const meta = d['metadata'] as Record<string, unknown>;
-        const spec = d['spec'] as Record<string, unknown>;
-        const status = d['status'] as Record<string, unknown>;
-        const containers = (spec['template'] as Record<string, unknown>)?.['spec'] as Record<string, unknown>;
-        const firstContainer = (containers?.['containers'] as Array<Record<string, unknown>>)?.[0];
-        return {
-          name: meta['name'],
-          namespace: meta['namespace'],
-          replicas: spec['replicas'],
-          ready_replicas: status['readyReplicas'] ?? 0,
-          image: firstContainer?.['image'] ?? 'unknown',
-        };
-      });
+      // Default: query both active namespaces. ArgoCD deploys to services-dev;
+      // manually deployed services land in services. Querying only one produces
+      // empty results that mislead the agent into thinking nothing is running.
+      const namespacesToQuery = namespace
+        ? [namespace]
+        : ['services-dev', 'services'];
+
+      const allDeployments: unknown[] = [];
+      for (const ns of namespacesToQuery) {
+        const data = await fetchK8s(`/apis/apps/v1/namespaces/${ns}/deployments`);
+        const deployments = data.items.map((d: Record<string, unknown>) => {
+          const meta = d['metadata'] as Record<string, unknown>;
+          const spec = d['spec'] as Record<string, unknown>;
+          const status = d['status'] as Record<string, unknown>;
+          const containers = (spec['template'] as Record<string, unknown>)?.['spec'] as Record<string, unknown>;
+          const firstContainer = (containers?.['containers'] as Array<Record<string, unknown>>)?.[0];
+          return {
+            name: meta['name'],
+            namespace: meta['namespace'],
+            replicas: spec['replicas'],
+            ready_replicas: status['readyReplicas'] ?? 0,
+            image: firstContainer?.['image'] ?? 'unknown',
+          };
+        });
+        allDeployments.push(...deployments);
+      }
       return {
         content: [{
           type: 'text' as const,
-          text: JSON.stringify(deployments, null, 2),
+          text: JSON.stringify(allDeployments, null, 2),
         }],
       };
     } finally {
@@ -307,8 +323,8 @@ server.tool(
   'Use this to discover what can be scaffolded before calling scaffold_service.',
   {},
   async () => {
-    const end = toolDuration.startTimer({ tool: 'list_templates' });
-    toolCalls.inc({ tool: 'list_templates' });
+    const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'list_templates' });
+    toolCalls.inc({ server: SERVER_NAME, tool: 'list_templates' });
     try {
       const data = await fetchCatalog('/api/catalog/entities?filter=kind=Template&limit=100') as Array<{
         metadata: { name: string; description?: string; title?: string };
@@ -340,8 +356,8 @@ server.tool(
     ),
   },
   async ({ template_ref }) => {
-    const end = toolDuration.startTimer({ tool: 'get_template_params' });
-    toolCalls.inc({ tool: 'get_template_params' });
+    const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_template_params' });
+    toolCalls.inc({ server: SERVER_NAME, tool: 'get_template_params' });
     try {
       // Parse template:namespace/name → /api/catalog/entities/by-name/Template/namespace/name
       const withoutPrefix = template_ref.replace(/^template:/, '');

@@ -25,8 +25,11 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs =
 }
 
 collectDefaultMetrics();
-const toolCalls = new Counter({ name: 'qa_mcp_tool_calls_total', help: 'Total QA MCP tool calls', labelNames: ['tool'] });
-const toolDuration = new Histogram({ name: 'qa_mcp_tool_duration_seconds', help: 'QA MCP tool call duration', labelNames: ['tool'] });
+const SERVER_NAME = 'qa-mcp-server';
+// Use the same metric names as idp-mcp-server so the shared AI platform
+// Grafana dashboard (queries mcp_tool_calls_total) covers both servers.
+const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['server', 'tool'] });
+const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['server', 'tool'] });
 
 const app = express();
 
@@ -82,8 +85,8 @@ function createServer() {
     'Use this to discover what test suites can be scaffolded before calling scaffold_test_suite.',
     {},
     async () => {
-      const end = toolDuration.startTimer({ tool: 'list_test_suites' });
-      toolCalls.inc({ tool: 'list_test_suites' });
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'list_test_suites' });
+      toolCalls.inc({ server: SERVER_NAME, tool: 'list_test_suites' });
       try {
         const data = await fetchCatalog('/api/catalog/entities?filter=kind=Template&limit=100') as Array<{
           metadata: { name: string; description?: string; title?: string; tags?: string[] };
@@ -126,8 +129,8 @@ function createServer() {
       ),
     },
     async ({ template_ref, values }) => {
-      const end = toolDuration.startTimer({ tool: 'scaffold_test_suite' });
-      toolCalls.inc({ tool: 'scaffold_test_suite' });
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'scaffold_test_suite' });
+      toolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_test_suite' });
       try {
         // Validate the templateRef resolves to a known test-suite template
         const refParts = template_ref.split('/');
@@ -227,8 +230,8 @@ function createServer() {
       ),
     },
     async ({ query, service }) => {
-      const end = toolDuration.startTimer({ tool: 'search_test_catalog' });
-      toolCalls.inc({ tool: 'search_test_catalog' });
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'search_test_catalog' });
+      toolCalls.inc({ server: SERVER_NAME, tool: 'search_test_catalog' });
       try {
         const all = await fetchCatalog('/api/catalog/entities?limit=200') as Array<{
           metadata: { name: string; description?: string; tags?: string[] };
@@ -281,8 +284,8 @@ function createServer() {
       ),
     },
     async ({ service_name, metric }) => {
-      const end = toolDuration.startTimer({ tool: 'get_test_metrics' });
-      toolCalls.inc({ tool: 'get_test_metrics' });
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_test_metrics' });
+      toolCalls.inc({ server: SERVER_NAME, tool: 'get_test_metrics' });
       try {
         const queries = metric
           ? [`${metric}{job="${service_name}"}`]
