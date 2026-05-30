@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../roadmap/">
+        <link rel="prev" href="../security/">
       
       
-        <link rel="next" href="../runbooks/">
+        <link rel="next" href="../demo-runbook/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Readiness Checklist - Internal Developer Platform</title>
+        <title>Security Scanning (SonarCloud + Snyk) - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#production-readiness-checklist" class="md-skip">
+        <a href="#security-scanning-sonarcloud-snyk" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Readiness Checklist
+              Security Scanning (SonarCloud + Snyk)
             
           </span>
         </div>
@@ -360,9 +360,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../security-scanning/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -411,11 +413,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
         
   
     
@@ -867,10 +867,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../security-scanning/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Security Scanning (SonarCloud + Snyk)
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -879,6 +899,188 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-fits-in-the-shift-left-programme" class="md-nav__link">
+    <span class="md-ellipsis">
+      How it fits in the shift-left programme
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-time-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      One-time setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="One-time setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-create-sonarcloud-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Create SonarCloud organization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-generate-a-sonarcloud-token-for-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Generate a SonarCloud token (for Backstage)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-create-snyk-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Create Snyk organization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-generate-a-snyk-token-for-backstage-and-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Generate a Snyk token (for Backstage and CI)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-store-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Store tokens
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-usage-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      Two usage paths
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two usage paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#path-a-new-services-automatic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Path A — new services (automatic)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-b-existing-services-brownfield" class="md-nav__link">
+    <span class="md-ellipsis">
+      Path B — existing services (brownfield)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-results-show-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where results show up
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Where results show up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Actions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backstage-security-entity-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backstage — Security entity tab
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backstage-shift-left-scorecard-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backstage — Shift-Left Scorecard tab
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reference
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -927,30 +1129,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Readiness Checklist
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -959,197 +1141,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#security" class="md-nav__link">
-    <span class="md-ellipsis">
-      Security
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Security">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#secrets-credentials" class="md-nav__link">
-    <span class="md-ellipsis">
-      Secrets &amp; Credentials
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      Authentication
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#network-tls" class="md-nav__link">
-    <span class="md-ellipsis">
-      Network &amp; TLS
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#infrastructure-aws-terraform" class="md-nav__link">
-    <span class="md-ellipsis">
-      Infrastructure (AWS / Terraform)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#infrastructure-crossplane" class="md-nav__link">
-    <span class="md-ellipsis">
-      Infrastructure (Crossplane)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#container-kubernetes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Container &amp; Kubernetes
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      GitHub Actions
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functionality" class="md-nav__link">
-    <span class="md-ellipsis">
-      Functionality
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Functionality">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#backstage-portal" class="md-nav__link">
-    <span class="md-ellipsis">
-      Backstage Portal
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#platform-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      Platform Services
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ai-assistant-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      AI Assistant (optional)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#operations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Operations
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Operations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#observability" class="md-nav__link">
-    <span class="md-ellipsis">
-      Observability
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#backup-recovery" class="md-nav__link">
-    <span class="md-ellipsis">
-      Backup &amp; Recovery
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#access-control" class="md-nav__link">
-    <span class="md-ellipsis">
-      Access Control
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#template-readiness-before-sharing-publicly" class="md-nav__link">
-    <span class="md-ellipsis">
-      Template Readiness (before sharing publicly)
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1384,7 +1375,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/readiness-checklist.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/security-scanning.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1392,127 +1383,203 @@
   
 
 
-<h1 id="production-readiness-checklist">Production Readiness Checklist<a class="headerlink" href="#production-readiness-checklist" title="Permanent link">&para;</a></h1>
-<p>Use this checklist before promoting the IDP to a production environment.</p>
-<blockquote>
-<p><strong>Quick validation:</strong> Run <code>./scripts/validate-deployment.sh</code> after deployment to verify all 50+ platform components are healthy. This automated check covers AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and resource usage. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for more.</p>
-</blockquote>
-<hr />
-<h2 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h2>
-<h3 id="secrets-credentials">Secrets &amp; Credentials<a class="headerlink" href="#secrets-credentials" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>local/.env</code> and <code>local/backstage/.env</code> are <strong>never committed</strong> (gitignored by default)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>BACKSTAGE_AUTH_SECRET</code> is set to a strong random value (not the <code>dev-secret-change-in-production</code> default)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ANTHROPIC_API_KEY</code> is stored as a GitHub Actions secret, not hardcoded anywhere</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All GitHub tokens (<code>GITHUB_TOKEN</code>, <code>GH_PAT</code>) are scoped to minimum required permissions</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD auth token and Grafana token are rotated after initial bootstrap</li>
+<h1 id="security-scanning-sonarcloud-snyk">Security Scanning — SonarCloud + Snyk<a class="headerlink" href="#security-scanning-sonarcloud-snyk" title="Permanent link">&para;</a></h1>
+<p>This page covers the platform's two managed code-quality / SCA integrations:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it does</th>
+<th>Where results show up</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SonarCloud</strong></td>
+<td>Code quality, coverage, maintainability, security hotspots, <strong>quality gate</strong></td>
+<td>GitHub Actions check + Security entity tab + shift-left scorecard</td>
+</tr>
+<tr>
+<td><strong>Snyk</strong></td>
+<td>Dependency (SCA) + container + IaC vulnerability scanning</td>
+<td>GitHub Actions check + Security entity tab + shift-left scorecard</td>
+</tr>
+</tbody>
+</table>
+<p>Both integrations are <strong>opt-in but free to wire</strong>: the CI workflow steps and proxy
+endpoints are pre-configured and skip silently when tokens aren't set. Adding the
+tokens "turns them on" — no further code changes required.</p>
+<h2 id="how-it-fits-in-the-shift-left-programme">How it fits in the shift-left programme<a class="headerlink" href="#how-it-fits-in-the-shift-left-programme" title="Permanent link">&para;</a></h2>
+<p>Two new scorecard checks are added to the existing tier model in
+<a href="../shift-left/"><code>shift-left.md</code></a>:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Group</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>has-sonar-scanning</code></td>
+<td>Security</td>
+<td>Service has <code>sonarcloud.io/project-key</code> annotation OR <code>sonar-scanning</code> in <code>idp.io/quality-gates</code></td>
+</tr>
+<tr>
+<td><code>has-snyk-scanning</code></td>
+<td>Security</td>
+<td>Service has <code>snyk.io/org-slug</code> annotation OR <code>snyk-scanning</code> in <code>idp.io/quality-gates</code></td>
+</tr>
+</tbody>
+</table>
+<p>These count toward Silver / Gold tier alongside the existing coverage, static-analysis,
+vuln-scan, contract, and e2e checks.</p>
+<h2 id="one-time-setup">One-time setup<a class="headerlink" href="#one-time-setup" title="Permanent link">&para;</a></h2>
+<h3 id="1-create-sonarcloud-organization">1. Create SonarCloud organization<a class="headerlink" href="#1-create-sonarcloud-organization" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Sign in at <a href="https://sonarcloud.io">https://sonarcloud.io</a> with your GitHub account.</li>
+<li>Click <strong>+ → Analyze new project</strong> and select your GitHub org.</li>
+<li>SonarCloud will create an <strong>organization</strong> matching your GitHub org slug.</li>
+<li>Project keys default to <code>&lt;org&gt;_&lt;repo&gt;</code> — the platform's scaffolders use the same
+   convention so no manual configuration is needed.</li>
+</ol>
+<h3 id="2-generate-a-sonarcloud-token-for-backstage">2. Generate a SonarCloud token (for Backstage)<a class="headerlink" href="#2-generate-a-sonarcloud-token-for-backstage" title="Permanent link">&para;</a></h3>
+<ol>
+<li><a href="https://sonarcloud.io/account/security">https://sonarcloud.io/account/security</a></li>
+<li><strong>Generate a User Token</strong> named e.g. <code>backstage-idp-readonly</code>.</li>
+<li>Copy the token — you won't see it again.</li>
+</ol>
+<h3 id="3-create-snyk-organization">3. Create Snyk organization<a class="headerlink" href="#3-create-snyk-organization" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Sign in at <a href="https://app.snyk.io">https://app.snyk.io</a>. The free <strong>Open Source</strong> plan covers SCA.</li>
+<li><strong>Settings → General</strong> → note your org slug (used as <code>snyk.io/org-slug</code> annotation).</li>
+<li>Optional: <strong>Integrations → GitHub</strong> → connect the GitHub org so <code>snyk monitor</code>
+   can populate projects automatically.</li>
+</ol>
+<h3 id="4-generate-a-snyk-token-for-backstage-and-ci">4. Generate a Snyk token (for Backstage and CI)<a class="headerlink" href="#4-generate-a-snyk-token-for-backstage-and-ci" title="Permanent link">&para;</a></h3>
+<ol>
+<li><a href="https://app.snyk.io/account">https://app.snyk.io/account</a> → <strong>Auth Token</strong> → reveal and copy.</li>
+</ol>
+<h3 id="5-store-tokens">5. Store tokens<a class="headerlink" href="#5-store-tokens" title="Permanent link">&para;</a></h3>
+<p><strong>Local (Backstage proxy + Security tab):</strong></p>
+<p>Add to <code>local/backstage/.env</code> (gitignored):</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">SONAR_TOKEN</span><span class="o">=</span>&lt;your-sonarcloud-token&gt;
+<span class="nv">SNYK_TOKEN</span><span class="o">=</span>&lt;your-snyk-token&gt;
+</code></pre></div></td></tr></table></div>
+<p>Restart Backstage:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
+</code></pre></div></td></tr></table></div>
+<p><strong>AWS (production):</strong></p>
+<p>Add the two tokens to AWS Secrets Manager (the existing <code>backstage-secrets</code> secret)
+and ensure they're projected into the Backstage pod via External Secrets. See
+<code>aws/external-secrets/backstage.yaml</code>.</p>
+<p><strong>GitHub Actions (for CI):</strong></p>
+<p>Set as <strong>organization-level secrets</strong> so every scaffolded service inherits them
+without per-repo configuration:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>GitHub org → Settings → Secrets and variables → Actions → New organization secret
+  SONAR_TOKEN  →  Repository access: All repositories (or selected)
+  SNYK_TOKEN   →  Repository access: All repositories (or selected)
+</code></pre></div></td></tr></table></div>
+<p>Until both org-level secrets exist, the Sonar + Snyk CI steps <strong>skip</strong> (not fail) —
+so newly scaffolded services build green out of the box.</p>
+<h2 id="two-usage-paths">Two usage paths<a class="headerlink" href="#two-usage-paths" title="Permanent link">&para;</a></h2>
+<h3 id="path-a-new-services-automatic">Path A — new services (automatic)<a class="headerlink" href="#path-a-new-services-automatic" title="Permanent link">&para;</a></h3>
+<p>Every service scaffolded via <code>go-service</code>, <code>nodejs-service</code>, or <code>python-service</code>
+ships with:</p>
+<ul>
+<li>A <code>quality</code> CI job that runs SonarCloud and Snyk, gated on token presence</li>
+<li>A <code>sonar-project.properties</code> at the repo root with <code>&lt;org&gt;_&lt;repo&gt;</code> as the project key</li>
+<li>A <code>.snyk</code> policy file (empty <code>ignore:</code> block — add CVE waivers here when needed)</li>
+<li><code>catalog-info.yaml</code> annotations: <code>sonarcloud.io/project-key</code>, <code>sonarcloud.io/organization</code>, <code>snyk.io/org-slug</code>, and the <code>sonar-scanning,snyk-scanning</code> entries in <code>idp.io/quality-gates</code></li>
 </ul>
-<h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>auth.environment</code> in <code>app-config.yaml</code> is changed from <code>development</code> to <code>production</code> for prod deployments</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Guest auth (<code>dangerouslyAllowOutsideDevelopment</code>) is <strong>not</strong> enabled in production — it's only in <code>app-config.local.yaml</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub OAuth App is registered with the correct callback URL for your domain</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>AUTH_GITHUB_CLIENT_ID</code> and <code>AUTH_GITHUB_CLIENT_SECRET</code> are set in production environment</li>
+<p>When the org-level tokens exist, the first push triggers a full scan.</p>
+<h3 id="path-b-existing-services-brownfield">Path B — existing services (brownfield)<a class="headerlink" href="#path-b-existing-services-brownfield" title="Permanent link">&para;</a></h3>
+<p>Run the <strong>Enable Security Scanning (SonarCloud + Snyk)</strong> template from the Backstage
+scaffolder. It opens a PR against the target repo adding:</p>
+<ul>
+<li><code>.github/workflows/security-scanning.yml</code> — standalone workflow (independent of the service's main <code>ci.yml</code>)</li>
+<li><code>sonar-project.properties</code></li>
+<li><code>.snyk</code></li>
 </ul>
-<h3 id="network-tls">Network &amp; TLS<a class="headerlink" href="#network-tls" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>skipTLSVerify: true</code> in Kubernetes config is replaced with a proper CA bundle for production clusters</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ssl.rejectUnauthorized: false</code> for PostgreSQL is enabled (set to <code>true</code>) in production</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>upgrade-insecure-requests</code> is set to <code>true</code> when Backstage is served over HTTPS</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> CSP <code>connect-src</code> is narrowed to specific upstream hostnames in production</li>
-</ul>
-<h3 id="infrastructure-aws-terraform">Infrastructure (AWS / Terraform)<a class="headerlink" href="#infrastructure-aws-terraform" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS <code>deletion_protection = true</code> ✅ (fixed)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS <code>skip_final_snapshot = false</code> ✅ (fixed)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS password uses <code>special = true</code> for full entropy ✅ (fixed)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> IAM roles follow least privilege — review and scope down <code>PowerUserAccess</code> to ECR + EKS + S3 only</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> S3 buckets for TechDocs have bucket versioning and server-side encryption enabled</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS egress security group rule restricts to VPC CIDR, not <code>0.0.0.0/0</code></li>
-</ul>
-<h3 id="infrastructure-crossplane">Infrastructure (Crossplane)<a class="headerlink" href="#infrastructure-crossplane" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Crossplane IRSA role attaches AWS-managed <code>*FullAccess</code> policies — tighten to least-privilege custom policies before prod</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All Crossplane-provisioned resources carry <code>idp:provisioner=crossplane</code>, <code>idp:owner</code>, <code>idp:cost-center</code> tags ✅ (enforced by Compositions)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>kubectl get providers.pkg.crossplane.io</code> shows all five providers <code>HEALTHY=True</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage <code>*-crossplane</code> scaffolder templates produce PRs that sync within ~60s of merge</li>
-</ul>
-<h3 id="container-kubernetes">Container &amp; Kubernetes<a class="headerlink" href="#container-kubernetes" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Helm is installed from a pinned version with SHA256 checksum in Dockerfile ✅ (fixed)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ml-platform</code> and <code>kagent</code> namespace PSS changed from <code>privileged</code> to <code>baseline</code> ✅ (fixed)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage container does not run as root (runs as <code>node</code> user) ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Docker socket bind-mount (<code>/var/run/docker.sock</code>) is only present in local dev compose — not in production</li>
-</ul>
+<p>After merging, update the service's <code>catalog-info.yaml</code> to add the
+<code>sonarcloud.io/project-key</code> and <code>snyk.io/org-slug</code> annotations so the Security
+entity tab can fetch data and the scorecard checks light up.</p>
+<h2 id="where-results-show-up">Where results show up<a class="headerlink" href="#where-results-show-up" title="Permanent link">&para;</a></h2>
 <h3 id="github-actions">GitHub Actions<a class="headerlink" href="#github-actions" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No <code>pull_request_target</code> trigger used with checkout of untrusted code</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Consider pinning actions to commit SHAs for supply-chain security (currently using <code>@v4</code>/<code>@v5</code>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ANTHROPIC_API_KEY</code> secret is set in repository settings before running eval workflow</li>
+<p>The <code>quality</code> job in CI (or the standalone <code>security-scanning</code> workflow for brownfield
+adopters) shows two check runs per PR:</p>
+<ul>
+<li><strong>SonarCloud quality gate</strong> — fails the build when the quality gate is RED</li>
+<li><strong>Snyk dependency scan</strong> — fails the build at the configured severity threshold (default <code>high</code>)</li>
 </ul>
-<hr />
-<h2 id="functionality">Functionality<a class="headerlink" href="#functionality" title="Permanent link">&para;</a></h2>
-<h3 id="backstage-portal">Backstage Portal<a class="headerlink" href="#backstage-portal" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>setup.sh</code> was run <strong>before</strong> <code>bootstrap-local.sh</code> (required for <code>moatazeldebsy</code> placeholder replacement)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD has 3 apps synced: <code>hello-service-local</code>, <code>idp-mcp-server-local</code>, <code>qa-mcp-server-local</code> (run <code>kubectl get applications -n argocd</code>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>idp-mcp-server</code> and <code>qa-mcp-server</code> pods are running in <code>services-dev</code> namespace</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> KAgent agents show <code>READY=True</code> for both <code>idp-assistant</code> and <code>qa-assistant</code> (run <code>kubectl get agents -n kagent</code>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All placeholder values replaced by running <code>./scripts/setup.sh</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>yarn build:backend</code> run after any changes to <code>backstage/app/packages/</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage image rebuilt and pushed after backend changes</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All catalog locations resolve (no 404s in catalog import logs)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> TechDocs renders for at least one component</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Software templates scaffold successfully end-to-end</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub OAuth login works (not just guest auth)</li>
+<h3 id="backstage-security-entity-tab">Backstage — Security entity tab<a class="headerlink" href="#backstage-security-entity-tab" title="Permanent link">&para;</a></h3>
+<p>Every Component entity gets a new <strong>Security</strong> tab (<code>/security</code>) that:</p>
+<ul>
+<li>Reads the <code>sonarcloud.io/project-key</code> annotation and fetches the live quality
+  gate + coverage / bugs / vulnerabilities / hotspots / code-smells via the
+  <code>/api/proxy/sonarcloud</code> proxy.</li>
+<li>Reads the <code>snyk.io/org-slug</code> annotation and renders a card linking to the
+  project in Snyk's dashboard.</li>
+<li>Renders a "not configured" empty state with a one-click link to the
+  Enable Security Scanning template when annotations are missing.</li>
 </ul>
-<h3 id="platform-services">Platform Services<a class="headerlink" href="#platform-services" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD is accessible at <a href="http://argocd.idp.local">http://argocd.idp.local</a> and all 3 apps are Synced+Healthy (<code>kubectl get applications -n argocd</code>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Prometheus scrape targets are healthy</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Grafana dashboards load with data</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Pushgateway receives QA metrics from the seed job</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> hello-service responds at <code>http://hello-service.idp.local/hello</code></li>
-</ul>
-<h3 id="ai-assistant-optional">AI Assistant (optional)<a class="headerlink" href="#ai-assistant-optional" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ANTHROPIC_API_KEY</code> is set in <code>local/.env</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> KAgent pods are running in <code>kagent</code> namespace</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> IDP Assistant is reachable at <code>http://idp-assistant.idp.local</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> AI Assistant chat UI loads in Backstage at <code>/ai-assistant</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> DeepEval suite passes: <code>deepeval test run test-suites/test-deepeval/tests/test_idp_assistant.py</code></li>
-</ul>
-<hr />
-<h2 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h2>
-<h3 id="observability">Observability<a class="headerlink" href="#observability" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Alerting rules are configured in Prometheus for critical services</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Log aggregation is in place (Loki, CloudWatch, or equivalent)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Uptime checks configured for Backstage, ArgoCD, and hello-service</li>
-</ul>
-<h3 id="backup-recovery">Backup &amp; Recovery<a class="headerlink" href="#backup-recovery" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS automated backups verified (7-day retention) ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Disaster recovery runbook documented in <code>docs/runbooks/</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> EKS cluster can be recreated from scratch with <code>bootstrap-local.sh</code> or Terraform</li>
-</ul>
-<h3 id="access-control">Access Control<a class="headerlink" href="#access-control" title="Permanent link">&para;</a></h3>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RBAC reviewed — <code>github-actions</code> ClusterRole limited to required verbs/resources</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage users are provisioned via GitHub org membership, not manual catalog entries</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD RBAC policy restricts non-admins to read-only on production apps</li>
-</ul>
-<hr />
-<h2 id="template-readiness-before-sharing-publicly">Template Readiness (before sharing publicly)<a class="headerlink" href="#template-readiness-before-sharing-publicly" title="Permanent link">&para;</a></h2>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>moatazeldebsy</code> placeholder present in all catalog/template files ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No personal tokens or credentials in git history (<code>git log --all -S "ghp_" --oneline</code>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>setup.sh</code> tested end-to-end on a clean clone</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>.env.example</code> files cover all required variables ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GitHub repository marked as <strong>Template repository</strong> ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Topics set: <code>template</code>, <code>backstage</code>, <code>idp</code>, <code>internal-developer-platform</code> ✅</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> README accurately describes prerequisites and quick-start steps</li>
+<h3 id="backstage-shift-left-scorecard-tab">Backstage — Shift-Left Scorecard tab<a class="headerlink" href="#backstage-shift-left-scorecard-tab" title="Permanent link">&para;</a></h3>
+<p>The existing <strong>Scorecard</strong> tab gets two new checks under a <strong>Security</strong> group:
+<code>SonarCloud quality gate</code> and <code>Snyk SCA scan</code>. Both contribute to the entity's
+Bronze / Silver / Gold tier.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CI step shows "skipped"</td>
+<td><code>SONAR_TOKEN</code> / <code>SNYK_TOKEN</code> not set at the org level</td>
+<td>Add as org-level secrets (see "Store tokens" above)</td>
+</tr>
+<tr>
+<td>Security tab shows 401</td>
+<td>Backstage proxy can reach SonarCloud but auth failed</td>
+<td>Verify token in <code>local/backstage/.env</code> is valid; restart container</td>
+</tr>
+<tr>
+<td>Security tab shows "not configured"</td>
+<td>Entity is missing both annotations</td>
+<td>Add <code>sonarcloud.io/project-key</code> and/or <code>snyk.io/org-slug</code> to <code>catalog-info.yaml</code></td>
+</tr>
+<tr>
+<td>Sonar gate is <code>ERROR</code> and CI fails</td>
+<td>New project, no baseline yet</td>
+<td>Lower the quality gate's "new code" thresholds in SonarCloud UI, or push first scan before enforcing</td>
+</tr>
+<tr>
+<td>Snyk reports vulns that have no fix</td>
+<td>False positive or unfixable transitive</td>
+<td>Add a YAML block to <code>.snyk</code> under <code>ignore:</code> with an expiry date</td>
+</tr>
+<tr>
+<td>Scorecard checks stay red even though scans run</td>
+<td>TechInsights cache</td>
+<td>Wait up to 30 min (cadence) or restart Backstage; the retriever re-runs on startup</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
+<ul>
+<li>SonarCloud API docs: <a href="https://sonarcloud.io/web_api">https://sonarcloud.io/web_api</a></li>
+<li>Snyk API docs: <a href="https://docs.snyk.io/snyk-api">https://docs.snyk.io/snyk-api</a></li>
+<li>Platform fact retriever: <code>backstage/app/packages/backend/src/modules/idpTechInsights.ts</code></li>
+<li>Security tab UI: <code>backstage/app/packages/app/src/extensions.tsx</code> (<code>SecurityEntityContent</code>)</li>
+<li>Brownfield template: <code>backstage/catalog/templates/enable-security-scanning/</code></li>
 </ul>
 
 
@@ -1543,7 +1610,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../roadmap/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Roadmap">
+          <a href="../security/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1553,20 +1620,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Roadmap
+                Security
               </div>
             </div>
           </a>
         
         
           
-          <a href="../runbooks/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+          <a href="../demo-runbook/" class="md-footer__link md-footer__link--next" aria-label="Next: Demo Runbook">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Overview
+                Demo Runbook
               </div>
             </div>
             <div class="md-footer__button md-icon">
