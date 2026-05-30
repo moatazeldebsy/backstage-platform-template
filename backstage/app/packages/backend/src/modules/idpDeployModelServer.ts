@@ -429,6 +429,33 @@ function createDeployModelServerAction() {
         ctx.logger.warn(`Deployment may still be rolling out: ${e.message}`);
       }
 
+      // Register the model in MLflow Model Registry so it appears in the MLflow UI
+      const mlflowUrl = process.env.MLFLOW_EXTERNAL_URL ?? 'http://mlflow.idp.local';
+      try {
+        const createRes = await fetch(`${mlflowUrl}/api/2.0/mlflow/registered-models/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            tags: [
+              { key: 'model_name', value: modelName },
+              { key: 'deployment_target', value: target },
+              { key: 'served_by', value: target === 'local' ? 'ollama-mock' : 'vllm' },
+            ],
+            description: `Model server for ${modelName} deployed via IDP (${target})`,
+          }),
+        });
+        if (createRes.ok || createRes.status === 409) {
+          // 409 = already exists, that's fine
+          ctx.logger.info(`✓ Model '${name}' registered in MLflow Model Registry`);
+        } else {
+          const body = await createRes.text();
+          ctx.logger.warn(`MLflow registration returned ${createRes.status}: ${body}`);
+        }
+      } catch (e: any) {
+        ctx.logger.warn(`Could not register model in MLflow (non-fatal): ${e.message}`);
+      }
+
       const serverUrl = target === 'local'
         ? `http://${name}.idp.local`
         : `https://${name}.prod.company.com`;

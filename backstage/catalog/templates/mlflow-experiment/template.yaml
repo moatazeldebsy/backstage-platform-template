@@ -63,6 +63,20 @@ spec:
           type: boolean
           default: true
 
+    - title: Repository
+      required: [repoUrl]
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          description: GitHub repository to store the experiment code
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
   steps:
     - id: fetch
       name: Generate experiment scaffold
@@ -76,6 +90,29 @@ spec:
           framework: ${{ parameters.framework }}
           pythonVersion: ${{ parameters.pythonVersion }}
           registerModel: ${{ parameters.registerModel }}
+          repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: 'ML Experiment — ${{ parameters.experimentName }}'
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: 'chore: scaffold ML experiment via IDP'
+        topics:
+          - ml
+          - mlflow
+          - ${{ parameters.framework }}
+          - idp
+
+    - id: catalog
+      name: Register in catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
 
     - id: train
       name: Run Initial Training Job
@@ -89,9 +126,12 @@ spec:
 
   output:
     links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+        icon: github
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.catalog.output.entityRef }}
       - title: MLflow UI
         url: ${{ steps.train.output.mlflowUrl }}
         icon: dashboard
-      - title: Open in Catalog
-        url: ${{ steps.train.output.catalogUrl }}
-        icon: catalog

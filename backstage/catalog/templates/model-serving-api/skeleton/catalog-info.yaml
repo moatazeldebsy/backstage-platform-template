@@ -15,6 +15,7 @@ metadata:
     - title: API Documentation
       url: https://github.com/${{ values.owner }}/${{ values.repoName }}#readme
   annotations:
+    backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-id: ${{ values.name }}
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
     idp.io/model-name: ${{ values.modelName }}

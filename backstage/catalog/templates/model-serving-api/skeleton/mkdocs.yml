@@ -1,0 +1,8 @@
+site_name: ${{ values.name }}
+site_description: >-
+  Model serving API for ${{ values.modelName }} on ${{ values.target }} infrastructure.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core
