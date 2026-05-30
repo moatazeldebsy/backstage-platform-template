@@ -295,6 +295,8 @@ backend:
 
 ## Troubleshooting
 
+> For a comprehensive fresh-setup troubleshooting guide covering all AWS phases (Terraform, EKS, Backstage, ArgoCD, Crossplane, Observability), see [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md#phase-4--aws-setup-bootstrapsh).
+
 ### Backstage pod not starting
 
 ```bash

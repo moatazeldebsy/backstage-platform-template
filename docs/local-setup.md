@@ -443,6 +443,10 @@ troubleshooting guide.
 | `/ai-search` | Requires `VOYAGE_API_KEY` | Returns 503 without the key; all other features unaffected |
 | Cost Overview | Shows "OpenCost returned 500" if OpenCost is not running | Check `kubectl get pods -n opencost` |
 
+## Troubleshooting
+
+For a full catalogue of setup and day-2 issues with diagnosis commands and fixes, see [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## Teardown
 
 ```bash

@@ -2,6 +2,8 @@
 
 Operational procedures for the Internal Developer Platform. Each runbook maps to a Prometheus alert and provides step-by-step remediation guidance.
 
+> **First-time setup issues?** See [docs/TROUBLESHOOTING.md](../TROUBLESHOOTING.md) — it covers fresh-clone failures like empty catalog, ArgoCD no apps, Backstage port conflicts, and the KAgent HSTS browser issue.
+
 ## Alert → Runbook Map
 
 | Alert | Severity | Runbook |

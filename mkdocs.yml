@@ -22,6 +22,7 @@ nav:
   - Architecture: architecture.md
   - Golden Path: golden-path.md
   - Local Setup: local-setup.md
+  - Troubleshooting: TROUBLESHOOTING.md
   - CLI Reference: cli-reference.md
   - AI Assistant: ai-assistant.md
   - Contract Testing: contract-testing.md
