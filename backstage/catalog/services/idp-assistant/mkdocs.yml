@@ -1,0 +1,8 @@
+site_name: IDP Assistant
+site_description: KAgent AI assistant for the Internal Developer Platform
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core

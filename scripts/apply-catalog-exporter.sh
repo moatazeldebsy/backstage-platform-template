@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 #   - Kind cluster running with 'monitoring' namespace
-#   - Backstage reachable at backstage.default.svc.cluster.local:7007 (in-cluster)
+#   - Backstage reachable at backstage.default.svc.cluster.local:3000 (in-cluster)
 #   - Prometheus Pushgateway running in the monitoring namespace
 #
 # Usage:
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 NAMESPACE="monitoring"
-BACKSTAGE_URL="http://backstage.backstage.svc.cluster.local:7007"
+BACKSTAGE_URL="http://backstage.default.svc.cluster.local:3000"
 PUSHGATEWAY_URL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
 CATALOG_TOKEN="local-catalog-exporter-token"
 
@@ -67,7 +67,7 @@ spec:
                 - name: PYTHONPATH
                   value: /deps
                 - name: BACKSTAGE_URL
-                  value: http://backstage.backstage.svc.cluster.local:7007
+                  value: http://backstage.default.svc.cluster.local:3000
                 - name: CATALOG_TOKEN
                   value: local-catalog-exporter-token
                 - name: PUSHGATEWAY_URL

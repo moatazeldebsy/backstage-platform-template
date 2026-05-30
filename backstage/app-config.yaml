@@ -341,9 +341,7 @@ kubernetes:
           name: idp-mvp
           authProvider: 'serviceAccount'
           skipTLSVerify: true
-          # Entity pages render faster when we skip the metrics-server hop.
-          # Flip to false per-cluster if live CPU/mem on the K8s tab is required.
-          skipMetricsLookup: true
+          skipMetricsLookup: false
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
 
 techRadar:

@@ -793,6 +793,17 @@ log "Step 4d: Extracting K8s credentials for Backstage plugin..."
 "${ROOT_DIR}/scripts/get-k8s-credentials.sh"
 log "  K8s credentials written to local/backstage/.env"
 
+# Mirror GITHUB_ORG into local/backstage/.env so docker compose picks it up
+# without needing --env-file local/.env on every restart command.
+if [[ -n "${GITHUB_ORG:-}" && -f "${ROOT_DIR}/local/backstage/.env" ]]; then
+  if grep -q "^GITHUB_ORG=" "${ROOT_DIR}/local/backstage/.env"; then
+    sed -i.bak "s|^GITHUB_ORG=.*|GITHUB_ORG=${GITHUB_ORG}|" "${ROOT_DIR}/local/backstage/.env" && rm -f "${ROOT_DIR}/local/backstage/.env.bak"
+  else
+    echo "GITHUB_ORG=${GITHUB_ORG}" >> "${ROOT_DIR}/local/backstage/.env"
+  fi
+  log "  Mirrored GITHUB_ORG=${GITHUB_ORG} to local/backstage/.env"
+fi
+
 # ── Step 4b: metrics-server ───────────────────────────────────────────────────
 log "Step 4b: Installing metrics-server (required for CPU/memory in Backstage)..."
 if [[ "$PROVIDER" == "kind" ]]; then
@@ -1130,10 +1141,10 @@ if ! $SKIP_DORA; then
       warn "GITHUB_TOKEN not set — DORA exporter will not push metrics. Add it to local/.env and re-run."
     fi
 
+    kubectl apply -f "${ROOT_DIR}/local/observability/dora/dora-cronjob.yaml"
     kubectl create configmap dora-exporter-script \
       --from-file=dora-exporter.py="${ROOT_DIR}/local/observability/dora/dora-exporter.py" \
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-    kubectl apply -f "${ROOT_DIR}/local/observability/dora/dora-cronjob.yaml"
     log "DORA exporter deployed."
 
     kubectl create job "dora-exporter-init-$(date +%s)" \

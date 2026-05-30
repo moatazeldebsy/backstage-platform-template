@@ -7,6 +7,7 @@ metadata:
   annotations:
     github.com/project-slug: moatazeldebsy/backstage-platform-template
     backstage.io/kubernetes-id: idp-assistant
+    backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platform-template/tree/main/backstage/catalog/services/idp-assistant
 spec:
   type: ai-agent
   lifecycle: production
