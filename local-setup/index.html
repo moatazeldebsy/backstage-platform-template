@@ -610,9 +610,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#faster-startup-flags" class="md-nav__link">
+  <a href="#bootstrap-flags" class="md-nav__link">
     <span class="md-ellipsis">
-      Faster startup flags
+      Bootstrap flags
     </span>
   </a>
   
@@ -655,6 +655,15 @@
   <a href="#environment-files-first-time-only" class="md-nav__link">
     <span class="md-ellipsis">
       Environment files (first time only)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting-observability-after-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting observability after bootstrap
     </span>
   </a>
   
@@ -737,12 +746,72 @@
         <li class="md-nav__item">
   <a href="#aiml-stack-optional" class="md-nav__link">
     <span class="md-ellipsis">
-      AI/ML stack (optional)
+      AI/ML Stack (Optional)
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="AI/ML stack (optional)">
+    <nav class="md-nav" aria-label="AI/ML Stack (Optional)">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-native-platform-features-phase-7a-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      AI-Native Platform Features (Phase 7a Complete)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI-Native Platform Features (Phase 7a Complete)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#priority-1-ai-platform-foundations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Priority 1: AI Platform Foundations ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-2-ai-service-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      Priority 2: AI Service Lifecycle ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-3-ml-workflows-cost-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Priority 3: ML Workflows &amp; Cost Attribution ✅
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaffold-ai-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffold AI services
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitor-ai-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitor AI Platform
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#using-the-ai-assistant-in-backstage" class="md-nav__link">
@@ -1425,6 +1494,10 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <td>Installs ArgoCD</td>
 </tr>
 <tr>
+<td>8b</td>
+<td>(Optional) Installs Argo Workflows for ML pipeline orchestration (use <code>--install-argo-workflows</code> flag)</td>
+</tr>
+<tr>
 <td>9</td>
 <td>Installs OPA/Gatekeeper and applies all five policy constraints</td>
 </tr>
@@ -1446,14 +1519,18 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 </tr>
 </tbody>
 </table>
-<h3 id="faster-startup-flags">Faster startup flags<a class="headerlink" href="#faster-startup-flags" title="Permanent link">&para;</a></h3>
+<h3 id="bootstrap-flags">Bootstrap flags<a class="headerlink" href="#bootstrap-flags" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w">       </span><span class="c1"># skip Prometheus + Grafana</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-gitops<span class="w">    </span><span class="c1"># skip ArgoCD</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies<span class="w">  </span><span class="c1"># skip OPA/Gatekeeper</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-dora<span class="w">      </span><span class="c1"># skip DORA exporter</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w">             </span><span class="c1"># skip Prometheus + Grafana</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-gitops<span class="w">          </span><span class="c1"># skip ArgoCD</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies<span class="w">        </span><span class="c1"># skip OPA/Gatekeeper</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-dora<span class="w">            </span><span class="c1"># skip DORA exporter</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows<span class="w"> </span><span class="c1"># (optional) install Argo Workflows for ML pipeline orchestration</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">      </span><span class="c1"># start Backstage (requires cluster already running)</span>
 </code></pre></div></td></tr></table></div>
 <p>Flags can be combined: <code>--skip-obs --skip-gitops</code> cuts bootstrap time roughly in half.</p>
 <h2 id="access-services">Access services<a class="headerlink" href="#access-services" title="Permanent link">&para;</a></h2>
@@ -1473,6 +1550,11 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <td><strong>Backstage</strong></td>
 <td><a href="http://backstage.idp.local">http://backstage.idp.local</a> (or <a href="http://localhost:3000">http://localhost:3000</a>)</td>
 <td>— (guest mode)</td>
+</tr>
+<tr>
+<td><strong>AI Assistant</strong></td>
+<td><a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a></td>
+<td>— (integrated in Backstage)</td>
 </tr>
 <tr>
 <td><strong>hello-service</strong></td>
@@ -1503,6 +1585,21 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <td><strong>Pushgateway</strong></td>
 <td><a href="http://pushgateway.idp.local">http://pushgateway.idp.local</a></td>
 <td>—</td>
+</tr>
+<tr>
+<td><strong>KAgent UI</strong></td>
+<td><a href="http://kagent.idp.local">http://kagent.idp.local</a></td>
+<td>— (agent management)</td>
+</tr>
+<tr>
+<td><strong>MLflow</strong></td>
+<td><a href="http://mlflow.idp.local">http://mlflow.idp.local</a></td>
+<td>— (experiment tracking &amp; model registry)</td>
+</tr>
+<tr>
+<td><strong>Argo Workflows</strong></td>
+<td><a href="http://argo-workflows.idp.local">http://argo-workflows.idp.local</a></td>
+<td>— (if <code>--install-argo-workflows</code> flag used)</td>
 </tr>
 <tr>
 <td><strong>Local registry</strong></td>
@@ -1568,13 +1665,41 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>cp<span class="w"> </span>local/.env.example<span class="w"> </span>local/.env
 cp<span class="w"> </span>local/backstage/.env.example<span class="w"> </span>local/backstage/.env
 <span class="c1"># Edit both and fill in:</span>
-<span class="c1">#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION</span>
+<span class="c1">#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION, ANTHROPIC_API_KEY (optional for AI), OPENAI_API_KEY (optional for OpenAI models)</span>
 <span class="c1">#   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,</span>
 <span class="c1">#                          BACKSTAGE_AUTH_SECRET (any string locally)</span>
 </code></pre></div></td></tr></table></div>
+<p><strong>AI/ML Platform (Optional):</strong>
+- <code>ANTHROPIC_API_KEY</code> — Required to enable Claude API for KAgent agents (used by <code>bootstrap-ai.sh</code>)
+- <code>OPENAI_API_KEY</code> — Required to enable OpenAI GPT-4o support via the <code>modelconfig-openai</code> CRD (used by <code>bootstrap-ai.sh</code>)</p>
+<p>If these are not set, the AI/ML platform still deploys but agents/models using those providers will fail gracefully.</p>
 <blockquote>
 <p>K8s credentials (<code>K8S_CLUSTER_URL</code>, <code>K8S_SERVICE_ACCOUNT_TOKEN</code>, <code>K8S_CLUSTER_CA_DATA</code>) are written to <code>local/backstage/.env</code> automatically by <code>bootstrap-local.sh</code> via <code>get-k8s-credentials.sh</code>. No manual step needed if you bootstrapped with that script.</p>
 </blockquote>
+<h3 id="troubleshooting-observability-after-bootstrap">Troubleshooting observability after bootstrap<a class="headerlink" href="#troubleshooting-observability-after-bootstrap" title="Permanent link">&para;</a></h3>
+<p><strong>DORA metrics not appearing in Grafana / Pushgateway empty</strong></p>
+<p>The <code>dora-exporter</code> CronJob runs every 15 minutes. If metrics are absent immediately after bootstrap, trigger a manual run:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>dora-now<span class="w"> </span>--from<span class="o">=</span>cronjob/dora-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+kubectl<span class="w"> </span>logs<span class="w"> </span>job/dora-now<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--follow
+</code></pre></div></td></tr></table></div>
+<p>If the job fails with <code>python: can't open file '/scripts/dora-exporter.py'</code>, the ConfigMap was not populated. Re-run the bootstrap step:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>configmap<span class="w"> </span>dora-exporter-script<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-file<span class="o">=</span>dora-exporter.py<span class="o">=</span>local/observability/dora/dora-exporter.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
+</code></pre></div></td></tr></table></div>
+<p><strong>Kubernetes tab shows "unknown" for CPU / Memory</strong></p>
+<p>Ensure <code>skipMetricsLookup: false</code> is set in <code>backstage/app-config.yaml</code> and that the metrics-server is running:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>metrics-server
+kubectl<span class="w"> </span>top<span class="w"> </span>nodes
+</code></pre></div></td></tr></table></div>
+<p><strong>catalog-exporter CrashLoopBackOff</strong></p>
+<p>The CronJob targets <code>backstage.default.svc.cluster.local:3000</code>. It will fail whenever Backstage is not running. Start Backstage first:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
 <h3 id="day-2-backstage-restart">Day-2 Backstage restart<a class="headerlink" href="#day-2-backstage-restart" title="Permanent link">&para;</a></h3>
 <p>If you restart Docker Compose manually, re-run <code>--start-backstage</code> to rewire the nginx endpoint:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
@@ -1716,11 +1841,90 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 </tbody>
 </table>
 <p>The Helm chart (<code>helm/service-template</code>) is <strong>identical</strong> for both. Only the values file differs.</p>
-<h2 id="aiml-stack-optional">AI/ML stack (optional)<a class="headerlink" href="#aiml-stack-optional" title="Permanent link">&para;</a></h2>
+<h2 id="aiml-stack-optional">AI/ML Stack (Optional)<a class="headerlink" href="#aiml-stack-optional" title="Permanent link">&para;</a></h2>
 <p>After <code>bootstrap-local.sh</code> (and optionally <code>--start-backstage</code>) completes, boot the AI/ML platform:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Requires ANTHROPIC_API_KEY in local/.env</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Requires ANTHROPIC_API_KEY in local/.env (and optionally OPENAI_API_KEY for multi-model support)</span>
 ./scripts/bootstrap-ai.sh
+</code></pre></div></td></tr></table></div>
+<p>What it installs:
+- <strong>KAgent platform</strong> — Kubernetes-native AI agents with <code>idp-assistant</code>, <code>qa-assistant</code>, <code>contract-assistant</code> agents
+- <strong>MCP servers</strong> — Model Context Protocol servers: <code>idp-mcp-server</code> (6 IDP tools), <code>qa-mcp-server</code> (QA tools), <code>contract-mcp-server</code> (contract testing tools)
+- <strong>MLflow</strong> — Experiment tracking and model registry at <a href="http://mlflow.idp.local">http://mlflow.idp.local</a>
+- <strong>OpenAI ModelConfig</strong> — GPT-4o support if <code>OPENAI_API_KEY</code> is set; Claude Anthropic support if <code>ANTHROPIC_API_KEY</code> is set
+- <strong>AI Observability</strong> — Grafana dashboard with MCP tool metrics, latency, cost attribution per server</p>
+<h3 id="ai-native-platform-features-phase-7a-complete">AI-Native Platform Features (Phase 7a Complete)<a class="headerlink" href="#ai-native-platform-features-phase-7a-complete" title="Permanent link">&para;</a></h3>
+<h4 id="priority-1-ai-platform-foundations">Priority 1: AI Platform Foundations ✅<a class="headerlink" href="#priority-1-ai-platform-foundations" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>OpenAI ModelConfig CRD</strong> — Deploy agents using GPT-4o in addition to Claude</li>
+<li><strong>AI Observability Dashboard</strong> — Monitor MCP tool calls, latency, error rates in Grafana</li>
+<li><strong>RAG Document Indexing</strong> — AI search across TechDocs and runbooks via <code>/ai-search</code> page</li>
+</ul>
+<h4 id="priority-2-ai-service-lifecycle">Priority 2: AI Service Lifecycle ✅<a class="headerlink" href="#priority-2-ai-service-lifecycle" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Model Serving API Template</strong> — Deploy Ollama (local) or vLLM (AWS) inference servers via Backstage</li>
+<li><strong>AI Platform Scorecard</strong> — Tech Insights checks for model cards, eval suites, observability (Bronze/Silver/Gold)</li>
+<li><strong>Prompt Lifecycle Management</strong> — System prompts in ConfigMaps for zero-downtime updates</li>
+</ul>
+<h4 id="priority-3-ml-workflows-cost-attribution">Priority 3: ML Workflows &amp; Cost Attribution ✅<a class="headerlink" href="#priority-3-ml-workflows-cost-attribution" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Argo Workflows</strong> — Multi-step ML pipeline orchestration (optional; use <code>--install-argo-workflows</code> flag in bootstrap-local.sh)</li>
+<li><strong>Cost Attribution</strong> — Team labels on agents, <code>ai_api_calls_total</code> metrics for cost tracking per model</li>
+</ul>
+<h3 id="scaffold-ai-services">Scaffold AI services<a class="headerlink" href="#scaffold-ai-services" title="Permanent link">&para;</a></h3>
+<p>After <code>bootstrap-ai.sh</code> completes, use the templates from Backstage:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. AI Agent (KAgent-based)</span>
+<span class="c1"># Backstage → Create → AI Agent (KAgent)</span>
+<span class="c1"># Fill: name, owner, KAgent to deploy, tools to expose</span>
+
+<span class="c1"># 2. Model Serving API</span>
+<span class="c1"># Backstage → Create → Model Serving API</span>
+<span class="c1"># Fill: name, model name (llama3.2, mistral, etc.), target (local/aws)</span>
+
+<span class="c1"># 3. MCP Server (Model Context Protocol)</span>
+<span class="c1"># Backstage → Create → MCP Server</span>
+<span class="c1"># Fill: name, tools to expose, KAgent to link</span>
+
+<span class="c1"># 4. Contract Testing (with contract-mcp-server)</span>
+<span class="c1"># Backstage → Create → Enable Contract Testing</span>
+<span class="c1"># Select target service; scaffolds contract testing and deploys contract-mcp-server</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="monitor-ai-platform">Monitor AI Platform<a class="headerlink" href="#monitor-ai-platform" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># View agent status</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent
+
+<span class="c1"># Monitor MCP server metrics</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>metric
+
+<span class="c1"># Check Grafana AI dashboard</span>
+<span class="c1"># http://grafana.idp.local → search &quot;AI Platform&quot;</span>
+
+<span class="c1"># View cost attribution (if using labels)</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-L<span class="w"> </span>team
 </code></pre></div></td></tr></table></div>
 <p>This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.</p>
 <p>The AI Assistant at <code>/ai-assistant</code> is a <strong>native React chat UI</strong> (not an iframe) that talks directly to the KAgent A2A API via the Backstage proxy.</p>

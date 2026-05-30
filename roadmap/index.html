@@ -965,9 +965,42 @@
         <li class="md-nav__item">
   <a href="#phase-7-aiml-platform" class="md-nav__link">
     <span class="md-ellipsis">
-      Phase 7 — AI/ML Platform 🚧
+      Phase 7 — AI/ML Platform ✅
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Phase 7 — AI/ML Platform ✅">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-7-core-aiml-capabilities-completed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7 Core AI/ML Capabilities (✅ Completed)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-7a-ai-native-platform-enhancements-completed-q2-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7a — AI-Native Platform Enhancements (✅ Completed Q2 2026)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-7-successor-items-planned" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7 Successor Items (📋 Planned)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1799,8 +1832,9 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="phase-7-aiml-platform">Phase 7 — AI/ML Platform 🚧<a class="headerlink" href="#phase-7-aiml-platform" title="Permanent link">&para;</a></h2>
+<h2 id="phase-7-aiml-platform">Phase 7 — AI/ML Platform ✅<a class="headerlink" href="#phase-7-aiml-platform" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> Every developer persona — including ML engineers and AI teams — has a golden path.</p>
+<h3 id="phase-7-core-aiml-capabilities-completed">Phase 7 Core AI/ML Capabilities (✅ Completed)<a class="headerlink" href="#phase-7-core-aiml-capabilities-completed" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1865,15 +1899,104 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 <td>✅</td>
 <td><code>idpDeployAgent</code>, <code>idpRunTrainingJob</code>, <code>idpDeployMcpServer</code> modules in <code>backstage/app/packages/backend/src/modules/</code></td>
 </tr>
+</tbody>
+</table>
+<h3 id="phase-7a-ai-native-platform-enhancements-completed-q2-2026">Phase 7a — AI-Native Platform Enhancements (✅ Completed Q2 2026)<a class="headerlink" href="#phase-7a-ai-native-platform-enhancements-completed-q2-2026" title="Permanent link">&para;</a></h3>
+<p><strong>Priority 1 — AI Platform Foundations:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI ModelConfig CRD</td>
+<td>✅</td>
+<td><code>kubernetes/kagent/modelconfig-openai.yaml</code> with GPT-4o support; OPENAI_API_KEY secret auto-provisioned in <code>bootstrap-ai.sh</code></td>
+</tr>
+<tr>
+<td>AI Observability Dashboard</td>
+<td>✅</td>
+<td>Grafana dashboard (<code>observability/grafana/dashboards/ai/ai-platform.json</code>) with MCP tool call metrics, latency distribution, error rates, cost attribution per server</td>
+</tr>
+<tr>
+<td>RAG Document Indexing</td>
+<td>✅</td>
+<td><code>idpRagSearch.ts</code> extended with <code>indexMarkdownFiles()</code> for semantic search across TechDocs, runbooks, and platform documentation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Priority 2 — AI Service Lifecycle:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
 <tr>
 <td><code>model-serving-api</code> template</td>
-<td>📋</td>
-<td>FastAPI skeleton; <code>prediction_latency_seconds</code> histogram; <code>MODEL_URI</code> env var</td>
+<td>✅</td>
+<td>Scaffolder template for Ollama (local Kind) and vLLM (AWS EKS) model servers; <code>idp:deploy-model-server</code> action with secure TLS verification and input validation</td>
 </tr>
+<tr>
+<td>AI Platform Scorecard</td>
+<td>✅</td>
+<td>3 new Tech Insights checks: <code>has-model-card</code>, <code>has-eval-suite</code>, <code>has-ai-observability</code>; updated Bronze/Silver/Gold tiers (14 checks total) with AI Governance group</td>
+</tr>
+<tr>
+<td>Prompt Lifecycle Management</td>
+<td>✅</td>
+<td>System prompts extracted to ConfigMaps (<code>kubernetes/kagent/prompts/</code>) and referenced by Agent CRDs for zero-downtime prompt updates</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Priority 3 — ML Workflows &amp; Cost Attribution:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Argo Workflows orchestration</td>
+<td>✅</td>
+<td><code>local/argo-workflows/values.yaml</code> + <code>aws/argo-workflows/values.yaml</code> with S3 artifact storage (AWS IRSA); integrated into <code>bootstrap-local.sh</code> (--install-argo-workflows flag) and <code>bootstrap.sh</code> (Phase 6a)</td>
+</tr>
+<tr>
+<td>AI Cost Attribution</td>
+<td>✅</td>
+<td>MCP server metrics enhanced with <code>server</code> label; <code>ai_api_calls_total</code> counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-7-successor-items-planned">Phase 7 Successor Items (📋 Planned)<a class="headerlink" href="#phase-7-successor-items-planned" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
 <tr>
 <td><code>ml-training-job</code> template</td>
 <td>📋</td>
-<td>Argo Workflows <code>workflow.yaml</code>; MLflow run logging; CronJob variant</td>
+<td>Argo Workflows scaffold with MLflow experiment logging; CronJob variant for scheduled model training</td>
+</tr>
+<tr>
+<td>Automated deepeval CI gate</td>
+<td>📋</td>
+<td>GitHub Actions workflow on PR to Agent prompts; blocks merge if AnswerRelevancy &lt; 0.7 or ToolCorrectness &lt; 0.8</td>
 </tr>
 </tbody>
 </table>
@@ -2358,7 +2481,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 </tr>
 <tr>
 <td>M7: AI/ML platform</td>
-<td>Q2 2026 🚧</td>
+<td>Q2 2026 ✅</td>
 <td>Phase 7</td>
 <td><code>milestone/m7-aiml</code></td>
 </tr>

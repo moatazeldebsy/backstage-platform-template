@@ -1396,7 +1396,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
 </code></pre></div></td></tr></table></div>
 <p>ingress-nginx should reschedule and reach <code>Running</code> within ~60 seconds, restoring all <code>*.idp.local</code> URLs.</p>
 <h2 id="known-harmless-failure">Known Harmless Failure<a class="headerlink" href="#known-harmless-failure" title="Permanent link">&para;</a></h2>
-<p><code>catalog-exporter</code> in the <code>monitoring</code> namespace will stay in <code>CrashLoopBackOff</code> whenever Backstage is <strong>not</strong> running via Docker Compose. It tries to reach <code>backstage.backstage.svc.cluster.local:7007</code> (in-cluster DNS), which does not exist. Start Backstage to resolve it:</p>
+<p><code>catalog-exporter</code> in the <code>monitoring</code> namespace will stay in <code>CrashLoopBackOff</code> whenever Backstage is <strong>not</strong> running via Docker Compose. It tries to reach <code>backstage.default.svc.cluster.local:3000</code> (in-cluster DNS), which does not exist when Backstage is down. Start Backstage to resolve it:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
 </code></pre></div></td></tr></table></div>
 <h2 id="prevention">Prevention<a class="headerlink" href="#prevention" title="Permanent link">&para;</a></h2>

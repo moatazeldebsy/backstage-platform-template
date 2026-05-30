@@ -727,6 +727,108 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-native-platform-phase-7a-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      AI-Native Platform (Phase 7a Complete)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI-Native Platform (Phase 7a Complete)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-provider-model-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-Provider Model Support ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-serving-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Serving &amp; Inference ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-platform-scorecard" class="md-nav__link">
+    <span class="md-ellipsis">
+      AI Platform Scorecard ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prompt-lifecycle-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompt Lifecycle Management ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ml-workflows-argo-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      ML Workflows (Argo Workflows) ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cost-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cost Attribution ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rag-semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      RAG Semantic Search ✅
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-observability-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      AI Observability Dashboard ✅
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps-phase-7b" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps (Phase 7b)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Next Steps (Phase 7b)">
+      <ul class="md-nav__list">
+        
           <li class="md-nav__item">
   <a href="#scaffold-task-stuck-in-processing" class="md-nav__link">
     <span class="md-ellipsis">
@@ -1650,8 +1752,8 @@ can only be called once per instance, a fresh <code>McpServer</code> is created 
 <tbody>
 <tr>
 <td><code>BACKSTAGE_URL</code></td>
-<td><code>http://backstage:7007</code></td>
-<td>Internal Backstage URL</td>
+<td><code>http://host.docker.internal:3000</code> (local)</td>
+<td>Internal Backstage URL; overridden by <code>helm-values-local.yaml</code></td>
 </tr>
 <tr>
 <td><code>BACKSTAGE_EXTERNAL_URL</code></td>
@@ -1740,6 +1842,120 @@ curl<span class="w"> </span>http://kagent.idp.local/api/sessions
 2. The system message allowed the agent to ask "Should I proceed?" — when the user
    replied in a new message the previous context was not available, causing a reset.</p>
 <p><strong>Fix applied:</strong> Both issues are now fixed in the source: <code>get_template_params</code> is implemented in <code>services/idp-mcp-server/src/index.ts</code> and listed in <code>kubernetes/kagent/idp-agent.yaml</code> toolNames. Rule 4 + Rule 5 now require immediate <code>scaffold_service</code> invocation.</p>
+<hr />
+<h2 id="ai-native-platform-phase-7a-complete">AI-Native Platform (Phase 7a Complete)<a class="headerlink" href="#ai-native-platform-phase-7a-complete" title="Permanent link">&para;</a></h2>
+<p>The platform has been enhanced with comprehensive AI capabilities beyond the chat assistant:</p>
+<h3 id="multi-provider-model-support">Multi-Provider Model Support ✅<a class="headerlink" href="#multi-provider-model-support" title="Permanent link">&para;</a></h3>
+<p>Deploy agents using <strong>Claude Anthropic</strong> (default) or <strong>OpenAI GPT-4o</strong>:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Both ModelConfigs available via kubernetes/kagent/</span>
+<span class="c1"># - modelconfig-anthropic.yaml (Claude Haiku / Sonnet)</span>
+<span class="c1"># - modelconfig-openai.yaml (GPT-4o)</span>
+
+<span class="c1"># Use in agent spec:</span>
+<span class="c1">#   modelConfig: claude-anthropic</span>
+<span class="c1">#   # or</span>
+<span class="c1">#   modelConfig: openai-prod</span>
+</code></pre></div></td></tr></table></div>
+<p><strong>Setup:</strong> Set <code>OPENAI_API_KEY</code> in <code>local/.env</code> before running <code>./scripts/bootstrap-ai.sh</code>.</p>
+<h3 id="model-serving-inference">Model Serving &amp; Inference ✅<a class="headerlink" href="#model-serving-inference" title="Permanent link">&para;</a></h3>
+<p>Deploy trained models as inference APIs:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Via Backstage:</span>
+<span class="c1"># Create → Model Serving API</span>
+<span class="c1"># → Ollama (local Kind) or vLLM (AWS EKS with GPU)</span>
+
+<span class="c1"># Manually:</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-model<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/my-model<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>ml-platform
+</code></pre></div></td></tr></table></div>
+<p>Custom action: <code>idp:deploy-model-server</code> with secure TLS verification.</p>
+<h3 id="ai-platform-scorecard">AI Platform Scorecard ✅<a class="headerlink" href="#ai-platform-scorecard" title="Permanent link">&para;</a></h3>
+<p>Quality gates for AI services (Bronze/Silver/Gold tiers):</p>
+<ul>
+<li><strong>Bronze:</strong> Agent deployed + health checks passing</li>
+<li><strong>Silver:</strong> + deepeval CI eval suite + Grafana observability dashboard</li>
+<li><strong>Gold:</strong> + cost attribution labels + system prompt versioned in ConfigMap</li>
+</ul>
+<p>View in Backstage <strong>Tech Insights</strong> tab on any service entity. Three new checks: <code>has-model-card</code>, <code>has-eval-suite</code>, <code>has-ai-observability</code>.</p>
+<h3 id="prompt-lifecycle-management">Prompt Lifecycle Management ✅<a class="headerlink" href="#prompt-lifecycle-management" title="Permanent link">&para;</a></h3>
+<p>System prompts extracted to ConfigMaps in <code>kubernetes/kagent/prompts/</code>:</p>
+<ul>
+<li>Zero-downtime prompt updates (no pod restart)</li>
+<li>Version history via Git history</li>
+<li>Rollback via ArgoCD revert</li>
+</ul>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Update via Backstage:</span>
+<span class="c1"># Create → Update Agent Prompt → PR to kubernetes/kagent/prompts/&lt;agent&gt;-prompt.yaml</span>
+<span class="c1"># Or edit directly: kubectl edit configmap idp-assistant-prompt -n kagent</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="ml-workflows-argo-workflows">ML Workflows (Argo Workflows) ✅<a class="headerlink" href="#ml-workflows-argo-workflows" title="Permanent link">&para;</a></h3>
+<p>Multi-step training + evaluation pipelines:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Install (optional):</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows
+
+<span class="c1"># Access at: http://argo-workflows.idp.local</span>
+
+<span class="c1"># Scaffold pipeline:</span>
+<span class="c1"># Create → ML Training Job → outputs Argo Workflow YAML</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="cost-attribution">Cost Attribution ✅<a class="headerlink" href="#cost-attribution" title="Permanent link">&para;</a></h3>
+<p>Track AI API spend per team:</p>
+<ul>
+<li>Team labels on all Agent CRDs (<code>team: platform</code>, <code>team: quality</code>)</li>
+<li><code>ai_api_calls_total</code> metric with <code>{server, model, tool}</code> labels</li>
+<li>Grafana dashboard: cost per team / model</li>
+</ul>
+<h3 id="rag-semantic-search">RAG Semantic Search ✅<a class="headerlink" href="#rag-semantic-search" title="Permanent link">&para;</a></h3>
+<p>AI search across TechDocs, runbooks, catalog:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Via Backstage AI Assistant:</span>
+/ai-search
+
+<span class="c1"># Search query: &quot;how to debug deployment failures&quot;</span>
+<span class="c1"># → Returns relevant runbooks, ADRs, documentation</span>
+</code></pre></div></td></tr></table></div>
+<p>Backend: Voyage AI embeddings + pgvector (<code>kubernetes/pgvector.yaml</code>).</p>
+<h3 id="ai-observability-dashboard">AI Observability Dashboard ✅<a class="headerlink" href="#ai-observability-dashboard" title="Permanent link">&para;</a></h3>
+<p>Monitor MCP servers in Grafana:</p>
+<ul>
+<li>Tool call rate per server (idp, qa, contract)</li>
+<li>Call latency P50/P95/P99</li>
+<li>Error rates and retry patterns</li>
+<li>Token usage per model (if available)</li>
+</ul>
+<p>Dashboard: <strong>Grafana</strong> → "AI Platform"</p>
+<hr />
+<h2 id="next-steps-phase-7b">Next Steps (Phase 7b)<a class="headerlink" href="#next-steps-phase-7b" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>ml-training-job</code> template — Argo Workflows scaffold with MLflow logging</li>
+<li>Automated <code>deepeval</code> CI gate — block PRs if LLM eval score &lt; threshold</li>
+<li>Contract testing via <code>contract-mcp-server</code> — auto-register services + validate compatibility</li>
+</ul>
 <p>To re-apply after a cluster rebuild:
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/idp-agent.yaml
