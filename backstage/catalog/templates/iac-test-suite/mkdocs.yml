@@ -1,0 +1,8 @@
+site_name: IaC Test Suite (Terraform)
+site_description: >-
+  Add tflint + Checkov (policy/security) + Terratest (real-apply) to an existing Terraform repo. Catches misconfigs before they ship.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

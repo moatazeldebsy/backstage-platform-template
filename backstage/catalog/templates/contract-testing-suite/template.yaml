@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: contract-testing-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Contract Testing Suite (MCP-Powered)
   description: >
     Scaffold a self-describing, self-testing API contract suite. Generates an OpenAPI

@@ -1,0 +1,8 @@
+site_name: Decommission Service
+site_description: >-
+  |
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

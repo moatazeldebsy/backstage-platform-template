@@ -1,0 +1,8 @@
+site_name: Terraform Module
+site_description: >-
+  Scaffold a reusable Terraform module with tests, examples, and CI pipeline
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

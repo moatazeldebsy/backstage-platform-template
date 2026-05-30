@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: mutation-testing-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Mutation Testing Suite (Stryker)
   description: Scaffold a Stryker mutation testing configuration to measure test suite quality beyond code coverage
   tags:

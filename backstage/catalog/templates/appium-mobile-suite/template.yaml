@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: appium-mobile-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Appium Mobile Test Suite
   description: Scaffold an Appium + WebdriverIO mobile test suite for iOS and Android
   tags:

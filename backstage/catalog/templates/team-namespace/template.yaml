@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: team-namespace
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Provision Team Namespace
   description: Self-service team onboarding — creates a Kubernetes namespace with RBAC, resource quotas, network policies, and LimitRange.
   tags:

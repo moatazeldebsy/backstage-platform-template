@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: pact-contract-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Pact Contract Test Suite
   description: Scaffold a Pact consumer-driven contract test suite with PactFlow broker publishing
   tags:

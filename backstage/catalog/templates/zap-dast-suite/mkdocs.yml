@@ -1,0 +1,8 @@
+site_name: OWASP ZAP DAST Security Scan
+site_description: >-
+  Scaffold an OWASP ZAP dynamic application security test suite with baseline and full-scan modes
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

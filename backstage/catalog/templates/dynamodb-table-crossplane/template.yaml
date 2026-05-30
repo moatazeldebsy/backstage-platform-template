@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: dynamodb-table-crossplane
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: DynamoDB Table (Crossplane)
   description: |
     Provision a DynamoDB table via a Crossplane Claim. On-demand billing

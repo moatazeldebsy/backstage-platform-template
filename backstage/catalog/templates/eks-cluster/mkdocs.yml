@@ -1,0 +1,8 @@
+site_name: Kubernetes Cluster (EKS)
+site_description: >-
+  Provision an EKS cluster with autoscaling node groups and platform addons (ingress-nginx, cert-manager, ArgoCD, Prometheus).
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: testcontainers-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Testcontainers Integration Test Suite
   description: Scaffold a Testcontainers integration test suite that spins up real dependencies (DB, cache, queues) in CI
   tags:

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: python-service
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Python FastAPI Service
   description: Scaffold a Python FastAPI service with CI/CD and Helm deployment
   tags:

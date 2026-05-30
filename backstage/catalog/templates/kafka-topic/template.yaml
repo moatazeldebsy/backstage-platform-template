@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: kafka-topic
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Kafka Topic
   description: Create a Kafka topic on the shared MSK cluster with partitions, retention, ACLs for the owning service, and an optional schema registry subject.
   tags:

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: iac-test-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: IaC Test Suite (Terraform)
   description: Add tflint + Checkov (policy/security) + Terratest (real-apply) to an existing Terraform repo. Catches misconfigs before they ship.
   tags:

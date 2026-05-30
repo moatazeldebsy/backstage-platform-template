@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: add-secret
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Add Secret to a Service
   description: Provision a secret in AWS Secrets Manager and wire it into your service via External Secrets Operator
   tags:

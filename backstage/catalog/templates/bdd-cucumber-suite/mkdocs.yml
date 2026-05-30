@@ -1,0 +1,8 @@
+site_name: BDD Cucumber Test Suite
+site_description: >-
+  Scaffold a Cucumber.js BDD test suite with Gherkin feature files and TypeScript step definitions
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

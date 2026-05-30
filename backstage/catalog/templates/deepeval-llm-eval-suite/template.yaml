@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: deepeval-llm-eval-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: DeepEval LLM Eval Suite
   description: Scaffold a DeepEval evaluation suite for an AI agent — covers answer relevancy, faithfulness, and tool correctness
   tags:

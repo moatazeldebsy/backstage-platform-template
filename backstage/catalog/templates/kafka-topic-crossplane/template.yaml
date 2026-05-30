@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: kafka-topic-crossplane
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Kafka Topic (Crossplane)
   description: |
     Create a Kafka topic on the existing MSK cluster via a Crossplane Claim.

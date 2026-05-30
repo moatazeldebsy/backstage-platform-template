@@ -1,0 +1,8 @@
+site_name: Unit Test Suite (brownfield)
+site_description: >-
+  Add a standardized unit-test scaffold + coverage gate (70%) + JUnit output to an existing service repo. Language-aware (Go, Node/TS, Python).
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

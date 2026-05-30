@@ -1,0 +1,8 @@
+site_name: Visual Regression Test Suite
+site_description: >-
+  Scaffold a Playwright visual regression suite with pixel-diff screenshot comparison on every PR
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: newman-api-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Newman API Test Suite
   description: Scaffold a Postman/Newman API test suite with CI and environment management
   tags:

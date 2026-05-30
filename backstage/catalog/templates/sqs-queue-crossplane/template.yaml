@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: sqs-queue-crossplane
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: SQS Queue (Crossplane)
   description: |
     Provision an SQS queue via a Crossplane Claim. Server-side encryption

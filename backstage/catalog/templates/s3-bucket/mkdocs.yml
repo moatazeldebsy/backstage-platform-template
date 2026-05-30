@@ -1,0 +1,8 @@
+site_name: S3 Object Bucket
+site_description: >-
+  Create an S3 bucket with versioning, lifecycle rules, KMS encryption, and a least-privilege IAM policy attached to the requesting service.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

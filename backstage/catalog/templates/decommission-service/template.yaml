@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: decommission-service
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Decommission Service
   description: |
     Remove a service from the IDP. This template allows GitHub organization admins to:

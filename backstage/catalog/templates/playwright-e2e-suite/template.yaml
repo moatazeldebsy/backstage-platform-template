@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: playwright-e2e-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Playwright E2E Test Suite
   description: Scaffold a Playwright TypeScript E2E test suite targeting an existing service
   tags:

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: go-service
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Go Service
   description: Scaffold a Go HTTP service with CI/CD and Helm deployment
   tags:

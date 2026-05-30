@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: rds-database-crossplane
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: RDS Postgres (Crossplane)
   description: |
     Provision a Postgres RDS instance via a Crossplane Claim. ArgoCD syncs

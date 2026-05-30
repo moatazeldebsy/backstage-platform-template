@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: eks-cluster
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Kubernetes Cluster (EKS)
   description: Provision an EKS cluster with autoscaling node groups and platform addons (ingress-nginx, cert-manager, ArgoCD, Prometheus).
   tags:

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: s3-bucket-crossplane
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: S3 Object Bucket (Crossplane)
   description: |
     Request an S3 bucket via a Crossplane Claim. ArgoCD picks the Claim up

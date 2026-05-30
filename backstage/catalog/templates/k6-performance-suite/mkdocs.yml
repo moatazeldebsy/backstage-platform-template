@@ -1,0 +1,8 @@
+site_name: k6 Performance Test Suite
+site_description: >-
+  Scaffold a k6 JavaScript performance test suite with smoke, load, and stress scenarios
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

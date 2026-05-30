@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: rds-database
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Managed Postgres (RDS)
   description: Spin up an Amazon RDS Postgres instance with multi-AZ failover, automated backups, and IAM auth. Credentials are written to the requesting service namespace as a secret.
   tags:

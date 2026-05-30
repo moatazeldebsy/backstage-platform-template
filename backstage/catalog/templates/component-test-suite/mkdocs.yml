@@ -1,0 +1,8 @@
+site_name: Component Test Suite (mocked deps)
+site_description: >-
+  Test a single service end-to-end with its external HTTP dependencies stubbed by WireMock. Faster than Testcontainers, more realistic than unit tests.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

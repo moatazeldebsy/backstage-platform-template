@@ -1,0 +1,8 @@
+site_name: Mutation Testing Suite (Stryker)
+site_description: >-
+  Scaffold a Stryker mutation testing configuration to measure test suite quality beyond code coverage
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

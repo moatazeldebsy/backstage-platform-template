@@ -1,0 +1,9 @@
+site_name: DeepEval LLM Eval Suite
+site_description: >-
+  Scaffold a DeepEval evaluation suite for an AI agent — covers answer
+  relevancy, faithfulness, and tool correctness
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: unit-test-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Unit Test Suite (brownfield)
   description: Add a standardized unit-test scaffold + coverage gate (70%) + JUnit output to an existing service repo. Language-aware (Go, Node/TS, Python).
   tags:

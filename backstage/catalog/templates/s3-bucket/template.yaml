@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: s3-bucket
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: S3 Object Bucket
   description: Create an S3 bucket with versioning, lifecycle rules, KMS encryption, and a least-privilege IAM policy attached to the requesting service.
   tags:

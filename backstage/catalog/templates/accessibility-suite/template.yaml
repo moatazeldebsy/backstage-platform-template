@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: accessibility-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Accessibility (a11y) Test Suite
   description: Scaffold an axe-core + Playwright accessibility test suite enforcing WCAG compliance on every PR
   tags:

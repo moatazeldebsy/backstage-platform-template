@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: terraform-module
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Terraform Module
   description: Scaffold a reusable Terraform module with tests, examples, and CI pipeline
   tags:

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: react-frontend
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: React Frontend
   description: Scaffold a React + Vite + TypeScript frontend with CI/CD and Helm deployment
   tags:

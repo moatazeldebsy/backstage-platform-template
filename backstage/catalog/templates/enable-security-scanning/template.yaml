@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: enable-security-scanning
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Enable Security Scanning (SonarCloud + Snyk)
   description: >
     Opens a PR against an existing service repository adding SonarCloud (code quality + quality gate)

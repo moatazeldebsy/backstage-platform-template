@@ -1,0 +1,8 @@
+site_name: Model Serving API
+site_description: >-
+  Deploy an ML model as a REST API using Ollama (local) or vLLM (AWS). Serve open-source LLMs for inference with auto-scaling and health probes.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

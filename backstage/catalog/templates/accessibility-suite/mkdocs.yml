@@ -1,0 +1,8 @@
+site_name: Accessibility (a11y) Test Suite
+site_description: >-
+  Scaffold an axe-core + Playwright accessibility test suite enforcing WCAG compliance on every PR
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

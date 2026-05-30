@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: visual-regression-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Visual Regression Test Suite
   description: Scaffold a Playwright visual regression suite with pixel-diff screenshot comparison on every PR
   tags:

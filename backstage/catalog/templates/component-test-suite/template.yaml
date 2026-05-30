@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: component-test-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Component Test Suite (mocked deps)
   description: Test a single service end-to-end with its external HTTP dependencies stubbed by WireMock. Faster than Testcontainers, more realistic than unit tests.
   tags:

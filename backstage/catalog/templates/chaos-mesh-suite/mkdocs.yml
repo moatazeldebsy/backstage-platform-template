@@ -1,0 +1,8 @@
+site_name: Chaos Engineering Suite (Chaos Mesh)
+site_description: >-
+  Scaffold Chaos Mesh experiment definitions for resilience testing — pod failure, network latency, and stress scenarios
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: enable-contract-testing
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Enable Contract Testing (MCP-Powered)
   description: >
     One-click setup for self-describing, self-testing APIs on the IDP.

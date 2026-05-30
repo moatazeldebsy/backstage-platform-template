@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: bdd-cucumber-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: BDD Cucumber Test Suite
   description: Scaffold a Cucumber.js BDD test suite with Gherkin feature files and TypeScript step definitions
   tags:

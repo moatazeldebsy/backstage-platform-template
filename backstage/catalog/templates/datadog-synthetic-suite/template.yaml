@@ -2,6 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: datadog-synthetic-suite
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   title: Datadog Synthetic Test Suite
   description: Scaffold Datadog synthetic monitoring tests (API and browser) with CI-triggered execution
   tags:

@@ -1,0 +1,8 @@
+site_name: Datadog Synthetic Test Suite
+site_description: >-
+  Scaffold Datadog synthetic monitoring tests (API and browser) with CI-triggered execution
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core
