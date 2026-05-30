@@ -807,7 +807,10 @@ fi
 # ── Step 4b: metrics-server ───────────────────────────────────────────────────
 log "Step 4b: Installing metrics-server (required for CPU/memory in Backstage)..."
 if [[ "$PROVIDER" == "kind" ]]; then
-  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  # Pinned to avoid pulling an untested release on first install.
+  # Bump this when upgrading Kind/K8s: https://github.com/kubernetes-sigs/metrics-server/releases
+  METRICS_SERVER_VERSION="v0.8.1"
+  kubectl apply -f "https://github.com/kubernetes-sigs/metrics-server/releases/download/${METRICS_SERVER_VERSION}/components.yaml"
   # Kind uses self-signed kubelet certs — patch to skip TLS verification
   kubectl patch deployment metrics-server -n kube-system --type=json \
     -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
@@ -845,11 +848,20 @@ if ! $SKIP_OBS; then
   done
 
   log "  Provisioning Grafana Viewer token for Backstage proxy..."
+  # Idempotent: search for an existing 'backstage' SA first; only create if absent.
+  # Without this, re-runs fail silently — POST returns 409 Conflict, grep finds no id,
+  # GRAFANA_TOKEN stays empty, and Backstage loses its Grafana integration on restart.
   GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
-    curl -sf -u admin:admin -X POST http://localhost:3000/api/serviceaccounts \
-    -H 'Content-Type: application/json' \
-    -d '{"name":"backstage","role":"Viewer"}' 2>/dev/null \
+    curl -sf -u admin:admin \
+    "http://localhost:3000/api/serviceaccounts/search?query=backstage&perpage=1" 2>/dev/null \
     | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || echo "")
+  if [[ -z "$GRAFANA_SA_ID" ]]; then
+    GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
+      curl -sf -u admin:admin -X POST http://localhost:3000/api/serviceaccounts \
+      -H 'Content-Type: application/json' \
+      -d '{"name":"backstage","role":"Viewer"}' 2>/dev/null \
+      | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || echo "")
+  fi
   if [[ -n "$GRAFANA_SA_ID" ]]; then
     GRAFANA_TOKEN=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
       curl -sf -u admin:admin -X POST "http://localhost:3000/api/serviceaccounts/${GRAFANA_SA_ID}/tokens" \
@@ -985,27 +997,28 @@ if ! $SKIP_GITOPS; then
       log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
     fi
 
-    _github_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-    _github_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-    if [[ -n "$_github_token" && -n "$_github_org" && "$_github_org" != "YOUR_GITHUB_ORG" ]]; then
-      kubectl create secret generic argocd-github-creds \
-        -n argocd \
-        --from-literal=type=git \
-        --from-literal=url="https://github.com/${_github_org}" \
-        --from-literal=username="${_github_org}" \
-        --from-literal=password="${_github_token}" \
-        --dry-run=client -o yaml \
-        | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
-        | kubectl apply -f -
-      log "  ArgoCD GitHub credentials registered for https://github.com/${_github_org}"
-    else
-      warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
-    fi
+    _register_argocd_github_creds() {
+      local _token _org
+      _token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+      _org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+      if [[ -n "$_token" && -n "$_org" && "$_org" != "YOUR_GITHUB_ORG" ]]; then
+        kubectl create secret generic argocd-github-creds \
+          -n argocd \
+          --from-literal=type=git \
+          --from-literal=url="https://github.com/${_org}" \
+          --from-literal=username="${_org}" \
+          --from-literal=password="${_token}" \
+          --dry-run=client -o yaml \
+          | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
+          | kubectl apply -f -
+        log "  ArgoCD GitHub credentials registered for https://github.com/${_org}"
+      else
+        warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
+      fi
+    }
+    _register_argocd_github_creds
   ) || {
     warn "Step 8 (ArgoCD) failed on first attempt — retrying with extended timeout..."
-    # Wait for the API to settle in case the previous failure was a control-plane
-    # hiccup, then re-run with HELM_WAIT_LONG so slow first-boot image pulls don't
-    # trip the helm default again.
     wait_kubectl_ready 60
     helm upgrade --install argocd argo/argo-cd \
       --namespace argocd \
@@ -1014,6 +1027,21 @@ if ! $SKIP_GITOPS; then
       --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
       --wait --timeout "$HELM_WAIT_LONG" \
       || warn "Step 8 (ArgoCD) failed after retry — run: ./scripts/bootstrap-local.sh --install-argocd"
+    # Re-register GitHub credentials after the retry so private repos are accessible
+    # even when the first Helm attempt failed before credentials were written.
+    _retry_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+    _retry_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+    if [[ -n "$_retry_token" && -n "$_retry_org" && "$_retry_org" != "YOUR_GITHUB_ORG" ]]; then
+      kubectl create secret generic argocd-github-creds \
+        -n argocd \
+        --from-literal=type=git \
+        --from-literal=url="https://github.com/${_retry_org}" \
+        --from-literal=username="${_retry_org}" \
+        --from-literal=password="${_retry_token}" \
+        --dry-run=client -o yaml \
+        | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
+        | kubectl apply -f - 2>/dev/null || true
+    fi
   }
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
@@ -1030,11 +1058,11 @@ if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
     helm upgrade --install argo-workflows argo/argo-workflows \
       --namespace argo-workflows \
       --create-namespace \
-      -f "${REPO_ROOT}/local/argo-workflows/values.yaml" \
+      -f "${ROOT_DIR}/local/argo-workflows/values.yaml" \
       --wait \
-      --timeout 300s || die "Argo Workflows Helm install failed"
+      --timeout 300s || err "Argo Workflows Helm install failed"
 
-    kubectl apply -f "${REPO_ROOT}/kubernetes/argo-workflows/rbac.yaml"
+    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml"
     check "Argo Workflows installed — UI at http://argo-workflows.idp.local"
   )
 else
@@ -1081,6 +1109,19 @@ if ! $SKIP_POLICIES; then
       requirecosttags.constraints.gatekeeper.sh \
       --for=condition=Established \
       --timeout=120s
+
+    # Wait for Gatekeeper webhook pods to be Ready before applying constraints.
+    # The ValidatingWebhookConfiguration activates as soon as helm finishes; without
+    # this wait, subsequent applies (Steps 10–13) can be rejected while webhook pods
+    # are still starting, causing silent failures in ServiceMonitor, ApplicationSet,
+    # and team namespace applies.
+    log "Waiting for Gatekeeper webhook pods to be Ready..."
+    kubectl wait pod \
+      -n gatekeeper-system \
+      -l control-plane=controller-manager \
+      --for=condition=Ready \
+      --timeout=120s 2>/dev/null || \
+      warn "Gatekeeper webhook pods not ready after 120s — constraints may reject applies in Steps 10–13. Continuing..."
 
     log "Applying OPA Constraints..."
     kubectl apply \
@@ -1256,6 +1297,22 @@ if ! $SKIP_GITOPS; then
   (
     set -e
     log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
+
+    # Helm --wait only checks pod readiness, not API server availability.
+    # Poll the ArgoCD API server directly before applying the ApplicationSet so
+    # that the first sync is accepted immediately rather than failing with
+    # "no matches for kind ApplicationSet" while the CRD webhooks warm up.
+    log "  Waiting for ArgoCD API server to accept requests..."
+    for _i in {1..30}; do
+      if kubectl get crd applicationsets.argoproj.io &>/dev/null 2>&1; then
+        if kubectl get applicationsets -n argocd &>/dev/null 2>&1; then
+          break
+        fi
+      fi
+      log "  ArgoCD API not ready yet (${_i}/30) — retrying in 5s..."
+      sleep 5
+    done
+
     kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
     log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
   ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
