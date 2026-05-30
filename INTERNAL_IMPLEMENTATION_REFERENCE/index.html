@@ -1,0 +1,2671 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Internal Platform Implementation Reference - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#internal-platform-implementation-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Internal Platform Implementation Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
+          
+  
+  Shift-Left Quality
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security-scanning/" class="md-tabs__link">
+        
+  
+    
+  
+  Security Scanning (SonarCloud + Snyk)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    For Leadership
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security Scanning (SonarCloud + Snyk)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+        
+          
+          <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_18">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/INTERNAL_IMPLEMENTATION_REFERENCE.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="internal-platform-implementation-reference">Internal Platform Implementation Reference<a class="headerlink" href="#internal-platform-implementation-reference" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>PRIVATE — not for publication.</strong>
+This document captures how every layer of this IDP was built, the decisions behind each choice, and the gotchas that cost time. Written for the platform engineer who built it, not for end users.</p>
+</blockquote>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#1-platform-philosophy--design-principles">Platform Philosophy &amp; Design Principles</a></li>
+<li><a href="#2-repository-layout--environment-separation">Repository Layout &amp; Environment Separation</a></li>
+<li><a href="#3-phase-1--infrastructure-foundation-terraform">Phase 1 — Infrastructure Foundation (Terraform)</a></li>
+<li><a href="#4-phase-2--cicd-golden-path-github-actions">Phase 2 — CI/CD Golden Path (GitHub Actions)</a></li>
+<li><a href="#5-phase-3--helm-service-template">Phase 3 — Helm Service Template</a></li>
+<li><a href="#6-phase-4--backstage-developer-portal">Phase 4 — Backstage Developer Portal</a></li>
+<li><a href="#7-phase-5--observability-stack">Phase 5 — Observability Stack</a></li>
+<li><a href="#8-phase-6--hello-service-reference-implementation">Phase 6 — hello-service Reference Implementation</a></li>
+<li><a href="#9-phase-7--local-deployment-action-idpdeploy-local">Phase 7 — Local Deployment Action (idp:deploy-local)</a></li>
+<li><a href="#10-phase-8--gitops-with-argocd">Phase 8 — GitOps with ArgoCD</a></li>
+<li><a href="#11-phase-9--cd-pipeline-ecr--eks">Phase 9 — CD Pipeline (ECR → EKS)</a></li>
+<li><a href="#12-phase-10--policy-enforcement">Phase 10 — Policy Enforcement</a></li>
+<li><a href="#13-phase-11--crossplane-self-service-resources">Phase 11 — Crossplane Self-Service Resources</a></li>
+<li><a href="#14-phase-12--aiml-platform-kagent--mlflow--mcp-servers">Phase 12 — AI/ML Platform (KAgent + MLflow + MCP Servers)</a></li>
+<li><a href="#15-phase-13--qa-templates--shift-left-program">Phase 13 — QA Templates &amp; Shift-Left Program</a></li>
+<li><a href="#16-bootstrap-scripts--operational-runbook">Bootstrap Scripts &amp; Operational Runbook</a></li>
+<li><a href="#17-key-design-decisions--hard-won-gotchas">Key Design Decisions &amp; Hard-Won Gotchas</a></li>
+<li><a href="#18-component-versions">Component Versions</a></li>
+</ol>
+<hr />
+<h2 id="1-platform-philosophy-design-principles">1. Platform Philosophy &amp; Design Principles<a class="headerlink" href="#1-platform-philosophy-design-principles" title="Permanent link">&para;</a></h2>
+<h3 id="why-this-repo-exists">Why this repo exists<a class="headerlink" href="#why-this-repo-exists" title="Permanent link">&para;</a></h3>
+<p>This is a GitHub template for a production-ready Internal Developer Platform. The goal is a single <code>git clone</code> + one script that gives a team either a full local Kind cluster or a production EKS deployment. Everything from infrastructure to developer portal to AI agents is wired up by default.</p>
+<h3 id="core-design-principles">Core design principles<a class="headerlink" href="#core-design-principles" title="Permanent link">&para;</a></h3>
+<p><strong>Convention over configuration.</strong> Every service uses the same Helm chart (<code>helm/service-template</code>). Service owners only override <code>helm-values-local.yaml</code> and <code>helm-values-aws.yaml</code>. No raw Kubernetes YAML for service workloads.</p>
+<p><strong>Local mirrors prod.</strong> <code>bootstrap-local.sh</code> and <code>bootstrap.sh</code> install the same stack (nginx vs ALB, local Prometheus vs CloudWatch-connected Prometheus, Kind registry vs ECR). Developers debug the same config their CI runs.</p>
+<p><strong>Helm as the deployment unit.</strong> One chart to deploy anything. The chart handles health probes, service monitors, ingress class switching, resource limits, and RBAC. Teams don't write Kubernetes YAML.</p>
+<p><strong>IaC split: Terraform for foundation, Crossplane for day-2.</strong> Terraform (VPC, EKS, RDS, IAM, ECR, Secrets Manager) is applied once by the platform team. Crossplane XRDs + Claims handle per-service cloud resources requested through Backstage templates.</p>
+<p><strong>No long-lived credentials.</strong> GitHub Actions uses OIDC (no static AWS keys). Pods use IRSA. Secrets flow through External Secrets Operator from AWS Secrets Manager.</p>
+<p><strong>GitOps as source of truth.</strong> ArgoCD ApplicationSet auto-discovers every <code>services/*/helm-values-*.yaml</code>. Deploying a service = merging a PR.</p>
+<p><strong>Placeholder substitution, not templating.</strong> <code>setup.sh</code> does a one-time find-and-replace of <code>moatazeldebsy</code> (GitHub org), <code>123456789012</code> (AWS account), etc. across ~542 files. After that, every script re-reads <code>.idp-config.env</code>. No Jinja, no Helm for infra, just <code>sed</code>.</p>
+<hr />
+<h2 id="2-repository-layout-environment-separation">2. Repository Layout &amp; Environment Separation<a class="headerlink" href="#2-repository-layout-environment-separation" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code>backstage-platform-template/
+├── terraform/           # Foundation IaC (platform team, one-shot)
+├── local/               # Kind-only: nginx values, docker-compose, local ArgoCD
+├── aws/                 # EKS-only: ALB ingresses, External Secrets, Crossplane, MLflow S3
+├── kubernetes/          # Shared by both: namespaces, RBAC, policies, monitoring, kagent
+├── backstage/           # Developer portal (app/ monorepo + catalog/ + config files)
+├── services/            # hello-service + 3 MCP servers (source + Helm values)
+├── helm/                # Single shared Helm chart
+├── cli/                 # idp CLI (Go, separate go.mod)
+├── observability/       # Grafana dashboards, SLO definitions, alerting
+├── test-suites/         # Pre-committed demo test suite scaffolds
+├── scripts/             # All bootstrap + operational scripts
+├── docs/                # Documentation (this file lives here)
+└── .github/workflows/   # CI/CD pipelines
+</code></pre></div></td></tr></table></div>
+<p><strong>Strict rule:</strong> <code>bootstrap-local.sh</code> only reads <code>local/</code> + <code>kubernetes/</code>. <code>bootstrap.sh</code> only reads <code>aws/</code> + <code>kubernetes/</code>. Nothing cross-reads. This avoids accidental environment contamination.</p>
+<h3 id="three-environment-config-split-backstage">Three-environment config split (Backstage)<a class="headerlink" href="#three-environment-config-split-backstage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Used by</th>
+<th>Key content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backstage/app-config.yaml</code></td>
+<td>Both</td>
+<td>DB, integrations, scaffolder, catalog rules, file: locations</td>
+</tr>
+<tr>
+<td><code>backstage/app-config.local.yaml</code></td>
+<td>Local Docker Compose</td>
+<td>baseUrls <code>.idp.local</code>, port 3000, guest auth, proxy → ingress hostnames</td>
+</tr>
+<tr>
+<td><code>backstage/app-config.aws.yaml</code></td>
+<td>EKS</td>
+<td>ALB URL, port 7007, GitHub auth, in-cluster DNS proxies, S3 techdocs</td>
+</tr>
+</tbody>
+</table>
+<p>AWS command: <code>node packages/backend --config /config/app-config.yaml --config /config/app-config.aws.yaml</code></p>
+<p>Both config files are mounted as two separate ConfigMaps (<code>backstage-base-config</code> and <code>backstage-config</code>) by <code>kubernetes/backstage/configmap.yaml</code>.</p>
+<hr />
+<h2 id="3-phase-1-infrastructure-foundation-terraform">3. Phase 1 — Infrastructure Foundation (Terraform)<a class="headerlink" href="#3-phase-1-infrastructure-foundation-terraform" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>terraform/*.tf</code></p>
+<h3 id="what-terraform-provisions">What Terraform provisions<a class="headerlink" href="#what-terraform-provisions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Resource</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vpc.tf</code></td>
+<td>VPC, public/private subnets, NAT gateway, route tables</td>
+</tr>
+<tr>
+<td><code>eks.tf</code></td>
+<td>EKS cluster (K8s 1.29), managed node groups, add-ons (VPC CNI, CoreDNS, kube-proxy)</td>
+</tr>
+<tr>
+<td><code>iam.tf</code></td>
+<td>OIDC provider, GitHub Actions IRSA role, cluster access roles</td>
+</tr>
+<tr>
+<td><code>iam-crossplane.tf</code></td>
+<td>IRSA role for Crossplane providers (S3/RDS/SQS/DynamoDB/MSK)</td>
+</tr>
+<tr>
+<td><code>ecr.tf</code></td>
+<td>ECR repositories per service</td>
+</tr>
+<tr>
+<td><code>rds.tf</code></td>
+<td>RDS PostgreSQL (db.t3.micro, 20 GB) for Backstage backend</td>
+</tr>
+<tr>
+<td><code>s3.tf</code></td>
+<td>S3 for TechDocs artifacts + Terraform state</td>
+</tr>
+<tr>
+<td><code>secrets.tf</code></td>
+<td>AWS Secrets Manager structure for GitHub token, OAuth, API keys</td>
+</tr>
+<tr>
+<td><code>secret-rotation.tf</code></td>
+<td>Lambda rotation triggers</td>
+</tr>
+<tr>
+<td><code>finops.tf</code></td>
+<td>EventBridge + Lambda for node scaling (off 8 PM UTC, on 7 AM UTC)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-design-decisions">Key design decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h3>
+<p><strong>OIDC for GitHub Actions.</strong> <code>iam.tf</code> creates an OIDC provider for <code>token.actions.githubusercontent.com</code>. The GitHub Actions role uses a trust policy that matches <code>repo:&lt;org&gt;/&lt;repo&gt;:ref:refs/heads/main</code>. No static <code>AWS_ACCESS_KEY_ID</code> ever stored in GitHub secrets.</p>
+<p><strong>IRSA for pods.</strong> Every pod that needs AWS access (Backstage → S3 for TechDocs, Crossplane → everything, External Secrets → Secrets Manager) gets an annotated ServiceAccount linked to an IAM role. <code>iam.tf</code> creates the roles; <code>bootstrap.sh</code> annotates the ServiceAccounts post-deploy.</p>
+<p><strong>Terraform backend in S3.</strong> <code>main.tf</code> configures an S3 backend with DynamoDB locking. The state bucket is created by <code>setup.sh</code> before <code>terraform init</code> runs, using the AWS CLI (bootstrap problem solved manually).</p>
+<p><strong>Node scaling Lambda.</strong> <code>finops.tf</code> deploys a Lambda that scales the node group to 0 at night and back in the morning. Saves ~$15/day on a 3-node t3.medium cluster. The Lambda name is <code>eks-node-scaler</code>.</p>
+<h3 id="terraform-variables">Terraform variables<a class="headerlink" href="#terraform-variables" title="Permanent link">&para;</a></h3>
+<p><code>terraform/variables.tf</code> exposes: <code>github_org</code>, <code>aws_region</code>, <code>cluster_name</code>, <code>environment</code>, <code>node_count</code>, <code>node_instance_type</code>, <code>enable_rds</code>, <code>enable_cost_optimization</code>. <code>setup.sh</code> writes <code>terraform/terraform.tfvars</code> from <code>.idp-config.env</code>.</p>
+<hr />
+<h2 id="4-phase-2-cicd-golden-path-github-actions">4. Phase 2 — CI/CD Golden Path (GitHub Actions)<a class="headerlink" href="#4-phase-2-cicd-golden-path-github-actions" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>.github/workflows/</code></p>
+<h3 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h3>
+<p><strong><code>ci.yml</code></strong> — triggers on push/PR to <code>services/</code>, <code>helm/</code>, <code>kubernetes/</code>, <code>aws/</code>, <code>terraform/</code>, <code>backstage/app/</code>.</p>
+<p>Jobs:
+- <code>test-hello-service</code> — Go tests + race detector (<code>go test ./... -race</code>)
+- <code>lint-backstage</code> — <code>yarn tsc --noEmit</code> + <code>yarn lint</code> in <code>backstage/app/</code>
+- <code>validate-helm</code> — <code>helm lint helm/service-template</code>
+- <code>validate-kubernetes</code> — <code>kubeconform</code> against schema 1.29
+- <code>validate-terraform</code> — <code>terraform fmt -check</code> + <code>terraform validate -backend=false</code>
+- <code>security-scan</code> — Trivy filesystem scan, Snyk SCA, SonarCloud SAST (triggered on main push)
+- <code>lint-cli</code> — <code>go vet ./...</code> in <code>cli/</code></p>
+<p><strong><code>build-and-deploy.yml</code></strong> — triggers on push to main for service directories.</p>
+<p>Jobs:
+1. <code>detect-changes</code> — uses <code>dorny/paths-filter</code> to produce a matrix of changed services
+2. <code>test</code> — runs service-specific tests
+3. <code>build</code> — multi-stage Docker build → GHCR (local path) or ECR (AWS path) depending on <code>DEPLOY_TARGET</code> secret
+4. <code>deploy-local</code> — <code>helm upgrade --install</code> via kubeconfig secret
+5. <code>deploy-aws</code> — ArgoCD sync or direct Helm via IRSA</p>
+<p><strong><code>auto-merge-onboarding.yml</code></strong> — watches PRs with title matching <code>feat: onboard *</code>. If the diff only touches <code>helm-values-*.yaml</code> files, auto-approves and merges. Requires a <code>GH_PAT</code> secret with <code>repo</code> scope. This is what makes the Backstage scaffolder flow feel instant for developers.</p>
+<p><strong><code>docs.yml</code></strong> — MkDocs build → GitHub Pages on changes to <code>docs/</code> or <code>mkdocs.yml</code>.</p>
+<p><strong><code>eval.yml</code></strong> — manual trigger for DeepEval LLM evaluation tests (pushed to <code>test-deepeval/</code> branch).</p>
+<h3 id="oidc-setup-no-static-keys">OIDC setup (no static keys)<a class="headerlink" href="#oidc-setup-no-static-keys" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
+<span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aws-actions/configure-aws-credentials@v4</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">role-to-assume</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-idp</span>
+<span class="w">    </span><span class="nt">aws-region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">us-east-1</span>
+</code></pre></div></td></tr></table></div>
+<p>The role ARN comes from Terraform output <code>github_actions_role_arn</code>. It's stored as a GitHub secret during <code>bootstrap.sh</code>.</p>
+<hr />
+<h2 id="5-phase-3-helm-service-template">5. Phase 3 — Helm Service Template<a class="headerlink" href="#5-phase-3-helm-service-template" title="Permanent link">&para;</a></h2>
+<p><strong>File:</strong> <code>helm/service-template/</code></p>
+<p>This is the only Helm chart in the repo. Every scaffolded service and every built-in service uses it. The pattern: service owners write <code>helm-values-local.yaml</code> and <code>helm-values-aws.yaml</code> in their <code>services/&lt;name&gt;/</code> directory. The chart is referenced by path locally and by ArgoCD ApplicationSet path in GitOps.</p>
+<h3 id="chart-capabilities">Chart capabilities<a class="headerlink" href="#chart-capabilities" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Deployment with configurable replicas, image, resources</li>
+<li>Liveness + readiness probes (HTTP GET <code>/health</code> by default, configurable)</li>
+<li>Service (ClusterIP) + Ingress with switchable <code>ingressClassName: nginx</code> (local) or <code>kubernetes.io/ingress.class: alb</code> (AWS)</li>
+<li>ServiceMonitor for Prometheus scraping (enabled by default)</li>
+<li>ConfigMap volume mount for app configuration</li>
+<li>Optional PVC for stateful workloads</li>
+<li>RBAC pre-wired (ServiceAccount per release)</li>
+<li>Labels: <code>app.kubernetes.io/name</code>, <code>app.kubernetes.io/version</code>, <code>team</code>, <code>cost-center</code> (required by Kyverno policy)</li>
+</ul>
+<h3 id="values-override-pattern">Values override pattern<a class="headerlink" href="#values-override-pattern" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># helm-values-local.yaml</span>
+<span class="nt">image</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">localhost:5003/my-service</span>
+<span class="w">  </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest</span>
+<span class="nt">ingress</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-service.idp.local</span>
+
+<span class="c1"># helm-values-aws.yaml</span>
+<span class="nt">image</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">123456789012.dkr.ecr.us-east-1.amazonaws.com/my-service</span>
+<span class="w">  </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1.2.3</span>
+<span class="nt">ingress</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alb</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-service.idp.example.com</span>
+<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">kubernetes.io/ingress.class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alb</span>
+<span class="w">    </span><span class="nt">alb.ingress.kubernetes.io/scheme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internet-facing</span>
+</code></pre></div></td></tr></table></div>
+<p>Helm deploy command:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-service<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/my-service/helm-values-local.yaml<span class="w"> </span>--wait
+</code></pre></div></td></tr></table></div></p>
+<hr />
+<h2 id="6-phase-4-backstage-developer-portal">6. Phase 4 — Backstage Developer Portal<a class="headerlink" href="#6-phase-4-backstage-developer-portal" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>backstage/app/</code>, <code>backstage/app-config*.yaml</code>, <code>backstage/Dockerfile</code></p>
+<h3 id="version">Version<a class="headerlink" href="#version" title="Permanent link">&para;</a></h3>
+<p>Backstage v1.49.1. Multi-stage Docker image — <code>yarn install</code> and <code>yarn build:backend</code> run inside the image, not on the host. The Dockerfile base is <code>node:22-bookworm-slim</code>.</p>
+<h3 id="plugin-system">Plugin system<a class="headerlink" href="#plugin-system" title="Permanent link">&para;</a></h3>
+<p>Uses Backstage's new declarative frontend plugin API (<code>@backstage/frontend-plugin-api</code> v0.15+). Custom pages are registered via <code>createFrontendPlugin</code> in <code>backstage/app/packages/app/src/extensions.tsx</code>.</p>
+<p>Critical: use <code>pluginId</code>, not <code>id</code> — the old field name causes a TypeScript error that is non-obvious.</p>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1">// CORRECT</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">myPlugin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createFrontendPlugin</span><span class="p">({</span><span class="w"> </span><span class="nx">pluginId</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-plugin&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">})</span>
+
+<span class="c1">// WRONG (TS error, silent at runtime)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">myPlugin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createFrontendPlugin</span><span class="p">({</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;my-plugin&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">})</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="custom-scaffolder-action-modules">Custom scaffolder action modules<a class="headerlink" href="#custom-scaffolder-action-modules" title="Permanent link">&para;</a></h3>
+<p>All live in <code>backstage/app/packages/backend/src/modules/</code>. Each is a <code>createBackendModule</code> that registers a <code>createTemplateAction</code> via the <code>scaffolderActionsExtensionPoint</code>.</p>
+<p><strong>CRITICAL import path:</strong> Always import from <code>@backstage/plugin-scaffolder-node</code> (the main package), NEVER from <code>@backstage/plugin-scaffolder-node/alpha</code>. The <code>/alpha</code> export exposes <code>scaffolderTemplatingExtensionPoint</code> which is a different extension point. Using the wrong path causes the scaffolder plugin to crash at startup silently, leaving the catalog empty.</p>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1">// CORRECT</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">scaffolderActionsExtensionPoint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@backstage/plugin-scaffolder-node&#39;</span><span class="p">;</span>
+
+<span class="c1">// WRONG — crashes scaffolder at startup</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">scaffolderActionsExtensionPoint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@backstage/plugin-scaffolder-node/alpha&#39;</span><span class="p">;</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="backend-modules-summary">Backend modules summary<a class="headerlink" href="#backend-modules-summary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Action ID</th>
+<th>Lines</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idpLocalDeploy.ts</code></td>
+<td><code>idp:deploy-local</code></td>
+<td>417</td>
+<td>Helm upgrade to Kind via <code>host.docker.internal</code></td>
+</tr>
+<tr>
+<td><code>idpProvisionSecret.ts</code></td>
+<td><code>idp:provision-secret</code></td>
+<td>167</td>
+<td>Create Kubernetes Secret or push to AWS Secrets Manager</td>
+</tr>
+<tr>
+<td><code>idpSetRepoSecrets.ts</code></td>
+<td><code>idp:set-repo-secrets</code></td>
+<td>183</td>
+<td>Write GitHub Actions secrets via GitHub API</td>
+</tr>
+<tr>
+<td><code>idpTechInsights.ts</code></td>
+<td><code>idp:tech-insights</code></td>
+<td>218</td>
+<td>Push Bronze/Silver/Gold scorecard facts to Prometheus Pushgateway</td>
+</tr>
+<tr>
+<td><code>idpDeployAgent.ts</code></td>
+<td><code>idp:deploy-agent</code></td>
+<td>142</td>
+<td>Apply KAgent Agent CRD via kubectl</td>
+</tr>
+<tr>
+<td><code>idpRunTrainingJob.ts</code></td>
+<td><code>idp:run-training-job</code></td>
+<td>242</td>
+<td>Launch Argo Workflows training job, poll to completion</td>
+</tr>
+<tr>
+<td><code>idpDeployMcpServer.ts</code></td>
+<td><code>idp:deploy-mcp-server</code></td>
+<td>124</td>
+<td>Deploy MCP server via Helm to <code>services-dev</code> namespace</td>
+</tr>
+<tr>
+<td><code>idpDeployModelServer.ts</code></td>
+<td><code>idp:deploy-model-server</code></td>
+<td>455</td>
+<td>Deploy Ollama (local) or vLLM (AWS) inference server</td>
+</tr>
+<tr>
+<td><code>idpRagSearch.ts</code></td>
+<td>(backend module)</td>
+<td>284</td>
+<td>Semantic search over catalog + TechDocs via Voyage AI + pgvector</td>
+</tr>
+<tr>
+<td><code>idpSetupContractTesting.ts</code></td>
+<td><code>idp:setup-contract-testing</code></td>
+<td>416</td>
+<td>Deploy contract-mcp-server, apply KAgent CRDs, auto-register contract</td>
+</tr>
+<tr>
+<td><code>idpDecommissionService.ts</code></td>
+<td><code>idp:decommission-service</code></td>
+<td>295</td>
+<td>Helm uninstall, ArgoCD app delete, git cleanup, ECR cleanup</td>
+</tr>
+</tbody>
+</table>
+<h3 id="exec-timeout-strategy">Exec timeout strategy<a class="headerlink" href="#exec-timeout-strategy" title="Permanent link">&para;</a></h3>
+<p>All child process calls use <code>execAsync</code> (promisified <code>child_process.exec</code>). Timeouts are explicit to prevent the scaffolder step from hanging forever:</p>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">EXEC_TIMEOUT_FAST_MS</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="mf">10</span><span class="nx">_000</span><span class="p">;</span><span class="w">   </span><span class="c1">// version/status checks</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">EXEC_TIMEOUT_DEPLOY_MS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">120</span><span class="nx">_000</span><span class="p">;</span><span class="w">  </span><span class="c1">// helm upgrade (cold image pull)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">EXEC_TIMEOUT_DOCKER_MS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">180</span><span class="nx">_000</span><span class="p">;</span><span class="w">  </span><span class="c1">// docker pull/push</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="kubeconfig-in-docker-compose">Kubeconfig in Docker Compose<a class="headerlink" href="#kubeconfig-in-docker-compose" title="Permanent link">&para;</a></h3>
+<p>The <code>idpLocalDeploy.ts</code> module passes an explicit KUBECONFIG env var to every child process:</p>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">kubeEnv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="p">...</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">KUBECONFIG</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.KUBECONFIG</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s1">&#39;/tmp/kubeconfig&#39;</span><span class="p">,</span>
+<span class="p">};</span>
+</code></pre></div></td></tr></table></div>
+<p>The kubeconfig at <code>/tmp/kubeconfig</code> is written at container startup by the docker-compose command. It rewrites the server URL from <code>127.0.0.1:6443</code> to <code>https://host.docker.internal:6443</code> and sets <code>insecure-skip-tls-verify: true</code>. This is how a container can reach the Kind API server on the host.</p>
+<h3 id="frontend-pages-extensionstsx">Frontend pages (extensions.tsx)<a class="headerlink" href="#frontend-pages-extensionstsx" title="Permanent link">&para;</a></h3>
+<p>All custom pages are defined in <code>backstage/app/packages/app/src/extensions.tsx</code> (~1,000+ lines):</p>
+<ul>
+<li><strong>FinOpsPage</strong> — queries OpenCost at <code>/api/proxy/opencost/allocation/compute?window=7d&amp;aggregate=namespace</code>. Shows per-namespace CPU cost, RAM cost, total cost.</li>
+<li><strong>AI Governance Scorecard</strong> — LLM eval results, bias/fairness checks, RAG quality metrics.</li>
+<li><strong>QA KPI Dashboard</strong> — test pass rates, execution duration, flaky test trends via Prometheus.</li>
+<li><strong>Service Metrics Explorer</strong> — Prometheus queries (request rate, latency, error rate) per service.</li>
+<li><strong>Cost Attribution</strong> — team/service spend via <code>cost_per_request_usd</code> metric.</li>
+<li><strong>Contract Testing Dashboard</strong> — breaking change matrix, Pact broker integration.</li>
+<li><strong>AI Assistant Page</strong> — native chat UI at <code>/ai-assistant</code>, talks to <code>idp-assistant</code> KAgent via proxy.</li>
+</ul>
+<h3 id="ai-assistant-implementation">AI Assistant implementation<a class="headerlink" href="#ai-assistant-implementation" title="Permanent link">&para;</a></h3>
+<p>The <code>/ai-assistant</code> page is a native React chat UI (not an iframe). It:
+1. POSTs user message to <code>/api/proxy/kagent/a2a/kagent/idp-assistant</code>
+2. Polls <code>/api/proxy/kagent/api/sessions/&lt;sessionId&gt;</code> for the response
+3. Renders agent replies as Markdown (via <code>react-markdown</code> + <code>remark-gfm</code>)</p>
+<p>The KAgent proxy in <code>app-config.local.yaml</code> points to <code>http://idp-assistant.idp.local</code>. The ingress (<code>kubernetes/kagent/ingress-idp-assistant.yaml</code>) is plain HTTP with <code>ssl-redirect: "false"</code> explicitly set.</p>
+<h3 id="material-table-uuid-patch">material-table / uuid patch<a class="headerlink" href="#material-table-uuid-patch" title="Permanent link">&para;</a></h3>
+<p><code>@material-table/core</code> v3.x calls <code>_uuid["default"].v4()</code>. <code>uuid</code> v10 removed the default export, causing <code>TypeError: Cannot read properties of undefined (reading 'v4')</code> in any page that renders a table (catalog, api-docs, techdocs).</p>
+<p><strong>Fix:</strong> <code>.yarn/patches/@material-table-core-npm-3.2.5-*.patch</code> rewrites the call to <code>(_uuid["default"] || _uuid).v4()</code>. Applied automatically on <code>yarn install</code>.</p>
+<p>Verify after any <code>yarn install</code>:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;uuid.*v4&quot;</span><span class="w"> </span>backstage/app/node_modules/@material-table/core/dist/utils/data-manager.js
+<span class="c1"># Must show: (_uuid[&quot;default&quot;] || _uuid).v4()</span>
+</code></pre></div></td></tr></table></div></p>
+<h3 id="postgresql-pgvector">PostgreSQL + pgvector<a class="headerlink" href="#postgresql-pgvector" title="Permanent link">&para;</a></h3>
+<p>The local Backstage Docker Compose uses <code>pgvector/pgvector:pg17</code> not plain <code>postgres</code>. This is required for the RAG search module (<code>idpRagSearch.ts</code>) which stores embeddings in a <code>vector</code> column and uses <code>&lt;=&gt;</code> cosine distance queries. If you switch to plain postgres, RAG breaks silently at runtime.</p>
+<h3 id="catalog-state-diagnosis">Catalog state diagnosis<a class="headerlink" href="#catalog-state-diagnosis" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check entity counts</span>
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backstage-postgres-1<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>backstage<span class="w"> </span>backstage_plugin_catalog<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s2">&quot;SELECT count(*) FROM refresh_state;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s2">&quot;SELECT count(*) FROM final_entities;&quot;</span>
+
+<span class="c1"># Check scaffolder logs</span>
+docker<span class="w"> </span>logs<span class="w"> </span>backstage-backstage-1<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;error|scaffolder|catalog&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>rootHttpRouter<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-20
+</code></pre></div></td></tr></table></div>
+<p>If <code>refresh_state &gt; 0</code> but <code>final_entities = 0</code>: scaffolder is crashing. Check the <code>scaffolderActionsExtensionPoint</code> import path in every backend module.</p>
+<hr />
+<h2 id="7-phase-5-observability-stack">7. Phase 5 — Observability Stack<a class="headerlink" href="#7-phase-5-observability-stack" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>local/observability/</code>, <code>aws/observability/</code>, <code>kubernetes/monitoring/</code>, <code>observability/</code></p>
+<h3 id="prometheus-grafana-local">Prometheus + Grafana (local)<a class="headerlink" href="#prometheus-grafana-local" title="Permanent link">&para;</a></h3>
+<p>Deployed via <code>kube-prometheus-stack</code> Helm chart. Local values in <code>local/observability/prometheus-values-local.yaml</code>. Key overrides:
+- Grafana enabled, admin password <code>admin</code>, ingress <code>grafana.idp.local</code>
+- Prometheus retention 7d, storage 10Gi
+- Alertmanager enabled
+- ServiceMonitor selector: matches all namespaces</p>
+<p>Installed by <code>bootstrap-local.sh</code> unless <code>--skip-obs</code> flag is passed.</p>
+<h3 id="prometheus-grafana-aws">Prometheus + Grafana (AWS)<a class="headerlink" href="#prometheus-grafana-aws" title="Permanent link">&para;</a></h3>
+<p>Values in <code>aws/observability/prometheus-stack-aws-values.yaml</code>. Differences:
+- ALB ingress for Grafana
+- CloudWatch agent sidecar for cost metrics
+- Longer retention (30d)
+- PersistentVolumeClaim on EBS gp3</p>
+<h3 id="dora-metrics-exporter">DORA metrics exporter<a class="headerlink" href="#dora-metrics-exporter" title="Permanent link">&para;</a></h3>
+<p>A CronJob in the <code>monitoring</code> namespace that runs every 15 minutes. It queries the GitHub API for:
+- Deployment frequency (recent releases per day)
+- Lead time for changes (PR open → merge time)
+- Change failure rate (% of deployments that rolled back)
+- MTTR (time from incident issue open → close)</p>
+<p>Pushes results to Prometheus Pushgateway as <code>dora_deployment_frequency</code>, <code>dora_lead_time_seconds</code>, <code>dora_change_failure_rate</code>, <code>dora_mttr_seconds</code>.</p>
+<p>Source: <code>local/observability/dora-exporter-local.yaml</code> (local), <code>aws/observability/dora-exporter.yaml</code> (AWS).</p>
+<h3 id="catalog-exporter-cronjob">Catalog exporter CronJob<a class="headerlink" href="#catalog-exporter-cronjob" title="Permanent link">&para;</a></h3>
+<p><code>scripts/apply-catalog-exporter.sh</code> deploys a CronJob that:
+1. Queries Backstage catalog API (<code>/api/catalog/entities</code>)
+2. Groups by <code>kind</code> (Component, API, Resource, Template)
+3. Pushes <code>backstage_catalog_entities_total{kind="..."}</code> to Pushgateway
+4. Pushes per-component info metric <code>backstage_catalog_service_info</code></p>
+<p>Force a manual run:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>catalog-exporter-now<span class="w"> </span>--from<span class="o">=</span>cronjob/catalog-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+</code></pre></div></td></tr></table></div></p>
+<h3 id="tech-insights-scorecard">Tech Insights scorecard<a class="headerlink" href="#tech-insights-scorecard" title="Permanent link">&para;</a></h3>
+<p>The <code>idpTechInsights.ts</code> action pushes per-service scorecard facts to Pushgateway as a Prometheus gauge. The scorecard has three tiers:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Gates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bronze</td>
+<td>Has TechDocs, has owner annotation, has health check endpoint</td>
+</tr>
+<tr>
+<td>Silver</td>
+<td>Bronze + has CI pipeline, has tests, has Prometheus metrics</td>
+</tr>
+<tr>
+<td>Gold</td>
+<td>Silver + has contract tests, has DAST scan, has SLO defined</td>
+</tr>
+</tbody>
+</table>
+<p>Displayed on each service's entity page in Backstage via a custom entity tab.</p>
+<h3 id="grafana-dashboards">Grafana dashboards<a class="headerlink" href="#grafana-dashboards" title="Permanent link">&para;</a></h3>
+<p>All dashboards are committed as ConfigMaps in <code>kubernetes/monitoring/</code>:</p>
+<ul>
+<li><code>grafana-qa-dashboard-configmap.yaml</code> — test pass rates, execution time, flaky test trends</li>
+<li><code>grafana-ai-dashboard-configmap.yaml</code> — LLM eval, bias checks, RAG quality, MCP tool call rates</li>
+<li><code>grafana-dora-dashboard-configmap.yaml</code> — deployment frequency, lead time, MTTR, change failure rate</li>
+</ul>
+<p>Dashboards use the <code>grafana-sidecar</code> pattern: Grafana watches for ConfigMaps with label <code>grafana_dashboard: "1"</code> and imports them automatically.</p>
+<h3 id="pushgateway">Pushgateway<a class="headerlink" href="#pushgateway" title="Permanent link">&para;</a></h3>
+<p>Deployed as part of the observability stack. Used by:
+- DORA exporter
+- Catalog exporter
+- Tech Insights (<code>idp:tech-insights</code> action)
+- <code>seed-qa-metrics.sh</code> (demo seed data)</p>
+<p>Available at <code>http://pushgateway.idp.local</code>.</p>
+<hr />
+<h2 id="8-phase-6-hello-service-reference-implementation">8. Phase 6 — hello-service Reference Implementation<a class="headerlink" href="#8-phase-6-hello-service-reference-implementation" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>services/hello-service/</code></p>
+<h3 id="what-it-is">What it is<a class="headerlink" href="#what-it-is" title="Permanent link">&para;</a></h3>
+<p>A minimal Go HTTP server that demonstrates the full platform lifecycle:
+- Multi-stage Dockerfile (build → run, ~15 MB final image)
+- <code>/health</code> endpoint (returns <code>{"status":"ok"}</code>)
+- <code>/metrics</code> endpoint (Prometheus exposition format)
+- Full GitHub Actions CI (<code>services/hello-service/.github/workflows/ci.yml</code>)
+- Backstage catalog entity (<code>catalog-info.yaml</code>)
+- TechDocs (<code>docs/</code>, <code>mkdocs.yml</code>)
+- Crossplane resource claims (<code>claims/</code>) — DynamoDB, S3, RDS examples</p>
+<h3 id="go-module">Go module<a class="headerlink" href="#go-module" title="Permanent link">&para;</a></h3>
+<p><code>services/hello-service/go.mod</code> is a separate Go module. CI covers it with <code>go test ./... -coverprofile=coverage.out -covermode=atomic</code>. The <code>cli/</code> module is also separate — changes there do NOT trigger CI.</p>
+<h3 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/hello-service
+go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./...
+go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-run<span class="w"> </span>TestHandlerName<span class="w"> </span>./...
+</code></pre></div></td></tr></table></div>
+<h3 id="techdocs">TechDocs<a class="headerlink" href="#techdocs" title="Permanent link">&para;</a></h3>
+<p><code>services/hello-service/docs/</code> contains <code>index.md</code> with a full service description. <code>mkdocs.yml</code> references it. Backstage renders it via <code>techdocs-backend</code>. For local development TechDocs renders from the bind-mounted catalog directory. For AWS it uses S3 storage.</p>
+<hr />
+<h2 id="9-phase-7-local-deployment-action-idpdeploy-local">9. Phase 7 — Local Deployment Action (idp:deploy-local)<a class="headerlink" href="#9-phase-7-local-deployment-action-idpdeploy-local" title="Permanent link">&para;</a></h2>
+<p><strong>File:</strong> <code>backstage/app/packages/backend/src/modules/idpLocalDeploy.ts</code></p>
+<h3 id="the-problem-this-solves">The problem this solves<a class="headerlink" href="#the-problem-this-solves" title="Permanent link">&para;</a></h3>
+<p>Backstage runs in Docker Compose. The Kind cluster runs on the host. A Docker container cannot reach <code>127.0.0.1:6443</code> (the host's Kind API server). Solution: rewrite the kubeconfig server URL to <code>host.docker.internal:6443</code> at container startup.</p>
+<h3 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><code>local/backstage/docker-compose.yml</code> runs a startup command that reads the K8s credentials written by <code>scripts/get-k8s-credentials.sh</code> and generates <code>/tmp/kubeconfig</code> inside the Backstage container with:</p>
+<ul>
+<li><code>server: https://host.docker.internal:6443</code></li>
+<li><code>insecure-skip-tls-verify: true</code></li>
+</ul>
+</li>
+<li>
+<p>The <code>idpLocalDeploy.ts</code> module reads <code>KUBECONFIG=/tmp/kubeconfig</code> and runs:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>&lt;serviceName&gt;<span class="w"> </span>/helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>&lt;registry&gt;/&lt;serviceName&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>&lt;imageTag&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--wait<span class="w"> </span>--timeout<span class="w"> </span>2m
+</code></pre></div></td></tr></table></div></p>
+</li>
+<li>
+<p>The Helm chart path inside the container is <code>/helm/service-template</code> — it's volume-mounted from <code>../../helm/service-template</code> in docker-compose.</p>
+</li>
+</ol>
+<h3 id="deploy-to-kind-standalone-template">Deploy-to-Kind standalone template<a class="headerlink" href="#deploy-to-kind-standalone-template" title="Permanent link">&para;</a></h3>
+<p><code>backstage/catalog/templates/deploy-to-kind/</code> is a Backstage template that surfaces this action to developers. It lets them deploy any existing image to Kind with a form UI — no CLI needed.</p>
+<hr />
+<h2 id="10-phase-8-gitops-with-argocd">10. Phase 8 — GitOps with ArgoCD<a class="headerlink" href="#10-phase-8-gitops-with-argocd" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>local/argocd/</code>, <code>aws/argocd/</code>, <code>kubernetes/argocd/</code></p>
+<h3 id="app-of-apps-pattern">App-of-apps pattern<a class="headerlink" href="#app-of-apps-pattern" title="Permanent link">&para;</a></h3>
+<p>ArgoCD is bootstrapped with a root Application that points to an app-of-apps directory:
+- Local: <code>local/argocd/app-of-apps-local.yaml</code>
+- AWS: <code>aws/argocd/app-of-apps.yaml</code></p>
+<p>The root app syncs an ApplicationSet that auto-discovers services.</p>
+<h3 id="applicationset-discovery">ApplicationSet discovery<a class="headerlink" href="#applicationset-discovery" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># kubernetes/argocd/applicationset.yaml</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">generators</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">git</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">repoURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/&lt;org&gt;/backstage-platform-template</span>
+<span class="w">        </span><span class="nt">revision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+<span class="w">        </span><span class="nt">directories</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">services/*</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">services/contract-mcp-server</span><span class="w">     </span><span class="c1"># EXCLUDED</span>
+<span class="w">            </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></td></tr></table></div>
+<p>Any directory under <code>services/</code> that contains a <code>helm-values-local.yaml</code> (or <code>helm-values-aws.yaml</code>) gets an ArgoCD Application automatically. No manual registration needed.</p>
+<h3 id="contract-mcp-server-exclusion">contract-mcp-server exclusion<a class="headerlink" href="#contract-mcp-server-exclusion" title="Permanent link">&para;</a></h3>
+<p><code>contract-mcp-server</code> is intentionally excluded from the ApplicationSet in both <code>local/argocd/app-of-apps-local.yaml</code> and <code>aws/argocd/app-of-apps.yaml</code>. It's a platform-internal tool deployed only by <code>bootstrap-ai.sh</code>, not exposed to end users via GitOps. Do not remove this exclusion.</p>
+<h3 id="argocd-credential-setup">ArgoCD credential setup<a class="headerlink" href="#argocd-credential-setup" title="Permanent link">&para;</a></h3>
+<p><code>bootstrap-local.sh --install-argocd</code> patches the ArgoCD <code>argocd-cm</code> ConfigMap with the GitHub Personal Access Token for private repo access:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>argocd-repo-creds<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">url</span><span class="o">=</span>https://github.com/&lt;org&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">username</span><span class="o">=</span>git<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">password</span><span class="o">=</span><span class="nv">$GITHUB_TOKEN</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>argocd
+</code></pre></div></td></tr></table></div></p>
+<h3 id="auto-merge-onboarding-prs">Auto-merge onboarding PRs<a class="headerlink" href="#auto-merge-onboarding-prs" title="Permanent link">&para;</a></h3>
+<p>When the Backstage scaffolder creates a new service, it opens a PR with only <code>helm-values-*.yaml</code> changes. The <code>auto-merge-onboarding.yml</code> workflow auto-approves and merges these if the title matches <code>feat: onboard *</code>. ArgoCD then picks up the new service directory automatically.</p>
+<hr />
+<h2 id="11-phase-9-cd-pipeline-ecr-eks">11. Phase 9 — CD Pipeline (ECR → EKS)<a class="headerlink" href="#11-phase-9-cd-pipeline-ecr-eks" title="Permanent link">&para;</a></h2>
+<p><strong>File:</strong> <code>.github/workflows/build-and-deploy.yml</code></p>
+<h3 id="change-detection">Change detection<a class="headerlink" href="#change-detection" title="Permanent link">&para;</a></h3>
+<p>Uses <code>dorny/paths-filter</code> to detect which services changed:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dorny/paths-filter@v3</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">filters</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">hello-service:</span>
+<span class="w">        </span><span class="no">- &#39;services/hello-service/**&#39;</span>
+<span class="w">      </span><span class="no">idp-mcp-server:</span>
+<span class="w">        </span><span class="no">- &#39;services/idp-mcp-server/**&#39;</span>
+</code></pre></div></td></tr></table></div></p>
+<p>This produces a matrix so only changed services rebuild.</p>
+<h3 id="build-flow">Build flow<a class="headerlink" href="#build-flow" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>docker buildx build</code> with <code>--platform linux/amd64</code></li>
+<li>Login to ECR: <code>aws ecr get-login-password | docker login</code></li>
+<li>Tag: <code>&lt;account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/&lt;service&gt;:&lt;git-sha&gt;</code></li>
+<li>Push to ECR</li>
+<li>Also tag and push <code>:latest</code></li>
+</ol>
+<h3 id="deploy-flow">Deploy flow<a class="headerlink" href="#deploy-flow" title="Permanent link">&para;</a></h3>
+<p>Option A (ArgoCD): Update <code>image.tag</code> in <code>helm-values-aws.yaml</code> and commit. ArgoCD reconciles automatically (sync policy: <code>automated</code>).</p>
+<p>Option B (direct Helm): <code>helm upgrade --install</code> via kubeconfig from a GitHub Actions secret.</p>
+<h3 id="local-registry">Local registry<a class="headerlink" href="#local-registry" title="Permanent link">&para;</a></h3>
+<p>For local Kind deployments the registry is <code>localhost:5003</code>. Kind is configured in <code>local/kind-config.yaml</code> to use this as a containerd mirror:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">containerdConfigPatches</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">[plugins.&quot;io.containerd.grpc.v1.cri&quot;.registry.mirrors.&quot;localhost:5003&quot;]</span>
+<span class="w">      </span><span class="no">endpoint = [&quot;http://localhost:5003&quot;]</span>
+</code></pre></div></td></tr></table></div></p>
+<p>The registry is a plain <code>registry:2</code> Docker container started by <code>bootstrap-local.sh</code>.</p>
+<hr />
+<h2 id="12-phase-10-policy-enforcement">12. Phase 10 — Policy Enforcement<a class="headerlink" href="#12-phase-10-policy-enforcement" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>kubernetes/policies/</code></p>
+<h3 id="opagatekeeper-aws">OPA/Gatekeeper (AWS)<a class="headerlink" href="#opagatekeeper-aws" title="Permanent link">&para;</a></h3>
+<p>Applied by <code>bootstrap.sh</code>. Policies are ConstraintTemplates + Constraints:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>What it blocks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>require-health-probes</code></td>
+<td>Deployments without liveness + readiness probes</td>
+</tr>
+<tr>
+<td><code>require-labels</code></td>
+<td>Pods without <code>app</code>, <code>team</code>, <code>cost-center</code> labels</td>
+</tr>
+<tr>
+<td><code>require-resource-limits</code></td>
+<td>Containers without CPU + memory limits</td>
+</tr>
+<tr>
+<td><code>deny-latest-tag</code></td>
+<td>Images tagged <code>:latest</code> (forces explicit version)</td>
+</tr>
+<tr>
+<td><code>require-cost-tags</code></td>
+<td>Namespaces without <code>cost-center</code> label</td>
+</tr>
+</tbody>
+</table>
+<h3 id="kyverno-local-kind">Kyverno (local Kind)<a class="headerlink" href="#kyverno-local-kind" title="Permanent link">&para;</a></h3>
+<p>Same policies implemented as Kyverno ClusterPolicies for local development. Kyverno is lighter than Gatekeeper for local use. The policies mirror the OPA ones 1:1.</p>
+<h3 id="team-namespace-isolation">Team namespace isolation<a class="headerlink" href="#team-namespace-isolation" title="Permanent link">&para;</a></h3>
+<p><code>kubernetes/teams/</code> contains example team namespaces with:
+- Namespace definition
+- NetworkPolicy (deny ingress from other teams, allow from monitoring)
+- ResourceQuota
+- LimitRange
+- RoleBinding for team members</p>
+<hr />
+<h2 id="13-phase-11-crossplane-self-service-resources">13. Phase 11 — Crossplane Self-Service Resources<a class="headerlink" href="#13-phase-11-crossplane-self-service-resources" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>aws/crossplane/</code>, <code>backstage/catalog/templates/*-crossplane/</code></p>
+<h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
+<p>Crossplane runs in <code>crossplane-system</code> namespace. The AWS provider uses IRSA (role created by <code>terraform/iam-crossplane.tf</code>). XRDs and Compositions are in <code>aws/crossplane/</code>.</p>
+<h3 id="resources-available-via-crossplane">Resources available via Crossplane<a class="headerlink" href="#resources-available-via-crossplane" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Claim kind</th>
+<th>AWS resource</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s3-bucket-crossplane</code></td>
+<td>XBucket</td>
+<td>S3 bucket</td>
+</tr>
+<tr>
+<td><code>rds-database-crossplane</code></td>
+<td>XDatabase</td>
+<td>RDS PostgreSQL instance</td>
+</tr>
+<tr>
+<td><code>dynamodb-table-crossplane</code></td>
+<td>XDynamoTable</td>
+<td>DynamoDB table</td>
+</tr>
+<tr>
+<td><code>sqs-queue-crossplane</code></td>
+<td>XQueue</td>
+<td>SQS queue</td>
+</tr>
+<tr>
+<td><code>kafka-topic-crossplane</code></td>
+<td>XKafkaTopic</td>
+<td>MSK topic</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-it-works_1">How it works<a class="headerlink" href="#how-it-works_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Developer opens Backstage template → fills form (bucket name, region, team)</li>
+<li>Backstage scaffolder writes a Claim YAML to <code>services/&lt;service-name&gt;/claims/&lt;resource&gt;.yaml</code></li>
+<li>PR is opened and auto-merged</li>
+<li>ArgoCD ApplicationSet picks up the new file</li>
+<li>Crossplane sees the Claim, creates a Composite Resource, provisions the AWS resource</li>
+<li>Crossplane writes connection details to a Secret in the service namespace</li>
+</ol>
+<h3 id="terraform-vs-crossplane-decision">Terraform vs Crossplane decision<a class="headerlink" href="#terraform-vs-crossplane-decision" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Use Terraform</strong> for resources shared across services (VPC, RDS for Backstage, ECR). Terraform is applied once by the platform team from outside the cluster.</li>
+<li><strong>Use Crossplane</strong> for per-service resources requested through Backstage. The reconciliation loop in Crossplane handles drift automatically without re-running Terraform.</li>
+</ul>
+<p>See <code>docs/crossplane-vs-terraform.md</code> for the full decision matrix.</p>
+<hr />
+<h2 id="14-phase-12-aiml-platform-kagent-mlflow-mcp-servers">14. Phase 12 — AI/ML Platform (KAgent + MLflow + MCP Servers)<a class="headerlink" href="#14-phase-12-aiml-platform-kagent-mlflow-mcp-servers" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>scripts/bootstrap-ai.sh</code>, <code>kubernetes/kagent/</code>, <code>services/idp-mcp-server/</code>, <code>services/qa-mcp-server/</code>, <code>services/contract-mcp-server/</code>, <code>local/kagent/</code>, <code>aws/kagent/</code></p>
+<h3 id="kagent">KAgent<a class="headerlink" href="#kagent" title="Permanent link">&para;</a></h3>
+<p>KAgent is a Kubernetes-native AI agent framework. It provides:
+- <code>Agent</code> CRD — defines an AI agent with system prompt, model, and tool bindings
+- <code>ModelConfig</code> CRD — configures an LLM provider (Anthropic, OpenAI)
+- <code>RemoteMCPServer</code> CRD — registers an MCP server for an agent to use</p>
+<p>KAgent controller runs in the <code>kagent</code> namespace. It reconciles Agent CRDs, calls <code>tools/list</code> on each bound MCP server at startup, and exposes an A2A (Agent-to-Agent) HTTP API.</p>
+<h3 id="model-configuration">Model configuration<a class="headerlink" href="#model-configuration" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># kubernetes/kagent/modelconfig-claude.yaml</span>
+<span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kagent.dev/v1alpha2</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ModelConfig</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-anthropic</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kagent</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Anthropic</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-haiku-4-5-20251001</span>
+<span class="w">  </span><span class="nt">apiKeySecretRef</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic-api-key</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ANTHROPIC_API_KEY</span>
+</code></pre></div></td></tr></table></div>
+<p>The Anthropic API key flows from <code>local/.env</code> → Kubernetes Secret → ModelConfig ref. For AWS it flows through External Secrets Operator from AWS Secrets Manager.</p>
+<h3 id="three-agents">Three agents<a class="headerlink" href="#three-agents" title="Permanent link">&para;</a></h3>
+<p><strong>idp-assistant</strong> (<code>kubernetes/kagent/idp-agent.yaml</code>)
+- Tools: <code>catalog_search</code>, <code>get_service_metrics</code>, <code>get_template_params</code>, <code>scaffold_service</code>, <code>list_deployments</code>, <code>list_templates</code>
+- System prompt enforces: never guess tool results, no interactive dialogs, execute scaffold flow in one turn
+- Exposed via ingress at <code>http://idp-assistant.idp.local</code></p>
+<p><strong>qa-assistant</strong> (<code>kubernetes/kagent/qa-agent.yaml</code>)
+- Tools: from <code>qa-mcp-server</code> — list test suites, scaffold test suite, get test metrics, search test catalog
+- Exposed via kagent UI (not a standalone ingress)</p>
+<p><strong>contract-assistant</strong> (<code>kubernetes/kagent/contract-agent.yaml</code>)
+- Tools: all 9 from <code>contract-mcp-server</code> + <code>catalog_search</code> and <code>list_deployments</code> from <code>idp-mcp-server</code>
+- Used via the AI assistant page or directly via A2A API</p>
+<h3 id="mcp-servers">MCP servers<a class="headerlink" href="#mcp-servers" title="Permanent link">&para;</a></h3>
+<p>All three MCP servers use the <strong>StreamableHTTP transport</strong> (not stdio). They run as Kubernetes Deployments in <code>services-dev</code> namespace and are registered as <code>RemoteMCPServer</code> resources in the <code>kagent</code> namespace.</p>
+<p><strong>idp-mcp-server</strong> (<code>services/idp-mcp-server/</code>)
+- Port: 3001
+- 6 tools: <code>catalog_search</code>, <code>get_service_metrics</code>, <code>get_template_params</code>, <code>scaffold_service</code>, <code>list_deployments</code>, <code>list_templates</code>
+- Talks to Backstage API (env: <code>BACKSTAGE_URL</code>, <code>BACKSTAGE_TOKEN</code>)
+- Talks to Prometheus API (env: <code>PROMETHEUS_URL</code>)
+- Talks to K8s API (env: <code>K8S_API</code>, <code>K8S_TOKEN</code>, <code>K8S_CLUSTER_CA_B64</code>)
+- Emits metrics: <code>mcp_tool_calls_total</code>, <code>mcp_tool_duration_seconds</code>, <code>ai_api_calls_total</code></p>
+<p><strong>qa-mcp-server</strong> (<code>services/qa-mcp-server/</code>)
+- Port: 3002
+- 4 tools: <code>list_test_suites</code>, <code>scaffold_test_suite</code>, <code>search_test_catalog</code>, <code>get_test_metrics</code>
+- Same Backstage + Prometheus integration as idp-mcp-server</p>
+<p><strong>contract-mcp-server</strong> (<code>services/contract-mcp-server/</code>)
+- Port: 3003
+- 9 tools: <code>fetch_service_contract</code>, <code>auto_discover_contracts</code>, <code>register_contract</code>, <code>get_contract</code>, <code>list_contracts</code>, <code>generate_contract_tests</code>, <code>validate_compatibility</code>, <code>detect_breaking_changes</code>, <code>get_compatibility_report</code>
+- Stores contracts in memory + optional ConfigMap persistence
+- Excluded from the ArgoCD ApplicationSet — deployed only by <code>bootstrap-ai.sh</code></p>
+<h3 id="mcp-server-gitops-coverage">MCP server GitOps coverage<a class="headerlink" href="#mcp-server-gitops-coverage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Deployed by</th>
+<th>ApplicationSet</th>
+<th>Requires bootstrap-ai.sh</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hello-service</code></td>
+<td>ArgoCD auto</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>idp-mcp-server</code></td>
+<td>ArgoCD auto + Helm fallback</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>qa-mcp-server</code></td>
+<td>ArgoCD auto + Helm fallback</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>contract-mcp-server</code></td>
+<td>bootstrap-ai.sh only</td>
+<td><strong>No (excluded)</strong></td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p><code>bootstrap-ai.sh</code> falls back to direct Helm if the ArgoCD application is missing:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>idp-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/idp-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+</code></pre></div></td></tr></table></div></p>
+<h3 id="mlflow">MLflow<a class="headerlink" href="#mlflow" title="Permanent link">&para;</a></h3>
+<p>MLflow tracking server deployed to <code>ml-platform</code> namespace.
+- Local: uses MinIO (deployed as a sidecar) for artifact storage
+- AWS: uses S3 backend (bucket created by Terraform)
+- UI at <code>http://mlflow.idp.local</code></p>
+<p>MLflow integration: <code>idpRunTrainingJob.ts</code> submits an Argo Workflows training job that logs experiments to MLflow via <code>MLFLOW_TRACKING_URI</code>.</p>
+<h3 id="rag-search">RAG search<a class="headerlink" href="#rag-search" title="Permanent link">&para;</a></h3>
+<p><code>idpRagSearch.ts</code> implements semantic search over Backstage catalog + TechDocs:
+1. User query → Voyage AI embedding API (<code>VOYAGE_API_KEY</code> in env)
+2. <code>&lt;=&gt;</code> cosine distance query on <code>vector</code> column in <code>backstage_plugin_rag</code> PostgreSQL schema
+3. Returns top-K results with entity metadata</p>
+<p>The pgvector extension must be enabled on the PostgreSQL instance. Local: <code>pgvector/pgvector:pg17</code> image in docker-compose. AWS: <code>pgvector</code> extension enabled on RDS PostgreSQL 15.</p>
+<h3 id="ai-cost-attribution">AI cost attribution<a class="headerlink" href="#ai-cost-attribution" title="Permanent link">&para;</a></h3>
+<p>Each MCP server pushes <code>ai_api_calls_total{service="...", team="...", model="..."}</code> to Prometheus. The Grafana AI dashboard aggregates this per team. KAgent pods carry <code>team: platform</code> label for cost tracking. The <code>require-cost-tags</code> Kyverno policy enforces this label.</p>
+<h3 id="bootstrap-aish-installation-sequence">bootstrap-ai.sh installation sequence<a class="headerlink" href="#bootstrap-aish-installation-sequence" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code>1. Create kagent namespace
+2. Install KAgent controller (Helm)
+3. Create ModelConfig CRD (claude-anthropic)
+4. Deploy MLflow (optional, skip with --skip-mlflow)
+5. Deploy idp-mcp-server (Helm → services-dev)
+6. Deploy qa-mcp-server (Helm → services-dev)
+7. Deploy contract-mcp-server (Helm → services-dev)
+8. Register RemoteMCPServer CRDs (idp-toolserver, qa-toolserver, contract-toolserver)
+9. Apply idp-assistant Agent CRD
+10. Apply qa-assistant Agent CRD
+11. Apply contract-assistant Agent CRD
+12. Add /etc/hosts entries (idp-assistant.idp.local, mlflow.idp.local, etc.)
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="15-phase-13-qa-templates-shift-left-program">15. Phase 13 — QA Templates &amp; Shift-Left Program<a class="headerlink" href="#15-phase-13-qa-templates-shift-left-program" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>backstage/catalog/templates/</code>, <code>test-suites/</code></p>
+<h3 id="test-pyramid-coverage">Test pyramid coverage<a class="headerlink" href="#test-pyramid-coverage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Template</th>
+<th>Tech</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit</td>
+<td><code>unit-test-suite</code></td>
+<td>Jest/Pytest/Go test</td>
+</tr>
+<tr>
+<td>Component</td>
+<td><code>component-test-suite</code></td>
+<td>WireMock stubs</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td><code>testcontainers-suite</code></td>
+<td>Testcontainers (Docker-based Postgres/Kafka)</td>
+</tr>
+<tr>
+<td>Contract (provider)</td>
+<td><code>enable-contract-testing</code></td>
+<td>MCP-driven + OpenAPI</td>
+</tr>
+<tr>
+<td>Contract (consumer)</td>
+<td><code>pact-contract-suite</code></td>
+<td>Pact consumer tests</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td><code>playwright-e2e-suite</code></td>
+<td>Playwright TypeScript</td>
+</tr>
+<tr>
+<td>API</td>
+<td><code>newman-api-suite</code></td>
+<td>Newman (Postman collections)</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td><code>k6-performance-suite</code></td>
+<td>k6 JavaScript DSL</td>
+</tr>
+<tr>
+<td>Security DAST</td>
+<td><code>zap-dast-suite</code></td>
+<td>OWASP ZAP</td>
+</tr>
+<tr>
+<td>Visual</td>
+<td><code>visual-regression-suite</code></td>
+<td>Playwright screenshots</td>
+</tr>
+<tr>
+<td>Accessibility</td>
+<td><code>accessibility-suite</code></td>
+<td>axe-core</td>
+</tr>
+<tr>
+<td>Mobile</td>
+<td><code>appium-mobile-suite</code></td>
+<td>Appium + WebdriverIO</td>
+</tr>
+<tr>
+<td>Chaos</td>
+<td><code>chaos-mesh-suite</code></td>
+<td>Chaos Mesh</td>
+</tr>
+<tr>
+<td>LLM eval</td>
+<td><code>deepeval-llm-eval-suite</code></td>
+<td>DeepEval + Ragas</td>
+</tr>
+<tr>
+<td>Mutation</td>
+<td><code>mutation-testing-suite</code></td>
+<td>Stryker</td>
+</tr>
+<tr>
+<td>Synthetic monitoring</td>
+<td><code>datadog-synthetic-suite</code></td>
+<td>Datadog API</td>
+</tr>
+<tr>
+<td>IaC</td>
+<td><code>iac-test-suite</code></td>
+<td>tflint + Checkov + Terratest</td>
+</tr>
+</tbody>
+</table>
+<h3 id="two-scaffold-modes">Two scaffold modes<a class="headerlink" href="#two-scaffold-modes" title="Permanent link">&para;</a></h3>
+<p>Each test template supports two modes:</p>
+<p><strong>New repo mode</strong> — uses <code>skeleton/</code> directory. Creates a standalone test repository on GitHub.</p>
+<p><strong>Add to existing repo mode</strong> — uses <code>skeleton-addon/</code> (or <code>skeleton-&lt;lang&gt;/</code>). Opens a PR against the target service's repository adding tests to <code>test-suites/&lt;name&gt;/</code>. This is the preferred mode for unit/component/IaC tests that must live in the service repo.</p>
+<h3 id="enable-contract-testing-template">enable-contract-testing template<a class="headerlink" href="#enable-contract-testing-template" title="Permanent link">&para;</a></h3>
+<p>This is the most complex template. <code>idpSetupContractTesting.ts</code> does:
+1. Deploy <code>contract-mcp-server</code> via Helm (writes values to a temp file, <code>helm upgrade --install</code>)
+2. Apply KAgent CRDs via <code>kubectl apply</code>
+3. Wait for <code>contract-mcp-server</code> health check (<code>/healthz</code> returns 200)
+4. Call <code>fetch_service_contract</code> tool — this POSTs to the MCP server, which hits the target service's <code>/openapi.json</code> endpoint and registers the spec</p>
+<p>JSON Schema type errors in this module (and all action modules) are pre-existing and harmless — esbuild transpiles without type checking.</p>
+<h3 id="enable-security-scanning-template">enable-security-scanning template<a class="headerlink" href="#enable-security-scanning-template" title="Permanent link">&para;</a></h3>
+<p><code>backstage/catalog/templates/enable-security-scanning/</code> opens a PR that adds to the existing service CI:
+- Trivy image + filesystem scan
+- Snyk SCA (<code>snyk test</code>)
+- SonarCloud SAST (<code>sonar-scanner</code>)</p>
+<p>Requires <code>SNYK_TOKEN</code>, <code>SONAR_TOKEN</code> GitHub secrets. The template adds these secrets via <code>idp:set-repo-secrets</code> action.</p>
+<h3 id="shift-left-scorecard-bronzesilvergold">Shift-left scorecard (Bronze/Silver/Gold)<a class="headerlink" href="#shift-left-scorecard-bronzesilvergold" title="Permanent link">&para;</a></h3>
+<p>The <code>idpTechInsights.ts</code> action evaluates and reports:</p>
+<p><strong>Bronze</strong> (hygiene baseline):
+- <code>catalog-info.yaml</code> exists and has <code>spec.owner</code>
+- TechDocs <code>docs/index.md</code> exists
+- Health check endpoint responds</p>
+<p><strong>Silver</strong> (CI quality):
+- GitHub Actions CI workflow exists
+- Test files found in repo
+- Service pushes metrics (Prometheus endpoint reachable)</p>
+<p><strong>Gold</strong> (advanced quality):
+- Contract tests registered (OpenAPI spec in contract-mcp-server)
+- DAST scan in CI (<code>zap-</code> job in workflow)
+- SLO defined (<code>kubernetes/monitoring/slo-*.yaml</code>)</p>
+<p>Results are pushed to Pushgateway and visualized in the Grafana QA dashboard.</p>
+<hr />
+<h2 id="16-bootstrap-scripts-operational-runbook">16. Bootstrap Scripts &amp; Operational Runbook<a class="headerlink" href="#16-bootstrap-scripts-operational-runbook" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> <code>scripts/</code></p>
+<h3 id="script-dependency-graph">Script dependency graph<a class="headerlink" href="#script-dependency-graph" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code>setup.sh  (entry point — runs once)
+  ├─ sources scripts/lib.sh
+  ├─ personalizes placeholders via placeholders.conf
+  └─ calls → bootstrap-local.sh  OR  bootstrap.sh
+
+bootstrap-local.sh  (local Kind)
+  ├─ sources scripts/lib.sh
+  ├─ Phase 1: Kind cluster + local registry
+  ├─ Phase 2: nginx ingress controller
+  ├─ Phase 3: Prometheus + Grafana (unless --skip-obs)
+  ├─ Phase 4: ArgoCD + app-of-apps (unless --skip-gitops)
+  ├─ Phase 5: OPA/Gatekeeper (unless --skip-policies)
+  ├─ Phase 6: DORA exporter CronJob
+  ├─ Phase 7: K8s credentials (scripts/get-k8s-credentials.sh)
+  ├─ Phase 8: Catalog exporter CronJob
+  └─ Phase 9: Backstage docker-compose (with --full or --start-backstage)
+
+bootstrap.sh  (AWS EKS)
+  ├─ sources scripts/lib.sh
+  ├─ Phase 1: terraform init + apply
+  ├─ Phase 2: kubectl config + RBAC
+  ├─ Phase 3: External Secrets Operator + ClusterSecretStore
+  ├─ Phase 4: DORA exporter CronJob
+  ├─ Phase 5: ArgoCD + app-of-apps
+  ├─ Phase 6: OPA/Gatekeeper
+  ├─ Phase 7: Crossplane
+  ├─ Phase 8: Backstage K8s deployment
+  └─ Phase 9: hello-service build → ECR → ArgoCD deploy
+
+bootstrap-ai.sh  (AI/ML stack — optional, both envs)
+  ├─ sources scripts/lib.sh
+  ├─ KAgent controller
+  ├─ MLflow (unless --skip-mlflow)
+  ├─ 3× MCP servers
+  └─ KAgent agents + RemoteMCPServer CRDs
+
+Day-2 standalone scripts (fully independent):
+  ├─ validate-deployment.sh   — 50+ health checks
+  ├─ verify-secrets.sh        — pre-flight credential check
+  ├─ apply-catalog-exporter.sh — redeploy metrics CronJob
+  ├─ get-k8s-credentials.sh   — refresh Backstage K8s SA token
+  ├─ seed-qa-metrics.sh       — seed Grafana with sample QA data
+  ├─ cleanup.sh               — ordered AWS teardown
+  └─ cleanup-helm-repos.sh    — housekeeping
+</code></pre></div></td></tr></table></div>
+<h3 id="placeholder-substitution-system">Placeholder substitution system<a class="headerlink" href="#placeholder-substitution-system" title="Permanent link">&para;</a></h3>
+<p><code>setup.sh</code> does a one-time find-and-replace:
+- <code>moatazeldebsy</code> → your GitHub org
+- <code>123456789012</code> → your AWS account ID
+- <code>us-east-1</code> → your AWS region
+- <code>idp-mvp</code> → your cluster name</p>
+<p>The list of files to update is in <code>scripts/placeholders.conf</code> (manifest-driven, not regex-scanned). After substitution, <code>.idp-config.env</code> is written and every bootstrap script re-reads it via <code>load_idp_config()</code> from <code>lib.sh</code>.</p>
+<p>This allows day-2 reruns to stay consistent: <code>bootstrap-local.sh --install-argocd</code> reads the same org/cluster config as the original run.</p>
+<h3 id="local-destroy-sequence">Local destroy sequence<a class="headerlink" href="#local-destroy-sequence" title="Permanent link">&para;</a></h3>
+<p><code>bootstrap-local.sh --destroy</code> runs in this order (while cluster is up):</p>
+<ol>
+<li>AI/ML teardown — calls <code>bootstrap-ai.sh --destroy</code></li>
+<li>Scaffolded service cleanup (<code>_cleanup_scaffolded_services</code> in <code>lib.sh</code>):<ul>
+<li>Auto-discovers every <code>services/*/</code> that is NOT in the built-in list</li>
+<li>Built-ins never touched: <code>hello-service</code>, <code>idp-mcp-server</code>, <code>qa-mcp-server</code>, <code>contract-mcp-server</code></li>
+<li>For each scaffolded service: deletes ArgoCD Application (cascade), uninstalls Helm, removes <code>services/&lt;name&gt;/</code>, commits + pushes <code>[skip ci]</code></li>
+</ul>
+</li>
+<li><code>kind delete cluster</code> (or Rancher Desktop namespace delete)</li>
+<li><code>docker compose down</code> + image/volume prune</li>
+<li><code>/etc/hosts</code> entries removed</li>
+</ol>
+<p><strong>Not cleaned up (intentional):</strong> <code>kubernetes/teams/&lt;name&gt;/</code> (team structure, reusable), GitHub repos of scaffolded services (external), <code>test-suites/</code> (pre-committed demo content).</p>
+<h3 id="aws-destroy-sequence-8-phases">AWS destroy sequence (8 phases)<a class="headerlink" href="#aws-destroy-sequence-8-phases" title="Permanent link">&para;</a></h3>
+<p><code>cleanup.sh --cluster-name idp-mvp --force</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Delete ALBs / Classic ELBs (K8s-managed, block VPC deletion)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Disable RDS deletion protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Delete Crossplane-tagged resources (S3, RDS, DynamoDB, SQS tagged <code>idp:provisioner=crossplane</code>)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Empty Terraform-managed S3 buckets + ECR repos</td>
+</tr>
+<tr>
+<td>4.5</td>
+<td>Scaffolded service cleanup (same logic as local)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>terraform destroy</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Delete CloudWatch log groups</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Verify all resources gone</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-day-2-commands">Key day-2 commands<a class="headerlink" href="#key-day-2-commands" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Rebuild Backstage after code changes</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>build<span class="w"> </span>backstage
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
+
+<span class="c1"># Config-only change (no rebuild)</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
+
+<span class="c1"># Refresh K8s credentials for Backstage</span>
+./scripts/get-k8s-credentials.sh
+
+<span class="c1"># Repair ArgoCD + re-register GitHub creds</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-argocd
+
+<span class="c1"># Repair Pushgateway + seed QA metrics</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-pushgateway
+
+<span class="c1"># Install Argo Workflows</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows
+
+<span class="c1"># Print all URLs without bootstrapping</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--print-urls
+
+<span class="c1"># Redeploy a single MCP server</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>idp-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/idp-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+
+<span class="c1"># Force-restart KAgent controller (clears stale conditions)</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
+
+<span class="c1"># Check KAgent agent status</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent
+kubectl<span class="w"> </span>describe<span class="w"> </span>agent<span class="w"> </span>idp-assistant<span class="w"> </span>-n<span class="w"> </span>kagent
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;error|registered&quot;</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="17-key-design-decisions-hard-won-gotchas">17. Key Design Decisions &amp; Hard-Won Gotchas<a class="headerlink" href="#17-key-design-decisions-hard-won-gotchas" title="Permanent link">&para;</a></h2>
+<h3 id="scaffolderactionsextensionpoint-import-catalog-goes-empty">scaffolderActionsExtensionPoint import (catalog goes empty)<a class="headerlink" href="#scaffolderactionsextensionpoint-import-catalog-goes-empty" title="Permanent link">&para;</a></h3>
+<p>The most subtle production-breaking bug in this repo. When a backend module imports from <code>/alpha</code>, the scaffolder crashes silently on startup. ArgoCD syncs, pods run, but <code>final_entities</code> in the catalog DB stays 0. Nothing obvious in logs unless you grep for <code>scaffolder</code>.</p>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1">// MUST be this path</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">scaffolderActionsExtensionPoint</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@backstage/plugin-scaffolder-node&#39;</span><span class="p">;</span>
+</code></pre></div></td></tr></table></div>
+<p>Diagnosis: check <code>final_entities</code> count in DB. If it's 0 with <code>refresh_state &gt; 0</code>, it's this bug.</p>
+<h3 id="hostdockerinternal-for-local-kind-deploys">host.docker.internal for local Kind deploys<a class="headerlink" href="#hostdockerinternal-for-local-kind-deploys" title="Permanent link">&para;</a></h3>
+<p>Backstage runs in Docker Compose. Kind runs on the host. The Kind API server is at <code>127.0.0.1:6443</code> from the host perspective. From inside a Docker container, that's not reachable. The solution is:</p>
+<ol>
+<li><code>get-k8s-credentials.sh</code> creates a ServiceAccount with <code>cluster-admin</code> rolebinding</li>
+<li>It writes a token to <code>local/backstage/.env</code> as <code>K8S_SERVICE_ACCOUNT_TOKEN</code></li>
+<li>At Backstage container startup, docker-compose generates <code>/tmp/kubeconfig</code> with <code>server: https://host.docker.internal:6443</code> and <code>insecure-skip-tls-verify: true</code></li>
+<li>All <code>kubectl</code> and <code>helm</code> calls in scaffolder actions use <code>KUBECONFIG=/tmp/kubeconfig</code></li>
+</ol>
+<h3 id="kagent-ssl-redirect-false-ingresses">KAgent SSL redirect = false (ingresses)<a class="headerlink" href="#kagent-ssl-redirect-false-ingresses" title="Permanent link">&para;</a></h3>
+<p>KAgent agents communicate over HTTP internally. The nginx ingress controller defaults to SSL redirect. Without explicitly disabling this, HTTP traffic to KAgent ingresses gets redirected to HTTPS which doesn't exist locally → 308 loop.</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># kubernetes/kagent/ingress-idp-assistant.yaml</span>
+<span class="nt">annotations</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">nginx.ingress.kubernetes.io/ssl-redirect</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;false&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Both the UI ingress (<code>kubernetes/kagent/ingress.yaml</code>) and the A2A ingress (<code>ingress-idp-assistant.yaml</code>) need this annotation.</p>
+<h3 id="material-table-uuid-v10-incompatibility">material-table / uuid v10 incompatibility<a class="headerlink" href="#material-table-uuid-v10-incompatibility" title="Permanent link">&para;</a></h3>
+<p><code>@material-table/core</code> v3.x calls <code>uuid</code> via <code>_uuid["default"].v4()</code>. <code>uuid</code> v10 removed the default export. This breaks any Backstage page that renders a data table. The fix is a yarn patch in <code>.yarn/patches/</code>. If it disappears after a <code>yarn upgrade</code>, re-apply:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>install
+<span class="c1"># verify</span>
+grep<span class="w"> </span><span class="s2">&quot;uuid.*v4&quot;</span><span class="w"> </span>node_modules/@material-table/core/dist/utils/data-manager.js
+</code></pre></div></td></tr></table></div>
+<h3 id="pgvector-vs-plain-postgres">pgvector vs plain postgres<a class="headerlink" href="#pgvector-vs-plain-postgres" title="Permanent link">&para;</a></h3>
+<p>The local docker-compose must use <code>pgvector/pgvector:pg17</code>, not <code>postgres:17</code>. The RAG search module creates a <code>vector</code> column and uses <code>&lt;-&gt;</code> / <code>&lt;=&gt;</code> operators from the pgvector extension. Plain postgres does not have this extension and fails at migration time with a cryptic error.</p>
+<h3 id="rancher-desktop-prerequisites">Rancher Desktop prerequisites<a class="headerlink" href="#rancher-desktop-prerequisites" title="Permanent link">&para;</a></h3>
+<p>If using Rancher Desktop instead of Kind:
+1. <strong>Disable Traefik</strong> in Preferences → Kubernetes (Traefik conflicts with nginx ingress on port 80/443)
+2. <strong>Set container engine to dockerd</strong> (not containerd) in Preferences → Container Engine
+3. Set <code>KUBERNETES_PROVIDER=rancher-desktop</code> in <code>local/.env</code></p>
+<p>If Traefik is not disabled first, nginx ingress will fail to bind port 80 and all <code>*.idp.local</code> hostnames will be unreachable.</p>
+<h3 id="kind-inotify-limits-on-macos">Kind inotify limits on macOS<a class="headerlink" href="#kind-inotify-limits-on-macos" title="Permanent link">&para;</a></h3>
+<p>Kind on macOS hits low inotify limits inside Docker. This causes random pod evictions or API server instability on larger clusters. <code>scripts/install-inotify-launchdaemon.sh</code> installs a macOS LaunchDaemon that raises the sysctl inside Docker at boot. Run it once, then restart Docker Desktop.</p>
+<h3 id="argocd-v3-helm-4-breaking-changes">ArgoCD v3 + Helm 4 breaking changes<a class="headerlink" href="#argocd-v3-helm-4-breaking-changes" title="Permanent link">&para;</a></h3>
+<p>ArgoCD v3.4 (chart 9.5.13) supports Helm 4. Helm 4 changed how empty values are handled in <code>--set</code> flags. If you see ArgoCD sync failures with empty string errors, check that <code>helm-values-*.yaml</code> files don't rely on empty <code>--set</code> flag behavior from Helm 3.</p>
+<h3 id="backstage-backend-auth-dangerouslydisabledefaultauthpolicy">Backstage backend auth (dangerouslyDisableDefaultAuthPolicy)<a class="headerlink" href="#backstage-backend-auth-dangerouslydisabledefaultauthpolicy" title="Permanent link">&para;</a></h3>
+<p><code>app-config.local.yaml</code> has:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">backend</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">dangerouslyDisableDefaultAuthPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></td></tr></table></div></p>
+<p>This prevents a 401 flash that happens before the guest auth provider completes its initial handshake. Without it, the page loads → API calls fail with 401 → UI shows error → auth completes → page works. With it, API calls succeed immediately. This is safe for local development. Do NOT enable this in AWS.</p>
+<h3 id="backstage-port-difference">Backstage port difference<a class="headerlink" href="#backstage-port-difference" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Local Docker Compose: port <code>3000</code> (mapped in docker-compose.yml)</li>
+<li>AWS EKS: port <code>7007</code> (Backstage's default backend port)</li>
+</ul>
+<p><code>app-config.local.yaml</code> overrides <code>backend.listen.port: 3000</code>. <code>app-config.aws.yaml</code> uses the default <code>7007</code>.</p>
+<h3 id="contract-mcp-server-excluded-from-applicationset">contract-mcp-server excluded from ApplicationSet<a class="headerlink" href="#contract-mcp-server-excluded-from-applicationset" title="Permanent link">&para;</a></h3>
+<p>The exclusion rule exists in BOTH app-of-apps files:
+- <code>local/argocd/app-of-apps-local.yaml</code>
+- <code>aws/argocd/app-of-apps.yaml</code></p>
+<p>If you remove it from one, ArgoCD will try to deploy contract-mcp-server without the required AI stack and fail. Always update both files together.</p>
+<h3 id="kagent-tool-no-description-available">KAgent tool "No description available"<a class="headerlink" href="#kagent-tool-no-description-available" title="Permanent link">&para;</a></h3>
+<p>If a KAgent agent's tool list shows "No description available" in the UI, it means the tool name in the agent's <code>toolNames</code> list doesn't match any tool exposed by the bound MCP server. The controller calls <code>tools/list</code> on startup and silently shows this for missing tools. Fix: check <code>kubectl describe agent &lt;name&gt; -n kagent</code> conditions and verify the tool name exactly matches what the MCP server exposes.</p>
+<h3 id="backstage-kubernetes-page-standalone-disabled">Backstage Kubernetes page (standalone) disabled<a class="headerlink" href="#backstage-kubernetes-page-standalone-disabled" title="Permanent link">&para;</a></h3>
+<p><code>app-config.local.yaml</code> disables the standalone Kubernetes page:
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">app</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">extensions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">page:kubernetes</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></td></tr></table></div></p>
+<p>The entity-tab Kubernetes view still works. The standalone page breaks because it tries to list clusters across all namespaces which requires a cluster-scoped ClusterRole that is not safe to grant broadly. The entity tab only shows pods/deployments for the specific service, which is safe.</p>
+<hr />
+<h2 id="18-component-versions">18. Component Versions<a class="headerlink" href="#18-component-versions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backstage</td>
+<td>v1.49.1</td>
+<td>Full monorepo, multi-stage Docker build</td>
+</tr>
+<tr>
+<td>Kubernetes (EKS)</td>
+<td>1.29</td>
+<td>Managed node groups, VPC CNI, EBS CSI driver</td>
+</tr>
+<tr>
+<td>Kubernetes (Kind)</td>
+<td>1.33.1</td>
+<td>Local development, <code>kind v0.27+</code> required</td>
+</tr>
+<tr>
+<td>ArgoCD</td>
+<td>v3.4 (chart 9.5.13)</td>
+<td>App-of-apps pattern</td>
+</tr>
+<tr>
+<td>Helm</td>
+<td>3.x / 4.x</td>
+<td>Both supported</td>
+</tr>
+<tr>
+<td>Terraform</td>
+<td>≥ 1.5</td>
+<td>S3 backend, DynamoDB state lock</td>
+</tr>
+<tr>
+<td>Go (hello-service, CLI)</td>
+<td>1.26</td>
+<td>Separate go.mod per module</td>
+</tr>
+<tr>
+<td>Node.js (MCP servers, Backstage)</td>
+<td>24 LTS</td>
+<td></td>
+</tr>
+<tr>
+<td>kube-prometheus-stack</td>
+<td>61.x</td>
+<td>Includes Prometheus, Grafana, Alertmanager</td>
+</tr>
+<tr>
+<td>KAgent</td>
+<td>0.5.x</td>
+<td>Kubernetes-native agent framework</td>
+</tr>
+<tr>
+<td>MLflow</td>
+<td>2.x</td>
+<td>Tracking server</td>
+</tr>
+<tr>
+<td>Crossplane</td>
+<td>1.x</td>
+<td>AWS Provider</td>
+</tr>
+<tr>
+<td>External Secrets Operator</td>
+<td>0.9.x</td>
+<td></td>
+</tr>
+<tr>
+<td>nginx ingress</td>
+<td>4.x</td>
+<td>Local only</td>
+</tr>
+<tr>
+<td>AWS Load Balancer Controller</td>
+<td>2.7.x</td>
+<td>AWS only</td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td>17 (pgvector image)</td>
+<td>pgvector extension for RAG</td>
+</tr>
+<tr>
+<td>Claude model</td>
+<td>claude-haiku-4-5-20251001</td>
+<td>KAgent default</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>End of internal reference. Last updated: 2026-05-30.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>
