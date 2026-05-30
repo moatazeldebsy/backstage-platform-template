@@ -187,7 +187,7 @@ can only be called once per instance, a fresh `McpServer` is created per request
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BACKSTAGE_URL` | `http://backstage:7007` | Internal Backstage URL |
+| `BACKSTAGE_URL` | `http://host.docker.internal:3000` (local) | Internal Backstage URL; overridden by `helm-values-local.yaml` |
 | `BACKSTAGE_EXTERNAL_URL` | `http://backstage.idp.local` | Browser-accessible URL (used in task output links) |
 | `BACKSTAGE_TOKEN` | *(empty)* | Static token from `app-config.local.yaml` |
 | `PROMETHEUS_URL` | `http://prometheus-kube-prometheus-prometheus.monitoring:9090` | In-cluster Prometheus |

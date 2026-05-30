@@ -110,7 +110,7 @@ ingress-nginx should reschedule and reach `Running` within ~60 seconds, restorin
 
 ## Known Harmless Failure
 
-`catalog-exporter` in the `monitoring` namespace will stay in `CrashLoopBackOff` whenever Backstage is **not** running via Docker Compose. It tries to reach `backstage.backstage.svc.cluster.local:7007` (in-cluster DNS), which does not exist. Start Backstage to resolve it:
+`catalog-exporter` in the `monitoring` namespace will stay in `CrashLoopBackOff` whenever Backstage is **not** running via Docker Compose. It tries to reach `backstage.default.svc.cluster.local:3000` (in-cluster DNS), which does not exist when Backstage is down. Start Backstage to resolve it:
 
 ```bash
 ./scripts/bootstrap-local.sh --start-backstage

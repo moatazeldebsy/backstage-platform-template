@@ -147,6 +147,42 @@ If these are not set, the AI/ML platform still deploys but agents/models using t
 
 > K8s credentials (`K8S_CLUSTER_URL`, `K8S_SERVICE_ACCOUNT_TOKEN`, `K8S_CLUSTER_CA_DATA`) are written to `local/backstage/.env` automatically by `bootstrap-local.sh` via `get-k8s-credentials.sh`. No manual step needed if you bootstrapped with that script.
 
+### Troubleshooting observability after bootstrap
+
+**DORA metrics not appearing in Grafana / Pushgateway empty**
+
+The `dora-exporter` CronJob runs every 15 minutes. If metrics are absent immediately after bootstrap, trigger a manual run:
+
+```bash
+kubectl create job dora-now --from=cronjob/dora-exporter -n monitoring
+kubectl logs job/dora-now -n monitoring --follow
+```
+
+If the job fails with `python: can't open file '/scripts/dora-exporter.py'`, the ConfigMap was not populated. Re-run the bootstrap step:
+
+```bash
+kubectl create configmap dora-exporter-script \
+  --from-file=dora-exporter.py=local/observability/dora/dora-exporter.py \
+  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+```
+
+**Kubernetes tab shows "unknown" for CPU / Memory**
+
+Ensure `skipMetricsLookup: false` is set in `backstage/app-config.yaml` and that the metrics-server is running:
+
+```bash
+kubectl get pods -n kube-system | grep metrics-server
+kubectl top nodes
+```
+
+**catalog-exporter CrashLoopBackOff**
+
+The CronJob targets `backstage.default.svc.cluster.local:3000`. It will fail whenever Backstage is not running. Start Backstage first:
+
+```bash
+./scripts/bootstrap-local.sh --start-backstage
+```
+
 ### Day-2 Backstage restart
 
 If you restart Docker Compose manually, re-run `--start-backstage` to rewire the nginx endpoint:
