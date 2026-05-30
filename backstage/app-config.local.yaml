@@ -3,7 +3,7 @@
 # To enable a feature, set the relevant env vars in local/backstage/.env
 
 app:
-  baseUrl: http://backstage.idp.local:3000
+  baseUrl: http://backstage.idp.local
   # Disable the kubernetes standalone page — it requires an entity context
   # and crashes with "Entity context is not available" when accessed directly.
   # Kubernetes info is still available via entity tabs in the catalog.
@@ -17,11 +17,11 @@ app:
 
 backend:
   # All traffic (frontend + API) is served through port 3000 (docker port mapping)
-  baseUrl: http://backstage.idp.local:3000
+  baseUrl: http://backstage.idp.local
   listen:
     port: 3000
   cors:
-    origin: http://backstage.idp.local:3000
+    origin: http://backstage.idp.local
   database:
     connection:
       ssl: false   # local Postgres container has no SSL; override the production default
@@ -40,7 +40,7 @@ backend:
   reading:
     allow:
       - host: raw.githubusercontent.com  # used when GITHUB_TOKEN is set (production)
-      - host: localhost:7007              # allows reading tech-radar.json from local static assets
+      - host: localhost:3000              # allows reading tech-radar.json from local static assets
 
 # Auth — enable guest provider so the UI works without GitHub OAuth credentials.
 auth:
@@ -88,7 +88,7 @@ proxy:
 # Serve tech radar from the locally mounted catalog volume instead of GitHub raw URL.
 # This avoids the moatazeldebsy placeholder issue and works without a GitHub token.
 techRadar:
-  url: http://localhost:7007/tech-radar.json
+  url: http://localhost:3000/tech-radar.json
 
 techdocs:
   # Builder/generator already match the base config (local). Only the publisher

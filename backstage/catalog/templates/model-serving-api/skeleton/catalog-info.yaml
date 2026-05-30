@@ -8,44 +8,46 @@ metadata:
     - model-serving
     - inference
     - llm
-    - ${{ values.modelName }}
     - ${{ values.target }}
   links:
     - title: Model Server Logs
       url: https://github.com/${{ values.owner }}/${{ values.repoName }}/actions
     - title: API Documentation
-      url: /docs
+      url: https://github.com/${{ values.owner }}/${{ values.repoName }}#readme
   annotations:
     backstage.io/kubernetes-id: ${{ values.name }}
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
+    idp.io/model-name: ${{ values.modelName }}
+    idp.io/deployment-target: ${{ values.target }}
 
 spec:
   type: service
   lifecycle: production
   owner: ${{ values.owner }}
+  system: idp-platform
   dependsOn:
     - 'resource:mlflow'
     - 'resource:kagent'
 
   providesApis:
-    - model-prediction-api
-    - model-health-api
+    - ${{ values.name }}-prediction-api
 
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: model-prediction-api
-  title: Model Prediction API
-  description: REST API for model predictions
+  name: ${{ values.name }}-prediction-api
+  title: ${{ values.name }} Prediction API
+  description: REST API for ${{ values.modelName }} model predictions
 spec:
   type: openapi
   lifecycle: production
   owner: ${{ values.owner }}
+  system: idp-platform
   definition: |
     openapi: 3.0.0
     info:
-      title: Model Prediction API
+      title: ${{ values.name }} Prediction API
       version: 1.0.0
       description: REST API for ${{ values.modelName }} model predictions
     servers:
@@ -63,50 +65,22 @@ spec:
                   properties:
                     prompt:
                       type: string
-                      description: Input prompt
                     max_tokens:
                       type: integer
-                      description: Maximum tokens to generate
                       default: 100
                   required: [prompt]
           responses:
             '200':
               description: Successful response
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      choices:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            text:
-                              type: string
-
       /health:
         get:
-          summary: Health check endpoint
+          summary: Health check
           responses:
             '200':
               description: Service is healthy
-
-      /readyz:
+      /metrics:
         get:
-          summary: Readiness probe
+          summary: Prometheus metrics
           responses:
             '200':
-              description: Service is ready
-
----
-apiVersion: backstage.io/v1alpha1
-kind: API
-metadata:
-  name: model-health-api
-  title: Model Health API
-  description: Health and metrics endpoints
-spec:
-  type: openapi
-  lifecycle: production
-  owner: ${{ values.owner }}
+              description: Metrics in Prometheus format

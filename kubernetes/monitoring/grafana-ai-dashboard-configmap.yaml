@@ -1,6 +1,4 @@
 # Grafana dashboard ConfigMap for AI Platform observability.
-# Provisioned via dashboardsConfigMaps.ai in grafana-helm-values.yaml.
-#
 # To apply: kubectl apply -f kubernetes/monitoring/grafana-ai-dashboard-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -40,6 +38,50 @@ data:
             {
               "expr": "sum(increase(mcp_tool_calls_total[5m]))",
               "refId": "A",
+              "legendFormat": "Tool Calls"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "MCP Tool Call Errors",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(mcp_tool_calls_total{status=\"error\"}[5m])) or vector(0)",
+              "refId": "A",
+              "legendFormat": "Errors"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Tool Calls by MCP Server (1h)",
+          "type": "piechart",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum by (job) (increase(mcp_tool_calls_total[1h]))",
+              "refId": "A",
               "legendFormat": "{{job}}"
             }
           ]
@@ -60,7 +102,7 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(mcp_tool_calls_total[5m]) by (job)",
+              "expr": "sum by (job) (rate(mcp_tool_calls_total[5m]))",
               "refId": "A",
               "legendFormat": "{{job}}"
             }
@@ -89,7 +131,7 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+              "expr": "histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
               "refId": "A",
               "legendFormat": "{{job}}"
             }
@@ -102,49 +144,6 @@ data:
               }
             }
           }
-        },
-        {
-          "id": 4,
-          "title": "MCP Tool Call Errors",
-          "type": "stat",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 6,
-            "y": 0
-          },
-          "targets": [
-            {
-              "expr": "sum(increase(mcp_tool_calls_total{error=\"true\"}[5m]))",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "id": 5,
-          "title": "Tool Calls by MCP Server (1h)",
-          "type": "piechart",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 0
-          },
-          "targets": [
-            {
-              "expr": "sum(increase(mcp_tool_calls_total[1h])) by (job)",
-              "refId": "A",
-              "legendFormat": "{{job}}"
-            }
-          ]
         },
         {
           "id": 6,
@@ -162,17 +161,17 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+              "expr": "histogram_quantile(0.50, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
               "refId": "A",
               "legendFormat": "{{job}} P50"
             },
             {
-              "expr": "histogram_quantile(0.95, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+              "expr": "histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
               "refId": "B",
               "legendFormat": "{{job}} P95"
             },
             {
-              "expr": "histogram_quantile(0.99, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+              "expr": "histogram_quantile(0.99, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
               "refId": "C",
               "legendFormat": "{{job}} P99"
             }

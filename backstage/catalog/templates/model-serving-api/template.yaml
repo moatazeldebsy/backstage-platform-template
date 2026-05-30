@@ -32,20 +32,16 @@ spec:
         modelName:
           title: Model Name
           type: string
-          description: Which LLM to serve (e.g., llama3.2, mistral, neural-chat)
-          default: llama3.2
+          description: Which model to serve — all run as a lightweight mock API for local demo
+          default: phi
           enum:
-            - llama3.2
-            - llama3.1
-            - mistral
-            - neural-chat
             - phi
+            - tinyllama
+            - gemma
           enumNames:
-            - 'Llama 3.2 (latest, general purpose)'
-            - 'Llama 3.1 (stable)'
-            - 'Mistral (fast, efficient)'
-            - 'Neural Chat (conversational)'
-            - 'Phi (lightweight)'
+            - 'Phi-3 Mini (Microsoft, 3.8B — fastest)'
+            - 'TinyLlama (1.1B — smallest)'
+            - 'Gemma 2B (Google, 2B — balanced)'
         owner:
           title: Owner
           type: string

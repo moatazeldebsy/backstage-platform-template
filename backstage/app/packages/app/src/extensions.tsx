@@ -257,12 +257,13 @@ function AiAssistantPage() {
       }
 
       // If we don't have a sessionId yet, poll the sessions list with
-      // exponential backoff + jitter (200ms → 2s, total deadline ~20s) so
+      // exponential backoff + jitter (200ms → 2s, total deadline ~45s) so
       // concurrent chat sessions don't fan out a constant 2 req/s per user.
+      // 45s deadline accounts for Claude API cold start on local Kind (~8–15s).
       if (!sessionId) {
-        setStatusText('Waiting for agent…');
+        setStatusText('Connecting to agent — this may take a few seconds on local…');
         const sentAt = Date.now();
-        const sessionDeadline = Date.now() + 20_000;
+        const sessionDeadline = Date.now() + 45_000;
         let sAttempt = 0;
         let lastError = '';
         while (!sessionId && Date.now() < sessionDeadline) {
@@ -310,15 +311,19 @@ function AiAssistantPage() {
       // total deadline ~5 min). Scaffold can take up to 3 min (list_templates +
       // get_template_params + scaffold_service). Backoff replaces the previous
       // fixed-500ms cadence that hit the proxy at 2 req/s × all active users.
-      setStatusText('Agent is thinking…');
+      setStatusText('Agent is thinking… (local Claude API may take 10–20s)');
       let agentReply: string | null = null;
       const replyDeadline = Date.now() + 300_000; // 5 min
+      const replyStart = Date.now();
       let rAttempt = 0;
       while (!agentReply && Date.now() < replyDeadline) {
         const base = Math.min(3000, 500 * Math.pow(2, rAttempt));
         const jitter = base * (0.8 + Math.random() * 0.4);
         await new Promise(r => setTimeout(r, jitter));
         rAttempt++;
+        const elapsed = Math.round((Date.now() - replyStart) / 1000);
+        if (elapsed > 5 && !agentReply)
+          setStatusText(`Agent is thinking… (${elapsed}s elapsed)`);
         const res = await fetchApi.fetch(`${proxyBase}/api/sessions/${sessionId}`);
         if (!res.ok) continue;
         const body = await res.json();

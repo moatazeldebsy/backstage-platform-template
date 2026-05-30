@@ -45,10 +45,67 @@ users:
 }
 
 function buildOllamaYaml(name: string, modelName: string): string {
-  return `apiVersion: apps/v1
+  // Uses a lightweight Python Alpine mock (~50MB) instead of Ollama (~2.7GB).
+  // Serves the same OpenAI-compatible API shape for demo/scaffold purposes.
+  // Model name is passed via MODEL_NAME env var — never interpolated into Python source.
+  const mockScript = `
+import json, os, uuid
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+MODEL = os.environ.get("MODEL_NAME", "unknown")
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args): pass
+    def send_json(self, code, body):
+        data = json.dumps(body).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", len(data))
+        self.end_headers()
+        self.wfile.write(data)
+    def do_GET(self):
+        if self.path in ("/health", "/readyz", "/healthz"):
+            self.send_json(200, {"status": "ok", "model": MODEL})
+        elif self.path == "/metrics":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            label = MODEL.replace('"', '')
+            self.wfile.write(f'model_server_requests_total{{model="{label}"}} 0\\n'.encode())
+        elif self.path == "/v1/models":
+            self.send_json(200, {"object": "list", "data": [{"id": MODEL, "object": "model"}]})
+        else:
+            self.send_json(404, {"error": "not found"})
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        self.rfile.read(length)
+        if self.path == "/v1/completions":
+            self.send_json(200, {"id": str(uuid.uuid4()), "object": "text_completion",
+                "model": MODEL, "choices": [{"text": f"[mock] Hello from {MODEL}!", "index": 0}]})
+        elif self.path == "/v1/chat/completions":
+            self.send_json(200, {"id": str(uuid.uuid4()), "object": "chat.completion",
+                "model": MODEL, "choices": [{"message": {"role": "assistant",
+                "content": f"[mock] Hello from {MODEL}! This is a scaffold demo."}, "index": 0}]})
+        else:
+            self.send_json(404, {"error": "not found"})
+
+HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+`.trim();
+
+  return `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${name}-mock-server
+  namespace: ml-platform
+data:
+  server.py: |
+${mockScript.split('\n').map(l => '    ' + l).join('\n')}
+
+---
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ${name}-ollama
+  name: ${name}-model-server
   namespace: ml-platform
   labels:
     backstage.io/kubernetes-id: ${name}
@@ -59,67 +116,63 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: ${name}
-      app.kubernetes.io/instance: ollama
   template:
     metadata:
       labels:
         app.kubernetes.io/name: ${name}
-        app.kubernetes.io/instance: ollama
         backstage.io/kubernetes-id: ${name}
     spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
-        fsGroup: 1000
       containers:
-      - name: ollama
-        image: ollama/ollama:latest
+      - name: model-server
+        image: python:3.12-alpine
         imagePullPolicy: IfNotPresent
+        command: ["python", "/app/server.py"]
         env:
         - name: MODEL_NAME
           value: "${modelName}"
         ports:
         - name: api
-          containerPort: 11434
-          protocol: TCP
-        - name: metrics
-          containerPort: 9090
-          protocol: TCP
+          containerPort: 8080
         resources:
           requests:
-            cpu: 500m
-            memory: 2Gi
+            cpu: 50m
+            memory: 64Mi
           limits:
-            cpu: 2000m
-            memory: 4Gi
+            cpu: 200m
+            memory: 128Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
-            drop:
-            - ALL
+            drop: [ALL]
           readOnlyRootFilesystem: false
-        livenessProbe:
-          httpGet:
-            path: /api/tags
-            port: api
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /api/tags
+            path: /health
+            port: api
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
             port: api
           initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 2
+          periodSeconds: 10
+        volumeMounts:
+        - name: script
+          mountPath: /app
+      volumes:
+      - name: script
+        configMap:
+          name: ${name}-mock-server
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ${name}-ollama
+  name: ${name}-model-server
   namespace: ml-platform
   labels:
     app.kubernetes.io/name: ${name}
@@ -127,22 +180,16 @@ spec:
   type: ClusterIP
   ports:
   - name: api
-    port: 11434
+    port: 8080
     targetPort: api
-    protocol: TCP
-  - name: metrics
-    port: 9090
-    targetPort: metrics
-    protocol: TCP
   selector:
     app.kubernetes.io/name: ${name}
-    app.kubernetes.io/instance: ollama
 
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ${name}-ollama
+  name: ${name}-model-server
   namespace: ml-platform
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
@@ -156,9 +203,9 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: ${name}-ollama
+            name: ${name}-model-server
             port:
-              number: 11434
+              number: 8080
 `;
 }
 
@@ -373,7 +420,7 @@ function createDeployModelServerAction() {
 
       // Wait for deployment to be ready
       ctx.logger.info(`Waiting for ${target === 'local' ? 'Ollama' : 'vLLM'} deployment to be ready...`);
-      const deploymentName = target === 'local' ? `${name}-ollama` : `${name}-vllm`;
+      const deploymentName = target === 'local' ? `${name}-model-server` : `${name}-vllm`;
       try {
         await execFileAsync('kubectl', ['rollout', 'status', `deployment/${deploymentName}`, '-n', 'ml-platform', '--timeout=120s'],
           { env: kubeEnv, timeout: 130_000 },

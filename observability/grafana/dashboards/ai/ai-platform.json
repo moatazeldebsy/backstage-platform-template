@@ -27,6 +27,50 @@
         {
           "expr": "sum(increase(mcp_tool_calls_total[5m]))",
           "refId": "A",
+          "legendFormat": "Tool Calls"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "MCP Tool Call Errors",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(mcp_tool_calls_total{status=\"error\"}[5m])) or vector(0)",
+          "refId": "A",
+          "legendFormat": "Errors"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Tool Calls by MCP Server (1h)",
+      "type": "piechart",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum by (job) (increase(mcp_tool_calls_total[1h]))",
+          "refId": "A",
           "legendFormat": "{{job}}"
         }
       ]
@@ -47,7 +91,7 @@
       },
       "targets": [
         {
-          "expr": "rate(mcp_tool_calls_total[5m]) by (job)",
+          "expr": "sum by (job) (rate(mcp_tool_calls_total[5m]))",
           "refId": "A",
           "legendFormat": "{{job}}"
         }
@@ -76,7 +120,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
           "refId": "A",
           "legendFormat": "{{job}}"
         }
@@ -91,52 +135,9 @@
       }
     },
     {
-      "id": 4,
-      "title": "MCP Tool Call Errors",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "sum(increase(mcp_tool_calls_total{error=\"true\"}[5m]))",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "title": "Tool Calls by MCP Server",
-      "type": "piechart",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "sum(increase(mcp_tool_calls_total[1h])) by (job)",
-          "refId": "A",
-          "legendFormat": "{{job}}"
-        }
-      ]
-    },
-    {
       "id": 6,
       "title": "MCP Tool Latency Distribution (P50/P95/P99)",
-      "type": "table",
+      "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -149,42 +150,31 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+          "expr": "histogram_quantile(0.50, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
           "refId": "A",
           "legendFormat": "{{job}} P50"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
           "refId": "B",
           "legendFormat": "{{job}} P95"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(mcp_tool_duration_seconds_bucket[5m])) by (job)",
+          "expr": "histogram_quantile(0.99, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
           "refId": "C",
           "legendFormat": "{{job}} P99"
         }
-      ]
-    },
-    {
-      "id": 7,
-      "title": "Backstage Catalog Refresh Rate",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "rate(backstage_catalog_refresh_total[5m])",
-          "refId": "A"
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "noValue": "No data yet"
         }
-      ]
+      }
     }
   ],
   "refresh": "30s",

@@ -448,6 +448,13 @@ if [[ -f local/.env ]]; then
   log "Wrote GITHUB_ORG and PLATFORM_REPO to local/.env"
 fi
 
+# Mirror GITHUB_ORG into local/backstage/.env so docker compose picks it up
+# without needing --env-file local/.env on every command.
+if [[ -f local/backstage/.env ]]; then
+  _upsert_env "local/backstage/.env" "GITHUB_ORG" "${GITHUB_ORG}"
+  log "Mirrored GITHUB_ORG to local/backstage/.env"
+fi
+
 # Build the idp CLI so it is ready immediately after setup
 if command -v go &>/dev/null; then
   step "Building idp CLI..."
