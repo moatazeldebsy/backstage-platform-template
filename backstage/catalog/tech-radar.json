@@ -469,12 +469,12 @@
       "key": "openai",
       "title": "OpenAI API",
       "quadrant": "tools",
-      "description": "Managed LLM provider for production AI agent services via LLM_API_KEY.",
+      "description": "Not actively used. The platform runs fully on Anthropic Claude via KAgent. OpenAI support exists as an optional, key-gated path in bootstrap-ai.sh.",
       "timeline": [
         {
-          "moved": 1,
-          "ringId": "trial",
-          "date": "2025-01-01"
+          "moved": 0,
+          "ringId": "hold",
+          "date": "2026-01-01"
         }
       ],
       "id": "openai"
