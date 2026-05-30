@@ -1,0 +1,2556 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../local-setup/">
+      
+      
+        <link rel="next" href="../cli-reference/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Troubleshooting - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#setup-troubleshooting-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
+          
+  
+  Shift-Left Quality
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-diagnosis-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick diagnosis checklist
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-0-personalisation-setupsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 — Personalisation (setup.sh)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 0 — Personalisation (setup.sh)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-argocd-shows-no-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: ArgoCD shows no applications
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-services-in-catalog-still-show-moatazeldebsy-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Services in catalog still show moatazeldebsy URLs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-local-bootstrap-bootstrap-localsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — Local bootstrap (bootstrap-local.sh)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1 — Local bootstrap (bootstrap-local.sh)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-kind-create-cluster-fails-immediately" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: kind create cluster fails immediately
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-nginx-ingress-pods-pending-idplocal-not-reachable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: nginx ingress pods pending, *.idp.local not reachable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-etchosts-entries-missing-after-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: /etc/hosts entries missing after bootstrap
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-kind-node-notready-after-docker-crashrestart" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Kind node NotReady after Docker crash/restart
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-kube-proxy-crash-loops-events-show-too-many-open-files-linux-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: kube-proxy crash-loops, events show "too many open files" (Linux only)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-pod-stuck-in-imagepullbackoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Pod stuck in ImagePullBackOff
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — Backstage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2 — Backstage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-catalog-is-empty-0-entities-after-backstage-starts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Catalog is empty (0 entities) after Backstage starts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-github-oauth-login-fails-redirect-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: GitHub OAuth login fails / redirect loop
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-catalog-exporter-cronjob-in-crashloopbackoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: catalog-exporter CronJob in CrashLoopBackOff
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-dora-metrics-not-in-grafana-pushgateway-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: DORA metrics not in Grafana / Pushgateway empty
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-catalog-tables-crash-blank-on-catalog-api-docs-or-techdocs-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Catalog tables crash / blank on catalog, api-docs, or techdocs pages
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-aiml-stack-bootstrap-aish" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — AI/ML stack (bootstrap-ai.sh)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 — AI/ML stack (bootstrap-ai.sh)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-kagent-agents-show-readyfalse" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: KAgent agents show READY=False
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-kagentidplocal-idp-assistantidplocal-redirect-to-https-certificate-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: kagent.idp.local / idp-assistant.idp.local redirect to HTTPS, certificate error
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-ai-assistant-returns-502-cannot-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: AI Assistant returns 502 / cannot connect
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-mcp-server-idp-mcp-server-qa-mcp-server-not-deployed-on-first-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: MCP server idp-mcp-server / qa-mcp-server not deployed on first install
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-4-aws-setup-bootstrapsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 — AWS setup (bootstrap.sh)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 4 — AWS setup (bootstrap.sh)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pre-flight-always-run-verify-secretssh-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-flight: always run verify-secrets.sh first
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terraform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Terraform
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Terraform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-terraform-init-fails-no-such-bucket" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: terraform init fails — no such bucket
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-terraform-init-fails-dynamodb-lock-table-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: terraform init fails — DynamoDB lock table not found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-error-acquiring-the-state-lock-stale-lock-from-interrupted-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Error acquiring the state lock — stale lock from interrupted run
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-error-error-creating-eks-node-group-nodecreationfailure-ec2subnetinvalidconfiguration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Error: error creating EKS Node Group — NodeCreationFailure: Ec2SubnetInvalidConfiguration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-ec2-quota-exceeded-insufficientinstancecapacity-or-vcpu-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: EC2 quota exceeded — InsufficientInstanceCapacity or vCPU limit
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-terraform-destroy-fails-ecr-repos-not-empty-crossplane-resources-blocking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: terraform destroy fails — ECR repos not empty / Crossplane resources blocking
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eks-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      EKS cluster
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EKS cluster">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-eks-nodes-stuck-in-notready" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: EKS nodes stuck in NotReady
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-aws-load-balancer-controller-pod-crash-loops-albs-not-provisioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: aws-load-balancer-controller pod crash-loops, ALBs not provisioning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-alb-address-stuck-in-pending-for-more-than-10-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: ALB address stuck in &lt;pending&gt; for more than 10 minutes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backstage-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backstage (AWS)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backstage (AWS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-backstage-pod-in-crashloopbackoff-or-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Backstage pod in CrashLoopBackOff or Error
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-clustersecretstore-aws-secretsmanager-shows-invalidproviderconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: ClusterSecretStore aws-secretsmanager shows InvalidProviderConfig
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-k8s_service_account_token-expired-backstage-kubernetes-tab-shows-401" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: K8S_SERVICE_ACCOUNT_TOKEN expired — Backstage Kubernetes tab shows 401
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-github-oauth-login-redirect-loop-after-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: GitHub OAuth login redirect loop after deployment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-apple-silicon-mac-pods-show-imagepullbackoff-no-match-for-platform-in-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Apple Silicon Mac — pods show ImagePullBackOff / no match for platform in manifest
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observability-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observability (AWS)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observability (AWS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-dora-metrics-missing-in-grafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: DORA metrics missing in Grafana
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Pushgateway has no data / QA metrics dashboard empty
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-grafana-returning-503-intermittently" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Grafana returning 503 intermittently
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#argocd-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      ArgoCD (AWS)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ArgoCD (AWS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-idp-services-applicationset-creates-no-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: idp-services ApplicationSet creates no applications
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-argocd-github-credentials-expired-all-apps-show-comparisonerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: ArgoCD GitHub credentials expired — all apps show ComparisonError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-crossplane-providers-not-healthy-after-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Crossplane providers not healthy after bootstrap
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bootstrapsh-interrupted-mid-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      bootstrap.sh interrupted mid-run
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#day-2-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day-2 issues
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Day-2 issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-backstage-url-inaccessible-after-docker-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Backstage URL inaccessible after Docker restart
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-scaffolded-service-not-appearing-in-catalog-after-template-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Scaffolded service not appearing in catalog after template runs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-helm-upgrade-fails-release-already-exists-or-crd-conflict" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: helm upgrade fails — "release: already exists" or CRD conflict
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting help
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    For Leadership
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/TROUBLESHOOTING.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="setup-troubleshooting-guide">Setup Troubleshooting Guide<a class="headerlink" href="#setup-troubleshooting-guide" title="Permanent link">&para;</a></h1>
+<p>Fresh-clone setup issues are expected — this template bundles a lot of moving parts (Kind, nginx, ArgoCD, Prometheus, Backstage, Docker Compose) that must initialise in the right order. This guide covers the issues most commonly encountered on a first install and what to do about them.</p>
+<p><strong>The single most important rule: <code>setup.sh</code> must complete successfully before <code>bootstrap-local.sh</code> runs.</strong> Many downstream failures (empty catalog, ArgoCD generating no apps, GitHub OAuth loops) trace back to skipping or partially running <code>setup.sh</code>.</p>
+<hr />
+<h2 id="quick-diagnosis-checklist">Quick diagnosis checklist<a class="headerlink" href="#quick-diagnosis-checklist" title="Permanent link">&para;</a></h2>
+<p>Run this after any failure to orient yourself:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Docker running?</span>
+docker<span class="w"> </span>info<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Docker OK&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Docker NOT running&quot;</span>
+
+<span class="c1"># 2. Kind cluster exists?</span>
+kind<span class="w"> </span>get<span class="w"> </span>clusters
+
+<span class="c1"># 3. All pods healthy?</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-vE<span class="w"> </span><span class="s2">&quot;Running|Completed&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;0/0&quot;</span>
+
+<span class="c1"># 4. Backstage alive?</span>
+docker<span class="w"> </span>ps<span class="w"> </span>--filter<span class="w"> </span><span class="s2">&quot;name=backstage&quot;</span><span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;{{.Names}} {{.Status}}&quot;</span>
+
+<span class="c1"># 5. Placeholders resolved?</span>
+grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;YOUR_GITHUB_ORG&quot;</span><span class="w"> </span>backstage/catalog/<span class="w"> </span>local/argocd/<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PLACEHOLDERS NOT REPLACED&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Placeholders OK&quot;</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="phase-0-personalisation-setupsh">Phase 0 — Personalisation (<code>setup.sh</code>)<a class="headerlink" href="#phase-0-personalisation-setupsh" title="Permanent link">&para;</a></h2>
+<h3 id="symptom-argocd-shows-no-applications">Symptom: ArgoCD shows no applications<a class="headerlink" href="#symptom-argocd-shows-no-applications" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> <code>setup.sh</code> was not run (or the <code>xargs</code> path was used on an older checkout), so <code>local/argocd/app-of-apps-local.yaml</code> still contains the <code>YOUR_GITHUB_ORG</code> placeholder. ArgoCD's git generator finds no matching directories and creates no apps.</p>
+<p><strong>Fix:</strong></p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Verify the placeholder is still in the file</span>
+grep<span class="w"> </span><span class="s2">&quot;YOUR_GITHUB_ORG&quot;</span><span class="w"> </span>local/argocd/app-of-apps-local.yaml
+
+<span class="c1"># If it is, run setup.sh to resolve all placeholders</span>
+./scripts/setup.sh
+
+<span class="c1"># After setup.sh completes, force a resync</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/argocd-application-controller<span class="w"> </span>-n<span class="w"> </span>argocd
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-services-in-catalog-still-show-moatazeldebsy-urls">Symptom: Services in catalog still show <code>moatazeldebsy</code> URLs<a class="headerlink" href="#symptom-services-in-catalog-still-show-moatazeldebsy-urls" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> <code>setup.sh</code> was run but the find-replace scan missed some files (can happen if you ran an older version that used <code>xargs</code> instead of <code>while-read</code>).</p>
+<p><strong>Fix:</strong></p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check which files still have the old placeholder</span>
+grep<span class="w"> </span>-rl<span class="w"> </span><span class="s2">&quot;moatazeldebsy\|YOUR_GITHUB_ORG&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>backstage/catalog/<span class="w"> </span>backstage/app-config*.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>local/<span class="w"> </span>kubernetes/<span class="w"> </span>.github/workflows/<span class="w"> </span><span class="m">2</span>&gt;/dev/null
+
+<span class="c1"># Re-run setup to re-apply substitutions (idempotent)</span>
+./scripts/setup.sh
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="phase-1-local-bootstrap-bootstrap-localsh">Phase 1 — Local bootstrap (<code>bootstrap-local.sh</code>)<a class="headerlink" href="#phase-1-local-bootstrap-bootstrap-localsh" title="Permanent link">&para;</a></h2>
+<h3 id="symptom-kind-create-cluster-fails-immediately">Symptom: <code>kind create cluster</code> fails immediately<a class="headerlink" href="#symptom-kind-create-cluster-fails-immediately" title="Permanent link">&para;</a></h3>
+<p><strong>Causes and fixes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker not running</td>
+<td>Start Docker Desktop / Rancher Desktop and wait for it to be ready</td>
+</tr>
+<tr>
+<td>Port 80 already bound</td>
+<td><code>lsof -i :80</code> — stop the conflicting process (another nginx, a web server, etc.)</td>
+</tr>
+<tr>
+<td>Stale Kind cluster with same name</td>
+<td><code>kind delete cluster --name idp-mvp &amp;&amp; ./scripts/bootstrap-local.sh</code></td>
+</tr>
+<tr>
+<td>Rancher Desktop Traefik still enabled</td>
+<td>Disable in Preferences → Kubernetes → disable Traefik</td>
+</tr>
+</tbody>
+</table>
+<h3 id="symptom-nginx-ingress-pods-pending-idplocal-not-reachable">Symptom: nginx ingress pods pending, <code>*.idp.local</code> not reachable<a class="headerlink" href="#symptom-nginx-ingress-pods-pending-idplocal-not-reachable" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> Port 80 or 443 is bound by another process on the host.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check what&#39;s using port 80</span>
+lsof<span class="w"> </span>-i<span class="w"> </span>:80<span class="w"> </span>-sTCP:LISTEN
+
+<span class="c1"># Check ingress pods</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>ingress-nginx
+
+<span class="c1"># If pending, describe for events</span>
+kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>ingress-nginx<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>controller
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-etchosts-entries-missing-after-bootstrap">Symptom: <code>/etc/hosts</code> entries missing after bootstrap<a class="headerlink" href="#symptom-etchosts-entries-missing-after-bootstrap" title="Permanent link">&para;</a></h3>
+<p>The bootstrap writes hosts entries automatically, but may fail silently if <code>/etc/hosts</code> is read-only or if the script was interrupted.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check if entries exist</span>
+grep<span class="w"> </span><span class="s2">&quot;idp.local&quot;</span><span class="w"> </span>/etc/hosts
+
+<span class="c1"># Add manually if missing (requires sudo)</span>
+sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;cat local/hosts-append.txt &gt;&gt; /etc/hosts&quot;</span>
+
+<span class="c1"># Flush DNS cache (macOS)</span>
+sudo<span class="w"> </span>dscacheutil<span class="w"> </span>-flushcache<span class="p">;</span><span class="w"> </span>sudo<span class="w"> </span>killall<span class="w"> </span>-HUP<span class="w"> </span>mDNSResponder
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-kind-node-notready-after-docker-crashrestart">Symptom: Kind node <code>NotReady</code> after Docker crash/restart<a class="headerlink" href="#symptom-kind-node-notready-after-docker-crashrestart" title="Permanent link">&para;</a></h3>
+<p>This is covered fully in the runbook — see <a href="../runbooks/kind-node-ip-mismatch/">Kind Node IP Mismatch</a>.</p>
+<p>Short version: Docker reassigned the container IP; the kubelet cannot reach the API server with the old IP baked into <code>/etc/kubernetes/kubelet.conf</code>. Fix by updating the kubelet.conf or recreating the cluster.</p>
+<h3 id="symptom-kube-proxy-crash-loops-events-show-too-many-open-files-linux-only">Symptom: <code>kube-proxy</code> crash-loops, events show "too many open files" (Linux only)<a class="headerlink" href="#symptom-kube-proxy-crash-loops-events-show-too-many-open-files-linux-only" title="Permanent link">&para;</a></h3>
+<p>Linux kernels have low default inotify limits that Kind clusters exhaust quickly.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Fix for the current session</span>
+sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.inotify.max_user_instances<span class="o">=</span><span class="m">1024</span>
+sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.inotify.max_user_watches<span class="o">=</span><span class="m">655360</span>
+
+<span class="c1"># Persist across reboots</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;fs.inotify.max_user_instances=1024&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/sysctl.conf
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;fs.inotify.max_user_watches=655360&quot;</span><span class="w">  </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/sysctl.conf
+
+<span class="c1"># Then delete the crashing pod so the DaemonSet recreates it</span>
+kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>kube-proxy
+</code></pre></div></td></tr></table></div>
+<blockquote>
+<p><strong>macOS users:</strong> this does not apply — the Docker VM manages its own kernel limits.</p>
+</blockquote>
+<h3 id="symptom-pod-stuck-in-imagepullbackoff">Symptom: Pod stuck in <code>ImagePullBackOff</code><a class="headerlink" href="#symptom-pod-stuck-in-imagepullbackoff" title="Permanent link">&para;</a></h3>
+<p>A scaffolded service was registered but its Docker image was never pushed to the local registry, or the cluster was recreated and registry contents were lost.</p>
+<p>See <a href="../runbooks/image-pull-backoff/">ImagePullBackOff runbook</a> for the full fix.</p>
+<p>Short version:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/&lt;name&gt;
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/&lt;name&gt;:latest<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;name&gt;:latest
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/&lt;name&gt;-dev-service-template<span class="w"> </span>-n<span class="w"> </span>services-dev
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="phase-2-backstage">Phase 2 — Backstage<a class="headerlink" href="#phase-2-backstage" title="Permanent link">&para;</a></h2>
+<h3 id="symptom-catalog-is-empty-0-entities-after-backstage-starts">Symptom: Catalog is empty (0 entities) after Backstage starts<a class="headerlink" href="#symptom-catalog-is-empty-0-entities-after-backstage-starts" title="Permanent link">&para;</a></h3>
+<p><strong>Most likely cause:</strong> The scaffolderActionsExtensionPoint was imported from the wrong path in a backend module, causing the scaffolder plugin to crash on startup. The crash aborts the catalog refresh loop, leaving <code>final_entities</code> empty even though <code>refresh_state</code> may have rows.</p>
+<p>Check if this is the issue:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>logs<span class="w"> </span>backstage-backstage-1<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;scaffolder\|extensionPoint\|error&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-20
+
+<span class="c1"># Also check DB directly</span>
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backstage-postgres-1<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>backstage<span class="w"> </span>backstage_plugin_catalog<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s2">&quot;SELECT count(*) FROM refresh_state;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s2">&quot;SELECT count(*) FROM final_entities;&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>If <code>refresh_state &gt; 0</code> but <code>final_entities = 0</code>: this is the scaffolder crash. The fix is already in the codebase — if you see this, your checkout may be on an older commit. Pull latest and rebuild.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>git<span class="w"> </span>pull
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>build<span class="w"> </span>backstage
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div></td></tr></table></div>
+<p><strong>Second most likely cause:</strong> Backstage is still starting up (DB migrations run at startup). Wait 60–90 seconds and refresh.</p>
+<p><strong>Third cause:</strong> <code>GITHUB_TOKEN</code> is not set in <code>local/.env</code>. The catalog uses it to read entity files from GitHub. Without it, GitHub integration fails silently on many requests.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="w"> </span>local/.env
+<span class="c1"># If empty, add it: GITHUB_TOKEN=ghp_xxx</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-github-oauth-login-fails-redirect-loop">Symptom: GitHub OAuth login fails / redirect loop<a class="headerlink" href="#symptom-github-oauth-login-fails-redirect-loop" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>Check the OAuth app callback URL in GitHub — it must be exactly:
+   <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>http://backstage.idp.local/api/auth/github/handler/frame
+</code></pre></div></td></tr></table></div>
+   (Or <code>http://localhost:3000/api/auth/github/handler/frame</code> if accessing via localhost.)</p>
+</li>
+<li>
+<p>Check <code>local/backstage/.env</code> has both <code>AUTH_GITHUB_CLIENT_ID</code> and <code>AUTH_GITHUB_CLIENT_SECRET</code> set.</p>
+</li>
+<li>
+<p>Restart Backstage after any change:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
+</code></pre></div></td></tr></table></div></p>
+</li>
+</ol>
+<h3 id="symptom-catalog-exporter-cronjob-in-crashloopbackoff">Symptom: <code>catalog-exporter</code> CronJob in <code>CrashLoopBackOff</code><a class="headerlink" href="#symptom-catalog-exporter-cronjob-in-crashloopbackoff" title="Permanent link">&para;</a></h3>
+<p>This CronJob runs inside the cluster and tries to reach <code>backstage.default.svc.cluster.local:3000</code>. It fails whenever Backstage is not running. This is <strong>expected and harmless</strong> when Backstage is down.</p>
+<p>Fix: start Backstage.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-dora-metrics-not-in-grafana-pushgateway-empty">Symptom: DORA metrics not in Grafana / Pushgateway empty<a class="headerlink" href="#symptom-dora-metrics-not-in-grafana-pushgateway-empty" title="Permanent link">&para;</a></h3>
+<p>The <code>dora-exporter</code> CronJob runs every 15 minutes. Metrics will not appear immediately after bootstrap.</p>
+<p>Trigger a manual run:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>dora-now<span class="w"> </span>--from<span class="o">=</span>cronjob/dora-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+kubectl<span class="w"> </span>logs<span class="w"> </span>job/dora-now<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--follow
+</code></pre></div></td></tr></table></div>
+<p>If the job fails with <code>python: can't open file '/scripts/dora-exporter.py'</code>, the ConfigMap was not populated:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>configmap<span class="w"> </span>dora-exporter-script<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-file<span class="o">=</span>dora-exporter.py<span class="o">=</span>local/observability/dora/dora-exporter.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
+</code></pre></div></td></tr></table></div>
+<p>See also <a href="../local-setup/#troubleshooting-observability-after-bootstrap">docs/local-setup.md — Troubleshooting observability</a> for Kubernetes tab CPU/Memory issues.</p>
+<h3 id="symptom-catalog-tables-crash-blank-on-catalog-api-docs-or-techdocs-pages">Symptom: Catalog tables crash / blank on catalog, api-docs, or techdocs pages<a class="headerlink" href="#symptom-catalog-tables-crash-blank-on-catalog-api-docs-or-techdocs-pages" title="Permanent link">&para;</a></h3>
+<p>This was caused by <code>uuid</code> v10 removing its default export, which broke <code>@material-table/core</code>. The fix (a yarn patch at <code>.yarn/patches/</code>) is committed to the repo and applied automatically by <code>yarn install</code>.</p>
+<p>If you see <code>TypeError: Cannot read properties of undefined (reading 'v4')</code>:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>install<span class="w">  </span><span class="c1"># re-applies the patch</span>
+<span class="c1"># Verify:</span>
+grep<span class="w"> </span><span class="s2">&quot;uuid.*v4&quot;</span><span class="w"> </span>node_modules/@material-table/core/dist/utils/data-manager.js
+<span class="c1"># Expected: (_uuid[&quot;default&quot;] || _uuid).v4()</span>
+</code></pre></div></td></tr></table></div>
+<p>Then rebuild the image:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>build<span class="w"> </span>backstage
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="phase-3-aiml-stack-bootstrap-aish">Phase 3 — AI/ML stack (<code>bootstrap-ai.sh</code>)<a class="headerlink" href="#phase-3-aiml-stack-bootstrap-aish" title="Permanent link">&para;</a></h2>
+<h3 id="symptom-kagent-agents-show-readyfalse">Symptom: KAgent agents show <code>READY=False</code><a class="headerlink" href="#symptom-kagent-agents-show-readyfalse" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent
+kubectl<span class="w"> </span>describe<span class="w"> </span>agent<span class="w"> </span>idp-assistant<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w">  </span><span class="c1"># check Conditions</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;error|registered&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Built-in agents may show <code>READY=False</code> briefly at startup while the controller reconciles. Restart the controller to clear stale conditions:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
+kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-w<span class="w">  </span><span class="c1"># watch until READY=True</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-kagentidplocal-idp-assistantidplocal-redirect-to-https-certificate-error">Symptom: <code>kagent.idp.local</code> / <code>idp-assistant.idp.local</code> redirect to HTTPS, certificate error<a class="headerlink" href="#symptom-kagentidplocal-idp-assistantidplocal-redirect-to-https-certificate-error" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> Your browser cached HSTS for <code>*.idp.local</code> from a previous HTTPS setup.</p>
+<p><strong>Fix (Chrome):</strong>
+1. Open <code>chrome://net-internals/#hsts</code>
+2. Delete domain security policies for <code>kagent.idp.local</code> and <code>idp-assistant.idp.local</code>
+3. Disable <em>Settings → Privacy → Always use secure connections</em> for local domains
+4. Hard-reload (<code>Cmd+Shift+R</code>)</p>
+<p><strong>Fix (Firefox):</strong> Clear site data for the affected domains in Developer Tools → Storage → Clear.</p>
+<h3 id="symptom-ai-assistant-returns-502-cannot-connect">Symptom: AI Assistant returns 502 / cannot connect<a class="headerlink" href="#symptom-ai-assistant-returns-502-cannot-connect" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check kagent ingress</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span>kagent
+
+<span class="c1"># Check idp-assistant pod</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>idp-assistant
+
+<span class="c1"># Check proxy config in Backstage</span>
+grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;kagent&quot;</span><span class="w"> </span>backstage/app-config.local.yaml
+</code></pre></div></td></tr></table></div>
+<p>The Backstage proxy target (<code>/api/proxy/kagent</code>) must point to <code>http://idp-assistant.idp.local</code>. Verify the ingress exists and the <code>/etc/hosts</code> entry is present.</p>
+<h3 id="symptom-mcp-server-idp-mcp-server-qa-mcp-server-not-deployed-on-first-install">Symptom: MCP server <code>idp-mcp-server</code> / <code>qa-mcp-server</code> not deployed on first install<a class="headerlink" href="#symptom-mcp-server-idp-mcp-server-qa-mcp-server-not-deployed-on-first-install" title="Permanent link">&para;</a></h3>
+<p>On a first install, ArgoCD may not have registered the <code>idp-services</code> ApplicationSet before <code>bootstrap-ai.sh</code> runs. The script falls back to direct Helm, but if the fallback was interrupted, deploy manually:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>idp-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/idp-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>qa-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/qa-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="phase-4-aws-setup-bootstrapsh">Phase 4 — AWS setup (<code>bootstrap.sh</code>)<a class="headerlink" href="#phase-4-aws-setup-bootstrapsh" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>For a comprehensive list of issues that were present in earlier versions and are now patched, see <a href="../DEPLOYMENT_GUIDE/#known-issues--fixes">docs/DEPLOYMENT_GUIDE.md — Known Issues &amp; Fixes</a>. This section covers issues that can still occur on a fresh deployment.</p>
+</blockquote>
+<h3 id="pre-flight-always-run-verify-secretssh-first">Pre-flight: always run <code>verify-secrets.sh</code> first<a class="headerlink" href="#pre-flight-always-run-verify-secretssh-first" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/verify-secrets.sh
+<span class="c1"># Expected: ✅ All critical checks passed!</span>
+</code></pre></div></td></tr></table></div>
+<p>If it shows failures, fix them before running <code>bootstrap.sh</code>. The script checks AWS credentials, required env vars, GitHub token validity, and quota.</p>
+<hr />
+<h3 id="terraform">Terraform<a class="headerlink" href="#terraform" title="Permanent link">&para;</a></h3>
+<h4 id="symptom-terraform-init-fails-no-such-bucket">Symptom: <code>terraform init</code> fails — no such bucket<a class="headerlink" href="#symptom-terraform-init-fails-no-such-bucket" title="Permanent link">&para;</a></h4>
+<p><code>setup.sh</code> creates the Terraform state S3 bucket. If you skipped <code>setup.sh</code> or ran <code>terraform init</code> manually before it ran:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get the bucket name from the backend block</span>
+grep<span class="w"> </span>bucket<span class="w"> </span>terraform/main.tf
+
+<span class="c1"># Create it</span>
+aws<span class="w"> </span>s3<span class="w"> </span>mb<span class="w"> </span>s3://&lt;bucket-name&gt;<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;
+aws<span class="w"> </span>s3api<span class="w"> </span>put-bucket-versioning<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--bucket<span class="w"> </span>&lt;bucket-name&gt;<span class="w"> </span>--versioning-configuration<span class="w"> </span><span class="nv">Status</span><span class="o">=</span>Enabled
+aws<span class="w"> </span>s3api<span class="w"> </span>put-bucket-encryption<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--bucket<span class="w"> </span>&lt;bucket-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--server-side-encryption-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;{&quot;Rules&quot;:[{&quot;ApplyServerSideEncryptionByDefault&quot;:{&quot;SSEAlgorithm&quot;:&quot;AES256&quot;}}]}&#39;</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-terraform-init-fails-dynamodb-lock-table-not-found">Symptom: <code>terraform init</code> fails — DynamoDB lock table not found<a class="headerlink" href="#symptom-terraform-init-fails-dynamodb-lock-table-not-found" title="Permanent link">&para;</a></h4>
+<p><code>setup.sh</code> creates both the S3 bucket and the DynamoDB table. If only the bucket was created manually:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get table name from the backend block</span>
+grep<span class="w"> </span>dynamodb_table<span class="w"> </span>terraform/main.tf
+
+aws<span class="w"> </span>dynamodb<span class="w"> </span>create-table<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--table-name<span class="w"> </span>&lt;table-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--attribute-definitions<span class="w"> </span><span class="nv">AttributeName</span><span class="o">=</span>LockID,AttributeType<span class="o">=</span>S<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--key-schema<span class="w"> </span><span class="nv">AttributeName</span><span class="o">=</span>LockID,KeyType<span class="o">=</span>HASH<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--billing-mode<span class="w"> </span>PAY_PER_REQUEST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>&lt;region&gt;
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-error-acquiring-the-state-lock-stale-lock-from-interrupted-run">Symptom: <code>Error acquiring the state lock</code> — stale lock from interrupted run<a class="headerlink" href="#symptom-error-acquiring-the-state-lock-stale-lock-from-interrupted-run" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>terraform
+<span class="c1"># Find the lock ID in the error message, then:</span>
+terraform<span class="w"> </span>force-unlock<span class="w"> </span>&lt;lock-id&gt;
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-error-error-creating-eks-node-group-nodecreationfailure-ec2subnetinvalidconfiguration">Symptom: <code>Error: error creating EKS Node Group — NodeCreationFailure: Ec2SubnetInvalidConfiguration</code><a class="headerlink" href="#symptom-error-error-creating-eks-node-group-nodecreationfailure-ec2subnetinvalidconfiguration" title="Permanent link">&para;</a></h4>
+<p>AWS requires at least 2 subnets in different AZs for managed node groups. This triggers when your region has fewer than 2 AZs (rare) or if <code>terraform.tfvars</code> has <code>availability_zones</code> set to a single AZ.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check available AZs</span>
+aws<span class="w"> </span>ec2<span class="w"> </span>describe-availability-zones<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--query<span class="w"> </span><span class="s1">&#39;AvailabilityZones[].ZoneName&#39;</span>
+<span class="c1"># terraform.tfvars must list at least 2</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-ec2-quota-exceeded-insufficientinstancecapacity-or-vcpu-limit">Symptom: EC2 quota exceeded — <code>InsufficientInstanceCapacity</code> or vCPU limit<a class="headerlink" href="#symptom-ec2-quota-exceeded-insufficientinstancecapacity-or-vcpu-limit" title="Permanent link">&para;</a></h4>
+<p>The default quota for on-demand t3.medium is 32 vCPUs per region. 4 nodes × 2 vCPUs = 8 vCPUs, usually within quota. If not:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check current usage</span>
+aws<span class="w"> </span>service-quotas<span class="w"> </span>get-service-quota<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--service-code<span class="w"> </span>ec2<span class="w"> </span>--quota-code<span class="w"> </span>L-1216C47A<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;
+
+<span class="c1"># Request increase via AWS Console → Service Quotas → EC2 → Running On-Demand Standard instances</span>
+<span class="c1"># Or reduce node count: edit terraform.tfvars → node_group_desired_size = 1</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-terraform-destroy-fails-ecr-repos-not-empty-crossplane-resources-blocking">Symptom: <code>terraform destroy</code> fails — ECR repos not empty / Crossplane resources blocking<a class="headerlink" href="#symptom-terraform-destroy-fails-ecr-repos-not-empty-crossplane-resources-blocking" title="Permanent link">&para;</a></h4>
+<p><strong>Do not run <code>terraform destroy</code> directly.</strong> Use the cleanup script which handles dependency ordering:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
+</code></pre></div></td></tr></table></div>
+<p>The cleanup runs 7 ordered phases: delete ALBs → disable RDS deletion protection → delete Crossplane-tagged resources → empty S3/ECR → <code>terraform destroy</code> → verify. Skipping this causes Terraform to fail on resource dependencies.</p>
+<p>If <code>cleanup.sh</code> itself fails mid-run and you need to retry from a specific phase:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Manual ECR cleanup</span>
+aws<span class="w"> </span>ecr<span class="w"> </span>list-images<span class="w"> </span>--repository-name<span class="w"> </span>idp-mvp/hello-service<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">&#39;imageIds[*]&#39;</span><span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="o">{}</span><span class="w"> </span>aws<span class="w"> </span>ecr<span class="w"> </span>batch-delete-image<span class="w"> </span>--repository-name<span class="w"> </span>idp-mvp/hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--region<span class="w"> </span>us-east-1<span class="w"> </span>--image-ids<span class="w"> </span><span class="o">{}</span>
+
+<span class="c1"># Then re-run</span>
+./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="eks-cluster">EKS cluster<a class="headerlink" href="#eks-cluster" title="Permanent link">&para;</a></h3>
+<h4 id="symptom-eks-nodes-stuck-in-notready">Symptom: EKS nodes stuck in <code>NotReady</code><a class="headerlink" href="#symptom-eks-nodes-stuck-in-notready" title="Permanent link">&para;</a></h4>
+<p>Wait 3 minutes — the IAM role binding propagates asynchronously. If it persists:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+kubectl<span class="w"> </span>describe<span class="w"> </span>node<span class="w"> </span>&lt;node-name&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Conditions:&quot;</span>
+
+<span class="c1"># Check required managed policies on the node IAM role</span>
+aws<span class="w"> </span>iam<span class="w"> </span>list-attached-role-policies<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--role-name<span class="w"> </span>&lt;node-role-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">&#39;AttachedPolicies[].PolicyName&#39;</span>
+<span class="c1"># Must include: AmazonEKSWorkerNodePolicy, AmazonEKS_CNI_Policy, AmazonEC2ContainerRegistryReadOnly</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-aws-load-balancer-controller-pod-crash-loops-albs-not-provisioning">Symptom: <code>aws-load-balancer-controller</code> pod crash-loops, ALBs not provisioning<a class="headerlink" href="#symptom-aws-load-balancer-controller-pod-crash-loops-albs-not-provisioning" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>deployment/aws-load-balancer-controller<span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;error\|denied&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Common cause: the IRSA role (<code>AWSLoadBalancerControllerIAMRole</code>) trust policy does not match the OIDC provider URL. Terraform creates this automatically — if the trust policy is wrong, it means Terraform did not finish successfully. Re-run <code>bootstrap.sh</code>.</p>
+<h4 id="symptom-alb-address-stuck-in-pending-for-more-than-10-minutes">Symptom: ALB address stuck in <code>&lt;pending&gt;</code> for more than 10 minutes<a class="headerlink" href="#symptom-alb-address-stuck-in-pending-for-more-than-10-minutes" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>describe<span class="w"> </span>ingress<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w">  </span><span class="c1"># check Events section</span>
+
+<span class="c1"># Check if load balancer controller is running</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>aws-load-balancer-controller
+
+<span class="c1"># Check controller logs for the specific ingress</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>deployment/aws-load-balancer-controller<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>&lt;ingress-name&gt;
+</code></pre></div></td></tr></table></div>
+<p>Normal wait: 3–5 minutes. If longer, the controller is likely not running or the IAM role is wrong.</p>
+<hr />
+<h3 id="backstage-aws">Backstage (AWS)<a class="headerlink" href="#backstage-aws" title="Permanent link">&para;</a></h3>
+<h4 id="symptom-backstage-pod-in-crashloopbackoff-or-error">Symptom: Backstage pod in <code>CrashLoopBackOff</code> or <code>Error</code><a class="headerlink" href="#symptom-backstage-pod-in-crashloopbackoff-or-error" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>deployment/backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
+kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>backstage<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A15<span class="w"> </span><span class="s2">&quot;Events:&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Common causes:</p>
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ExternalSecret not synced</td>
+<td><code>kubectl get externalsecret -n backstage</code> — check READY=True</td>
+</tr>
+<tr>
+<td>ClusterSecretStore not ready</td>
+<td><code>kubectl get clustersecretstore</code> — see below</td>
+</tr>
+<tr>
+<td>RDS not ready</td>
+<td><code>kubectl get pods -n backstage \| grep postgres</code></td>
+</tr>
+<tr>
+<td>Config YAML parse error</td>
+<td>Check logs for <code>YAMLException</code> — usually an indentation issue in the ConfigMap</td>
+</tr>
+</tbody>
+</table>
+<h4 id="symptom-clustersecretstore-aws-secretsmanager-shows-invalidproviderconfig">Symptom: <code>ClusterSecretStore aws-secretsmanager</code> shows <code>InvalidProviderConfig</code><a class="headerlink" href="#symptom-clustersecretstore-aws-secretsmanager-shows-invalidproviderconfig" title="Permanent link">&para;</a></h4>
+<p>The External Secrets Operator's IRSA trust policy must match the ESO service account. Check:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>aws-secretsmanager<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;conditions:&quot;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sa<span class="w"> </span>external-secrets-sa<span class="w"> </span>-n<span class="w"> </span>external-secrets<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;eks.amazonaws.com&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>The service account annotation must match the IRSA role ARN. <code>bootstrap.sh</code> creates and annotates the SA automatically. If it was created by the Helm chart before the annotation was applied:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Re-annotate the SA</span>
+kubectl<span class="w"> </span>annotate<span class="w"> </span>sa<span class="w"> </span>external-secrets-sa<span class="w"> </span>-n<span class="w"> </span>external-secrets<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>eks.amazonaws.com/role-arn<span class="o">=</span>&lt;IRSA_ROLE_ARN&gt;<span class="w"> </span>--overwrite
+
+<span class="c1"># Restart the operator to pick up the new annotation</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/external-secrets<span class="w"> </span>-n<span class="w"> </span>external-secrets
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/external-secrets-cert-controller<span class="w"> </span>-n<span class="w"> </span>external-secrets
+</code></pre></div></td></tr></table></div>
+<p>Get the correct role ARN:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>external_secrets_role_arn
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-k8s_service_account_token-expired-backstage-kubernetes-tab-shows-401">Symptom: <code>K8S_SERVICE_ACCOUNT_TOKEN</code> expired — Backstage Kubernetes tab shows 401<a class="headerlink" href="#symptom-k8s_service_account_token-expired-backstage-kubernetes-tab-shows-401" title="Permanent link">&para;</a></h4>
+<p>EKS service account tokens expire. <code>bootstrap.sh</code> auto-populates the token, but it needs refreshing if the cluster was recreated or the token rolled:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get a fresh token</span>
+<span class="nv">TOKEN</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>create<span class="w"> </span>token<span class="w"> </span>backstage-sa<span class="w"> </span>--duration<span class="o">=</span>8760h<span class="k">)</span>
+
+<span class="c1"># Update Secrets Manager</span>
+<span class="nv">SECRET</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="k">)</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SECRET</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import sys,json; d=json.load(sys.stdin)</span>
+<span class="s2">d[&#39;K8S_SERVICE_ACCOUNT_TOKEN&#39;]=&#39;</span><span class="nv">$TOKEN</span><span class="s2">&#39;</span>
+<span class="s2">print(json.dumps(d))&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--secret-string<span class="w"> </span>file:///dev/stdin
+
+<span class="c1"># Restart Backstage to pick up the new secret</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-github-oauth-login-redirect-loop-after-deployment">Symptom: GitHub OAuth login redirect loop after deployment<a class="headerlink" href="#symptom-github-oauth-login-redirect-loop-after-deployment" title="Permanent link">&para;</a></h4>
+<p>The OAuth app callback URL must be updated with the <strong>real ALB hostname</strong> (only known after bootstrap finishes):</p>
+<ol>
+<li><code>kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></li>
+<li>Go to GitHub → Settings → Developer settings → OAuth Apps → your app → Edit</li>
+<li>Update <strong>Authorization callback URL</strong> to: <code>http://&lt;ALB-HOSTNAME&gt;/api/auth/github/handler/frame</code></li>
+</ol>
+<h4 id="symptom-apple-silicon-mac-pods-show-imagepullbackoff-no-match-for-platform-in-manifest">Symptom: Apple Silicon Mac — pods show <code>ImagePullBackOff</code> / <code>no match for platform in manifest</code><a class="headerlink" href="#symptom-apple-silicon-mac-pods-show-imagepullbackoff-no-match-for-platform-in-manifest" title="Permanent link">&para;</a></h4>
+<p>Images built on Apple Silicon (arm64) with <code>docker build</code> (no <code>--platform</code> flag) cannot run on EKS nodes (amd64). Always build for the target platform:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># For hello-service or any scaffolded service</span>
+docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-t<span class="w"> </span>&lt;ECR_URI&gt;/&lt;service-name&gt;:latest<span class="w"> </span>--push<span class="w"> </span>.
+</code></pre></div></td></tr></table></div>
+<p>Or use GitHub Actions CI (which runs on ubuntu-latest = amd64) to build and push automatically.</p>
+<hr />
+<h3 id="observability-aws">Observability (AWS)<a class="headerlink" href="#observability-aws" title="Permanent link">&para;</a></h3>
+<h4 id="symptom-dora-metrics-missing-in-grafana">Symptom: DORA metrics missing in Grafana<a class="headerlink" href="#symptom-dora-metrics-missing-in-grafana" title="Permanent link">&para;</a></h4>
+<p>The <code>dora-exporter</code> CronJob runs every 15 minutes and requires a valid <code>GITHUB_TOKEN</code> in Secrets Manager. Trigger manually:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>dora-manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--from<span class="o">=</span>cronjob/dora-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;job-name=dora-manual-</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="w"> </span>--date<span class="o">=</span>1min<span class="w"> </span>ago<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span>
+</code></pre></div></td></tr></table></div>
+<p>If the job fails with an auth error, update the token in Secrets Manager (see GITHUB_TOKEN section in <a href="../PRE_DEPLOYMENT_CHECKLIST/">PRE_DEPLOYMENT_CHECKLIST.md</a>).</p>
+<h4 id="symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty">Symptom: Pushgateway has no data / QA metrics dashboard empty<a class="headerlink" href="#symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty" title="Permanent link">&para;</a></h4>
+<p>Re-seed metrics pointing at the ALB URL:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">PUSHGATEWAY_URL</span><span class="o">=</span>http://<span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>prometheus-pushgateway<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[0].hostname}&#39;</span><span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>./scripts/seed-qa-metrics.sh
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-grafana-returning-503-intermittently">Symptom: Grafana returning 503 intermittently<a class="headerlink" href="#symptom-grafana-returning-503-intermittently" title="Permanent link">&para;</a></h4>
+<p>With a single node cluster, Grafana pod restarts can cause brief 503s. The nginx proxy is configured with <code>proxy-next-upstream: http_503</code> so retries are automatic. If 503s persist more than 60 seconds:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>grafana
+kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>grafana<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;Events:&quot;</span>
+<span class="c1"># OOMKilled = memory limit too low; restart with higher limit or reduce replicas to 1</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="argocd-aws">ArgoCD (AWS)<a class="headerlink" href="#argocd-aws" title="Permanent link">&para;</a></h3>
+<h4 id="symptom-idp-services-applicationset-creates-no-applications">Symptom: <code>idp-services</code> ApplicationSet creates no applications<a class="headerlink" href="#symptom-idp-services-applicationset-creates-no-applications" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>-n<span class="w"> </span>argocd
+kubectl<span class="w"> </span>describe<span class="w"> </span>applicationset<span class="w"> </span>idp-services<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Status:&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Most common cause: <code>aws/argocd/app-of-apps.yaml</code> still has a <code>YOUR_GITHUB_ORG</code> placeholder (setup.sh was not run). Fix:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;YOUR_GITHUB_ORG&quot;</span><span class="w"> </span>aws/argocd/app-of-apps.yaml
+./scripts/setup.sh<span class="w">   </span><span class="c1"># then re-commit and let ArgoCD sync</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-argocd-github-credentials-expired-all-apps-show-comparisonerror">Symptom: ArgoCD GitHub credentials expired — all apps show <code>ComparisonError</code><a class="headerlink" href="#symptom-argocd-github-credentials-expired-all-apps-show-comparisonerror" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Re-register GitHub credentials</span>
+argocd<span class="w"> </span>repo<span class="w"> </span>add<span class="w"> </span>https://github.com/&lt;org&gt;/&lt;repo&gt;.git<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--username<span class="w"> </span>&lt;github-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;github-token&gt;
+
+<span class="c1"># Or re-run the bootstrap phase that does this</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-argocd<span class="w">  </span><span class="c1"># local</span>
+<span class="c1"># For AWS: re-run the ArgoCD phase of bootstrap.sh</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="symptom-crossplane-providers-not-healthy-after-bootstrap">Symptom: Crossplane providers not healthy after bootstrap<a class="headerlink" href="#symptom-crossplane-providers-not-healthy-after-bootstrap" title="Permanent link">&para;</a></h4>
+<p>Crossplane provider pods pull large images and may take 5–10 minutes on first install. Check:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io
+<span class="c1"># Expected: INSTALLED=True HEALTHY=True for all five providers</span>
+
+<span class="c1"># If HEALTHY=False after 10 min:</span>
+kubectl<span class="w"> </span>describe<span class="w"> </span>provider<span class="w"> </span>provider-aws-s3<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Status:&quot;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>crossplane-system<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>provider
+</code></pre></div></td></tr></table></div>
+<p>A failing provider pod usually means the IRSA role (<code>CrossplaneAWSRole</code>) is not yet propagated. Wait 2 minutes and check again.</p>
+<hr />
+<h3 id="bootstrapsh-interrupted-mid-run">bootstrap.sh interrupted mid-run<a class="headerlink" href="#bootstrapsh-interrupted-mid-run" title="Permanent link">&para;</a></h3>
+<p><code>bootstrap.sh</code> is idempotent for most phases. Re-run it after fixing the root cause:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh
+</code></pre></div></td></tr></table></div>
+<p>If only a specific phase failed, you can run individual pieces:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Re-run Terraform only (phases 1–1.5)</span>
+<span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>apply<span class="w"> </span>-var<span class="w"> </span><span class="s2">&quot;cluster_name=idp-mvp&quot;</span><span class="w"> </span>-auto-approve
+
+<span class="c1"># Re-apply just ArgoCD</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--install-argocd
+
+<span class="c1"># Re-apply just Backstage to EKS</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/backstage/<span class="w"> </span>-n<span class="w"> </span>backstage
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="day-2-issues">Day-2 issues<a class="headerlink" href="#day-2-issues" title="Permanent link">&para;</a></h2>
+<h3 id="symptom-backstage-url-inaccessible-after-docker-restart">Symptom: Backstage URL inaccessible after Docker restart<a class="headerlink" href="#symptom-backstage-url-inaccessible-after-docker-restart" title="Permanent link">&para;</a></h3>
+<p>When Docker Desktop restarts, the Backstage container gets a new IP. The nginx ingress loses the upstream endpoint.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Rewire the ingress endpoint (takes ~10 seconds)</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--update-backstage-ip
+
+<span class="c1"># Or do a full Backstage restart (also reseeds metrics and triggers catalog export)</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+<h3 id="symptom-scaffolded-service-not-appearing-in-catalog-after-template-runs">Symptom: Scaffolded service not appearing in catalog after template runs<a class="headerlink" href="#symptom-scaffolded-service-not-appearing-in-catalog-after-template-runs" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Check the <code>catalog:register</code> step output in the Backstage scaffolder UI — it should show the registered URL.</li>
+<li>Check ArgoCD has synced the new service:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>&lt;service-name&gt;
+</code></pre></div></td></tr></table></div></li>
+<li>Force a catalog refresh in Backstage: Settings → Refresh entity.</li>
+<li>If the service repo's <code>catalog-info.yaml</code> has a <code>YOUR_GITHUB_ORG</code> placeholder (old template version), re-run <code>setup.sh</code> and re-scaffold.</li>
+</ol>
+<h3 id="symptom-helm-upgrade-fails-release-already-exists-or-crd-conflict">Symptom: <code>helm upgrade</code> fails — "release: already exists" or CRD conflict<a class="headerlink" href="#symptom-helm-upgrade-fails-release-already-exists-or-crd-conflict" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check what&#39;s installed</span>
+helm<span class="w"> </span>list<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>&lt;service-name&gt;
+
+<span class="c1"># Force reinstall</span>
+helm<span class="w"> </span>uninstall<span class="w"> </span>&lt;service-name&gt;<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>&lt;service-name&gt;<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--values<span class="w"> </span>services/&lt;service-name&gt;/helm-values-local.yaml
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="getting-help">Getting help<a class="headerlink" href="#getting-help" title="Permanent link">&para;</a></h2>
+<p>If an issue is not covered here:</p>
+<ol>
+<li>Check the <a href="../runbooks/">docs/runbooks/</a> directory for alert-specific procedures.</li>
+<li>Check <a href="../local-setup/">docs/local-setup.md</a> for observability-specific troubleshooting.</li>
+<li>Check recent commits — many issues have been fixed: <code>git log --oneline --since="3 months ago" | grep fix</code>.</li>
+<li>File an issue at the <a href="https://github.com/moatazeldebsy/backstage-platform-template/issues">GitHub repository</a>.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../local-setup/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Local Setup">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Local Setup
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../cli-reference/" class="md-footer__link md-footer__link--next" aria-label="Next: CLI Reference">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                CLI Reference
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>
