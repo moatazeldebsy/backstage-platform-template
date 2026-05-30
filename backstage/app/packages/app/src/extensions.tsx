@@ -36,6 +36,8 @@ import SearchIcon from '@material-ui/icons/Search';
 import Chip from '@material-ui/core/Chip';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import Link from '@material-ui/core/Link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ── FinOps / Cost Overview page ───────────────────────────────────────────────
 // Queries OpenCost via the Backstage proxy (/api/proxy/opencost).
@@ -430,11 +432,39 @@ function AiAssistantPage() {
                     backgroundColor: msg.role === 'user' ? '#1976d2' : '#f5f5f5',
                     color: msg.role === 'user' ? '#fff' : 'inherit',
                     borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
                   }}
                 >
-                  <Typography variant="body2">{msg.text}</Typography>
+                  {msg.role === 'user' ? (
+                    <Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</Typography>
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <Typography variant="body2" style={{ margin: '4px 0' }}>{children}</Typography>,
+                        code: ({ children, className }) => {
+                          const isBlock = !!className;
+                          return isBlock ? (
+                            <pre style={{ background: '#e0e0e0', borderRadius: 4, padding: '8px 12px', overflowX: 'auto', margin: '6px 0' }}>
+                              <code style={{ fontSize: 12, fontFamily: 'monospace' }}>{children}</code>
+                            </pre>
+                          ) : (
+                            <code style={{ background: '#e0e0e0', borderRadius: 3, padding: '1px 4px', fontSize: 12, fontFamily: 'monospace' }}>{children}</code>
+                          );
+                        },
+                        ul: ({ children }) => <ul style={{ paddingLeft: 20, margin: '4px 0' }}>{children}</ul>,
+                        ol: ({ children }) => <ol style={{ paddingLeft: 20, margin: '4px 0' }}>{children}</ol>,
+                        li: ({ children }) => <li style={{ marginBottom: 2 }}><Typography variant="body2" component="span">{children}</Typography></li>,
+                        h1: ({ children }) => <Typography variant="h6" style={{ marginTop: 8 }}>{children}</Typography>,
+                        h2: ({ children }) => <Typography variant="subtitle1" style={{ fontWeight: 600, marginTop: 6 }}>{children}</Typography>,
+                        h3: ({ children }) => <Typography variant="subtitle2" style={{ fontWeight: 600, marginTop: 4 }}>{children}</Typography>,
+                        strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                        a: ({ href, children }) => <Link href={href} target="_blank" rel="noopener noreferrer">{children}</Link>,
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  )}
                 </Paper>
               </Box>
             ))}

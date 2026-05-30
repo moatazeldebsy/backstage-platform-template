@@ -95,6 +95,8 @@
   },
   "packageManager": "yarn@4.4.1",
   "dependencies": {
-    "@backstage-community/plugin-tech-insights": "^1.2.0"
+    "@backstage-community/plugin-tech-insights": "^1.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   }
 }
