@@ -720,10 +720,16 @@ const CHECKS: CheckDef[] = [
 
 type TierName = 'none' | 'bronze' | 'silver' | 'gold';
 
+// Thresholds for non-AI entities (11 checks) and AI entities (14 checks)
 const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 5,   // 36% of 14 checks
-  silver: 9,   // 64% of 14 checks
-  gold:   12,  // 86% of 14 checks
+  bronze: 4,   // ~36% of 11 checks
+  silver: 7,   // ~64% of 11 checks
+  gold:   9,   // ~82% of 11 checks
+};
+const AI_TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
+  bronze: 5,   // ~36% of 14 checks
+  silver: 9,   // ~64% of 14 checks
+  gold:   12,  // ~86% of 14 checks
 };
 
 interface ScorecardResult {
@@ -755,7 +761,11 @@ function computeScorecard(entity: Entity): ScorecardResult {
   );
 
   const hasKubernetesId = Boolean(annotations['backstage.io/kubernetes-id']);
-  const isAiService = tags.some(t => t.toLowerCase() === 'ai');
+  const isAiEntity =
+    tags.some(t => t.toLowerCase() === 'ai') ||
+    ['ai-agent', 'model-serving', 'llm', 'ml-model'].includes(
+      ((entity.spec as any)?.type ?? '').toLowerCase(),
+    );
 
   const results: Record<CheckKey, boolean> = {
     'has-owner':             hasOwner,
@@ -769,17 +779,19 @@ function computeScorecard(entity: Entity): ScorecardResult {
     'has-vuln-scan':         gates.has('vuln-scan'),
     'has-contract-tests':    gates.has('contract') || hasApiDefinition,
     'has-e2e-tests':         gates.has('e2e') || hasE2eTagged || relations.some(r => r.type === 'consumesApi'),
-    'has-model-card':        Boolean(annotations['backstage.io/model-card-url']),
-    'has-eval-suite':        gates.has('llm-eval'),
-    'has-ai-observability':  hasKubernetesId && isAiService,
+    'has-model-card':        isAiEntity && Boolean(annotations['backstage.io/model-card-url']),
+    'has-eval-suite':        isAiEntity && gates.has('llm-eval'),
+    'has-ai-observability':  isAiEntity && hasKubernetesId,
   };
 
-  const passed = Object.values(results).filter(Boolean).length;
+  const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
+  const activeChecks = CHECKS.filter(c => c.group !== 'AI Governance' || isAiEntity);
+  const passed = activeChecks.filter(c => results[c.id]).length;
   let tier: TierName = 'none';
-  if (passed >= TIER_THRESHOLDS.gold)   tier = 'gold';
-  else if (passed >= TIER_THRESHOLDS.silver) tier = 'silver';
-  else if (passed >= TIER_THRESHOLDS.bronze) tier = 'bronze';
-  return { results, passed, total: CHECKS.length, tier };
+  if (passed >= thresholds.gold)        tier = 'gold';
+  else if (passed >= thresholds.silver) tier = 'silver';
+  else if (passed >= thresholds.bronze) tier = 'bronze';
+  return { results, passed, total: activeChecks.length, tier };
 }
 
 const TIER_COLORS: Record<TierName, string> = {
@@ -817,12 +829,14 @@ function TierBadge({ tier, passed, total }: { tier: TierName; passed: number; to
   );
 }
 
-function NextTierHint({ tier, results }: { tier: TierName; results: Record<CheckKey, boolean> }) {
-  const passed = Object.values(results).filter(Boolean).length;
+function NextTierHint({ tier, results, isAiEntity }: { tier: TierName; results: Record<CheckKey, boolean>; isAiEntity: boolean }) {
+  const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
+  const activeChecks = CHECKS.filter(c => c.group !== 'AI Governance' || isAiEntity);
+  const passed = activeChecks.filter(c => results[c.id]).length;
   const target = tier === 'gold' ? null
-    : tier === 'silver' ? TIER_THRESHOLDS.gold
-    : tier === 'bronze' ? TIER_THRESHOLDS.silver
-    : TIER_THRESHOLDS.bronze;
+    : tier === 'silver' ? thresholds.gold
+    : tier === 'bronze' ? thresholds.silver
+    : thresholds.bronze;
   if (target === null) {
     return (
       <Typography variant="body2" color="textSecondary">
@@ -830,11 +844,11 @@ function NextTierHint({ tier, results }: { tier: TierName; results: Record<Check
       </Typography>
     );
   }
-  const missing = CHECKS.filter(c => !results[c.id]);
+  const missing = activeChecks.filter(c => !results[c.id]);
   return (
     <Typography variant="body2" color="textSecondary">
       {target - passed} more check{target - passed === 1 ? '' : 's'} to reach{' '}
-      {target === TIER_THRESHOLDS.gold ? 'Gold' : target === TIER_THRESHOLDS.silver ? 'Silver' : 'Bronze'}.
+      {target === thresholds.gold ? 'Gold' : target === thresholds.silver ? 'Silver' : 'Bronze'}.
       Cheapest unfilled: <strong>{missing[0]?.label ?? '—'}</strong>.
     </Typography>
   );
@@ -843,18 +857,29 @@ function NextTierHint({ tier, results }: { tier: TierName; results: Record<Check
 function ScorecardEntityContent() {
   const { entity } = useEntity();
   const score = useMemo(() => computeScorecard(entity), [entity]);
+
+  const isAiEntity = useMemo(() => {
+    const tags = entity.metadata.tags ?? [];
+    const type = (entity.spec as any)?.type ?? '';
+    return tags.some(t => t.toLowerCase() === 'ai') ||
+      ['ai-agent', 'model-serving', 'llm', 'ml-model'].includes(type.toLowerCase());
+  }, [entity]);
+
   const grouped = useMemo(() => {
     const groups: Record<string, CheckDef[]> = {};
-    for (const c of CHECKS) (groups[c.group] ||= []).push(c);
+    for (const c of CHECKS) {
+      if (c.group === 'AI Governance' && !isAiEntity) continue;
+      (groups[c.group] ||= []).push(c);
+    }
     return groups;
-  }, []);
+  }, [isAiEntity]);
 
   return (
     <Content>
       <Box mb={3}>
         <TierBadge tier={score.tier} passed={score.passed} total={score.total} />
         <Box mt={2}>
-          <NextTierHint tier={score.tier} results={score.results} />
+          <NextTierHint tier={score.tier} results={score.results} isAiEntity={isAiEntity} />
         </Box>
       </Box>
 
