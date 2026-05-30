@@ -164,6 +164,10 @@ catalog:
       rules:
         - allow: [Template]
     - type: file
+      target: /catalog/templates/enable-security-scanning/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
       target: /catalog/templates/datadog-synthetic-suite/template.yaml
       rules:
         - allow: [Template]
@@ -341,6 +345,8 @@ kubernetes:
           name: idp-mvp
           authProvider: 'serviceAccount'
           skipTLSVerify: true
+          # Set to true to skip the metrics-server hop (faster page loads, but
+          # CPU/memory columns on the K8s tab will show "unknown").
           skipMetricsLookup: false
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
 

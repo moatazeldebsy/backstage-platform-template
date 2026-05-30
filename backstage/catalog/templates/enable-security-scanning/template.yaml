@@ -1,0 +1,155 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: enable-security-scanning
+  title: Enable Security Scanning (SonarCloud + Snyk)
+  description: >
+    Opens a PR against an existing service repository adding SonarCloud (code quality + quality gate)
+    and Snyk (SCA / dependency vulnerabilities) scanning to CI. Workflow is gated on
+    SONAR_TOKEN / SNYK_TOKEN repo secrets — missing tokens are skipped, not failed,
+    so the PR is safe to merge before tokens are provisioned.
+  tags:
+    - security
+    - sonarcloud
+    - snyk
+    - sca
+    - static-analysis
+    - platform
+    - local
+    - aws
+spec:
+  owner: platform-team
+  type: platform-capability
+
+  parameters:
+    - title: Target Service
+      required:
+        - targetRepoUrl
+        - owner
+      properties:
+        targetService:
+          title: Target Service (in Backstage catalog)
+          type: string
+          description: The service whose CI you want to extend with Sonar + Snyk
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+              - kind: Component
+                spec.type: website
+        targetRepoUrl:
+          title: Target Service Repository
+          type: string
+          description: GitHub repo to open the PR against
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Scanning Configuration
+      properties:
+        sonarProjectKey:
+          title: SonarCloud Project Key
+          type: string
+          description: 'Override the auto-derived projectKey (default: <org>_<repo>)'
+          default: ''
+        sonarOrganization:
+          title: SonarCloud Organization Slug
+          type: string
+          description: 'Override the auto-derived organization (default: <org>)'
+          default: ''
+        snykSeverityThreshold:
+          title: Snyk Severity Threshold
+          type: string
+          description: Fail the build if any issue at or above this severity is found
+          default: high
+          enum: [low, medium, high, critical]
+        snykOrgSlug:
+          title: Snyk Organization Slug (optional)
+          type: string
+          description: 'Snyk org-id annotation for the catalog entry — leave blank to use <org>'
+          default: ''
+
+  steps:
+    - id: fetch-template-addon
+      name: Generate security scanning files
+      action: fetch:template
+      input:
+        url: ./skeleton-addon
+        values:
+          githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+          targetService: ${{ parameters.targetService }}
+          sonarProjectKey: ${{ parameters.sonarProjectKey or ((parameters.targetRepoUrl | parseRepoUrl).owner + '_' + (parameters.targetRepoUrl | parseRepoUrl).repo) }}
+          sonarOrganization: ${{ parameters.sonarOrganization or (parameters.targetRepoUrl | parseRepoUrl).owner }}
+          snykSeverityThreshold: ${{ parameters.snykSeverityThreshold }}
+          snykOrgSlug: ${{ parameters.snykOrgSlug or (parameters.targetRepoUrl | parseRepoUrl).owner }}
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'feat(security): enable SonarCloud + Snyk scanning'
+        branchName: feat/enable-security-scanning
+        description: |
+          ## Enable Security Scanning (SonarCloud + Snyk)
+
+          Adds two CI integrations to this repository:
+
+          | Tool | Purpose |
+          |---|---|
+          | **SonarCloud** | Code quality, coverage, maintainability, quality gate |
+          | **Snyk** | SCA / dependency vulnerabilities + IaC scanning |
+
+          **Files added:**
+          - `.github/workflows/security-scanning.yml` — runs on push + PR
+          - `sonar-project.properties` — SonarCloud config (projectKey: `${{ parameters.sonarProjectKey or ((parameters.targetRepoUrl | parseRepoUrl).owner + '_' + (parameters.targetRepoUrl | parseRepoUrl).repo) }}`)
+          - `.snyk` — Snyk policy file
+
+          **Required repository secrets** (set after merging):
+          - `SONAR_TOKEN` — generate at https://sonarcloud.io/account/security
+          - `SNYK_TOKEN` — generate at https://app.snyk.io/account
+
+          Until those secrets are set, the workflow steps will **skip**, not fail — so this PR is
+          safe to merge before tokens are provisioned. See `docs/security-scanning.md` in the
+          platform repo for the full setup guide.
+
+          > Scaffolded via the IDP Security Platform
+        sourcePath: .
+
+  output:
+    text:
+      - title: Next Steps
+        content: |
+          ## Pull Request Opened
+
+          The security scanning workflow has been added to your service.
+
+          **Before the scans will actually run:**
+
+          1. **Create SonarCloud org + project** at https://sonarcloud.io
+             - Use projectKey `${{ parameters.sonarProjectKey or ((parameters.targetRepoUrl | parseRepoUrl).owner + '_' + (parameters.targetRepoUrl | parseRepoUrl).repo) }}`
+          2. **Create Snyk org** at https://app.snyk.io
+          3. **Set GitHub repo secrets** (Settings → Secrets and variables → Actions):
+             - `SONAR_TOKEN`
+             - `SNYK_TOKEN`
+          4. **Merge the PR** — scans will run on the next push.
+
+          The service's catalog entry should also be updated to add `sonarcloud.io/project-key`
+          and `snyk.io/org-slug` annotations so the Security tab in Backstage can fetch results.
+    links:
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
+      - title: Security Scanning Docs
+        url: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/security-scanning.md

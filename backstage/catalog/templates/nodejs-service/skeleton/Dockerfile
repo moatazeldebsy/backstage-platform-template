@@ -7,6 +7,9 @@ RUN npm install --omit=dev
 
 COPY src/ ./src/
 
+# Run as non-root (Trivy DS-0002 / container hardening)
+USER node
+
 EXPOSE ${{ values.port }}
 
 CMD ["node", "src/index.js"]

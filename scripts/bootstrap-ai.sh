@@ -562,20 +562,28 @@ cleanup_stale_mcp_resources() {
   local svc="$1"
   local ns="${2:-services-dev}"
 
-  # Check if ServiceAccount exists but lacks Helm metadata
-  if kubectl get sa "$svc" -n "$ns" &>/dev/null; then
-    local helm_release_label
-    helm_release_label=$(kubectl get sa "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)
-
-    # If the ServiceAccount exists but doesn't have Helm metadata, delete stale resources
-    if [[ -z "$helm_release_label" ]]; then
-      log "Cleaning up stale ${svc} resources (no Helm metadata — removing ServiceAccount, Deployment, Service)..."
-      kubectl delete serviceaccount "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
-      kubectl delete deployment "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
-      kubectl delete service "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
-      # Wait a moment for deletion to complete
-      sleep 2
+  # Check if any of {ServiceAccount, Deployment, Service} exists with annotations
+  # that don't match the expected Helm release (svc in services-dev). Helm cannot
+  # adopt resources without matching ownership metadata, so we delete them all.
+  local needs_cleanup=false
+  for kind in serviceaccount deployment service; do
+    if kubectl get "$kind" "$svc" -n "$ns" &>/dev/null; then
+      local rel_name rel_ns
+      rel_name=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)
+      rel_ns=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' 2>/dev/null || true)
+      if [[ "$rel_name" != "$svc" || "$rel_ns" != "$ns" ]]; then
+        needs_cleanup=true
+        break
+      fi
     fi
+  done
+
+  if [[ "$needs_cleanup" == "true" ]]; then
+    log "Cleaning up stale ${svc} resources (Helm ownership metadata missing or mismatched)..."
+    kubectl delete serviceaccount "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
+    kubectl delete deployment "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
+    kubectl delete service "$svc" -n "$ns" --ignore-not-found=true 2>/dev/null || true
+    sleep 2
   fi
 }
 

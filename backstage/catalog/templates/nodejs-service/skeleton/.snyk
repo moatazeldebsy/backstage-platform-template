@@ -1,0 +1,6 @@
+# Snyk policy file — controls how vulnerabilities are reported.
+# https://docs.snyk.io/manage-issues/policies/the-.snyk-file
+# Add `ignore:` blocks here per CVE when accepted as risk; otherwise leave empty.
+version: v1.25.0
+ignore: {}
+patch: {}

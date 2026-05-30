@@ -418,6 +418,7 @@ The full pyramid is covered by these templates (one row per layer):
 | E2E | `playwright-e2e-suite`, `newman-api-suite`, `bdd-cucumber-suite` |
 | Performance | `k6-performance-suite` |
 | Security (DAST) | `zap-dast-suite` |
+| Security (SAST / SCA) | language skeletons ship Sonar+Snyk in CI; `enable-security-scanning` for brownfield (see [docs/security-scanning.md](docs/security-scanning.md)) |
 | Visual | `visual-regression-suite` |
 | Accessibility | `accessibility-suite` |
 | Mobile | `appium-mobile-suite` |

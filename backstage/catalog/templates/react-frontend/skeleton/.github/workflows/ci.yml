@@ -41,7 +41,7 @@ jobs:
         run: npm audit --audit-level=high --omit=dev
 
       - name: Trivy filesystem scan (deps + secrets)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scanners: 'vuln,secret,misconfig'
@@ -98,7 +98,7 @@ jobs:
 
       - name: Smoke-test container
         run: |
-          docker run -d --name app -p 8080:80 ${{ '${{ env.APP_NAME }}' }}:ci
+          docker run -d --name app -p 8080:8080 ${{ '${{ env.APP_NAME }}' }}:ci
           sleep 3
           curl -sf --retry 5 --retry-delay 2 --retry-connrefused \
             http://localhost:8080/healthz

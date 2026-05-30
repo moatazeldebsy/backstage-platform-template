@@ -10,11 +10,14 @@ COPY . .
 RUN npm run build
 
 # ── Stage 2: serve ───────────────────────────────────────────────────────────
-FROM nginx:1.27-alpine
+# Unprivileged nginx runs as uid 101 and listens on 8080 (Trivy DS-0002 / hardening)
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 
+USER root
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+USER 101
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

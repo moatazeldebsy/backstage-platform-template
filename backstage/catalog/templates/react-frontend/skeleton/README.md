@@ -7,7 +7,7 @@ Scaffolded via the IDP golden path — React + Vite + TypeScript, served by ngin
 | Property | Value |
 |----------|-------|
 | Owner | `${{ values.owner }}` |
-| Port | `80` (container) / `${{ values.port }}` (host) |
+| Port | `8080` (container) / `${{ values.port }}` (host) |
 | Language | React / TypeScript |
 
 ---
@@ -30,7 +30,7 @@ npm run build  # Production bundle → dist/
 
 ```bash
 docker build -t ${{ values.name }}:local .
-docker run -p ${{ values.port }}:80 ${{ values.name }}:local
+docker run -p ${{ values.port }}:8080 ${{ values.name }}:local
 # → http://localhost:${{ values.port }}
 # → http://localhost:${{ values.port }}/healthz
 ```
