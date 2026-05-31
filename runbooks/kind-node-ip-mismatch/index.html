@@ -1300,6 +1300,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#step-6-fix-kagent-controller-if-still-crashloopbackoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6 — Fix kagent-controller if still CrashLoopBackOff
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1469,6 +1478,30 @@ kubectl<span class="w"> </span>get<span class="w"> </span>nodes
 kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Running<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Completed
 </code></pre></div></td></tr></table></div>
 <p>ingress-nginx should reschedule and reach <code>Running</code> within ~60 seconds, restoring all <code>*.idp.local</code> URLs.</p>
+<h3 id="step-6-fix-kagent-controller-if-still-crashloopbackoff">Step 6 — Fix kagent-controller if still CrashLoopBackOff<a class="headerlink" href="#step-6-fix-kagent-controller-if-still-crashloopbackoff" title="Permanent link">&para;</a></h3>
+<p>After DNS recovers the <code>kagent-controller</code> may still crash because the startup probe kills it before the pgvector DB migrations complete (default window is only ~60 s).</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kagent-controller
+
+<span class="c1"># If CrashLoopBackOff, widen the startup probe window and restart</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>deployment<span class="w"> </span>kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>--type<span class="o">=</span><span class="s1">&#39;json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="o">=</span><span class="s1">&#39;[{&quot;op&quot;: &quot;replace&quot;, &quot;path&quot;: &quot;/spec/template/spec/containers/0/startupProbe/failureThreshold&quot;, &quot;value&quot;: 12}]&#39;</span>
+
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
+
+<span class="c1"># Wait for 1/1 Running</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-w<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kagent-controller
+</code></pre></div></td></tr></table></div>
 <h2 id="known-harmless-failure">Known Harmless Failure<a class="headerlink" href="#known-harmless-failure" title="Permanent link">&para;</a></h2>
 <p><code>catalog-exporter</code> in the <code>monitoring</code> namespace will stay in <code>CrashLoopBackOff</code> whenever Backstage is <strong>not</strong> running via Docker Compose. It tries to reach <code>backstage.default.svc.cluster.local:3000</code> (in-cluster DNS), which does not exist when Backstage is down. Start Backstage to resolve it:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
