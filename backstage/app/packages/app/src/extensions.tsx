@@ -1305,7 +1305,13 @@ function GrafanaAlertsCard({ labelSelector }: { labelSelector: string }) {
       .fetch(`${base}/api/proxy/grafana/api/api/alertmanager/grafana/api/v2/alerts?filter=${encoded}&active=true&silenced=false&inhibited=false`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => setAlerts(Array.isArray(data) ? data : []))
-      .catch(e => setError(`Grafana alerts unavailable (${e}). Set GRAFANA_TOKEN in local/backstage/.env`))
+      .catch(e => {
+        const hint =
+          e === 401 || e === 403 ? 'Check GRAFANA_TOKEN in local/backstage/.env.' :
+          e === 502 || e === 503 || e === 504 ? 'Grafana is unreachable — is the cluster running and grafana.idp.local resolvable?' :
+          'Check the Backstage proxy config and GRAFANA_TOKEN in local/backstage/.env.';
+        setError(`Grafana alerts unavailable (${e}). ${hint}`);
+      })
       .finally(() => setLoading(false));
   }, [labelSelector, base, fetchApi]);
 
@@ -1537,6 +1543,26 @@ interface CopilotDay {
   };
 }
 
+/** 28 days of realistic-looking demo Copilot data shown when the real API is unavailable. */
+function generateDemoCopilotData(): CopilotDay[] {
+  const languages = ['TypeScript', 'Python', 'Go', 'JavaScript', 'YAML'];
+  return Array.from({ length: 28 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (27 - i));
+    const date = d.toISOString().slice(0, 10);
+    const activeUsers    = 18 + Math.floor(Math.sin(i / 3) * 5 + Math.random() * 4);
+    const engagedUsers   = Math.round(activeUsers * (0.7 + Math.random() * 0.15));
+    const langData = languages.map(name => {
+      const suggested = 200 + Math.floor(Math.random() * 300 + i * 8);
+      const accepted  = Math.round(suggested * (0.28 + Math.random() * 0.18));
+      return { name, total_code_suggestions: suggested, total_code_acceptances: accepted,
+               total_code_lines_suggested: suggested * 3, total_code_lines_accepted: accepted * 3 };
+    });
+    return { date, total_active_users: activeUsers, total_engaged_users: engagedUsers,
+             copilot_ide_code_completions: { total_engaged_users: engagedUsers, languages: langData } };
+  });
+}
+
 function CopilotMetricsPage() {
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
@@ -1544,14 +1570,14 @@ function CopilotMetricsPage() {
 
   const [days, setDays]       = useState<CopilotDay[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+  const [isDemo, setIsDemo]   = useState(false);
 
   useEffect(() => {
     fetchApi
       .fetch(`${base}/api/proxy/github-copilot/orgs/moatazeldebsy/copilot/metrics`)
-      .then(r => r.ok ? r.json() : Promise.reject(`${r.status} ${r.statusText}`))
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => setDays(Array.isArray(data) ? data.slice(-28) : []))
-      .catch(e => setError(`GitHub Copilot API unavailable: ${e}. Ensure GITHUB_TOKEN is set and your org has a Copilot licence.`))
+      .catch(() => { setDays(generateDemoCopilotData()); setIsDemo(true); })
       .finally(() => setLoading(false));
   }, [base, fetchApi]);
 
@@ -1566,13 +1592,14 @@ function CopilotMetricsPage() {
       <Header title="GitHub Copilot Metrics" subtitle="Developer productivity via AI assistance" />
       <Content>
         {loading && <CircularProgress style={{ margin: 24 }} />}
-        {error && (
-          <Paper style={{ padding: 24, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>Copilot data unavailable</Typography>
-            <Typography variant="body2" color="textSecondary">{error}</Typography>
+        {isDemo && (
+          <Paper style={{ padding: '10px 20px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+            <Typography variant="body2" style={{ color: '#7c6000' }}>
+              📊 <strong>Demo data</strong> — GitHub Copilot API unavailable (no licence or token). Connect a Copilot-enabled org to see live metrics.
+            </Typography>
           </Paper>
         )}
-        {!loading && !error && (
+        {!loading && (
           <>
             <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
               {[
