@@ -831,6 +831,7 @@ if ! $SKIP_OBS; then
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml"
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml"
+  kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-ai-dashboard-configmap.yaml"
 
   helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
     --namespace monitoring \
