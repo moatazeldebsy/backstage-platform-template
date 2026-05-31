@@ -17,7 +17,7 @@ metadata:
     snyk.io/org-slug: "${{ values.githubOrg }}"
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
     grafana/alert-label-selector: "service=${{ values.name }}"
-    jira/project-key: ""
+    jira/project-key: "${{ values.jiraProjectKey }}"
   links:
     - title: Grafana Dashboard
       url: http://grafana.idp.local/d/idp-services/idp-services-overview

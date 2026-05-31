@@ -63,6 +63,11 @@ spec:
           type: string
           description: "Optional. Find this in PagerDuty under Services → your service → ID. Example: P1ABC23"
           ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Your Jira project key (e.g. PLAT, ENG). Enables the Jira tab in Backstage."
+          ui:help: "Leave blank if not using Jira."
 
     - title: Repository
       required:
@@ -107,6 +112,7 @@ spec:
           port: ${{ parameters.port }}
           costCenter: ${{ parameters.costCenter }}
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
