@@ -8,6 +8,7 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     prometheus.io/scrape: "true"
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
+    grafana/alert-label-selector: service=qa-mcp-server
   tags:
     - mcp
     - qa

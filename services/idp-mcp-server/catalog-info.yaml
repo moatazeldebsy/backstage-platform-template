@@ -8,6 +8,7 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     prometheus.io/scrape: "true"
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
+    grafana/alert-label-selector: service=idp-mcp-server
   tags:
     - mcp
     - ai
