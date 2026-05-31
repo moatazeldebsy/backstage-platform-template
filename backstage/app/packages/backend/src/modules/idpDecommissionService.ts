@@ -212,6 +212,31 @@ function createDecommissionServiceAction(options: {
               );
             }
             ctx.logger.info(`Successfully archived ${ghOwner}/${ghRepo}`);
+
+            // Remove IDP catalog topics so the GitHub org provider stops re-discovering
+            // this repo on fresh cluster installs. Fetch current topics and strip idp/idp-*.
+            try {
+              const topicsResp = await fetch(
+                `https://api.github.com/repos/${ghOwner}/${ghRepo}/topics`,
+                { headers: ghHeaders },
+              );
+              if (topicsResp.ok) {
+                const { names: currentTopics } = (await topicsResp.json()) as { names: string[] };
+                const idpTopics = new Set(['idp', 'idp-service', 'idp-module']);
+                const remainingTopics = currentTopics.filter(t => !idpTopics.has(t));
+                await fetch(
+                  `https://api.github.com/repos/${ghOwner}/${ghRepo}/topics`,
+                  {
+                    method: 'PUT',
+                    headers: ghHeaders,
+                    body: JSON.stringify({ names: remainingTopics }),
+                  },
+                );
+                ctx.logger.info(`Removed IDP catalog topics from ${ghOwner}/${ghRepo}`);
+              }
+            } catch (e: any) {
+              ctx.logger.warn(`Could not remove IDP topics from repo: ${e.message}`);
+            }
           } else if (action === 'delete') {
             ctx.logger.info(
               `Deleting GitHub repo ${ghOwner}/${ghRepo}... (PERMANENT)`,

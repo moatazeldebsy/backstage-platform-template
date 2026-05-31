@@ -213,14 +213,63 @@ _cleanup_scaffolded_services() {
     fi
   done
 
+  # Remove IDP catalog GitHub topics so the org provider doesn't re-discover
+  # these repos on the next fresh cluster install.
+  if [[ -n "${GITHUB_TOKEN:-}" ]] && command -v gh &>/dev/null; then
+    local org="${GITHUB_ORG:-moatazeldebsy}"
+    for svc in "${SCAFFOLDED[@]}"; do
+      gh repo edit "${org}/${svc}" \
+        --remove-topic idp \
+        --remove-topic idp-service \
+        --remove-topic idp-module 2>/dev/null \
+        || true
+      log "  Removed IDP topics from GitHub repo: ${org}/${svc}"
+    done
+  fi
+
+  # Clean up committed catalog entries for ML experiments and team-namespace groups
+  # that are not covered by the services/ scan above.
+  local catalog_changed=false
+
+  if compgen -G "${ROOT_DIR}/backstage/catalog/ml-experiments/*/catalog-info.yaml" > /dev/null 2>&1; then
+    find "${ROOT_DIR}/backstage/catalog/ml-experiments" -mindepth 1 -maxdepth 1 -type d \
+      -exec rm -rf {} +
+    catalog_changed=true
+    log "  Removed stale ml-experiments catalog entries"
+  fi
+
+  local stale_groups
+  stale_groups=$(find "${ROOT_DIR}/backstage/catalog/groups" -name "*.yaml" -not -name ".gitkeep" 2>/dev/null)
+  if [[ -n "${stale_groups}" ]]; then
+    find "${ROOT_DIR}/backstage/catalog/groups" -name "*.yaml" -not -name ".gitkeep" -delete
+    catalog_changed=true
+    log "  Removed stale group catalog entries"
+  fi
+
   if [[ ${#removed[@]} -gt 0 ]]; then
     git -C "${ROOT_DIR}" add -A -- services/ 2>/dev/null || true
-    if ! git -C "${ROOT_DIR}" diff --cached --quiet -- services/ 2>/dev/null; then
+    if [[ "${catalog_changed}" == "true" ]]; then
+      git -C "${ROOT_DIR}" add -A -- \
+        backstage/catalog/ml-experiments/ \
+        backstage/catalog/groups/ 2>/dev/null || true
+    fi
+    if ! git -C "${ROOT_DIR}" diff --cached --quiet 2>/dev/null; then
       git -C "${ROOT_DIR}" commit \
         -m "chore(cleanup): remove scaffolded services from platform repo [skip ci]" \
         2>/dev/null || true
       git -C "${ROOT_DIR}" push 2>/dev/null \
         || warn "  Could not push service cleanup to remote — commit the services/ deletions manually: ${removed[*]}"
+    fi
+  elif [[ "${catalog_changed}" == "true" ]]; then
+    git -C "${ROOT_DIR}" add -A -- \
+      backstage/catalog/ml-experiments/ \
+      backstage/catalog/groups/ 2>/dev/null || true
+    if ! git -C "${ROOT_DIR}" diff --cached --quiet 2>/dev/null; then
+      git -C "${ROOT_DIR}" commit \
+        -m "chore(cleanup): remove stale catalog entries [skip ci]" \
+        2>/dev/null || true
+      git -C "${ROOT_DIR}" push 2>/dev/null \
+        || warn "  Could not push catalog cleanup to remote"
     fi
   fi
 

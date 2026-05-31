@@ -334,6 +334,10 @@ catalog:
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }
+        # Auto-delete catalog entities whose source repo no longer carries the
+        # idp topic (e.g. after decommissioning removes the topic). Without this,
+        # stale entities persist as orphans and their TechDocs reappear on fresh installs.
+        orphanStrategy: delete
 
 kubernetes:
   serviceLocatorMethod:
