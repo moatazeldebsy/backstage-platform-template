@@ -25,11 +25,16 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(mcp_tool_calls_total[5m]))",
+          "expr": "sum(increase(mcp_tool_calls_total[5m])) or vector(0)",
           "refId": "A",
           "legendFormat": "Tool Calls"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0"
+        }
+      }
     },
     {
       "id": 4,
@@ -51,7 +56,12 @@
           "refId": "A",
           "legendFormat": "Errors"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0"
+        }
+      }
     },
     {
       "id": 5,
@@ -100,7 +110,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2
-          }
+          },
+          "noValue": "0"
         }
       }
     },
@@ -120,7 +131,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
+          "expr": "(histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0) or (sum by (job) (rate(mcp_tool_calls_total[5m])) * 0)",
           "refId": "A",
           "legendFormat": "{{job}}"
         }
@@ -130,14 +141,15 @@
           "unit": "s",
           "custom": {
             "lineWidth": 2
-          }
+          },
+          "noValue": "0"
         }
       }
     },
     {
       "id": 6,
       "title": "MCP Tool Latency Distribution (P50/P95/P99)",
-      "type": "timeseries",
+      "type": "table",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -150,17 +162,17 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
+          "expr": "(histogram_quantile(0.50, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0) or (sum by (job) (rate(mcp_tool_calls_total[5m])) * 0)",
           "refId": "A",
           "legendFormat": "{{job}} P50"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
+          "expr": "(histogram_quantile(0.95, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0) or (sum by (job) (rate(mcp_tool_calls_total[5m])) * 0)",
           "refId": "B",
           "legendFormat": "{{job}} P95"
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0 or vector(0)",
+          "expr": "(histogram_quantile(0.99, sum by (job, le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 0) or (sum by (job) (rate(mcp_tool_calls_total[5m])) * 0)",
           "refId": "C",
           "legendFormat": "{{job}} P99"
         }
@@ -168,11 +180,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "custom": {
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "noValue": "No data yet"
+          "noValue": "0"
         }
       }
     }
