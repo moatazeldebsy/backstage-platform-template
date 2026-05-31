@@ -12,6 +12,8 @@ metadata:
     backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbooks/service.md
     cost-center: "${{ values.costCenter }}"
     idp.io/quality-gates: "coverage,static-analysis,vuln-scan"
+    pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
+    grafana/alert-label-selector: "service=${{ values.name }}"
   links:
     - title: Grafana Dashboard
       url: http://grafana.idp.local/d/idp-services/idp-services-overview

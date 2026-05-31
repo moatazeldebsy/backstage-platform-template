@@ -20,6 +20,7 @@ metadata:
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
     idp.io/model-name: ${{ values.modelName }}
     idp.io/deployment-target: ${{ values.target }}
+    pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
 
 spec:
   type: service

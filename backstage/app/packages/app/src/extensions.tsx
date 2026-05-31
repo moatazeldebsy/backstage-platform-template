@@ -1145,6 +1145,509 @@ const securityEntityContent = EntityContentBlueprint.make({
   },
 });
 
+// ── PagerDuty on-call tab ──────────────────────────────────────────────────────
+// Reads pagerduty.com/service-id annotation and shows on-call person + open
+// incidents via the /api/proxy/pagerduty endpoint.
+
+function PagerDutyOnCallCard({ serviceId }: { serviceId: string }) {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [oncall, setOncall]       = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
+
+  useEffect(() => {
+    const headers = { 'Content-Type': 'application/json' };
+    Promise.all([
+      fetchApi.fetch(`${base}/api/proxy/pagerduty/oncalls?service_ids[]=${serviceId}&include[]=users`, { headers })
+        .then(r => r.ok ? r.json() : Promise.reject(r.status)),
+      fetchApi.fetch(`${base}/api/proxy/pagerduty/incidents?service_ids[]=${serviceId}&statuses[]=triggered&statuses[]=acknowledged`, { headers })
+        .then(r => r.ok ? r.json() : Promise.reject(r.status)),
+    ])
+      .then(([oc, inc]) => { setOncall(oc.oncalls ?? []); setIncidents(inc.incidents ?? []); })
+      .catch(e => setError(`PagerDuty unavailable (${e}). Set PAGERDUTY_TOKEN in local/backstage/.env`))
+      .finally(() => setLoading(false));
+  }, [serviceId, base, fetchApi]);
+
+  if (loading) return <CircularProgress size={24} style={{ margin: 24 }} />;
+
+  if (error) return (
+    <Paper style={{ padding: 24, margin: 16 }}>
+      <Typography variant="body2" color="textSecondary">{error}</Typography>
+    </Paper>
+  );
+
+  const primary = oncall.find(o => o.escalation_level === 1);
+
+  return (
+    <Box p={2} display="flex" flexDirection="column" style={{ gap: 16 }}>
+      <Paper style={{ padding: 16 }}>
+        <Typography variant="h6" gutterBottom>On-Call Now</Typography>
+        {primary ? (
+          <Box display="flex" alignItems="center" style={{ gap: 12 }}>
+            <Typography variant="body1" style={{ fontWeight: 600 }}>
+              {primary.user?.summary ?? 'Unknown'}
+            </Typography>
+            <Chip size="small" label={`L${primary.escalation_level}`} color="primary" />
+          </Box>
+        ) : (
+          <Typography variant="body2" color="textSecondary">No on-call schedule found for this service.</Typography>
+        )}
+        {oncall.length > 1 && (
+          <Box mt={1}>
+            <Typography variant="caption" color="textSecondary">
+              Escalation chain: {oncall.map(o => o.user?.summary).filter(Boolean).join(' → ')}
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+
+      <Paper style={{ padding: 16 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+          <Typography variant="h6">Open Incidents</Typography>
+          <Chip
+            size="small"
+            label={incidents.length}
+            style={{ background: incidents.length > 0 ? '#d32f2f' : '#388e3c', color: '#fff' }}
+          />
+        </Box>
+        {incidents.length === 0 ? (
+          <Typography variant="body2" color="textSecondary">No open incidents.</Typography>
+        ) : (
+          <TableContainer>
+            <MuiTable size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Title</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Urgency</TableCell>
+                  <TableCell>Created</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {incidents.slice(0, 10).map((inc: any) => (
+                  <TableRow key={inc.id}>
+                    <TableCell>
+                      <Link href={inc.html_url} target="_blank" rel="noopener">{inc.title}</Link>
+                    </TableCell>
+                    <TableCell><Chip size="small" label={inc.status} /></TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={inc.urgency}
+                        style={{ background: inc.urgency === 'high' ? '#d32f2f' : '#f57c00', color: '#fff' }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption">
+                        {new Date(inc.created_at).toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </MuiTable>
+          </TableContainer>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function PagerDutyEntityContent() {
+  const { entity } = useEntity();
+  const serviceId = entity.metadata.annotations?.['pagerduty.com/service-id'];
+
+  if (!serviceId) return (
+    <Content>
+      <Paper style={{ padding: 24, margin: 16, textAlign: 'center' }}>
+        <Typography variant="h6" gutterBottom>PagerDuty not configured</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Add <code>pagerduty.com/service-id: YOUR_PD_SERVICE_ID</code> to this service's{' '}
+          <code>catalog-info.yaml</code> annotations to see on-call and incidents here.
+        </Typography>
+      </Paper>
+    </Content>
+  );
+
+  return <Content><PagerDutyOnCallCard serviceId={serviceId} /></Content>;
+}
+
+const pagerDutyEntityContent = EntityContentBlueprint.make({
+  name: 'pagerduty',
+  params: {
+    path: '/on-call',
+    title: 'On-Call',
+    filter: 'kind:component',
+    loader: async () => <PagerDutyEntityContent />,
+  },
+});
+
+// ── Grafana Alerts tab ─────────────────────────────────────────────────────────
+// Uses the existing /grafana/api proxy. Shows firing alerts for the service
+// filtered by the grafana/alert-label-selector annotation.
+
+function GrafanaAlertsCard({ labelSelector }: { labelSelector: string }) {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [alerts, setAlerts]   = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    const encoded = encodeURIComponent(labelSelector);
+    fetchApi
+      .fetch(`${base}/api/proxy/grafana/api/api/alertmanager/grafana/api/v2/alerts?filter=${encoded}&active=true&silenced=false&inhibited=false`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => setAlerts(Array.isArray(data) ? data : []))
+      .catch(e => setError(`Grafana alerts unavailable (${e}). Set GRAFANA_TOKEN in local/backstage/.env`))
+      .finally(() => setLoading(false));
+  }, [labelSelector, base, fetchApi]);
+
+  if (loading) return <CircularProgress size={24} style={{ margin: 24 }} />;
+
+  if (error) return (
+    <Paper style={{ padding: 24, margin: 16 }}>
+      <Typography variant="body2" color="textSecondary">{error}</Typography>
+    </Paper>
+  );
+
+  return (
+    <Paper style={{ padding: 16, margin: 16 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h6">Firing Alerts</Typography>
+        <Chip
+          size="small"
+          label={alerts.length === 0 ? 'All Clear' : `${alerts.length} Firing`}
+          style={{ background: alerts.length === 0 ? '#388e3c' : '#d32f2f', color: '#fff' }}
+        />
+      </Box>
+      {alerts.length === 0 ? (
+        <Typography variant="body2" color="textSecondary">
+          No firing alerts. Filter: <code>{labelSelector}</code>
+        </Typography>
+      ) : (
+        <TableContainer>
+          <MuiTable size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Alert</TableCell>
+                <TableCell>Severity</TableCell>
+                <TableCell>Since</TableCell>
+                <TableCell>Summary</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {alerts.map((a: any, i: number) => (
+                <TableRow key={i}>
+                  <TableCell><Typography variant="body2" style={{ fontWeight: 600 }}>{a.labels?.alertname}</Typography></TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={a.labels?.severity ?? 'unknown'}
+                      style={{
+                        background: a.labels?.severity === 'critical' ? '#d32f2f' : a.labels?.severity === 'warning' ? '#f57c00' : '#616161',
+                        color: '#fff',
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">{a.startsAt ? new Date(a.startsAt).toLocaleString() : '—'}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">{a.annotations?.summary ?? a.annotations?.description ?? '—'}</Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </MuiTable>
+        </TableContainer>
+      )}
+    </Paper>
+  );
+}
+
+function GrafanaEntityContent() {
+  const { entity } = useEntity();
+  const annotations = entity.metadata.annotations ?? {};
+  const labelSelector = annotations['grafana/alert-label-selector'];
+  const dashboardUrl  = entity.metadata.links?.find(l => l.title === 'Grafana Dashboard')?.url;
+
+  return (
+    <Content>
+      {dashboardUrl && (
+        <Box p={2}>
+          <Button variant="outlined" href={dashboardUrl} target="_blank" rel="noopener">
+            Open Grafana Dashboard ↗
+          </Button>
+        </Box>
+      )}
+      {labelSelector ? (
+        <GrafanaAlertsCard labelSelector={labelSelector} />
+      ) : (
+        <Paper style={{ padding: 24, margin: 16, textAlign: 'center' }}>
+          <Typography variant="body2" color="textSecondary">
+            Add <code>grafana/alert-label-selector: service={entity.metadata.name}</code> to this
+            entity's annotations to show live Grafana alerts here.
+          </Typography>
+        </Paper>
+      )}
+    </Content>
+  );
+}
+
+const grafanaEntityContent = EntityContentBlueprint.make({
+  name: 'grafana-alerts',
+  params: {
+    path: '/grafana',
+    title: 'Grafana',
+    filter: 'kind:component',
+    loader: async () => <GrafanaEntityContent />,
+  },
+});
+
+// ── Jira Issues tab ────────────────────────────────────────────────────────────
+// Reads jira/project-key annotation and shows open issues via /api/proxy/jira.
+
+function JiraIssuesCard({ projectKey }: { projectKey: string }) {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [issues, setIssues]   = useState<any[]>([]);
+  const [total, setTotal]     = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    const jql = encodeURIComponent(`project = ${projectKey} AND statusCategory != Done ORDER BY created DESC`);
+    fetchApi
+      .fetch(`${base}/api/proxy/jira/rest/api/2/search?jql=${jql}&maxResults=10&fields=summary,status,priority,assignee,issuetype,created`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => { setIssues(data.issues ?? []); setTotal(data.total ?? 0); })
+      .catch(e => setError(`Jira unavailable (${e}). Set JIRA_TOKEN and JIRA_URL in local/backstage/.env`))
+      .finally(() => setLoading(false));
+  }, [projectKey, base, fetchApi]);
+
+  if (loading) return <CircularProgress size={24} style={{ margin: 24 }} />;
+
+  if (error) return (
+    <Paper style={{ padding: 24, margin: 16 }}>
+      <Typography variant="body2" color="textSecondary">{error}</Typography>
+    </Paper>
+  );
+
+  return (
+    <Paper style={{ padding: 16, margin: 16 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h6">Open Issues — {projectKey}</Typography>
+        <Chip size="small" label={`${total} open`} color="primary" />
+      </Box>
+      {issues.length === 0 ? (
+        <Typography variant="body2" color="textSecondary">No open issues in this project.</Typography>
+      ) : (
+        <TableContainer>
+          <MuiTable size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Key</TableCell>
+                <TableCell>Summary</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Priority</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Assignee</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {issues.map((issue: any) => (
+                <TableRow key={issue.key}>
+                  <TableCell>
+                    <Link href={`${issue.self?.split('/rest')[0]}/browse/${issue.key}`} target="_blank" rel="noopener">
+                      {issue.key}
+                    </Link>
+                  </TableCell>
+                  <TableCell><Typography variant="body2">{issue.fields?.summary}</Typography></TableCell>
+                  <TableCell><Typography variant="caption">{issue.fields?.issuetype?.name}</Typography></TableCell>
+                  <TableCell>
+                    <Chip size="small" label={issue.fields?.priority?.name ?? '—'} />
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" label={issue.fields?.status?.name ?? '—'} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">{issue.fields?.assignee?.displayName ?? 'Unassigned'}</Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </MuiTable>
+        </TableContainer>
+      )}
+    </Paper>
+  );
+}
+
+function JiraEntityContent() {
+  const { entity } = useEntity();
+  const projectKey = entity.metadata.annotations?.['jira/project-key'];
+
+  if (!projectKey) return (
+    <Content>
+      <Paper style={{ padding: 24, margin: 16, textAlign: 'center' }}>
+        <Typography variant="h6" gutterBottom>Jira not configured</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Add <code>jira/project-key: YOUR_PROJECT_KEY</code> to this service's{' '}
+          <code>catalog-info.yaml</code> to see open issues here.
+        </Typography>
+      </Paper>
+    </Content>
+  );
+
+  return <Content><JiraIssuesCard projectKey={projectKey} /></Content>;
+}
+
+const jiraEntityContent = EntityContentBlueprint.make({
+  name: 'jira-issues',
+  params: {
+    path: '/jira',
+    title: 'Jira',
+    filter: 'kind:component',
+    loader: async () => <JiraEntityContent />,
+  },
+});
+
+// ── GitHub Copilot Metrics page ────────────────────────────────────────────────
+// Custom nav page showing Copilot usage via GitHub REST API (public, free).
+// Requires GITHUB_TOKEN in local/backstage/.env (already required for catalog).
+
+const copilotRouteRef = createRouteRef({ id: 'copilot-metrics' });
+
+interface CopilotDay {
+  date: string;
+  total_active_users: number;
+  total_engaged_users: number;
+  copilot_ide_code_completions?: {
+    total_engaged_users: number;
+    languages?: { name: string; total_code_acceptances: number; total_code_suggestions: number; total_code_lines_accepted: number; total_code_lines_suggested: number }[];
+  };
+}
+
+function CopilotMetricsPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [days, setDays]       = useState<CopilotDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchApi
+      .fetch(`${base}/api/proxy/github-copilot/orgs/moatazeldebsy/copilot/metrics`)
+      .then(r => r.ok ? r.json() : Promise.reject(`${r.status} ${r.statusText}`))
+      .then(data => setDays(Array.isArray(data) ? data.slice(-28) : []))
+      .catch(e => setError(`GitHub Copilot API unavailable: ${e}. Ensure GITHUB_TOKEN is set and your org has a Copilot licence.`))
+      .finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const latest = days[days.length - 1];
+  const completions = latest?.copilot_ide_code_completions;
+  const totalSuggested = completions?.languages?.reduce((s, l) => s + l.total_code_lines_suggested, 0) ?? 0;
+  const totalAccepted  = completions?.languages?.reduce((s, l) => s + l.total_code_lines_accepted, 0) ?? 0;
+  const acceptanceRate = totalSuggested > 0 ? ((totalAccepted / totalSuggested) * 100).toFixed(1) : '—';
+
+  return (
+    <Page themeId="tool">
+      <Header title="GitHub Copilot Metrics" subtitle="Developer productivity via AI assistance" />
+      <Content>
+        {loading && <CircularProgress style={{ margin: 24 }} />}
+        {error && (
+          <Paper style={{ padding: 24, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>Copilot data unavailable</Typography>
+            <Typography variant="body2" color="textSecondary">{error}</Typography>
+          </Paper>
+        )}
+        {!loading && !error && (
+          <>
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+              {[
+                { label: 'Active Users (latest day)', value: latest?.total_active_users ?? '—' },
+                { label: 'Engaged Users (latest day)', value: latest?.total_engaged_users ?? '—' },
+                { label: 'Lines Accepted (latest day)', value: totalAccepted.toLocaleString() },
+                { label: 'Acceptance Rate', value: `${acceptanceRate}%` },
+              ].map(({ label, value }) => (
+                <Paper key={label} style={{ padding: 20, minWidth: 180, flex: 1 }}>
+                  <Typography variant="h4" style={{ fontWeight: 700 }}>{String(value)}</Typography>
+                  <Typography variant="body2" color="textSecondary">{label}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            <Paper style={{ padding: 16 }}>
+              <Typography variant="h6" gutterBottom>Daily Active Users (last 28 days)</Typography>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Date</TableCell>
+                      <TableCell align="right">Active Users</TableCell>
+                      <TableCell align="right">Engaged Users</TableCell>
+                      <TableCell align="right">Lines Suggested</TableCell>
+                      <TableCell align="right">Lines Accepted</TableCell>
+                      <TableCell align="right">Acceptance %</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {[...days].reverse().map((d) => {
+                      const lang = d.copilot_ide_code_completions?.languages;
+                      const sug  = lang?.reduce((s, l) => s + l.total_code_lines_suggested, 0) ?? 0;
+                      const acc  = lang?.reduce((s, l) => s + l.total_code_lines_accepted, 0) ?? 0;
+                      const rate = sug > 0 ? ((acc / sug) * 100).toFixed(1) : '—';
+                      return (
+                        <TableRow key={d.date}>
+                          <TableCell>{d.date}</TableCell>
+                          <TableCell align="right">{d.total_active_users}</TableCell>
+                          <TableCell align="right">{d.total_engaged_users}</TableCell>
+                          <TableCell align="right">{sug.toLocaleString()}</TableCell>
+                          <TableCell align="right">{acc.toLocaleString()}</TableCell>
+                          <TableCell align="right">{rate}%</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const copilotPage = PageBlueprint.make({
+  name: 'copilot-metrics',
+  params: {
+    path: '/copilot',
+    loader: async () => <CopilotMetricsPage />,
+    routeRef: copilotRouteRef,
+  },
+});
+
+const copilotNavItem = NavItemBlueprint.make({
+  name: 'copilot-metrics',
+  params: {
+    title: 'Copilot Metrics',
+    routeRef: copilotRouteRef,
+    icon: AttachMoneyIcon as any,
+  },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
@@ -1160,5 +1663,10 @@ export const customPagesPlugin = createFrontendPlugin({
     semanticSearchNavItem,
     scorecardEntityContent,
     securityEntityContent,
+    pagerDutyEntityContent,
+    grafanaEntityContent,
+    jiraEntityContent,
+    copilotPage,
+    copilotNavItem,
   ],
 });

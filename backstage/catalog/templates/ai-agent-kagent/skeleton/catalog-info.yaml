@@ -10,6 +10,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: ${{ values.name }}
     backstage.io/techdocs-ref: dir:.
+    pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
   links:
     - url: http://kagent.idp.local
       title: KAgent UI

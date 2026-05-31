@@ -56,6 +56,11 @@ spec:
           type: string
           description: "Team cost center code for OpenCost attribution (e.g. eng-platform, eng-product)"
           default: eng-platform
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. Find this in PagerDuty under Services → your service → ID. Example: P1ABC23"
+          ui:help: "Leave blank if not using PagerDuty."
 
     - title: Repository
       required:
@@ -99,6 +104,7 @@ spec:
           owner: ${{ parameters.owner }}
           port: ${{ parameters.port }}
           costCenter: ${{ parameters.costCenter }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 

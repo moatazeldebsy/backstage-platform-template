@@ -58,6 +58,11 @@ spec:
           title: Require API key authentication
           type: boolean
           default: false
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. Find this in PagerDuty under Services → your service → ID. Example: P1ABC23"
+          ui:help: "Leave blank if not using PagerDuty."
 
     - title: Repository
       required: [repoUrl]
@@ -85,6 +90,7 @@ spec:
           port: ${{ parameters.port }}
           language: ${{ parameters.language }}
           enableAuth: ${{ parameters.enableAuth }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
 
     - id: publish

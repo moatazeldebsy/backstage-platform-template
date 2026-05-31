@@ -61,6 +61,11 @@ spec:
             - 'Local (Kind, Ollama)'
             - 'AWS EKS (vLLM, GPU)'
           default: local
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. Find this in PagerDuty under Services → your service → ID. Example: P1ABC23"
+          ui:help: "Leave blank if not using PagerDuty."
 
     - title: Repository
       required: [repoUrl]
@@ -87,6 +92,7 @@ spec:
           modelName: ${{ parameters.modelName }}
           owner: ${{ parameters.owner }}
           target: ${{ parameters.target }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
 
     - id: publish

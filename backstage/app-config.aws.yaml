@@ -76,6 +76,28 @@ proxy:
       changeOrigin: true
       headers:
         Authorization: token ${SNYK_TOKEN}
+    /pagerduty:
+      target: https://api.pagerduty.com
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      headers:
+        Authorization: Token token=${PAGERDUTY_TOKEN}
+        Accept: application/vnd.pagerduty+json;version=2
+    /jira:
+      target: ${JIRA_URL:-https://your-company.atlassian.net}
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Basic ${JIRA_TOKEN}
+        Accept: application/json
+    /github-copilot:
+      target: https://api.github.com
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${GITHUB_TOKEN}
+        Accept: application/vnd.github+json
+        X-GitHub-Api-Version: "2022-11-28"
 
 techRadar:
   url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json

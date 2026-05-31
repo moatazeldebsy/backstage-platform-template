@@ -108,6 +108,24 @@ kubectl get pods -A --no-headers | grep -v Running | grep -v Completed
 
 ingress-nginx should reschedule and reach `Running` within ~60 seconds, restoring all `*.idp.local` URLs.
 
+### Step 6 — Fix kagent-controller if still CrashLoopBackOff
+
+After DNS recovers the `kagent-controller` may still crash because the startup probe kills it before the pgvector DB migrations complete (default window is only ~60 s).
+
+```bash
+# Check
+kubectl get pods -n kagent | grep kagent-controller
+
+# If CrashLoopBackOff, widen the startup probe window and restart
+kubectl patch deployment kagent-controller -n kagent --type='json' \
+  -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/startupProbe/failureThreshold", "value": 12}]'
+
+kubectl rollout restart deployment/kagent-controller -n kagent
+
+# Wait for 1/1 Running
+kubectl get pods -n kagent -w | grep kagent-controller
+```
+
 ## Known Harmless Failure
 
 `catalog-exporter` in the `monitoring` namespace will stay in `CrashLoopBackOff` whenever Backstage is **not** running via Docker Compose. It tries to reach `backstage.default.svc.cluster.local:3000` (in-cluster DNS), which does not exist when Backstage is down. Start Backstage to resolve it:

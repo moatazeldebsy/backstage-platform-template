@@ -62,6 +62,11 @@ spec:
           title: Register model in MLflow Model Registry
           type: boolean
           default: true
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. Find this in PagerDuty under Services → your service → ID. Example: P1ABC23"
+          ui:help: "Leave blank if not using PagerDuty."
 
     - title: Repository
       required: [repoUrl]
@@ -87,6 +92,7 @@ spec:
           name: ${{ parameters.name }}
           experimentName: ${{ parameters.experimentName }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           framework: ${{ parameters.framework }}
           pythonVersion: ${{ parameters.pythonVersion }}
           registerModel: ${{ parameters.registerModel }}

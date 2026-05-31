@@ -12,6 +12,8 @@ metadata:
     backstage.io/kubernetes-id: contract-mcp-server
     backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platform-template/tree/main/services/contract-mcp-server
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
+    pagerduty.com/service-id: ""
+    grafana/alert-label-selector: "service=contract-mcp-server"
   tags:
     - mcp
     - contract-testing

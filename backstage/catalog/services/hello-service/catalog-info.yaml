@@ -12,6 +12,8 @@ metadata:
     backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platform-template/tree/main/services/hello-service
     backstage.io/runbook-url: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/runbooks/index.md
     github.com/project-slug: moatazeldebsy/backstage-platform-template
+    pagerduty.com/service-id: ""
+    grafana/alert-label-selector: "service=hello-service"
 spec:
   type: service
   lifecycle: production
