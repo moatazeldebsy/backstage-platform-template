@@ -10,6 +10,7 @@ metadata:
     backstage.io/kubernetes-id: hello-service
     backstage.io/kubernetes-namespace: services-dev
     backstage.io/techdocs-ref: dir:.
+    grafana/alert-label-selector: service=hello-service
 spec:
   type: service
   lifecycle: production

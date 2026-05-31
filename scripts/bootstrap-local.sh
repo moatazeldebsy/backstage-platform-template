@@ -849,9 +849,9 @@ if ! $SKIP_OBS; then
   done
 
   log "  Provisioning Grafana Viewer token for Backstage proxy..."
-  # Idempotent: search for an existing 'backstage' SA first; only create if absent.
-  # Without this, re-runs fail silently — POST returns 409 Conflict, grep finds no id,
-  # GRAFANA_TOKEN stays empty, and Backstage loses its Grafana integration on restart.
+  # Strategy: find-or-create the 'backstage' SA, then always create a FRESH token
+  # with a timestamp suffix. Stale tokens from previous runs become invalid when
+  # Grafana restarts without persistence (ephemeral DB), so we always write a new one.
   GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
     curl -sf -u admin:admin \
     "http://localhost:3000/api/serviceaccounts/search?query=backstage&perpage=1" 2>/dev/null \
@@ -864,10 +864,12 @@ if ! $SKIP_OBS; then
       | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || echo "")
   fi
   if [[ -n "$GRAFANA_SA_ID" ]]; then
+    # Use a timestamp in the token name so re-runs never hit 409 Conflict.
+    local _token_name="backstage-$(date +%s)"
     GRAFANA_TOKEN=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
       curl -sf -u admin:admin -X POST "http://localhost:3000/api/serviceaccounts/${GRAFANA_SA_ID}/tokens" \
       -H 'Content-Type: application/json' \
-      -d '{"name":"backstage-token"}' 2>/dev/null \
+      -d "{\"name\":\"${_token_name}\"}" 2>/dev/null \
       | grep -o '"key":"[^"]*"' | cut -d'"' -f4 || echo "")
     if [[ -n "$GRAFANA_TOKEN" ]]; then
       local_env="${ROOT_DIR}/local/backstage/.env"

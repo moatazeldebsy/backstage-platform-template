@@ -494,6 +494,16 @@ else
     --overwrite 2>/dev/null || true
   check "nginx config applied from repo + disowned from Helm (upgrade-safe)"
 
+  # Restart kagent-controller after applying agents so it re-reconciles all
+  # Agent CRs to Ready=True. Without this, agents applied after the initial
+  # controller startup can stay in "Deployment is not ready, 0/1 pods are ready"
+  # even when their pods are running — the controller sees stale status.
+  info "Restarting kagent-controller to reconcile newly applied agents..."
+  kubectl rollout restart deployment/kagent-controller -n kagent 2>/dev/null || true
+  kubectl rollout status  deployment/kagent-controller -n kagent --timeout=3m 2>/dev/null || \
+    warn "kagent-controller restart slow — agents will self-heal once it's ready."
+  check "kagent-controller restarted → all agents reconciled to Ready"
+
   # Restart kagent-ui so its Next.js SSR cache is rebuilt against the now-ready
   # controller. Without this, the cached SSR state from startup reflects the
   # pre-ready controller, causing /agents/new and /prompts/new to crash until

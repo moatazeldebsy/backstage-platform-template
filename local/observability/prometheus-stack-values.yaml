@@ -69,6 +69,16 @@ alertmanager:
 
 grafana:
   adminPassword: admin
+  # Persist Grafana's SQLite DB (service accounts, tokens, alert state) so that
+  # the GRAFANA_TOKEN written to local/backstage/.env survives pod restarts and
+  # helm upgrades. Without this, every Grafana pod restart wipes the DB and the
+  # Backstage Grafana tab shows 401 until bootstrap re-creates the token.
+  persistence:
+    enabled: true
+    type: pvc
+    size: 500Mi
+    accessModes:
+      - ReadWriteOnce
   ingress:
     enabled: true
     ingressClassName: nginx
