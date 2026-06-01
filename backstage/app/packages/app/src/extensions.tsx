@@ -3,7 +3,6 @@ import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef }
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity } from '@backstage/plugin-catalog-react';
 import type { Entity } from '@backstage/catalog-model';
-import { EntityProvidedApisCard, EntityConsumedApisCard } from '@backstage/plugin-api-docs';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
   Content,
@@ -1676,32 +1675,6 @@ const copilotNavItem = NavItemBlueprint.make({
   },
 });
 
-// ── APIs entity tab ────────────────────────────────────────────────────────────
-// Shows APIs provided and consumed by the entity. Driven by spec.providesApis
-// and spec.consumesApis in catalog-info.yaml — all service templates include
-// providesApis: [<name>-api] so this tab is populated on every scaffolded service.
-
-function ApisEntityContent() {
-  return (
-    <Content>
-      <Box style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 16 }}>
-        <EntityProvidedApisCard />
-        <EntityConsumedApisCard />
-      </Box>
-    </Content>
-  );
-}
-
-const apisEntityContent = EntityContentBlueprint.make({
-  name: 'apis',
-  params: {
-    path: '/apis',
-    title: 'APIs',
-    filter: 'kind:component',
-    loader: async () => <ApisEntityContent />,
-  },
-});
-
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
@@ -1715,7 +1688,6 @@ export const customPagesPlugin = createFrontendPlugin({
     aiAssistantNavItem,
     semanticSearchPage,
     semanticSearchNavItem,
-    apisEntityContent,
     scorecardEntityContent,
     securityEntityContent,
     pagerDutyEntityContent,
