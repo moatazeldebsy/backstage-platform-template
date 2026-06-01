@@ -58,7 +58,12 @@ def gh_get(url: str, params: dict = None) -> list:
 
 
 def get_service_repos() -> list[str]:
-    """Return all repos for the GitHub user/org that have build-and-deploy.yml."""
+    """Return all repos for the GitHub user/org that have a known IDP workflow.
+
+    Checks for both build-and-deploy.yml (AWS-deployed services) and ci.yml
+    (locally-deployed services scaffolded with deployTarget=local). This ensures
+    services scaffolded for Kind/Rancher Desktop appear in DORA metrics.
+    """
     org_url  = f"https://api.github.com/orgs/{GITHUB_ORG}/repos"
     user_url = "https://api.github.com/user/repos"
     probe = requests.get(org_url, headers=GH_HEADERS, params={"per_page": 1}, timeout=10)
@@ -66,14 +71,17 @@ def get_service_repos() -> list[str]:
     log.info("Using repo list endpoint: %s", list_url)
     repos = gh_get(list_url, {"per_page": 100, "type": "all"})
     service_repos = []
+    idp_workflows = ["build-and-deploy.yml", "ci.yml"]
     for repo in repos:
         name = repo["name"]
-        check = requests.get(
-            f"https://api.github.com/repos/{GITHUB_ORG}/{name}/contents/.github/workflows/build-and-deploy.yml",
-            headers=GH_HEADERS, timeout=10
-        )
-        if check.status_code == 200:
-            service_repos.append(name)
+        for workflow in idp_workflows:
+            check = requests.get(
+                f"https://api.github.com/repos/{GITHUB_ORG}/{name}/contents/.github/workflows/{workflow}",
+                headers=GH_HEADERS, timeout=10
+            )
+            if check.status_code == 200:
+                service_repos.append(name)
+                break
     log.info("Found %d service repos: %s", len(service_repos), service_repos)
     return service_repos
 
