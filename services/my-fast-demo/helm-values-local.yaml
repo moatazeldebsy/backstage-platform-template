@@ -50,6 +50,20 @@ env:
   - name: ENVIRONMENT
     value: local
 
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
