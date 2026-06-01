@@ -41,94 +41,215 @@ import remarkGfm from 'remark-gfm';
 
 // ── FinOps / Cost Overview page ───────────────────────────────────────────────
 // Queries OpenCost via the Backstage proxy (/api/proxy/opencost).
-// Falls back gracefully when OpenCost is unreachable.
+// Shows stacked bar chart + detailed cost table with date-range / breakdown controls.
 
-interface AllocationRow {
-  namespace: string;
-  totalCost: string;
-  cpuCost: string;
-  ramCost: string;
+const COST_COLORS = ['#1976d2','#388e3c','#f57c00','#7b1fa2','#c62828','#00838f','#558b2f','#6d4c41','#455a64','#e91e63'];
+
+function StackedBar({ segments }: { segments: { value: number; color: string }[] }) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  if (total === 0) return <div style={{ height: 28, background: '#eee', borderRadius: 4 }} />;
+  return (
+    <div style={{ display: 'flex', height: 28, borderRadius: 4, overflow: 'hidden', gap: 1 }}>
+      {segments.map((seg, i) =>
+        seg.value > 0 ? (
+          <div key={i} style={{ flex: seg.value, background: seg.color }} title={`$${seg.value.toFixed(4)}`} />
+        ) : null
+      )}
+    </div>
+  );
 }
 
 function FinOpsPage() {
-  const fetchApi = useApi(fetchApiRef);
+  const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
-  const [rows, setRows] = useState<AllocationRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [window_, setWindow]   = useState('7d');
+  const [aggregate, setAgg]    = useState('namespace');
+  const [rows, setRows]        = useState<any[]>([]);
+  const [dailyBuckets, setDailyBuckets] = useState<{ label: string; items: Record<string, number> }[]>([]);
+  const [loading, setLoading]  = useState(true);
+  const [error, setError]      = useState<string | null>(null);
 
   useEffect(() => {
-    const baseUrl = configApi.getString('backend.baseUrl');
-    const url =
-      `${baseUrl}/api/proxy/opencost/allocation/compute` +
-      `?window=7d&aggregate=namespace&accumulate=true`;
+    setLoading(true); setError(null);
+    const steps = window_ === '1d' ? 24 : window_ === '7d' ? 7 : 30;
+    const step  = window_ === '1d' ? '1h' : '1d';
+    Promise.all([
+      fetchApi.fetch(`${base}/api/proxy/opencost/allocation/compute?window=${window_}&aggregate=${aggregate}&accumulate=true`),
+      fetchApi.fetch(`${base}/api/proxy/opencost/allocation/compute?window=${window_}&aggregate=${aggregate}&accumulate=false&step=${step}`),
+    ])
+      .then(([r1, r2]) => Promise.all([r1.ok ? r1.json() : Promise.reject(r1.status), r2.ok ? r2.json() : Promise.resolve({ data: [] })]))
+      .then(([total, daily]: [any, any]) => {
+        const alloc: Record<string, any> = total?.data?.[0] ?? {};
+        const sorted = Object.entries(alloc)
+          .map(([name, info]: [string, any]) => ({ name, total: info.totalCost ?? 0, cpu: info.cpuCost ?? 0, ram: info.ramCost ?? 0, pv: info.pvCost ?? 0, efficiency: info.totalEfficiency ?? 0 }))
+          .sort((a, b) => b.total - a.total);
+        setRows(sorted);
+        const buckets = (daily?.data ?? []).map((bucket: any, i: number) => {
+          const d = new Date(); d.setDate(d.getDate() - (steps - 1 - i));
+          const label = window_ === '1d' ? `${i}:00` : `${d.getMonth()+1}/${d.getDate()}`;
+          const items: Record<string, number> = {};
+          Object.entries(bucket ?? {}).forEach(([k, v]: [string, any]) => { items[k] = v.totalCost ?? 0; });
+          return { label, items };
+        });
+        setDailyBuckets(buckets);
+        setLoading(false);
+      })
+      .catch((err: any) => { setError(String(err)); setLoading(false); });
+  }, [base, fetchApi, window_, aggregate]);
 
-    fetchApi
-      .fetch(url)
-      .then(r => {
-        if (!r.ok) throw new Error(`OpenCost returned ${r.status}`);
-        return r.json();
-      })
-      .then((data: any) => {
-        const allocations: Record<string, any> = data?.data?.[0] ?? {};
-        setRows(
-          Object.entries(allocations).map(([namespace, info]) => ({
-            namespace,
-            totalCost: ((info as any).totalCost ?? 0).toFixed(4),
-            cpuCost: ((info as any).cpuCost ?? 0).toFixed(4),
-            ramCost: ((info as any).ramCost ?? 0).toFixed(4),
-          })),
-        );
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [fetchApi, configApi]);
+  const names = rows.map(r => r.name);
+  const grandTotal = rows.reduce((s, r) => s + r.total, 0);
+  const maxBucketTotal = Math.max(...dailyBuckets.map(b => Object.values(b.items).reduce((s, v) => s + v, 0)), 0.0001);
+
+  const DEMO_ROWS = [
+    { name: 'monitoring', total: 0.42, cpu: 0.28, ram: 0.10, pv: 0.04, efficiency: 31 },
+    { name: 'services-dev', total: 0.31, cpu: 0.18, ram: 0.09, pv: 0.04, efficiency: 42 },
+    { name: 'argocd', total: 0.18, cpu: 0.11, ram: 0.05, pv: 0.02, efficiency: 38 },
+    { name: 'kagent', total: 0.12, cpu: 0.07, ram: 0.04, pv: 0.01, efficiency: 55 },
+    { name: 'ml-platform', total: 0.09, cpu: 0.05, ram: 0.03, pv: 0.01, efficiency: 48 },
+    { name: 'kube-system', total: 0.07, cpu: 0.04, ram: 0.02, pv: 0.01, efficiency: 61 },
+    { name: 'ingress-nginx', total: 0.04, cpu: 0.02, ram: 0.01, pv: 0.01, efficiency: 70 },
+    { name: 'backstage', total: 0.03, cpu: 0.02, ram: 0.01, pv: 0.00, efficiency: 44 },
+  ];
+  const isDemo = !loading && (error || rows.length === 0);
+  const displayRows = isDemo ? DEMO_ROWS : rows;
+  const displayTotal = isDemo ? DEMO_ROWS.reduce((s, r) => s + r.total, 0) : grandTotal;
 
   return (
     <Page themeId="tool">
-      <Header
-        title="FinOps — Cost Overview"
-        subtitle="7-day spend by namespace · powered by OpenCost"
-      />
+      <Header title="FinOps — Cost Overview" subtitle="Kubernetes spend · powered by OpenCost" />
       <Content>
         {loading && <Progress />}
-        {!loading && error && (
-          <p>
-            Cost data unavailable: <strong>{error}</strong>. Ensure the OpenCost
-            pod is running (<code>kubectl get po -n finops</code>) and the
-            <code>/opencost</code> proxy is configured in{' '}
-            <code>app-config.yaml</code>.
-          </p>
+        {isDemo && (
+          <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+            <Typography variant="body2" style={{ color: '#7c6000' }}>
+              📊 <strong>Demo data</strong> — OpenCost unavailable. Deploy with <code>bootstrap-local.sh</code> to see live spend.
+            </Typography>
+          </Paper>
         )}
-        {!loading && !error && rows.length === 0 && (
-          <p>No allocation data returned by OpenCost for the last 7 days.</p>
-        )}
-        {!loading && !error && rows.length > 0 && (
-          <TableContainer component={Paper}>
-            <MuiTable size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Namespace</strong></TableCell>
-                  <TableCell><strong>Total Cost (USD)</strong></TableCell>
-                  <TableCell><strong>CPU Cost (USD)</strong></TableCell>
-                  <TableCell><strong>RAM Cost (USD)</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map(row => (
-                  <TableRow key={row.namespace}>
-                    <TableCell>{row.namespace}</TableCell>
-                    <TableCell>{row.totalCost}</TableCell>
-                    <TableCell>{row.cpuCost}</TableCell>
-                    <TableCell>{row.ramCost}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </MuiTable>
-          </TableContainer>
+        {!loading && (
+          <>
+            {/* Controls */}
+            <Box display="flex" style={{ gap: 16, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="caption" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Date Range</Typography>
+                <Box display="flex" style={{ gap: 4 }}>
+                  {[['1d','Last 24h'],['7d','Last Week'],['30d','Last Month']].map(([v, l]) => (
+                    <button key={v} onClick={() => setWindow(v)} style={{ padding: '4px 12px', borderRadius: 16, border: '1px solid', cursor: 'pointer', fontWeight: v === window_ ? 700 : 400, background: v === window_ ? '#1976d2' : '#fff', color: v === window_ ? '#fff' : '#333', borderColor: v === window_ ? '#1976d2' : '#ddd' }}>{l}</button>
+                  ))}
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="caption" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Breakdown</Typography>
+                <Box display="flex" style={{ gap: 4 }}>
+                  {[['namespace','Namespace'],['label:team','Team'],['container','Container']].map(([v, l]) => (
+                    <button key={v} onClick={() => setAgg(v)} style={{ padding: '4px 12px', borderRadius: 16, border: '1px solid', cursor: 'pointer', fontWeight: v === aggregate ? 700 : 400, background: v === aggregate ? '#1976d2' : '#fff', color: v === aggregate ? '#fff' : '#333', borderColor: v === aggregate ? '#1976d2' : '#ddd' }}>{l}</button>
+                  ))}
+                </Box>
+              </Box>
+              <Paper style={{ padding: '8px 20px', marginLeft: 'auto', textAlign: 'center' }}>
+                <Typography variant="h5" style={{ fontWeight: 700, color: '#1976d2' }}>${displayTotal.toFixed(2)}</Typography>
+                <Typography variant="caption" color="textSecondary">Total Cost (USD)</Typography>
+              </Paper>
+            </Box>
+
+            {/* Stacked bar chart */}
+            {(dailyBuckets.length > 0 || isDemo) && (
+              <Paper style={{ padding: 16, marginBottom: 20 }}>
+                <Typography variant="h6" gutterBottom>Spend Over Time by {aggregate === 'namespace' ? 'Namespace' : aggregate === 'label:team' ? 'Team' : 'Container'}</Typography>
+                <Box style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 160, overflowX: 'auto', paddingBottom: 24, position: 'relative' }}>
+                  {(isDemo
+                    ? Array.from({ length: 7 }, (_, i) => {
+                        const d = new Date(); d.setDate(d.getDate() - (6 - i));
+                        return { label: `${d.getMonth()+1}/${d.getDate()}`, items: Object.fromEntries(DEMO_ROWS.map(r => [r.name, r.total / 7 * (0.8 + Math.random() * 0.4)])) };
+                      })
+                    : dailyBuckets
+                  ).map((bucket, bi) => {
+                    const bucketTotal = Object.values(bucket.items).reduce((s: number, v: any) => s + v, 0);
+                    const barH = 120;
+                    return (
+                      <Box key={bi} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
+                        <Box style={{ width: '100%', height: barH, display: 'flex', flexDirection: 'column-reverse', borderRadius: '4px 4px 0 0', overflow: 'hidden' }}>
+                          {displayRows.map((row, ri) => {
+                            const val = bucket.items[row.name] ?? 0;
+                            const h = bucketTotal > 0 ? (val / (isDemo ? bucketTotal : maxBucketTotal)) * barH : 0;
+                            return h > 0 ? <div key={ri} style={{ width: '100%', height: h, background: COST_COLORS[ri % COST_COLORS.length] }} title={`${row.name}: $${val.toFixed(4)}`} /> : null;
+                          })}
+                        </Box>
+                        <Typography variant="caption" style={{ fontSize: 9, marginTop: 2 }}>{bucket.label}</Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+                {/* Legend */}
+                <Box display="flex" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                  {displayRows.slice(0, 8).map((row, i) => (
+                    <Box key={i} display="flex" alignItems="center" style={{ gap: 4 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 2, background: COST_COLORS[i % COST_COLORS.length] }} />
+                      <Typography variant="caption">{row.name}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Paper>
+            )}
+
+            {/* Cost table */}
+            <Paper>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Name</strong></TableCell>
+                      <TableCell><strong>Cost breakdown</strong></TableCell>
+                      <TableCell align="right"><strong>CPU</strong></TableCell>
+                      <TableCell align="right"><strong>RAM</strong></TableCell>
+                      <TableCell align="right"><strong>PV</strong></TableCell>
+                      <TableCell align="right"><strong>Efficiency</strong></TableCell>
+                      <TableCell align="right"><strong>Total Cost</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {displayRows.map((row, i) => (
+                      <TableRow key={row.name} hover>
+                        <TableCell style={{ fontWeight: 500 }}>
+                          <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 2, background: COST_COLORS[i % COST_COLORS.length], flexShrink: 0 }} />
+                            {row.name}
+                          </Box>
+                        </TableCell>
+                        <TableCell style={{ minWidth: 140 }}>
+                          <StackedBar segments={[
+                            { value: row.cpu, color: '#1976d2' },
+                            { value: row.ram, color: '#388e3c' },
+                            { value: row.pv,  color: '#f57c00' },
+                          ]} />
+                        </TableCell>
+                        <TableCell align="right">${row.cpu.toFixed(3)}</TableCell>
+                        <TableCell align="right">${row.ram.toFixed(3)}</TableCell>
+                        <TableCell align="right">${row.pv.toFixed(3)}</TableCell>
+                        <TableCell align="right">
+                          <span style={{ color: row.efficiency > 50 ? '#388e3c' : row.efficiency > 25 ? '#f57c00' : '#c62828', fontWeight: 600 }}>
+                            {typeof row.efficiency === 'number' ? `${(row.efficiency * (row.efficiency <= 1 ? 100 : 1)).toFixed(0)}%` : '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell align="right"><strong>${row.total.toFixed(3)}</strong></TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell colSpan={2}><strong>Totals</strong></TableCell>
+                      <TableCell align="right"><strong>${displayRows.reduce((s,r)=>s+r.cpu,0).toFixed(3)}</strong></TableCell>
+                      <TableCell align="right"><strong>${displayRows.reduce((s,r)=>s+r.ram,0).toFixed(3)}</strong></TableCell>
+                      <TableCell align="right"><strong>${displayRows.reduce((s,r)=>s+r.pv,0).toFixed(3)}</strong></TableCell>
+                      <TableCell align="right" />
+                      <TableCell align="right"><strong>${displayTotal.toFixed(3)}</strong></TableCell>
+                    </TableRow>
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
         )}
       </Content>
     </Page>
@@ -1675,6 +1796,201 @@ const copilotNavItem = NavItemBlueprint.make({
   },
 });
 
+// ── DORA Metrics entity tab ────────────────────────────────────────────────────
+// Queries Prometheus for per-service DORA metrics and shows 4 stat cards with
+// SVG sparklines and DORA performance band badges (Elite / High / Medium / Low).
+
+interface DoraMetric { value: number; series: number[] }
+
+function doraBand(metric: string, v: number): { label: string; color: string } {
+  if (metric === 'freq') {
+    if (v >= 1)    return { label: 'Elite',  color: '#1b5e20' };
+    if (v >= 0.14) return { label: 'High',   color: '#388e3c' };
+    if (v >= 0.03) return { label: 'Medium', color: '#f57c00' };
+    return             { label: 'Low',    color: '#c62828' };
+  }
+  if (metric === 'cfr') {
+    if (v <= 5)  return { label: 'Elite',  color: '#1b5e20' };
+    if (v <= 15) return { label: 'High',   color: '#388e3c' };
+    if (v <= 45) return { label: 'Medium', color: '#f57c00' };
+    return           { label: 'Low',    color: '#c62828' };
+  }
+  // lead time + mttr in minutes
+  if (v <= 60)    return { label: 'Elite',  color: '#1b5e20' };
+  if (v <= 1440)  return { label: 'High',   color: '#388e3c' };
+  if (v <= 10080) return { label: 'Medium', color: '#f57c00' };
+  return              { label: 'Low',    color: '#c62828' };
+}
+
+function Sparkline({ series, color }: { series: number[]; color: string }) {
+  if (series.length < 2) return <svg width="80" height="32" />;
+  const max = Math.max(...series, 0.001);
+  const w = 80; const h = 32; const pad = 2;
+  const pts = series.map((v, i) => {
+    const x = pad + (i / (series.length - 1)) * (w - pad * 2);
+    const y = h - pad - (v / max) * (h - pad * 2);
+    return `${x},${y}`;
+  });
+  return (
+    <svg width={w} height={h} style={{ display: 'block' }}>
+      <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      <circle cx={pts[pts.length-1].split(',')[0]} cy={pts[pts.length-1].split(',')[1]} r="3" fill={color} />
+    </svg>
+  );
+}
+
+function DoraMetricCard({ title, value, unit, series, band, metricKey }: {
+  title: string; value: number; unit: string; series: number[]; band: { label: string; color: string }; metricKey: string;
+}) {
+  const displayVal = metricKey === 'freq'
+    ? value < 1 ? `${(value * 7).toFixed(1)}/wk` : `${value.toFixed(1)}/day`
+    : metricKey === 'cfr' ? `${value.toFixed(1)}%`
+    : value < 60 ? `${value.toFixed(0)} min` : `${(value/60).toFixed(1)} hr`;
+
+  return (
+    <Paper style={{ padding: 16, flex: 1, minWidth: 160 }}>
+      <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#666' }}>{title}</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginTop: 4 }}>
+        <Typography variant="h4" style={{ fontWeight: 700 }}>{displayVal}</Typography>
+        <Sparkline series={series} color={band.color} />
+      </Box>
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginTop: 8 }}>
+        <span style={{ background: band.color, color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>{band.label}</span>
+        <Typography variant="caption" color="textSecondary">{unit}</Typography>
+      </Box>
+    </Paper>
+  );
+}
+
+function DoraEntityContent() {
+  const { entity } = useEntity();
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+  const serviceName = entity.metadata.name;
+
+  const [metrics, setMetrics] = useState<Record<string, DoraMetric> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo]   = useState(false);
+
+  useEffect(() => {
+    const promQuery = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN'));
+
+    const promRange = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query_range?query=${encodeURIComponent(expr)}&start=${Math.floor(Date.now()/1000)-604800}&end=${Math.floor(Date.now()/1000)}&step=86400`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => (d?.data?.result?.[0]?.values ?? []).map((v: any[]) => parseFloat(v[1])).filter((v: number) => !isNaN(v)));
+
+    const tryService = async (svc: string) => {
+      const [freq, lead, cfr, mttr, fS, lS, cS, mS] = await Promise.all([
+        promQuery(`max by (service) (dora_deploy_frequency_per_day{service="${svc}"})`),
+        promQuery(`max by (service) (dora_lead_time_minutes{service="${svc}"})`),
+        promQuery(`max by (service) (dora_change_failure_rate_percent{service="${svc}"})`),
+        promQuery(`max by (service) (dora_mttr_minutes{service="${svc}"})`),
+        promRange(`max by (service) (dora_deploy_frequency_per_day{service="${svc}"})`),
+        promRange(`max by (service) (dora_lead_time_minutes{service="${svc}"})`),
+        promRange(`max by (service) (dora_change_failure_rate_percent{service="${svc}"})`),
+        promRange(`max by (service) (dora_mttr_minutes{service="${svc}"})`),
+      ]);
+      return { freq: { value: freq, series: fS }, lead: { value: lead, series: lS }, cfr: { value: cfr, series: cS }, mttr: { value: mttr, series: mS } };
+    };
+
+    const DEMO: Record<string, DoraMetric> = {
+      freq: { value: 3.2,  series: [1.8,2.1,2.4,3.0,3.2,2.9,3.2] },
+      lead: { value: 42,   series: [68,55,50,45,42,39,42] },
+      cfr:  { value: 4.8,  series: [8,6,5.5,5,4.8,5.1,4.8] },
+      mttr: { value: 28,   series: [65,50,40,35,30,28,28] },
+    };
+
+    tryService(serviceName)
+      .then(m => {
+        const hasData = !isNaN(m.freq.value) || !isNaN(m.lead.value);
+        if (!hasData) return tryService('all-services');
+        return m;
+      })
+      .then(m => {
+        const hasData = !isNaN(m.freq.value);
+        if (!hasData) { setMetrics(DEMO); setIsDemo(true); } else { setMetrics(m); }
+        setLoading(false);
+      })
+      .catch(() => { setMetrics(DEMO); setIsDemo(true); setLoading(false); });
+  }, [base, fetchApi, serviceName]);
+
+  const CARDS = [
+    { key: 'freq', title: 'Deploy Frequency', unit: 'deploys/day' },
+    { key: 'lead', title: 'Lead Time',         unit: 'commit → deploy' },
+    { key: 'cfr',  title: 'Change Failure Rate', unit: '% of deploys' },
+    { key: 'mttr', title: 'MTTR',               unit: 'time to restore' },
+  ];
+
+  return (
+    <Content>
+      {loading && <CircularProgress style={{ margin: 24 }} />}
+      {!loading && metrics && (
+        <>
+          {isDemo && (
+            <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+              <Typography variant="body2" style={{ color: '#7c6000' }}>
+                📊 <strong>Demo data</strong> — No DORA metrics found for <strong>{serviceName}</strong> in Prometheus.
+                The DORA exporter CronJob runs every 15 min and requires a <code>GITHUB_TOKEN</code> to fetch deployment data.
+              </Typography>
+            </Paper>
+          )}
+          <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+            {CARDS.map(({ key, title, unit }) => {
+              const m = metrics[key];
+              const v = isNaN(m.value) ? (key === 'cfr' ? 0 : key === 'freq' ? 0.1 : 60) : m.value;
+              const band = doraBand(key, v);
+              return <DoraMetricCard key={key} title={title} value={v} unit={unit} series={m.series.length ? m.series : [v]} band={band} metricKey={key} />;
+            })}
+          </Box>
+          <Paper style={{ padding: 16 }}>
+            <Typography variant="h6" gutterBottom>Performance Bands</Typography>
+            <MuiTable size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Metric</TableCell>
+                  <TableCell><span style={{ background: '#1b5e20', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11 }}>Elite</span></TableCell>
+                  <TableCell><span style={{ background: '#388e3c', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11 }}>High</span></TableCell>
+                  <TableCell><span style={{ background: '#f57c00', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11 }}>Medium</span></TableCell>
+                  <TableCell><span style={{ background: '#c62828', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11 }}>Low</span></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {[
+                  ['Deploy Frequency', '>1/day', '1/week', '1/month', '<1/month'],
+                  ['Lead Time',        '<1 hour', '<1 day', '<1 week', '>1 week'],
+                  ['Change Fail Rate', '0–5%',   '5–15%', '15–45%', '>45%'],
+                  ['MTTR',             '<1 hour', '<1 day', '<1 week', '>1 week'],
+                ].map(([metric, elite, high, med, low]) => (
+                  <TableRow key={metric}>
+                    <TableCell style={{ fontWeight: 600 }}>{metric}</TableCell>
+                    <TableCell>{elite}</TableCell><TableCell>{high}</TableCell>
+                    <TableCell>{med}</TableCell><TableCell>{low}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </MuiTable>
+          </Paper>
+        </>
+      )}
+    </Content>
+  );
+}
+
+const doraEntityContent = EntityContentBlueprint.make({
+  name: 'dora-metrics',
+  params: {
+    path: '/dora',
+    title: 'DORA',
+    filter: 'kind:component',
+    loader: async () => <DoraEntityContent />,
+  },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
@@ -1688,6 +2004,7 @@ export const customPagesPlugin = createFrontendPlugin({
     aiAssistantNavItem,
     semanticSearchPage,
     semanticSearchNavItem,
+    doraEntityContent,
     scorecardEntityContent,
     securityEntityContent,
     pagerDutyEntityContent,

@@ -68,6 +68,10 @@ proxy:
       target: http://opencost.idp.local
       allowedMethods: ['GET']
       changeOrigin: true
+    /prometheus:
+      target: http://prometheus.idp.local
+      allowedMethods: ['GET']
+      changeOrigin: true
     /grafana/api:
       target: http://grafana.idp.local
       allowedMethods: ['GET']
