@@ -1862,16 +1862,25 @@ function DoraMetricCard({ title, value, unit, series, band, metricKey }: {
   );
 }
 
+// dataSource tracks where metrics came from so the UI can be honest about it.
+// 'service' = per-entity Prometheus data (best)
+// 'aggregate' = all-services Prometheus aggregate (real but platform-wide)
+// 'demo' = generated placeholder (Prometheus unreachable or no data at all)
+type DoraDataSource = 'service' | 'aggregate' | 'demo';
+
 function DoraEntityContent() {
   const { entity } = useEntity();
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const base = configApi.getString('backend.baseUrl');
   const serviceName = entity.metadata.name;
+  // Also try the repo name from github.com/project-slug annotation
+  const projectSlug = entity.metadata.annotations?.['github.com/project-slug'] ?? '';
+  const repoName = projectSlug.split('/').pop() ?? '';
 
-  const [metrics, setMetrics] = useState<Record<string, DoraMetric> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo]   = useState(false);
+  const [metrics, setMetrics]   = useState<Record<string, DoraMetric> | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [dataSource, setSource] = useState<DoraDataSource>('demo');
 
   useEffect(() => {
     const promQuery = (expr: string) =>
@@ -1884,7 +1893,7 @@ function DoraEntityContent() {
         .then(r => r.ok ? r.json() : Promise.reject(r.status))
         .then(d => (d?.data?.result?.[0]?.values ?? []).map((v: any[]) => parseFloat(v[1])).filter((v: number) => !isNaN(v)));
 
-    const tryService = async (svc: string) => {
+    const fetchForService = async (svc: string) => {
       const [freq, lead, cfr, mttr, fS, lS, cS, mS] = await Promise.all([
         promQuery(`max by (service) (dora_deploy_frequency_per_day{service="${svc}"})`),
         promQuery(`max by (service) (dora_lead_time_minutes{service="${svc}"})`),
@@ -1898,6 +1907,8 @@ function DoraEntityContent() {
       return { freq: { value: freq, series: fS }, lead: { value: lead, series: lS }, cfr: { value: cfr, series: cS }, mttr: { value: mttr, series: mS } };
     };
 
+    const hasData = (m: Record<string, DoraMetric>) => !isNaN(m.freq.value) && m.freq.value > 0;
+
     const DEMO: Record<string, DoraMetric> = {
       freq: { value: 3.2,  series: [1.8,2.1,2.4,3.0,3.2,2.9,3.2] },
       lead: { value: 42,   series: [68,55,50,45,42,39,42] },
@@ -1905,19 +1916,25 @@ function DoraEntityContent() {
       mttr: { value: 28,   series: [65,50,40,35,30,28,28] },
     };
 
-    tryService(serviceName)
-      .then(m => {
-        const hasData = !isNaN(m.freq.value) || !isNaN(m.lead.value);
-        if (!hasData) return tryService('all-services');
-        return m;
-      })
-      .then(m => {
-        const hasData = !isNaN(m.freq.value);
-        if (!hasData) { setMetrics(DEMO); setIsDemo(true); } else { setMetrics(m); }
-        setLoading(false);
-      })
-      .catch(() => { setMetrics(DEMO); setIsDemo(true); setLoading(false); });
-  }, [base, fetchApi, serviceName]);
+    const candidates = [serviceName, repoName].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+
+    (async () => {
+      // 1. Try each candidate name that might match a Prometheus service label
+      for (const name of candidates) {
+        try {
+          const m = await fetchForService(name);
+          if (hasData(m)) { setMetrics(m); setSource('service'); setLoading(false); return; }
+        } catch { /* try next */ }
+      }
+      // 2. Fall back to platform aggregate (real data, but org-wide not per-service)
+      try {
+        const agg = await fetchForService('all-services');
+        if (hasData(agg)) { setMetrics(agg); setSource('aggregate'); setLoading(false); return; }
+      } catch { /* fall through */ }
+      // 3. No Prometheus data — show demo
+      setMetrics(DEMO); setSource('demo'); setLoading(false);
+    })();
+  }, [base, fetchApi, serviceName, repoName]);
 
   const CARDS = [
     { key: 'freq', title: 'Deploy Frequency', unit: 'deploys/day' },
@@ -1926,19 +1943,26 @@ function DoraEntityContent() {
     { key: 'mttr', title: 'MTTR',               unit: 'time to restore' },
   ];
 
+  const bannerProps: Record<DoraDataSource, { bg: string; border: string; text: string; color: string }> = {
+    service: { bg: '#e8f5e9', border: '#a5d6a7', color: '#1b5e20',
+      text: `✅ Live per-service data for "${serviceName}" from Prometheus.` },
+    aggregate: { bg: '#e3f2fd', border: '#90caf9', color: '#0d47a1',
+      text: `ℹ️ Showing platform aggregate (all repos) — no per-service entry found for "${serviceName}" in Prometheus. The DORA exporter tracks GitHub repos by their repository name. If this service lives in a separate GitHub repo, it will appear here automatically once the exporter runs.` },
+    demo: { bg: '#fff8e1', border: '#ffe082', color: '#7c6000',
+      text: `📊 Demo data — Prometheus is unreachable or the DORA exporter hasn't run yet. Start the cluster and ensure GITHUB_TOKEN is set in local/.env.` },
+  };
+
   return (
     <Content>
       {loading && <CircularProgress style={{ margin: 24 }} />}
       {!loading && metrics && (
         <>
-          {isDemo && (
-            <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
-              <Typography variant="body2" style={{ color: '#7c6000' }}>
-                📊 <strong>Demo data</strong> — No DORA metrics found for <strong>{serviceName}</strong> in Prometheus.
-                The DORA exporter CronJob runs every 15 min and requires a <code>GITHUB_TOKEN</code> to fetch deployment data.
-              </Typography>
+          {/* Always show the data source banner */}
+          {(() => { const b = bannerProps[dataSource]; return (
+            <Paper style={{ padding: '8px 16px', marginBottom: 16, background: b.bg, border: `1px solid ${b.border}` }}>
+              <Typography variant="body2" style={{ color: b.color }}>{b.text}</Typography>
             </Paper>
-          )}
+          ); })()}
           <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
             {CARDS.map(({ key, title, unit }) => {
               const m = metrics[key];
