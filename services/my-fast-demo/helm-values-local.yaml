@@ -57,5 +57,18 @@ securityContext:
   capabilities:
     drop: ["ALL"]
 
+# nginx-unprivileged writes cache/run files — mount writable emptyDirs
+extraVolumeMounts:
+  - name: nginx-cache
+    mountPath: /var/cache/nginx
+  - name: nginx-run
+    mountPath: /var/run
+
+extraVolumes:
+  - name: nginx-cache
+    emptyDir: {}
+  - name: nginx-run
+    emptyDir: {}
+
 labels:
   backstage.io/kubernetes-id: my-fast-demo
