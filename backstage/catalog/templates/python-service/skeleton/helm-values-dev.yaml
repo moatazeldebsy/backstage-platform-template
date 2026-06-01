@@ -31,7 +31,7 @@ resources:
     memory: 64Mi
 
 podLabels:
-  team: ${{ values.owner }}
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"
   cost-center: ${{ values.costCenter }}
   environment: dev
 

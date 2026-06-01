@@ -33,7 +33,7 @@ podAnnotations:
   prometheus.io/path: "/metrics"
 
 podLabels:
-  team: ${{ values.owner }}
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"
   cost-center: ${{ values.costCenter }}
   environment: local
 
