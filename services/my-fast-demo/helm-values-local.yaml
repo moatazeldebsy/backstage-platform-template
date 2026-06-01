@@ -7,7 +7,7 @@ image:
 
 service:
   port: 80
-  targetPort: 8002
+  targetPort: 8080
 
 ingress:
   enabled: true
@@ -32,7 +32,7 @@ resources:
 
 podAnnotations:
   prometheus.io/scrape: "true"
-  prometheus.io/port: "8002"
+  prometheus.io/port: "8080"
   prometheus.io/path: "/metrics"
 
 podLabels:
