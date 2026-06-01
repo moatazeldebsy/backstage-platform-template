@@ -1814,12 +1814,12 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
 docker<span class="w"> </span>ps<span class="w"> </span>--filter<span class="w"> </span><span class="s2">&quot;name=backstage&quot;</span><span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;{{.Names}} {{.Status}}&quot;</span>
 
 <span class="c1"># 5. Placeholders resolved?</span>
-grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;YOUR_GITHUB_ORG&quot;</span><span class="w"> </span>backstage/catalog/<span class="w"> </span>local/argocd/<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PLACEHOLDERS NOT REPLACED&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Placeholders OK&quot;</span>
+grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;moatazeldebsy&quot;</span><span class="w"> </span>backstage/catalog/<span class="w"> </span>local/argocd/<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PLACEHOLDERS NOT REPLACED&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Placeholders OK&quot;</span>
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="phase-0-personalisation-setupsh">Phase 0 — Personalisation (<code>setup.sh</code>)<a class="headerlink" href="#phase-0-personalisation-setupsh" title="Permanent link">&para;</a></h2>
 <h3 id="symptom-argocd-shows-no-applications">Symptom: ArgoCD shows no applications<a class="headerlink" href="#symptom-argocd-shows-no-applications" title="Permanent link">&para;</a></h3>
-<p><strong>Cause:</strong> <code>setup.sh</code> was not run (or the <code>xargs</code> path was used on an older checkout), so <code>local/argocd/app-of-apps-local.yaml</code> still contains the <code>YOUR_GITHUB_ORG</code> placeholder. ArgoCD's git generator finds no matching directories and creates no apps.</p>
+<p><strong>Cause:</strong> <code>setup.sh</code> was not run (or the <code>xargs</code> path was used on an older checkout), so <code>local/argocd/app-of-apps-local.yaml</code> still contains the <code>moatazeldebsy</code> placeholder. ArgoCD's git generator finds no matching directories and creates no apps.</p>
 <p><strong>Fix:</strong></p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -1829,7 +1829,7 @@ grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;YOU
 <span class="normal">6</span>
 <span class="normal">7</span>
 <span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Verify the placeholder is still in the file</span>
-grep<span class="w"> </span><span class="s2">&quot;YOUR_GITHUB_ORG&quot;</span><span class="w"> </span>local/argocd/app-of-apps-local.yaml
+grep<span class="w"> </span><span class="s2">&quot;moatazeldebsy&quot;</span><span class="w"> </span>local/argocd/app-of-apps-local.yaml
 
 <span class="c1"># If it is, run setup.sh to resolve all placeholders</span>
 ./scripts/setup.sh
@@ -1847,7 +1847,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <span class="normal">5</span>
 <span class="normal">6</span>
 <span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check which files still have the old placeholder</span>
-grep<span class="w"> </span>-rl<span class="w"> </span><span class="s2">&quot;moatazeldebsy\|YOUR_GITHUB_ORG&quot;</span><span class="w"> </span><span class="se">\</span>
+grep<span class="w"> </span>-rl<span class="w"> </span><span class="s2">&quot;moatazeldebsy\|moatazeldebsy&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>backstage/catalog/<span class="w"> </span>backstage/app-config*.yaml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>local/<span class="w"> </span>kubernetes/<span class="w"> </span>.github/workflows/<span class="w"> </span><span class="m">2</span>&gt;/dev/null
 
@@ -2387,9 +2387,9 @@ kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>-n<span class="w"> </span>argocd
 kubectl<span class="w"> </span>describe<span class="w"> </span>applicationset<span class="w"> </span>idp-services<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Status:&quot;</span>
 </code></pre></div></td></tr></table></div>
-<p>Most common cause: <code>aws/argocd/app-of-apps.yaml</code> still has a <code>YOUR_GITHUB_ORG</code> placeholder (setup.sh was not run). Fix:</p>
+<p>Most common cause: <code>aws/argocd/app-of-apps.yaml</code> still has a <code>moatazeldebsy</code> placeholder (setup.sh was not run). Fix:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;YOUR_GITHUB_ORG&quot;</span><span class="w"> </span>aws/argocd/app-of-apps.yaml
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span><span class="s2">&quot;moatazeldebsy&quot;</span><span class="w"> </span>aws/argocd/app-of-apps.yaml
 ./scripts/setup.sh<span class="w">   </span><span class="c1"># then re-commit and let ArgoCD sync</span>
 </code></pre></div></td></tr></table></div>
 <h4 id="symptom-argocd-github-credentials-expired-all-apps-show-comparisonerror">Symptom: ArgoCD GitHub credentials expired — all apps show <code>ComparisonError</code><a class="headerlink" href="#symptom-argocd-github-credentials-expired-all-apps-show-comparisonerror" title="Permanent link">&para;</a></h4>
@@ -2467,7 +2467,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
    <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>&lt;service-name&gt;
 </code></pre></div></td></tr></table></div></li>
 <li>Force a catalog refresh in Backstage: Settings → Refresh entity.</li>
-<li>If the service repo's <code>catalog-info.yaml</code> has a <code>YOUR_GITHUB_ORG</code> placeholder (old template version), re-run <code>setup.sh</code> and re-scaffold.</li>
+<li>If the service repo's <code>catalog-info.yaml</code> has a <code>moatazeldebsy</code> placeholder (old template version), re-run <code>setup.sh</code> and re-scaffold.</li>
 </ol>
 <h3 id="symptom-helm-upgrade-fails-release-already-exists-or-crd-conflict">Symptom: <code>helm upgrade</code> fails — "release: already exists" or CRD conflict<a class="headerlink" href="#symptom-helm-upgrade-fails-release-already-exists-or-crd-conflict" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
