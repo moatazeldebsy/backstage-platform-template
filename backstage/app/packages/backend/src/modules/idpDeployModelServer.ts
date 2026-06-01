@@ -186,6 +186,27 @@ spec:
     app.kubernetes.io/name: ${name}
 
 ---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${name}
+  namespace: ml-platform
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ${name}
+  endpoints:
+    - port: api
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - ml-platform
+
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -319,6 +340,27 @@ spec:
   selector:
     app.kubernetes.io/name: ${name}
     app.kubernetes.io/instance: vllm
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${name}
+  namespace: ml-platform
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ${name}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - ml-platform
 
 ---
 apiVersion: autoscaling/v2
