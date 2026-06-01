@@ -6,6 +6,10 @@ metadata:
   annotations:
     github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
     backstage.io/techdocs-ref: dir:.
+    grafana/alert-label-selector: "service=${{ values.name }}"
+    pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
+    idp.io/quality-gates: "coverage"
+    jira/project-key: "${{ values.jiraProjectKey }}"
   tags:
     - zap
     - dast

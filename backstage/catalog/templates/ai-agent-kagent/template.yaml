@@ -106,6 +106,7 @@ spec:
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           model: ${{ parameters.model }}
           modelProvider: ${{ parameters.modelProvider }}
           enableCatalogSearch: ${{ parameters.enableCatalogSearch }}

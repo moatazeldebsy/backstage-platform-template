@@ -15,12 +15,19 @@ metadata:
     - title: API Documentation
       url: https://github.com/${{ values.owner }}/${{ values.repoName }}#readme
   annotations:
+    github.com/project-slug: ${{ values.owner }}/${{ values.repoName }}
     backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-id: ${{ values.name }}
-    idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
+    backstage.io/kubernetes-namespace: ml-platform
+    grafana/alert-label-selector: "service=${{ values.name }}"
+    idp.io/quality-gates: "coverage,static-analysis,vuln-scan,llm-eval"
     idp.io/model-name: ${{ values.modelName }}
     idp.io/deployment-target: ${{ values.target }}
+    sonarcloud.io/project-key: "${{ values.owner }}_${{ values.repoName }}"
+    sonarcloud.io/organization: "${{ values.owner }}"
+    snyk.io/org-slug: "${{ values.owner }}"
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
+    jira/project-key: "${{ values.jiraProjectKey }}"
 
 spec:
   type: service

@@ -8,6 +8,11 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     backstage.io/adr-location: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/tree/main/docs/adr
     backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbooks/service.md
+    idp.io/quality-gates: "static-analysis,vuln-scan"
+    sonarcloud.io/project-key: "${{ values.githubOrg }}_${{ values.repoName }}"
+    sonarcloud.io/organization: "${{ values.githubOrg }}"
+    snyk.io/org-slug: "${{ values.githubOrg }}"
+    jira/project-key: "${{ values.jiraProjectKey }}"
 spec:
   type: infrastructure
   lifecycle: development

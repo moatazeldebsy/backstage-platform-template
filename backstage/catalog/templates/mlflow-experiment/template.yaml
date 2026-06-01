@@ -93,6 +93,7 @@ spec:
           experimentName: ${{ parameters.experimentName }}
           owner: ${{ parameters.owner }}
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           framework: ${{ parameters.framework }}
           pythonVersion: ${{ parameters.pythonVersion }}
           registerModel: ${{ parameters.registerModel }}

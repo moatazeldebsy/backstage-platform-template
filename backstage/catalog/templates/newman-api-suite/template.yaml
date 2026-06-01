@@ -116,6 +116,20 @@ spec:
             - junit
           ui:widget: checkboxes
 
+
+    - title: Integrations
+      properties:
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. PagerDuty service ID for on-call alerts."
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Jira project key (e.g. QA, ENG). Enables the Jira tab."
+          ui:help: "Leave blank if not using Jira."
+
   steps:
     - id: fetch-template-new-repo
       name: Fetch Template (New Repo)
@@ -127,6 +141,8 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           baseUrl: ${{ parameters.baseUrl }}
           reporters: ${{ parameters.reporters }}
@@ -143,6 +159,8 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           baseUrl: ${{ parameters.baseUrl }}
           reporters: ${{ parameters.reporters }}

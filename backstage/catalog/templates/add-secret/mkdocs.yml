@@ -1,6 +1,7 @@
 site_name: Add Secret to a Service
 site_description: >-
-  Provision a secret in AWS Secrets Manager and wire it into your service via External Secrets Operator
+  Provision a secret in AWS Secrets Manager and wire it into your service via
+  External Secrets Operator
 docs_dir: docs
 nav:
   - Overview: index.md

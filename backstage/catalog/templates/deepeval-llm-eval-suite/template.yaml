@@ -120,6 +120,20 @@ spec:
             - 'Claude Sonnet 4.6 (more accurate)'
           default: claude-haiku-4-5-20251001
 
+
+    - title: Integrations
+      properties:
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. PagerDuty service ID for on-call alerts."
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Jira project key (e.g. QA, ENG). Enables the Jira tab."
+          ui:help: "Leave blank if not using Jira."
+
   steps:
     - id: fetch-template-new-repo
       name: Fetch Template (New Repo)
@@ -131,6 +145,8 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetAgent: ${{ parameters.targetAgent }}
           agentSystemPrompt: ${{ parameters.agentSystemPrompt }}
           agentTools: ${{ parameters.agentTools }}
@@ -149,6 +165,8 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetAgent: ${{ parameters.targetAgent }}
           agentSystemPrompt: ${{ parameters.agentSystemPrompt }}
           agentTools: ${{ parameters.agentTools }}

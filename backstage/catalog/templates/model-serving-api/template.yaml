@@ -93,6 +93,7 @@ spec:
           owner: ${{ parameters.owner }}
           target: ${{ parameters.target }}
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
 
     - id: publish

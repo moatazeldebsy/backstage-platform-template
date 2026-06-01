@@ -113,6 +113,20 @@ spec:
           description: 'Appium server endpoint (e.g. http://localhost:4723 for local, or your AWS Device Farm / remote grid URL for cloud)'
           default: ''
 
+
+    - title: Integrations
+      properties:
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. PagerDuty service ID for on-call alerts."
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Jira project key (e.g. QA, ENG). Enables the Jira tab."
+          ui:help: "Leave blank if not using Jira."
+
   steps:
     - id: fetch-template-new-repo
       name: Fetch Template (New Repo)
@@ -124,6 +138,8 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           platform: ${{ parameters.platform }}
           appiumServer: ${{ parameters.appiumServer }}
@@ -140,6 +156,8 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           platform: ${{ parameters.platform }}
           appiumServer: ${{ parameters.appiumServer }}

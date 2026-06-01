@@ -65,6 +65,15 @@ spec:
             allowedOwners:
               - moatazeldebsy
 
+
+    - title: Integrations
+      properties:
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Jira project key (e.g. PLAT, ENG). Enables the Jira tab."
+          ui:help: "Leave blank if not using Jira."
+
   steps:
     - id: fetch-template
       name: Fetch Template
@@ -75,6 +84,7 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
           provider: ${{ parameters.provider }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}

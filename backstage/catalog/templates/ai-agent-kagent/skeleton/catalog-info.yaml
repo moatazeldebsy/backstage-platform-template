@@ -8,9 +8,17 @@ metadata:
     - agent
     - kagent
   annotations:
-    backstage.io/kubernetes-id: ${{ values.name }}
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
     backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/kubernetes-namespace: kagent
+    grafana/alert-label-selector: "service=${{ values.name }}"
+    idp.io/quality-gates: "coverage,static-analysis,vuln-scan"
+    sonarcloud.io/project-key: "${{ values.githubOrg }}_${{ values.repoName }}"
+    sonarcloud.io/organization: "${{ values.githubOrg }}"
+    snyk.io/org-slug: "${{ values.githubOrg }}"
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
+    jira/project-key: "${{ values.jiraProjectKey }}"
   links:
     - url: http://kagent.idp.local
       title: KAgent UI
