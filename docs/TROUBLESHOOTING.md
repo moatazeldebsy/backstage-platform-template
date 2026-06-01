@@ -24,7 +24,7 @@ kubectl get pods -A --no-headers | grep -vE "Running|Completed" | grep -v "0/0"
 docker ps --filter "name=backstage" --format "{{.Names}} {{.Status}}"
 
 # 5. Placeholders resolved?
-grep -r "YOUR_GITHUB_ORG" backstage/catalog/ local/argocd/ 2>/dev/null && echo "PLACEHOLDERS NOT REPLACED" || echo "Placeholders OK"
+grep -r "moatazeldebsy" backstage/catalog/ local/argocd/ 2>/dev/null && echo "PLACEHOLDERS NOT REPLACED" || echo "Placeholders OK"
 ```
 
 ---
@@ -33,13 +33,13 @@ grep -r "YOUR_GITHUB_ORG" backstage/catalog/ local/argocd/ 2>/dev/null && echo "
 
 ### Symptom: ArgoCD shows no applications
 
-**Cause:** `setup.sh` was not run (or the `xargs` path was used on an older checkout), so `local/argocd/app-of-apps-local.yaml` still contains the `YOUR_GITHUB_ORG` placeholder. ArgoCD's git generator finds no matching directories and creates no apps.
+**Cause:** `setup.sh` was not run (or the `xargs` path was used on an older checkout), so `local/argocd/app-of-apps-local.yaml` still contains the `moatazeldebsy` placeholder. ArgoCD's git generator finds no matching directories and creates no apps.
 
 **Fix:**
 
 ```bash
 # Verify the placeholder is still in the file
-grep "YOUR_GITHUB_ORG" local/argocd/app-of-apps-local.yaml
+grep "moatazeldebsy" local/argocd/app-of-apps-local.yaml
 
 # If it is, run setup.sh to resolve all placeholders
 ./scripts/setup.sh
@@ -56,7 +56,7 @@ kubectl rollout restart deployment/argocd-application-controller -n argocd
 
 ```bash
 # Check which files still have the old placeholder
-grep -rl "moatazeldebsy\|YOUR_GITHUB_ORG" \
+grep -rl "moatazeldebsy\|moatazeldebsy" \
   backstage/catalog/ backstage/app-config*.yaml \
   local/ kubernetes/ .github/workflows/ 2>/dev/null
 
@@ -595,10 +595,10 @@ kubectl get applicationset -n argocd
 kubectl describe applicationset idp-services -n argocd | grep -A10 "Status:"
 ```
 
-Most common cause: `aws/argocd/app-of-apps.yaml` still has a `YOUR_GITHUB_ORG` placeholder (setup.sh was not run). Fix:
+Most common cause: `aws/argocd/app-of-apps.yaml` still has a `moatazeldebsy` placeholder (setup.sh was not run). Fix:
 
 ```bash
-grep "YOUR_GITHUB_ORG" aws/argocd/app-of-apps.yaml
+grep "moatazeldebsy" aws/argocd/app-of-apps.yaml
 ./scripts/setup.sh   # then re-commit and let ArgoCD sync
 ```
 
@@ -677,7 +677,7 @@ When Docker Desktop restarts, the Backstage container gets a new IP. The nginx i
    kubectl get applications -n argocd | grep <service-name>
    ```
 3. Force a catalog refresh in Backstage: Settings → Refresh entity.
-4. If the service repo's `catalog-info.yaml` has a `YOUR_GITHUB_ORG` placeholder (old template version), re-run `setup.sh` and re-scaffold.
+4. If the service repo's `catalog-info.yaml` has a `moatazeldebsy` placeholder (old template version), re-run `setup.sh` and re-scaffold.
 
 ### Symptom: `helm upgrade` fails — "release: already exists" or CRD conflict
 
