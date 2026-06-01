@@ -50,5 +50,12 @@ env:
   - name: ENVIRONMENT
     value: local
 
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: false
+  capabilities:
+    drop: []
+
 labels:
   backstage.io/kubernetes-id: my-fast-demo
