@@ -52,10 +52,10 @@ env:
 
 securityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
-  runAsNonRoot: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
   capabilities:
-    drop: []
+    drop: ["ALL"]
 
 labels:
   backstage.io/kubernetes-id: my-fast-demo
