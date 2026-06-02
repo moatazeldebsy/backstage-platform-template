@@ -1,0 +1,137 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mobile-device-farm
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Mobile Device Farm (Firebase Test Lab)
+  description: Add Firebase Test Lab device-farm testing to an existing mobile app — runs Espresso, XCUITest, or Flutter integration tests across a configurable device matrix
+  tags:
+    - testing
+    - devicefarm
+    - firebase
+    - mobile
+    - e2e
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Target Service
+      required:
+        - targetService
+      properties:
+        targetService:
+          title: Mobile App
+          type: string
+          description: The mobile app component to add device-farm testing to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: mobile
+
+    - title: Test Configuration
+      required:
+        - platform
+        - testFramework
+        - deviceCoverage
+        - firebaseProjectId
+      properties:
+        platform:
+          title: Platform
+          type: string
+          enum:
+            - android
+            - ios
+            - flutter
+          enumNames:
+            - Android
+            - iOS
+            - Flutter
+          default: android
+        testFramework:
+          title: Test Framework
+          type: string
+          enum:
+            - espresso
+            - robolectric
+            - xcuitest
+            - integration_test
+          enumNames:
+            - Espresso (Android instrumented)
+            - Robolectric (Android unit)
+            - XCUITest (iOS UI)
+            - integration_test (Flutter)
+          default: espresso
+          ui:help: "Espresso/Robolectric for Android, XCUITest for iOS, integration_test for Flutter"
+        deviceCoverage:
+          title: Device Coverage
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+          enumNames:
+            - Low — 1 device (fast, ~5 min)
+            - Medium — 3 devices (~15 min)
+            - High — 5 devices including tablet (~30 min)
+          default: medium
+        firebaseProjectId:
+          title: Firebase Project ID
+          type: string
+          description: "Google Cloud / Firebase project ID where Test Lab is enabled"
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Target Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "The existing mobile app repository to add device-farm tests to."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Device Farm Files
+      action: fetch:template
+      input:
+        url: ./skeleton-addon
+        values:
+          targetService: ${{ parameters.targetService }}
+          platform: ${{ parameters.platform }}
+          testFramework: ${{ parameters.testFramework }}
+          deviceCoverage: ${{ parameters.deviceCoverage }}
+          firebaseProjectId: ${{ parameters.firebaseProjectId }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: open-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat: add Firebase Test Lab device-farm (${{ parameters.platform }}, ${{ parameters.deviceCoverage }} coverage)"
+        branchName: feat/device-farm-${{ parameters.platform }}-${{ parameters.deviceCoverage }}
+        description: |
+          Adds Firebase Test Lab device-farm testing for **${{ parameters.platform }}** using **${{ parameters.testFramework }}** across a **${{ parameters.deviceCoverage }}** device matrix.
+
+          ### What's included
+          - GitHub Actions workflow: `.github/workflows/device-farm.yml`
+          - Device matrices: `device-matrix/low.yml`, `medium.yml`, `high.yml`
+
+          ### Next steps
+          1. Enable Firebase Test Lab in project `${{ parameters.firebaseProjectId }}`.
+          2. Set the `GCP_SERVICE_ACCOUNT_KEY` GitHub secret.
+          3. Merge this PR — tests will run on the next push/PR.
+
+  output:
+    links:
+      - title: Open Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

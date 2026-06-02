@@ -1,0 +1,135 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mobile-code-signing
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Mobile Code Signing Setup
+  description: Add automated code signing for iOS (Fastlane Match via S3) or Android (keystore via AWS Secrets Manager) to an existing mobile app repository
+  tags:
+    - codesigning
+    - ios
+    - android
+    - mobile
+    - security
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Target Service
+      required:
+        - targetService
+      properties:
+        targetService:
+          title: Mobile App
+          type: string
+          description: The mobile app component to add code signing to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: mobile
+
+    - title: Code Signing Configuration
+      required:
+        - platform
+        - environment
+      properties:
+        platform:
+          title: Platform
+          type: string
+          enum:
+            - ios
+            - android
+            - both
+          enumNames:
+            - iOS (Fastlane Match)
+            - Android (Keystore via AWS Secrets Manager)
+            - Both
+          default: ios
+        bundleId:
+          title: iOS Bundle ID
+          type: string
+          description: "Required for iOS. Reverse-domain bundle ID (e.g. com.mycompany.myapp)"
+          ui:help: "Required when platform is ios or both"
+        packageName:
+          title: Android Package Name
+          type: string
+          description: "Required for Android. Reverse-domain package name (e.g. com.mycompany.myapp)"
+          ui:help: "Required when platform is android or both"
+        environment:
+          title: Environment
+          type: string
+          enum:
+            - development
+            - staging
+            - production
+          enumNames:
+            - Development
+            - Staging
+            - Production
+          default: development
+        codeSignS3Bucket:
+          title: S3 Bucket for Match (iOS)
+          type: string
+          description: "S3 bucket name where Fastlane Match certificates are stored"
+          default: "your-org-code-signing"
+          ui:help: "iOS only. The bucket must exist in your AWS account."
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Target Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "The existing mobile app repository to add code signing to."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Code Signing Files
+      action: fetch:template
+      input:
+        url: ./skeleton-addon
+        values:
+          targetService: ${{ parameters.targetService }}
+          platform: ${{ parameters.platform }}
+          bundleId: ${{ parameters.bundleId }}
+          packageName: ${{ parameters.packageName }}
+          environment: ${{ parameters.environment }}
+          codeSignS3Bucket: ${{ parameters.codeSignS3Bucket }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: open-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat: add ${{ parameters.platform }} code signing (${{ parameters.environment }})"
+        branchName: feat/code-signing-${{ parameters.platform }}-${{ parameters.environment }}
+        description: |
+          Adds automated code signing for **${{ parameters.platform }}** (${{ parameters.environment }} environment).
+
+          ### What's included
+          - GitHub Actions workflow: `.github/workflows/code-signing.yml`
+          ${{ '- fastlane/Matchfile (iOS Fastlane Match via S3)' if parameters.platform !== 'android' else '' }}
+          ${{ '- android/signing.gradle.kts (Android keystore config)' if parameters.platform !== 'ios' else '' }}
+          - Setup guide: `docs/code-signing-setup.md`
+
+          ### Next steps
+          1. Read `docs/code-signing-setup.md` for required AWS Secrets Manager setup.
+          2. Set the required GitHub secrets listed in the guide.
+          3. Merge this PR and trigger the `code-signing` workflow.
+
+  output:
+    links:
+      - title: Open Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

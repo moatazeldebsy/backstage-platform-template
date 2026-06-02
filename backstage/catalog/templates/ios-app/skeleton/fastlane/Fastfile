@@ -1,0 +1,40 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Run Swift tests"
+  lane :test do
+    sh("swift test --parallel")
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    increment_build_number
+    gym(
+      scheme: "${{ values.name }}",
+      export_method: "app-store",
+      clean: true,
+      output_directory: "./build",
+      output_name: "${{ values.name }}.ipa"
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+  end
+
+  desc "Build and upload to App Store"
+  lane :release do
+    gym(
+      scheme: "${{ values.name }}",
+      export_method: "app-store",
+      clean: true,
+      output_directory: "./build",
+      output_name: "${{ values.name }}.ipa"
+    )
+    deliver(
+      submit_for_review: false,
+      force: true,
+      skip_screenshots: true,
+      skip_metadata: true
+    )
+  end
+end

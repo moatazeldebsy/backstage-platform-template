@@ -1,0 +1,131 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mobile-app-store-deploy
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Mobile App Store Deployment
+  description: Add automated Google Play or App Store deployment via Fastlane to an existing mobile app repository
+  tags:
+    - deployment
+    - appstore
+    - googleplay
+    - fastlane
+    - mobile
+    - release
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Target Service
+      required:
+        - targetService
+      properties:
+        targetService:
+          title: Mobile App
+          type: string
+          description: The mobile app component to add store deployment to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: mobile
+
+    - title: Deployment Configuration
+      required:
+        - platform
+        - track
+        - versionName
+        - versionCode
+      properties:
+        platform:
+          title: Target Store
+          type: string
+          enum:
+            - google_play
+            - app_store
+            - both
+          enumNames:
+            - Google Play
+            - App Store
+            - Both
+          default: google_play
+        track:
+          title: Release Track
+          type: string
+          enum:
+            - internal
+            - alpha
+            - beta
+            - production
+          enumNames:
+            - Internal (Google Play) / TestFlight (App Store)
+            - Alpha (Google Play only)
+            - Beta / External TestFlight
+            - Production
+          default: internal
+        versionName:
+          title: Version Name
+          type: string
+          description: "Semantic version string, e.g. 1.2.3"
+          default: "1.0.0"
+        versionCode:
+          title: Version Code / Build Number
+          type: integer
+          description: "Integer build number (monotonically increasing)"
+          default: 1
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Target Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "The existing mobile app repository to add store deployment to."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Store Deployment Files
+      action: fetch:template
+      input:
+        url: ./skeleton-addon
+        values:
+          targetService: ${{ parameters.targetService }}
+          platform: ${{ parameters.platform }}
+          track: ${{ parameters.track }}
+          versionName: ${{ parameters.versionName }}
+          versionCode: ${{ parameters.versionCode }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: open-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        title: "feat: add ${{ parameters.platform }} store deployment (${{ parameters.track }} track)"
+        branchName: feat/store-deploy-${{ parameters.platform }}-${{ parameters.track }}
+        description: |
+          Adds automated store deployment for **${{ parameters.platform }}** to the **${{ parameters.track }}** track.
+
+          ### What's included
+          - GitHub Actions workflow: `.github/workflows/store-deploy.yml`
+          - Fastlane lanes: `fastlane/Fastfile`
+
+          ### Next steps
+          1. Configure the required GitHub secrets (see workflow comments).
+          2. Merge this PR.
+          3. Push to a `release/*` branch or trigger manually to deploy.
+
+  output:
+    links:
+      - title: Open Pull Request
+        url: ${{ steps['open-pr'].output.remoteUrl }}

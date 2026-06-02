@@ -235,6 +235,26 @@ catalog:
       target: /catalog/templates/flutter-integration-test-suite/template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: /catalog/templates/ios-app/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mobile-code-signing/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mobile-app-store-deploy/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mobile-device-farm/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/mobile-sdk/template.yaml
+      rules:
+        - allow: [Template]
     # Crossplane Claim templates are AWS-only (Crossplane runs on EKS, not locally).
     # They are registered in app-config.aws.yaml.
     # Platform entities: users, groups (system moved to root catalog-info.yaml)

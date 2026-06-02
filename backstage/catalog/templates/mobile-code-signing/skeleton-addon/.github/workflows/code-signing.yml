@@ -1,0 +1,83 @@
+name: Code Signing
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform"
+        required: true
+        default: sync
+        type: choice
+        options:
+          - sync
+          - renew
+
+permissions:
+  contents: read
+  id-token: write  # required for AWS OIDC
+
+env:
+  AWS_REGION: ${{ '${{ secrets.AWS_REGION || ' }}"us-east-1"${{ ' }}' }}
+  PLATFORM: "${{ values.platform }}"
+  ENVIRONMENT: "${{ values.environment }}"
+
+jobs:
+{% if values.platform === 'ios' or values.platform === 'both' %}
+  ios-signing:
+    name: iOS Code Signing (Fastlane Match)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          aws-region: ${{ '${{ env.AWS_REGION }}' }}
+
+      - name: Install Fastlane
+        run: gem install fastlane --no-document
+
+      - name: Sync iOS certificates (Fastlane Match)
+        env:
+          MATCH_GIT_URL: ${{ '${{ secrets.MATCH_GIT_URL || ' }}"s3://${{ values.codeSignS3Bucket }}/match"${{ ' }}' }}
+          CODE_SIGN_S3_BUCKET: ${{ '${{ secrets.CODE_SIGN_S3_BUCKET || ' }}"${{ values.codeSignS3Bucket }}"${{ ' }}' }}
+          APPLE_ID: ${{ '${{ secrets.APPLE_ID }}' }}
+          MATCH_PASSWORD: ${{ '${{ secrets.MATCH_PASSWORD }}' }}
+        run: fastlane match ${{ values.environment }} --readonly
+
+{% endif %}
+{% if values.platform === 'android' or values.platform === 'both' %}
+  android-signing:
+    name: Android Code Signing (AWS Secrets Manager)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          aws-region: ${{ '${{ env.AWS_REGION }}' }}
+
+      - name: Download keystore from AWS Secrets Manager
+        run: |
+          SECRET_VALUE=$(aws secretsmanager get-secret-value \
+            --secret-id "mobile/${{ values.packageName | default('android') }}/${{ values.environment }}/keystore" \
+            --query 'SecretString' \
+            --output text)
+          echo "$SECRET_VALUE" | base64 --decode > android/app/release.keystore
+          echo "Keystore downloaded successfully"
+
+      - name: Verify keystore
+        run: |
+          keytool -list -v \
+            -keystore android/app/release.keystore \
+            -storepass "${{ '${{ secrets.KEYSTORE_STORE_PASSWORD }}' }}" \
+            2>/dev/null | grep "Alias name:"
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f android/app/release.keystore
+
+{% endif %}

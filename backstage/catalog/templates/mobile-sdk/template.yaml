@@ -1,0 +1,118 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mobile-sdk
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Shared Mobile SDK Library
+  description: Scaffold a shared mobile SDK library for Android (Kotlin), iOS (Swift Package), Flutter, or Kotlin Multiplatform — with GitHub Packages publishing built in
+  tags:
+    - sdk
+    - library
+    - mobile
+    - kotlin
+    - swift
+    - flutter
+spec:
+  owner: platform-team
+  type: library
+
+  parameters:
+    - title: SDK Details
+      required:
+        - name
+        - description
+        - owner
+        - platform
+      properties:
+        name:
+          title: SDK Name
+          type: string
+          description: Unique SDK name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this SDK
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        platform:
+          title: Platform
+          type: string
+          enum:
+            - android
+            - ios
+            - flutter
+            - multiplatform
+          enumNames:
+            - Android (Kotlin JVM library)
+            - iOS (Swift Package)
+            - Flutter (Dart package)
+            - Kotlin Multiplatform (Android + iOS)
+          default: android
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch SDK Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          platform: ${{ parameters.platform }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - sdk
+          - library
+          - mobile
+          - ${{ parameters.platform }}
+          - idp-library
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

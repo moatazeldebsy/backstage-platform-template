@@ -1,0 +1,7 @@
+git_url(ENV.fetch("MATCH_GIT_URL", "s3://#{ENV['CODE_SIGN_S3_BUCKET']}/match"))
+storage_mode("s3")
+s3_bucket(ENV["CODE_SIGN_S3_BUCKET"])
+s3_region(ENV.fetch("AWS_REGION", "us-east-1"))
+type("${{ values.environment }}")
+app_identifier(["${{ values.bundleId }}"])
+username(ENV["APPLE_ID"])

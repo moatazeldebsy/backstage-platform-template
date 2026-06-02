@@ -1,0 +1,266 @@
+name: Device Farm (Firebase Test Lab)
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+  pull-requests: write  # post summary comment
+
+env:
+  FIREBASE_PROJECT: "${{ values.firebaseProjectId }}"
+  PLATFORM: "${{ values.platform }}"
+  TEST_FRAMEWORK: "${{ values.testFramework }}"
+  DEVICE_COVERAGE: "${{ values.deviceCoverage }}"
+
+{% if values.platform === 'android' %}
+jobs:
+  device-farm-android:
+    name: Firebase Test Lab — Android (${{ values.testFramework }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build test APK
+        run: |
+          cd android
+          ./gradlew assembleDebug assembleDebugAndroidTest
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ '${{ env.FIREBASE_PROJECT }}' }}
+
+      - name: Run tests on Firebase Test Lab
+        run: |
+          gcloud firebase test android run \
+            --type instrumentation \
+            --app android/app/build/outputs/apk/debug/app-debug.apk \
+            --test android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --device-spec device-matrix/${{ values.deviceCoverage }}.yml \
+            --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
+            --results-dir "${{ '${{ github.run_id }}' }}" \
+            --timeout 10m \
+            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> $GITHUB_ENV
+
+      - name: Upload results to GCS
+        if: always()
+        run: |
+          gcloud storage cp ftl-results.json \
+            gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results/${{ '${{ github.run_id }}' }}/summary.json || true
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '### Firebase Test Lab Results\n\n';
+            body += `**Platform**: Android | **Framework**: ${{ values.testFramework }} | **Coverage**: ${{ values.deviceCoverage }}\n\n`;
+            const failed = process.env.FTL_FAILED === 'true';
+            body += failed ? '**Status**: FAILED\n' : '**Status**: PASSED\n';
+            body += `\n[View full results](https://console.firebase.google.com/project/${{ values.firebaseProjectId }}/testlab)\n`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ftl-results-android
+          path: ftl-results.json
+          retention-days: 14
+
+      - name: Fail if tests failed
+        if: env.FTL_FAILED == 'true'
+        run: exit 1
+
+{% elif values.platform === 'ios' %}
+jobs:
+  device-farm-ios:
+    name: Firebase Test Lab — iOS (XCUITest)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 15
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Build XCTest zip
+        run: |
+          xcodebuild build-for-testing \
+            -scheme "${{ values.repoName }}" \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+          zip -r XCTests.zip DerivedData/Build/Products/Debug-iphoneos/
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ '${{ env.FIREBASE_PROJECT }}' }}
+
+      - name: Run tests on Firebase Test Lab
+        run: |
+          gcloud firebase test ios run \
+            --test XCTests.zip \
+            --device-spec device-matrix/${{ values.deviceCoverage }}.yml \
+            --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
+            --results-dir "${{ '${{ github.run_id }}' }}" \
+            --timeout 10m \
+            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> $GITHUB_ENV
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### Firebase Test Lab Results',
+              '',
+              `**Platform**: iOS | **Framework**: XCUITest | **Coverage**: ${{ values.deviceCoverage }}`,
+              '',
+              process.env.FTL_FAILED === 'true' ? '**Status**: FAILED' : '**Status**: PASSED',
+              '',
+              `[View full results](https://console.firebase.google.com/project/${{ values.firebaseProjectId }}/testlab)`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ftl-results-ios
+          path: ftl-results.json
+          retention-days: 14
+
+      - name: Fail if tests failed
+        if: env.FTL_FAILED == 'true'
+        run: exit 1
+
+{% elif values.platform === 'flutter' %}
+jobs:
+  device-farm-flutter:
+    name: Firebase Test Lab — Flutter (integration_test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build test APK
+        run: |
+          pushd android
+          flutter build apk --debug
+          ./gradlew app:assembleAndroidTest
+          ./gradlew app:assembleDebug -Ptarget=integration_test/app_test.dart
+          popd
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ '${{ env.FIREBASE_PROJECT }}' }}
+
+      - name: Run tests on Firebase Test Lab
+        run: |
+          gcloud firebase test android run \
+            --type instrumentation \
+            --app build/app/outputs/apk/debug/app-debug.apk \
+            --test build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --device-spec device-matrix/${{ values.deviceCoverage }}.yml \
+            --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
+            --results-dir "${{ '${{ github.run_id }}' }}" \
+            --timeout 10m \
+            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> $GITHUB_ENV
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### Firebase Test Lab Results',
+              '',
+              `**Platform**: Flutter | **Framework**: integration_test | **Coverage**: ${{ values.deviceCoverage }}`,
+              '',
+              process.env.FTL_FAILED === 'true' ? '**Status**: FAILED' : '**Status**: PASSED',
+              '',
+              `[View full results](https://console.firebase.google.com/project/${{ values.firebaseProjectId }}/testlab)`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ftl-results-flutter
+          path: ftl-results.json
+          retention-days: 14
+
+      - name: Fail if tests failed
+        if: env.FTL_FAILED == 'true'
+        run: exit 1
+
+{% endif %}

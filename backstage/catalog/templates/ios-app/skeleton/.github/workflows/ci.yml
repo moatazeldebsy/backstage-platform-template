@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+  SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+
+jobs:
+  lint:
+    name: Lint + Static Analysis
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 15
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: SwiftLint
+        uses: ncipollo/swiftlint-action@v1
+        with:
+          args: --reporter github-actions-logging
+
+      - name: Trivy filesystem scan (deps + secrets)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scanners: 'secret,misconfig'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: SonarCloud Scan
+        if: env.SONAR_TOKEN != ''
+        continue-on-error: true
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+          SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+
+      - name: Snyk dependency scan
+        if: env.SNYK_TOKEN != ''
+        continue-on-error: true
+        uses: snyk/actions/swift@master
+        env:
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+        with:
+          args: --severity-threshold=high
+
+  test:
+    name: Unit Tests
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 15
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Run swift test
+        run: swift test --parallel
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: .build/test-results/**/*.xml
+          retention-days: 7
+
+  build:
+    name: Build
+    needs: [lint, test]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 15
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Archive build
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build
+          path: .build/release/
+          retention-days: 14

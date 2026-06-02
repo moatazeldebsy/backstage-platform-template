@@ -1,0 +1,22 @@
+# High coverage — 5 devices including tablet, full matrix (~30 min)
+androidDevices:
+  - model: oriole        # Pixel 6 — flagship phone
+    version: "33"        # Android 13
+    locale: en
+    orientation: portrait
+  - model: oriole        # Pixel 6 — landscape check
+    version: "33"
+    locale: en
+    orientation: landscape
+  - model: gts8wifi      # Samsung Galaxy Tab S8 (Wi-Fi) — tablet
+    version: "32"        # Android 12
+    locale: en
+    orientation: landscape
+  - model: a10s          # Samsung Galaxy A10s — budget phone
+    version: "29"        # Android 10
+    locale: en
+    orientation: portrait
+  - model: blueline      # Pixel 3 — older device
+    version: "28"        # Android 9
+    locale: en
+    orientation: portrait

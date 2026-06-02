@@ -34,6 +34,14 @@ function parseGates(raw: string | undefined): Set<string> {
   return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
 }
 
+// Returns true for entities that represent a mobile app (Android, iOS, Flutter, etc.)
+function isMobileEntity(entity: { spec?: Record<string, unknown>; metadata: { tags?: string[] } }): boolean {
+  return (
+    entity.spec?.type === 'mobile' ||
+    (entity.metadata.tags ?? []).includes('mobile')
+  );
+}
+
 const entityFactRetriever: FactRetriever = {
   id: 'idp-entity-facts',
   version: '0.3.0',
@@ -126,6 +134,27 @@ const entityFactRetriever: FactRetriever = {
       type: 'boolean',
       description: 'Mobile app uses Fastlane for release automation (idp.io/quality-gates contains "mobile-fastlane")',
     },
+    // — Mobile platform maturity checks (new — tied to platform annotations) —
+    'has-min-sdk-version': {
+      type: 'boolean',
+      description: 'Mobile app declares a minimum SDK/OS version via backstage.io/mobile-min-sdk annotation (Android >= 24 or iOS >= 16.0)',
+    },
+    'has-crashlytics-enabled': {
+      type: 'boolean',
+      description: 'Mobile app has crash reporting enabled — backstage.io/crashlytics-enabled annotation is "true"',
+    },
+    'has-accessibility-tests': {
+      type: 'boolean',
+      description: 'Mobile app has accessibility tests wired up — backstage.io/accessibility-tests annotation is "true"',
+    },
+    'has-app-size-budget': {
+      type: 'boolean',
+      description: 'Mobile app declares an app-size budget — backstage.io/app-size-budget-mb annotation is present',
+    },
+    'has-code-signing': {
+      type: 'boolean',
+      description: 'Mobile app has automated code signing configured — backstage.io/code-signing-setup annotation is "true"',
+    },
   },
   handler: async ({ entities, discovery, auth }) => {
     const { token } = await auth.getPluginRequestToken({
@@ -206,6 +235,45 @@ const entityFactRetriever: FactRetriever = {
           ));
       const hasMobileFastlane = isMobileApp && declaredGates.has('mobile-fastlane');
 
+      // New mobile platform maturity checks — only meaningful for mobile entities.
+      // Non-mobile entities always get false so the scorecard renders consistently.
+      const isMobile = isMobileEntity(entity);
+
+      // hasMinSdkVersion: annotation must exist and meet the platform floor.
+      // iOS floor: "16.0" (numeric prefix comparison). Android floor: 24.
+      const minSdkRaw = annotations['backstage.io/mobile-min-sdk'];
+      let hasMinSdkVersion = false;
+      if (isMobile && minSdkRaw) {
+        const isIos = (entity.metadata.tags ?? []).includes('ios') ||
+          (entity.metadata.tags ?? []).includes('swiftui') ||
+          (entity.metadata.tags ?? []).includes('swift');
+        if (isIos) {
+          // iOS: compare major version number
+          const major = parseFloat(minSdkRaw.split('.')[0]);
+          hasMinSdkVersion = !isNaN(major) && major >= 16;
+        } else {
+          // Android / Flutter: integer API level
+          const level = parseInt(minSdkRaw, 10);
+          hasMinSdkVersion = !isNaN(level) && level >= 24;
+        }
+      }
+
+      // hasCrashlyticsEnabled: annotation exactly "true"
+      const hasCrashlyticsEnabled =
+        isMobile && annotations['backstage.io/crashlytics-enabled'] === 'true';
+
+      // hasAccessibilityTests: annotation exactly "true"
+      const hasAccessibilityTests =
+        isMobile && annotations['backstage.io/accessibility-tests'] === 'true';
+
+      // hasAppSizeBudget: annotation present (any non-empty value)
+      const hasAppSizeBudget =
+        isMobile && Boolean(annotations['backstage.io/app-size-budget-mb']);
+
+      // hasCodeSigning: annotation exactly "true"
+      const hasCodeSigning =
+        isMobile && annotations['backstage.io/code-signing-setup'] === 'true';
+
       facts.push({
         entity: {
           namespace: entity.metadata.namespace ?? 'default',
@@ -233,6 +301,12 @@ const entityFactRetriever: FactRetriever = {
           'has-mobile-crash-reporting':  hasMobileCrashReporting,
           'has-mobile-ui-tests':         hasMobileUiTests,
           'has-mobile-fastlane':         hasMobileFastlane,
+          // New mobile platform maturity facts
+          'has-min-sdk-version':         hasMinSdkVersion,
+          'has-crashlytics-enabled':     hasCrashlyticsEnabled,
+          'has-accessibility-tests':     hasAccessibilityTests,
+          'has-app-size-budget':         hasAppSizeBudget,
+          'has-code-signing':            hasCodeSigning,
         },
       });
     }

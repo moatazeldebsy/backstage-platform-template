@@ -1,0 +1,151 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: ios-app
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: iOS App (Swift/SwiftUI)
+  description: Scaffold a production-ready iOS app with Swift, SwiftUI, Swift Package Manager, Fastlane CI/CD, SonarCloud, and Snyk integration
+  tags:
+    - ios
+    - swift
+    - swiftui
+    - mobile
+    - golden-path
+    - local
+    - aws
+spec:
+  owner: platform-team
+  type: mobile
+
+  parameters:
+    - title: App Details
+      required:
+        - name
+        - description
+        - owner
+        - bundleId
+      properties:
+        name:
+          title: App Name
+          type: string
+          description: Unique app name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*$'
+          ui:autofocus: true
+        bundleId:
+          title: Bundle Identifier
+          type: string
+          description: "Reverse-domain bundle ID (e.g. com.mycompany.myapp)"
+          pattern: '^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$'
+          ui:help: "Use lowercase letters and dots only. Example: com.acme.myapp"
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this app
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: iOS Configuration
+      properties:
+        minIosVersion:
+          title: Minimum iOS Version
+          type: string
+          default: "16.0"
+          enum:
+            - "15.0"
+            - "16.0"
+            - "17.0"
+          enumNames:
+            - "iOS 15.0"
+            - "iOS 16.0"
+            - "iOS 17.0"
+        enableFirebase:
+          title: Enable Firebase
+          type: boolean
+          default: false
+          description: "Add Firebase Crashlytics + Analytics to the project"
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Team cost center code for attribution (e.g. eng-mobile)"
+          default: eng-mobile
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. PagerDuty service ID for on-call alerts."
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Jira project key (e.g. MOB, ENG)."
+          ui:help: "Leave blank if not using Jira."
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          bundleId: ${{ parameters.bundleId }}
+          minIosVersion: ${{ parameters.minIosVersion }}
+          enableFirebase: ${{ parameters.enableFirebase }}
+          costCenter: ${{ parameters.costCenter }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - ios
+          - swift
+          - swiftui
+          - mobile
+          - idp-app
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

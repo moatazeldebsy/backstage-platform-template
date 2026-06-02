@@ -12,6 +12,8 @@ metadata:
   tags:
     - android
     - flutter
+    - ios
+    - swift
     - mobile
     - kotlin
     - dart
@@ -21,6 +23,21 @@ metadata:
       icon: scaffolder
     - title: Flutter App Template
       url: http://backstage.idp.local/create/templates/default/flutter-app
+      icon: scaffolder
+    - title: iOS App Template
+      url: http://backstage.idp.local/create/templates/default/ios-app
+      icon: scaffolder
+    - title: Mobile Code Signing
+      url: http://backstage.idp.local/create/templates/default/mobile-code-signing
+      icon: scaffolder
+    - title: Mobile App Store Deployment
+      url: http://backstage.idp.local/create/templates/default/mobile-app-store-deploy
+      icon: scaffolder
+    - title: Mobile Device Farm (Firebase Test Lab)
+      url: http://backstage.idp.local/create/templates/default/mobile-device-farm
+      icon: scaffolder
+    - title: Shared Mobile SDK
+      url: http://backstage.idp.local/create/templates/default/mobile-sdk
       icon: scaffolder
     - title: Appium Mobile Suite
       url: http://backstage.idp.local/create/templates/default/appium-mobile-suite

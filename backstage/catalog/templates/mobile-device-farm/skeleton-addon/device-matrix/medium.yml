@@ -1,0 +1,14 @@
+# Medium coverage — 3 devices, balanced speed vs. coverage (~15 min)
+androidDevices:
+  - model: oriole        # Pixel 6
+    version: "33"        # Android 13
+    locale: en
+    orientation: portrait
+  - model: gts8wifi      # Samsung Galaxy Tab S8 (Wi-Fi)
+    version: "32"        # Android 12
+    locale: en
+    orientation: portrait
+  - model: a10s          # Samsung Galaxy A10s
+    version: "29"        # Android 10
+    locale: en
+    orientation: portrait

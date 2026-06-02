@@ -1,0 +1,132 @@
+name: Store Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Release track"
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+  push:
+    branches:
+      - release/**
+
+permissions:
+  contents: read
+  id-token: write  # required for AWS OIDC (code signing)
+
+env:
+  VERSION_NAME: "${{ values.versionName }}"
+  VERSION_CODE: "${{ values.versionCode }}"
+  PLATFORM: "${{ values.platform }}"
+
+{% if values.platform === 'google_play' or values.platform === 'both' %}
+jobs:
+  deploy-google-play:
+    name: Deploy to Google Play
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure AWS credentials (for keystore)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          aws-region: ${{ '${{ secrets.AWS_REGION || ' }}"us-east-1"${{ ' }}' }}
+
+      - name: Download keystore from AWS Secrets Manager
+        run: |
+          SECRET=$(aws secretsmanager get-secret-value \
+            --secret-id "${{ '${{ secrets.ANDROID_KEYSTORE_SECRET_ID }}' }}" \
+            --query 'SecretString' --output text)
+          echo "$SECRET" | base64 --decode > android/app/release.keystore
+
+      - name: Build release AAB
+        env:
+          KEYSTORE_STORE_PASSWORD: ${{ '${{ secrets.KEYSTORE_STORE_PASSWORD }}' }}
+          KEYSTORE_KEY_ALIAS: ${{ '${{ secrets.KEYSTORE_KEY_ALIAS }}' }}
+          KEYSTORE_KEY_PASSWORD: ${{ '${{ secrets.KEYSTORE_KEY_PASSWORD }}' }}
+        run: |
+          cd android
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=app/release.keystore \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEYSTORE_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEYSTORE_KEY_PASSWORD"
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' }}
+          packageName: ${{ '${{ secrets.ANDROID_PACKAGE_NAME }}' }}
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ '${{ github.event.inputs.track || ' }}"${{ values.track }}"${{ ' }}' }}
+          status: completed
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f android/app/release.keystore
+
+{% endif %}
+{% if values.platform === 'app_store' or values.platform === 'both' %}
+  deploy-app-store:
+    name: Deploy to App Store
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 15
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Configure AWS credentials (for Fastlane Match)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          aws-region: ${{ '${{ secrets.AWS_REGION || ' }}"us-east-1"${{ ' }}' }}
+
+      - name: Install Fastlane
+        run: gem install fastlane --no-document
+
+      - name: Sync certificates
+        env:
+          CODE_SIGN_S3_BUCKET: ${{ '${{ secrets.CODE_SIGN_S3_BUCKET }}' }}
+          APPLE_ID: ${{ '${{ secrets.APPLE_ID }}' }}
+          MATCH_PASSWORD: ${{ '${{ secrets.MATCH_PASSWORD }}' }}
+        run: fastlane match appstore --readonly
+
+      - name: Deploy to App Store
+        env:
+          APPLE_ID: ${{ '${{ secrets.APPLE_ID }}' }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ '${{ secrets.FASTLANE_APP_SPECIFIC_PASSWORD }}' }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ '${{ secrets.ASC_API_KEY_ID }}' }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ '${{ secrets.ASC_API_ISSUER_ID }}' }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ '${{ secrets.ASC_API_KEY_CONTENT }}' }}
+        run: |
+          TRACK="${{ '${{ github.event.inputs.track || ' }}"${{ values.track }}"${{ ' }}' }}"
+          if [ "$TRACK" = "internal" ] || [ "$TRACK" = "beta" ]; then
+            fastlane deploy_testflight
+          else
+            fastlane deploy_app_store
+          fi
+
+{% endif %}

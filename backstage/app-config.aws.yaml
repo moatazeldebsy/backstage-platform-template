@@ -290,6 +290,26 @@ catalog:
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/flutter-integration-test-suite/template.yaml
       rules:
         - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/ios-app/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-code-signing/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-app-store-deploy/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-device-farm/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-sdk/template.yaml
+      rules:
+        - allow: [Template]
     # ── QA Platform: Chaos & synthetic ───────────────────────────────────────
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/chaos-mesh-suite/template.yaml

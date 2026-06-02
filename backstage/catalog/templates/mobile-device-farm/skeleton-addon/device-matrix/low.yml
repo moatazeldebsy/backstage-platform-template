@@ -1,0 +1,6 @@
+# Low coverage — 1 device, fast feedback (~5 min)
+androidDevices:
+  - model: redfin        # Pixel 5 equivalent (widely supported)
+    version: "33"        # Android 13
+    locale: en
+    orientation: portrait
