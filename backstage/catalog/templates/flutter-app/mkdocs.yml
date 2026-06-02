@@ -1,0 +1,10 @@
+site_name: Flutter App (Dart)
+site_description: >-
+  Scaffold a production-ready Flutter app with Dart, multi-platform support
+  (Android/iOS/Web), GitHub Actions CI/CD, Fastlane, and optional Firebase
+  integration
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

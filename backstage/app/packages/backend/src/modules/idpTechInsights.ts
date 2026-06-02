@@ -12,16 +12,21 @@ import { RELATION_OWNED_BY } from '@backstage/catalog-model';
 // `contract` and `e2e` are added by the contract-testing and playwright-e2e-suite
 // scaffolders when run in "add to existing" mode.
 const QUALITY_GATES = [
-  'coverage',          // CI enforces a coverage threshold
-  'static-analysis',   // CI runs lint/type-check (golangci-lint, ruff+mypy, tsc, prettier)
-  'vuln-scan',         // CI runs dependency + secret scan (govulncheck / npm audit / pip-audit + Trivy fs)
-  'contract',          // service has a registered OpenAPI/Pact contract
-  'e2e',               // service has an associated end-to-end test suite
-  'llm-eval',          // AI service has LLM evaluation suite (deepeval or equivalent)
-  'bias-check',        // AI model has bias/fairness evaluation
-  'rag-eval',          // RAG system has retrieval quality evaluation
-  'sonar-scanning',    // CI runs SonarCloud quality gate
-  'snyk-scanning',     // CI runs Snyk SCA scan
+  'coverage',               // CI enforces a coverage threshold
+  'static-analysis',        // CI runs lint/type-check (golangci-lint, ruff+mypy, tsc, prettier)
+  'vuln-scan',              // CI runs dependency + secret scan (govulncheck / npm audit / pip-audit + Trivy fs)
+  'contract',               // service has a registered OpenAPI/Pact contract
+  'e2e',                    // service has an associated end-to-end test suite
+  'llm-eval',               // AI service has LLM evaluation suite (deepeval or equivalent)
+  'bias-check',             // AI model has bias/fairness evaluation
+  'rag-eval',               // RAG system has retrieval quality evaluation
+  'sonar-scanning',         // CI runs SonarCloud quality gate
+  'snyk-scanning',          // CI runs Snyk SCA scan
+  // Mobile-specific quality gates
+  'mobile-test-coverage',   // Mobile app has unit/widget test coverage gate in CI
+  'mobile-crash-reporting', // Mobile app has crash reporting (Firebase Crashlytics / Sentry)
+  'mobile-ui-tests',        // Mobile app has Appium/Espresso/XCTest UI tests
+  'mobile-fastlane',        // Mobile app uses Fastlane for release automation
 ] as const;
 
 function parseGates(raw: string | undefined): Set<string> {
@@ -104,6 +109,23 @@ const entityFactRetriever: FactRetriever = {
       type: 'boolean',
       description: 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)',
     },
+    // — Mobile app scorecard (Bronze/Silver/Gold for spec.type === "mobile") —
+    'has-mobile-test-coverage': {
+      type: 'boolean',
+      description: 'Mobile app CI enforces a test coverage threshold (idp.io/quality-gates contains "mobile-test-coverage")',
+    },
+    'has-mobile-crash-reporting': {
+      type: 'boolean',
+      description: 'Mobile app has crash reporting configured — Firebase Crashlytics or Sentry (annotation or quality gate)',
+    },
+    'has-mobile-ui-tests': {
+      type: 'boolean',
+      description: 'Mobile app has Appium/Espresso/Flutter integration tests registered in the catalog',
+    },
+    'has-mobile-fastlane': {
+      type: 'boolean',
+      description: 'Mobile app uses Fastlane for release automation (idp.io/quality-gates contains "mobile-fastlane")',
+    },
   },
   handler: async ({ entities, discovery, auth }) => {
     const { token } = await auth.getPluginRequestToken({
@@ -166,6 +188,24 @@ const entityFactRetriever: FactRetriever = {
         declaredGates.has('snyk-scanning') ||
         Boolean(annotations['snyk.io/org-slug']);
 
+      // Mobile scorecard facts (only meaningful for spec.type === 'mobile', but
+      // computed for all Components so the scorecard UI can render consistently)
+      const isMobileApp = entity.spec?.type === 'mobile';
+      const hasMobileTestCoverage = isMobileApp && declaredGates.has('mobile-test-coverage');
+      // Crash reporting: explicit gate OR Firebase/Sentry annotation
+      const hasMobileCrashReporting =
+        isMobileApp &&
+        (declaredGates.has('mobile-crash-reporting') ||
+          Boolean(annotations['mobile.io/crash-reporting']));
+      // UI tests: gate OR tags like "appium", "espresso", "xctest", "flutter-integration"
+      const hasMobileUiTests =
+        isMobileApp &&
+        (declaredGates.has('mobile-ui-tests') ||
+          tags.some(t =>
+            ['appium', 'espresso', 'xctest', 'flutter-integration'].includes(t.toLowerCase()),
+          ));
+      const hasMobileFastlane = isMobileApp && declaredGates.has('mobile-fastlane');
+
       facts.push({
         entity: {
           namespace: entity.metadata.namespace ?? 'default',
@@ -187,8 +227,12 @@ const entityFactRetriever: FactRetriever = {
           'has-model-card':        hasModelCard,
           'has-eval-suite':        hasEvalSuite,
           'has-ai-observability':  hasAiObservability,
-          'has-sonar-scanning':    hasSonarScanning,
-          'has-snyk-scanning':     hasSnykScanning,
+          'has-sonar-scanning':          hasSonarScanning,
+          'has-snyk-scanning':           hasSnykScanning,
+          'has-mobile-test-coverage':    hasMobileTestCoverage,
+          'has-mobile-crash-reporting':  hasMobileCrashReporting,
+          'has-mobile-ui-tests':         hasMobileUiTests,
+          'has-mobile-fastlane':         hasMobileFastlane,
         },
       });
     }

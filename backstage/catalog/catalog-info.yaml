@@ -12,6 +12,10 @@ spec:
     - data-team
     - qa-team
     - ml-team
+    - android-team
+    - ios-team
+    - frontend-team
+    - backend-team
   members:
     - moatazeldebsy
     - guest
@@ -112,5 +116,183 @@ spec:
     email: jordan.kim@idp.local
   memberOf:
     - data-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: android-team
+  description: Android mobile engineering team — owns Android apps and mobile CI/CD pipelines
+  tags:
+    - android
+    - mobile
+    - kotlin
+spec:
+  type: team
+  profile:
+    displayName: Android Team
+    email: android-team@idp.local
+  parent: platform-team
+  children: []
+  members:
+    - android-engineer
+    - android-senior-engineer
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: android-engineer
+  description: Android Engineer on the Android Team
+spec:
+  profile:
+    displayName: Lena Müller
+    email: lena.muller@idp.local
+  memberOf:
+    - android-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: android-senior-engineer
+  description: Senior Android Engineer on the Android Team
+spec:
+  profile:
+    displayName: Carlos Reyes
+    email: carlos.reyes@idp.local
+  memberOf:
+    - android-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: ios-team
+  description: iOS mobile engineering team — owns iOS apps, Swift/SwiftUI development and App Store delivery
+  tags:
+    - ios
+    - mobile
+    - swift
+spec:
+  type: team
+  profile:
+    displayName: iOS Team
+    email: ios-team@idp.local
+  parent: platform-team
+  children: []
+  members:
+    - ios-engineer
+    - ios-senior-engineer
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: ios-engineer
+  description: iOS Engineer on the iOS Team
+spec:
+  profile:
+    displayName: Aisha Patel
+    email: aisha.patel@idp.local
+  memberOf:
+    - ios-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: ios-senior-engineer
+  description: Senior iOS Engineer on the iOS Team
+spec:
+  profile:
+    displayName: Tom Nakamura
+    email: tom.nakamura@idp.local
+  memberOf:
+    - ios-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: frontend-team
+  description: Web frontend engineering team — owns React apps, design system, and web performance
+  tags:
+    - frontend
+    - react
+    - typescript
+    - web
+spec:
+  type: team
+  profile:
+    displayName: Frontend Team
+    email: frontend-team@idp.local
+  parent: platform-team
+  children: []
+  members:
+    - frontend-engineer
+    - frontend-senior-engineer
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: frontend-engineer
+  description: Frontend Engineer on the Frontend Team
+spec:
+  profile:
+    displayName: Priya Singh
+    email: priya.singh@idp.local
+  memberOf:
+    - frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: frontend-senior-engineer
+  description: Senior Frontend Engineer on the Frontend Team
+spec:
+  profile:
+    displayName: Marcus Johnson
+    email: marcus.johnson@idp.local
+  memberOf:
+    - frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: backend-team
+  description: Backend engineering team — owns Go, Node.js, and Python services plus API contracts
+  tags:
+    - backend
+    - go
+    - nodejs
+    - python
+spec:
+  type: team
+  profile:
+    displayName: Backend Team
+    email: backend-team@idp.local
+  parent: platform-team
+  children: []
+  members:
+    - backend-engineer
+    - backend-senior-engineer
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: backend-engineer
+  description: Backend Engineer on the Backend Team
+spec:
+  profile:
+    displayName: Elena Kovač
+    email: elena.kovac@idp.local
+  memberOf:
+    - backend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: backend-senior-engineer
+  description: Senior Backend Engineer on the Backend Team
+spec:
+  profile:
+    displayName: Tariq Hassan
+    email: tariq.hassan@idp.local
+  memberOf:
+    - backend-team
 # System entity is registered via /catalog-info.yaml (repo root, uses dir:.)
 # hello-service is registered via /services/hello-service/catalog-info.yaml (co-located, uses dir:.)

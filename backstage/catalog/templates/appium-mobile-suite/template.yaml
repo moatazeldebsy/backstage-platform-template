@@ -107,12 +107,44 @@ spec:
             - 'Android'
             - 'iOS'
             - 'Both'
+        deviceFarm:
+          title: Device Farm
+          type: string
+          default: local-emulator
+          enum:
+            - local-emulator
+            - browserstack
+            - sauce-labs
+          enumNames:
+            - 'Local Emulator (GitHub Actions)'
+            - 'BrowserStack (real devices)'
+            - 'Sauce Labs (real devices)'
+          ui:widget: radio
+        deviceMatrix:
+          title: Device Matrix
+          type: array
+          description: "Devices to run tests on (for cloud device farms)"
+          items:
+            type: string
+            enum:
+              - pixel6-android13
+              - samsung-s21-android12
+              - iphone14-ios16
+              - pixel7-android14
+          uniqueItems: true
+          default:
+            - pixel6-android13
+          ui:widget: checkboxes
         appiumServer:
           title: Appium Server URL
           type: string
-          description: 'Appium server endpoint (e.g. http://localhost:4723 for local, or your AWS Device Farm / remote grid URL for cloud)'
+          description: 'Appium server endpoint. Leave blank for local emulator or BrowserStack/Sauce Labs (auto-configured).'
           default: ''
-
+        appBuildCommand:
+          title: App Build Command (optional)
+          type: string
+          description: "Command to build the app before running Appium tests (e.g. './gradlew assembleDebug' or 'flutter build apk --debug')"
+          ui:help: "Leave blank to skip app build — tests will use a pre-built APK/IPA via APP_PATH."
 
     - title: Integrations
       properties:
@@ -142,7 +174,10 @@ spec:
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           platform: ${{ parameters.platform }}
+          deviceFarm: ${{ parameters.deviceFarm }}
+          deviceMatrix: ${{ parameters.deviceMatrix }}
           appiumServer: ${{ parameters.appiumServer }}
+          appBuildCommand: ${{ parameters.appBuildCommand }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
@@ -160,9 +195,36 @@ spec:
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           platform: ${{ parameters.platform }}
+          deviceFarm: ${{ parameters.deviceFarm }}
+          deviceMatrix: ${{ parameters.deviceMatrix }}
           appiumServer: ${{ parameters.appiumServer }}
+          appBuildCommand: ${{ parameters.appBuildCommand }}
           githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: provision-browserstack-secret
+      name: Provision BrowserStack Credentials Secret
+      if: ${{ parameters.deviceFarm === 'browserstack' }}
+      action: idp:provision-secret
+      continueOnError: true
+      input:
+        name: ${{ parameters.name }}-browserstack
+        namespace: services-dev
+        keys:
+          - BROWSERSTACK_USERNAME
+          - BROWSERSTACK_ACCESS_KEY
+
+    - id: provision-sauce-secret
+      name: Provision Sauce Labs Credentials Secret
+      if: ${{ parameters.deviceFarm === 'sauce-labs' }}
+      action: idp:provision-secret
+      continueOnError: true
+      input:
+        name: ${{ parameters.name }}-saucelabs
+        namespace: services-dev
+        keys:
+          - SAUCE_USERNAME
+          - SAUCE_ACCESS_KEY
 
     - id: publish
       name: Publish to GitHub

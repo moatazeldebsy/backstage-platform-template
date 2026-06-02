@@ -1,0 +1,149 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: android-app
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Android App (Kotlin)
+  description: Scaffold a production-ready Android app with Kotlin, Jetpack Compose, Gradle, Fastlane CI/CD, and optional Firebase integration
+  tags:
+    - android
+    - kotlin
+    - mobile
+    - golden-path
+    - local
+    - aws
+spec:
+  owner: platform-team
+  type: mobile
+
+  parameters:
+    - title: App Details
+      required:
+        - name
+        - description
+        - owner
+        - packageName
+      properties:
+        name:
+          title: App Name
+          type: string
+          description: Unique app name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this app
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        packageName:
+          title: Android Package Name
+          type: string
+          description: "Reverse-domain package name (e.g. com.mycompany.myapp)"
+          pattern: '^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$'
+          ui:help: "Use lowercase letters and dots only. Example: com.acme.myapp"
+
+    - title: Android Configuration
+      properties:
+        minSdk:
+          title: Minimum SDK Version
+          type: integer
+          default: 26
+          enum:
+            - 26
+            - 28
+            - 33
+          enumNames:
+            - 'API 26 (Android 8.0 Oreo)'
+            - 'API 28 (Android 9.0 Pie)'
+            - 'API 33 (Android 13)'
+        enableFirebase:
+          title: Enable Firebase
+          type: boolean
+          default: false
+          description: "Add Firebase Crashlytics + Analytics to the project"
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Team cost center code for attribution (e.g. eng-mobile)"
+          default: eng-mobile
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. PagerDuty service ID for on-call alerts."
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Jira project key (e.g. MOB, ENG)."
+          ui:help: "Leave blank if not using Jira."
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          packageName: ${{ parameters.packageName }}
+          minSdk: ${{ parameters.minSdk }}
+          enableFirebase: ${{ parameters.enableFirebase }}
+          costCenter: ${{ parameters.costCenter }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - android
+          - kotlin
+          - mobile
+          - idp-app
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

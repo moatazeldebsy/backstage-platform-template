@@ -1,0 +1,28 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run unit tests"
+  lane :test do
+    gradle(task: "test")
+  end
+
+  desc "Build debug APK"
+  lane :build_debug do
+    gradle(task: "assembleDebug")
+  end
+
+  desc "Build release APK"
+  lane :build_release do
+    gradle(task: "assembleRelease")
+  end
+
+  desc "Deploy to Firebase App Distribution (requires FIREBASE_APP_ID and FIREBASE_TOKEN)"
+  lane :distribute do
+    gradle(task: "assembleRelease")
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID"],
+      groups: "qa-team",
+      release_notes: "Build from CI — branch: #{ENV['BRANCH_NAME']}"
+    )
+  end
+end

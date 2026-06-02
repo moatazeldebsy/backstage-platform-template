@@ -21,14 +21,16 @@ backend:
         options:
           token: ${BACKSTAGE_CATALOG_TOKEN}
           subject: catalog-exporter
+  database:
+    connection:
+      ssl:
+        rejectUnauthorized: true
 
 auth:
   environment: production
   session:
-    secret: ${AUTH_SESSION_SECRET:-backstage-session-secret}
+    secret: ${AUTH_SESSION_SECRET}
   providers:
-    guest:
-      dangerouslyAllowOutsideDevelopment: true
     github:
       production:
         clientId: ${AUTH_GITHUB_CLIENT_ID}
@@ -275,6 +277,19 @@ catalog:
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/appium-mobile-suite/template.yaml
       rules:
         - allow: [Template]
+    # ── Mobile golden-path templates ─────────────────────────────────────────
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/android-app/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/flutter-app/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/flutter-integration-test-suite/template.yaml
+      rules:
+        - allow: [Template]
     # ── QA Platform: Chaos & synthetic ───────────────────────────────────────
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/chaos-mesh-suite/template.yaml
@@ -317,6 +332,11 @@ catalog:
         - allow: [Component]
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/services/contract-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── Mobile Platform catalog ───────────────────────────────────────────────
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/mobile-catalog.yaml
       rules:
         - allow: [Component]
     # ── QA Platform catalog ───────────────────────────────────────────────────

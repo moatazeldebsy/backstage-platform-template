@@ -1,0 +1,7 @@
+site_name: Mobile Platform
+site_description: Golden-path templates and developer guide for Android and Flutter apps
+docs_dir: .
+nav:
+  - Developer Guide: mobile-developer-guide.md
+plugins:
+  - techdocs-core

@@ -1,0 +1,224 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: flutter-app
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Flutter App (Dart)
+  description: Scaffold a production-ready Flutter app with Dart, multi-platform support (Android/iOS/Web), GitHub Actions CI/CD, Fastlane, and optional Firebase integration
+  tags:
+    - flutter
+    - dart
+    - mobile
+    - golden-path
+    - local
+    - aws
+spec:
+  owner: platform-team
+  type: mobile
+
+  parameters:
+    - title: App Details
+      required:
+        - name
+        - description
+        - owner
+        - packageName
+      properties:
+        name:
+          title: App Name
+          type: string
+          description: Unique app name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this app
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        packageName:
+          title: Flutter Package Name
+          type: string
+          description: "Reverse-domain package name (e.g. com.mycompany.myapp)"
+          pattern: '^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$'
+          ui:help: "Used as the Android/iOS bundle ID. Example: com.acme.myapp"
+
+    - title: Platform & Features
+      properties:
+        platforms:
+          title: Target Platforms
+          type: array
+          items:
+            type: string
+            enum:
+              - android
+              - ios
+              - web
+          uniqueItems: true
+          default:
+            - android
+          ui:widget: checkboxes
+          ui:options:
+            inline: true
+        enableWebDeploy:
+          title: Deploy Flutter Web to Kubernetes
+          type: boolean
+          default: false
+          description: "Build Flutter Web and deploy it to the platform K8s cluster via Helm (requires Web platform selected)"
+        enableFirebase:
+          title: Enable Firebase
+          type: boolean
+          default: false
+          description: "Add Firebase Crashlytics + Analytics to the project"
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Team cost center code (e.g. eng-mobile)"
+          default: eng-mobile
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional."
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional."
+          ui:help: "Leave blank if not using Jira."
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+    - title: Deployment Target
+      properties:
+        deployTarget:
+          title: Where will this app's web build run?
+          type: string
+          default: local
+          enum: [local, aws]
+          enumNames: ['Local (Kind / Rancher Desktop)', 'AWS (EKS)']
+          ui:widget: radio
+          ui:help: "Only relevant if Flutter Web deploy is enabled."
+        port:
+          title: Web Container Port
+          type: integer
+          default: 8080
+          ui:help: "Port for the Flutter Web Nginx container."
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          packageName: ${{ parameters.packageName }}
+          platforms: ${{ parameters.platforms }}
+          enableWebDeploy: ${{ parameters.enableWebDeploy }}
+          enableFirebase: ${{ parameters.enableFirebase }}
+          costCenter: ${{ parameters.costCenter }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          port: ${{ parameters.port }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - flutter
+          - dart
+          - mobile
+          - idp-app
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    - id: fetch-platform-values
+      name: Prepare Platform GitOps Values
+      if: ${{ parameters.enableWebDeploy }}
+      action: fetch:template
+      input:
+        url: ./platform-values
+        targetPath: ./platform-values
+        values:
+          name: ${{ parameters.name }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          port: ${{ parameters.port }}
+          owner: ${{ parameters.owner }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: platform-pr
+      name: Open Platform GitOps PR (Flutter Web)
+      if: ${{ parameters.enableWebDeploy }}
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        title: "feat: onboard ${{ parameters.name }} Flutter Web to GitOps"
+        branchName: feat/onboard-${{ parameters.name }}-web
+        description: |
+          Adds `services/${{ parameters.name }}/` (Flutter Web) to the platform repo.
+
+          ArgoCD ApplicationSet will auto-discover and deploy the web build
+          to `services-dev` namespace once merged.
+        sourcePath: ./platform-values
+        targetPath: services/${{ parameters.name }}
+
+    - id: set-repo-secrets
+      name: Configure CI/CD Secrets
+      if: ${{ parameters.enableWebDeploy && parameters.deployTarget === 'aws' }}
+      action: idp:repo:set-secrets
+      input:
+        repoUrl: ${{ steps.publish.output.remoteUrl }}
+        secrets:
+          AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
+
+    - id: seed-image
+      name: Seed placeholder web image in local registry
+      if: ${{ parameters.enableWebDeploy && parameters.deployTarget === 'local' }}
+      action: idp:seed-image
+      input:
+        serviceName: ${{ parameters.name }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+      - title: Open Platform GitOps PR (Web)
+        url: ${{ steps['platform-pr'].output.remoteUrl }}

@@ -1,0 +1,24 @@
+name: ${{ values.name | replace("-", "_") }}
+description: ${{ values.description }}
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+{% if values.enableFirebase %}  firebase_core: ^3.0.0
+  firebase_crashlytics: ^4.0.0
+  firebase_analytics: ^11.0.0
+{% endif %}
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

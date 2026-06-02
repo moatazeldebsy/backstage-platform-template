@@ -1,0 +1,114 @@
+name: ${{ values.name }} Integration Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'integration_test/${{ values.name }}/**'
+      - 'lib/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'integration_test/${{ values.name }}/**'
+      - 'lib/**'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.27.0'
+
+jobs:
+  integration-test-emulator:
+    name: Integration Tests (Android Emulator)
+    if: ${{ '${{ vars.TEST_RUNNER != \'firebase-test-lab\'' }} }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ '${{ env.FLUTTER_VERSION }}' }}
+          channel: stable
+          cache: true
+
+      - name: Enable KVM (emulator acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run integration tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          script: flutter test integration_test/${{ values.name }}/
+
+      - name: Upload test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-screenshots-${{ values.name }}
+          path: integration_test/screenshots/
+          retention-days: 14
+
+  integration-test-firebase:
+    name: Integration Tests (Firebase Test Lab)
+    if: ${{ '${{ vars.TEST_RUNNER == \'firebase-test-lab\'' }} }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ '${{ env.FLUTTER_VERSION }}' }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build test APK
+        run: flutter build apk --debug && flutter build apk --debug --target=integration_test/${{ values.name }}/app_test.dart
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' }}
+
+      - name: Run on Firebase Test Lab
+        env:
+          FIREBASE_PROJECT_ID: ${{ values.firebaseProjectId }}
+        run: |
+          gcloud firebase test android run \
+            --project="${FIREBASE_PROJECT_ID}" \
+            --type=instrumentation \
+            --app=build/app/outputs/flutter-apk/app-debug.apk \
+            --test=build/app/outputs/flutter-apk/app-debug.apk \
+            --device model=Pixel6,version=33,locale=en,orientation=portrait \
+            --device model=GalaxyS21,version=31,locale=en,orientation=portrait \
+            --results-bucket=gs://${FIREBASE_PROJECT_ID}-test-results \
+            --timeout 10m

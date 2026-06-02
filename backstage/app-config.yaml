@@ -222,6 +222,19 @@ catalog:
       target: /catalog/templates/iac-test-suite/template.yaml
       rules:
         - allow: [Template]
+    # ── Mobile golden-path templates ─────────────────────────────────────────
+    - type: file
+      target: /catalog/templates/android-app/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/flutter-app/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/flutter-integration-test-suite/template.yaml
+      rules:
+        - allow: [Template]
     # Crossplane Claim templates are AWS-only (Crossplane runs on EKS, not locally).
     # They are registered in app-config.aws.yaml.
     # Platform entities: users, groups (system moved to root catalog-info.yaml)
@@ -234,6 +247,11 @@ catalog:
       target: /catalog/groups/*.yaml
       rules:
         - allow: [Group]
+    # Mobile platform catalog
+    - type: file
+      target: /catalog/mobile-catalog.yaml
+      rules:
+        - allow: [Component]
     # QA team, qa-engineer user, and QA platform component
     - type: file
       target: /catalog/qa-catalog.yaml

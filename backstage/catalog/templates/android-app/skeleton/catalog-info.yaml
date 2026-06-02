@@ -1,0 +1,34 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/adr-location: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/tree/main/docs/adr
+    backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbook.md
+    cost-center: "${{ values.costCenter }}"
+    idp.io/quality-gates: "static-analysis,vuln-scan,sonar-scanning,snyk-scanning"
+    sonarcloud.io/project-key: "${{ values.githubOrg }}_${{ values.repoName }}"
+    sonarcloud.io/organization: "${{ values.githubOrg }}"
+    snyk.io/org-slug: "${{ values.githubOrg }}"
+    grafana/alert-label-selector: "service=${{ values.name }}"
+    pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
+    jira/project-key: "${{ values.jiraProjectKey }}"
+  tags:
+    - android
+    - kotlin
+    - mobile
+  links:
+    - title: Grafana Dashboard
+      url: http://grafana.idp.local/d/idp-services/idp-services-overview
+      icon: dashboard
+    - title: Runbook
+      url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbook.md
+      icon: help
+spec:
+  type: mobile
+  lifecycle: development
+  owner: ${{ values.owner }}
+  system: internal-developer-platform

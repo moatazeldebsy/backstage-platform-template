@@ -1,0 +1,29 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run Flutter tests"
+  lane :test do
+    sh("flutter test")
+  end
+
+  desc "Build Android APK (debug)"
+  lane :build_debug do
+    sh("flutter build apk --debug")
+  end
+
+  desc "Build Android APK (release)"
+  lane :build_release do
+    sh("flutter build apk --release")
+  end
+
+  desc "Distribute to Firebase App Distribution"
+  lane :distribute_android do
+    sh("flutter build apk --release")
+    firebase_app_distribution(
+      app: ENV["FIREBASE_ANDROID_APP_ID"],
+      groups: "qa-team",
+      apk_path: "../build/app/outputs/flutter-apk/app-release.apk",
+      release_notes: "Flutter build from CI"
+    )
+  end
+end

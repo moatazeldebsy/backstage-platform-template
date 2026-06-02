@@ -16,7 +16,7 @@ spec:
       serviceAccountName: backstage
       containers:
         - name: backstage
-          image: 967825954374.dkr.ecr.us-east-1.amazonaws.com/backstage:latest
+          image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 7007
@@ -99,6 +99,11 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: VOYAGE_API_KEY
+            - name: AUTH_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: AUTH_SESSION_SECRET
             - name: MLFLOW_EXTERNAL_URL
               value: "http://MLFLOW_ALB_URL"
             - name: APP_BASE_URL

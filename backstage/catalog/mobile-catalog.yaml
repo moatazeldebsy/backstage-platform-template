@@ -1,0 +1,32 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mobile-platform
+  title: Mobile Platform & Developer Guide
+  description: |
+    Platform capability providing golden-path templates for Android (Kotlin) and Flutter apps,
+    Appium device-farm integration, mobile CI/CD pipelines, and the mobile developer guide.
+  annotations:
+    backstage.io/techdocs-ref: dir:./docs/mobile
+  tags:
+    - android
+    - flutter
+    - mobile
+    - kotlin
+    - dart
+  links:
+    - title: Android App Template
+      url: http://backstage.idp.local/create/templates/default/android-app
+      icon: scaffolder
+    - title: Flutter App Template
+      url: http://backstage.idp.local/create/templates/default/flutter-app
+      icon: scaffolder
+    - title: Appium Mobile Suite
+      url: http://backstage.idp.local/create/templates/default/appium-mobile-suite
+      icon: scaffolder
+spec:
+  type: platform-capability
+  lifecycle: production
+  owner: android-team
+  system: internal-developer-platform

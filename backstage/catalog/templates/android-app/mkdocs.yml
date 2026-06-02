@@ -1,0 +1,9 @@
+site_name: Android App (Kotlin)
+site_description: >-
+  Scaffold a production-ready Android app with Kotlin, Jetpack Compose, Gradle,
+  Fastlane CI/CD, and optional Firebase integration
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

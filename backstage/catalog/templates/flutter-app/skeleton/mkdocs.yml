@@ -1,0 +1,12 @@
+site_name: ${{ values.name }}
+site_description: ${{ values.description }}
+docs_dir: docs
+
+nav:
+  - Overview: index.md
+  - Runbook: runbook.md
+  - ADRs:
+    - 0001 Initial Decisions: adr/0001-initial-decisions.md
+
+plugins:
+  - techdocs-core
