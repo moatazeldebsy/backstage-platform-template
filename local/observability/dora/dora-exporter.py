@@ -22,13 +22,19 @@ from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-GITHUB_TOKEN    = os.environ["GITHUB_TOKEN"]
-GITHUB_ORG      = os.environ.get("GITHUB_ORG", "moatazeldebsy")
-PUSHGATEWAY_URL = os.environ.get(
+GITHUB_TOKEN       = os.environ["GITHUB_TOKEN"]
+GITHUB_ORG         = os.environ.get("GITHUB_ORG", "moatazeldebsy")
+PUSHGATEWAY_URL    = os.environ.get(
     "PUSHGATEWAY_URL",
     "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091",
 )
-LOOKBACK_HOURS  = int(os.environ.get("LOOKBACK_HOURS", "24"))
+LOOKBACK_HOURS     = int(os.environ.get("LOOKBACK_HOURS", "24"))
+# REPO_FILTER_TOPIC: only track repos that have this GitHub topic (set by scaffold templates).
+# Defaults to "idp-app" which all IDP scaffold templates apply via publish:github.
+REPO_FILTER_TOPIC  = os.environ.get("REPO_FILTER_TOPIC", "idp-app")
+# REPO_INCLUDE: explicit comma-separated allowlist that overrides topic filtering.
+# Example: "hello-service,my-go-svc,my-node-svc"
+REPO_INCLUDE       = os.environ.get("REPO_INCLUDE", "")
 
 GH_HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -58,31 +64,48 @@ def gh_get(url: str, params: dict = None) -> list:
 
 
 def get_service_repos() -> list[str]:
-    """Return all repos for the GitHub user/org that have a known IDP workflow.
+    """Return IDP-managed service repos using the following priority:
 
-    Checks for both build-and-deploy.yml (AWS-deployed services) and ci.yml
-    (locally-deployed services scaffolded with deployTarget=local). This ensures
-    services scaffolded for Kind/Rancher Desktop appear in DORA metrics.
+    1. REPO_INCLUDE env var — explicit comma-separated allowlist, overrides everything.
+    2. REPO_FILTER_TOPIC env var (default: "idp-app") — GitHub topic filter.
+       All IDP scaffold templates set this topic via publish:github, so only
+       scaffolded services are included. Unrelated repos that happen to have a
+       ci.yml are excluded automatically.
+    3. Fallback — repos that contain .github/workflows/build-and-deploy.yml,
+       used when REPO_FILTER_TOPIC is explicitly set to an empty string.
     """
+    if REPO_INCLUDE:
+        repos = [r.strip() for r in REPO_INCLUDE.split(",") if r.strip()]
+        log.info("Using explicit REPO_INCLUDE allowlist (%d repos): %s", len(repos), repos)
+        return repos
+
+    if REPO_FILTER_TOPIC:
+        log.info("Filtering repos by GitHub topic '%s'", REPO_FILTER_TOPIC)
+        results = gh_get(
+            "https://api.github.com/search/repositories",
+            {"q": f"user:{GITHUB_ORG} topic:{REPO_FILTER_TOPIC}", "per_page": 100},
+        )
+        repos = [r["name"] for r in results]
+        log.info("Found %d repos with topic '%s': %s", len(repos), REPO_FILTER_TOPIC, repos)
+        return repos
+
+    # Fallback: repos with build-and-deploy.yml (IDP deploy workflow)
     org_url  = f"https://api.github.com/orgs/{GITHUB_ORG}/repos"
     user_url = "https://api.github.com/user/repos"
     probe = requests.get(org_url, headers=GH_HEADERS, params={"per_page": 1}, timeout=10)
     list_url = org_url if probe.status_code == 200 else user_url
-    log.info("Using repo list endpoint: %s", list_url)
-    repos = gh_get(list_url, {"per_page": 100, "type": "all"})
+    log.info("Falling back to workflow-file check via %s", list_url)
+    all_repos = gh_get(list_url, {"per_page": 100, "type": "all"})
     service_repos = []
-    idp_workflows = ["build-and-deploy.yml", "ci.yml"]
-    for repo in repos:
+    for repo in all_repos:
         name = repo["name"]
-        for workflow in idp_workflows:
-            check = requests.get(
-                f"https://api.github.com/repos/{GITHUB_ORG}/{name}/contents/.github/workflows/{workflow}",
-                headers=GH_HEADERS, timeout=10
-            )
-            if check.status_code == 200:
-                service_repos.append(name)
-                break
-    log.info("Found %d service repos: %s", len(service_repos), service_repos)
+        check = requests.get(
+            f"https://api.github.com/repos/{GITHUB_ORG}/{name}/contents/.github/workflows/build-and-deploy.yml",
+            headers=GH_HEADERS, timeout=10,
+        )
+        if check.status_code == 200:
+            service_repos.append(name)
+    log.info("Found %d service repos via workflow check: %s", len(service_repos), service_repos)
     return service_repos
 
 

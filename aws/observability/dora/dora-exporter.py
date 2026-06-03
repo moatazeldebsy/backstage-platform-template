@@ -30,13 +30,15 @@ import requests
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-GITHUB_TOKEN    = os.environ["GITHUB_TOKEN"]
-GITHUB_ORG      = os.environ.get("GITHUB_ORG", "moatazeldebsy")
-PUSHGATEWAY_URL = os.environ.get("PUSHGATEWAY_URL", "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091")
-AWS_REGION      = os.environ.get("AWS_REGION", "us-east-1")
-LOOKBACK_HOURS  = int(os.environ.get("LOOKBACK_HOURS", "24"))
-CW_NAMESPACE    = os.environ.get("CLOUDWATCH_NS", "IDP/DORA")
-SKIP_CLOUDWATCH = os.environ.get("SKIP_CLOUDWATCH", "false").lower() == "true"
+GITHUB_TOKEN       = os.environ["GITHUB_TOKEN"]
+GITHUB_ORG         = os.environ.get("GITHUB_ORG", "moatazeldebsy")
+PUSHGATEWAY_URL    = os.environ.get("PUSHGATEWAY_URL", "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091")
+AWS_REGION         = os.environ.get("AWS_REGION", "us-east-1")
+LOOKBACK_HOURS     = int(os.environ.get("LOOKBACK_HOURS", "24"))
+CW_NAMESPACE       = os.environ.get("CLOUDWATCH_NS", "IDP/DORA")
+SKIP_CLOUDWATCH    = os.environ.get("SKIP_CLOUDWATCH", "false").lower() == "true"
+REPO_FILTER_TOPIC  = os.environ.get("REPO_FILTER_TOPIC", "idp-app")
+REPO_INCLUDE       = os.environ.get("REPO_INCLUDE", "")
 
 GH_HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -66,18 +68,40 @@ def gh_get(url: str, params: dict = None) -> list:
 
 
 def get_service_repos() -> list:
+    """Return IDP-managed service repos.
+
+    Priority:
+    1. REPO_INCLUDE — explicit comma-separated allowlist.
+    2. REPO_FILTER_TOPIC (default: "idp-app") — GitHub topic set by all scaffold templates.
+    3. Fallback — repos containing build-and-deploy.yml.
+    """
+    if REPO_INCLUDE:
+        repos = [r.strip() for r in REPO_INCLUDE.split(",") if r.strip()]
+        log.info("Using explicit REPO_INCLUDE allowlist (%d repos): %s", len(repos), repos)
+        return repos
+
+    if REPO_FILTER_TOPIC:
+        log.info("Filtering repos by GitHub topic '%s'", REPO_FILTER_TOPIC)
+        results = gh_get(
+            "https://api.github.com/search/repositories",
+            {"q": f"user:{GITHUB_ORG} topic:{REPO_FILTER_TOPIC}", "per_page": 100},
+        )
+        repos = [r["name"] for r in results]
+        log.info("Found %d repos with topic '%s': %s", len(repos), REPO_FILTER_TOPIC, repos)
+        return repos
+
     org_url  = f"https://api.github.com/orgs/{GITHUB_ORG}/repos"
     user_url = "https://api.github.com/user/repos"
     probe = requests.get(org_url, headers=GH_HEADERS, params={"per_page": 1}, timeout=10)
     list_url = org_url if probe.status_code == 200 else user_url
-    log.info("Using repo list endpoint: %s", list_url)
-    repos = gh_get(list_url, {"per_page": 100, "type": "all"})
+    log.info("Falling back to workflow-file check via %s", list_url)
+    all_repos = gh_get(list_url, {"per_page": 100, "type": "all"})
     service_repos = []
-    for repo in repos:
+    for repo in all_repos:
         name = repo["name"]
         check = requests.get(
             f"https://api.github.com/repos/{GITHUB_ORG}/{name}/contents/.github/workflows/build-and-deploy.yml",
-            headers=GH_HEADERS, timeout=10
+            headers=GH_HEADERS, timeout=10,
         )
         if check.status_code == 200:
             service_repos.append(name)

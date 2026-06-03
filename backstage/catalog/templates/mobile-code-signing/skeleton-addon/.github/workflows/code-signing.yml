@@ -25,7 +25,7 @@ jobs:
 {% if values.platform === 'ios' or values.platform === 'both' %}
   ios-signing:
     name: iOS Code Signing (Fastlane Match)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 

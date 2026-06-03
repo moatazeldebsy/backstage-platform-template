@@ -105,12 +105,9 @@ jobs:
 jobs:
   device-farm-ios:
     name: Firebase Test Lab — iOS (XCUITest)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode 15
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
       - name: Build XCTest zip
         run: |
@@ -185,7 +182,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
+          flutter-version: '3.27.0'
           channel: stable
 
       - name: Set up JDK 17

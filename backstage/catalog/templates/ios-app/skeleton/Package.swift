@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "${{ values.name | replace('-', '_') }}",
     platforms: [
-        .iOS(.v${{ values.minIosVersion | replace('.', '_') }})
+        .iOS(.v${{ values.minIosVersion }})
     ],
     products: [
         .library(

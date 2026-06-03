@@ -91,12 +91,9 @@ jobs:
 {% if values.platform === 'app_store' or values.platform === 'both' %}
   deploy-app-store:
     name: Deploy to App Store
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode 15
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
       - name: Configure AWS credentials (for Fastlane Match)
         uses: aws-actions/configure-aws-credentials@v4

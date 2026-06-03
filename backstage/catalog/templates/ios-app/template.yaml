@@ -55,17 +55,17 @@ spec:
         minIosVersion:
           title: Minimum iOS Version
           type: string
-          default: "16.0"
+          default: "16"
           enum:
-            - "15.0"
-            - "16.0"
-            - "17.0"
-            - "18.0"
+            - "15"
+            - "16"
+            - "17"
+            - "18"
           enumNames:
-            - "iOS 15.0"
-            - "iOS 16.0"
-            - "iOS 17.0"
-            - "iOS 18.0"
+            - "iOS 15"
+            - "iOS 16"
+            - "iOS 17"
+            - "iOS 18"
         enableFirebase:
           title: Enable Firebase
           type: boolean
