@@ -8,6 +8,10 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] — 2026-06-03
+
 ### Added
 
 #### Mobile golden-path platform (7 templates + testing + scorecard)
@@ -53,7 +57,22 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `dompurify` pinned to `^3.2.5` (XSS fix); `tmp` to `^0.2.3` in `backstage/app/package.json` resolutions.
 - `yarn.lock` regenerated.
 
+### Fixed
+
+#### Local/AWS parity
+- **Prometheus proxy path** — `app-config.aws.yaml` and `kubernetes/backstage/configmap.yaml` had `/prometheus/api` as the proxy key. The DORA tab frontend requests `/api/proxy/prometheus/api/v1/query`, so Backstage was forwarding `/v1/query` to Prometheus instead of `/api/v1/query`, causing a 404 on AWS only. Renamed to `/prometheus` and added `pathRewrite: '^/api/proxy/prometheus': ''` in both files.
+- **flutter-app missing `awsRoleArn` parameter** — The `set-repo-secrets` step referenced `${{ parameters.awsRoleArn }}` but the parameter was never declared. Any user who enabled Flutter Web deploy targeting AWS would hit a silent scaffold crash. Added `awsRoleArn` to the Deployment Target parameters section and wired it into `fetch:template` values.
+
+#### CLI
+- **`flutter-integration` and `deepeval` types silently rejected** — Both were missing from `templateRef` in `cli/cmd/idp/testsuite.go`; `idp scaffold test-suite --type flutter-integration` returned "unknown --type" error. Added both mappings.
+- **API-only types gave generic error on `--local`** — `unit`, `component`, `iac`, `flutter-integration`, `deepeval` now return a clear actionable message instead of "unknown test suite type".
+- **`cli-install` ldflags missing** — `make cli-install` always produced `idp --version` → `dev`. Added the same `-ldflags "-X main.version=..."` used by `cli-build`.
+
 ---
+
+## [0.2.0] — 2026-05-31
+
+### Added
 
 #### Crossplane alongside Terraform (per-service AWS provisioning)
 - **`terraform/iam-crossplane.tf`** — IRSA role assumed by Crossplane's upbound AWS providers (`StringLike` on `system:serviceaccount:crossplane-system:provider-aws-*`), with AWS-managed `*FullAccess` policies attached for S3, RDS, MSK, DynamoDB, SQS plus a tagging policy. New TF output `crossplane_aws_role_arn`.
@@ -227,5 +246,8 @@ Initial open-source release of the backstage-platform-template template.
 - `moatazeldebsy`/`backstage-platform-template` documentation tokens now substituted by setup.sh
 - build-and-deploy.yml: graceful skip when `AWS_ROLE_ARN` secret is not set
 
-[Unreleased]: https://github.com/moatazeldebsy/backstage-platform-template/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/moatazeldebsy/backstage-platform-template/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/moatazeldebsy/backstage-platform-template/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/moatazeldebsy/backstage-platform-template/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/moatazeldebsy/backstage-platform-template/releases/tag/v0.1.0
 [0.1.0]: https://github.com/moatazeldebsy/backstage-platform-template/releases/tag/v0.1.0
