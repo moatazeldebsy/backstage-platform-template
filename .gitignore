@@ -1,3 +1,6 @@
+CLAUDE.md
+.claude/
+
 # Terraform
 terraform/.terraform/
 terraform/.terraform.lock.hcl
