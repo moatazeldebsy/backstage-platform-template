@@ -13,6 +13,9 @@ opt_in_rules:
   - sorted_imports
   - unavailable_function
 
+type_name:
+  allowed_symbols: ["_"]  # scaffold-generated names use underscores (e.g. My_app_nameApp)
+
 line_length:
   warning: 120
   error: 200

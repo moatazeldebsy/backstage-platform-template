@@ -10,7 +10,7 @@ let package = Package(
         .library(
             name: "${{ values.name | replace('-', '_') }}",
             targets: ["${{ values.name | replace('-', '_') }}"]
-        ),
+        )
     ],
     dependencies: [
         // Add your dependencies here
@@ -25,6 +25,6 @@ let package = Package(
             name: "${{ values.name | replace('-', '_') }}Tests",
             dependencies: ["${{ values.name | replace('-', '_') }}"],
             path: "Tests/${{ values.name | replace('-', '_') }}Tests"
-        ),
+        )
     ]
 )

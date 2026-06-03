@@ -1,5 +1,5 @@
-import XCTest
 @testable import ${{ values.name | replace('-', '_') }}
+import XCTest
 
 final class AppTests: XCTestCase {
 
