@@ -52,6 +52,8 @@ A GitHub template for a production-ready Internal Developer Platform. Running lo
 ./scripts/bootstrap-local.sh --install-argocd             # install/repair ArgoCD + register GitHub creds
 ./scripts/bootstrap-local.sh --print-urls                 # print all service URLs without bootstrapping
 ./scripts/bootstrap-local.sh --destroy                    # tear everything down (see Cleanup / Destroy below)
+./scripts/recover-docker-restart.sh                       # recover Kind after Docker Desktop restarts (patches IPs, restarts ingress, smoke-tests URLs)
+./scripts/recover-docker-restart.sh --dry-run             # print recovery steps without executing
 ```
 
 **Rancher Desktop prerequisites (one-time):**
@@ -108,6 +110,8 @@ make cli-build          # outputs ./bin/idp
 make cli-install        # go install → $(go env GOPATH)/bin/idp
 cd cli && go build ./... && go vet ./...
 ```
+
+**Keeping CLI in sync:** When adding a new test-suite Backstage template, also add it to `templateRef` in `cli/cmd/idp/testsuite.go`. If the type requires Backstage (opens a PR on an existing repo rather than creating `test-suites/<name>/`), add it to `apiOnlyTypes` in `cli/internal/scaffold/local_testsuite.go` too.
 
 ### Helm / Terraform
 
@@ -290,7 +294,7 @@ All custom Backstage backend scaffold actions are registered in `backstage/app/p
 | `idpLocalDeploy.ts` | `idp:deploy-local` | `helm upgrade --install` to Kind via `host.docker.internal` |
 | `idpProvisionSecret.ts` | `idp:provision-secret` | Create a Kubernetes Secret |
 | `idpSetRepoSecrets.ts` | `idp:set-repo-secrets` | Write GitHub Actions secrets |
-| `idpTechInsights.ts` | `idp:tech-insights` | Push metrics to Prometheus Pushgateway; includes AI scorecard checks (v0.3.0+) |
+| `idpTechInsights.ts` | `idp:tech-insights` | Push metrics to Prometheus Pushgateway; includes AI scorecard checks (v0.3.0+) and 5 mobile checks: min-sdk, crashlytics, accessibility-tests, app-size-budget, code-signing (v0.4.0+) |
 | `idpDeployAgent.ts` | `idp:deploy-agent` | Deploy a KAgent Agent CRD |
 | `idpRunTrainingJob.ts` | `idp:run-training-job` | Launch an MLflow training job |
 | `idpDeployMcpServer.ts` | `idp:deploy-mcp-server` | Deploy an MCP server via Helm |
@@ -338,6 +342,8 @@ cd backstage/app && yarn install  # applies patches from .yarn/patches/
 
 **Adding a new proxy target:** Proxy endpoints are fully env-specific (no proxy in the base config). When adding a new in-cluster service:
 1. Add the in-cluster DNS target to `proxy.endpoints` in `backstage/app-config.aws.yaml` (and mirror into `kubernetes/backstage/configmap.yaml` `backstage-config`)
+   - Use the **same path key** in local and AWS (e.g. `/prometheus`, not `/prometheus/api`).
+   - Add `pathRewrite: '^/api/proxy/<name>': ''` so Backstage strips its own prefix before forwarding. A mismatch between the proxy key and what the frontend appends causes doubled path segments (e.g. `/api/api/v1/query`) that produce silent 404s in production only.
 2. Add the `*.idp.local` hostname override to `proxy.endpoints` in `backstage/app-config.local.yaml`
 3. Add `- "hostname.idp.local:host-gateway"` to `extra_hosts` in `local/backstage/docker-compose.yml`
 4. Add `127.0.0.1  hostname.idp.local` to `local/hosts-append.txt`
@@ -387,7 +393,7 @@ Both have `.env.example` counterparts. `K8S_*`, `ARGOCD_AUTH_TOKEN`, and `GRAFAN
 
 ### Go module boundaries
 
-`cli/` and `services/hello-service/` are independent Go modules with their own `go.mod`. CI only covers `services/hello-service/` — `cli/` changes are not automatically tested.
+`cli/` and `services/hello-service/` are independent Go modules with their own `go.mod`. Both are covered by CI: `test-hello-service` (Go tests + coverage) and `test-cli` (build + vet + test) jobs in `ci.yml`.
 
 ### AWS infrastructure
 
@@ -399,7 +405,11 @@ Terraform in `terraform/` provisions EKS, VPC, ECR, IAM (OIDC + IRSA). CI/CD use
 2. Register in **both** config files under `catalog.locations`:
    - `backstage/app-config.yaml` — add a `file:` entry (used locally via volume mount)
    - `backstage/app-config.aws.yaml` + `kubernetes/backstage/configmap.yaml` (`backstage-config`) — add a `url:` entry pointing to the GitHub raw URL (used by AWS)
+
+   Mobile templates are batched in `backstage/catalog/mobile-catalog.yaml` (already registered in all three locations). Add new mobile templates there rather than directly to `app-config.yaml`.
 3. Templates are bind-mounted; **no rebuild needed** — `docker compose -f local/backstage/docker-compose.yml restart backstage` is enough. Rebuild is only required if you changed `backstage/app/packages/`.
+
+**Template authoring rule:** Every `${{ parameters.X }}` used in a step `input:` block must have a corresponding `X:` declaration in the `parameters` section. Missing declarations cause a silent scaffold crash only when the conditional step is reached. Validate by grepping `parameters\.\(\w\+\)` against declared property keys before committing.
 
 **Test-suite templates** (under `backstage/catalog/templates/*-suite/` and `*-test-suite/`) follow a standard shape:
 
@@ -421,7 +431,7 @@ The full pyramid is covered by these templates (one row per layer):
 | Security (SAST / SCA) | language skeletons ship Sonar+Snyk in CI; `enable-security-scanning` for brownfield (see [docs/security-scanning.md](docs/security-scanning.md)) |
 | Visual | `visual-regression-suite` |
 | Accessibility | `accessibility-suite` |
-| Mobile | `appium-mobile-suite` |
+| Mobile | `appium-mobile-suite`, `flutter-integration-test-suite` (Firebase TestLab or local emulator) |
 | Chaos | `chaos-mesh-suite` |
 | LLM eval | `deepeval-llm-eval-suite` |
 | Mutation | `mutation-testing-suite` |
@@ -455,7 +465,7 @@ If `refresh_state` has entries but `final_entities` is 0, the catalog refresh lo
 | `auto-merge-onboarding.yml` | PRs titled "feat: onboard …" | Auto-approves if only `helm-values-*.yaml` changed; requires `GH_PAT` |
 | `docs.yml` | Changes to `docs/` or `mkdocs.yml` | MkDocs → GitHub Pages |
 
-Changes to `cli/` do **not** trigger CI.
+`ci.yml` also covers `cli/**` via the `test-cli` job (go build + vet + test).
 
 ## Local Access URLs
 
