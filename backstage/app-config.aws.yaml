@@ -52,9 +52,11 @@ proxy:
     /grafana/api:
       target: http://prometheus-grafana.monitoring.svc.cluster.local:80
       changeOrigin: true
-    /prometheus/api:
+    /prometheus:
       target: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
       changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/prometheus': ''
     /argocd/api:
       target: http://argocd-server.argocd.svc.cluster.local:80
       changeOrigin: true

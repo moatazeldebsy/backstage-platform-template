@@ -21,10 +21,13 @@ nav:
   - Getting Started: getting-started.md
   - Architecture: architecture.md
   - Golden Path: golden-path.md
+  - Mobile Platform: mobile-platform.md
   - Local Setup: local-setup.md
   - Troubleshooting: TROUBLESHOOTING.md
+  - Docker Recovery: docker-recovery.md
   - CLI Reference: cli-reference.md
   - AI Assistant: ai-assistant.md
+  - DORA & FinOps: dora-finops.md
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
   - Crossplane vs Terraform: crossplane-vs-terraform.md

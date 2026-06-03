@@ -33,10 +33,15 @@ Status is updated as work progresses.
 | DORA metrics | Deployment frequency, lead time, MTTR, change failure rate — CloudWatch (AWS) + Pushgateway (local) |
 | Community health | CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates, PR template, CODEOWNERS |
 | GitOps | ArgoCD app-of-apps for local and AWS; image tag commit loop via `build-and-deploy.yml` |
-| Test suite template library | 14 templates covering the full pyramid: unit, component, integration, contract, E2E, performance, security (DAST), visual, accessibility, mobile, chaos, LLM eval, mutation, synthetic, IaC |
+| Test suite template library | 18 templates covering the full pyramid: unit, component, integration, contract, E2E, performance, security (DAST), visual, accessibility, mobile (Appium), chaos, LLM eval, mutation, synthetic, IaC, Flutter integration |
 | Contract testing stack | `contract-mcp-server` (9 tools), `contract-assistant` KAgent agent, `enable-contract-testing` scaffold template |
 | QA MCP server | `qa-mcp-server` deployed alongside `idp-mcp-server`; QA-specific tools exposed as MCP |
 | Three-way repo split | `local/` (Kind-only), `aws/` (EKS-only), `kubernetes/` (shared) — enforced by bootstrap scripts; no cross-reads |
+| Mobile golden-path platform | 7 templates: android-app, ios-app, flutter-app (primary); mobile-code-signing, mobile-app-store-deploy, mobile-device-farm, mobile-sdk (add-on); plus flutter-integration-test-suite; 5 mobile Tech Insights checks |
+| DORA entity tab + enhanced FinOps | Per-component DORA tab (Elite/High/Medium/Low badges, 7-day sparklines, Prometheus-backed); FinOps cost overview with date-range selector, namespace/team/container breakdown, efficiency badges |
+| Production security hardening | Guest auth removed from AWS config; session secret from Secrets Manager; TLS cert validation enabled for RDS; AWS Account ID no longer hardcoded |
+| Template annotation standardisation | 20 templates updated with PagerDuty, Jira, and `idp.io/quality-gates` annotations; optional Integrations step added to all test-suite templates |
+| `recover-docker-restart.sh` | Automated Kind cluster recovery after Docker Desktop restarts: patches kubelet.conf, restarts networking, replaces ingress-nginx, repairs Grafana PVC, smoke-tests 9 URLs |
 
 ---
 
@@ -232,7 +237,7 @@ to under 10 minutes.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| DORA metrics Backstage widget | 🔴 High | Homepage card showing deployment frequency and MTTR per team |
+| DORA metrics Backstage widget | ✅ | Per-component DORA tab with 4 cards, sparklines, and Elite/High/Medium/Low badges; see [docs/dora-finops.md](dora-finops.md) |
 | Trivy results in Backstage | 🟡 Medium | Post-CI Trivy JSON → catalog entity; security tab shows CVE count per service |
 | External Secrets Operator full loop | 🟡 Medium | `idpProvisionSecret` extended to emit `ExternalSecret` CRD; automatic rotation every 30 days |
 | Platform CLI (`platformctl`) | 🟡 Medium | Go CLI wrapping `create-service.sh`, `setup-runner.sh`; `--help` + shell autocomplete |

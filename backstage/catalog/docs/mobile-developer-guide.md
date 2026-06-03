@@ -1,8 +1,22 @@
 # Mobile Developer Guide
 
-This guide helps Android and Flutter developers get started with the Internal Developer Platform.
+This guide helps iOS, Android, and Flutter developers get started with the Internal Developer Platform. For a full template reference see [docs/mobile-platform.md](https://moatazeldebsy.github.io/backstage-platform-template/mobile-platform/).
 
 ## Golden Path: Create Your First App
+
+### iOS (Swift + SwiftUI)
+
+1. Go to **Backstage → Create** and choose **iOS App (Swift)**
+2. Fill in: app name, bundle ID (e.g. `com.mycompany.myapp`), minimum iOS version (15.0–17.0), owner
+3. Optionally enable Firebase Crashlytics
+4. Choose your GitHub repo name and click **Create**
+
+Your repo will contain:
+- Swift + SwiftUI project with MVVM skeleton
+- GitHub Actions CI: SwiftLint → unit tests → archive
+- Fastlane `Fastfile` with `test`, `build`, `beta`, `release` lanes
+- SonarCloud + Snyk scanning wired to CI
+- TechDocs wired to Backstage
 
 ### Android (Kotlin + Jetpack Compose)
 
@@ -157,16 +171,121 @@ metadata:
     idp.io/quality-gates: "mobile-test-coverage,mobile-crash-reporting,mobile-ui-tests,mobile-fastlane"
 ```
 
-## CI/CD Architecture
+## Code Signing
 
+### iOS — Fastlane Match (S3)
+
+Use the `mobile-code-signing` template from Backstage to set up automated code signing:
+
+1. Go to **Backstage → Create** → **Mobile Code Signing**
+2. Select your iOS app and choose **Fastlane Match**
+3. The scaffolder adds to your repo:
+   - `Matchfile` pointing to an S3 bucket for certificate/profile storage
+   - CI workflow using `bundle exec fastlane match appstore`
+   - AWS Secrets Manager secret for Match passphrase (`/mobile/<app>/match-passphrase`)
+
+```bash
+# One-time: create the Match storage bucket and certificates
+bundle exec fastlane match init
+bundle exec fastlane match appstore    # distribution cert + provisioning profile
+bundle exec fastlane match development # development cert
+
+# In CI (reads from S3 automatically):
+bundle exec fastlane match appstore --readonly
 ```
-GitHub Push
-  └── GitHub Actions CI
-        ├── Android: lint → test → assembleDebug → (main) assembleRelease
-        └── Flutter: analyze → test → build apk → build web → (main) push Docker image
 
-(main branch only)
-  └── Flutter Web: Docker image → GHCR → ArgoCD → services-dev namespace
+### Android — Keystore via AWS Secrets Manager
+
+1. Go to **Backstage → Create** → **Mobile Code Signing**
+2. Select your Android app and choose **Keystore**
+3. The scaffolder adds:
+   - `build.gradle` signing config reading from environment variables
+   - CI workflow that fetches the keystore from `AWS_SECRETS_MANAGER` (`/mobile/<app>/keystore`)
+   - Upload script to store the keystore in Secrets Manager
+
+```bash
+# One-time: generate and upload keystore
+keytool -genkey -v -keystore release.jks -alias <alias> -keyalg RSA -keysize 2048 -validity 10000
+aws secretsmanager create-secret --name /mobile/<app>/keystore --secret-binary fileb://release.jks
 ```
 
-For native app distribution, use Fastlane lanes — ArgoCD is not involved (there is no K8s deployment for native mobile apps).
+---
+
+## App Store Deploy
+
+Use the `mobile-app-store-deploy` template to add a one-click release pipeline:
+
+1. Go to **Backstage → Create** → **App Store Deploy**
+2. Select your app and target store (Google Play and/or App Store)
+3. The scaffolder adds:
+   - `release.yml` GitHub Actions workflow with `workflow_dispatch` + `release/**` branch triggers
+   - Version bump step (patch / minor / major selector)
+   - Fastlane `deliver` (iOS) or `supply` (Android) lane
+
+Trigger a release:
+```bash
+# Via GitHub UI: Actions → Release → Run workflow → choose bump type
+# Or via gh CLI:
+gh workflow run release.yml -f bump=patch
+```
+
+---
+
+## Device Farm Testing
+
+Use the `mobile-device-farm` template to add Firebase TestLab testing to an existing app.
+
+Device matrices available:
+
+| Size | Devices | Use case |
+|---|---|---|
+| Low (1 device) | Pixel 6 or iPhone 14 | Fast smoke check on every PR |
+| Medium (3 devices) | Pixel 6 + S21 + Pixel 7 / iPhone 14 + 13 + SE | Pre-release regression |
+| High (5 devices) | Full coverage matrix | Release gate |
+
+```bash
+# Run tests manually against Firebase TestLab
+gcloud firebase test android run \
+  --type instrumentation \
+  --app app/build/outputs/apk/debug/app-debug.apk \
+  --test app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+  --device model=Pixel6,version=31,locale=en,orientation=portrait
+```
+
+---
+
+## Shared SDK Library
+
+Use the `mobile-sdk` template to scaffold a shared library used across multiple mobile apps:
+
+1. Go to **Backstage → Create** → **Mobile SDK**
+2. Choose platform targets: Android (Kotlin), iOS (SPM), Flutter, Kotlin Multiplatform
+3. The scaffolder creates a library repo with:
+   - Conditional build targets per platform
+   - GitHub Actions CI: test → build → publish (on version-tagged releases)
+   - Publishing to GitHub Packages (Android/KMP), SPM index (iOS), pub.dev (Flutter)
+
+```bash
+# Publish a new version (bumps version tag and triggers publish workflow)
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+---
+
+## Local Setup
+
+### iOS
+
+```bash
+# Install Xcode from the Mac App Store
+# Install Fastlane
+gem install bundler
+bundle install    # installs Gemfile dependencies (Fastlane + plugins)
+
+# Run tests
+bundle exec fastlane test
+
+# Build for TestFlight
+bundle exec fastlane beta
+```

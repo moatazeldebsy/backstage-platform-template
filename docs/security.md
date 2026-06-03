@@ -76,6 +76,25 @@ with these safety defaults:
 - RDS security group restricts ingress to the VPC CIDR (no `0.0.0.0/0`).
 - All namespaces enforce Pod Security Standards (`restricted` where possible, `baseline` for system namespaces).
 
+## Production Backstage Hardening
+
+The following hardening steps were applied to the AWS Backstage deployment in commit `e4e00dc`:
+
+### Authentication
+
+- **Guest auth removed** — the `dangerouslyAllowOutsideDevelopment` guest provider is no longer present in `backstage/app-config.aws.yaml`. Production requires GitHub OAuth (`auth.providers.github`).
+- **Session secret from Secrets Manager** — `AUTH_SESSION_SECRET` is injected at pod startup via the External Secrets Operator; there is no static fallback value in the config file.
+
+### Database
+
+- **TLS cert validation enabled** — `rejectUnauthorized: true` is set for the PostgreSQL connection in `kubernetes/backstage/configmap.yaml`. The cluster CA is mounted from a Kubernetes secret.
+
+### Infrastructure
+
+- **No hardcoded AWS Account ID** — `aws/backstage/deployment.yaml` uses `${AWS_ACCOUNT_ID}` and `${AWS_REGION}` environment variable placeholders substituted at deploy time by `bootstrap.sh`, rather than the literal account ID.
+
+These settings are in effect only in the AWS config. Local Kind development still uses guest auth and skips TLS (see Local-only relaxations below).
+
 ## Local-only relaxations
 
 These exist to make the developer-loop experience usable on Kind/Rancher Desktop and **must not** be ported to a production cluster:

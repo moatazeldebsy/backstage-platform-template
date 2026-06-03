@@ -73,6 +73,19 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 		}
 	}
 
+	// These types open a PR on an existing repo via the Backstage Scaffolder
+	// API and have no meaningful local-generation equivalent.
+	apiOnlyTypes := map[string]bool{
+		"unit":                true,
+		"component":           true,
+		"iac":                 true,
+		"flutter-integration": true,
+		"deepeval":            true,
+	}
+	if apiOnlyTypes[cfg.Type] {
+		return fmt.Errorf("--type %q requires Backstage to be reachable (it opens a PR on an existing repo); remove --local and ensure Backstage is running at %s", cfg.Type, cfg.RootDir)
+	}
+
 	generators := map[string]func(TestSuiteConfig, string) error{
 		"playwright":     genPlaywright,
 		"k6":             genK6,

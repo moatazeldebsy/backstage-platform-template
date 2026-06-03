@@ -7,7 +7,7 @@
 [![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 12 software templates + 14 QA/test scaffold templates + 5 Crossplane Claim templates, AI/ML platform (KAgent + MLflow + 3 MCP servers), shift-left quality programme (Bronze/Silver/Gold scorecard + contract testing), Prometheus + Grafana observability, AWS EKS via Terraform, and per-service cloud resources via Crossplane. Runs locally on Kind in ~15 minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 21 service & app templates (including 7 mobile) + 18 QA/test scaffold templates + 5 Crossplane Claim templates, AI/ML platform (KAgent + MLflow + 3 MCP servers), shift-left quality programme (Bronze/Silver/Gold scorecard + contract testing), Prometheus + Grafana observability + DORA entity tab, AWS EKS via Terraform, and per-service cloud resources via Crossplane. Runs locally on Kind in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -38,13 +38,14 @@
 
 | Capability | Details |
 |---|---|
-| **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, and custom scaffolder actions |
-| **Software templates** | 12 golden-path service templates (Node.js, Python, Go, React, Terraform, Deploy-to-Kind, Team namespace, RDS, Add-secret, AI Agent, ML Experiment, MCP Server) |
-| **QA / test templates** | 14 testing scaffold templates — Playwright E2E, k6 Performance, Pact Contract, Newman API, ZAP DAST, Datadog Synthetic, Visual Regression, Accessibility (axe), BDD Cucumber, Appium Mobile, Chaos Mesh, Stryker Mutation, Testcontainers Integration, DeepEval LLM Eval — plus `enable-contract-testing` for MCP-driven contract gates |
+| **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, Tech Radar (63 entries), and custom scaffolder actions |
+| **Software templates** | 21 golden-path service & app templates — Node.js, Python, Go, React, Terraform, MCP Server, Model Serving API, Deploy-to-Kind, Team namespace, EKS Cluster, RDS, Add-secret, AI Agent, ML Experiment, plus 7 mobile templates (Android, iOS, Flutter, SDK, Code Signing, App Store Deploy, Device Farm) |
+| **QA / test templates** | 18 testing scaffold templates — Playwright E2E, k6 Performance, Pact Contract, Newman API, ZAP DAST, Datadog Synthetic, Visual Regression, Accessibility (axe), BDD Cucumber, Appium Mobile, Chaos Mesh, Stryker Mutation, Testcontainers Integration, DeepEval LLM Eval, Unit, Component, IaC, Flutter Integration — plus `enable-contract-testing` for MCP-driven contract gates |
+| **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm); 5 mobile Tech Insights scorecard checks; Appium + Firebase TestLab device-farm testing. See [docs/mobile-platform.md](docs/mobile-platform.md). |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
-| **Shift-left quality** | Bronze/Silver/Gold scorecard (11 checks, visible in Backstage Tech Insights + Grafana); PR gates for coverage ≥70%, vuln scan, static analysis; ArgoCD PreSync contract gate blocks breaking API changes. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) for the programme overview. |
+| **Shift-left quality** | Bronze/Silver/Gold scorecard (11 checks + 5 mobile checks, visible in Backstage Tech Insights + Grafana); PR gates for coverage ≥70%, vuln scan, static analysis; ArgoCD PreSync contract gate blocks breaking API changes. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) for the programme overview. |
 | **AI/ML platform** | **AI-Native IDP (Phase 7a Complete)** — KAgent agents (Claude + OpenAI GPT-4o) + MLflow experiment tracking + **IDP MCP Server** (6 tools) + **QA MCP Server** (QA-specific tools) + **Contract MCP Server** (9 contract tools) + Model Serving API (Ollama/vLLM) + AI Scorecard (Bronze/Silver/Gold) + Prompt Lifecycle Management (ConfigMaps) + Argo Workflows (ML pipelines) + Cost Attribution (team labels + metrics) + AI Observability Dashboard + RAG semantic search over TechDocs |
-| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA metrics exporter; QA KPI dashboard |
+| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA entity tab on every Component (Elite/High/Medium/Low badges, 7-day sparklines); FinOps cost overview with breakdown by namespace/team; DORA metrics exporter; QA KPI dashboard. See [docs/dora-finops.md](docs/dora-finops.md). |
 | **Infrastructure** | **Terraform** for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3, Secrets Manager) + **Crossplane** for per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) via in-cluster Claims reconciled by ArgoCD. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) for the boundary. |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
@@ -200,13 +201,14 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
 | `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. Use `--aws` flag for AWS deployment. | After `bootstrap-local.sh` or `bootstrap.sh` |
+| `recover-docker-restart.sh` | **Post-Docker-restart recovery.** Patches Kind cluster after Docker Desktop shuffles container IPs: fixes kubelet.conf, restarts kindnet/kube-proxy, replaces ingress-nginx pods, repairs Grafana PVC permissions, restarts Backstage Docker Compose, and smoke-tests all 9 service URLs. Flags: `--skip-backstage`, `--dry-run`. See [docs/docker-recovery.md](docs/docker-recovery.md). | After Docker Desktop restarts unexpectedly |
 
 ### Day-2 — Per-service operations
 
 | Tool | Purpose | When to run |
 |---|---|---|
 | `idp scaffold service` | Scaffold a new service (Node.js / Python / Go) via Backstage API or locally. Built by `setup.sh` automatically. | Each time you add a new service |
-| `idp scaffold test-suite` | Scaffold a QA test suite (13 types). Uses Backstage Scaffolder API when running, local generation otherwise. | Each time you add a test suite |
+| `idp scaffold test-suite` | Scaffold a QA test suite (18 types). Uses Backstage Scaffolder API when running, local generation otherwise. | Each time you add a test suite |
 | `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
 | `seed-qa-metrics.sh` | Push synthetic QA metrics so the Grafana QA dashboard shows data immediately. | Optional — demo / dev only |
 
@@ -268,9 +270,9 @@ idp scaffold service --help
 ### Scaffold a test suite
 
 ```bash
-# 16 types: playwright | k6 | pact | newman | zap | datadog | visual |
+# 18 types: playwright | k6 | pact | newman | zap | datadog | visual |
 #           accessibility | cucumber | appium | chaos | mutation | testcontainers |
-#           unit | component | iac
+#           unit | component | iac | flutter-integration | deepeval
 idp scaffold test-suite --name hello-e2e   --type playwright    --service hello-service
 idp scaffold test-suite --name hello-load  --type k6            --service hello-service --vus 50 --duration 5m
 idp scaffold test-suite --name hello-sec   --type zap           --service hello-service --scan-type baseline
@@ -300,26 +302,27 @@ Backstage → scaffold repo → push code
 **Via Backstage** (http://backstage.idp.local → Create):
 
 *Service templates:*
-- Node.js Service
-- Python FastAPI Service
-- Go Service
-- React Frontend
-- Terraform Module
-- Team Namespace
-- Deploy to Kind
-- RDS Database
-- Add Secret
+- Node.js Service, Python FastAPI Service, Go Service, React Frontend
+- Terraform Module, MCP Server (kmcp), Model Serving API (Ollama/vLLM)
+- Team Namespace, EKS Cluster, Deploy to Kind
+- RDS Database, Add Secret
+
+*Mobile templates (7):*
+- Android App (Kotlin + Jetpack Compose), iOS App (Swift + SwiftUI), Flutter App (Dart)
+- Mobile SDK (Android/iOS/Flutter/KMP), Mobile Code Signing, App Store Deploy, Device Farm
+
 *AI/ML templates:*
 - AI Agent (KAgent) — scaffold a Kubernetes-native AI agent powered by Anthropic Claude API
 - ML Experiment (MLflow) — scaffold a Python ML experiment with tracking, model registry, and CI
 - MCP Server (kmcp) — scaffold a Model Context Protocol server managed by the kmcp Kubernetes controller
 
-*QA testing templates (13):*
+*QA testing templates (18):*
 - Playwright E2E, Visual Regression, Accessibility (axe-core)
 - k6 Performance, Chaos Mesh, Testcontainers
 - Newman API, Pact Contract
 - OWASP ZAP DAST, Datadog Synthetics
 - BDD Cucumber, Appium Mobile, Stryker Mutation
+- Unit Test Suite, Component Test Suite, IaC Test Suite, Flutter Integration Tests
 
 **Via `idp` CLI** (built automatically by `setup.sh`):
 ```bash
@@ -332,7 +335,7 @@ idp scaffold service --name my-svc --type go
 idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
 idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20 --duration 5m
 idp scaffold test-suite --name my-a11y --type accessibility --service my-svc --wcag wcag21aa
-idp scaffold test-suite --help   # show all 13 types and flags
+idp scaffold test-suite --help   # show all 18 types and flags
 ```
 
 **Backstage API mode** (when `http://backstage.idp.local` is reachable): creates GitHub repo, registers the service in the catalog, opens a GitOps PR, and generates TechDocs.

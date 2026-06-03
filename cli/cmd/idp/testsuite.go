@@ -10,22 +10,24 @@ import (
 
 // templateRef maps CLI type names to Backstage template IDs.
 var templateRef = map[string]string{
-	"playwright":     "playwright-e2e-suite",
-	"k6":             "k6-performance-suite",
-	"pact":           "pact-contract-suite",
-	"newman":         "newman-api-suite",
-	"zap":            "zap-dast-suite",
-	"datadog":        "datadog-synthetic-suite",
-	"visual":         "visual-regression-suite",
-	"accessibility":  "accessibility-suite",
-	"cucumber":       "bdd-cucumber-suite",
-	"appium":         "appium-mobile-suite",
-	"chaos":          "chaos-mesh-suite",
-	"mutation":       "mutation-testing-suite",
-	"testcontainers": "testcontainers-suite",
-	"unit":           "unit-test-suite",
-	"component":      "component-test-suite",
-	"iac":            "iac-test-suite",
+	"playwright":           "playwright-e2e-suite",
+	"k6":                   "k6-performance-suite",
+	"pact":                 "pact-contract-suite",
+	"newman":               "newman-api-suite",
+	"zap":                  "zap-dast-suite",
+	"datadog":              "datadog-synthetic-suite",
+	"visual":               "visual-regression-suite",
+	"accessibility":        "accessibility-suite",
+	"cucumber":             "bdd-cucumber-suite",
+	"appium":               "appium-mobile-suite",
+	"chaos":                "chaos-mesh-suite",
+	"mutation":             "mutation-testing-suite",
+	"testcontainers":       "testcontainers-suite",
+	"unit":                 "unit-test-suite",
+	"component":            "component-test-suite",
+	"iac":                  "iac-test-suite",
+	"flutter-integration":  "flutter-integration-test-suite",
+	"deepeval":             "deepeval-llm-eval-suite",
 }
 
 var (
@@ -87,12 +89,14 @@ var testSuiteCmd = &cobra.Command{
 Uses the Backstage Scaffolder API when reachable; falls back to generating
 files locally under test-suites/<name>/.
 
-Supported types: playwright | k6 | pact | newman | zap | datadog | visual |
-                 accessibility | cucumber | appium | chaos | mutation | testcontainers |
-                 unit | component | iac
+Supported types:
+  playwright | k6 | pact | newman | zap | datadog | visual |
+  accessibility | cucumber | appium | chaos | mutation | testcontainers |
+  unit | component | iac | flutter-integration | deepeval
 
-Note: 'unit', 'component', and 'iac' currently work only via the Backstage API
-(omit --local). They open a PR against an existing service/Terraform repo.`,
+Note: 'unit', 'component', 'iac', 'flutter-integration', and 'deepeval'
+work only via the Backstage API (omit --local). They open a PR against an
+existing service repo rather than creating a standalone test-suites/ directory.`,
 	Example: `  # Playwright E2E suite for hello-service
   idp scaffold test-suite --name hello-e2e --type playwright --service hello-service
 
@@ -187,7 +191,7 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--name must be lowercase alphanumeric with hyphens (got %q)", tsName)
 	}
 	if _, ok := templateRef[tsType]; !ok {
-		return fmt.Errorf("unknown --type %q; supported: playwright k6 pact newman zap datadog visual accessibility cucumber appium chaos mutation testcontainers", tsType)
+		return fmt.Errorf("unknown --type %q; supported: playwright k6 pact newman zap datadog visual accessibility cucumber appium chaos mutation testcontainers unit component iac flutter-integration deepeval", tsType)
 	}
 
 	cfg := scaffold.TestSuiteConfig{

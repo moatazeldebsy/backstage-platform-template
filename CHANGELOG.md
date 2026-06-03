@@ -10,6 +10,51 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+#### Mobile golden-path platform (7 templates + testing + scorecard)
+- **`android-app`** — Kotlin + Jetpack Compose golden-path template; GitHub Actions CI (lint → test → build APK); Fastlane `Fastfile` (`test`, `build_debug`, `build_release`, `distribute`); SonarCloud + Snyk; configurable `minSdkVersion`; optional Firebase Crashlytics.
+- **`ios-app`** — Swift + SwiftUI golden-path template; Xcode CI (SwiftLint → unit tests → archive); Fastlane lanes; SonarCloud + Snyk; configurable minimum iOS version (15.0–17.0); optional Firebase Crashlytics.
+- **`flutter-app`** — Dart multi-platform template (Android / iOS / Web); optional Flutter Web K8s deploy (Dockerfile + `helm-values-local.yaml`); GitHub Actions CI; Firebase integration optional.
+- **`mobile-sdk`** — Shared SDK library scaffold for Android (Kotlin / GitHub Packages), iOS (Swift Package Manager), Flutter (pub.dev), or Kotlin Multiplatform; publish workflow on version-tagged releases.
+- **`mobile-code-signing`** — Automated code signing add-on: Fastlane Match (S3) for iOS; keystore + AWS Secrets Manager for Android. Opens a PR on the target repo.
+- **`mobile-app-store-deploy`** — Fastlane `deliver` (App Store) and `supply` (Google Play) release pipeline; `workflow_dispatch` + `release/**` triggers; version bump step.
+- **`mobile-device-farm`** — Firebase TestLab add-on with configurable device matrix (low=1, medium=3, high=5 devices); `gcloud firebase test` integration; results to GCS.
+- **`flutter-integration-test-suite`** — Flutter integration test scaffold; local emulator or Firebase TestLab mode; opens a PR on the target Flutter app repo.
+- **5 mobile Tech Insights checks** — `has-min-sdk-version` (≥24 Android / ≥16.0 iOS), `has-crashlytics-enabled`, `has-accessibility-tests`, `has-app-size-budget`, `has-code-signing`; pushed to Prometheus + visible in Grafana QA dashboard.
+- **Tech Radar** — 6 new entries: Kotlin (ADOPT), Swift/SwiftUI (ADOPT), Flutter/Dart (TRIAL), Fastlane (ADOPT), Firebase TestLab (TRIAL), AWS Device Farm (ASSESS).
+- **Documentation** — `docs/mobile-platform.md` (full template reference), `backstage/catalog/docs/mobile-developer-guide.md` extended with iOS, code-signing, device-farm, and SDK sections.
+
+#### DORA entity tab + enhanced FinOps cost overview
+- **DORA tab** — Available at `/catalog/default/component/<name>/dora` on every Component entity. Four stat cards (Deploy Frequency, Lead Time, Change Failure Rate, MTTR) with Elite/High/Medium/Low performance band badges and 7-day SVG sparklines. Queries Prometheus via `/api/proxy/prometheus`; falls back to demo data with yellow banner when Prometheus is unreachable.
+- **FinOps cost overview (enhanced)** — Date-range selector (24 h / 7 d / 30 d); breakdown by namespace, team, or container; stacked bar chart per time bucket (SVG); cost table with PV cost column, efficiency % badge (green ≥ 80%, amber, red), per-row mini stacked bar, and totals row.
+- Both implemented in `backstage/app/packages/app/src/extensions.tsx`; Prometheus proxy added to `backstage/app-config.local.yaml`.
+- **Documentation** — `docs/dora-finops.md`.
+
+#### `recover-docker-restart.sh` — post-Docker-restart Kind recovery
+- Patches `kubelet.conf` with the new API server IP, restarts `kindnet`/`kube-proxy`, replaces `ingress-nginx` pods, fixes Grafana PVC permissions (`chmod 700`), patches Prometheus operator liveness probe, restarts Backstage Docker Compose, and smoke-tests all 9 service URLs.
+- Flags: `--skip-backstage`, `--dry-run`.
+- **Documentation** — `docs/docker-recovery.md`.
+
+### Changed
+
+#### Template annotation standardisation (20 templates)
+- All 15 test-suite templates, 3 AI/ML templates, and `terraform-module` updated to include optional `spec.owner` parameters and `catalog-info.yaml` annotations for: `grafana/alert-label-selector`, `pagerduty.com/service-id`, `idp.io/quality-gates: "coverage"`, `jira/project-key`, `sonarcloud.io/project-key`, `snyk.io/org-name`.
+- An optional **Integrations** step added to test-suite templates prompting for PagerDuty service ID and Jira project key.
+
+### Security
+
+#### Production Backstage hardening (commit `e4e00dc`)
+- **Guest auth removed** — `backstage/app-config.aws.yaml` no longer includes the `dangerouslyAllowOutsideDevelopment` guest provider; production requires GitHub OAuth.
+- **Session secret from Secrets Manager** — `AUTH_SESSION_SECRET` injected via External Secrets Operator; no static fallback value.
+- **TLS cert validation enabled** — `rejectUnauthorized: true` for the PostgreSQL connection in `kubernetes/backstage/configmap.yaml`.
+- **No hardcoded AWS Account ID** — `aws/backstage/deployment.yaml` uses `${AWS_ACCOUNT_ID}` and `${AWS_REGION}` placeholders.
+- Changes mirrored in `kubernetes/backstage/configmap.yaml`.
+
+#### Dependabot: dompurify + tmp (commit `2536282`)
+- `dompurify` pinned to `^3.2.5` (XSS fix); `tmp` to `^0.2.3` in `backstage/app/package.json` resolutions.
+- `yarn.lock` regenerated.
+
+---
+
 #### Crossplane alongside Terraform (per-service AWS provisioning)
 - **`terraform/iam-crossplane.tf`** — IRSA role assumed by Crossplane's upbound AWS providers (`StringLike` on `system:serviceaccount:crossplane-system:provider-aws-*`), with AWS-managed `*FullAccess` policies attached for S3, RDS, MSK, DynamoDB, SQS plus a tagging policy. New TF output `crossplane_aws_role_arn`.
 - **`kubernetes/crossplane/`** — in-cluster Crossplane stack:

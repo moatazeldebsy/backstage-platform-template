@@ -871,8 +871,131 @@
       ],
       "id": "prompt-engineering"
     },
-    { "key": "lambdatest",  "id": "lambdatest",  "title": "LambdaTest",    "quadrant": "tools",      "description": "Cross-browser cloud testing grid — evaluate for Playwright/Cypress at scale.",           "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] },
-    { "key": "xray-jira",   "id": "xray-jira",   "title": "Xray (Jira)",   "quadrant": "tools",      "description": "Test case management with Jira traceability — assess before adopting.",                   "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] },
-    { "key": "mailtrap",    "id": "mailtrap",    "title": "Mailtrap",      "quadrant": "tools",      "description": "Email sandbox for transactional email testing in CI and staging environments.",           "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-01-01" }] }
+    {
+      "key": "lambdatest",
+      "id": "lambdatest",
+      "title": "LambdaTest",
+      "quadrant": "tools",
+      "description": "Cross-browser cloud testing grid \u2014 evaluate for Playwright/Cypress at scale.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-01-01"
+        }
+      ]
+    },
+    {
+      "key": "xray-jira",
+      "id": "xray-jira",
+      "title": "Xray (Jira)",
+      "quadrant": "tools",
+      "description": "Test case management with Jira traceability \u2014 assess before adopting.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-01-01"
+        }
+      ]
+    },
+    {
+      "key": "mailtrap",
+      "id": "mailtrap",
+      "title": "Mailtrap",
+      "quadrant": "tools",
+      "description": "Email sandbox for transactional email testing in CI and staging environments.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-01-01"
+        }
+      ]
+    },
+    {
+      "key": "kotlin",
+      "title": "Kotlin",
+      "quadrant": "languages",
+      "description": "Primary language for Android app development on the platform. All Android golden-path templates use Kotlin + Jetpack Compose.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2026-06-01"
+        }
+      ],
+      "id": "kotlin"
+    },
+    {
+      "key": "swift-swiftui",
+      "title": "Swift / SwiftUI",
+      "quadrant": "languages",
+      "description": "Primary language for iOS app development on the platform. All iOS golden-path templates use Swift + SwiftUI.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2026-06-01"
+        }
+      ],
+      "id": "swift-swiftui"
+    },
+    {
+      "key": "flutter-dart",
+      "title": "Flutter / Dart",
+      "quadrant": "languages",
+      "description": "Multi-platform mobile and web framework. The flutter-app golden-path template supports Android, iOS, and Web from a single codebase.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-01"
+        }
+      ],
+      "id": "flutter-dart"
+    },
+    {
+      "key": "fastlane",
+      "title": "Fastlane",
+      "quadrant": "tools",
+      "description": "iOS and Android CI/CD automation. Used in all mobile golden-path templates for build, sign, test, and distribute lanes.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2026-06-01"
+        }
+      ],
+      "id": "fastlane"
+    },
+    {
+      "key": "firebase-testlab",
+      "title": "Firebase TestLab",
+      "quadrant": "platforms",
+      "description": "Cloud device farm for running Android and iOS tests on real hardware. Used by the mobile-device-farm scaffold template.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-01"
+        }
+      ],
+      "id": "firebase-testlab"
+    },
+    {
+      "key": "aws-device-farm",
+      "title": "AWS Device Farm",
+      "quadrant": "platforms",
+      "description": "AWS-native cloud device testing service. Under assessment as an alternative to Firebase TestLab for teams already on AWS.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-01"
+        }
+      ],
+      "id": "aws-device-farm"
+    }
   ]
 }

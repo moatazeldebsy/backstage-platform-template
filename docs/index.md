@@ -12,6 +12,7 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 
 ### Core Concepts
 - [Golden Path](golden-path.md) — Conventions every service must follow
+- [Mobile Platform](mobile-platform.md) — 7 mobile golden-path templates (Android, iOS, Flutter, SDK, code signing, app store, device farm)
 - [Crossplane](crossplane.md) — Self-serve per-service AWS resources via in-cluster Claims
 - [Crossplane vs Terraform](crossplane-vs-terraform.md) — Which tool owns what, and why
 - [Shift-Left Quality](shift-left.md) — How the platform embeds testing at scaffold, PR, deploy, and runtime
@@ -19,11 +20,13 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 ### Advanced Topics
 - [Contract Testing](contract-testing.md) — Self-describing, self-testing APIs with MCP
 - [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage
-- [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC
+- [DORA & FinOps](dora-finops.md) — DORA entity tab (Elite/High/Medium/Low badges) + FinOps cost overview in Backstage
+- [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC, production hardening
 
 ### Operations
 - [Improvements Summary](IMPROVEMENTS_SUMMARY.md) — Critical fixes, AI/ML enhancements, cost savings analysis (read first after your first AWS deployment)
 - [Production Readiness](readiness-checklist.md) — Pre-production checklist
+- [Docker Recovery](docker-recovery.md) — Recover Kind cluster after Docker Desktop restarts
 - [Runbooks](runbooks/index.md) — Operational procedures and on-call guides
 
 ### Reference
