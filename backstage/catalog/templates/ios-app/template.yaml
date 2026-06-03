@@ -60,10 +60,12 @@ spec:
             - "15.0"
             - "16.0"
             - "17.0"
+            - "18.0"
           enumNames:
             - "iOS 15.0"
             - "iOS 16.0"
             - "iOS 17.0"
+            - "iOS 18.0"
         enableFirebase:
           title: Enable Firebase
           type: boolean

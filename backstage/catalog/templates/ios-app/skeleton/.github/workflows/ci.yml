@@ -17,17 +17,12 @@ env:
 jobs:
   lint:
     name: Lint + Static Analysis
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 15
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-
       - name: SwiftLint
-        uses: ncipollo/swiftlint-action@v1
-        with:
-          args: --reporter github-actions-logging
+        run: swiftlint lint --reporter github-actions-logging
 
       - name: Trivy filesystem scan (deps + secrets)
         uses: aquasecurity/trivy-action@v0.36.0
@@ -57,12 +52,9 @@ jobs:
 
   test:
     name: Unit Tests
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode 15
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
       - name: Run swift test
         run: swift test --parallel
@@ -78,12 +70,9 @@ jobs:
   build:
     name: Build
     needs: [lint, test]
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode 15
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
       - name: Build
         run: swift build -c release
