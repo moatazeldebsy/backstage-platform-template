@@ -1,0 +1,69 @@
+name: Scaffold Apply
+
+# Triggered when the Backstage scaffolder merges a scaffold PR into the platform repo.
+# Applies generated Kubernetes manifests (team namespaces, RBAC, ArgoCD projects) to the cluster.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'kubernetes/teams/**'
+      - 'backstage/catalog/groups/**'
+
+# One active run per team branch — prevents concurrent kubectl applies into the same namespace.
+concurrency:
+  group: scaffold-${{ github.ref_name }}
+  cancel-in-progress: false   # queue rather than cancel: safe for namespace creation
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: idp-mvp
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  apply-manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Apply changed team manifests
+        run: |
+          # Detect which team directories changed in this push
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+            -- 'kubernetes/teams/**' | awk -F/ '{print $1"/"$2"/"$3}' | sort -u)
+
+          if [ -z "$CHANGED" ]; then
+            echo "No team manifest changes detected."
+            exit 0
+          fi
+
+          for dir in $CHANGED; do
+            echo "Applying $dir"
+            kubectl apply -f "$dir/" --server-side --field-manager=backstage-scaffold
+          done
+
+      - name: Apply catalog group entities
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+            -- 'backstage/catalog/groups/**' | sort -u)
+
+          if [ -n "$CHANGED" ]; then
+            echo "New/updated group entities:"
+            echo "$CHANGED"
+          fi

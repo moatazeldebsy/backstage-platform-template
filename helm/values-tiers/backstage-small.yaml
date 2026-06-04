@@ -1,0 +1,29 @@
+# ── Backstage Helm values — Small tier (≤ 25 teams / ≤ 150 engineers) ─────────
+# Target chart: backstage/backstage (official chart) or a custom wrapper.
+# Apply: helm upgrade backstage backstage/backstage -f helm/values-tiers/backstage-small.yaml
+
+backstage:
+  replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  appConfig:
+    catalog:
+      # Lunr in-memory search is sufficient below ~500 catalog entities
+      # Refresh every 2 minutes — low entity count means low DB load
+      schedule:
+        frequency:
+          minutes: 2
+        timeout:
+          minutes: 1
+
+postgresql:
+  primary:
+    persistence:
+      size: 8Gi
