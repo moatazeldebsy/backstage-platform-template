@@ -1,16 +1,37 @@
+{% if values.tier == "large" %}
+# Large tier: no hard quota cap — Kyverno generates a LimitRange for default requests/limits.
+# See kubernetes/policies/kyverno/team-quota-policy.yaml
+{% else %}
 apiVersion: v1
 kind: ResourceQuota
 metadata:
   name: team-quota
   namespace: team-${{ values.teamName }}
+  labels:
+    idp.io/tier: ${{ values.tier }}
+    managed-by: idp-backstage
 spec:
   hard:
-    requests.cpu: "${{ values.maxCPU }}"
-    requests.memory: ${{ values.maxMemory }}
-    limits.cpu: "${{ values.maxCPU * 2 }}"
-    limits.memory: "${{ values.maxMemory }}"
-    pods: "${{ values.maxPods }}"
+{% if values.tier == "medium" %}
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    pods: "100"
+    services: "30"
+    persistentvolumeclaims: "20"
+    secrets: "50"
+    configmaps: "50"
+{% else %}
+    # small tier defaults
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "30"
     services: "10"
     persistentvolumeclaims: "5"
     secrets: "20"
     configmaps: "20"
+{% endif %}
+{% endif %}

@@ -42,7 +42,6 @@ resource "aws_db_instance" "backstage" {
   engine            = "postgres"
   engine_version    = "17"
   instance_class    = var.rds_instance_class
-  allocated_storage = 20
 
   db_name  = var.rds_db_name
   username = var.rds_username
@@ -51,7 +50,10 @@ resource "aws_db_instance" "backstage" {
   db_subnet_group_name   = aws_db_subnet_group.backstage.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  backup_retention_period   = 1
+  multi_az          = var.rds_multi_az
+  allocated_storage = var.rds_allocated_storage
+
+  backup_retention_period   = var.rds_multi_az ? 7 : 1
   storage_encrypted         = true
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-backstage-final"

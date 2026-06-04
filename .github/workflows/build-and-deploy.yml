@@ -18,6 +18,12 @@ env:
   EKS_CLUSTER_NAME: idp-mvp
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
+# Concurrency: one active run per service per branch. A new push cancels any
+# in-progress run for the same service, preventing queue build-up at scale.
+concurrency:
+  group: build-deploy-${{ github.ref }}-${{ github.event.inputs.service || 'all' }}
+  cancel-in-progress: true
+
 jobs:
   # ─── Detect which service changed ───────────────────────────────────────────
   detect-changes:
@@ -91,7 +97,9 @@ jobs:
   build-and-push:
     needs: [detect-changes, test]
     if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' }}
+    timeout-minutes: 30
     strategy:
+      max-parallel: 5   # cap concurrent Docker builds to avoid runner exhaustion at scale
       matrix:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     runs-on: ubuntu-latest

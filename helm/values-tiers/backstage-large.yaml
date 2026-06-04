@@ -1,0 +1,55 @@
+# ── Backstage Helm values — Large tier (75+ teams / 750+ engineers) ───────────
+# Target chart: backstage/backstage (official chart) or a custom wrapper.
+# Apply: helm upgrade backstage backstage/backstage -f helm/values-tiers/backstage-large.yaml
+#
+# Prerequisites:
+#   - Elasticsearch 8.x deployed in the cluster (see kubernetes/search/elasticsearch.yaml)
+#   - @backstage/plugin-search-backend-module-elasticsearch registered in backend/src/index.ts
+#   - TechDocs configured with builder: external (builds run in CI, not in-pod)
+
+backstage:
+  replicaCount: 4
+
+  autoscaling:
+    enabled: true
+    minReplicas: 4
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+
+  appConfig:
+    catalog:
+      # Aggressive refresh — entities lag at most 30s behind source of truth
+      schedule:
+        frequency:
+          seconds: 30
+        timeout:
+          minutes: 3
+
+    search:
+      elasticsearch:
+        node: http://elasticsearch-master.search.svc.cluster.local:9200
+
+    # Offload TechDocs builds to CI — avoids in-pod CPU spikes at large entity count
+    techdocs:
+      builder: external
+
+postgresql:
+  primary:
+    persistence:
+      size: 200Gi
+
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 8Gi

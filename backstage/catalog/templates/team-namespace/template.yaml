@@ -5,7 +5,10 @@ metadata:
   annotations:
     backstage.io/techdocs-ref: dir:.
   title: Provision Team Namespace
-  description: Self-service team onboarding — creates a Kubernetes namespace with RBAC, resource quotas, network policies, and LimitRange.
+  description: >-
+    Self-service team onboarding — creates a Kubernetes namespace, RBAC bindings,
+    ArgoCD project, resource quotas, and a Backstage Group entity in one step.
+    Choose a sizing tier (Small / Medium / Large) and quotas are applied automatically.
   tags:
     - platform
     - kubernetes
@@ -42,24 +45,30 @@ spec:
           title: Cost center
           type: string
           description: Billing tag applied to all resources (e.g. CC-1234)
+        githubTeam:
+          title: GitHub team slug (optional)
+          type: string
+          description: >-
+            GitHub team whose members will be listed in the Backstage Group entity
+            (e.g. payments-team). Leave blank to manage members manually.
 
-    - title: Resource Quotas
+    - title: Sizing Tier
       properties:
-        maxCPU:
-          title: Max CPU (requests)
+        tier:
+          title: Team tier
           type: string
-          default: "4"
-          description: Total CPU request limit for the namespace (e.g. 4, 8)
-        maxMemory:
-          title: Max memory (requests)
-          type: string
-          default: 8Gi
-          description: Total memory request limit for the namespace (e.g. 8Gi, 16Gi)
-        maxPods:
-          title: Max pods
-          type: string
-          default: "20"
-          description: Maximum number of pods allowed in the namespace
+          default: small
+          description: >-
+            Controls resource quotas enforced in the namespace.
+            Small: 4 CPU / 8Gi. Medium: 16 CPU / 32Gi. Large: LimitRange defaults only.
+          enum:
+            - small
+            - medium
+            - large
+          enumNames:
+            - 'Small  — ≤ 25 teams / ≤ 150 engineers  (4 CPU · 8Gi · 30 pods)'
+            - 'Medium — 26–75 teams / 150–750 engineers (16 CPU · 32Gi · 100 pods)'
+            - 'Large  — 75+ teams / 750+ engineers      (LimitRange defaults · no hard cap)'
 
     - title: Platform repo
       required:
@@ -87,9 +96,7 @@ spec:
           teamName: ${{ parameters.teamName }}
           ownerGroup: ${{ parameters.ownerGroup }}
           costCenter: ${{ parameters.costCenter }}
-          maxCPU: ${{ parameters.maxCPU }}
-          maxMemory: ${{ parameters.maxMemory }}
-          maxPods: ${{ parameters.maxPods }}
+          tier: ${{ parameters.tier }}
 
     - id: fetch-catalog
       name: Render Backstage Group entity
@@ -102,6 +109,7 @@ spec:
           ownerGroup: ${{ parameters.ownerGroup }}
           githubOrg: ${{ parameters.githubOrg }}
           platformRepo: ${{ parameters.platformRepo }}
+          githubTeam: ${{ parameters.githubTeam }}
 
     - id: publish
       name: Publish to platform repo
@@ -116,10 +124,11 @@ spec:
 
           Creates namespace `team-${{ parameters.teamName }}` with:
           - Restricted Pod Security Standards
-          - ResourceQuota: ${{ parameters.maxCPU }} CPU / ${{ parameters.maxMemory }} memory / ${{ parameters.maxPods }} pods
+          - Sizing tier: `${{ parameters.tier }}` (quota enforced by Kyverno policy)
           - LimitRange: default container requests/limits
           - NetworkPolicy: deny-all ingress (allow same-namespace + monitoring)
-          - RBAC: deployer ServiceAccount + Role
+          - RBAC: idp-developer RoleBinding + deployer ServiceAccount
+          - ArgoCD AppProject scoped to this namespace
 
           Also registers `${{ parameters.teamName }}` as a Backstage Group entity under
           `backstage/catalog/groups/${{ parameters.teamName }}.yaml` — no manual catalog

@@ -408,3 +408,16 @@ catalog:
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }
+
+    # GitHub org sync — automatically imports User and Group entities from the GitHub
+    # organisation so teams don't need to maintain User/Group YAML manually.
+    # Members, team memberships, and avatars stay in sync with GitHub at the schedule below.
+    githubOrg:
+      idpOrgSync:
+        id: idpOrgSync
+        githubUrl: https://github.com
+        orgs:
+          - name: moatazeldebsy
+        schedule:
+          frequency: { minutes: 30 }
+          timeout: { minutes: 5 }

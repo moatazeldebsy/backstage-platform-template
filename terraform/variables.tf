@@ -69,6 +69,24 @@ variable "rds_instance_class" {
   default     = "db.t3.micro"
 }
 
+variable "rds_multi_az" {
+  description = "Enable Multi-AZ standby for RDS (recommended for Medium/Large tiers)"
+  type        = bool
+  default     = false
+}
+
+variable "rds_allocated_storage" {
+  description = "Allocated storage in GB for RDS instance"
+  type        = number
+  default     = 20
+}
+
+variable "enable_karpenter" {
+  description = "Install Karpenter for intelligent node autoscaling (recommended for Medium/Large tiers)"
+  type        = bool
+  default     = false
+}
+
 variable "rds_db_name" {
   description = "PostgreSQL database name for Backstage"
   type        = string
