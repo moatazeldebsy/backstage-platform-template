@@ -1,11 +1,11 @@
 # Helm overrides for qa-mcp-server — AWS dev environment
-# 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp is substituted by bootstrap-ai.sh --aws
+# YOUR_AWS_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/idp-mvp is substituted by bootstrap-ai.sh --aws
 fullnameOverride: qa-mcp-server
 
 replicaCount: 1
 
 image:
-  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/qa-mcp-server
+  repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/idp-mvp/qa-mcp-server
   tag: "0.1.0"
   pullPolicy: Always
 
