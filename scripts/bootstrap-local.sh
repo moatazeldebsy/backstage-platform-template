@@ -122,6 +122,8 @@ _apply_personalization() {
     "${ROOT_DIR}/backstage/catalog" \
     "${ROOT_DIR}/backstage/app" \
     "${ROOT_DIR}/backstage/app-config.yaml" \
+    "${ROOT_DIR}/backstage/app-config.local.yaml" \
+    "${ROOT_DIR}/backstage/app-config.aws.yaml" \
     "${ROOT_DIR}/kubernetes" \
     "${ROOT_DIR}/local/argocd" \
     "${ROOT_DIR}/observability" \
@@ -134,7 +136,6 @@ _apply_personalization() {
     "${ROOT_DIR}/CONTRIBUTING.md" \
     "${ROOT_DIR}/CHANGELOG.md" \
     "${ROOT_DIR}/README.md" \
-    "${ROOT_DIR}/CLAUDE.md" \
     "${ROOT_DIR}/mkdocs.yml" \
     \( -type d \( \
         -name node_modules -o \
@@ -152,7 +153,7 @@ _apply_personalization() {
       ! -name 'go.sum' \
       ! -name '*.tsbuildinfo' ! -name '*.gz' ! -name '*.tgz' \
       -print \) \
-    2>/dev/null)
+    2>/dev/null) || true
 
   # Assemble -e args for grep from grep_patterns
   local grep_e_args=()
@@ -865,7 +866,7 @@ if ! $SKIP_OBS; then
   fi
   if [[ -n "$GRAFANA_SA_ID" ]]; then
     # Use a timestamp in the token name so re-runs never hit 409 Conflict.
-    local _token_name="backstage-$(date +%s)"
+    _token_name="backstage-$(date +%s)"
     GRAFANA_TOKEN=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
       curl -sf -u admin:admin -X POST "http://localhost:3000/api/serviceaccounts/${GRAFANA_SA_ID}/tokens" \
       -H 'Content-Type: application/json' \

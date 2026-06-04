@@ -18,10 +18,11 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 RESET='\033[0m'
 
-log()  { echo -e "[$(date +%T)] $*"; }
-warn() { echo -e "[$(date +%T)] ${YELLOW}WARN${RESET}  $*"; }
-err()  { echo -e "[$(date +%T)] ${RED}ERROR${RESET} $*" >&2; exit 1; }
-step() { echo -e "\n${BOLD}▶ $*${RESET}"; }
+log()   { echo -e "[$(date +%T)] $*"; }
+warn()  { echo -e "[$(date +%T)] ${YELLOW}WARN${RESET}  $*"; }
+err()   { echo -e "[$(date +%T)] ${RED}ERROR${RESET} $*" >&2; exit 1; }
+step()  { echo -e "\n${BOLD}▶ $*${RESET}"; }
+check() { echo -e "[$(date +%T)] ${GREEN}✓${RESET} $*"; }
 
 _sed() {
   if sed --version 2>&1 | grep -q GNU; then

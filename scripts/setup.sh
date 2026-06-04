@@ -298,6 +298,7 @@ TARGETS=$(LC_ALL=C find \
   "${ROOT_DIR}/backstage/app" \
   "${ROOT_DIR}/backstage/app-config.yaml" \
   "${ROOT_DIR}/backstage/app-config.local.yaml" \
+  "${ROOT_DIR}/backstage/app-config.aws.yaml" \
   "${ROOT_DIR}/kubernetes" \
   "${ROOT_DIR}/local" \
   "${ROOT_DIR}/observability" \
@@ -310,7 +311,6 @@ TARGETS=$(LC_ALL=C find \
   "${ROOT_DIR}/.github/pull_request_template.md" \
   "${ROOT_DIR}/CONTRIBUTING.md" \
   "${ROOT_DIR}/CHANGELOG.md" \
-  "${ROOT_DIR}/CLAUDE.md" \
   "${ROOT_DIR}/README.md" \
   "${ROOT_DIR}/mkdocs.yml" \
   -type f \
@@ -321,7 +321,7 @@ TARGETS=$(LC_ALL=C find \
   ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
   ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' ! -name '*.eot' \
   ! -name '*.gz' ! -name '*.zip' ! -name '*.tar' \
-  2>/dev/null)
+  2>/dev/null) || true
 
 # Build a single bundled sed program (all -e expressions) and a grep pre-filter
 # so that:
