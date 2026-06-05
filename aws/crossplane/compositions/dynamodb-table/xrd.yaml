@@ -60,6 +60,26 @@ spec:
                     costCenter:
                       type: string
                       default: engineering
+                    team:
+                      type: string
+                      description: Team name for cost attribution (auto-injected by Kyverno in team-* namespaces).
+                      default: ""
+                    globalTable:
+                      type: boolean
+                      description: Enable DynamoDB Global Tables V2. Replicates the table to all regions in replicaRegions. Both regions must use PAY_PER_REQUEST billing.
+                      default: false
+                    replicaRegions:
+                      type: array
+                      description: Additional regions where a read-write replica is created. Only used when globalTable is true.
+                      items:
+                        type: string
+                      default: ["us-east-1"]
+            status:
+              type: object
+              properties:
+                tableArn:
+                  type: string
+                  description: ARN of the provisioned DynamoDB table.
       additionalPrinterColumns:
         - name: TABLE
           type: string

@@ -1,0 +1,98 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: s3-multiregion-access-point
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: S3 Bucket with Cross-Region Replication
+  description: |
+    Provision an S3 bucket with automatic Cross-Region Replication (CRR) to the
+    standby region. Objects written to the primary bucket are automatically
+    replicated to a replica bucket in us-east-1. Versioning is mandatory.
+    Optionally creates an S3 Multi-Region Access Point for a single hostname
+    that routes to the nearest healthy bucket.
+  tags:
+    - s3
+    - aws
+    - crossplane
+    - multi-region
+    - v2
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure S3 Bucket with CRR
+      required: [bucketName, ownerService, owner]
+      properties:
+        bucketName:
+          title: Bucket name
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$'
+          description: Must be globally unique. A -replica suffix bucket will also be created in the standby region.
+          ui:autofocus: true
+        ownerService:
+          title: Owning service
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        primaryRegion:
+          title: Primary region
+          type: string
+          default: eu-central-1
+          enum: [eu-central-1]
+        replicaRegion:
+          title: Replica region
+          type: string
+          default: us-east-1
+          enum: [us-east-1]
+        multiRegionAccessPoint:
+          title: Create S3 Multi-Region Access Point
+          type: boolean
+          default: false
+          description: Single hostname that automatically routes to the nearest healthy bucket. Adds ~$0.0033/GB data transfer cost.
+        costCenter:
+          title: Cost center
+          type: string
+          default: engineering
+
+  steps:
+    - id: fetch-template
+      name: Render claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          bucketName: ${{ parameters.bucketName }}
+          owner: ${{ parameters.owner }}
+          ownerService: ${{ parameters.ownerService }}
+          primaryRegion: ${{ parameters.primaryRegion }}
+          replicaRegion: ${{ parameters.replicaRegion }}
+          multiRegionAccessPoint: ${{ parameters.multiRegionAccessPoint }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: open-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=${{ parameters.ownerService }}&owner=moatazeldebsy
+        title: "feat(infra): add S3 bucket with CRR ${{ parameters.bucketName }}"
+        description: |
+          Provisions an S3 bucket with Cross-Region Replication via Crossplane Claim.
+
+          - Primary bucket: `${{ parameters.bucketName }}` (eu-central-1)
+          - Replica bucket: `${{ parameters.bucketName }}-replica` (us-east-1)
+          - Multi-Region Access Point: `${{ parameters.multiRegionAccessPoint }}`
+        branchName: infra/s3-crr-${{ parameters.bucketName }}
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps["open-pr"].output.remoteUrl }}

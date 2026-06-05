@@ -56,6 +56,8 @@ spec:
                 toFieldPath: spec.forProvider.tags["idp:owner"]
               - fromFieldPath: spec.parameters.costCenter
                 toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: spec.forProvider.tags["idp:team"]
               # Attribute definitions are required for the hash/range keys
               - fromFieldPath: spec.parameters.hashKey
                 toFieldPath: spec.forProvider.attribute[0].name
@@ -70,3 +72,13 @@ spec:
                 toFieldPath: spec.forProvider.attribute[1].type
                 policy:
                   fromFieldPath: Optional
+              # Global Tables V2 — patches replica list when globalTable: true.
+              # Each entry becomes a replica shard in the target region with the
+              # same billing mode and encryption settings as the primary.
+              - fromFieldPath: spec.parameters.replicaRegions[0]
+                toFieldPath: spec.forProvider.replica[0].regionName
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.tableArn

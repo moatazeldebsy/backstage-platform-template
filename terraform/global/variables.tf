@@ -40,3 +40,61 @@ variable "health_check_path" {
   type        = string
   default     = "/healthcheck"
 }
+
+# ── Aurora Global Database variables ──────────────────────────────────────────
+
+variable "primary_vpc_id" {
+  description = "VPC ID in eu-central-1 (from per-region Terraform output vpc_id)"
+  type        = string
+}
+
+variable "primary_vpc_cidr" {
+  description = "VPC CIDR in eu-central-1 (10.0.0.0/16)"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "primary_private_subnet_ids" {
+  description = "Private subnet IDs in eu-central-1 (from per-region Terraform output)"
+  type        = list(string)
+}
+
+variable "standby_vpc_id" {
+  description = "VPC ID in us-east-1 (from per-region Terraform output vpc_id)"
+  type        = string
+}
+
+variable "standby_vpc_cidr" {
+  description = "VPC CIDR in us-east-1 (10.1.0.0/16)"
+  type        = string
+  default     = "10.1.0.0/16"
+}
+
+variable "standby_private_subnet_ids" {
+  description = "Private subnet IDs in us-east-1 (from per-region Terraform output)"
+  type        = list(string)
+}
+
+variable "rds_db_name" {
+  description = "PostgreSQL database name for Backstage Aurora cluster"
+  type        = string
+  default     = "backstage"
+}
+
+variable "rds_username" {
+  description = "PostgreSQL master username for Backstage Aurora cluster"
+  type        = string
+  default     = "backstage"
+}
+
+variable "rds_instance_class" {
+  description = "Aurora instance class"
+  type        = string
+  default     = "db.r6g.large"
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+  default     = "prod"
+}

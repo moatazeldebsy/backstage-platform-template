@@ -44,6 +44,8 @@ spec:
                 toFieldPath: spec.forProvider.tags["idp:owner"]
               - fromFieldPath: spec.parameters.costCenter
                 toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: spec.forProvider.tags["idp:team"]
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
                 toFieldPath: status.bucketArn
@@ -105,3 +107,99 @@ spec:
                     map:
                       "true": Enabled
                       "false": Suspended
+
+          # Replica bucket in secondary region — only active when crossRegionReplication: true.
+          # Uses the us-east-1 ProviderConfig so Crossplane creates the bucket in the standby region.
+          - name: replica-bucket
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                deletionPolicy: Orphan
+                forProvider:
+                  forceDestroy: false
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": s3-bucket-replica
+                    "idp:role": replica
+                # Targets the standby region ProviderConfig created in Phase 1
+                providerConfigRef:
+                  name: us-east-1
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      fmt: "%s-replica"
+              - fromFieldPath: spec.parameters.replicaRegion
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: spec.forProvider.tags["idp:team"]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.replicaBucketArn
+            readinessChecks:
+              - type: MatchCondition
+                matchCondition:
+                  type: Ready
+                  status: "True"
+
+          # Versioning on replica bucket (required for CRR destination)
+          - name: replica-bucket-versioning
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketVersioning
+              spec:
+                forProvider:
+                  versioningConfiguration:
+                    - status: Enabled
+                providerConfigRef:
+                  name: us-east-1
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: spec.forProvider.bucketRef.name
+                transforms:
+                  - type: string
+                    string:
+                      fmt: "%s-replica"
+              - fromFieldPath: spec.parameters.replicaRegion
+                toFieldPath: spec.forProvider.region
+
+          # CRR configuration on the source bucket.
+          # The IAM replication role (idp-s3-replication) must be pre-created by Terraform
+          # (see terraform/global/s3-replication-iam.tf). The role is shared across all
+          # buckets that enable crossRegionReplication.
+          - name: bucket-replication
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketReplicationConfiguration
+              spec:
+                forProvider:
+                  rule:
+                    - id: replicate-all
+                      status: Enabled
+                      filter:
+                        - prefix: ""
+                      deleteMarkerReplication:
+                        - status: Enabled
+                      destination:
+                        - storageClass: STANDARD
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.bucketName
+                toFieldPath: spec.forProvider.bucketRef.name
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              # IAM role ARN is substituted from the annotation set by the global Terraform
+              - fromFieldPath: metadata.annotations["idp.platform/s3-replication-role-arn"]
+                toFieldPath: spec.forProvider.role
+                policy:
+                  fromFieldPath: Optional
+              - fromFieldPath: status.replicaBucketArn
+                toFieldPath: spec.forProvider.rule[0].destination[0].bucketRef.name
+                policy:
+                  fromFieldPath: Optional
