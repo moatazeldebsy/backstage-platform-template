@@ -122,3 +122,8 @@ variable "security_alert_email" {
   type        = string
   default     = ""
 }
+
+variable "oidc_provider_arn" {
+  description = "OIDC provider ARN of the primary EKS cluster — used by IRSA trust policies for failover-runner and other global roles. From per-region Terraform output: module.eks.oidc_provider_arn"
+  type        = string
+}
