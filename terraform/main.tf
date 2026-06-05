@@ -14,6 +14,8 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.11"
     }
+    # alekc/kubectl — required for Karpenter EC2NodeClass and NodePool manifests.
+    # Run `terraform init` after pulling this change to update .terraform.lock.hcl.
     kubectl = {
       source  = "alekc/kubectl"
       version = "~> 2.0"

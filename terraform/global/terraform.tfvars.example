@@ -41,5 +41,6 @@ rds_instance_class = "db.r6g.large"
 environment        = "prod"
 
 # ── Logging ───────────────────────────────────────────────────────────────────
-# Auto-populated by s3-platform-buckets.tf output — set after first apply:
-# logs_s3_bucket = "idp-mvp-platform-logs-<account-id>"
+# Platform logs bucket is created automatically by s3-platform-buckets.tf.
+# Global Accelerator and CloudFront reference it directly via resource output —
+# no variable needed.
