@@ -23,6 +23,9 @@ rds_instance_class    = "db.t4g.medium"
 rds_multi_az          = true
 rds_allocated_storage = 50
 
+# Karpenter — replaces managed node groups for team service workloads
+enable_karpenter = true
+
 # Budget
 budget_monthly_limit_usd = "500"
 budget_alert_email       = "REPLACE_ME"
