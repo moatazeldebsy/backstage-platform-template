@@ -1,0 +1,41 @@
+# Prometheus Thanos Sidecar patch — applied to the existing kube-prometheus-stack.
+# Adds a Thanos sidecar to each Prometheus pod so it can upload TSDB blocks to S3
+# and answer Thanos Query gRPC requests for recent (in-memory) data.
+#
+# Merge this into aws/observability/prometheus-stack-values.yaml under:
+#   prometheus.prometheusSpec.thanos
+
+# ── Add to prometheus-stack-values.yaml ──────────────────────────────────────
+# prometheus:
+#   prometheusSpec:
+#     thanos:
+#       image: quay.io/thanos/thanos:v0.36.1
+#       objectStorageConfig:
+#         key: objstore.yml
+#         name: thanos-objstore-config
+#       listenLocal: false
+#       grpcListenLocal: false
+#
+#     # Expose gRPC port so Thanos Query can reach the sidecar
+#     containers:
+#       - name: thanos-sidecar
+#         ports:
+#           - name: grpc
+#             containerPort: 10901
+#           - name: http
+#             containerPort: 10902
+
+# ── Thanos object store config Secret ─────────────────────────────────────────
+apiVersion: v1
+kind: Secret
+metadata:
+  name: thanos-objstore-config
+  namespace: monitoring
+stringData:
+  objstore.yml: |
+    type: S3
+    config:
+      bucket: idp-mvp-thanos-metrics
+      region: eu-central-1
+      sse_config:
+        type: SSE-S3

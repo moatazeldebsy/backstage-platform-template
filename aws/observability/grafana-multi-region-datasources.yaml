@@ -1,0 +1,61 @@
+# Grafana datasources ConfigMap — multi-region V2 configuration.
+# Adds Thanos Query as the primary metrics source (replaces per-cluster Prometheus).
+# Apply after Thanos is deployed:
+#   kubectl apply -f aws/observability/grafana-multi-region-datasources.yaml -n monitoring
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-multi-region-datasources
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      # ── Thanos Query — unified view across both regions ────────────────────
+      - name: Thanos (Multi-Region)
+        type: prometheus
+        url: http://thanos-query.monitoring.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: "30s"
+          incrementalQuerying: true
+          httpMethod: POST
+
+      # ── Per-region Prometheus — direct access for region-specific debugging ─
+      - name: Prometheus (eu-central-1)
+        type: prometheus
+        url: http://prometheus-operated.monitoring.svc.cluster.local:9090
+        access: proxy
+        jsonData:
+          customQueryParameters: "cluster=eks-eu-central-1"
+          timeInterval: "30s"
+
+      # Prometheus in us-east-1 — queried via Thanos Query cross-cluster store
+      # (no direct URL needed; Thanos federates it automatically)
+
+      # ── CloudWatch — per-region ─────────────────────────────────────────────
+      - name: CloudWatch (eu-central-1)
+        type: cloudwatch
+        access: proxy
+        jsonData:
+          authType: default
+          defaultRegion: eu-central-1
+
+      - name: CloudWatch (us-east-1)
+        type: cloudwatch
+        access: proxy
+        jsonData:
+          authType: default
+          defaultRegion: us-east-1
+
+      # ── X-Ray — distributed traces ──────────────────────────────────────────
+      - name: X-Ray (eu-central-1)
+        type: grafana-x-ray-datasource
+        access: proxy
+        jsonData:
+          authType: default
+          defaultRegion: eu-central-1

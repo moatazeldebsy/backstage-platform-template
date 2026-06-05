@@ -116,3 +116,9 @@ variable "logs_s3_bucket" {
   type        = string
   default     = "idp-mvp-platform-logs"
 }
+
+variable "security_alert_email" {
+  description = "Email address for CRITICAL/HIGH Security Hub finding alerts. Leave empty to disable."
+  type        = string
+  default     = ""
+}
