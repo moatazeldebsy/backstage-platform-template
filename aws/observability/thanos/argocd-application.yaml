@@ -65,13 +65,11 @@ spec:
         ruler:
           enabled: false   # using AlertManager directly
 
-        objstoreConfig: |
-          type: S3
-          config:
-            bucket: idp-mvp-thanos-metrics
-            region: eu-central-1
-            sse_config:
-              type: SSE-S3
+        # Bucket name is injected at deploy time from the thanos-objstore-config
+        # Secret (see thanos-sidecar-patch.yaml). The ArgoCD plugin reads the
+        # Secret value and passes it here via valueFrom. For a plain Helm apply,
+        # override with: --set objstoreConfig="$(kubectl get secret ...)"
+        existingObjstoreSecret: thanos-objstore-config
 
         metrics:
           enabled: true

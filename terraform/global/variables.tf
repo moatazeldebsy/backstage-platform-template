@@ -111,12 +111,6 @@ variable "standby_alb_arn" {
   type        = string
 }
 
-variable "logs_s3_bucket" {
-  description = "S3 bucket name for Global Accelerator flow logs and CloudFront access logs"
-  type        = string
-  default     = "idp-mvp-platform-logs"
-}
-
 variable "security_alert_email" {
   description = "Email address for CRITICAL/HIGH Security Hub finding alerts. Leave empty to disable."
   type        = string

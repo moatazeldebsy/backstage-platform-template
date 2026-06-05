@@ -12,7 +12,7 @@ resource "aws_globalaccelerator_accelerator" "platform" {
 
   attributes {
     flow_logs_enabled   = true
-    flow_logs_s3_bucket = var.logs_s3_bucket
+    flow_logs_s3_bucket = aws_s3_bucket.platform_logs.id
     flow_logs_s3_prefix = "global-accelerator/"
   }
 

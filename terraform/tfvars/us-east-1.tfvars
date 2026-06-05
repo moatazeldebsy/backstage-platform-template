@@ -1,6 +1,8 @@
 # Standby region — us-east-1 (N. Virginia)
-# Usage: terraform workspace new us-east-1
-#        terraform apply -var-file=tfvars/us-east-1.tfvars
+# Usage:
+#   terraform init          # required once after adding alekc/kubectl provider (V2)
+#   terraform workspace new us-east-1
+#   terraform apply -var-file=tfvars/us-east-1.tfvars
 
 aws_region         = "us-east-1"
 secondary_region   = "eu-central-1"

@@ -52,3 +52,74 @@ spec:
                   - type: convert
                     convert:
                       toType: string
+              # MSK topics don't support AWS resource tags; stamp team on the K8s object
+              # so OpenCost can attribute costs via Kubernetes label selectors.
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: metadata.labels["idp:team"]
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: metadata.labels["idp:owner"]
+
+          # MSK Replicator — cross-region topic replication via AWS native replication.
+          # Only active when crossRegionReplication: true.
+          # Uses the us-east-1 ProviderConfig so Crossplane manages the Replicator
+          # resource in the standby region where the destination cluster lives.
+          - name: msk-replicator
+            base:
+              apiVersion: kafka.aws.upbound.io/v1beta1
+              kind: Replicator
+              spec:
+                deletionPolicy: Delete
+                forProvider:
+                  replicatorName: ""
+                  description: "Crossplane-managed MSK cross-region replicator"
+                  serviceExecutionRoleArn: ""   # MSK service-linked role — auto-created by AWS
+                  kafkaCluster:
+                    - amazonMskCluster:
+                        mskClusterArn: ""       # source cluster ARN (primary)
+                      vpcConfig:
+                        - subnetIds: []
+                          securityGroupIds: []
+                    - amazonMskCluster:
+                        mskClusterArn: ""       # destination cluster ARN (standby)
+                      vpcConfig:
+                        - subnetIds: []
+                          securityGroupIds: []
+                  replicationInfoList:
+                    - sourceKafkaClusterArn: ""
+                      targetKafkaClusterArn: ""
+                      targetCompressionType: NONE
+                      topicReplication:
+                        - topicsToReplicate: []
+                          startingPosition:
+                            type: LATEST
+                      consumerGroupReplication:
+                        - consumerGroupsToReplicate: [".*"]
+                providerConfigRef:
+                  name: us-east-1
+            patches:
+              - fromFieldPath: spec.parameters.topicName
+                toFieldPath: spec.forProvider.replicatorName
+                transforms:
+                  - type: string
+                    string:
+                      fmt: "%s-replicator"
+              - fromFieldPath: spec.parameters.clusterArn
+                toFieldPath: spec.forProvider.kafkaCluster[0].amazonMskCluster.mskClusterArn
+              - fromFieldPath: spec.parameters.replicaClusterArn
+                toFieldPath: spec.forProvider.kafkaCluster[1].amazonMskCluster.mskClusterArn
+              - fromFieldPath: spec.parameters.clusterArn
+                toFieldPath: spec.forProvider.replicationInfoList[0].sourceKafkaClusterArn
+              - fromFieldPath: spec.parameters.replicaClusterArn
+                toFieldPath: spec.forProvider.replicationInfoList[0].targetKafkaClusterArn
+              - fromFieldPath: spec.parameters.topicName
+                toFieldPath: spec.forProvider.replicationInfoList[0].topicReplication[0].topicsToReplicate[0]
+              - fromFieldPath: spec.parameters.replicationStartingPosition
+                toFieldPath: spec.forProvider.replicationInfoList[0].topicReplication[0].startingPosition.type
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.replicatorArn
+                toFieldPath: status.replicatorArn
+            readinessChecks:
+              - type: MatchCondition
+                matchCondition:
+                  type: Ready
+                  status: "True"

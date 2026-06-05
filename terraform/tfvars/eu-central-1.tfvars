@@ -1,6 +1,8 @@
 # Primary region — eu-central-1 (Frankfurt)
-# Usage: terraform workspace new eu-central-1
-#        terraform apply -var-file=tfvars/eu-central-1.tfvars
+# Usage:
+#   terraform init          # required once after adding alekc/kubectl provider (V2)
+#   terraform workspace new eu-central-1
+#   terraform apply -var-file=tfvars/eu-central-1.tfvars
 
 aws_region         = "eu-central-1"
 secondary_region   = "us-east-1"
