@@ -1,16 +1,21 @@
-# ArgoCD ApplicationSet — PRIMARY cluster (eu-central-1).
-# Hub-spoke model: ArgoCD hub lives in eu-central-1 and targets the primary cluster.
-# For standby cluster (us-east-1), see app-of-apps-standby.yaml.
+# ArgoCD ApplicationSet — STANDBY cluster (us-east-1).
+# Managed by the ArgoCD hub in eu-central-1.
+# Targets the registered standby cluster via its ArgoCD cluster secret.
 #
-# Service discovery:
-#   services/<name>/               → legacy / platform-owned services
-#   teams/<team>/services/<name>/  → team-owned services (per-team ApplicationSet)
+# Key differences from the primary ApplicationSet:
+#   - destination.server points to the standby cluster (registered via cluster-secrets/eks-us-east-1.yaml)
+#   - syncPolicy.automated is DISABLED — standby syncs are triggered only during failover runbooks.
+#     To sync manually: argocd app sync --selector region=us-east-1
 #
-# Apply: kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
+# Failover procedure:
+#   1. Run the ArgoCD Workflow in aws/argo-workflows/failover-runbook.yaml
+#   2. It enables automated sync on this ApplicationSet and updates Route 53 records.
+#
+# Apply: kubectl apply -f aws/argocd/app-of-apps-standby.yaml -n argocd
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: idp-services
+  name: idp-services-standby
   namespace: argocd
 spec:
   generators:
@@ -28,14 +33,15 @@ spec:
                 - env: dev
                   namespace: services-dev
                   valuesFile: helm-values-aws.yaml
-                  region: eu-central-1
+                  region: us-east-1
   template:
     metadata:
-      name: "{{path.basename}}-{{env}}"
+      name: "standby-{{path.basename}}-{{env}}"
       labels:
         environment: "{{env}}"
         service: "{{path.basename}}"
         region: "{{region}}"
+        cluster-role: standby
     spec:
       project: default
       sources:
@@ -54,12 +60,11 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: https://kubernetes.default.svc   # primary cluster (ArgoCD hub)
+        # ArgoCD cluster name registered via cluster-secrets/eks-us-east-1.yaml
+        name: eks-us-east-1
         namespace: "{{namespace}}"
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
+        # Automated sync intentionally disabled for standby — enabled by failover runbook only.
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

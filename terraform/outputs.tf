@@ -37,3 +37,23 @@ output "crossplane_aws_role_arn" {
   description = "IAM role ARN assumed by Crossplane AWS providers via IRSA. Used as the eks.amazonaws.com/role-arn annotation on the provider-* ServiceAccounts in crossplane-system."
   value       = aws_iam_role.crossplane_aws.arn
 }
+
+output "secondary_region" {
+  description = "Secondary (standby) AWS region configured for this workspace"
+  value       = var.secondary_region
+}
+
+output "is_primary_region" {
+  description = "Whether this workspace is the primary region (eu-central-1)"
+  value       = var.is_primary_region
+}
+
+output "configure_kubectl_cmd" {
+  description = "Command to add this cluster to kubeconfig"
+  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+}
+
+output "argocd_cluster_secret_name" {
+  description = "Secrets Manager secret name to populate for ArgoCD hub-spoke cluster registration"
+  value       = "idp-mvp/argocd/cluster-${var.aws_region}"
+}

@@ -25,16 +25,32 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "idp-mvp-terraform-state-YOUR_AWS_ACCOUNT_ID"
-    key            = "platform/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "idp-mvp-terraform-locks"
-    encrypt        = true
+    bucket               = "idp-mvp-terraform-state-YOUR_AWS_ACCOUNT_ID"
+    key                  = "terraform.tfstate"
+    workspace_key_prefix = "platform"   # state path: platform/<workspace>/terraform.tfstate
+    region               = "us-east-1"  # state bucket always in us-east-1
+    dynamodb_table       = "idp-mvp-terraform-locks"
+    encrypt              = true
   }
 }
 
 provider "aws" {
   region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = "idp-mvp"
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# Secondary region provider — used for cross-region data lookups and replication.
+# Resources that target the secondary region must set provider = aws.secondary.
+provider "aws" {
+  alias  = "secondary"
+  region = var.secondary_region
 
   default_tags {
     tags = {
