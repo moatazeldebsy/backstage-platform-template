@@ -140,7 +140,7 @@ func init() {
 	f.StringVar(&tsDesc, "description", "", "Short description (used by Backstage template)")
 	f.BoolVar(&tsLocal, "local", false, "Skip Backstage API, generate files locally")
 	f.BoolVar(&tsDryRun, "dry-run", false, "Print files that would be generated without writing them")
-	f.StringVar(&tsURL, "backstage-url", "http://backstage.idp.local", "Backstage base URL")
+	f.StringVar(&tsURL, "backstage-url", "", "Backstage base URL (auto-resolved from IDP_BACKSTAGE_URL / IDP_DOMAIN when --env aws)")
 
 	// k6
 	f.IntVar(&tsVUs, "vus", 10, "k6: number of virtual users")
@@ -225,9 +225,14 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 	}
 
 	if !tsLocal && !tsDryRun {
-		client := backstage.NewClient(tsURL, readBackstageToken(rootDir()))
+		url := resolveBackstageURL(scaffoldEnv, tsURL, rootDir())
+		token := resolveToken(scaffoldEnv, scaffoldToken, rootDir())
+		if scaffoldEnv == envAWS {
+			fmt.Printf("[idp] Environment: aws — Backstage at %s\n", url)
+		}
+		client := backstage.NewClient(url, token)
 		if client.Healthy(cmd.Context()) {
-			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", tsURL)
+			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", url)
 			if tsDesc == "" {
 				tsDesc = tsType + " test suite for " + tsService
 			}

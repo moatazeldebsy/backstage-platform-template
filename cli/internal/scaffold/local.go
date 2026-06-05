@@ -94,6 +94,7 @@ func fileEntries(svcType string) []fileEntry {
 		{"shared/helm-values-local.yaml.tmpl", "helm-values-local.yaml"},
 		{"shared/helm-values-dev.yaml.tmpl", "helm-values-dev.yaml"},
 		{"shared/helm-values-staging.yaml.tmpl", "helm-values-staging.yaml"},
+		{"shared/helm-values-aws.yaml.tmpl", "helm-values-aws.yaml"},
 		{"shared/catalog-info.yaml.tmpl", "catalog-info.yaml"},
 	}
 	return append(lang[svcType], shared...)
