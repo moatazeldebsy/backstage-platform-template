@@ -1,0 +1,45 @@
+# terraform/global/terraform.tfvars.example
+# Copy to terraform.tfvars and fill in real values after both regional clusters are up.
+#
+# Values come from per-region Terraform outputs:
+#   cd terraform && terraform workspace select eu-central-1
+#   terraform output vpc_id                    → primary_vpc_id
+#   terraform output -json                     → see all outputs
+#
+#   cd terraform && terraform workspace select us-east-1
+#   terraform output vpc_id                    → standby_vpc_id
+
+# ── Regions ───────────────────────────────────────────────────────────────────
+primary_region = "eu-central-1"
+standby_region = "us-east-1"
+
+# ── Domain ────────────────────────────────────────────────────────────────────
+domain_name          = "idp.example.com"   # your Route 53 hosted zone
+security_alert_email = "platform-oncall@example.com"
+
+# ── Primary cluster (eu-central-1) outputs ────────────────────────────────────
+primary_vpc_id             = "vpc-REPLACE"
+primary_vpc_cidr           = "10.0.0.0/16"
+primary_private_subnet_ids = ["subnet-REPLACE-a", "subnet-REPLACE-b", "subnet-REPLACE-c"]
+primary_alb_dns            = "REPLACE.eu-central-1.elb.amazonaws.com"
+primary_alb_zone_id        = "Z215JYRZR1TBD5"   # fixed ALB zone ID for eu-central-1
+primary_alb_arn            = "arn:aws:elasticloadbalancing:eu-central-1:ACCOUNT:loadbalancer/app/REPLACE/REPLACE"
+oidc_provider_arn          = "arn:aws:iam::ACCOUNT:oidc-provider/oidc.eks.eu-central-1.amazonaws.com/id/REPLACE"
+
+# ── Standby cluster (us-east-1) outputs ───────────────────────────────────────
+standby_vpc_id             = "vpc-REPLACE"
+standby_vpc_cidr           = "10.1.0.0/16"
+standby_private_subnet_ids = ["subnet-REPLACE-a", "subnet-REPLACE-b", "subnet-REPLACE-c"]
+standby_alb_dns            = "REPLACE.us-east-1.elb.amazonaws.com"
+standby_alb_zone_id        = "Z35SXDOTRQ7X7K"   # fixed ALB zone ID for us-east-1
+standby_alb_arn            = "arn:aws:elasticloadbalancing:us-east-1:ACCOUNT:loadbalancer/app/REPLACE/REPLACE"
+
+# ── Aurora Global Database ─────────────────────────────────────────────────────
+rds_db_name        = "backstage"
+rds_username       = "backstage"
+rds_instance_class = "db.r6g.large"
+environment        = "prod"
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+# Auto-populated by s3-platform-buckets.tf output — set after first apply:
+# logs_s3_bucket = "idp-mvp-platform-logs-<account-id>"

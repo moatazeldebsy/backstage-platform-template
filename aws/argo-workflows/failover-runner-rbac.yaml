@@ -1,0 +1,58 @@
+# RBAC for the failover-runner ServiceAccount.
+# IRSA role ARN is injected from Terraform output failover_runner_role_arn.
+# Apply after running terraform apply in terraform/global/:
+#   ROLE_ARN=$(terraform -chdir=terraform/global output -raw failover_runner_role_arn)
+#   sed "s|REPLACE_WITH_FAILOVER_RUNNER_ROLE_ARN|$ROLE_ARN|" \
+#     aws/argo-workflows/failover-runner-rbac.yaml | kubectl apply -f -
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: failover-runner
+  namespace: argo
+  annotations:
+    eks.amazonaws.com/role-arn: "REPLACE_WITH_FAILOVER_RUNNER_ROLE_ARN"
+---
+# Cluster-wide read access — the runbook reads ArgoCD Application objects
+# across namespaces to enable sync on standby apps.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: failover-runner
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: failover-runner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: failover-runner
+subjects:
+  - kind: ServiceAccount
+    name: failover-runner
+    namespace: argo
+---
+# ArgoCD manager token secret — used by the failover runbook to authenticate
+# against the ArgoCD API server when enabling sync on standby applications.
+# Created by: argocd account generate-token --account failover-runner
+# Stored in: kubectl create secret generic argocd-failover-token \
+#              --from-literal=token=<TOKEN> -n argo
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-failover-token
+  namespace: argo
+  annotations:
+    # Placeholder — populate via the command above after bootstrapping ArgoCD
+    idp.platform/setup-required: "true"
+type: Opaque
+stringData:
+  token: "REPLACE_ME_argocd_account_generate-token"

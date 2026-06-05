@@ -1,0 +1,78 @@
+# Master template index — single file registered in app-config.aws.yaml.
+# Adding a new template = add one entry here; no app-config edit needed.
+# Curation tiers (see tags on each template.yaml):
+#   blessed  — recommended golden paths, shown first
+#   advanced — specialist / less common templates
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: all-templates
+  description: Master index of all IDP scaffold templates
+spec:
+  targets:
+    # ── Blessed: Service golden paths ────────────────────────────────────────
+    - ./templates/nodejs-service/template.yaml
+    - ./templates/python-service/template.yaml
+    - ./templates/go-service/template.yaml
+    - ./templates/react-frontend/template.yaml
+    # ── Blessed: Platform self-service ───────────────────────────────────────
+    - ./templates/team-namespace/template.yaml
+    - ./templates/add-secret/template.yaml
+    - ./templates/decommission-service/template.yaml
+    # ── Advanced: Infrastructure & cloud resources ────────────────────────────
+    - ./templates/terraform-module/template.yaml
+    - ./templates/rds-database/template.yaml
+    - ./templates/rds-database-crossplane/template.yaml
+    - ./templates/s3-bucket/template.yaml
+    - ./templates/s3-bucket-crossplane/template.yaml
+    - ./templates/dynamodb-table-crossplane/template.yaml
+    - ./templates/kafka-topic/template.yaml
+    - ./templates/kafka-topic-crossplane/template.yaml
+    - ./templates/sqs-queue-crossplane/template.yaml
+    - ./templates/eks-cluster/template.yaml
+    # ── Advanced: Multi-region (V2) ───────────────────────────────────────────
+    - ./templates/dynamodb-global-table/template.yaml
+    - ./templates/s3-multiregion-access-point/template.yaml
+    - ./templates/aurora-global-cluster/template.yaml
+    # ── Advanced: AI / ML ────────────────────────────────────────────────────
+    - ./templates/ai-agent-kagent/template.yaml
+    - ./templates/mlflow-experiment/template.yaml
+    - ./templates/model-serving-api/template.yaml
+    - ./templates/mcp-server/template.yaml
+    # ── Advanced: QA — E2E & API testing ─────────────────────────────────────
+    - ./templates/playwright-e2e-suite/template.yaml
+    - ./templates/newman-api-suite/template.yaml
+    - ./templates/bdd-cucumber-suite/template.yaml
+    # ── Advanced: QA — Performance ───────────────────────────────────────────
+    - ./templates/k6-performance-suite/template.yaml
+    # ── Advanced: QA — Contract testing ──────────────────────────────────────
+    - ./templates/pact-contract-suite/template.yaml
+    - ./templates/contract-testing-suite/template.yaml
+    - ./templates/enable-contract-testing/template.yaml
+    # ── Advanced: QA — Unit & component ──────────────────────────────────────
+    - ./templates/unit-test-suite/template.yaml
+    - ./templates/component-test-suite/template.yaml
+    - ./templates/testcontainers-suite/template.yaml
+    # ── Advanced: QA — Security & quality ────────────────────────────────────
+    - ./templates/zap-dast-suite/template.yaml
+    - ./templates/enable-security-scanning/template.yaml
+    - ./templates/iac-test-suite/template.yaml
+    - ./templates/mutation-testing-suite/template.yaml
+    # ── Advanced: QA — Accessibility, visual & mobile ────────────────────────
+    - ./templates/accessibility-suite/template.yaml
+    - ./templates/visual-regression-suite/template.yaml
+    - ./templates/appium-mobile-suite/template.yaml
+    # ── Advanced: Mobile golden paths ────────────────────────────────────────
+    - ./templates/android-app/template.yaml
+    - ./templates/flutter-app/template.yaml
+    - ./templates/flutter-integration-test-suite/template.yaml
+    - ./templates/ios-app/template.yaml
+    - ./templates/mobile-code-signing/template.yaml
+    - ./templates/mobile-app-store-deploy/template.yaml
+    - ./templates/mobile-device-farm/template.yaml
+    - ./templates/mobile-sdk/template.yaml
+    # ── Advanced: QA — Chaos & synthetic ─────────────────────────────────────
+    - ./templates/chaos-mesh-suite/template.yaml
+    - ./templates/datadog-synthetic-suite/template.yaml
+    # ── Advanced: QA — LLM eval ──────────────────────────────────────────────
+    - ./templates/deepeval-llm-eval-suite/template.yaml
