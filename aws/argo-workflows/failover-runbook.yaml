@@ -34,6 +34,8 @@ spec:
         value: idp-us-east-1-backstage
       - name: gaAcceleratorArn
         value: ""   # set at runtime or read from Secrets Manager
+      - name: backstageSecretName
+        value: idp-mvp/backstage
 
   templates:
     - name: failover
@@ -54,13 +56,17 @@ spec:
             template: global-accelerator-shift
             dependencies: [promote-aurora]
 
+          - name: promote-backstage-db
+            template: backstage-db-promote
+            dependencies: [promote-aurora]
+
           - name: notify-slack
             template: slack-notify
-            dependencies: [shift-ga-traffic, enable-standby-argocd-sync]
+            dependencies: [shift-ga-traffic, enable-standby-argocd-sync, promote-backstage-db]
             arguments:
               parameters:
                 - name: message
-                  value: "✅ Failover to {{inputs.parameters.targetRegion}} complete. Aurora promoted, ArgoCD sync enabled, GA traffic shifted."
+                  value: "✅ Failover to {{inputs.parameters.targetRegion}} complete. Aurora promoted, Backstage DB updated, ArgoCD sync enabled, GA traffic shifted."
 
     # ── Step 1: Pre-check — verify standby cluster is reachable ────────────────
     - name: health-check
@@ -153,7 +159,41 @@ spec:
 
             echo "Global Accelerator traffic shifted to us-east-1."
 
-    # ── Step 5: Slack notification ────────────────────────────────────────────
+    # ── Step 5: Update Backstage DB endpoint to promoted writer ───────────────
+    # After Aurora failover, us-east-1 cluster endpoint becomes the writer.
+    # We update POSTGRES_HOST in the Backstage Secrets Manager secret so the
+    # standby Backstage pod (deployment-standby.yaml) reconnects to the writer.
+    - name: backstage-db-promote
+      container:
+        image: amazon/aws-cli:2
+        command: [sh, -c]
+        args:
+          - |
+            echo "Fetching promoted Aurora writer endpoint in {{inputs.parameters.targetRegion}}..."
+            WRITER_ENDPOINT=$(aws rds describe-db-clusters \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --db-cluster-identifier "{{inputs.parameters.targetAuroraCluster}}" \
+              --query "DBClusters[0].Endpoint" --output text)
+
+            echo "Promoted writer endpoint: $WRITER_ENDPOINT"
+
+            echo "Updating Backstage secret POSTGRES_HOST → $WRITER_ENDPOINT"
+            CURRENT=$(aws secretsmanager get-secret-value \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --secret-id "{{inputs.parameters.backstageSecretName}}" \
+              --query "SecretString" --output text)
+
+            UPDATED=$(echo "$CURRENT" | jq --arg host "$WRITER_ENDPOINT" '.POSTGRES_HOST = $host')
+
+            aws secretsmanager put-secret-value \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --secret-id "{{inputs.parameters.backstageSecretName}}" \
+              --secret-string "$UPDATED"
+
+            echo "Backstage secret updated. ExternalSecret will refresh within 1h."
+            echo "To force immediate refresh: kubectl annotate externalsecret backstage -n backstage force-sync=\$(date +%s)"
+
+    # ── Step 6: Slack notification ────────────────────────────────────────────
     - name: slack-notify
       inputs:
         parameters:

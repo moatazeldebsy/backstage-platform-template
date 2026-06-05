@@ -25,15 +25,25 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     POSTGRES_USER             = var.rds_username
     POSTGRES_PASSWORD         = random_password.rds.result
     GITHUB_TOKEN              = "REPLACE_ME"
-    AUTH_GITHUB_CLIENT_ID     = "REPLACE_ME" # GitHub OAuth App client ID
-    AUTH_GITHUB_CLIENT_SECRET = "REPLACE_ME" # GitHub OAuth App client secret
+    AUTH_GITHUB_CLIENT_ID     = "REPLACE_ME"
+    AUTH_GITHUB_CLIENT_SECRET = "REPLACE_ME"
     AUTH_SESSION_SECRET       = random_password.backstage_session.result
     K8S_CLUSTER_URL           = module.eks.cluster_endpoint
     K8S_SERVICE_ACCOUNT_TOKEN = "REPLACE_ME"
     TECHDOCS_S3_BUCKET_NAME   = aws_s3_bucket.techdocs.id
     AWS_REGION                = var.aws_region
-    BACKSTAGE_CATALOG_TOKEN   = "REPLACE_ME" # must match backend.auth.externalAccess in configmap.yaml
+    BACKSTAGE_CATALOG_TOKEN   = "REPLACE_ME"
+    # V2: Aurora Global endpoints — POSTGRES_HOST_READER is used by standby Backstage.
+    # After Aurora Global failover, us-east-1 cluster endpoint becomes the writer.
+    # bootstrap.sh (or the post-failover runbook) updates POSTGRES_HOST to the new writer.
+    POSTGRES_HOST_WRITER      = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
+    POSTGRES_HOST_READER      = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
   })
+
+  lifecycle {
+    # Preserve manual updates (GitHub tokens, Aurora endpoints set post-apply)
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_secretsmanager_secret" "dora_exporter" {
