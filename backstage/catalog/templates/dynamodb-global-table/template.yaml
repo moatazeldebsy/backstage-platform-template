@@ -1,0 +1,106 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: dynamodb-global-table
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: DynamoDB Global Table (Multi-Region)
+  description: |
+    Provision a DynamoDB Global Tables V2 table that replicates active-active
+    across eu-central-1 (primary) and us-east-1 (standby). Both regions can
+    serve reads and writes; last-writer-wins conflict resolution applies.
+    Requires PAY_PER_REQUEST billing.
+  tags:
+    - dynamodb
+    - aws
+    - crossplane
+    - multi-region
+    - v2
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Configure DynamoDB Global Table
+      required: [tableName, hashKey, ownerService, owner]
+      properties:
+        tableName:
+          title: Table name
+          type: string
+          pattern: '^[a-zA-Z0-9._-]{3,255}$'
+          ui:autofocus: true
+        hashKey:
+          title: Partition key
+          type: string
+        hashKeyType:
+          title: Partition key type
+          type: string
+          default: S
+          enum: [S, N, B]
+          enumNames: ["String (S)", "Number (N)", "Binary (B)"]
+        rangeKey:
+          title: Sort key (optional)
+          type: string
+        ownerService:
+          title: Owning service
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        primaryRegion:
+          title: Primary region
+          type: string
+          default: eu-central-1
+          enum: [eu-central-1]
+          description: Primary writer region. eu-central-1 is the platform primary.
+        replicaRegions:
+          title: Replica regions
+          type: array
+          items:
+            type: string
+            enum: [us-east-1, eu-west-1, ap-southeast-1]
+          default: [us-east-1]
+          description: Additional regions for active-active replicas.
+          ui:widget: checkboxes
+
+  steps:
+    - id: fetch-template
+      name: Render claim
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          tableName: ${{ parameters.tableName }}
+          hashKey: ${{ parameters.hashKey }}
+          hashKeyType: ${{ parameters.hashKeyType }}
+          rangeKey: ${{ parameters.rangeKey }}
+          owner: ${{ parameters.owner }}
+          ownerService: ${{ parameters.ownerService }}
+          primaryRegion: ${{ parameters.primaryRegion }}
+          replicaRegions: ${{ parameters.replicaRegions }}
+
+    - id: open-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=${{ parameters.ownerService }}&owner=moatazeldebsy
+        title: "feat(infra): add DynamoDB Global Table ${{ parameters.tableName }}"
+        description: |
+          Provisions a DynamoDB Global Tables V2 table via Crossplane Claim.
+
+          - Table: `${{ parameters.tableName }}`
+          - Primary region: `${{ parameters.primaryRegion }}`
+          - Replicas: `${{ parameters.replicaRegions }}`
+          - Hash key: `${{ parameters.hashKey }}` (${{ parameters.hashKeyType }})
+        branchName: infra/dynamodb-global-${{ parameters.tableName }}
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps["open-pr"].output.remoteUrl }}

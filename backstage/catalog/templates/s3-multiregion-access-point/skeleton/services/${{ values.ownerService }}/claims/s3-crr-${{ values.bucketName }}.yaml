@@ -1,0 +1,20 @@
+apiVersion: idp.platform/v1alpha1
+kind: S3Bucket
+metadata:
+  name: ${{ values.bucketName }}
+  annotations:
+    idp.platform/owner: ${{ values.owner }}
+    # IAM replication role ARN is output by terraform/global — set this after running
+    # terraform apply in terraform/global/. See: terraform output s3_replication_role_arn
+    idp.platform/s3-replication-role-arn: "REPLACE_WITH_TERRAFORM_OUTPUT_s3_replication_role_arn"
+spec:
+  parameters:
+    bucketName: ${{ values.bucketName }}
+    region: ${{ values.primaryRegion }}
+    owner: ${{ values.owner }}
+    versioning: true   # required for CRR
+    crossRegionReplication: true
+    replicaRegion: ${{ values.replicaRegion }}
+    multiRegionAccessPoint: ${{ values.multiRegionAccessPoint }}
+    costCenter: ${{ values.costCenter }}
+    team: ${{ values.owner }}

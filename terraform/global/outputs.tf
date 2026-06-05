@@ -22,3 +22,33 @@ output "health_check_standby_id" {
   description = "Route 53 health check ID for the standby ALB (us-east-1)"
   value       = aws_route53_health_check.standby.id
 }
+
+output "aurora_global_cluster_id" {
+  description = "Aurora Global cluster identifier"
+  value       = aws_rds_global_cluster.backstage.id
+}
+
+output "aurora_primary_writer_endpoint" {
+  description = "Aurora writer endpoint in eu-central-1 — use this as POSTGRES_HOST in Backstage primary"
+  value       = aws_rds_cluster.primary.endpoint
+}
+
+output "aurora_primary_reader_endpoint" {
+  description = "Aurora reader endpoint in eu-central-1 (load-balanced across all read replicas)"
+  value       = aws_rds_cluster.primary.reader_endpoint
+}
+
+output "aurora_replica_reader_endpoint" {
+  description = "Aurora reader endpoint in us-east-1 — use this as POSTGRES_HOST when running in standby"
+  value       = aws_rds_cluster.replica.reader_endpoint
+}
+
+output "aurora_failover_command" {
+  description = "AWS CLI command to promote the us-east-1 replica to primary writer during failover"
+  value       = "aws rds failover-global-cluster --global-cluster-identifier ${aws_rds_global_cluster.backstage.id} --target-db-cluster-identifier ${aws_rds_cluster.replica.cluster_identifier}"
+}
+
+output "s3_replication_role_arn" {
+  description = "IAM role ARN for S3 CRR — set as metadata.annotations[idp.platform/s3-replication-role-arn] on S3Bucket claims"
+  value       = aws_iam_role.s3_replication.arn
+}

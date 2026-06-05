@@ -1,0 +1,110 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: aurora-global-cluster
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Aurora Global Database (Multi-Region)
+  description: |
+    Provision an Aurora PostgreSQL Global Database with a primary writer in
+    eu-central-1 and a read replica in us-east-1 (RPO < 1s, RTO < 1min).
+    This template generates the Terraform variable file and PR for the
+    platform team to apply via the global Terraform module.
+
+    Note: Aurora Global Database is a platform-level resource provisioned
+    by the infrastructure team via Terraform (not Crossplane). This template
+    creates the request PR and Terraform tfvars file.
+  tags:
+    - aurora
+    - rds
+    - postgresql
+    - aws
+    - terraform
+    - multi-region
+    - v2
+spec:
+  owner: platform-team
+  type: resource
+
+  parameters:
+    - title: Aurora Global Database Configuration
+      required: [clusterName, dbName, owner, requestReason]
+      properties:
+        clusterName:
+          title: Global cluster name
+          type: string
+          pattern: '^[a-z][a-z0-9-]{2,60}$'
+          description: Unique identifier for the Aurora Global cluster (e.g. my-service-db)
+          ui:autofocus: true
+        dbName:
+          title: Database name
+          type: string
+          default: appdb
+        instanceClass:
+          title: Instance class
+          type: string
+          default: db.r6g.large
+          enum: [db.r6g.large, db.r6g.xlarge, db.r6g.2xlarge, db.r8g.large, db.r8g.xlarge]
+          enumNames:
+            - "r6g.large (2 vCPU, 16 GB) — standard"
+            - "r6g.xlarge (4 vCPU, 32 GB)"
+            - "r6g.2xlarge (8 vCPU, 64 GB)"
+            - "r8g.large (2 vCPU, 16 GB) — latest gen"
+            - "r8g.xlarge (4 vCPU, 32 GB) — latest gen"
+        engineVersion:
+          title: PostgreSQL engine version
+          type: string
+          default: "16.4"
+          enum: ["16.4", "16.3", "15.8"]
+        owner:
+          title: Requesting team
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        requestReason:
+          title: Reason for Global Database
+          type: string
+          description: Explain why active-standby replication is needed (e.g. compliance, DR SLA)
+          ui:widget: textarea
+
+  steps:
+    - id: fetch-template
+      name: Render Terraform variables
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          dbName: ${{ parameters.dbName }}
+          instanceClass: ${{ parameters.instanceClass }}
+          engineVersion: ${{ parameters.engineVersion }}
+          owner: ${{ parameters.owner }}
+
+    - id: open-pr
+      name: Open Pull Request to platform repo
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        title: "feat(infra): Aurora Global Database request — ${{ parameters.clusterName }}"
+        description: |
+          **Aurora Global Database Request**
+
+          - Cluster: `${{ parameters.clusterName }}`
+          - Database: `${{ parameters.dbName }}`
+          - Instance class: `${{ parameters.instanceClass }}`
+          - Engine: Aurora PostgreSQL `${{ parameters.engineVersion }}`
+          - Requesting team: `${{ parameters.owner }}`
+
+          **Reason:** ${{ parameters.requestReason }}
+
+          ---
+          *Apply via: `terraform apply -var-file=terraform/global/tfvars/${{ parameters.clusterName }}.tfvars` in the global module.*
+        branchName: infra/aurora-global-${{ parameters.clusterName }}
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps["open-pr"].output.remoteUrl }}

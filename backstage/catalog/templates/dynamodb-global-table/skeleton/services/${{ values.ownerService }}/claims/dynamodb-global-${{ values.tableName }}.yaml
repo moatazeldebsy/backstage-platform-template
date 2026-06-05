@@ -1,0 +1,27 @@
+apiVersion: idp.platform/v1alpha1
+kind: DynamoTable
+metadata:
+  name: ${{ values.tableName }}
+  annotations:
+    idp.platform/owner: ${{ values.owner }}
+spec:
+  parameters:
+    tableName: ${{ values.tableName }}
+    hashKey: ${{ values.hashKey }}
+    hashKeyType: ${{ values.hashKeyType }}
+    {%- if values.rangeKey %}
+    rangeKey: ${{ values.rangeKey }}
+    {%- endif %}
+    region: ${{ values.primaryRegion }}
+    billingMode: PAY_PER_REQUEST   # required for Global Tables V2
+    pointInTimeRecovery: true
+    globalTable: true
+    replicaRegions:
+      {%- for region in values.replicaRegions %}
+      - ${{ region }}
+      {%- endfor %}
+    owner: ${{ values.owner }}
+    costCenter: engineering
+    team: ${{ values.owner }}
+  writeConnectionSecretToRef:
+    name: ${{ values.tableName }}-connection
