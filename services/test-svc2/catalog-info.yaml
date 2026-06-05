@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: test-svc2
+  description: Auto-scaffolded go service
+  annotations:
+    github.com/project-slug: moatazeldebsy/test-svc2
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=test-svc2
+    backstage.io/kubernetes-namespace: services
+spec:
+  type: service
+  lifecycle: development
+  owner: platform-team
+  system: internal-developer-platform
