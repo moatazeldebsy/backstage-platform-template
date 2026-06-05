@@ -1,0 +1,108 @@
+# ArgoCD Notifications — alerts when primary/standby ApplicationSets diverge.
+#
+# Triggers:
+#   on-sync-failed        → immediate Slack alert
+#   on-health-degraded    → immediate Slack alert
+#   on-sync-status-unknown → alert after 10 minutes (catches split-brain)
+#
+# Apply: kubectl apply -f aws/argocd/notifications-config.yaml -n argocd
+# Requires: argocd-notifications-controller (installed with ArgoCD Helm chart v5+)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  # ── Notification triggers ──────────────────────────────────────────────────
+  trigger.on-sync-failed: |
+    - when: app.status.operationState.phase in ['Error', 'Failed']
+      send: [app-sync-failed]
+
+  trigger.on-health-degraded: |
+    - when: app.status.health.status == 'Degraded'
+      send: [app-health-degraded]
+
+  # Fires if a standby app stays OutOfSync for > 10 minutes — indicates drift
+  # between primary and standby clusters that wasn't caught by normal sync.
+  trigger.on-standby-drift: |
+    - when: >
+        app.status.sync.status == 'OutOfSync' and
+        app.metadata.labels['cluster-role'] == 'standby' and
+        time.Now().Sub(time.Parse(app.status.observedAt)).Minutes() > 10
+      send: [standby-drift-alert]
+
+  # ── Notification templates ─────────────────────────────────────────────────
+  template.app-sync-failed: |
+    slack:
+      attachments: |
+        [{
+          "color": "#E53E3E",
+          "title": "❌ ArgoCD Sync Failed — {{.app.metadata.name}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+          "fields": [
+            {"title": "Cluster", "value": "{{.app.metadata.labels.region | default \"unknown\"}}", "short": true},
+            {"title": "Phase", "value": "{{.app.status.operationState.phase}}", "short": true},
+            {"title": "Message", "value": "{{.app.status.operationState.message}}"}
+          ]
+        }]
+
+  template.app-health-degraded: |
+    slack:
+      attachments: |
+        [{
+          "color": "#DD6B20",
+          "title": "⚠️ App Health Degraded — {{.app.metadata.name}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+          "fields": [
+            {"title": "Region", "value": "{{.app.metadata.labels.region | default \"unknown\"}}", "short": true},
+            {"title": "Cluster role", "value": "{{.app.metadata.labels.cluster-role | default \"primary\"}}", "short": true}
+          ]
+        }]
+
+  template.standby-drift-alert: |
+    slack:
+      attachments: |
+        [{
+          "color": "#805AD5",
+          "title": "🔀 Standby Drift Detected — {{.app.metadata.name}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+          "text": "Standby cluster app has been OutOfSync for >10 minutes. Primary and standby may have diverged.",
+          "fields": [
+            {"title": "Region", "value": "us-east-1", "short": true},
+            {"title": "Sync status", "value": "{{.app.status.sync.status}}", "short": true},
+            {"title": "Last sync", "value": "{{.app.status.observedAt}}"}
+          ]
+        }]
+
+  # ── Subscriptions — which apps receive which triggers ──────────────────────
+  subscriptions: |
+    - recipients:
+        - slack:platform-alerts
+      triggers:
+        - on-sync-failed
+        - on-health-degraded
+    - recipients:
+        - slack:platform-alerts
+      triggers:
+        - on-standby-drift
+      selector: cluster-role=standby
+
+  # ── Service config ─────────────────────────────────────────────────────────
+  service.slack: |
+    token: $slack-token
+---
+# Secret for ArgoCD Notifications Slack token.
+# Populate from AWS Secrets Manager after deployment:
+#   SLACK_TOKEN=$(aws secretsmanager get-secret-value \
+#     --secret-id idp-mvp/argocd/slack-token --query SecretString --output text)
+#   kubectl create secret generic argocd-notifications-secret \
+#     --from-literal=slack-token="$SLACK_TOKEN" -n argocd
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-notifications-secret
+  namespace: argocd
+type: Opaque
+stringData:
+  slack-token: "REPLACE_ME_xoxb-slack-bot-token"

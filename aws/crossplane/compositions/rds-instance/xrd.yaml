@@ -69,11 +69,30 @@ spec:
                     costCenter:
                       type: string
                       default: engineering
+                    team:
+                      type: string
+                      description: Team name for cost attribution (auto-injected by Kyverno in team-* namespaces).
+                      default: ""
+                    globalDatabase:
+                      type: boolean
+                      description: Promote this instance to an Aurora Global Database with a read replica in replicaRegion. Requires Aurora engine (aurora-postgresql). Replaces the standalone RDS instance with an Aurora cluster.
+                      default: false
+                    replicaRegion:
+                      type: string
+                      description: Standby region for the Aurora Global Database read replica. Only used when globalDatabase is true.
+                      default: us-east-1
+                    globalWriteForwarding:
+                      type: boolean
+                      description: Enable Aurora Global write forwarding — writes to the replica cluster are forwarded to the primary writer. Requires Aurora PostgreSQL 16+.
+                      default: false
             status:
               type: object
               properties:
                 endpoint:
                   type: string
+                replicaEndpoint:
+                  type: string
+                  description: Reader endpoint of the Aurora Global replica cluster (set when globalDatabase is true).
       additionalPrinterColumns:
         - name: INSTANCE
           type: string

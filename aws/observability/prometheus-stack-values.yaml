@@ -43,6 +43,31 @@ prometheus:
             requests:
               storage: 5Gi
 
+    # ── Thanos sidecar (V2 multi-region) ──────────────────────────────────────
+    # Enables long-term storage to S3 and cross-region query federation.
+    # The thanos-objstore-config Secret is created by the ExternalSecret in
+    # aws/observability/thanos/thanos-sidecar-patch.yaml (populated from
+    # Secrets Manager by terraform/global/thanos-config.tf).
+    thanos:
+      image:
+        registry: quay.io
+        repository: thanos/thanos
+        tag: v0.36.1
+      objectStorageConfig:
+        existingSecret:
+          name: thanos-objstore-config
+          key: objstore.yml
+      # Expose gRPC port so Thanos Query can scrape in-memory (recent) blocks
+      grpcListenLocal: false
+      httpListenLocal: false
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
 alertmanager:
   enabled: true
   ingress:

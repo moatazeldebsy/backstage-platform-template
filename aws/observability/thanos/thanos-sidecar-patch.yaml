@@ -26,16 +26,38 @@
 #             containerPort: 10902
 
 # ── Thanos object store config Secret ─────────────────────────────────────────
-apiVersion: v1
-kind: Secret
+# Created by Terraform (terraform/global/thanos-config.tf) after the S3 bucket
+# is provisioned. The bucket name includes the account ID suffix, so it cannot
+# be hardcoded here. Terraform writes the ExternalSecret that pulls the bucket
+# name from Secrets Manager (idp-mvp/thanos/objstore-config).
+#
+# To apply manually (replace BUCKET_NAME with terraform output thanos_metrics_bucket):
+#   kubectl create secret generic thanos-objstore-config \
+#     --namespace monitoring \
+#     --from-literal=objstore.yml="$(cat <<EOF
+#   type: S3
+#   config:
+#     bucket: BUCKET_NAME
+#     region: eu-central-1
+#     sse_config:
+#       type: SSE-S3
+#   EOF
+#   )"
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
 metadata:
   name: thanos-objstore-config
   namespace: monitoring
-stringData:
-  objstore.yml: |
-    type: S3
-    config:
-      bucket: idp-mvp-thanos-metrics
-      region: eu-central-1
-      sse_config:
-        type: SSE-S3
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: thanos-objstore-config
+    creationPolicy: Owner
+  data:
+    - secretKey: objstore.yml
+      remoteRef:
+        key: idp-mvp/thanos/objstore-config
+        property: objstore.yml
