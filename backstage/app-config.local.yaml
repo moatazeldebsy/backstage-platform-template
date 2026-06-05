@@ -26,9 +26,11 @@ backend:
     connection:
       ssl: false   # local Postgres container has no SSL; override the production default
   auth:
-    # Allows unauthenticated requests so the catalog/templates load before the
-    # sign-in flow completes (prevents 401 flash on first page load in local dev).
-    dangerouslyDisableDefaultAuthPolicy: true
+    # Permission policy is enforced: guests get read-only access (catalog browse,
+    # TechDocs, template view) but cannot run scaffolder templates or delete entities.
+    # Authenticated GitHub users get full access.
+    # Set to true to temporarily bypass all permission checks (e.g. local debugging).
+    dangerouslyDisableDefaultAuthPolicy: false
     # externalAccess static token allows the catalog-exporter CronJob (in-cluster) to
     # query the Backstage catalog API without a user session. Set the same value in the
     # 'backstage-catalog-exporter-token' Kubernetes Secret.
@@ -46,7 +48,10 @@ backend:
 auth:
   environment: development
   providers:
-    guest: {}
+    guest:
+      # NODE_ENV is not set to "development" in the Docker container, so the guest
+      # provider requires this flag to allow sign-in on non-development NODE_ENV.
+      dangerouslyAllowOutsideDevelopment: true
     github:
       development:
         signIn:
@@ -129,6 +134,9 @@ proxy:
 # This avoids the moatazeldebsy placeholder issue and works without a GitHub token.
 techRadar:
   url: http://localhost:3000/tech-radar.json
+
+permission:
+  enabled: true
 
 techdocs:
   # Builder/generator already match the base config (local). Only the publisher

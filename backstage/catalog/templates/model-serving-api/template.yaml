@@ -12,6 +12,8 @@ metadata:
     - llm
     - ollama
     - vllm
+    - v1
+    - advanced
   annotations:
     backstage.io/techdocs-ref: dir:.
 

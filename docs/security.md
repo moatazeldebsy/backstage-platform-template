@@ -52,6 +52,37 @@ with **scoped inline policies** — one per resource family:
 
 The `idp-*` prefix constraint aligns with the `pattern` validations in each XRD, so a Claim can never request a resource name that falls outside the policy scope.
 
+## Per-team secret isolation (IRSA)
+
+Each team provisioned via the **Provision Team Namespace** scaffold gets its own
+IRSA role (`terraform/iam-team-secret-store.tf`):
+
+- The role is trusted only by `team-<name>:team-<name>-eso-sa` (namespace-scoped ServiceAccount)
+- The inline policy allows only `secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret`
+  on `arn:aws:secretsmanager:*:*:secret:<teamName>/*`
+- Cross-team reads are blocked at the IAM level — no policy override inside the cluster
+  can grant access to another team's secrets
+
+The team's namespace-scoped `SecretStore` references only this role, so even if a team
+member can `kubectl apply` in their namespace, they cannot read secrets outside `/<team>/*`.
+
+Compare with the global `ClusterSecretStore` (`aws-secretsmanager`) which is used only
+by platform-owned services (backstage, dora-exporter, kagent) and is tied to the platform-team IRSA role.
+
+## GitHub App vs PAT security posture
+
+The IDP uses a GitHub App (configured in `app-config.aws.yaml` and `.github/workflows/auto-merge-onboarding.yml`) rather than a Personal Access Token:
+
+| Property | PAT | GitHub App |
+|---|---|---|
+| Scope | All repos the user can access | Only repos the App is installed on |
+| Expiry | 90 days / 1 year | Never (private key rotates independently) |
+| Rotation blast radius | Must update everywhere the PAT is used | Rotate private key; App ID/installation unchanged |
+| Rate limit | 5 000 req/hr total | 5 000 req/hr per installation |
+| CI self-approval | Blocked by GitHub | Allowed (App is a distinct identity) |
+
+To set up, see [docs/github-app-setup.md](github-app-setup.md).
+
 ## Crossplane data-safety defaults
 
 All five Compositions (`aws/crossplane/compositions/*/composition.yaml`) ship

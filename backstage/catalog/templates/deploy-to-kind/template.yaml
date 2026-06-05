@@ -9,6 +9,8 @@ metadata:
     - local
     - kind
     - golden-path
+    - v1
+    - advanced
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:

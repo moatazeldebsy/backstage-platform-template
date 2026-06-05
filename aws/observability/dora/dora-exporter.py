@@ -39,6 +39,9 @@ CW_NAMESPACE       = os.environ.get("CLOUDWATCH_NS", "IDP/DORA")
 SKIP_CLOUDWATCH    = os.environ.get("SKIP_CLOUDWATCH", "false").lower() == "true"
 REPO_FILTER_TOPIC  = os.environ.get("REPO_FILTER_TOPIC", "idp-app")
 REPO_INCLUDE       = os.environ.get("REPO_INCLUDE", "")
+# JSON map of repo name → team name, e.g. '{"orders-service":"payments","auth-api":"platform"}'
+# Repos not in the map fall back to the team-name embedded in the GitHub topic "team:<name>".
+TEAM_MAP: dict = json.loads(os.environ.get("TEAM_MAP", "{}"))
 
 GH_HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -65,6 +68,16 @@ def gh_get(url: str, params: dict = None) -> list:
         url = resp.links.get("next", {}).get("url")
         params = None
     return results
+
+
+def get_team_for_repo(repo: str, topics: list[str] | None = None) -> str:
+    """Return the team name for a repo: explicit map → topic → 'unknown'."""
+    if repo in TEAM_MAP:
+        return TEAM_MAP[repo]
+    for topic in (topics or []):
+        if topic.startswith("team:"):
+            return topic[len("team:"):]
+    return "unknown"
 
 
 def get_service_repos() -> list:
@@ -154,13 +167,13 @@ def compute_mttr(prod_runs: list) -> float:
     return sum(mttr_values) / len(mttr_values) if mttr_values else 0.0
 
 
-def push_to_gateway(job: str, service: str, metrics: dict):
+def push_to_gateway(job: str, service: str, metrics: dict, team: str = "unknown"):
     """Push metrics to Prometheus Pushgateway in text exposition format."""
     lines = []
     for name, (value, help_text, metric_type) in metrics.items():
         lines.append(f"# HELP {name} {help_text}")
         lines.append(f"# TYPE {name} {metric_type}")
-        lines.append(f'{name}{{service="{service}"}} {value}')
+        lines.append(f'{name}{{service="{service}",team="{team}"}} {value}')
     payload = "\n".join(lines) + "\n"
 
     url = f"{PUSHGATEWAY_URL}/metrics/job/{job}/service/{service}"
@@ -175,6 +188,14 @@ def push_to_gateway(job: str, service: str, metrics: dict):
             log.info("Pushgateway push OK for service=%s (HTTP %s)", service, resp.status)
     except Exception as exc:
         log.warning("Pushgateway push failed for service=%s: %s", service, exc)
+
+
+def get_repo_topics(repo: str) -> list[str]:
+    try:
+        data = gh_get(f"https://api.github.com/repos/{GITHUB_ORG}/{repo}/topics")
+        return data[0].get("names", []) if data else []
+    except Exception:
+        return []
 
 
 def put_cloudwatch(metric_name: str, value: float, unit: str, dimensions: list):
@@ -205,6 +226,8 @@ def main():
     for repo in repos:
         log.info("Processing repo: %s", repo)
         try:
+            topics    = get_repo_topics(repo)
+            team      = get_team_for_repo(repo, topics)
             runs      = get_workflow_runs(repo, since)
             prod_runs = [r for r in runs if r.get("head_branch") == "main"]
 
@@ -213,8 +236,8 @@ def main():
             cfr         = compute_change_failure_rate(prod_runs)
             mttr        = compute_mttr(prod_runs)
 
-            log.info("%s — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm",
-                     repo, deploy_freq, lead_time, cfr, mttr)
+            log.info("%s (team=%s) — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm",
+                     repo, team, deploy_freq, lead_time, cfr, mttr)
 
             # Push to Prometheus Pushgateway (names match Grafana dashboard queries)
             push_to_gateway("dora-exporter", repo, {
@@ -222,11 +245,11 @@ def main():
                 "dora_lead_time_minutes":        (lead_time,   "DORA lead time for changes (minutes)",        "gauge"),
                 "dora_change_failure_rate":      (cfr,         "DORA change failure rate (percent)",          "gauge"),
                 "dora_mttr_minutes":             (mttr,        "DORA mean time to restore (minutes)",         "gauge"),
-            })
+            }, team=team)
 
             # Also push to CloudWatch (for AWS-native alerting)
             if not SKIP_CLOUDWATCH:
-                dims = [{"Name": "Service", "Value": repo}]
+                dims = [{"Name": "Service", "Value": repo}, {"Name": "Team", "Value": team}]
                 put_cloudwatch("DeployFrequency",   deploy_freq, "None",    dims)
                 put_cloudwatch("LeadTime",           lead_time,   "Count",   dims)
                 put_cloudwatch("ChangeFailureRate",  cfr,         "Percent", dims)
@@ -255,7 +278,7 @@ def main():
         })
 
         if not SKIP_CLOUDWATCH:
-            agg_dims = [{"Name": "Aggregate", "Value": "all-services"}]
+            agg_dims = [{"Name": "Aggregate", "Value": "all-services"}, {"Name": "Team", "Value": "all"}]
             put_cloudwatch("DeployFrequency",   agg_deploy_freq, "None",    agg_dims)
             put_cloudwatch("LeadTime",          agg_lead_time,   "Count",   agg_dims)
             put_cloudwatch("ChangeFailureRate", agg_cfr,         "Percent", agg_dims)

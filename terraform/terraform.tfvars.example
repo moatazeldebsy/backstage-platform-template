@@ -19,3 +19,16 @@ budget_alert_email       = ""       # set to receive email alerts directly
 enable_cost_optimizer          = true
 # cost_optimizer_scale_down_cron = "cron(0 20 * * ? *)"  # 8 pm UTC
 # cost_optimizer_scale_up_cron   = "cron(0 7  * * ? *)"  # 7 am UTC
+
+# ── Per-Team External Secrets Operator (ESO) IAM Roles ───────────────────────
+# One IAM role per team for scoped access to AWS Secrets Manager.
+# Each role allows secretsmanager:GetSecretValue on /<team-name>/* only.
+# The role ARN is output by terraform and pasted into the Backstage
+# "Provision Team Namespace" template as the "ESO IAM role ARN" parameter.
+#
+# Usage: terraform apply -var='team_eso_roles=[{name="payments",cost_center="CC-1234"}]'
+# Or set here:
+# team_eso_roles = [
+#   { name = "payments",  cost_center = "CC-1234" },
+#   { name = "platform",  cost_center = "CC-0001" },
+# ]

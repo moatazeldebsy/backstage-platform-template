@@ -1,15 +1,20 @@
-# Rancher Desktop overlay — removes the 'kind' external network dependency.
+# Rancher Desktop overlay — removes the 'kind' external network dependency
+# and routes postgres via host.docker.internal to work around a Rancher Desktop
+# networking issue where k3s kube-router iptables rules drop SYN-ACKs for
+# intra-bridge container-to-container TCP connections.
 # Use with: docker compose -f docker-compose.yml -f docker-compose.rancher.yml
-#
-# With Rancher Desktop the k3s cluster runs in a Lima VM. Docker containers
-# are reachable from the VM via host.docker.internal (Mac). The kubeconfig
-# rewrite in the base file's entrypoint (127.0.0.1 → host.docker.internal)
-# already handles cluster API access — no extra Docker network needed.
 
 services:
   backstage:
     networks:
       - default
+    extra_hosts:
+      # Route postgres through the Docker host gateway to bypass kube-router
+      # iptables rules in the Rancher Desktop Lima VM that drop intra-bridge
+      # SYN-ACKs between containers on the same Docker bridge network.
+      - "postgres-rdhost:host-gateway"
+    environment:
+      POSTGRES_HOST: postgres-rdhost
 
 networks:
   kind:

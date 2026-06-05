@@ -11,6 +11,8 @@ metadata:
     - kubernetes
     - aws
     - golden-path
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: resource

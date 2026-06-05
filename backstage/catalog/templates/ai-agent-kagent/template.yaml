@@ -11,6 +11,8 @@ metadata:
     - mcp
     - anthropic
     - local
+    - v1
+    - advanced
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:

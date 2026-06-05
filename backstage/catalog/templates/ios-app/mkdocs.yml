@@ -1,0 +1,4 @@
+site_name: iOS App (Swift/SwiftUI)
+docs_dir: docs
+plugins:
+  - techdocs-core

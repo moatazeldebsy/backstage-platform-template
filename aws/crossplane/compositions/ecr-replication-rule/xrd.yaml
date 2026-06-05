@@ -1,0 +1,71 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xecrreplicationrules.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XECRReplicationRule
+    plural: xecrreplicationrules
+  claimNames:
+    kind: ECRReplicationRule
+    plural: ecrreplicationrules
+  defaultCompositionRef:
+    name: xecrreplicationrule.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [sourceRegion, destinationRegion]
+                  properties:
+                    sourceRegion:
+                      type: string
+                      description: AWS region where images are pushed (source).
+                      default: eu-central-1
+                    destinationRegion:
+                      type: string
+                      description: AWS region to replicate images into (standby).
+                      default: us-east-1
+                    repositoryFilter:
+                      type: string
+                      description: |
+                        Repository name prefix filter. Only repositories whose names
+                        start with this prefix are replicated. Use "*" to replicate
+                        all repositories in the account.
+                      default: "*"
+                    owner:
+                      type: string
+                      description: Owning team (for cost attribution).
+                      default: platform-team
+            status:
+              type: object
+              properties:
+                registryId:
+                  type: string
+                  description: AWS account ID that owns the ECR registry.
+      additionalPrinterColumns:
+        - name: SOURCE
+          type: string
+          jsonPath: .spec.parameters.sourceRegion
+        - name: DESTINATION
+          type: string
+          jsonPath: .spec.parameters.destinationRegion
+        - name: FILTER
+          type: string
+          jsonPath: .spec.parameters.repositoryFilter
+        - name: SYNCED
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status

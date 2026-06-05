@@ -182,6 +182,48 @@ kubectl run quota-test --image=nginx -n team-<slug> \
 
 ---
 
+## Scaling checklist — implementation status
+
+The items below map to the original 25-team scaling analysis. ✅ = shipped in v0.4.0.
+
+| Area | Item | Status |
+|---|---|---|
+| **Tenancy** | Per-team namespace (quota, LimitRange, NetworkPolicy) | ✅ team-namespace scaffold skeleton |
+| **Tenancy** | `services-dev/staging/prod` ResourceQuota + LimitRange | ✅ `kubernetes/namespaces/services-quota.yaml` |
+| **Tenancy** | Pod Security Admission per namespace | ✅ labels on all namespaces |
+| **Ownership** | Per-team ArgoCD AppProject | ✅ `skeleton/argocd-project.yaml` |
+| **Ownership** | Per-team ArgoCD ApplicationSet (`teams/<team>/services/*`) | ✅ `skeleton/applicationset.yaml` |
+| **Ownership** | `idp-developer` / `idp-team-lead` / `idp-platform-admin` ClusterRoles | ✅ `kubernetes/rbac/cluster-roles.yaml` |
+| **Secrets** | Per-team namespace-scoped SecretStore | ✅ `skeleton/secret-store.yaml` + `terraform/iam-team-secret-store.tf` |
+| **Secrets** | Per-team IRSA roles scoped to `/<team>/*` | ✅ `terraform/iam-team-secret-store.tf` |
+| **Crossplane** | Kyverno auto-inject `idp:team` tag on all claims | ✅ `kubernetes/policies/kyverno/crossplane-team-label-policy.yaml` |
+| **Crossplane** | Validate: block claims with no owner/costCenter | ✅ same policy (Enforce mode) |
+| **Crossplane** | `team` field on all 5 XRDs + compositions | ✅ S3, RDS, DynamoDB, SQS, Kafka |
+| **CI/CD** | Concurrency groups + `max-parallel` cap | ✅ all workflows |
+| **CI/CD** | GitHub App replacing PAT | ✅ `auto-merge-onboarding.yml` + `app-config.aws.yaml` |
+| **Backstage** | Small/Medium/Large Helm value tiers | ✅ `helm/values-tiers/` |
+| **Backstage** | GitHub org sync (User/Group auto-import) | ✅ `app-config.aws.yaml` `githubOrg` provider |
+| **Backstage** | Catalog consolidation (49 URLs → 1 file) | ✅ `backstage/catalog/all-templates.yaml` |
+| **Backstage** | Template versioning (`v1` + `blessed`/`advanced` tags) | ✅ all 50 templates |
+| **Backstage** | Permission framework (`permission.enabled: true`) | ✅ config added; backend plugin code still needed |
+| **Observability** | DORA `team=` label on all Prometheus metrics | ✅ `dora-exporter.py` |
+| **Observability** | `TEAM_MAP` env var for repo→team mapping | ✅ `dora-exporter.py` + CronJob YAMLs |
+| **Observability** | Per-team Grafana folder via sidecar ConfigMap | ✅ `skeleton/grafana-folder.yaml` + sidecar enabled |
+| **Observability** | Kyverno install in bootstrap scripts | ✅ Step 9b / Phase 3.8 |
+
+### Still open (not yet implemented)
+
+| Item | Notes |
+|---|---|
+| GitHub discovery plugin (replace URL catalog list for services) | Still URL-based for service `catalog-info.yaml` files; templates use `all-templates.yaml` |
+| Group-based template visibility in Backstage | Requires permission backend plugin code (`packages/backend/src/plugins/permission.ts`) |
+| Per-team Grafana RBAC (org → team mapping) | Grafana folder exists; team RBAC provisioning via API not yet automated |
+| DORA team dimension in Grafana dashboard | Dashboard JSON needs `team` variable + per-team panel |
+| Thanos / Mimir for Prometheus HA | Plan when > 1M active series |
+| CODEOWNERS auto-generation in scaffold templates | Add `CODEOWNERS` file step in service template `steps:` |
+
+---
+
 ## Multi-cluster topology (Large tier)
 
 At Large scale, split into two clusters to contain blast radius:

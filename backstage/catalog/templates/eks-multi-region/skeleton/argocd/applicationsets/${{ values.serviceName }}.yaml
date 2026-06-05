@@ -1,0 +1,73 @@
+# ArgoCD ApplicationSet — V2 multi-region hub-spoke matrix generator.
+# Applied to the ArgoCD hub cluster (eu-central-1). Generates one Application
+# per region × service combination.
+#
+# Deployment order: eu-central-1 first. The Argo Rollouts health gate in the
+# primary region must pass before us-east-1 receives the rollout wave.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ${{ values.serviceName }}
+  namespace: argocd
+  labels:
+    idp.platform/owner: "${{ values.owner }}"
+    idp.platform/multi-region: "true"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - region: eu-central-1
+                  cluster: https://eks-eu-central-1.internal
+                  priority: primary
+                  wave: "0"
+                  trafficDial: "${{ values.primaryTrafficDial }}"
+                - region: us-east-1
+                  cluster: https://eks-us-east-1.internal
+                  priority: secondary
+                  wave: "1"
+                  trafficDial: "${{ values.standbyTrafficDial }}"
+          - list:
+              elements:
+                - service: ${{ values.serviceName }}
+                  namespace: ${{ values.namespace }}
+
+  template:
+    metadata:
+      name: "{{`{{ .service }}-{{ .region }}`}}"
+      namespace: argocd
+      labels:
+        idp.platform/service: "{{`{{ .service }}`}}"
+        idp.platform/region: "{{`{{ .region }}`}}"
+        idp.platform/priority: "{{`{{ .priority }}`}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{`{{ .wave }}`}}"
+    spec:
+      project: default
+      source:
+        repoURL: ${{ values.repoUrl }}
+        targetRevision: ${{ values.targetRevision }}
+        path: ${{ values.helmChartPath }}
+        helm:
+          valueFiles:
+            - "helm-values.yaml"
+            - "helm-values-{{`{{ .region }}`}}.yaml"
+      destination:
+        server: "{{`{{ .cluster }}`}}"
+        namespace: "{{`{{ .namespace }}`}}"
+      syncPolicy:
+        automated:
+          prune: ${{ values.pruneOrphans }}
+          selfHeal: ${{ values.autoSync }}
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas

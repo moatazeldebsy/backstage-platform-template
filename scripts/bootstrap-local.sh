@@ -512,17 +512,18 @@ apply_backstage_k8s_objects() {
     bs_ip=$(docker inspect backstage-backstage-1 \
       --format '{{(index .NetworkSettings.Networks "kind").IPAddress}}' 2>/dev/null || true)
   else
-    # Rancher Desktop: Backstage container is on the default bridge; the k3s VM
-    # reaches Docker containers via the host bridge IP (host.docker.internal).
-    bs_ip=$(docker inspect backstage-backstage-1 \
-      --format '{{(index .NetworkSettings.Networks "bridge").IPAddress}}' 2>/dev/null || true)
+    # Rancher Desktop: kube-router iptables rules in the Lima VM block intra-bridge
+    # SYN-ACKs, so direct container IPs are unreachable from k3s pods. Use the
+    # Docker host gateway (172.17.0.1 = docker0) which proxies exposed ports, and
+    # port 3000 is exported on 0.0.0.0 in the compose file.
+    bs_ip="172.17.0.1"
   fi
 
   if [[ -n "$bs_ip" && "$bs_ip" != "<no value>" ]]; then
-    log "  Backstage container IP: ${bs_ip}"
+    log "  Backstage endpoint IP: ${bs_ip}"
     sed "s/ip: \"[0-9.]*\"/ip: \"${bs_ip}\"/" "$endpoints_file" | kubectl apply -f -
   else
-    warn "  Backstage container not running — applying with default IP (172.21.0.6)."
+    warn "  Backstage container not running — applying with default IP (172.17.0.1)."
     warn "  After 'docker compose up -d', run: ./scripts/bootstrap-local.sh --update-backstage-ip"
     kubectl apply -f "$endpoints_file"
   fi
@@ -756,6 +757,7 @@ for _ns in services services-dev monitoring argocd ingress-nginx gatekeeper-syst
   wait_namespace_clear "$_ns" 60
 done
 kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
+kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
 kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
 
 # ── Step 4: nginx ingress controller ─────────────────────────────────────────
@@ -1139,6 +1141,37 @@ if ! $SKIP_POLICIES; then
   ) || warn "Step 9 (OPA/Gatekeeper) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 9: Skipping OPA/Gatekeeper (--skip-policies)."
+fi
+
+# ── Step 9b: Kyverno + team policies ─────────────────────────────────────────
+# Kyverno handles admission policies that require JMESPath/CEL expressions not
+# supported by Gatekeeper (e.g., extracting team name from namespace prefix).
+if ! $SKIP_POLICIES; then
+  (
+    set -e
+    log "Step 9b: Installing Kyverno..."
+    helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
+    helm repo update kyverno
+    helm upgrade --install kyverno kyverno/kyverno \
+      --namespace kyverno \
+      --create-namespace \
+      --version 3.2.7 \
+      --set replicaCount=1 \
+      --set resources.requests.cpu=100m \
+      --set resources.requests.memory=256Mi \
+      --wait --timeout 5m
+
+    log "  Waiting for Kyverno webhook to be ready..."
+    kubectl wait deployment kyverno-admission-controller \
+      -n kyverno --for=condition=Available --timeout=120s
+
+    log "  Applying Kyverno team policies..."
+    kubectl apply -f "${ROOT_DIR}/kubernetes/policies/kyverno/team-quota-policy.yaml"
+    kubectl apply -f "${ROOT_DIR}/kubernetes/policies/kyverno/crossplane-team-label-policy.yaml"
+    log "  Kyverno + team policies installed."
+  ) || warn "Step 9b (Kyverno) failed — Crossplane team tags and namespace quotas will not be auto-injected. Continuing..."
+else
+  log "Step 9b: Skipping Kyverno (--skip-policies)."
 fi
 
 # ── Step 10: DORA Exporter (Pushgateway) ─────────────────────────────────────

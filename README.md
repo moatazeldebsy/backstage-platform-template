@@ -7,7 +7,7 @@
 [![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
 
-**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 21 service & app templates (including 7 mobile) + 18 QA/test scaffold templates + 5 Crossplane Claim templates, AI/ML platform (KAgent + MLflow + 3 MCP servers), shift-left quality programme (Bronze/Silver/Gold scorecard + contract testing), Prometheus + Grafana observability + DORA entity tab, AWS EKS via Terraform, and per-service cloud resources via Crossplane. Runs locally on Kind in ~15 minutes.
+**A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 21 service & app templates (including 7 mobile) + 18 QA/test scaffold templates + 5 Crossplane Claim templates + 4 multi-region V2 templates, AI/ML platform (KAgent + MLflow + 3 MCP servers), shift-left quality programme (Bronze/Silver/Gold scorecard + contract testing), Prometheus + Grafana observability + DORA entity tab, AWS EKS via Terraform, per-service cloud resources via Crossplane, and an opt-in **V2 multi-region architecture** (active-standby eu-central-1 + us-east-1). Runs locally on Kind in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org.
 
@@ -39,14 +39,16 @@
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 with catalog, TechDocs, Tech Radar (63 entries), and custom scaffolder actions |
-| **Software templates** | 21 golden-path service & app templates — Node.js, Python, Go, React, Terraform, MCP Server, Model Serving API, Deploy-to-Kind, Team namespace, EKS Cluster, RDS, Add-secret, AI Agent, ML Experiment, plus 7 mobile templates (Android, iOS, Flutter, SDK, Code Signing, App Store Deploy, Device Farm) |
+| **Software templates** | 51 scaffold templates versioned with `v1` tag; 7 **blessed** golden-path templates (Node.js, Python, Go, React, Team namespace, Add-secret, Decommission); 44 **advanced** templates for infra, QA, mobile, AI/ML, and multi-region (V2). All indexed in `backstage/catalog/all-templates.yaml` — adding a template requires one line there, no `app-config` edit. |
 | **QA / test templates** | 18 testing scaffold templates — Playwright E2E, k6 Performance, Pact Contract, Newman API, ZAP DAST, Datadog Synthetic, Visual Regression, Accessibility (axe), BDD Cucumber, Appium Mobile, Chaos Mesh, Stryker Mutation, Testcontainers Integration, DeepEval LLM Eval, Unit, Component, IaC, Flutter Integration — plus `enable-contract-testing` for MCP-driven contract gates |
+| **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject + ApplicationSet); per-team SecretStore scoped to `/<team>/*` in Secrets Manager; Kyverno auto-injects `idp:team` tag on all Crossplane claims; per-team Grafana folder. See [docs/team-management.md](docs/team-management.md). |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm); 5 mobile Tech Insights scorecard checks; Appium + Firebase TestLab device-farm testing. See [docs/mobile-platform.md](docs/mobile-platform.md). |
 | **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 checks + 5 mobile checks, visible in Backstage Tech Insights + Grafana); PR gates for coverage ≥70%, vuln scan, static analysis; ArgoCD PreSync contract gate blocks breaking API changes. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) for the programme overview. |
 | **AI/ML platform** | **AI-Native IDP (Phase 7a Complete)** — KAgent agents (Claude + OpenAI GPT-4o) + MLflow experiment tracking + **IDP MCP Server** (6 tools) + **QA MCP Server** (QA-specific tools) + **Contract MCP Server** (9 contract tools) + Model Serving API (Ollama/vLLM) + AI Scorecard (Bronze/Silver/Gold) + Prompt Lifecycle Management (ConfigMaps) + Argo Workflows (ML pipelines) + Cost Attribution (team labels + metrics) + AI Observability Dashboard + RAG semantic search over TechDocs |
-| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA entity tab on every Component (Elite/High/Medium/Low badges, 7-day sparklines); FinOps cost overview with breakdown by namespace/team; DORA metrics exporter; QA KPI dashboard. See [docs/dora-finops.md](docs/dora-finops.md). |
+| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA entity tab on every Component (Elite/High/Medium/Low badges, 7-day sparklines); DORA metrics carry `team=` label for per-team dashboards; FinOps cost overview with breakdown by namespace/team; per-team Grafana folders. See [docs/dora-finops.md](docs/dora-finops.md). |
 | **Infrastructure** | **Terraform** for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3, Secrets Manager) + **Crossplane** for per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) via in-cluster Claims reconciled by ArgoCD. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) for the boundary. |
+| **Multi-region V2** | Feature branch `feat/v2-multi-region` — active-standby across eu-central-1 (primary) + us-east-1 (standby). Includes: Transit Gateway, Aurora Global DB, DynamoDB Global Tables, S3 CRR + MRAP, Global Accelerator, CloudFront+WAF, Argo Rollouts, Thanos multi-region metrics, Security Hub aggregation, Karpenter spot nodes, 3 new Crossplane XRDs, and 4 V2 Backstage templates. Teams opt in by branching from `feat/v2-multi-region`. See [docs/multi-region.md](docs/multi-region.md). |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
 ## Quick Start
@@ -307,6 +309,10 @@ Backstage → scaffold repo → push code
 - Team Namespace, EKS Cluster, Deploy to Kind
 - RDS Database, Add Secret
 
+*Multi-region templates (V2 — opt-in via `feat/v2-multi-region` branch):*
+- Aurora Global Database, DynamoDB Global Table, S3 Multi-Region Access Point
+- EKS Multi-Region (ArgoCD ApplicationSet — hub-spoke matrix, eu-central-1 → us-east-1)
+
 *Mobile templates (7):*
 - Android App (Kotlin + Jetpack Compose), iOS App (Swift + SwiftUI), Flutter App (Dart)
 - Mobile SDK (Android/iOS/Flutter/KMP), Mobile Code Signing, App Store Deploy, Device Farm
@@ -466,3 +472,4 @@ See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) → Cost Optimization a
 - [Golden Path](docs/golden-path.md)
 - [Architecture](docs/architecture.md)
 - [AI Assistant](docs/ai-assistant.md)
+- [Multi-Region V2](docs/multi-region.md)

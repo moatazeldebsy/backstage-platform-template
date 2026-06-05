@@ -16,6 +16,8 @@ metadata:
     - self-service
     - local
     - aws
+    - v1
+    - blessed
 spec:
   owner: platform-team
   type: infrastructure
@@ -84,6 +86,19 @@ spec:
           type: string
           default: backstage-platform-template
           description: The IDP platform repo where team manifests will be committed
+        awsRegion:
+          title: AWS region
+          type: string
+          default: us-east-1
+          description: AWS region for the per-team SecretStore (must match the cluster region)
+        iamRoleArn:
+          title: ESO IAM role ARN (optional)
+          type: string
+          description: >-
+            IRSA role ARN for the team's External Secrets ServiceAccount.
+            Format: arn:aws:iam::<account>:role/team-<name>-eso.
+            Leave blank to skip creating the SecretStore (add it later via terraform/iam-team-secret-store.tf).
+          pattern: '^(arn:aws:iam::[0-9]{12}:role/.+)?$'
 
   steps:
     - id: fetch-k8s
@@ -97,6 +112,10 @@ spec:
           ownerGroup: ${{ parameters.ownerGroup }}
           costCenter: ${{ parameters.costCenter }}
           tier: ${{ parameters.tier }}
+          githubOrg: ${{ parameters.githubOrg }}
+          platformRepo: ${{ parameters.platformRepo }}
+          awsRegion: ${{ parameters.awsRegion }}
+          iamRoleArn: ${{ parameters.iamRoleArn }}
 
     - id: fetch-catalog
       name: Render Backstage Group entity
@@ -128,7 +147,8 @@ spec:
           - LimitRange: default container requests/limits
           - NetworkPolicy: deny-all ingress (allow same-namespace + monitoring)
           - RBAC: idp-developer RoleBinding + deployer ServiceAccount
-          - ArgoCD AppProject scoped to this namespace
+          - ArgoCD AppProject + ApplicationSet scoped to this namespace
+          - Per-team SecretStore (AWS Secrets Manager, path `/${{ parameters.teamName }}/`)
 
           Also registers `${{ parameters.teamName }}` as a Backstage Group entity under
           `backstage/catalog/groups/${{ parameters.teamName }}.yaml` — no manual catalog

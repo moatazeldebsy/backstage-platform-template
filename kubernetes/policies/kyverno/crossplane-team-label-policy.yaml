@@ -1,0 +1,127 @@
+# Kyverno mutate policy — automatically inject idp:team tag into Crossplane claims.
+# Any Claim created in a team-* namespace gets its AWS tags stamped with the team name
+# (derived by stripping the "team-" prefix from the namespace). This ensures OpenCost
+# can group costs by team without requiring each scaffold template to pass the tag.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: crossplane-inject-team-tag
+  annotations:
+    policies.kyverno.io/title: Inject team tag into Crossplane claims
+    policies.kyverno.io/category: Cost Governance
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Mutates Crossplane Claim resources in team-* namespaces to add an
+      idp:team parameter so AWS resources are tagged for OpenCost showback.
+spec:
+  rules:
+    - name: inject-team-tag-s3
+      match:
+        any:
+          - resources:
+              kinds: ["S3Bucket"]
+              namespaces: ["team-*"]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            parameters:
+              +(team): "{{request.object.metadata.namespace | replace('team-', '')}}"
+
+    - name: inject-team-tag-rds
+      match:
+        any:
+          - resources:
+              kinds: ["RDSInstance"]
+              namespaces: ["team-*"]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            parameters:
+              +(team): "{{request.object.metadata.namespace | replace('team-', '')}}"
+
+    - name: inject-team-tag-dynamo
+      match:
+        any:
+          - resources:
+              kinds: ["DynamoTable"]
+              namespaces: ["team-*"]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            parameters:
+              +(team): "{{request.object.metadata.namespace | replace('team-', '')}}"
+
+    - name: inject-team-tag-sqs
+      match:
+        any:
+          - resources:
+              kinds: ["SQSQueue"]
+              namespaces: ["team-*"]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            parameters:
+              +(team): "{{request.object.metadata.namespace | replace('team-', '')}}"
+
+    - name: inject-team-tag-kafka
+      match:
+        any:
+          - resources:
+              kinds: ["KafkaTopic"]
+              namespaces: ["team-*"]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            parameters:
+              +(team): "{{request.object.metadata.namespace | replace('team-', '')}}"
+---
+# Kyverno validate policy — reject Crossplane claims with no owner or costCenter.
+# Applies to ALL namespaces (not just team-*) to enforce tagging discipline.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: crossplane-require-cost-tags
+  annotations:
+    policies.kyverno.io/title: Require owner and costCenter on Crossplane claims
+    policies.kyverno.io/category: Cost Governance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Blocks Crossplane Claim creation if spec.parameters.owner or
+      spec.parameters.costCenter is missing. Prevents untagged AWS resources
+      that can't be attributed to a team in OpenCost.
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-owner
+      match:
+        any:
+          - resources:
+              kinds:
+                - S3Bucket
+                - RDSInstance
+                - DynamoTable
+                - SQSQueue
+                - KafkaTopic
+      validate:
+        message: "spec.parameters.owner is required on all Crossplane claims."
+        pattern:
+          spec:
+            parameters:
+              owner: "?*"
+
+    - name: require-cost-center
+      match:
+        any:
+          - resources:
+              kinds:
+                - S3Bucket
+                - RDSInstance
+                - DynamoTable
+                - SQSQueue
+                - KafkaTopic
+      validate:
+        message: "spec.parameters.costCenter is required on all Crossplane claims."
+        pattern:
+          spec:
+            parameters:
+              costCenter: "?*"

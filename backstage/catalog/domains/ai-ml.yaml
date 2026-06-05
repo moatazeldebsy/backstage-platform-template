@@ -1,0 +1,46 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: ai-ml
+  title: AI / ML Platform
+  description: Machine learning models, AI agents (KAgent + Claude), MLflow experiment tracking, and data pipelines
+  tags:
+    - ai
+    - ml
+    - kagent
+    - mlflow
+  links:
+    - url: http://mlflow.idp.local
+      title: MLflow
+    - url: http://backstage.idp.local/ai-assistant
+      title: IDP AI Assistant
+spec:
+  owner: group:default/ml-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ai-agents
+  title: AI Agents
+  description: KAgent-powered AI agents — IDP assistant, QA agent, contract assistant
+  tags:
+    - kagent
+    - claude
+    - mcp
+spec:
+  owner: group:default/ml-team
+  domain: ai-ml
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: data-platform
+  title: Data Platform
+  description: Data pipelines, analytics, and ML feature stores owned by the data team
+  tags:
+    - data
+    - pipeline
+    - analytics
+spec:
+  owner: group:default/data-team
+  domain: ai-ml

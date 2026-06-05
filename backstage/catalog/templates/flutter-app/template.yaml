@@ -13,6 +13,8 @@ metadata:
     - golden-path
     - local
     - aws
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: mobile

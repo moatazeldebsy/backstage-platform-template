@@ -71,6 +71,28 @@ dashboardsConfigMaps:
   qa: grafana-qa-dashboard
   ai: grafana-dashboards-ai
 
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /var/lib/grafana/dashboards/sidecar
+    searchNamespace: ALL
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: false
+      allowUiUpdates: true
+
+grafana.ini:
+  users:
+    auto_assign_org: true
+    auto_assign_org_role: Viewer
+  auth:
+    disable_login_form: false
+  # Enable teams so per-team folders get proper RBAC
+  feature_toggles:
+    enable: teamHttpHeaders
+
 persistence:
   enabled: true
   storageClassName: gp2

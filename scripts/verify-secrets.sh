@@ -121,6 +121,83 @@ fi
 
 echo ""
 echo "┌─────────────────────────────────────────────────────────┐"
+echo "│ 5. Backstage Secrets Manager entry (idp-mvp/backstage)  │"
+echo "└─────────────────────────────────────────────────────────┘"
+
+BACKSTAGE_SECRET_ID="idp-mvp/backstage"
+if aws secretsmanager get-secret-value --secret-id "$BACKSTAGE_SECRET_ID" --region "$AWS_REGION" &>/dev/null; then
+    SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$BACKSTAGE_SECRET_ID" --region "$AWS_REGION" --query SecretString --output text 2>/dev/null || echo "{}")
+
+    # Check GITHUB_TOKEN (legacy PAT)
+    gh_token=$(echo "$SECRET_JSON" | jq -r '.GITHUB_TOKEN // ""' 2>/dev/null || echo "")
+    app_id=$(echo "$SECRET_JSON" | jq -r '.GITHUB_APP_ID // ""' 2>/dev/null || echo "")
+
+    if [[ -n "$app_id" && "$app_id" != "null" ]]; then
+        check_pass "GitHub App ID found in idp-mvp/backstage (GITHUB_APP_ID=$app_id)"
+        # Check remaining App keys
+        for key in GITHUB_APP_CLIENT_ID GITHUB_APP_CLIENT_SECRET GITHUB_APP_PRIVATE_KEY; do
+            val=$(echo "$SECRET_JSON" | jq -r ".${key} // \"\"" 2>/dev/null || echo "")
+            if [[ -n "$val" && "$val" != "null" && "$val" != "REPLACE_ME" ]]; then
+                check_pass "$key present in idp-mvp/backstage"
+            else
+                check_fail "$key missing from idp-mvp/backstage"
+                echo "         Fix: See docs/github-app-setup.md for setup instructions"
+            fi
+        done
+        check_warn "GITHUB_APP_WEBHOOK_SECRET (optional — only needed if App webhook is active)"
+    elif [[ -n "$gh_token" && "$gh_token" != "REPLACE_ME" ]]; then
+        check_pass "GITHUB_TOKEN (PAT) found in idp-mvp/backstage"
+        check_warn "Consider migrating to GitHub App for higher rate limits (docs/github-app-setup.md)"
+    else
+        check_fail "Neither GITHUB_TOKEN nor GITHUB_APP_ID found in idp-mvp/backstage"
+        echo "         Fix: bootstrap.sh Phase 3.7 populates this, or run manually:"
+        echo "              export GITHUB_TOKEN=ghp_YOUR_TOKEN && ./scripts/bootstrap.sh"
+    fi
+
+    # Check AUTH_GITHUB_CLIENT_ID
+    oauth_id=$(echo "$SECRET_JSON" | jq -r '.AUTH_GITHUB_CLIENT_ID // ""' 2>/dev/null || echo "")
+    if [[ -n "$oauth_id" && "$oauth_id" != "REPLACE_ME" ]]; then
+        check_pass "AUTH_GITHUB_CLIENT_ID present in idp-mvp/backstage"
+    else
+        check_fail "AUTH_GITHUB_CLIENT_ID missing from idp-mvp/backstage"
+        echo "         Fix: Create OAuth App at github.com/settings/developers"
+    fi
+else
+    check_fail "idp-mvp/backstage secret not found in Secrets Manager"
+    echo "         Fix: Run terraform apply first — it creates the secret placeholder"
+    echo "              Then run bootstrap.sh to populate the values"
+fi
+
+echo ""
+echo "┌─────────────────────────────────────────────────────────┐"
+echo "│ 6. GitHub App — Actions secrets (auto-merge CI)         │"
+echo "└─────────────────────────────────────────────────────────┘"
+
+# Check if gh CLI is available to inspect repo secrets
+if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+    REPO_SLUG=$(git remote get-url origin 2>/dev/null | sed 's|.*github.com[:/]||;s|\.git$||' || echo "")
+    if [[ -n "$REPO_SLUG" ]]; then
+        if gh secret list -R "$REPO_SLUG" 2>/dev/null | grep -q "^APP_ID"; then
+            check_pass "APP_ID secret present in $REPO_SLUG (GitHub App for auto-merge)"
+        else
+            check_warn "APP_ID not set in repo secrets — auto-merge CI will fall back to GH_PAT or skip approval"
+            echo "         Fix: See docs/github-app-setup.md → 'Configure for GitHub Actions'"
+        fi
+        if gh secret list -R "$REPO_SLUG" 2>/dev/null | grep -q "^APP_PRIVATE_KEY"; then
+            check_pass "APP_PRIVATE_KEY secret present in $REPO_SLUG"
+        else
+            check_warn "APP_PRIVATE_KEY not set in repo secrets"
+        fi
+    else
+        check_warn "Could not determine repo slug — skipping GitHub Actions secrets check"
+    fi
+else
+    check_warn "gh CLI not available or not authenticated — skipping GitHub Actions secrets check"
+    echo "         Install: https://cli.github.com  |  Auth: gh auth login"
+fi
+
+echo ""
+echo "┌─────────────────────────────────────────────────────────┐"
 echo "│ AWS Credentials & Connectivity                          │"
 echo "└─────────────────────────────────────────────────────────┘"
 

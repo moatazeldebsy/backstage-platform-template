@@ -13,6 +13,8 @@ metadata:
     - ai
     - testing
     - qa
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: test-suite

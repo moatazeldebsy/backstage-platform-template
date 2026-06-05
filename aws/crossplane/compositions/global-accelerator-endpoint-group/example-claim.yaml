@@ -1,0 +1,37 @@
+# Example: primary endpoint group (eu-central-1) — 100% traffic by default.
+apiVersion: idp.platform/v1alpha1
+kind: GlobalAcceleratorEndpointGroup
+metadata:
+  name: backstage-ga-primary
+  namespace: platform-system
+spec:
+  parameters:
+    listenerArn: arn:aws:globalaccelerator::123456789012:accelerator/abcd1234/listener/efgh5678
+    endpointRegion: eu-central-1
+    endpointArn: arn:aws:elasticloadbalancing:eu-central-1:123456789012:loadbalancer/app/backstage-alb/abc123
+    clientIpPreservation: true
+    trafficDialPercentage: 100
+    healthCheckPort: 443
+    healthCheckProtocol: HTTPS
+    healthCheckPath: /healthz
+    thresholdCount: 3
+    owner: platform-team
+---
+# Example: standby endpoint group (us-east-1) — 0% traffic (receives traffic only on primary failure).
+apiVersion: idp.platform/v1alpha1
+kind: GlobalAcceleratorEndpointGroup
+metadata:
+  name: backstage-ga-standby
+  namespace: platform-system
+spec:
+  parameters:
+    listenerArn: arn:aws:globalaccelerator::123456789012:accelerator/abcd1234/listener/efgh5678
+    endpointRegion: us-east-1
+    endpointArn: arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/backstage-alb/def456
+    clientIpPreservation: true
+    trafficDialPercentage: 0
+    healthCheckPort: 443
+    healthCheckProtocol: HTTPS
+    healthCheckPath: /healthz
+    thresholdCount: 3
+    owner: platform-team

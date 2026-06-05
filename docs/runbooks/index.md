@@ -16,6 +16,9 @@ Operational procedures for the Internal Developer Platform. Each runbook maps to
 | RDS unavailable | Critical | [Database Recovery](db-recovery.md) |
 | `ImagePullBackOff` (local) | Warning | [ImagePullBackOff](image-pull-backoff.md) |
 | Kind node `NotReady` after crash (local) | Warning | [Kind Node IP Mismatch](kind-node-ip-mismatch.md) |
+| Crossplane claim rejected by Kyverno | Warning | [TROUBLESHOOTING.md § Crossplane claim rejected](../TROUBLESHOOTING.md#symptom-crossplane-claim-rejected----owner-is-required) |
+| `ExternalSecret` error — SecretStore not found | Warning | [TROUBLESHOOTING.md § ExternalSecret error](../TROUBLESHOOTING.md#symptom-externalsecret-error----secretstore-not-found-team-name-secrets) |
+| `team=unknown` on DORA metrics | Info | [TROUBLESHOOTING.md § team=unknown](../TROUBLESHOOTING.md#symptom-teamunknown-on-dora-prometheus-metrics) |
 
 ## Local Dev Issues
 

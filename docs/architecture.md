@@ -100,12 +100,18 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 |-----------|----------|----------|
 | `local/` | `bootstrap-local.sh` | Kind cluster config, nginx ingress values, Docker Compose for Backstage, local ArgoCD ApplicationSet, local Prometheus values, DORA exporter (local) |
 | `aws/` | `bootstrap.sh` | ArgoCD values + app-of-apps, External Secrets Operator, Crossplane providers + compositions, Backstage K8s deployment + external secret, KAgent AWS values/ingress/secret, ALB ingresses, MLflow (S3 backend), DORA exporter (AWS), AWS Prometheus values |
-| `kubernetes/` | Both scripts | Namespaces, RBAC, OPA/Gatekeeper policies, team entities, shared monitoring dashboards (ConfigMaps), KAgent agent CRDs, Backstage RBAC + configmap |
-| `terraform/` | Manual (`terraform apply`) | EKS, VPC, RDS, ECR, IAM/OIDC, Secrets Manager scaffolding |
+| `kubernetes/` | Both scripts | Namespaces (`namespaces.yaml`, `services-quota.yaml`), RBAC, OPA/Gatekeeper policies, **Kyverno team policies** (`policies/kyverno/`), team entities, shared monitoring dashboards (ConfigMaps), KAgent agent CRDs, Backstage RBAC + configmap |
+| `kubernetes/namespaces/services-quota.yaml` | Both scripts | ResourceQuota + LimitRange for `services-dev/staging/prod` namespaces |
+| `kubernetes/policies/kyverno/` | Both scripts | Kyverno ClusterPolicies: `team-quota-policy.yaml` (auto-generate quota from tier label), `crossplane-team-label-policy.yaml` (inject `idp:team` tag + require owner/costCenter) |
+| `kubernetes/rbac/cluster-roles.yaml` | Both scripts | `idp-developer`, `idp-team-lead`, `idp-platform-admin` ClusterRoles |
+| `terraform/` | Manual (`terraform apply`) | EKS, VPC, RDS, ECR, IAM/OIDC, Secrets Manager scaffolding, **`iam-team-secret-store.tf`** (per-team ESO IAM roles) |
 | `helm/service-template/` | Both | Single Helm chart used by every service |
-| `services/<svc>/` | Per-service CI | Source, Dockerfile, `helm-values-local.yaml` (Kind), `helm-values-aws.yaml` (EKS) |
-| `observability/` | Both | Shared alerting rules, Grafana dashboards, DORA/tech-insights exporters |
-| `backstage/` | Both | Portal source, `app-config.yaml` (base), `app-config.local.yaml` (local overrides), catalog templates |
+| `helm/values-tiers/` | Manual | Small/Medium/Large Helm value tiers for Backstage and ArgoCD |
+| `services/<svc>/` | Per-service CI | Legacy flat service values: `helm-values-local.yaml` (Kind), `helm-values-aws.yaml` (EKS) |
+| `teams/<teamName>/services/<svc>/` | Per-team CI | Team-scoped service values (auto-discovered by per-team ApplicationSet) |
+| `backstage/catalog/all-templates.yaml` | Both | Single Location file indexing all 50 templates; replaces 49 individual URL entries in `app-config.aws.yaml` |
+| `observability/` | Both | Shared alerting rules, Grafana dashboards (`grafana-helm-values.yaml` with sidecar enabled), DORA/tech-insights exporters |
+| `backstage/` | Both | Portal source, `app-config.yaml` (base), `app-config.local.yaml` (local overrides), catalog templates (all tagged `v1` + `blessed`/`advanced`) |
 | `scripts/` | Both | `bootstrap-local.sh` (local), `bootstrap.sh` (AWS), `bootstrap-ai.sh` (both), shared `lib.sh` |
 
 **Bootstrap script ownership:**
@@ -187,10 +193,19 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | Backstage image | `backstage/Dockerfile` | Production image (pre-built bundle) |
 | kube-prometheus-stack values (local) | `local/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (nginx, local storage) |
 | kube-prometheus-stack values (AWS) | `aws/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention) |
-| ClusterSecretStore | `aws/external-secrets/cluster-secret-store.yaml` | ESO → AWS Secrets Manager backend |
+| ClusterSecretStore | `aws/external-secrets/cluster-secret-store.yaml` | Global ESO → AWS Secrets Manager backend |
+| Per-team SecretStore | `kubernetes/teams/<name>/secret-store.yaml` (scaffold) | Namespace-scoped SecretStore; access restricted to `/<team>/*` in Secrets Manager |
+| Per-team ESO IRSA roles | `terraform/iam-team-secret-store.tf` | One IAM role per team; `secretsmanager:GetSecretValue` on `/<team>/*` only |
+| Kyverno | `kyverno` namespace | Admission controller for team label injection + quota enforcement |
+| Kyverno team policies | `kubernetes/policies/kyverno/` | Mutate: auto-inject `idp:team`; Validate: require `owner`+`costCenter` on Crossplane claims |
+| services-quota | `kubernetes/namespaces/services-quota.yaml` | ResourceQuota + LimitRange for `services-dev/staging/prod` |
+| Grafana per-team folders | `kubernetes/teams/<name>/grafana-folder.yaml` (scaffold) | ConfigMap → Grafana sidecar creates team dashboard folder |
+| Grafana sidecar | `observability/grafana/grafana-helm-values.yaml` | `sidecar.dashboards.enabled=true`, `searchNamespace: ALL`, `folderAnnotation: grafana_folder` |
 | Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
-| DORA exporter (local) | `local/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway (local) |
-| DORA exporter (AWS) | `aws/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch (AWS) |
+| DORA exporter (local) | `local/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway; `team=` label via `TEAM_MAP` or GitHub topic |
+| DORA exporter (AWS) | `aws/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch; `TEAM_MAP` from Secrets Manager |
+| Template catalog | `backstage/catalog/all-templates.yaml` | Single Location file for all 50 templates (tagged `v1` + `blessed`/`advanced`) |
+| Permission framework | `backstage/app-config.aws.yaml` | `permission.enabled: true`; blocks unauthenticated scaffolder access |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 | material-table patch | `backstage/app/.yarn/patches/` | Fixes `uuid` v10 compatibility crash in catalog, api-docs, and techdocs pages |
 
@@ -292,9 +307,16 @@ EKS Cluster: idp-mvp (us-east-1)
 │   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
 │   └── service/backstage             (ALB ingress)
 │
+├── kyverno                           (admission controller)
+│   ├── kyverno-admission-controller  (mutate + validate webhooks)
+│   ├── ClusterPolicy: crossplane-inject-team-tag   (auto-inject idp:team on Crossplane claims)
+│   └── ClusterPolicy: crossplane-require-cost-tags (block claims without owner/costCenter)
+│
 ├── argocd                            (GitOps controller)
 │   ├── argocd-server                 (UI + API, ALB ingress)
-│   ├── ApplicationSet: idp-services  (auto-discovers services/*/)
+│   ├── ApplicationSet: idp-services  (auto-discovers services/*/ — legacy flat services)
+│   ├── AppProject: team-<name>       (one per team, created by scaffold; scoped to team-<name> ns)
+│   ├── ApplicationSet: team-<name>   (auto-discovers teams/<name>/services/*/)
 │   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
 │
 ├── monitoring                        (observability stack)
@@ -311,11 +333,19 @@ EKS Cluster: idp-mvp (us-east-1)
 ├── services                          (manually deployed services)
 │   └── deployment/hello-service      (reference Go service)
 │
-├── services-dev                      (ArgoCD-managed dev services)
+├── services-dev                      (ArgoCD-managed dev services; ResourceQuota + LimitRange applied)
 │   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
 │   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
 │   ├── deployment/qa-mcp-server      (QA MCP server)
 │   └── deployment/contract-mcp-server (contract testing tools)
+│
+├── team-<name>                       (one per team; created by Provision Team Namespace scaffold)
+│   ├── ResourceQuota / LimitRange    (tier-based; auto-generated by Kyverno team-quota-policy)
+│   ├── NetworkPolicy                 (deny-all ingress; allow intra-ns + monitoring + ingress-nginx)
+│   ├── RoleBinding: idp-developer    (team members get deploy+observe access)
+│   ├── ServiceAccount: deployer      (CI/CD identity for the team)
+│   ├── SecretStore: team-<name>-secrets  (scoped to /<name>/* in Secrets Manager)
+│   └── ConfigMap: grafana-folder-team-<name>  (→ Grafana sidecar creates team dashboard folder)
 │
 ├── kagent                            (AI agents)
 │   ├── deployment/kagent-controller  (KAgent operator)
@@ -353,7 +383,9 @@ bootstrap.sh
   └── injects real values (reads from local/.env and cluster)
         K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
         BACKSTAGE_CATALOG_TOKEN   ← generated random value
-        GITHUB_TOKEN              ← read from local/.env
+        GITHUB_TOKEN              ← read from env
+        GITHUB_APP_ID/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET ← GitHub App (optional; replaces PAT)
+        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
 
 External Secrets Operator (ESO)
   ├── ClusterSecretStore: aws-secretsmanager
@@ -380,6 +412,7 @@ External Secrets Operator (ESO)
 | `idp-mvp-crossplane` | `crossplane-system:provider-aws-*` | PowerUser + IAM (for provisioning per-service resources) |
 | `ebs-csi-driver` | `kube-system:ebs-csi-controller-sa` | `ec2:*Volume*`, `ec2:*Snapshot*` |
 | `github-actions` | GitHub OIDC (org-level) | PowerUser + IAM + S3 tfstate (for CI/CD) |
+| `team-<name>-eso` | `team-<name>:team-<name>-eso-sa` | `secretsmanager:GetSecretValue` on `/<name>/*` only (one role per team; provisioned by `terraform/iam-team-secret-store.tf`) |
 
 ### Bootstrap Sequence
 
@@ -392,12 +425,15 @@ External Secrets Operator (ESO)
   │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
   │
   ├── Phase 2 — Platform base (~5 min)
-  │     Namespaces · RBAC · AWS Load Balancer Controller
+  │     Namespaces · `services-quota.yaml` (ResourceQuota+LimitRange for services-dev/staging/prod)
+  │     RBAC · AWS Load Balancer Controller
   │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
   │
-  ├── Phase 3 — GitOps (~5 min)
+  ├── Phase 3 — GitOps (~8 min)
   │     ArgoCD · OPA/Gatekeeper · Crossplane
   │     idp-services ApplicationSet (auto-discovers services/*/)
+  │     Kyverno 3.2.7 + team policies (crossplane-team-label-policy, team-quota-policy)
+  │     Secrets Manager updated: GITHUB_APP_* + TEAM_MAP (if env vars set)
   │
   ├── Phase 4 — Observability (~10 min)
   │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)

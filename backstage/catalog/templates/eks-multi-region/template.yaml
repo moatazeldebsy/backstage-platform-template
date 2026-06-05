@@ -1,0 +1,131 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: eks-multi-region
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: EKS Multi-Region Deployment (ArgoCD ApplicationSet)
+  description: |
+    Scaffold an ArgoCD ApplicationSet that deploys a service to both the
+    primary cluster (eu-central-1) and the standby cluster (us-east-1) using
+    the V2 hub-spoke matrix generator.
+
+    The ApplicationSet applies progressive delivery: eu-central-1 is synced
+    first; us-east-1 receives traffic only after the Argo Rollouts health gate
+    passes in the primary region.
+  tags:
+    - argocd
+    - eks
+    - multi-region
+    - gitops
+    - v2
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service details
+      required: [serviceName, repoUrl, helmChartPath, owner]
+      properties:
+        serviceName:
+          title: Service name
+          type: string
+          pattern: '^[a-z][a-z0-9-]{1,52}[a-z0-9]$'
+          description: Kubernetes-safe service identifier (e.g. payment-api)
+          ui:autofocus: true
+        repoUrl:
+          title: Helm chart Git repository URL
+          type: string
+          description: The Git repository that contains the Helm chart for this service (e.g. https://github.com/myorg/payment-api)
+        helmChartPath:
+          title: Path to Helm chart inside the repo
+          type: string
+          default: helm
+          description: Relative path to the chart directory (e.g. helm or deploy/chart)
+        targetRevision:
+          title: Git branch / tag to track
+          type: string
+          default: main
+        namespace:
+          title: Target namespace
+          type: string
+          default: services
+          description: Kubernetes namespace to deploy into on both clusters
+        owner:
+          title: Owning team
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Traffic & failover settings
+      properties:
+        primaryTrafficDial:
+          title: Primary region traffic dial (%)
+          type: integer
+          default: 100
+          minimum: 0
+          maximum: 100
+          description: Percentage of Global Accelerator traffic routed to eu-central-1
+        standbyTrafficDial:
+          title: Standby region traffic dial (%)
+          type: integer
+          default: 0
+          minimum: 0
+          maximum: 100
+          description: Percentage of Global Accelerator traffic routed to us-east-1 (0 = warm standby)
+        autoSync:
+          title: Enable automated sync
+          type: boolean
+          default: true
+          description: ArgoCD will auto-sync from Git. Disable for manual promotion workflows.
+        pruneOrphans:
+          title: Prune orphaned resources
+          type: boolean
+          default: true
+
+  steps:
+    - id: fetch-template
+      name: Render ApplicationSet manifests
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          repoUrl: ${{ parameters.repoUrl }}
+          helmChartPath: ${{ parameters.helmChartPath }}
+          targetRevision: ${{ parameters.targetRevision }}
+          namespace: ${{ parameters.namespace }}
+          owner: ${{ parameters.owner }}
+          primaryTrafficDial: ${{ parameters.primaryTrafficDial }}
+          standbyTrafficDial: ${{ parameters.standbyTrafficDial }}
+          autoSync: ${{ parameters.autoSync }}
+          pruneOrphans: ${{ parameters.pruneOrphans }}
+
+    - id: open-pr
+      name: Open Pull Request to platform repo
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        title: "feat(gitops): multi-region ApplicationSet — ${{ parameters.serviceName }}"
+        description: |
+          **EKS Multi-Region ApplicationSet**
+
+          - Service: `${{ parameters.serviceName }}`
+          - Chart repo: `${{ parameters.repoUrl }}`
+          - Chart path: `${{ parameters.helmChartPath }}`
+          - Namespace: `${{ parameters.namespace }}`
+          - Requesting team: `${{ parameters.owner }}`
+          - Primary traffic dial: `${{ parameters.primaryTrafficDial }}%`
+          - Standby traffic dial: `${{ parameters.standbyTrafficDial }}%`
+
+          ---
+          *Review and merge to let ArgoCD pick up the ApplicationSet on the hub cluster.*
+        branchName: gitops/eks-multi-region-${{ parameters.serviceName }}
+        sourcePath: .
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps["open-pr"].output.remoteUrl }}

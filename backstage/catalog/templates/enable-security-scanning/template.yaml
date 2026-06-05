@@ -19,6 +19,8 @@ metadata:
     - platform
     - local
     - aws
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: platform-capability

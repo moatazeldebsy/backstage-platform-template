@@ -1,0 +1,36 @@
+# Example Claim — standalone health check (no DNS record).
+# Wire the healthCheckId into Global Accelerator or Route 53 weighted records manually.
+apiVersion: idp.platform/v1alpha1
+kind: Route53HealthCheck
+metadata:
+  name: backstage-primary-health
+  namespace: platform-system
+spec:
+  parameters:
+    fqdn: backstage.idp.example.com
+    port: 443
+    healthCheckType: HTTPS
+    resourcePath: /healthz
+    failureThreshold: 3
+    requestInterval: 30
+    enableSNI: true
+    owner: platform-team
+---
+# Example Claim — health check + DNS failover record.
+apiVersion: idp.platform/v1alpha1
+kind: Route53HealthCheck
+metadata:
+  name: api-gateway-failover
+  namespace: platform-system
+spec:
+  parameters:
+    fqdn: api.eu-central-1.example.com
+    port: 443
+    healthCheckType: HTTPS
+    resourcePath: /healthz
+    failureThreshold: 3
+    requestInterval: 10
+    owner: platform-team
+    hostedZoneId: Z1234567890ABC
+    failoverRecordName: api.example.com
+    failoverType: PRIMARY

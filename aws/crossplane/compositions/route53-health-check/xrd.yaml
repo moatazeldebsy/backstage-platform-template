@@ -1,0 +1,104 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xroute53healthchecks.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XRoute53HealthCheck
+    plural: xroute53healthchecks
+  claimNames:
+    kind: Route53HealthCheck
+    plural: route53healthchecks
+  defaultCompositionRef:
+    name: xroute53healthcheck.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [fqdn, owner]
+                  properties:
+                    fqdn:
+                      type: string
+                      description: Fully-qualified domain name of the endpoint to health check.
+                    port:
+                      type: integer
+                      description: TCP port to connect to.
+                      default: 443
+                    healthCheckType:
+                      type: string
+                      description: Protocol used for the health check.
+                      enum: [HTTP, HTTPS, TCP]
+                      default: HTTPS
+                    resourcePath:
+                      type: string
+                      description: HTTP/HTTPS path that Route 53 requests (e.g. /healthz). Only used for HTTP/HTTPS checks.
+                      default: /healthz
+                    failureThreshold:
+                      type: integer
+                      description: Number of consecutive health check failures before the endpoint is considered unhealthy.
+                      default: 3
+                      minimum: 1
+                      maximum: 10
+                    requestInterval:
+                      type: integer
+                      description: Interval in seconds between health checks (10 or 30).
+                      enum: [10, 30]
+                      default: 30
+                    enableSNI:
+                      type: boolean
+                      description: Send SNI (Server Name Indication) with HTTPS checks.
+                      default: true
+                    owner:
+                      type: string
+                      description: Owning team or service.
+                    hostedZoneId:
+                      type: string
+                      description: |
+                        Optional. Route 53 hosted zone ID where a FAILOVER DNS record is created.
+                        Leave blank to create a standalone health check without a DNS record.
+                      default: ""
+                    failoverRecordName:
+                      type: string
+                      description: DNS record name to create in hostedZoneId (required when hostedZoneId is set).
+                      default: ""
+                    failoverType:
+                      type: string
+                      description: PRIMARY or SECONDARY — controls which record Route 53 serves when the health check flips.
+                      enum: [PRIMARY, SECONDARY]
+                      default: PRIMARY
+            status:
+              type: object
+              properties:
+                healthCheckId:
+                  type: string
+                  description: Route 53 health check ID.
+                healthCheckArn:
+                  type: string
+                  description: ARN of the Route 53 health check.
+      additionalPrinterColumns:
+        - name: FQDN
+          type: string
+          jsonPath: .spec.parameters.fqdn
+        - name: TYPE
+          type: string
+          jsonPath: .spec.parameters.healthCheckType
+        - name: INTERVAL
+          type: string
+          jsonPath: .spec.parameters.requestInterval
+        - name: SYNCED
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
