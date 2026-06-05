@@ -1,0 +1,53 @@
+# ArgoCD cluster registration — primary cluster (eu-central-1).
+# This ExternalSecret pulls the cluster connection details from AWS Secrets Manager
+# and creates the ArgoCD cluster secret that the hub uses for self-referencing.
+#
+# Terraform populates idp-mvp/argocd/cluster-eu-central-1 after cluster creation:
+#   {
+#     "server":     "<cluster endpoint>",
+#     "caData":     "<base64 CA cert>",
+#     "bearerToken": "<service account token>"
+#   }
+#
+# Apply: kubectl apply -f aws/argocd/cluster-secrets/eks-eu-central-1.yaml -n argocd
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: argocd-cluster-eu-central-1
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: argocd-cluster-eu-central-1
+    creationPolicy: Owner
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: cluster
+      data:
+        name: eks-eu-central-1
+        server: "{{ .server }}"
+        config: |
+          {
+            "bearerToken": "{{ .bearerToken }}",
+            "tlsClientConfig": {
+              "insecure": false,
+              "caData": "{{ .caData }}"
+            }
+          }
+  data:
+    - secretKey: server
+      remoteRef:
+        key: idp-mvp/argocd/cluster-eu-central-1
+        property: server
+    - secretKey: bearerToken
+      remoteRef:
+        key: idp-mvp/argocd/cluster-eu-central-1
+        property: bearerToken
+    - secretKey: caData
+      remoteRef:
+        key: idp-mvp/argocd/cluster-eu-central-1
+        property: caData

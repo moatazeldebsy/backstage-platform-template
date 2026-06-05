@@ -1,0 +1,61 @@
+# ArgoCD cluster registration — standby cluster (us-east-1).
+# This ExternalSecret pulls the standby cluster connection details from AWS Secrets Manager
+# and creates the ArgoCD cluster secret the hub uses to deploy to the standby cluster.
+#
+# Terraform populates idp-mvp/argocd/cluster-us-east-1 after the standby cluster is created:
+#   {
+#     "server":      "<standby cluster endpoint>",
+#     "caData":      "<base64 CA cert>",
+#     "bearerToken": "<service account token>"
+#   }
+#
+# To generate the service account token:
+#   kubectl -n kube-system create serviceaccount argocd-manager
+#   kubectl create clusterrolebinding argocd-manager \
+#     --clusterrole=cluster-admin \
+#     --serviceaccount=kube-system:argocd-manager
+#   TOKEN=$(kubectl -n kube-system create token argocd-manager --duration=87600h)
+#   Then store TOKEN in Secrets Manager under bearerToken.
+#
+# Apply: kubectl apply -f aws/argocd/cluster-secrets/eks-us-east-1.yaml -n argocd
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: argocd-cluster-us-east-1
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: argocd-cluster-us-east-1
+    creationPolicy: Owner
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: cluster
+      data:
+        name: eks-us-east-1
+        server: "{{ .server }}"
+        config: |
+          {
+            "bearerToken": "{{ .bearerToken }}",
+            "tlsClientConfig": {
+              "insecure": false,
+              "caData": "{{ .caData }}"
+            }
+          }
+  data:
+    - secretKey: server
+      remoteRef:
+        key: idp-mvp/argocd/cluster-us-east-1
+        property: server
+    - secretKey: bearerToken
+      remoteRef:
+        key: idp-mvp/argocd/cluster-us-east-1
+        property: bearerToken
+    - secretKey: caData
+      remoteRef:
+        key: idp-mvp/argocd/cluster-us-east-1
+        property: caData
