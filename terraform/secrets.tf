@@ -144,3 +144,33 @@ resource "aws_secretsmanager_secret_version" "argocd_cluster" {
     ignore_changes = [secret_string]
   }
 }
+
+# ── Backstage multi-cluster Kubernetes plugin secrets ─────────────────────────
+# Populated by register-argocd-cluster.sh (same SA token is reused for Backstage).
+# Referenced by app-config.aws.yaml kubernetes.clusterLocatorMethods.
+resource "aws_secretsmanager_secret" "backstage_k8s" {
+  name                    = "idp-mvp/backstage/k8s-${var.aws_region}"
+  description             = "Backstage Kubernetes plugin credentials for ${var.aws_region} EKS cluster"
+  recovery_window_in_days = 0
+
+  dynamic "replica" {
+    for_each = var.is_primary_region ? [var.secondary_region] : []
+    content {
+      region = replica.value
+    }
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "backstage_k8s" {
+  secret_id = aws_secretsmanager_secret.backstage_k8s.id
+
+  secret_string = jsonencode({
+    url     = module.eks.cluster_endpoint
+    caData  = module.eks.cluster_certificate_authority_data
+    token   = "REPLACE_ME_RUN_register-argocd-cluster.sh"
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
