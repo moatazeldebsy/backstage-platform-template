@@ -53,7 +53,7 @@ func init() {
 	serviceCmd.Flags().StringVar(&svcNamespace, "namespace", "services", "Kubernetes namespace")
 	serviceCmd.Flags().BoolVar(&svcLocal, "local", false, "Skip Backstage API, generate files locally")
 	serviceCmd.Flags().BoolVar(&svcDryRun, "dry-run", false, "Print files that would be generated without writing them")
-	serviceCmd.Flags().StringVar(&svcURL, "backstage-url", "http://backstage.idp.local", "Backstage base URL")
+	serviceCmd.Flags().StringVar(&svcURL, "backstage-url", "", "Backstage base URL (auto-resolved from IDP_BACKSTAGE_URL / IDP_DOMAIN when --env aws)")
 	serviceCmd.Flags().StringVar(&svcOwner, "owner", "group:default/platform-team", "Backstage catalog owner ref")
 	serviceCmd.Flags().StringVar(&svcDesc, "description", "", "Short description (used by Backstage template)")
 	_ = serviceCmd.MarkFlagRequired("name")
@@ -69,9 +69,14 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 	}
 
 	if !svcLocal && !svcDryRun {
-		client := backstage.NewClient(svcURL, readBackstageToken(rootDir()))
+		url := resolveBackstageURL(scaffoldEnv, svcURL, rootDir())
+		token := resolveToken(scaffoldEnv, scaffoldToken, rootDir())
+		if scaffoldEnv == envAWS {
+			fmt.Printf("[idp] Environment: aws — Backstage at %s\n", url)
+		}
+		client := backstage.NewClient(url, token)
 		if client.Healthy(cmd.Context()) {
-			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", svcURL)
+			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", url)
 			if svcDesc == "" {
 				svcDesc = "Auto-scaffolded " + svcType + " service"
 			}
@@ -124,31 +129,6 @@ func rootDir() string {
 	return dir
 }
 
-// readBackstageToken resolves a Backstage service token from (in priority order):
-//  1. --token flag
-//  2. BACKSTAGE_TOKEN env var
-//  3. BACKSTAGE_AUTH_SECRET in local/backstage/.env  (skip if empty)
-//  4. The first static externalAccess token in backstage/app-config.local.yaml
-func readBackstageToken(root string) string {
-	// 1. explicit flag (set by caller before this is invoked)
-	if scaffoldToken != "" {
-		return scaffoldToken
-	}
-	// 2. env var
-	if t := os.Getenv("BACKSTAGE_TOKEN"); t != "" {
-		return t
-	}
-	// 3. local/backstage/.env → BACKSTAGE_AUTH_SECRET
-	if t := keyFromEnvFile(root+"/local/backstage/.env", "BACKSTAGE_AUTH_SECRET"); t != "" {
-		return t
-	}
-	// 4. backstage/app-config.local.yaml → backend.auth.externalAccess static token
-	if t := staticTokenFromConfig(root + "/backstage/app-config.local.yaml"); t != "" {
-		fmt.Printf("[idp] Using static token from app-config.local.yaml\n")
-		return t
-	}
-	return ""
-}
 
 func keyFromEnvFile(path, key string) string {
 	data, err := os.ReadFile(path)

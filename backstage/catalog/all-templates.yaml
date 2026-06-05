@@ -77,3 +77,6 @@ spec:
     - ./templates/datadog-synthetic-suite/template.yaml
     # ── Advanced: QA — LLM eval ──────────────────────────────────────────────
     - ./templates/deepeval-llm-eval-suite/template.yaml
+    # ── Advanced: SRE — progressive delivery & SLOs ──────────────────────────
+    - ./templates/canary-deployment/template.yaml
+    - ./templates/slo-definition/template.yaml
