@@ -1,0 +1,89 @@
+# Thanos — multi-region Prometheus long-term storage and unified query.
+#
+# Architecture:
+#   eu-central-1:  Prometheus (existing) + Thanos Sidecar → S3 (object store)
+#   us-east-1:     Prometheus (standby) + Thanos Sidecar → S3 (same bucket, CRR)
+#   eu-central-1:  Thanos Query — queries both sidecars for unified view
+#   eu-central-1:  Thanos Store Gateway — serves old data from S3
+#   eu-central-1:  Thanos Compactor — deduplicates and downsamples
+#
+# Grafana datasource: Thanos Query endpoint (replaces per-region Prometheus URLs)
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: thanos
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: thanos
+    targetRevision: 15.7.0
+    helm:
+      releaseName: thanos
+      values: |
+        query:
+          enabled: true
+          replicaCount: 2
+          stores:
+            # Local Prometheus sidecar (eu-central-1)
+            - dnssrv+_grpc._tcp.prometheus-operated.monitoring.svc.cluster.local
+          ingress:
+            enabled: true
+            annotations:
+              kubernetes.io/ingress.class: alb
+              alb.ingress.kubernetes.io/scheme: internet-facing
+              alb.ingress.kubernetes.io/target-type: ip
+            hostname: thanos-query.idp.internal
+
+        queryFrontend:
+          enabled: true
+          replicaCount: 2
+
+        storegateway:
+          enabled: true
+          replicaCount: 2
+          persistence:
+            enabled: true
+            size: 10Gi
+
+        compactor:
+          enabled: true
+          persistence:
+            enabled: true
+            size: 50Gi
+          retentionResolutionRaw: 30d
+          retentionResolution5m: 90d
+          retentionResolution1h: 365d
+
+        bucketweb:
+          enabled: true
+
+        ruler:
+          enabled: false   # using AlertManager directly
+
+        objstoreConfig: |
+          type: S3
+          config:
+            bucket: idp-mvp-thanos-metrics
+            region: eu-central-1
+            sse_config:
+              type: SSE-S3
+
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false   # monitoring namespace already exists
