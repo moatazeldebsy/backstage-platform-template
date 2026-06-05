@@ -52,3 +52,28 @@ output "s3_replication_role_arn" {
   description = "IAM role ARN for S3 CRR — set as metadata.annotations[idp.platform/s3-replication-role-arn] on S3Bucket claims"
   value       = aws_iam_role.s3_replication.arn
 }
+
+output "global_accelerator_ips" {
+  description = "Static anycast IP addresses of the Global Accelerator — use these for IP allowlist configurations"
+  value       = aws_globalaccelerator_accelerator.platform.ip_sets[*].ip_addresses
+}
+
+output "global_accelerator_dns" {
+  description = "DNS name of the Global Accelerator endpoint"
+  value       = aws_globalaccelerator_accelerator.platform.dns_name
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront distribution domain name (before custom domain DNS is set)"
+  value       = aws_cloudfront_distribution.platform.domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (needed for cache invalidation)"
+  value       = aws_cloudfront_distribution.platform.id
+}
+
+output "waf_web_acl_arn" {
+  description = "WAF Web ACL ARN — attach to regional ALBs via aws_wafv2_web_acl_association"
+  value       = aws_wafv2_web_acl.platform.arn
+}
