@@ -1,0 +1,80 @@
+# ArgoCD Application — installs Argo Rollouts controller in both clusters.
+# The hub (eu-central-1) installs it locally; a separate Application targets
+# the standby cluster for the same installation.
+#
+# Apply: kubectl apply -f aws/argo-rollouts/argocd-application.yaml -n argocd
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"   # after core platform components
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.38.0
+    helm:
+      releaseName: argo-rollouts
+      values: |
+        controller:
+          replicas: 2
+        dashboard:
+          enabled: true
+          ingress:
+            enabled: true
+            annotations:
+              kubernetes.io/ingress.class: alb
+              alb.ingress.kubernetes.io/scheme: internet-facing
+              alb.ingress.kubernetes.io/target-type: ip
+            hosts:
+              - rollouts.idp.internal
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true   # Prometheus scraping
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# Same installation for the standby cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts-standby
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.38.0
+    helm:
+      releaseName: argo-rollouts
+      values: |
+        controller:
+          replicas: 1    # smaller footprint for standby
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+  destination:
+    name: eks-us-east-1   # ArgoCD cluster name from cluster-secrets/
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

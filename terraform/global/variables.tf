@@ -98,3 +98,21 @@ variable "environment" {
   type        = string
   default     = "prod"
 }
+
+# ── Global Accelerator + CloudFront variables ──────────────────────────────────
+
+variable "primary_alb_arn" {
+  description = "ARN of the ALB in eu-central-1 (from ingress controller)"
+  type        = string
+}
+
+variable "standby_alb_arn" {
+  description = "ARN of the ALB in us-east-1 (from ingress controller)"
+  type        = string
+}
+
+variable "logs_s3_bucket" {
+  description = "S3 bucket name for Global Accelerator flow logs and CloudFront access logs"
+  type        = string
+  default     = "idp-mvp-platform-logs"
+}

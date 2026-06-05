@@ -1,0 +1,82 @@
+# Argo Rollouts — progressive cross-region delivery template.
+# Teams copy this into their service directory and adjust analysis thresholds.
+#
+# Delivery sequence:
+#   1. Deploy canary to eu-central-1 (10% → 50% → 100%)
+#   2. Analysis gate: error rate + p99 latency from Prometheus
+#   3. On pass → full rollout to eu-central-1
+#   4. ArgoCD promotes revision to standby ApplicationSet (idp-services-standby)
+#
+# Apply: kubectl apply -f rollout.yaml -n services-<env>
+
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: my-service   # replace with service name
+  namespace: services-dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-service
+  template:
+    metadata:
+      labels:
+        app: my-service
+    spec:
+      containers:
+        - name: my-service
+          image: REPLACE_WITH_ECR_IMAGE
+          ports:
+            - containerPort: 8080
+  strategy:
+    canary:
+      # Progressive traffic steps in eu-central-1
+      steps:
+        - setWeight: 10
+        - pause: { duration: 2m }
+        - analysis:
+            templates:
+              - templateName: service-health
+        - setWeight: 50
+        - pause: { duration: 5m }
+        - analysis:
+            templates:
+              - templateName: service-health
+        - setWeight: 100
+      # After full rollout, pause for manual promotion to standby
+      postPromotionAnalysis:
+        templates:
+          - templateName: service-health
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: service-health
+  namespace: services-dev
+spec:
+  metrics:
+    - name: error-rate
+      interval: 1m
+      successCondition: result[0] < 0.01   # < 1% error rate
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{job="{{args.service-name}}", status=~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{job="{{args.service-name}}"}[2m]))
+
+    - name: p99-latency
+      interval: 1m
+      successCondition: result[0] < 1.0    # < 1s p99
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{job="{{args.service-name}}"}[2m]))
+              by (le)
+            )
