@@ -39,6 +39,7 @@ If Prometheus is unreachable or the service has no data yet, the tab falls back 
 - Prometheus proxy must be reachable: `http://prometheus.idp.local` (local) or the in-cluster DNS endpoint (AWS)
 - The Prometheus proxy is configured in `backstage/app-config.local.yaml` (`/api/proxy/prometheus`) and `backstage/app-config.aws.yaml`
 - DORA metrics are pushed by the DORA exporter CronJob — see `observability/dora-exporter/` for the metric definitions
+- All metrics carry a `team=` label (see [Team dimension](#team-dimension) below)
 
 ### Implementation
 
@@ -105,6 +106,55 @@ For deeper analysis, DORA and FinOps data is also available in Grafana:
 | QA KPI | http://grafana.idp.local/d/qa | Test pass rates, flakiness, coverage trends |
 | AI Platform Cost | http://grafana.idp.local/d/ai-platform | MCP tool call metrics, AI API cost per team |
 | OpenCost | http://grafana.idp.local/d/opencost | Cluster cost by namespace, workload, and node |
+
+---
+
+## Team dimension
+
+All four DORA metrics carry a `team=` Prometheus label so dashboards can be
+filtered or grouped by team:
+
+```promql
+# Deploy frequency for a specific team
+dora_deploy_frequency_per_day{team="payments"}
+
+# Average lead time across all teams
+avg by (team) (dora_lead_time_minutes)
+```
+
+### How team is resolved (in priority order)
+
+1. `TEAM_MAP` env var — a JSON map of `{"repo-name": "team-name"}` stored in AWS
+   Secrets Manager under `idp-mvp/backstage` (key: `TEAM_MAP`).
+2. GitHub repo topic `team:<name>` — tag any service repo with topic `team:payments`
+   and the exporter picks it up automatically.
+3. Falls back to `team="unknown"` if neither is configured.
+
+### Configure TEAM_MAP (AWS)
+
+```bash
+# Add team mappings to Secrets Manager
+CURRENT=$(aws secretsmanager get-secret-value \
+  --secret-id idp-mvp/backstage --query SecretString --output text)
+
+echo "$CURRENT" | python3 -c "
+import json, sys
+s = json.load(sys.stdin)
+s['TEAM_MAP'] = json.dumps({'orders-api': 'payments', 'auth-service': 'platform'})
+print(json.dumps(s))
+" | aws secretsmanager update-secret \
+    --secret-id idp-mvp/backstage --secret-string file:///dev/stdin
+```
+
+### Configure TEAM_MAP (local)
+
+Uncomment the `TEAM_MAP` block in `local/observability/dora/dora-cronjob.yaml` and
+create a ConfigMap:
+
+```bash
+kubectl create configmap dora-team-map -n monitoring \
+  --from-literal=TEAM_MAP='{"orders-api":"payments"}'
+```
 
 ---
 

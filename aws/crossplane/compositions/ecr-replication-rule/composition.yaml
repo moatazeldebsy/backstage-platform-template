@@ -1,0 +1,50 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xecrreplicationrule.aws
+  labels:
+    provider: aws
+    idp.platform/resource: ecr-replication
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XECRReplicationRule
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          # ECR replication configuration is account-level — only one resource
+          # exists per AWS account. The platform team owns this claim; services
+          # do not create their own replication claims.
+          - name: ecr-replication-config
+            base:
+              apiVersion: ecr.aws.upbound.io/v1beta1
+              kind: ReplicationConfiguration
+              spec:
+                deletionPolicy: Orphan
+                forProvider:
+                  replicationConfiguration:
+                    - rule:
+                        - destination:
+                            - registryId: ""
+                          repositoryFilter:
+                            - filterType: PREFIX_MATCH
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.sourceRegion
+                toFieldPath: spec.forProvider.region
+              # Destination registry ID is the same AWS account — resolved at runtime
+              # by the provider from the providerConfig credentials.
+              - fromFieldPath: spec.parameters.destinationRegion
+                toFieldPath: spec.forProvider.replicationConfiguration[0].rule[0].destination[0].region
+              - fromFieldPath: spec.parameters.repositoryFilter
+                toFieldPath: spec.forProvider.replicationConfiguration[0].rule[0].repositoryFilter[0].filter
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.registryId
+                toFieldPath: status.registryId

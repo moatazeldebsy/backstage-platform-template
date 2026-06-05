@@ -67,17 +67,54 @@ human running `terraform apply`. No manual step between "PR merged" and
 
 ## Resources covered
 
-| Resource | XRD kind | Claim kind | Template | Notes |
-|---|---|---|---|---|
-| S3 bucket | `XS3Bucket` | `S3Bucket` | `s3-bucket-crossplane` | AES256 encrypted, public-access blocked, versioning configurable |
-| RDS Postgres | `XRDSInstance` | `RDSInstance` | `rds-database-crossplane` | Encrypted at rest, connection secret auto-written, backup retention 30 days default |
-| MSK topic | `XKafkaTopic` | `KafkaTopic` | `kafka-topic-crossplane` | Targets existing Terraform-managed MSK cluster via `clusterArn` |
-| DynamoDB table | `XDynamoTable` | `DynamoTable` | `dynamodb-table-crossplane` | PITR on by default; supports optional sort key (`rangeKey` + `rangeKeyType`) |
-| SQS queue | `XSQSQueue` | `SQSQueue` | `sqs-queue-crossplane` | SSE enabled by default; FIFO opt-in |
+### Per-service resources (team self-service)
 
-All five Compositions live in `aws/crossplane/compositions/`. Adding
+| Resource | XRD kind | Claim kind | Template | `idp:team` tag |
+|---|---|---|---|---|
+| S3 bucket | `XS3Bucket` | `S3Bucket` | `s3-bucket-crossplane` | AWS resource tag |
+| RDS Postgres | `XRDSInstance` | `RDSInstance` | `rds-database-crossplane` | AWS resource tag |
+| MSK topic | `XKafkaTopic` | `KafkaTopic` | `kafka-topic-crossplane` | K8s label (MSK topics don't support AWS tags) |
+| DynamoDB table | `XDynamoTable` | `DynamoTable` | `dynamodb-table-crossplane` | AWS resource tag |
+| SQS queue | `XSQSQueue` | `SQSQueue` | `sqs-queue-crossplane` | AWS resource tag |
+
+### Multi-region / platform resources (V2 — platform team)
+
+These XRDs are applied by the platform team (not individual service teams) and model
+account-level or global AWS resources introduced in the `feat/v2-multi-region` branch.
+
+| Resource | XRD kind | Claim kind | Key fields | Notes |
+|---|---|---|---|---|
+| ECR cross-region replication | `XECRReplicationRule` | `ECRReplicationRule` | `sourceRegion`, `destinationRegion`, `repositoryFilter` | Account-level; one claim per account |
+| Route 53 health check + failover record | `XRoute53HealthCheck` | `Route53HealthCheck` | `fqdn`, `healthCheckType`, `failureThreshold`, `hostedZoneId` (opt) | DNS failover record created only when `hostedZoneId` is set |
+| Global Accelerator endpoint group | `XGlobalAcceleratorEndpointGroup` | `GlobalAcceleratorEndpointGroup` | `listenerArn`, `endpointRegion`, `endpointArn`, `trafficDialPercentage` | One claim per region; set `trafficDialPercentage: 0` for warm standby |
+
+All eight Compositions live in `aws/crossplane/compositions/`. Adding
 a new resource type is a matter of dropping in another `xrd.yaml` +
 `composition.yaml` pair plus a matching scaffolder template.
+
+## Team label injection (Kyverno)
+
+A pair of Kyverno policies in `kubernetes/policies/kyverno/crossplane-team-label-policy.yaml`
+enforce cost-attribution discipline on all Crossplane claims:
+
+**Mutate** — when a Claim is created in a `team-*` namespace, Kyverno automatically adds
+`spec.parameters.team: <teamName>` (derived by stripping the `team-` prefix from the namespace).
+Teams never need to set this field manually.
+
+**Validate (Enforce)** — rejects any Claim (in any namespace) that is missing `spec.parameters.owner`
+or `spec.parameters.costCenter`. This prevents untagged AWS resources that OpenCost cannot attribute.
+
+```bash
+# Verify the policies are active
+kubectl get clusterpolicy crossplane-inject-team-tag crossplane-require-cost-tags
+
+# See team tag on a provisioned S3 bucket
+aws s3api get-bucket-tagging --bucket my-bucket | jq '.TagSet[] | select(.Key == "idp:team")'
+```
+
+Kyverno is installed by `bootstrap-local.sh` (Step 9b) and `bootstrap.sh` (Phase 3.8).
+If you see Kyverno admission errors, verify the `kyverno-admission-controller` deployment
+is `Available` in the `kyverno` namespace.
 
 ## IAM: least-privilege provider roles
 
@@ -155,7 +192,7 @@ broken annotation.
 # All five providers Healthy
 kubectl get providers.pkg.crossplane.io
 
-# XRDs established
+# XRDs established (5 per-service + 3 multi-region = 8 total)
 kubectl get xrds
 
 # ProviderConfig default present

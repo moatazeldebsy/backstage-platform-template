@@ -1,0 +1,31 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: mobile
+  title: Mobile Platform
+  description: Android, iOS, and Flutter apps — golden paths, code signing, App Store delivery, and device testing
+  tags:
+    - mobile
+    - android
+    - ios
+    - flutter
+  links:
+    - url: http://backstage.idp.local/catalog?filters[kind]=component&filters[tags]=mobile
+      title: Mobile Catalog
+spec:
+  owner: group:default/android-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: mobile-apps
+  title: Mobile Applications
+  description: Android and iOS apps, shared mobile SDK, code signing pipelines
+  tags:
+    - android
+    - ios
+    - flutter
+    - fastlane
+spec:
+  owner: group:default/android-team
+  domain: mobile

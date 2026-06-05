@@ -1,0 +1,59 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xglobalacceleratorendpointgroup.aws
+  labels:
+    provider: aws
+    idp.platform/resource: global-accelerator-endpoint-group
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XGlobalAcceleratorEndpointGroup
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: endpoint-group
+            base:
+              apiVersion: globalaccelerator.aws.upbound.io/v1beta1
+              kind: EndpointGroup
+              spec:
+                deletionPolicy: Delete
+                forProvider:
+                  # Global Accelerator is a global service; region is always us-west-2
+                  # (where the GA control plane runs), not the endpoint's region.
+                  region: us-west-2
+                  endpointConfiguration:
+                    - clientIpPreservationEnabled: true
+                  healthCheckProtocol: HTTPS
+                  healthCheckPath: /healthz
+                  thresholdCount: 3
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.listenerArn
+                toFieldPath: spec.forProvider.listenerArn
+              - fromFieldPath: spec.parameters.endpointRegion
+                toFieldPath: spec.forProvider.endpointGroupRegion
+              - fromFieldPath: spec.parameters.endpointArn
+                toFieldPath: spec.forProvider.endpointConfiguration[0].endpointId
+              - fromFieldPath: spec.parameters.clientIpPreservation
+                toFieldPath: spec.forProvider.endpointConfiguration[0].clientIpPreservationEnabled
+              - fromFieldPath: spec.parameters.trafficDialPercentage
+                toFieldPath: spec.forProvider.trafficDialPercentage
+              - fromFieldPath: spec.parameters.healthCheckPort
+                toFieldPath: spec.forProvider.healthCheckPort
+              - fromFieldPath: spec.parameters.healthCheckProtocol
+                toFieldPath: spec.forProvider.healthCheckProtocol
+              - fromFieldPath: spec.parameters.healthCheckPath
+                toFieldPath: spec.forProvider.healthCheckPath
+              - fromFieldPath: spec.parameters.thresholdCount
+                toFieldPath: spec.forProvider.thresholdCount
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.endpointGroupArn

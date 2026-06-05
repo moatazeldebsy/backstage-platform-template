@@ -48,6 +48,10 @@ spec:
                     costCenter:
                       type: string
                       default: engineering
+                    team:
+                      type: string
+                      description: Team name for cost attribution (auto-injected by Kyverno in team-* namespaces).
+                      default: ""
       additionalPrinterColumns:
         - name: QUEUE
           type: string

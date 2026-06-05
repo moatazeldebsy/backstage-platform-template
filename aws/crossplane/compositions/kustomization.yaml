@@ -14,3 +14,9 @@ resources:
   - dynamodb-table/composition.yaml
   - sqs-queue/xrd.yaml
   - sqs-queue/composition.yaml
+  - ecr-replication-rule/xrd.yaml
+  - ecr-replication-rule/composition.yaml
+  - route53-health-check/xrd.yaml
+  - route53-health-check/composition.yaml
+  - global-accelerator-endpoint-group/xrd.yaml
+  - global-accelerator-endpoint-group/composition.yaml

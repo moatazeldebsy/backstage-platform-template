@@ -66,6 +66,7 @@ kubectl cluster-info
 log "Phase 3: Creating namespaces and RBAC..."
 cd "$ROOT_DIR"
 kubectl apply -f kubernetes/namespaces/namespaces.yaml
+kubectl apply -f kubernetes/namespaces/services-quota.yaml
 kubectl apply -f kubernetes/rbac/github-actions.yaml
 
 # ── Phase 3.5: Annotate backstage ServiceAccount with IRSA role ARN ──────────
@@ -137,13 +138,13 @@ done
 
 # Deploy DORA cronjob now that ExternalSecret CRD exists
 if [[ "$SKIP_DORA" != "true" ]]; then
-  kubectl apply -f observability/dora/dora-cronjob.yaml
+  kubectl apply -f aws/observability/dora/dora-cronjob.yaml
   kubectl annotate serviceaccount dora-exporter-sa \
     -n monitoring \
     "eks.amazonaws.com/role-arn=${DORA_ROLE_ARN}" \
     --overwrite
   kubectl create configmap dora-exporter-script \
-    --from-file=dora-exporter.py=observability/dora/dora-exporter.py \
+    --from-file=dora-exporter.py=aws/observability/dora/dora-exporter.py \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 fi
 
@@ -191,6 +192,18 @@ if client_secret:
 grafana_pw = os.environ.get('GRAFANA_ADMIN_PASSWORD', '')
 if grafana_pw:
     s['GRAFANA_ADMIN_PASSWORD'] = grafana_pw
+# GitHub App credentials (replaces GH_PAT for Backstage scaffolder + auto-merge CI).
+# Create at: github.com/settings/apps → New GitHub App. Permissions: Contents=Read,
+# Pull requests=Write, Members=Read, Metadata=Read. Then install on platform repo.
+for key in ('GITHUB_APP_ID','GITHUB_APP_CLIENT_ID','GITHUB_APP_CLIENT_SECRET',
+            'GITHUB_APP_PRIVATE_KEY','GITHUB_APP_WEBHOOK_SECRET'):
+    val = os.environ.get(key, '')
+    if val:
+        s[key] = val
+# TEAM_MAP: optional JSON repo-to-team map. Falls back to team:<name> GitHub topic.
+team_map = os.environ.get('TEAM_MAP', '')
+if team_map:
+    s['TEAM_MAP'] = team_map
 s['BACKSTAGE_CATALOG_TOKEN'] = os.environ['BACKSTAGE_CATALOG_TOKEN']
 s['AUTH_SESSION_SECRET'] = os.environ['AUTH_SESSION_SECRET']
 print(json.dumps(s))
@@ -321,6 +334,28 @@ kubectl apply \
   -f kubernetes/policies/require-cost-tags.yaml
 log "  OPA/Gatekeeper policies applied (health-probes, resource-limits, labels, deny-latest-tag, cost-tags)."
 fi # --skip-policies
+
+# ── Phase 3.9: Kyverno + team policies ───────────────────────────────────────
+# Kyverno handles admission policies that require namespace-aware mutations
+# (e.g. auto-injecting idp:team tag on Crossplane claims from team-* namespaces).
+log "Phase 3.9: Installing Kyverno..."
+helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
+helm repo update kyverno
+helm upgrade --install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace \
+  --version 3.2.7 \
+  --set replicaCount=2 \
+  --set resources.requests.cpu=100m \
+  --set resources.requests.memory=256Mi \
+  --wait --timeout 5m
+
+kubectl wait deployment kyverno-admission-controller \
+  -n kyverno --for=condition=Available --timeout=120s
+
+kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml
+kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml
+log "  Phase 3.9 complete: Kyverno + team policies installed."
 
 # ── Phase 4.4-pre: Argo Rollouts (progressive delivery) ─────────────────────
 log "Phase 4.4-pre: Installing Argo Rollouts (canary deployments)..."

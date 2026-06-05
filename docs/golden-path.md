@@ -173,13 +173,19 @@ Then re-add the deploy job to `.github/workflows/build-and-deploy.yml` (see `doc
 
 | Convention | Local | AWS |
 |-----------|-------|-----|
-| Namespace | `services` | `services` |
+| Namespace (legacy services) | `services` | `services` |
+| Namespace (team services) | `team-<name>` | `team-<name>` |
+| Service values path (legacy) | `services/<name>/helm-values-local.yaml` | `services/<name>/helm-values-aws.yaml` |
+| Service values path (team) | `teams/<name>/services/<svc>/helm-values-local.yaml` | `teams/<name>/services/<svc>/helm-values-aws.yaml` |
 | Image registry | `localhost:5003/<name>` | `<account>.dkr.ecr.<region>.amazonaws.com/idp-mvp/<name>` |
 | Image tag | `latest` (local push) | `<git-sha-short>` |
 | Ingress class | `nginx` | `alb` |
 | Replicas | 1 | 2 |
 | CPU request | 50m | 100m |
 | Memory request | 32Mi | 128Mi |
+| Team label (K8s) | `team: <name>` | `team: <name>` |
+| Team tag (AWS) | `idp:team=<name>` (Kyverno auto-injects on Crossplane claims) | same |
+| Secret path | n/a (local uses ConfigMaps) | `/<teamName>/<secret-name>` in Secrets Manager |
 
 ## CLI Alternative (without Backstage)
 

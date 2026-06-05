@@ -1,0 +1,13 @@
+# Example Claim — apply once per account (platform team only).
+# ECR replication is account-level; only one ECRReplicationRule should exist.
+apiVersion: idp.platform/v1alpha1
+kind: ECRReplicationRule
+metadata:
+  name: platform-ecr-replication
+  namespace: crossplane-system
+spec:
+  parameters:
+    sourceRegion: eu-central-1
+    destinationRegion: us-east-1
+    repositoryFilter: "*"
+    owner: platform-team

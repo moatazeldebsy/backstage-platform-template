@@ -12,3 +12,4 @@ metadata:
     - kubernetes
 spec:
   owner: platform-team
+  domain: platform

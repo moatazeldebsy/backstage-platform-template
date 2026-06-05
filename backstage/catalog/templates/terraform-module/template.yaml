@@ -12,6 +12,8 @@ metadata:
     - iac
     - golden-path
     - aws
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: infrastructure

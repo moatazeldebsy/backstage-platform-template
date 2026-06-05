@@ -12,6 +12,8 @@ metadata:
     - firebase
     - mobile
     - e2e
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: service

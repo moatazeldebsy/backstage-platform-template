@@ -12,6 +12,8 @@ metadata:
     - dynamodb
     - aws
     - crossplane
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: resource

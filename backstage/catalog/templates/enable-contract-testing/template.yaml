@@ -17,6 +17,8 @@ metadata:
     - kagent
     - platform
     - local
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: platform-capability

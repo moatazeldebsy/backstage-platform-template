@@ -1,0 +1,42 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: engineering
+  title: Product Engineering
+  description: Customer-facing backend and frontend services — APIs, web apps, and shared libraries
+  tags:
+    - backend
+    - frontend
+    - api
+  links:
+    - url: http://backstage.idp.local/catalog?filters[kind]=component
+      title: Services Catalog
+spec:
+  owner: group:default/backend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: backend-services
+  title: Backend Services
+  description: Go, Node.js, and Python microservices owned by the backend team
+  tags:
+    - go
+    - nodejs
+    - python
+spec:
+  owner: group:default/backend-team
+  domain: engineering
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: frontend-apps
+  title: Frontend Applications
+  description: React web applications and design system owned by the frontend team
+  tags:
+    - react
+    - typescript
+spec:
+  owner: group:default/frontend-team
+  domain: engineering

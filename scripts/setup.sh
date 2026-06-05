@@ -55,11 +55,12 @@ _bootstrap_local() {
   fi
 
   echo ""
-  echo -e "${BOLD}Before bootstrapping, you need three credentials:${RESET}"
+  echo -e "${BOLD}Before bootstrapping, you need these credentials:${RESET}"
   echo ""
   echo -e "${CYAN}1. GitHub Personal Access Token (PAT)${RESET} → set GITHUB_TOKEN in local/.env"
   echo "   Create at: https://github.com/settings/tokens"
   echo "   Token type: Classic | Required scopes: repo, read:org, workflow, delete_repo"
+  echo "   Used by: DORA exporter, scaffolder templates, catalog import (local dev)"
   echo ""
   echo -e "${CYAN}2. GitHub OAuth App Client ID & Secret${RESET} → set AUTH_GITHUB_CLIENT_ID and"
   echo "   AUTH_GITHUB_CLIENT_SECRET in local/backstage/.env"
@@ -75,6 +76,15 @@ _bootstrap_local() {
   echo -e "${CYAN}3. Backstage auth secret${RESET} → set BACKSTAGE_AUTH_SECRET in local/backstage/.env"
   echo "   Any string works locally; for production use: openssl rand -hex 32"
   echo "   (Leave blank to use the built-in dev default.)"
+  echo ""
+  echo -e "${CYAN}4. GitHub App (production/AWS only — optional for local dev)${RESET}"
+  echo "   Replaces the PAT for Backstage API calls and auto-merge CI."
+  echo "   Higher rate limits, no expiry, per-repo scoping."
+  echo "   Create at: github.com/settings/apps/new"
+  echo "   Required permissions: Contents=Read, Pull requests=Write, Members=Read"
+  echo "   After creating: add APP_ID + APP_PRIVATE_KEY as GitHub Actions repo secrets."
+  echo "   For AWS/production: store the 5 keys in Secrets Manager (bootstrap.sh handles this)."
+  echo "   See: docs/github-app-setup.md for the full walkthrough."
   echo ""
   echo "  Edit: local/.env  and  local/backstage/.env"
   echo ""
@@ -92,7 +102,8 @@ _bootstrap_local() {
   [[ -f "$env_shared" ]] && github_token=$(grep -E '^GITHUB_TOKEN=' "$env_shared" | cut -d= -f2- | tr -d '"' || true)
   if [[ -z "$github_token" ]]; then
     warn "GITHUB_TOKEN is still empty in local/.env."
-    warn "The DORA exporter and scaffolder templates require it."
+    warn "The DORA exporter and scaffolder templates require it for local dev."
+    warn "For AWS/production, a GitHub App (docs/github-app-setup.md) is recommended instead."
     echo ""
     read -rp "$(echo -e "${CYAN}Continue without GITHUB_TOKEN?${RESET} [y/N] ")" SKIP_TOKEN
     [[ "${SKIP_TOKEN}" =~ ^[Yy]$ ]] || { echo "Aborted. Set GITHUB_TOKEN in local/.env and re-run."; exit 0; }

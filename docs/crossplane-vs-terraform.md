@@ -37,10 +37,15 @@ Both tools can provision the same AWS resource types. We split them by
 | RDS for Backstage itself | Terraform | Bootstrapped before Backstage runs. |
 | RDS **per-service** instances | Crossplane | Self-serve via scaffolder. |
 | S3 / DynamoDB / SQS | Crossplane | Per-service. No bootstrap dependency. |
+| Per-team ESO IRSA roles | Terraform | `terraform/iam-team-secret-store.tf`; scoped to `/<team>/*` secrets |
+| Per-team SecretStore (namespace-scoped) | Kubernetes (scaffold) | Applied by `team-namespace` scaffold PR |
+| Kyverno team label policies | Kubernetes (bootstrap) | `bootstrap-local.sh` Step 9b / `bootstrap.sh` Phase 3.8 |
 
 ## IAM boundary
 
 Terraform provisions the **single shared IRSA role** (`terraform/iam-crossplane.tf`) that all Crossplane providers assume. The role uses least-privilege **inline policies** — one per resource family — scoped to `idp-*` ARN prefixes. No `*FullAccess` managed policies are attached. See [crossplane.md § IAM](./crossplane.md#iam-least-privilege-provider-roles) for the full permission matrix.
+
+**Per-team secret access** uses separate IRSA roles from `terraform/iam-team-secret-store.tf`. Each role is scoped to `secretsmanager:GetSecretValue` on `/<teamName>/*` only — a compromised team credential cannot read other teams' secrets.
 
 ## Deletion behaviour
 

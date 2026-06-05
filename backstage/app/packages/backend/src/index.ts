@@ -17,6 +17,7 @@ import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
 import { idpDeployModelServerModule } from './modules/idpDeployModelServer';
 import { idpSetupContractTestingModule } from './modules/idpSetupContractTesting';
 import { ragSearchPlugin } from './modules/idpRagSearch';
+import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
 
 
 const backend = createBackend();
@@ -55,12 +56,9 @@ backend.add(
 // See https://backstage.io/docs/features/software-catalog/configuration#subscribing-to-catalog-errors
 backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 
-// permission plugin
+// permission plugin — guests get read-only access; authenticated users get full access
 backend.add(import('@backstage/plugin-permission-backend'));
-// See https://backstage.io/docs/permissions/getting-started for how to create your own permission policy
-backend.add(
-  import('@backstage/plugin-permission-backend-module-allow-all-policy'),
-);
+backend.add(idpPermissionPolicyModule);
 
 // search plugin
 backend.add(import('@backstage/plugin-search-backend'));

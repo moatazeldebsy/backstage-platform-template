@@ -8,6 +8,113 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+#### V2 Multi-Region Architecture (`feat/v2-multi-region` feature branch)
+
+Active-standby multi-region topology: **eu-central-1 (primary)** + **us-east-1 (standby)**.
+Kept as a feature branch — teams opt in by branching from `feat/v2-multi-region` when they need multi-region.
+
+**Phase 1 — Foundation**
+- `terraform/multi-region/` — secondary EKS cluster (us-east-1 mirror)
+- `terraform/global/` — Route 53 hosted zones, Global Accelerator, CloudFront distribution
+- `terraform/ecr-replication/` — account-level ECR replication rules
+- `terraform/transit-gateway/` — inter-region VPC peering over AWS backbone
+- `terraform/kms-multi-region/` — multi-region CMK for encryption at rest
+- ArgoCD hub-spoke ApplicationSet matrix generator (eu-central-1 hub → both clusters)
+- ECR cross-region replication and pull-through cache
+- Secrets Manager CRR + KMS multi-region keys
+- Route 53 latency-based routing + health-check failover
+
+**Phase 2 — Data Replication**
+- Aurora Global Database (primary writer eu-central-1, read replica us-east-1, RPO < 1 s)
+- DynamoDB Global Tables V2 across both regions
+- S3 CRR for all team buckets + S3 Multi-Region Access Points
+
+**Phase 3 — Traffic & Resilience**
+- AWS Global Accelerator in front of regional ALBs (sub-30 s failover, no DNS TTL lag)
+- CloudFront distribution with WAF + Shield Advanced + origin failover
+- Argo Rollouts progressive delivery: eu-central-1 → health gate → us-east-1 (sync-wave)
+- DR runbook (`docs/runbooks/dr-region-failover.md`) — Aurora promote → Crossplane ProviderConfig flip → ArgoCD sync
+
+**Phase 4 — Observability & Security**
+- Thanos sidecar per Prometheus + S3 object storage + global Thanos Query layer
+- Security Hub aggregator (eu-central-1 aggregates findings from us-east-1)
+- GuardDuty enabled in both regions
+- CloudTrail organization trail → S3 CRR for immutable audit logs
+- Backstage multi-cluster Kubernetes plugin (both clusters in entity page)
+
+**Phase 5 — Platform Wiring**
+- Platform S3 buckets + Transit Gateway inter-region peering
+- Failover IRSA roles + Crossplane ProviderConfig per region
+- Backstage V2 template registration for multi-region resources
+
+**Phase 6 — Karpenter + Backstage HA**
+- Karpenter spot-aware node autoscaling (EC2NodeClass + NodePool per region)
+- Backstage warm-standby DB wiring (Aurora Global read replica in us-east-1)
+
+**New Crossplane XRDs (V2 platform resources)**
+- `XECRReplicationRule` / `ECRReplicationRule` — account-level ECR cross-region replication as a Crossplane claim
+- `XRoute53HealthCheck` / `Route53HealthCheck` — Route 53 health check + optional DNS failover record as a claim
+- `XGlobalAcceleratorEndpointGroup` / `GlobalAcceleratorEndpointGroup` — GA endpoint group per region (supports `trafficDialPercentage: 0` for warm standby)
+
+**V2 Crossplane XRD extensions (existing XRDs)**
+- `XS3Bucket` — added `crossRegionReplication`, `replicaRegion`, `multiRegionAccessPoint`
+- `XRDSInstance` — added `globalDatabase`, `replicaRegion`, `globalWriteForwarding`
+- `XDynamoTable` — added `globalTable`, `replicaRegions[]`
+- `XKafkaTopic` — added `crossRegionReplication`, `replicaRegion`
+
+**New Backstage V2 Templates**
+- `aurora-global-cluster` — provision Aurora Global Database via Terraform PR
+- `dynamodb-global-table` — provision DynamoDB Global Table via Crossplane claim
+- `s3-multiregion-access-point` — provision S3 MRAP + CRR via Crossplane claim
+- `eks-multi-region` — scaffold ArgoCD ApplicationSet for hub-spoke multi-region deployment (matrix generator, sync-wave eu-central-1 → us-east-1, traffic dial parameters)
+
+---
+
+## [0.4.0] — 2026-06-05
+
+### Added
+
+#### Team isolation & multi-tenancy (scales to 25+ teams)
+- **Per-team ArgoCD ApplicationSet** — each team namespace now scaffolds an `applicationset.yaml` that scans `teams/<teamName>/services/*`; isolated from the global `services/*` ApplicationSet to prevent cross-team sync interference. Path convention: legacy/platform services stay under `services/`, team-owned services go under `teams/<teamName>/services/`.
+- **Per-team SecretStore** — `team-namespace` scaffold generates a namespace-scoped `SecretStore` + IRSA `ServiceAccount`; secrets are scoped to `/<teamName>/*` in AWS Secrets Manager. `terraform/iam-team-secret-store.tf` provisions per-team IAM roles.
+- **Per-team Grafana folder** — scaffold creates a `monitoring`-namespace ConfigMap labeled `grafana_folder: "Team — <name>"`, picked up by the Grafana sidecar to provision an isolated dashboard folder per team.
+- **services-dev / staging / prod ResourceQuota + LimitRange** — `kubernetes/namespaces/services-quota.yaml`; prevents runaway pods in shared namespaces before teams migrate to team-* namespaces.
+
+#### Crossplane cost governance
+- **Kyverno team label injection** — `kubernetes/policies/kyverno/crossplane-team-label-policy.yaml`: mutate policy auto-injects `idp:team` on all Crossplane claims in `team-*` namespaces; validate policy blocks claims with no `owner` or `costCenter`.
+- **`team` field on all XRDs** — S3Bucket, RDSInstance, DynamoTable, SQSQueue, KafkaTopic XRDs and compositions updated to propagate `idp:team` AWS tag (Kafka uses K8s labels as MSK topics don't support AWS resource tags).
+- **Kyverno install** — `bootstrap-local.sh` (Step 9b) and `bootstrap.sh` (Phase 3.8) now install Kyverno 3.2.7 and apply team policies automatically.
+
+#### GitHub App (replaces GH_PAT)
+- **`auto-merge-onboarding.yml`** — uses `actions/create-github-app-token@v2` to generate a short-lived token from `APP_ID` + `APP_PRIVATE_KEY` secrets; falls back to `GH_PAT` for backward compatibility.
+- **`app-config.aws.yaml`** — added `integrations.github.apps` block; Backstage uses the App for all catalog fetching and scaffolding API calls (higher rate limits, no rotation needed).
+- Works on personal GitHub accounts and organisations.
+
+#### DORA metrics team dimension
+- `dora-exporter.py` — all Prometheus metrics now carry a `team=` label; team derived from `TEAM_MAP` env var (JSON map) or `team:<name>` GitHub repo topic.
+- CloudWatch dimensions include `{"Name": "Team", "Value": "<team>"}` on every metric.
+- `aws/observability/dora/dora-cronjob.yaml` — `TEAM_MAP` wired from Secrets Manager (optional key).
+- `local/observability/dora/dora-cronjob.yaml` — commented-out `TEAM_MAP` ConfigMap example.
+
+#### Catalog consolidation
+- `backstage/catalog/all-templates.yaml` — single Location file indexing all 49 templates by tier (blessed / advanced). `app-config.aws.yaml` reduced from 49 URL entries to 1. Adding a template now requires one line in `all-templates.yaml` only.
+
+#### Template versioning & curation
+- All 50 `template.yaml` files tagged `v1`. Core service + platform templates tagged `blessed`; everything else tagged `advanced`. Teams can filter in Backstage by tier.
+
+#### Backstage permission framework
+- `app-config.aws.yaml` — `permission.enabled: true` added with inline scaffold instructions for the backend policy plugin (blocks unauthenticated scaffolder access by default).
+
+### Changed
+- `bootstrap-local.sh` and `bootstrap.sh` — apply `kubernetes/namespaces/services-quota.yaml` during Phase 3 / Step 3.
+- `bootstrap.sh` Phase 3.7 — Secrets Manager population now includes `GITHUB_APP_*` and `TEAM_MAP` keys.
+- `terraform/terraform.tfvars.example` — documents the new `team_eso_roles` variable.
+- `local/.env.example` and `local/backstage/.env.example` — document GitHub App credentials and `TEAM_MAP`.
+- Global ApplicationSets (`aws/argocd/app-of-apps.yaml`, `local/argocd/app-of-apps-local.yaml`) — added path convention comments to prevent team dirs being accidentally scanned.
+- `observability/grafana/grafana-helm-values.yaml` — sidecar enabled (`searchNamespace: ALL`, `folderAnnotation: grafana_folder`).
+
 ---
 
 ## [0.3.0] — 2026-06-03

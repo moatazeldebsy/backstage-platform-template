@@ -113,6 +113,16 @@ spec:
                   value: "24"
                 - name: CLOUDWATCH_NS
                   value: "IDP/DORA"
+                # Optional: map repo names to team names for per-team DORA metrics.
+                # Falls back to repos tagged with GitHub topic "team:<name>" if unset.
+                # Set TEAM_MAP in Secrets Manager under idp-mvp/backstage, then
+                # add it to the ExternalSecret in aws/external-secrets/backstage.yaml.
+                - name: TEAM_MAP
+                  valueFrom:
+                    secretKeyRef:
+                      name: dora-exporter-secret
+                      key: TEAM_MAP
+                      optional: true
               resources:
                 requests:
                   cpu: 100m

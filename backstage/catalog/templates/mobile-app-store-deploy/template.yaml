@@ -13,6 +13,8 @@ metadata:
     - fastlane
     - mobile
     - release
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: service

@@ -1,0 +1,96 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xroute53healthcheck.aws
+  labels:
+    provider: aws
+    idp.platform/resource: route53-health-check
+spec:
+  compositeTypeRef:
+    apiVersion: idp.platform/v1alpha1
+    kind: XRoute53HealthCheck
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: health-check
+            base:
+              apiVersion: route53.aws.upbound.io/v1beta1
+              kind: HealthCheck
+              spec:
+                deletionPolicy: Delete
+                forProvider:
+                  region: us-east-1
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": route53-health-check
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.fqdn
+                toFieldPath: spec.forProvider.fqdn
+              - fromFieldPath: spec.parameters.port
+                toFieldPath: spec.forProvider.port
+              - fromFieldPath: spec.parameters.healthCheckType
+                toFieldPath: spec.forProvider.type
+              - fromFieldPath: spec.parameters.resourcePath
+                toFieldPath: spec.forProvider.resourcePath
+              - fromFieldPath: spec.parameters.failureThreshold
+                toFieldPath: spec.forProvider.failureThreshold
+              - fromFieldPath: spec.parameters.requestInterval
+                toFieldPath: spec.forProvider.requestInterval
+              - fromFieldPath: spec.parameters.enableSNI
+                toFieldPath: spec.forProvider.enableSni
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.healthCheckId
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.healthCheckArn
+
+          # Optional DNS failover record — only created when hostedZoneId is provided.
+          # Teams that only need a health check (e.g. to wire into Global Accelerator)
+          # can leave hostedZoneId blank and skip this resource.
+          - name: failover-record
+            base:
+              apiVersion: route53.aws.upbound.io/v1beta1
+              kind: Record
+              spec:
+                deletionPolicy: Delete
+                forProvider:
+                  region: us-east-1
+                  type: A
+                  ttl: 60
+                  alias:
+                    - evaluateTargetHealth: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - fromFieldPath: spec.parameters.hostedZoneId
+                toFieldPath: spec.forProvider.zoneId
+                policy:
+                  fromFieldPath: Optional
+              - fromFieldPath: spec.parameters.failoverRecordName
+                toFieldPath: spec.forProvider.name
+                policy:
+                  fromFieldPath: Optional
+              - fromFieldPath: spec.parameters.failoverType
+                toFieldPath: spec.forProvider.failoverRoutingPolicy[0].type
+                policy:
+                  fromFieldPath: Optional
+              - fromFieldPath: status.healthCheckId
+                toFieldPath: spec.forProvider.healthCheckId
+                policy:
+                  fromFieldPath: Optional
+            readinessChecks:
+              - type: MatchCondition
+                matchCondition:
+                  type: Ready
+                  status: "True"

@@ -12,7 +12,10 @@ spec:
   generators:
     - matrix:
         generators:
-          # Generator 1: discover services from the platform repo
+          # Generator 1: discover LEGACY flat services from services/<name>/.
+          # Path convention:
+          #   services/<name>/          → legacy / platform-owned services (this ApplicationSet)
+          #   teams/<team>/services/<name>/  → team-owned services (per-team ApplicationSet)
           - git:
               repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
               revision: HEAD
