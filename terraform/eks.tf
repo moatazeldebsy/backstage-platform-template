@@ -26,16 +26,29 @@ module "eks" {
     }
   }
 
+  # Platform node group (on-demand, always present) — runs ArgoCD, Crossplane,
+  # Backstage, Prometheus, and other platform components that must not land on spot.
+  # When Karpenter is enabled, team service workloads run on Karpenter-managed nodes
+  # (labeled role=services) instead. Platform pods use a nodeSelector: {role: platform}.
   eks_managed_node_groups = {
     platform = {
       instance_types = var.node_instance_types
       min_size       = var.node_group_min_size
-      max_size       = var.node_group_max_size
+      max_size       = var.enable_karpenter ? 6 : var.node_group_max_size   # cap platform NG when Karpenter takes over burst
       desired_size   = var.node_group_desired_size
 
       labels = {
         role = "platform"
       }
+
+      taints = var.enable_karpenter ? [
+        # Soft taint — platform components tolerate it; team services go to Karpenter nodes
+        {
+          key    = "idp/platform"
+          value  = "true"
+          effect = "PREFER_NO_SCHEDULE"
+        }
+      ] : []
 
       iam_role_additional_policies = {
         AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
