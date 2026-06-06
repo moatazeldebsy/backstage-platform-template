@@ -168,7 +168,9 @@ jobs:
 
       # ── Trivy vulnerability scan ──────────────────────────────────────────
       - name: Run Trivy vulnerability scan
+        id: trivy
         if: steps.guard.outputs.has_aws == 'true'
+        continue-on-error: true  # upload SARIF even when findings cause exit-code 1
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
@@ -179,8 +181,8 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy scan results to GitHub Security tab
-        if: steps.guard.outputs.has_aws == 'true' && !cancelled()
-        uses: github/codeql-action/upload-sarif@v3
+        if: steps.guard.outputs.has_aws == 'true' && !cancelled() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
 
