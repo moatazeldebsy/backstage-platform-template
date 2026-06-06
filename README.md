@@ -13,10 +13,8 @@
 
 > **First time?** Always run `./scripts/setup.sh` first. It replaces `moatazeldebsy` and other placeholders across all config files. If you skip this step, ArgoCD will generate no apps because its ApplicationSet still has the unresolved `moatazeldebsy` placeholder.
 
-<!-- demo-gif: replace the image below with an animated GIF showing the golden path
-     (scaffold service in Backstage → CI runs → service live with metrics).
-     Suggested tool: peek, kooha, or asciinema + svg-term.
-     Host in docs/assets/demo.gif and update the path below. -->
+![Platform Architecture](docs/assets/platform-architecture.jpg)
+
 > **Golden path in 60 seconds:** scaffold a service → CI runs tests + builds image → ArgoCD deploys to Kind → Backstage shows health + metrics.
 
 ## Compatibility
@@ -88,6 +86,24 @@ After that, Backstage is at `http://backstage.idp.local` and hello-service at `h
 | Deployment | Helm (`helm/service-template`) | Helm (`helm/service-template`) |
 | Developer portal | Backstage (Docker Compose) | Backstage (EKS) |
 | Observability | Prometheus + Grafana | CloudWatch + Grafana |
+
+### AWS Architecture
+
+![AWS Architecture](docs/assets/aws-architecture.jpg)
+
+Seven layers: GitHub/ArgoCD → AWS Account boundary → ALB edge → VPC/EKS (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers) → Data & Registry (ECR, RDS, S3, DynamoDB, MSK, SQS) → Platform Services (Secrets Manager, IAM, CloudWatch) → IaC (Terraform foundation + Crossplane per-service). See [docs/architecture.md](docs/architecture.md) for the full breakdown.
+
+## How It Works — Interaction Flows
+
+Three channels reach the platform control plane (GitHub Actions CI, ArgoCD GitOps, Helm golden-path chart, Crossplane Claims):
+
+![Interaction Flows](docs/assets/interaction-flows.jpg)
+
+| Channel | Who | Entry point |
+|---------|-----|-------------|
+| **1 — CLI** | Developer | `idp scaffold service` / `idp template list` → Scaffolder Engine → GitHub repo |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 21 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs |
 
 ## Quick Start
 
