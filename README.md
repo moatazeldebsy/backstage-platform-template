@@ -427,6 +427,32 @@ EKS is **not free-tier compatible** — the control plane costs $0.10/hr (~$73/m
 
 > **Without optimization** (3 nodes, no scaler, 20 Gi Prometheus, gp2): ~$300–400/month.
 
+### Monthly estimate — v2 multi-region (active-passive)
+
+eu-central-1 (primary) + us-east-1 (standby) with Karpenter spot autoscaling, Aurora Global DB, and Backstage warm standby. The standby region runs a minimal EKS cluster at all times — failover is fast but the control plane fee is unavoidable.
+
+| Service | Config | Est. cost/month |
+|---------|--------|-----------------|
+| EKS control planes | 2× clusters (primary + standby) | ~$146 |
+| EC2 worker nodes | 2× t3.medium spot primary + 1× t3.medium standby | ~$35–55 |
+| NAT Gateways | 2× single gateway (one per region) | ~$66 + data |
+| Aurora Global DB | db.t3.medium writer + read replica, 20 GB | ~$110 |
+| DynamoDB Global Tables | On-demand reads/writes + global replication | ~$10 |
+| ALB / NLB | 2× per region (4 total) | ~$36–72 |
+| Transit Gateway | 2 VPC attachments + inter-region data | ~$36 |
+| CloudFront + WAF | CDN distribution + Web ACL | ~$10–20 |
+| Global Accelerator | 1 accelerator + data transfer | ~$18 |
+| S3 + cross-region replication | TechDocs, Thanos metrics, state | ~$8 |
+| CloudWatch | Logs + metrics (both regions) | ~$10–20 |
+| Secrets Manager | ~8 secrets replicated to standby | ~$4 |
+| Route53 | Health checks + failover routing | ~$5 |
+| EBS | Prometheus + MLflow per region | ~$3 |
+| **Total (v2 multi-region)** | | **~$497–$573/month** |
+
+> **Without spot / optimizer** (on-demand nodes, full replica count both regions): ~$700–900/month.
+>
+> Aurora Global DB replaces RDS PostgreSQL; DynamoDB Global Tables replace any single-region DynamoDB. S3 cross-region replication is enabled on the TechDocs and Thanos buckets. Failover RTO is ~5–10 minutes with automated Route53 health-check cutover.
+
 ### Cost optimizer (enabled by default)
 
 `terraform/terraform.tfvars` ships with:
