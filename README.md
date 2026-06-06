@@ -17,6 +17,8 @@
 
 > **Golden path in 60 seconds:** scaffold a service → CI runs tests + builds image → ArgoCD deploys to Kind → Backstage shows health + metrics.
 
+> **Coming in v2 — Multi-Region:** Active-passive AWS across eu-central-1 (primary) + us-east-1 (standby) — Aurora Global DB, DynamoDB Global Tables, S3 cross-region replication, Transit Gateway, CloudFront + WAF, Global Accelerator, Karpenter spot autoscaling, Thanos multi-region metrics, Backstage warm standby, and automated failover runbook. Track progress on the [`feat/v2-multi-region`](https://github.com/moatazeldebsy/backstage-platform-template/tree/feat/v2-multi-region) branch.
+
 ## Compatibility
 
 | Component | Tested version |
