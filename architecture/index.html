@@ -645,6 +645,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#interaction-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Interaction Model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-design-decisions" class="md-nav__link">
     <span class="md-ellipsis">
       Key Design Decisions
@@ -1595,6 +1604,43 @@
 
 <h1 id="platform-architecture">Platform Architecture<a class="headerlink" href="#platform-architecture" title="Permanent link">&para;</a></h1>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p><img alt="Platform Architecture" src="../assets/platform-architecture.jpg" /></p>
+<p>Six layers — Developer Portal (Backstage + templates + AI), Golden Paths (21 service templates + 18 QA templates + 5 Crossplane Claims), AI-Native IDP (KAgent agents + MLflow + MCP servers + Argo Workflows), Delivery &amp; Quality (GitHub Actions + ArgoCD + Helm + scorecard gates), Runtime (Kubernetes: Kind locally, EKS on AWS + Crossplane), Observability &amp; Infra (Prometheus + Grafana + DORA + Terraform).</p>
+<h2 id="interaction-model">Interaction Model<a class="headerlink" href="#interaction-model" title="Permanent link">&para;</a></h2>
+<p><img alt="Developer &amp; Platform Engineer Interaction Flows" src="../assets/interaction-flows.jpg" /></p>
+<p>Three channels connect developers, platform engineers, and AI agents to the platform control plane:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Channel</th>
+<th>Entry point</th>
+<th>Reaches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>CLI</strong> (<code>idp</code>)</td>
+<td><code>idp scaffold service</code>, <code>idp template list</code></td>
+<td>Scaffolder Engine → GitHub repo → CI</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Backstage Portal</strong></td>
+<td>Software Catalog, 21 software templates, 18 QA templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights</td>
+<td>Scaffolder Backend → Catalog API → ArgoCD</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>AI Agent / MCP</strong></td>
+<td>KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o</td>
+<td>IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs</td>
+</tr>
+</tbody>
+</table>
+<p>All three channels converge on the <strong>Platform Control Plane</strong>: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.29 in production.</p>
+<hr />
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -2050,6 +2096,8 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="aws-architecture">AWS Architecture<a class="headerlink" href="#aws-architecture" title="Permanent link">&para;</a></h2>
+<p><img alt="AWS Architecture" src="../assets/aws-architecture.jpg" /></p>
+<p>Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.29 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data &amp; Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).</p>
 <h3 id="network-topology">Network Topology<a class="headerlink" href="#network-topology" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
