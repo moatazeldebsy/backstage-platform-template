@@ -2,14 +2,22 @@
 # Uses the AlertmanagerConfig CRD, which kube-prometheus-stack picks up via
 # alertmanagerConfigSelector matching label app.kubernetes.io/part-of: kube-prometheus-stack
 #
-# Prerequisites — create the webhook secret BEFORE applying this file:
+# Prerequisites — create secrets BEFORE applying this file:
+#
+#   # Slack webhook (required)
 #   kubectl create secret generic alertmanager-slack-webhook \
 #     --from-literal=webhook-url='https://hooks.slack.com/services/...' \
 #     -n monitoring
 #
-# (bootstrap-local.sh does this automatically when SLACK_WEBHOOK_URL is set)
+#   # PagerDuty integration key (optional — for on-call paging)
+#   kubectl create secret generic alertmanager-pagerduty \
+#     --from-literal=integration-key='<your-PagerDuty-Events-API-v2-integration-key>' \
+#     -n monitoring
 #
-# Then apply only this file (the Secret is managed separately):
+# bootstrap-local.sh creates the Slack secret automatically when SLACK_WEBHOOK_URL is set.
+# Set PAGERDUTY_INTEGRATION_KEY in local/.env to enable PagerDuty on local clusters.
+#
+# Apply only this file (secrets are managed separately):
 #   kubectl apply -f observability/alertmanager/alertmanager-config.yaml
 ---
 # AlertmanagerConfig CRD — defines routes and receivers.
@@ -29,13 +37,43 @@ spec:
     repeatInterval: 4h
     receiver: slack-platform
     routes:
+      # Critical alerts go to PagerDuty (pages on-call) AND Slack
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: pagerduty-critical
+        continue: true   # also send to Slack below
       - matchers:
           - name: severity
             value: critical
         receiver: slack-platform
+      # Warning alerts go to Slack only
       - matchers:
           - name: severity
             value: warning
+        receiver: slack-platform
+      # All firing alerts are also routed to the event router for agent triage
+      - matchers:
+          - name: severity
+            matchType: =~
+            value: "critical|warning"
+        receiver: agent-event-router
+        continue: false
+      # SLO burn-rate fast-burn pages via PagerDuty immediately (short group wait)
+      - matchers:
+          - name: category
+            value: slo
+          - name: severity
+            value: critical
+        receiver: pagerduty-critical
+        groupWait: 0s
+        repeatInterval: 1h
+        continue: true
+      - matchers:
+          - name: category
+            value: slo
+          - name: severity
+            value: critical
         receiver: slack-platform
 
   receivers:
@@ -55,6 +93,37 @@ spec:
             *Runbook:* <{{ .Annotations.runbook_url }}|View Runbook>
             {{ end }}
           footer: 'IDP Platform'
+
+    # PagerDuty receiver — pages on-call for critical alerts.
+    # Requires secret: alertmanager-pagerduty (key: integration-key)
+    # Get the integration key from PagerDuty → Service → Integrations → Events API v2.
+    - name: pagerduty-critical
+      pagerdutyConfigs:
+        - routingKey:
+            name: alertmanager-pagerduty
+            key: integration-key
+          severity: '{{ if eq .CommonLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
+          description: '{{ .CommonAnnotations.summary }}'
+          details:
+            namespace: '{{ .CommonLabels.namespace }}'
+            service: '{{ .CommonLabels.service }}'
+            runbook: '{{ .CommonAnnotations.runbook_url }}'
+          sendResolved: true
+          links:
+            - href: '{{ .CommonAnnotations.runbook_url }}'
+              text: Runbook
+
+    # Agent event router — forwards firing alerts to the AI triage agent via A2A
+    - name: agent-event-router
+      webhookConfigs:
+        - url: 'http://agent-event-router.services-dev.svc.cluster.local:3004/webhook/alertmanager'
+          sendResolved: false
+          httpConfig:
+            authorization:
+              type: Bearer
+              credentials:
+                name: agent-event-router-webhook-token
+                key: token
 
   inhibitRules:
     - sourceMatch:

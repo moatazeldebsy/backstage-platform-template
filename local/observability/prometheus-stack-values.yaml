@@ -69,6 +69,32 @@ alertmanager:
 
 grafana:
   adminPassword: admin
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      jsonData:
+        derivedFields:
+          - datasourceName: Tempo
+            datasourceUid: tempo
+            matcherRegex: '"trace_id":"(\w+)"'
+            name: TraceID
+            url: '$${__value.raw}'
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring.svc.cluster.local:3200
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: loki
+          filterByTraceID: true
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true
   # Persist Grafana's SQLite DB (service accounts, tokens, alert state) so that
   # the GRAFANA_TOKEN written to local/backstage/.env survives pod restarts and
   # helm upgrades. Without this, every Grafana pod restart wipes the DB and the
@@ -144,11 +170,23 @@ grafana:
           type: file
           options:
             path: /var/lib/grafana/dashboards/ai
+        - name: finops
+          folder: FinOps
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/finops
+        - name: sre
+          folder: SRE
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/sre
   dashboardsConfigMaps:
     idp: grafana-dashboards-idp
     dora: grafana-dashboards-dora
     qa: grafana-qa-dashboard
     ai: grafana-dashboards-ai
+    finops: grafana-dashboards-finops
+    sre: grafana-dashboards-sre
 
 kubeStateMetrics:
   resources:

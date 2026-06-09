@@ -124,6 +124,15 @@ spec:
           > Scaffolded via the IDP QA Platform
         sourcePath: .
 
+    - id: inject-secrets
+      name: Inject GCP credentials into repo secrets
+      if: ${{ parameters.testRunner === 'firebase-test-lab' }}
+      action: idp:repo:set-secrets
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        secrets: {}
+
   output:
     links:
       - title: Pull Request

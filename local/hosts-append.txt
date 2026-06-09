@@ -13,6 +13,8 @@
 127.0.0.1  opencost.idp.local
 # QA / Observability
 127.0.0.1  pushgateway.idp.local
+127.0.0.1  tempo.idp.local
+127.0.0.1  argo-rollouts.idp.local
 # AI / ML Platform
 127.0.0.1  mlflow.idp.local
 127.0.0.1  kagent.idp.local
@@ -20,3 +22,5 @@
 127.0.0.1  idp-mcp-server.idp.local
 127.0.0.1  qa-mcp-server.idp.local
 127.0.0.1  contract-mcp-server.idp.local
+127.0.0.1  agent-event-router.idp.local
+127.0.0.1  github-mcp-server.idp.local

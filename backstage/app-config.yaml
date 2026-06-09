@@ -168,6 +168,14 @@ catalog:
       rules:
         - allow: [Template]
     - type: file
+      target: /catalog/templates/slo-definition/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/canary-deployment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
       target: /catalog/templates/datadog-synthetic-suite/template.yaml
       rules:
         - allow: [Template]

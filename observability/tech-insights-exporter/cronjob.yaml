@@ -40,6 +40,16 @@ spec:
                   value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
                 - name: MODE
                   value: "pushgateway"
+                - name: OPENCOST_URL
+                  value: "http://opencost.opencost.svc.cluster.local:9003"
+                # Override per-team budgets at deploy time if needed:
+                #   kubectl create secret generic team-budgets --from-literal=json='{"platform-team":2500}'
+                # - name: TEAM_BUDGETS_JSON
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: team-budgets
+                #       key: json
+                #       optional: true
               volumeMounts:
                 - name: exporter-script
                   mountPath: /app

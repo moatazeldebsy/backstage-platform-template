@@ -833,11 +833,16 @@ if ! $SKIP_OBS; then
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml"
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml"
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-ai-dashboard-configmap.yaml"
+  kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-finops-dashboard-configmap.yaml"
+  kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml"
 
   helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
     --namespace monitoring \
     --values "$(dirname "$0")/../local/observability/prometheus-stack-values.yaml" \
     --wait --timeout 10m
+
+  kubectl apply -f "${ROOT_DIR}/observability/alertmanager/prometheus-rules.yaml"
+  log "  PrometheusRules applied (SLO burn-rate, DORA anomalies, team budgets, KAgent guardrails)."
 
   log "  Waiting for Grafana API to be ready..."
   for _i in {1..24}; do
@@ -909,6 +914,77 @@ if ! $SKIP_OBS; then
   log "OpenCost installed. UI: http://opencost.idp.local"
 else
   log "Step 5b: Skipping OpenCost (--skip-obs)."
+fi
+
+# ── Step 5b-pre: Argo Rollouts (progressive delivery) ───────────────────────
+if ! $SKIP_OBS; then
+  log "Step 5b-pre: Installing Argo Rollouts (canary deployments)..."
+  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
+  helm repo update argo
+
+  kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+
+  helm upgrade --install argo-rollouts argo/argo-rollouts \
+    --namespace argo-rollouts \
+    --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
+    --wait --timeout 5m
+
+  kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
+
+  log "  Argo Rollouts installed. Dashboard: http://argo-rollouts.idp.local"
+  log "  To opt a service into canary: set rollout.enabled: true in its helm-values-local.yaml"
+fi
+
+# ── Step 5c: Loki + Promtail (log aggregation) ───────────────────────────────
+if ! $SKIP_OBS; then
+  log "Step 5c: Installing Loki + Promtail (log aggregation)..."
+  helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+  helm repo update grafana
+
+  helm upgrade --install loki grafana/loki \
+    --namespace monitoring \
+    --values "${ROOT_DIR}/local/observability/loki/loki-values.yaml" \
+    --wait --timeout 5m
+
+  helm upgrade --install promtail grafana/promtail \
+    --namespace monitoring \
+    --values "${ROOT_DIR}/local/observability/loki/promtail-values.yaml" \
+    --wait --timeout 3m
+
+  log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
+else
+  log "Step 5c: Skipping Loki + Promtail (--skip-obs)."
+fi
+
+# ── Step 5d: Grafana Tempo (distributed tracing) ──────────────────────────────
+if ! $SKIP_OBS; then
+  log "Step 5d: Installing Grafana Tempo (distributed tracing)..."
+  helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+
+  helm upgrade --install tempo grafana/tempo \
+    --namespace monitoring \
+    --values "${ROOT_DIR}/local/observability/tempo/tempo-values.yaml" \
+    --wait --timeout 5m
+
+  kubectl apply -f "${ROOT_DIR}/local/observability/tempo/tempo-ingress.yaml"
+  log "  Tempo installed. OTLP HTTP: http://tempo.idp.local/v1/traces | gRPC: tempo.monitoring.svc.cluster.local:4317"
+  log "  Traces available in Grafana → Explore → Tempo datasource."
+else
+  log "Step 5d: Skipping Tempo (--skip-obs)."
+fi
+
+# ── Step 5e: PagerDuty AlertManager secret (optional) ────────────────────────
+if ! $SKIP_OBS; then
+  if [[ -n "${PAGERDUTY_INTEGRATION_KEY:-}" ]]; then
+    log "Step 5e: Creating PagerDuty AlertManager secret..."
+    kubectl create secret generic alertmanager-pagerduty \
+      --from-literal=integration-key="${PAGERDUTY_INTEGRATION_KEY}" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    log "  PagerDuty secret created. Critical alerts will page on-call."
+  else
+    log "Step 5e: PAGERDUTY_INTEGRATION_KEY not set — skipping PagerDuty secret."
+    log "  To enable: add PAGERDUTY_INTEGRATION_KEY=<key> to local/.env and re-run bootstrap."
+  fi
 fi
 
 # ── Step 6: Build + push hello-service image (deploy is owned by ArgoCD) ─────
@@ -1224,7 +1300,8 @@ if ! $SKIP_OBS; then
       --from-file=exporter.py="${ROOT_DIR}/observability/tech-insights-exporter/exporter.py" \
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
     kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
-    log "  Tech Insights Exporter deployed."
+    kubectl apply -f "${ROOT_DIR}/kubernetes/finops/team-budgets-configmap.yaml"
+    log "  Tech Insights Exporter deployed + team budget ConfigMap applied."
   ) || warn "Step 11 (Tech Insights) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."

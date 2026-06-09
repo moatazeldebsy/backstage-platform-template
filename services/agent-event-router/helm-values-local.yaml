@@ -1,0 +1,76 @@
+fullnameOverride: agent-event-router
+
+replicaCount: 1
+
+image:
+  repository: localhost:5003/agent-event-router
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3004
+  targetPort: 3004
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: agent-event-router.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 30m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+env:
+  - name: PORT
+    value: "3004"
+  - name: KAGENT_A2A_URL
+    value: "http://kagent-ui.kagent.svc.cluster.local:8080"
+  # GITHUB_WEBHOOK_SECRET — required; /webhook/github returns 503 if unset.
+  # Create secret: kubectl create secret generic agent-event-router-secrets \
+  #   --from-literal=github-webhook-secret=<secret> \
+  #   --from-literal=webhook-token=<token> -n services-dev
+  # - name: GITHUB_WEBHOOK_SECRET
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: agent-event-router-secrets
+  #       key: github-webhook-secret
+  # WEBHOOK_TOKEN — bearer token for alertmanager/argocd endpoints.
+  # Optional locally (in-cluster callers only). Required in AWS.
+  # - name: WEBHOOK_TOKEN
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: agent-event-router-secrets
+  #       key: webhook-token
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+autoscaling:
+  enabled: false

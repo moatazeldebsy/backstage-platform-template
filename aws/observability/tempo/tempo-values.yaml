@@ -1,0 +1,75 @@
+# Grafana Tempo distributed for AWS EKS with S3 storage
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm upgrade --install tempo grafana/tempo-distributed \
+#   -n monitoring --values aws/observability/tempo/tempo-values.yaml \
+#   --set storage.trace.s3.bucket="${TEMPO_S3_BUCKET}" \
+#   --set storage.trace.s3.region="${AWS_REGION}"
+#
+# Prerequisites (bootstrap.sh handles these):
+#   - S3 bucket for Tempo traces (created by terraform/tempo.tf)
+#   - IRSA role for Tempo pods
+
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: "idp-mvp-tempo-traces"   # replaced by bootstrap.sh
+      region: "us-east-1"              # replaced by bootstrap.sh
+    wal:
+      path: /var/tempo/wal
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true
+  zipkin:
+    enabled: true
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: ""   # set by bootstrap.sh after terraform apply
+
+metricsGenerator:
+  enabled: true
+  config:
+    storage:
+      remote_write:
+        - url: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+
+distributor:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+ingester:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+querier:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+queryFrontend:
+  replicas: 1
+
+compactor:
+  replicas: 1

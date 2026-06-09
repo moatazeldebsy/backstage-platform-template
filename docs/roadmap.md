@@ -23,6 +23,7 @@ Status is updated as work progresses.
 
 | Feature | Details |
 |---------|---------|
+| SRE reliability programme | PodDisruptionBudgets, Sloth SLOs, burn-rate alerts, Loki+Tempo+PagerDuty observability, Argo Rollouts canary, multi-env GitOps promotion, blameless postmortem template, per-team cost budgets, KAgent guardrails + audit log |
 | Golden path templates | Node.js, Python, Go, React, Terraform, Deploy-to-Kind (7 templates) |
 | CI pipeline | Multi-language test detection, ECR push, OIDC auth, graceful skip when secrets absent |
 | EKS platform | VPC, EKS v1.29, ECR, RDS, Secrets Manager via Terraform |
@@ -96,6 +97,7 @@ Status is updated as work progresses.
 | Item | Status | Notes |
 |------|--------|-------|
 | OPA cost-tag enforcement | ✅ | `kubernetes/policies/require-cost-tags.yaml` (warn mode) |
+| Per-team cost budgets | ✅ | Monthly budget annotations on Group entities; OpenCost-backed actuals; TeamBudgetWarning/TeamBudgetExceeded PrometheusRules; `idp_team_budget_utilization_ratio` metric in Pushgateway |
 | OpenCost in-cluster | ✅ | `kubernetes/finops/opencost.yaml` |
 | OpenCost Grafana dashboard | ✅ | `finops` provider in Grafana helm values |
 | AWS Cost Anomaly Detection | ✅ | `terraform/finops.tf` |
@@ -195,14 +197,35 @@ one-click PR. This is the most-requested feature after first scaffold.
 | Item | Status | Notes |
 |---|---|---|
 | Argo Workflows orchestration | ✅ | `local/argo-workflows/values.yaml` + `aws/argo-workflows/values.yaml` with S3 artifact storage (AWS IRSA); integrated into `bootstrap-local.sh` (--install-argo-workflows flag) and `bootstrap.sh` (Phase 6a) |
-| AI Cost Attribution | ✅ | MCP server metrics enhanced with `server` label; `ai_api_calls_total` counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking |
+| AI Cost Attribution | ✅ | MCP server metrics enhanced with `server` label; `ai_api_calls_total` counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking; per-agent audit log ([AUDIT] JSON) and `dry_run` mode on `scaffold_service` |
 
-### Phase 7 Successor Items (📋 Planned)
+### Phase 7 Successor Items
 
 | Item | Status | Notes |
 |---|---|---|
+| KAgent tool-call audit log + guardrails | ✅ | Structured [AUDIT] JSON logs on every MCP tool call; mcp_agent_tool_calls_total{agent} counter; dry_run on scaffold_service; KAgent system-prompt guardrails; ScaffoldServiceHighRate + McpToolErrorRateHigh alerts |
+| Event Bus (`agent-event-router`) | ✅ | Receives GitHub / AlertManager / ArgoCD webhooks → fans out to agents via A2A; HMAC + bearer-token auth |
+| `platform-assistant` unified agent | ✅ | Single Backstage entry point routing across IDP + QA + contract tools (22 tools); replaces direct `idp-assistant` calls |
+| Model routing (Sonnet / Opus ModelConfigs) | ✅ | `claude-sonnet` (Sonnet 4.6) and `claude-opus` (Opus 4.8) ModelConfig CRDs; specialists upgraded to Sonnet |
+| Persistent user memory | ✅ | ConfigMap-backed per-user preferences (`get_user_memory` / `set_user_memory` tools); identity bound at HTTP layer, not LLM args |
+| `github-mcp-server` | ✅ | `get_pr_diff`, `add_pr_comment`, `get_ci_status`; used by `qa-assistant` for automated PR review |
+| `catalog_semantic_search` tool | ✅ | Natural-language vector search via Voyage AI + pgvector; added to `idp-mcp-server` |
+| Quick-action chips in chat UI | ✅ | 6 clickable suggestion chips on empty chat in `AiAssistantPage` |
+| `idp ai` CLI command | ✅ | `idp ai "<prompt>"` — sends A2A message to `platform-assistant`, streams response to terminal |
 | `ml-training-job` template | 📋 | Argo Workflows scaffold with MLflow experiment logging; CronJob variant for scheduled model training |
 | Automated deepeval CI gate | 📋 | GitHub Actions workflow on PR to Agent prompts; blocks merge if AnswerRelevancy < 0.7 or ToolCorrectness < 0.8 |
+
+### Phase 7d — Agentic Platform (Sprint 4+) 📋
+
+| Sprint | Features | Status |
+|--------|---------|--------|
+| Sprint 4 | `argocd-mcp-server` + `release-agent` + `cost-mcp-server` + `cost-agent` | 📋 |
+| Sprint 5 | `incident-mcp-server` + `incident-agent` + `notification-mcp-server` | 📋 |
+| Sprint 6 | RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig + A2A delegation | 📋 |
+| Sprint 7 | `security-mcp-server` + `security-agent` + `onboarding-agent` | 📋 |
+| Sprint 8 | HiTL approval workflow (`ApprovalRequest` CRD) + Policy-as-Prompt | 📋 |
+| Sprint 9 | Agent regression test suite + A/B prompt testing | 📋 |
+| Sprint 10 | Slack bot + IDE plugin (VS Code) | 📋 |
 
 ---
 

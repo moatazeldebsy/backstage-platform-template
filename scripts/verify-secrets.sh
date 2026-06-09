@@ -121,6 +121,18 @@ fi
 
 echo ""
 echo "┌─────────────────────────────────────────────────────────┐"
+echo "│ 5. PagerDuty (optional — on-call paging)                │"
+echo "└─────────────────────────────────────────────────────────┘"
+
+if [[ -n "${PAGERDUTY_INTEGRATION_KEY:-}" ]]; then
+    check_pass "PAGERDUTY_INTEGRATION_KEY set — critical alerts will page on-call"
+else
+    check_warn "PAGERDUTY_INTEGRATION_KEY not set (optional)"
+    echo "         To enable: export PAGERDUTY_INTEGRATION_KEY=<Events API v2 key>"
+fi
+
+echo ""
+echo "┌─────────────────────────────────────────────────────────┐"
 echo "│ AWS Credentials & Connectivity                          │"
 echo "└─────────────────────────────────────────────────────────┘"
 

@@ -1,0 +1,131 @@
+{
+  "title": "FinOps — Team Budgets",
+  "uid": "finops-team-budgets",
+  "tags": ["finops", "cost", "budgets"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "5m",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Platform Budget (Monthly)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(idp_team_budget_usd_monthly)", "refId": "A", "legendFormat": "Total Budget" }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "noValue": "0", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background" }
+    },
+    {
+      "id": 2,
+      "title": "Total Actual Spend (MTD)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "sum(idp_team_actual_cost_usd_monthly)", "refId": "A", "legendFormat": "Actual Spend" }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 4000 }, { "color": "red", "value": 6000 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 3,
+      "title": "Teams Over Budget",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "count(idp_team_budget_utilization_ratio > 1) or vector(0)", "refId": "A", "legendFormat": "Over Budget" }],
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 4,
+      "title": "Teams Warning (>80%)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "count(idp_team_budget_utilization_ratio > 0.8) or vector(0)", "refId": "A", "legendFormat": "Warning" }],
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 3 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 5,
+      "title": "Budget Utilization by Team",
+      "type": "bargauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 4 },
+      "targets": [{ "expr": "sort_desc(idp_team_budget_utilization_ratio * 100)", "refId": "A", "legendFormat": "{{team}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 120,
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 100 }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal", "displayMode": "lcd", "showUnfilled": true }
+    },
+    {
+      "id": 6,
+      "title": "Budget vs Actual Spend by Team ($)",
+      "type": "barchart",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "sort_desc(idp_team_budget_usd_monthly)", "refId": "A", "legendFormat": "Budget — {{team}}" },
+        { "expr": "sort_desc(idp_team_actual_cost_usd_monthly)", "refId": "B", "legendFormat": "Actual — {{team}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "noValue": "0" } }
+    },
+    {
+      "id": 7,
+      "title": "Budget Utilization Trend (7d)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "targets": [{ "expr": "idp_team_budget_utilization_ratio * 100", "refId": "A", "legendFormat": "{{team}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 100 }] }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Team Budget Summary",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "targets": [
+        { "expr": "idp_team_budget_usd_monthly",         "refId": "A", "legendFormat": "Budget",      "instant": true },
+        { "expr": "idp_team_actual_cost_usd_monthly",    "refId": "B", "legendFormat": "Actual",      "instant": true },
+        { "expr": "idp_team_budget_usd_monthly - idp_team_actual_cost_usd_monthly", "refId": "C", "legendFormat": "Remaining", "instant": true },
+        { "expr": "idp_team_budget_utilization_ratio * 100", "refId": "D", "legendFormat": "Utilization %", "instant": true }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": { "renameByName": { "team": "Team", "Value #A": "Budget ($)", "Value #B": "Actual ($)", "Value #C": "Remaining ($)", "Value #D": "Utilization %" } } }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "currencyUSD" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Utilization %" }, "properties": [
+            { "id": "unit", "value": "percent" },
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 100 }] } }
+          ]},
+          { "matcher": { "id": "byName", "options": "Remaining ($)" }, "properties": [
+            { "id": "custom.displayMode", "value": "color-text" },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": -0.01 }] } }
+          ]}
+        ]
+      },
+      "options": { "sortBy": [{ "displayName": "Utilization %", "desc": true }] }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ metadata:
   name: idp-mcp-server
   namespace: kagent
 spec:
-  description: "IDP platform MCP server — catalog search, Prometheus metrics, scaffolding, and deployment listing"
+  description: "IDP platform MCP server — catalog search, semantic search, Prometheus metrics, scaffolding, deployment listing, and user memory"
   url: http://idp-mcp-server.services-dev.svc.cluster.local:3001/mcp
   protocol: STREAMABLE_HTTP
   # scaffold_service polls the Backstage scaffolder for up to 180s; the controller

@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: team-budgets
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: idp-platform
+    component: finops
+data:
+  # Monthly budget in USD per team. These values must stay in sync with the
+  # idp.io/cost-budget-monthly-usd annotations on Group entities in
+  # backstage/catalog/catalog-info.yaml.
+  #
+  # The tech-insights-exporter reads this ConfigMap via the TEAM_BUDGETS env
+  # var and pushes idp_team_budget_usd_monthly{team} to Prometheus Pushgateway.
+  # AlertManager fires TeamBudgetWarning at 80 % and TeamBudgetExceeded at 100 %.
+  budgets.json: |
+    {
+      "platform-team": 2000,
+      "ml-team":        1500,
+      "backend-team":    600,
+      "data-team":       800,
+      "frontend-team":   400,
+      "android-team":    300,
+      "ios-team":        300,
+      "qa-team":         200
+    }

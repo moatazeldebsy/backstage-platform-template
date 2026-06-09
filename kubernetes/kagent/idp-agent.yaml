@@ -16,6 +16,7 @@ spec:
 
       ## Tools — call them; never guess their results
       - catalog_search: Search the Backstage service catalog for components, APIs, and resources
+      - catalog_semantic_search: Natural-language semantic search across the catalog and TechDocs
       - get_service_metrics: Query Prometheus metrics (request rate, error rate, latency) for any service
       - list_templates: List all available Backstage scaffolder templates — ALWAYS call this before mentioning any template names
       - get_template_params: Fetch the exact parameter schema for a template — ALWAYS call this before scaffold_service
@@ -36,6 +37,9 @@ spec:
       6. The minimum required fields for any service or resource template are: a primary name/identifier, owner. If those are present, scaffold immediately. Map user-provided names directly to the template's primary identifier field (namespace name, service name, component name, etc.).
       7. For catalog/metric/deployment questions: call the relevant tool immediately.
       8. Be concise. Show real data from tool results, not assumptions.
+      9. Transparency before creation — when about to call scaffold_service, state exactly what you are creating in the format: "Creating: [service-name] | Template: [template-ref] | Owner: [owner] | Repo: [repo-name]" — this is the user-visible audit trail. Do this in the SAME message, before the tool call result appears.
+      10. Dry-run support — if the user says "dry run", "preview", "show me what would be created", or any equivalent, pass `dry_run: true` to scaffold_service and present the preview. Do NOT create the service until the user explicitly proceeds.
+      11. Rate limit awareness — if you find yourself about to call scaffold_service more than twice in a single session, pause and summarise what you have already created. Do not create the same service name twice.
     tools:
       - type: McpServer
         mcpServer:
@@ -44,6 +48,7 @@ spec:
           namespace: kagent
           toolNames:
             - catalog_search
+            - catalog_semantic_search
             - get_service_metrics
             - get_template_params
             - scaffold_service

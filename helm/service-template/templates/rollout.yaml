@@ -1,0 +1,127 @@
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "service-template.fullname" . }}
+  labels:
+    {{- include "service-template.labels" . | nindent 4 }}
+    backstage.io/kubernetes-id: {{ .Values.backstage.kubernetesId | default .Release.Name }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "service-template.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "service-template.selectorLabels" . | nindent 8 }}
+        backstage.io/kubernetes-id: {{ .Values.backstage.kubernetesId | default .Release.Name }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "service-template.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      {{- with .Values.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "service-template.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  strategy:
+    canary:
+      # Stable Service keeps 100% traffic until canary is promoted
+      stableService: {{ include "service-template.fullname" . }}
+      canaryService: {{ include "service-template.fullname" . }}-canary
+      # Automatically roll back if analysis fails
+      abortScaleDownDelaySeconds: 30
+      steps:
+        - setWeight: {{ .Values.rollout.canary.initialWeight }}
+        - pause:
+            duration: {{ .Values.rollout.canary.step1PauseDuration }}
+        - analysis:
+            templates:
+              - clusterScope: true
+                templateName: http-error-rate
+            args:
+              - name: service-name
+                value: {{ include "service-template.fullname" . }}
+              - name: namespace
+                value: {{ .Release.Namespace }}
+        - setWeight: 50
+        - pause:
+            duration: {{ .Values.rollout.canary.step2PauseDuration }}
+        - analysis:
+            templates:
+              - clusterScope: true
+                templateName: http-error-rate
+            args:
+              - name: service-name
+                value: {{ include "service-template.fullname" . }}
+              - name: namespace
+                value: {{ .Release.Namespace }}
+{{- end }}

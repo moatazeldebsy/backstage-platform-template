@@ -1,0 +1,64 @@
+fullnameOverride: github-mcp-server
+
+replicaCount: 1
+
+image:
+  repository: localhost:5003/github-mcp-server
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3005
+  targetPort: 3005
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: github-mcp-server.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 30m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+env:
+  - name: PORT
+    value: "3005"
+  - name: GITHUB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: github-mcp-server-token
+        key: token
+        optional: true  # warns on startup if missing
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+autoscaling:
+  enabled: false
