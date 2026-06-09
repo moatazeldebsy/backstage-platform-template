@@ -550,8 +550,11 @@ function AiAssistantPage() {
                   { label: 'Scaffold a Go service', prompt: 'Scaffold a new Go microservice' },
                   { label: 'Add a Playwright suite', prompt: 'Add a Playwright E2E test suite to an existing service' },
                   { label: 'Check hello-service metrics', prompt: 'Show me the request rate, error rate and latency for hello-service' },
-                  { label: 'List deployments', prompt: 'List all running Kubernetes deployments' },
+                  { label: 'List deployments', prompt: 'List all running Kubernetes deployments and their health' },
                   { label: 'Find payment services', prompt: 'Find all services related to payments' },
+                  { label: 'Check ArgoCD apps', prompt: 'List all ArgoCD applications and their sync status' },
+                  { label: 'Team budget status', prompt: 'Show me all teams over 80% budget utilisation' },
+                  { label: 'Rightsizing savings', prompt: 'What are the top rightsizing opportunities to reduce cost?' },
                 ].map(({ label, prompt }) => (
                   <Chip
                     key={label}

@@ -219,7 +219,7 @@ one-click PR. This is the most-requested feature after first scaffold.
 
 | Sprint | Features | Status |
 |--------|---------|--------|
-| Sprint 4 | `argocd-mcp-server` + `release-agent` + `cost-mcp-server` + `cost-agent` | 📋 |
+| Sprint 4 | `argocd-mcp-server` + `release-agent` + `cost-mcp-server` + `cost-agent` | ✅ |
 | Sprint 5 | `incident-mcp-server` + `incident-agent` + `notification-mcp-server` | 📋 |
 | Sprint 6 | RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig + A2A delegation | 📋 |
 | Sprint 7 | `security-mcp-server` + `security-agent` + `onboarding-agent` | 📋 |

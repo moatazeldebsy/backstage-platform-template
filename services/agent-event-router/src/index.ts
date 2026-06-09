@@ -161,13 +161,22 @@ async function routeAlertManager(payload: Record<string, unknown>): Promise<void
     const summary = annotations.summary ?? '';
     const description = annotations.description ?? '';
 
-    const msg = `Alert firing: "${name}" (severity: ${severity}) in namespace ${namespace}. ` +
-      `${summary ? `Summary: ${summary}. ` : ''}` +
-      `${description ? `Details: ${description}. ` : ''}` +
-      `Investigate by checking recent deployments, service metrics, and pod status.`;
+    // Budget overrun alerts → cost-agent; everything else → idp-assistant
+    const isBudgetAlert = ['TeamBudgetWarning', 'TeamBudgetExceeded', 'TeamBudgetOverrun'].includes(name) || name.toLowerCase().includes('budget');
+    const targetAgent = isBudgetAlert ? 'cost-agent' : 'idp-assistant';
+    const team = labels.team ?? '';
 
-    await postToAgent('idp-assistant', msg);
-    eventsTotal.inc({ source: 'alertmanager', event_type: 'firing', agent: 'idp-assistant', outcome: 'routed' });
+    const msg = isBudgetAlert
+      ? `Budget alert firing: "${name}" for team "${team}" (severity: ${severity}). ` +
+        `${description ? `${description}. ` : ''}` +
+        `Call get_team_spend and forecast_budget for team "${team}", then get_rightsizing_recommendations for their namespace.`
+      : `Alert firing: "${name}" (severity: ${severity}) in namespace ${namespace}. ` +
+        `${summary ? `Summary: ${summary}. ` : ''}` +
+        `${description ? `Details: ${description}. ` : ''}` +
+        `Investigate by checking recent deployments, service metrics, and pod status.`;
+
+    await postToAgent(targetAgent, msg);
+    eventsTotal.inc({ source: 'alertmanager', event_type: 'firing', agent: targetAgent, outcome: 'routed' });
   }
 }
 
@@ -181,10 +190,10 @@ async function routeArgoCD(payload: Record<string, unknown>): Promise<void> {
   if (syncStatus === 'OutOfSync' || healthStatus === 'Degraded') {
     const msg = `ArgoCD application "${appName}" requires attention. ` +
       `Sync status: ${syncStatus}. Health status: ${healthStatus}. ` +
-      `Check deployment status and determine if a sync or rollback is needed.`;
+      `Call get_app_health and get_app_diff to diagnose, then propose sync or rollback as appropriate.`;
 
-    await postToAgent('idp-assistant', msg);
-    eventsTotal.inc({ source: 'argocd', event_type: 'app_degraded', agent: 'idp-assistant', outcome: 'routed' });
+    await postToAgent('release-agent', msg);
+    eventsTotal.inc({ source: 'argocd', event_type: 'app_degraded', agent: 'release-agent', outcome: 'routed' });
     return;
   }
 

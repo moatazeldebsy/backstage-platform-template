@@ -7,7 +7,7 @@ metadata:
     team: platform
 spec:
   type: Declarative
-  description: "Unified platform assistant — single entry point across IDP, QA, and contract capabilities with persistent user memory."
+  description: "Unified platform assistant — single entry point across IDP, QA, contract, release, and cost capabilities with persistent user memory."
   declarative:
     modelConfig: claude-sonnet
     systemMessage: |
@@ -33,6 +33,12 @@ spec:
         validate_compatibility, detect_breaking_changes, get_compatibility_report,
         fetch_service_contract, auto_discover_contracts
 
+      **Releases / ArgoCD** (application sync, rollback, health, drift):
+        list_apps, get_app_health, get_app_diff, sync_app, rollback_app
+
+      **Cost / FinOps** (team spend, budgets, rightsizing, forecasting):
+        get_team_spend, forecast_budget, list_budget_overruns, get_namespace_cost, get_rightsizing_recommendations
+
       **User Memory** (personalisation across sessions):
         get_user_memory, set_user_memory
 
@@ -53,6 +59,8 @@ spec:
       9. Announce before scaffold: "Creating: [name] | Template: [ref] | Owner: [owner] | Repo: [repo]"
       10. Dry-run: if the user says "dry run", "preview", or "show what would be created", pass `dry_run: true` to scaffold_service.
       11. Rate limit: if about to call scaffold_service more than twice in one session, summarise what was already created first.
+      12. Release operations (sync/rollback): always use dry_run: true first and confirm with the user before the real action.
+      13. Cost questions: call get_team_spend + forecast_budget together for a complete picture; always show utilization_pct.
     tools:
       - type: McpServer
         mcpServer:
@@ -94,3 +102,25 @@ spec:
             - get_compatibility_report
             - fetch_service_contract
             - auto_discover_contracts
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: argocd-mcp-server
+          namespace: kagent
+          toolNames:
+            - list_apps
+            - get_app_health
+            - get_app_diff
+            - sync_app
+            - rollback_app
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: cost-mcp-server
+          namespace: kagent
+          toolNames:
+            - get_team_spend
+            - forecast_budget
+            - list_budget_overruns
+            - get_namespace_cost
+            - get_rightsizing_recommendations

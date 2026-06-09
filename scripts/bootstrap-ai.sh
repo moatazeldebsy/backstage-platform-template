@@ -81,9 +81,13 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"       2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"        2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-mcp-server-rbac.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"   2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"      2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"   2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"     2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"        2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"         2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"  2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"  2>/dev/null || true
@@ -112,6 +116,8 @@ if $DESTROY; then
   helm uninstall qa-mcp-server       --namespace services-dev 2>/dev/null || true
   helm uninstall contract-mcp-server --namespace services-dev 2>/dev/null || true
   helm uninstall github-mcp-server   --namespace services-dev 2>/dev/null || true
+  helm uninstall argocd-mcp-server   --namespace services-dev 2>/dev/null || true
+  helm uninstall cost-mcp-server     --namespace services-dev 2>/dev/null || true
   # Remove services-dev only if it is now empty
   if [[ -z "$(kubectl get all -n services-dev --ignore-not-found -o name 2>/dev/null)" ]]; then
     kubectl delete namespace services-dev 2>/dev/null || true
@@ -427,6 +433,10 @@ else
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/platform-agent.yaml"
   # Contract-testing KAgent resources intentionally disabled (hidden from end users).
   # To re-enable, uncomment the two lines below.
@@ -635,7 +645,7 @@ else
 
   # contract-mcp-server intentionally excluded — hidden from end users.
   # To re-enable, add `contract-mcp-server` back to the list below.
-  for SVC in idp-mcp-server qa-mcp-server agent-event-router github-mcp-server; do
+  for SVC in idp-mcp-server qa-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
@@ -721,6 +731,8 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://$(_alb_ai qa-mcp-server services-dev)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://$(_alb_ai contract-mcp-server services-dev)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  GitHub MCP Server   http://$(_alb_ai github-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  ArgoCD MCP Server   http://$(_alb_ai argocd-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Cost MCP Server     http://$(_alb_ai cost-mcp-server services-dev)"
 else
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local"
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant"
@@ -730,6 +742,8 @@ else
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Event Router        http://agent-event-router.idp.local/healthz"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  GitHub MCP Server   http://github-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  ArgoCD MCP Server   http://argocd-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Cost MCP Server     http://cost-mcp-server.idp.local/healthz"
 fi
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"

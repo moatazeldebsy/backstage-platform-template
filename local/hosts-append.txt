@@ -24,3 +24,5 @@
 127.0.0.1  contract-mcp-server.idp.local
 127.0.0.1  agent-event-router.idp.local
 127.0.0.1  github-mcp-server.idp.local
+127.0.0.1  argocd-mcp-server.idp.local
+127.0.0.1  cost-mcp-server.idp.local
