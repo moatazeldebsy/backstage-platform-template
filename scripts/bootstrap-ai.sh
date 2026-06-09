@@ -215,10 +215,10 @@ else
   if [[ -f "${ENV_FILE}" ]]; then
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
     OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
-    GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep '^GITHUB_TOKEN=' "${ENV_FILE}" | cut -d= -f2-)}"
-    ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2-)}"
-    GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2-)}"
-    WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2-)}"
+    GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep '^GITHUB_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
   fi
 fi
 
