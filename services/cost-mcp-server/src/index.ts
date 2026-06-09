@@ -11,6 +11,13 @@ const PORT = parseInt(process.env.PORT ?? '3007', 10);
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '15000', 10);
 const SERVER_NAME = 'cost-mcp-server';
 
+// Safe label value: alphanumeric, hyphens, and underscores only.
+// Prevents PromQL label-value injection (} and " are the dangerous chars in
+// metric selectors like idp_team_actual_cost_usd_monthly{team="<value>"}).
+const LABEL_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+const safeLabel = z.string().regex(LABEL_RE, 'must be 1-64 chars: letters, digits, hyphens, underscores');
+const safeWindow = z.enum(['today', '7d', '30d', 'month']).default('30d');
+
 collectDefaultMetrics();
 const toolCalls = new Counter({
   name: 'mcp_tool_calls_total',
@@ -63,15 +70,15 @@ function createServer(agentId: string = 'unknown') {
     'get_namespace_cost',
     'Get the actual compute cost (CPU + memory) for a Kubernetes namespace over a time window',
     {
-      namespace: z.string().describe('Kubernetes namespace name'),
-      window: z.string().optional().describe('Time window: "today", "7d", "30d", "month" (default "30d")'),
+      namespace: safeLabel.describe('Kubernetes namespace name'),
+      window: safeWindow.describe('Time window: "today", "7d", "30d", "month" (default "30d")'),
     },
-    async ({ namespace, window = '30d' }) => {
+    async ({ namespace, window }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_namespace_cost' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_namespace_cost', agent: agentId });
       let outcome = 'success';
       try {
-        const url = `${OPENCOST_URL}/model/allocation?window=${window}&aggregate=namespace&namespace=${encodeURIComponent(namespace)}&accumulate=true`;
+        const url = `${OPENCOST_URL}/model/allocation?window=${encodeURIComponent(window)}&aggregate=namespace&namespace=${encodeURIComponent(namespace)}&accumulate=true`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error(`OpenCost error ${res.status}: ${await res.text()}`);
         const data = await res.json() as { data: Array<Record<string, { totalCost: number; cpuCost: number; ramCost: number; networkCost: number; storageUsageCost: number; minutes: number }>> };
@@ -109,7 +116,7 @@ function createServer(agentId: string = 'unknown') {
     'get_team_spend',
     'Get the monthly spend and budget utilisation for a platform team using Prometheus idp_team_* metrics pushed by the tech-insights-exporter',
     {
-      team: z.string().describe('Team name as used in catalog entity annotations, e.g. "team-platform"'),
+      team: safeLabel.describe('Team name as used in catalog entity annotations, e.g. "team-platform"'),
     },
     async ({ team }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_team_spend' });
@@ -194,16 +201,16 @@ function createServer(agentId: string = 'unknown') {
     'get_rightsizing_recommendations',
     'Get CPU and memory rightsizing recommendations from OpenCost for over- or under-provisioned workloads',
     {
-      namespace: z.string().optional().describe('Limit to a specific namespace (omit for all)'),
-      window: z.string().optional().describe('Observation window for usage data: "7d" or "30d" (default "7d")'),
+      namespace: safeLabel.optional().describe('Limit to a specific namespace (omit for all)'),
+      window: safeWindow.describe('Observation window for usage data: "7d" or "30d" (default "7d")'),
     },
-    async ({ namespace, window = '7d' }) => {
+    async ({ namespace, window }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_rightsizing_recommendations' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_rightsizing_recommendations', agent: agentId });
       let outcome = 'success';
       try {
         const nsParam = namespace ? `&filterNamespaces=${encodeURIComponent(namespace)}` : '';
-        const url = `${OPENCOST_URL}/model/recommendations/compute?window=${window}${nsParam}`;
+        const url = `${OPENCOST_URL}/model/recommendations/compute?window=${encodeURIComponent(window)}${nsParam}`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error(`OpenCost error ${res.status}: ${await res.text()}`);
         const data = await res.json() as {
@@ -259,7 +266,7 @@ function createServer(agentId: string = 'unknown') {
     'forecast_budget',
     'Forecast end-of-month spend for a team based on current burn rate',
     {
-      team: z.string().describe('Team name as used in catalog entity annotations'),
+      team: safeLabel.describe('Team name as used in catalog entity annotations'),
     },
     async ({ team }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'forecast_budget' });
