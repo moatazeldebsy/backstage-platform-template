@@ -764,7 +764,7 @@ fi
 
 if [[ "$DEPLOY_MODE" == "local" ]]; then
   append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server"
+    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
