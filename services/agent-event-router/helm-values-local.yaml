@@ -52,21 +52,20 @@ env:
   - name: KAGENT_A2A_URL
     value: "http://kagent-ui.kagent.svc.cluster.local:8080"
   # GITHUB_WEBHOOK_SECRET — required; /webhook/github returns 503 if unset.
-  # Create secret: kubectl create secret generic agent-event-router-secrets \
-  #   --from-literal=github-webhook-secret=<secret> \
-  #   --from-literal=webhook-token=<token> -n services-dev
-  # - name: GITHUB_WEBHOOK_SECRET
-  #   valueFrom:
-  #     secretKeyRef:
-  #       name: agent-event-router-secrets
-  #       key: github-webhook-secret
-  # WEBHOOK_TOKEN — bearer token for alertmanager/argocd endpoints.
-  # Optional locally (in-cluster callers only). Required in AWS.
-  # - name: WEBHOOK_TOKEN
-  #   valueFrom:
-  #     secretKeyRef:
-  #       name: agent-event-router-secrets
-  #       key: webhook-token
+  # Secret created by bootstrap-ai.sh from GITHUB_WEBHOOK_SECRET in local/.env.
+  - name: GITHUB_WEBHOOK_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: agent-event-router-secrets
+        key: github-webhook-secret
+        optional: true  # warns on startup if missing; fail-closed on /webhook/github only
+  # WEBHOOK_TOKEN — bearer token for alertmanager/argocd webhook endpoints.
+  - name: WEBHOOK_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: agent-event-router-secrets
+        key: webhook-token
+        optional: true  # optional locally; required in AWS
 
 securityContext:
   allowPrivilegeEscalation: false

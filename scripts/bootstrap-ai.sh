@@ -118,6 +118,10 @@ if $DESTROY; then
   helm uninstall github-mcp-server   --namespace services-dev 2>/dev/null || true
   helm uninstall argocd-mcp-server   --namespace services-dev 2>/dev/null || true
   helm uninstall cost-mcp-server     --namespace services-dev 2>/dev/null || true
+  # AI-stack service secrets
+  kubectl delete secret github-mcp-server-token     -n services-dev 2>/dev/null || true
+  kubectl delete secret argocd-mcp-server-token     -n services-dev 2>/dev/null || true
+  kubectl delete secret agent-event-router-secrets  -n services-dev 2>/dev/null || true
   # Remove services-dev only if it is now empty
   if [[ -z "$(kubectl get all -n services-dev --ignore-not-found -o name 2>/dev/null)" ]]; then
     kubectl delete namespace services-dev 2>/dev/null || true
@@ -207,10 +211,14 @@ else
     kubectl cluster-info --context rancher-desktop &>/dev/null || \
       die "Rancher Desktop cluster not reachable. Start Rancher Desktop and run ./scripts/bootstrap-local.sh --provider rancher-desktop first."
   fi
-  # Load ANTHROPIC_API_KEY and OPENAI_API_KEY from local/.env if not already set
+  # Load all AI-stack env vars from local/.env if not already set in environment
   if [[ -f "${ENV_FILE}" ]]; then
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
     OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
+    GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep '^GITHUB_TOKEN=' "${ENV_FILE}" | cut -d= -f2-)}"
+    ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2-)}"
+    GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2-)}"
+    WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2-)}"
   fi
 fi
 
@@ -293,6 +301,54 @@ if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret kagent-openai ready"
+fi
+
+# ── 2b. AI-stack service secrets (services-dev namespace) ────────────────────
+# These secrets are required before the MCP server deploy loop runs. Services
+# use optional: true on their secretKeyRef so they start with a warning rather
+# than crash when a token is not configured locally.
+
+kubectl create namespace services-dev --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+
+# github-mcp-server token (same GITHUB_TOKEN already used by Backstage scaffolder)
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  info "Creating github-mcp-server-token secret in services-dev..."
+  kubectl create secret generic github-mcp-server-token \
+    --namespace services-dev \
+    --from-literal=token="${GITHUB_TOKEN}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret github-mcp-server-token ready"
+else
+  warn "GITHUB_TOKEN not set — github-mcp-server will start without a GitHub token (PR tools will fail). Add GITHUB_TOKEN to local/.env."
+fi
+
+# argocd-mcp-server token
+if [[ -n "${ARGOCD_TOKEN:-}" ]]; then
+  info "Creating argocd-mcp-server-token secret in services-dev..."
+  kubectl create secret generic argocd-mcp-server-token \
+    --namespace services-dev \
+    --from-literal=token="${ARGOCD_TOKEN}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret argocd-mcp-server-token ready"
+else
+  warn "ARGOCD_TOKEN not set — argocd-mcp-server will start without an ArgoCD token (all ArgoCD tools will fail). Add ARGOCD_TOKEN to local/.env."
+  warn "  Get token: argocd account generate-token --account admin (or kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
+fi
+
+# agent-event-router secrets (GITHUB_WEBHOOK_SECRET + WEBHOOK_TOKEN)
+_ghws="${GITHUB_WEBHOOK_SECRET:-}"
+_wt="${WEBHOOK_TOKEN:-}"
+if [[ -n "$_ghws" || -n "$_wt" ]]; then
+  info "Creating agent-event-router-secrets in services-dev..."
+  kubectl create secret generic agent-event-router-secrets \
+    --namespace services-dev \
+    --from-literal=github-webhook-secret="${_ghws:-placeholder-set-in-github-webhook}" \
+    --from-literal=webhook-token="${_wt:-placeholder-set-webhook-token}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret agent-event-router-secrets ready"
+else
+  warn "GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN not set — agent-event-router will start but /webhook/github will return 503."
+  warn "  Add GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN to local/.env, then re-run bootstrap-ai.sh."
 fi
 
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────

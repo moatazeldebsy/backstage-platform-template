@@ -133,6 +133,51 @@ fi
 
 echo ""
 echo "┌─────────────────────────────────────────────────────────┐"
+echo "│ 6. AI Stack Secrets (Sprint 3/4 — bootstrap-ai.sh)      │"
+echo "└─────────────────────────────────────────────────────────┘"
+
+_env_file="${REPO_ROOT}/local/.env"
+
+# ARGOCD_TOKEN — required for argocd-mcp-server to list/sync/rollback apps
+_argocd_token=""
+if [[ -f "$_env_file" ]]; then
+    _argocd_token=$(grep '^ARGOCD_TOKEN=' "$_env_file" | cut -d= -f2- | tr -d '"' || true)
+fi
+if [[ -n "${ARGOCD_TOKEN:-$_argocd_token}" ]]; then
+    check_pass "ARGOCD_TOKEN set — argocd-mcp-server can list/sync/rollback apps"
+else
+    check_warn "ARGOCD_TOKEN not set (needed for argocd-mcp-server)"
+    echo "         Add to local/.env: ARGOCD_TOKEN=<argocd account token>"
+    echo "         Get: argocd account generate-token --account admin"
+fi
+
+# GITHUB_WEBHOOK_SECRET — required for agent-event-router /webhook/github endpoint
+_ghws=""
+if [[ -f "$_env_file" ]]; then
+    _ghws=$(grep '^GITHUB_WEBHOOK_SECRET=' "$_env_file" | cut -d= -f2- | tr -d '"' || true)
+fi
+if [[ -n "${GITHUB_WEBHOOK_SECRET:-$_ghws}" ]]; then
+    check_pass "GITHUB_WEBHOOK_SECRET set — agent-event-router can receive GitHub webhooks"
+else
+    check_warn "GITHUB_WEBHOOK_SECRET not set (needed for PR-triggered QA agent)"
+    echo "         Add to local/.env: GITHUB_WEBHOOK_SECRET=\$(openssl rand -hex 32)"
+    echo "         Then configure the same value in GitHub → Repo → Settings → Webhooks"
+fi
+
+# WEBHOOK_TOKEN — bearer token for AlertManager/ArgoCD webhook endpoints
+_wt=""
+if [[ -f "$_env_file" ]]; then
+    _wt=$(grep '^WEBHOOK_TOKEN=' "$_env_file" | cut -d= -f2- | tr -d '"' || true)
+fi
+if [[ -n "${WEBHOOK_TOKEN:-$_wt}" ]]; then
+    check_pass "WEBHOOK_TOKEN set — agent-event-router AlertManager/ArgoCD endpoints protected"
+else
+    check_warn "WEBHOOK_TOKEN not set (optional locally, required in AWS)"
+    echo "         Add to local/.env: WEBHOOK_TOKEN=\$(openssl rand -hex 32)"
+fi
+
+echo ""
+echo "┌─────────────────────────────────────────────────────────┐"
 echo "│ AWS Credentials & Connectivity                          │"
 echo "└─────────────────────────────────────────────────────────┘"
 
