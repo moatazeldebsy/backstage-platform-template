@@ -141,12 +141,13 @@ def fetch_entities():
 
 
 def fetch_facts(entity_ref: str):
-    url = f"{BACKSTAGE_URL}/api/tech-insights/facts/latest?entity={entity_ref}"
+    url = f"{BACKSTAGE_URL}/api/tech-insights/facts/latest?entity={entity_ref}&ids[]=idp-entity-facts"
     resp = requests.get(url, headers=HEADERS, timeout=30)
     if resp.status_code == 404:
         return {}
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    return data.get("idp-entity-facts", {}).get("facts", {})
 
 
 def score_entity(facts: dict) -> dict:
