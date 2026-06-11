@@ -39,6 +39,9 @@ spec:
       **Cost / FinOps** (team spend, budgets, rightsizing, forecasting):
         get_team_spend, forecast_budget, list_budget_overruns, get_namespace_cost, get_rightsizing_recommendations
 
+      **GitHub / CI** (PR diffs, PR comments, CI status):
+        get_pr_diff, add_pr_comment, get_ci_status
+
       **User Memory** (personalisation across sessions):
         get_user_memory, set_user_memory
 
@@ -61,6 +64,7 @@ spec:
       11. Rate limit: if about to call scaffold_service more than twice in one session, summarise what was already created first.
       12. Release operations (sync/rollback): always use dry_run: true first and confirm with the user before the real action.
       13. Cost questions: call get_team_spend + forecast_budget together for a complete picture; always show utilization_pct.
+      14. add_pr_comment posts a real, visible comment on GitHub — always confirm the exact comment text and target PR with the user before calling it.
     tools:
       - type: McpServer
         mcpServer:
@@ -124,3 +128,12 @@ spec:
             - list_budget_overruns
             - get_namespace_cost
             - get_rightsizing_recommendations
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: github-mcp-server
+          namespace: kagent
+          toolNames:
+            - get_pr_diff
+            - add_pr_comment
+            - get_ci_status
