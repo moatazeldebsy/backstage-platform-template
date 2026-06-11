@@ -6,6 +6,9 @@ metadata:
   labels:
     {{- include "service-template.labels" . | nindent 4 }}
     backstage.io/kubernetes-id: {{ .Values.backstage.kubernetesId | default .Release.Name }}
+    {{- with .Values.podLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
