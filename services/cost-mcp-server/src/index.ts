@@ -78,7 +78,7 @@ function createServer(agentId: string = 'unknown') {
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_namespace_cost', agent: agentId });
       let outcome = 'success';
       try {
-        const url = `${OPENCOST_URL}/model/allocation?window=${encodeURIComponent(window)}&aggregate=namespace&namespace=${encodeURIComponent(namespace)}&accumulate=true`;
+        const url = `${OPENCOST_URL}/allocation/compute?window=${encodeURIComponent(window)}&aggregate=namespace&accumulate=true`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error(`OpenCost error ${res.status}: ${await res.text()}`);
         const data = await res.json() as { data: Array<Record<string, { totalCost: number; cpuCost: number; ramCost: number; networkCost: number; storageUsageCost: number; minutes: number }>> };
@@ -212,7 +212,18 @@ function createServer(agentId: string = 'unknown') {
         const nsParam = namespace ? `&filterNamespaces=${encodeURIComponent(namespace)}` : '';
         const url = `${OPENCOST_URL}/model/recommendations/compute?window=${encodeURIComponent(window)}${nsParam}`;
         const res = await fetchWithTimeout(url);
-        if (!res.ok) throw new Error(`OpenCost error ${res.status}: ${await res.text()}`);
+        if (!res.ok) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                window,
+                namespace: namespace ?? 'all',
+                message: 'Rightsizing recommendations are not available — this OpenCost OSS deployment does not expose a /model/recommendations/compute endpoint (it is a Kubecost Enterprise feature). Use get_namespace_cost for cost breakdowns instead.',
+              }),
+            }],
+          };
+        }
         const data = await res.json() as {
           recommendations?: Array<{
             namespace: string;
