@@ -11,10 +11,8 @@
       
       
       
-        <link rel="prev" href="../deployment-rollback/">
+        <link rel="prev" href="../cost-budget-exceeded/">
       
-      
-        <link rel="next" href="../high-memory/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +20,7 @@
     
     
       
-        <title>Pod Crash Loop - Internal Developer Platform</title>
+        <title>KAgent Guardrails - Internal Developer Platform</title>
       
     
     
@@ -64,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pod-crash-loop-runbook" class="md-skip">
+        <a href="#runbook-scaffoldservicehighrate-mcptoolerrorratehigh" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pod Crash Loop
+              KAgent Guardrails
             
           </span>
         </div>
@@ -1182,30 +1180,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Pod Crash Loop
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1214,140 +1192,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#alert-description" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alert Description
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#impact" class="md-nav__link">
-    <span class="md-ellipsis">
-      Impact
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#immediate-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Immediate Actions
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Immediate Actions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-identify-the-crashing-pod" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Identify the crashing pod
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-read-the-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Read the logs
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-oomkilled-increase-memory-limit" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. OOMKilled — increase memory limit
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-application-error-roll-back" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Application error — roll back
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-imagepullbackoff-fix-image-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. ImagePullBackOff — fix image reference
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#root-cause-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      Root Cause Analysis
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resolution-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Resolution Steps
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#escalation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Escalation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#post-incident" class="md-nav__link">
-    <span class="md-ellipsis">
-      Post-Incident
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1483,10 +1327,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../kagent-guardrails/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    KAgent Guardrails
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1495,6 +1359,110 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scaffoldservicehighrate-possible-agent-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScaffoldServiceHighRate — possible agent loop
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ScaffoldServiceHighRate — possible agent loop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-happening" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is happening
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Triage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Remediation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcptoolerrorratehigh-tool-call-error-spike" class="md-nav__link">
+    <span class="md-ellipsis">
+      McpToolErrorRateHigh — tool call error spike
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="McpToolErrorRateHigh — tool call error spike">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-happening_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is happening
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Triage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-causes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common causes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1522,7 +1490,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/pod-crash-loop.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/kagent-guardrails.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1530,64 +1498,55 @@
   
 
 
-<h1 id="pod-crash-loop-runbook">Pod Crash Loop Runbook<a class="headerlink" href="#pod-crash-loop-runbook" title="Permanent link">&para;</a></h1>
-<h2 id="alert-description">Alert Description<a class="headerlink" href="#alert-description" title="Permanent link">&para;</a></h2>
-<p><strong>Alert:</strong> <code>PodCrashLooping</code>
-<strong>Severity:</strong> Critical
-<strong>Expression:</strong> Pod restart count increases more than 3 times in 5 minutes.</p>
-<h2 id="impact">Impact<a class="headerlink" href="#impact" title="Permanent link">&para;</a></h2>
-<p>The service is unavailable or has reduced capacity. Kubernetes is repeatedly trying to restart the container. Other pods in the Deployment may still be serving traffic (partial outage) or all pods may be failing (full outage).</p>
-<h2 id="immediate-actions">Immediate Actions<a class="headerlink" href="#immediate-actions" title="Permanent link">&para;</a></h2>
-<h3 id="1-identify-the-crashing-pod">1. Identify the crashing pod<a class="headerlink" href="#1-identify-the-crashing-pod" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Find crash-looping pods</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;CrashLoopBackOff|Error|OOMKilled&#39;</span>
+<h1 id="runbook-scaffoldservicehighrate-mcptoolerrorratehigh">Runbook: ScaffoldServiceHighRate / McpToolErrorRateHigh<a class="headerlink" href="#runbook-scaffoldservicehighrate-mcptoolerrorratehigh" title="Permanent link">&para;</a></h1>
+<p><strong>Alert:</strong> <code>ScaffoldServiceHighRate</code> or <code>McpToolErrorRateHigh</code><br />
+<strong>Severity:</strong> Warning<br />
+<strong>Category:</strong> ai-ops</p>
+<h2 id="scaffoldservicehighrate-possible-agent-loop">ScaffoldServiceHighRate — possible agent loop<a class="headerlink" href="#scaffoldservicehighrate-possible-agent-loop" title="Permanent link">&para;</a></h2>
+<h3 id="what-is-happening">What is happening<a class="headerlink" href="#what-is-happening" title="Permanent link">&para;</a></h3>
+<p><code>scaffold_service</code> has been called more than 5 times in 10 minutes. Normal usage is 0–2
+calls per developer session. A high rate suggests a runaway agent loop or an API key being
+used to bulk-create services automatically.</p>
+<h3 id="triage">Triage<a class="headerlink" href="#triage" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check the audit log in Loki (if deployed)</span>
+<span class="c1"># Grafana Explore → Loki → run:</span>
+<span class="o">{</span><span class="nv">app</span><span class="o">=</span><span class="s2">&quot;idp-mcp-server&quot;</span><span class="o">}</span><span class="w"> </span><span class="p">|</span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;[AUDIT]&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">action</span><span class="o">=</span><span class="s2">&quot;scaffold_service_requested&quot;</span>
 
-<span class="c1"># Check restart count and last state</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
-</code></pre></div></td></tr></table></div>
-<p>Look at the <code>Last State</code> section — it tells you the exit code:
-- Exit code <code>0</code> — intentional exit (bug in startup logic)
-- Exit code <code>1</code> — application error
-- Exit code <code>137</code> — OOMKilled (out of memory)
-- Exit code <code>139</code> — segfault</p>
-<h3 id="2-read-the-logs">2. Read the logs<a class="headerlink" href="#2-read-the-logs" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Current container logs</span>
-kubectl<span class="w"> </span>logs<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
+<span class="c1"># Or directly from pod logs:</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span>--tail<span class="o">=</span><span class="m">200</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;\[AUDIT\]&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
 
-<span class="c1"># Previous container logs (before the crash)</span>
-kubectl<span class="w"> </span>logs<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--previous
+<span class="c1"># Which agent is calling? (agent label in mcp_agent_tool_calls_total)</span>
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-operator<span class="w"> </span>-c<span class="w"> </span>prometheus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>curl<span class="w"> </span>-s<span class="w"> </span>localhost:9090/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">&#39;query=increase(mcp_agent_tool_calls_total{tool=&quot;scaffold_service&quot;}[10m])&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.data.result[] | {agent: .metric.agent, count: .value[1]}&#39;</span>
 </code></pre></div></td></tr></table></div>
-<h3 id="3-oomkilled-increase-memory-limit">3. OOMKilled — increase memory limit<a class="headerlink" href="#3-oomkilled-increase-memory-limit" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Confirm OOMKilled</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;Last State&quot;</span>
-
-<span class="c1"># Temporary fix: patch the deployment (edit helm-values.yaml for a permanent fix)</span>
-kubectl<span class="w"> </span><span class="nb">set</span><span class="w"> </span>resources<span class="w"> </span>deployment/&lt;service-name&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>services<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--limits<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>512Mi<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--requests<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>256Mi
-</code></pre></div></td></tr></table></div>
-<h3 id="4-application-error-roll-back">4. Application error — roll back<a class="headerlink" href="#4-application-error-roll-back" title="Permanent link">&para;</a></h3>
-<p>If logs show a startup error introduced in a recent deploy:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>rollback<span class="w"> </span>&lt;service-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
-</code></pre></div></td></tr></table></div>
-<p>See <a href="../deployment-rollback/">Deployment Rollback</a> for full rollback procedure.</p>
-<h3 id="5-imagepullbackoff-fix-image-reference">5. ImagePullBackOff — fix image reference<a class="headerlink" href="#5-imagepullbackoff-fix-image-reference" title="Permanent link">&para;</a></h3>
+<h3 id="remediation">Remediation<a class="headerlink" href="#remediation" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Identify the agent</strong> from the audit log — look for the <code>agent</code> field.</li>
+<li><strong>Check created repos</strong> in GitHub — <code>gh repo list &lt;org&gt; --limit 20 --json name,createdAt</code>.</li>
+<li><strong>Delete spurious repos</strong> if created accidentally:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>gh<span class="w"> </span>repo<span class="w"> </span>delete<span class="w"> </span>&lt;org&gt;/&lt;repo-name&gt;<span class="w"> </span>--yes
+</code></pre></div></td></tr></table></div></li>
+<li><strong>Restart the KAgent controller</strong> to clear stale agent sessions:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
+</code></pre></div></td></tr></table></div></li>
+</ol>
+<h2 id="mcptoolerrorratehigh-tool-call-error-spike">McpToolErrorRateHigh — tool call error spike<a class="headerlink" href="#mcptoolerrorratehigh-tool-call-error-spike" title="Permanent link">&para;</a></h2>
+<h3 id="what-is-happening_1">What is happening<a class="headerlink" href="#what-is-happening_1" title="Permanent link">&para;</a></h3>
+<p>More than 50 % of recent MCP tool calls on a given server/tool are returning errors.</p>
+<h3 id="triage_1">Triage<a class="headerlink" href="#triage_1" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -1595,68 +1554,47 @@ kubectl<span class="w"> </span><span class="nb">set</span><span class="w"> </spa
 <span class="normal">5</span>
 <span class="normal">6</span>
 <span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check the error</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Events&quot;</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Which tool is failing?</span>
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-operator<span class="w"> </span>-c<span class="w"> </span>prometheus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>curl<span class="w"> </span>-s<span class="w"> </span>localhost:9090/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">&#39;query=rate(mcp_tool_calls_total{outcome=&quot;error&quot;}[5m])&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
 
-<span class="c1"># Verify ECR image exists</span>
-aws<span class="w"> </span>ecr<span class="w"> </span>describe-images<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repository-name<span class="w"> </span>idp-mvp/&lt;service-name&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--image-ids<span class="w"> </span><span class="nv">imageTag</span><span class="o">=</span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
+<span class="c1"># Check MCP server logs</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span>--tail<span class="o">=</span><span class="m">100</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;Error|error&quot;</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/contract-mcp-server<span class="w"> </span>--tail<span class="o">=</span><span class="m">100</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;Error|error&quot;</span>
 </code></pre></div></td></tr></table></div>
-<h2 id="root-cause-analysis">Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="common-causes">Common causes<a class="headerlink" href="#common-causes" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Symptom</th>
-<th>Likely Cause</th>
+<th>Cause</th>
+<th>Fix</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Exit code 137, OOMKilled</td>
-<td>Memory limit too low</td>
+<td><code>Backstage API error 401</code></td>
+<td><code>BACKSTAGE_TOKEN</code> expired</td>
+<td>Rotate token in <code>backstage-catalog-exporter-token</code> secret</td>
 </tr>
 <tr>
-<td>Exit code 1, stack trace in logs</td>
-<td>Application bug in new release</td>
+<td><code>K8s API error 403</code></td>
+<td>ServiceAccount RBAC gap</td>
+<td>Check <code>kubernetes/rbac/</code> + re-apply</td>
 </tr>
 <tr>
-<td><code>ImagePullBackOff</code></td>
-<td>Wrong image tag or ECR permissions issue</td>
+<td><code>Prometheus error 503</code></td>
+<td>Prometheus pod OOM restarted</td>
+<td><code>kubectl rollout restart deployment/prometheus-k8s -n monitoring</code></td>
 </tr>
 <tr>
-<td><code>CreateContainerConfigError</code></td>
-<td>Missing ConfigMap or Secret</td>
-</tr>
-<tr>
-<td><code>CrashLoopBackOff</code> with empty logs</td>
-<td>Health probe failing before app is ready</td>
+<td><code>fetch_service_contract timeout</code></td>
+<td>Target service not reachable from MCP pod</td>
+<td>Verify network policy + service DNS</td>
 </tr>
 </tbody>
 </table>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check for missing secrets / configmaps</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--sort-by<span class="o">=</span><span class="s1">&#39;.lastTimestamp&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;secret\|configmap&quot;</span>
-</code></pre></div></td></tr></table></div>
-<h2 id="resolution-steps">Resolution Steps<a class="headerlink" href="#resolution-steps" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Identify the root cause using the table above</li>
-<li>Apply the immediate fix (rollback, resource patch, or secret fix)</li>
-<li>Verify pods stabilise: <code>kubectl get pods -n services -w</code></li>
-<li>For a permanent fix: update <code>helm-values.yaml</code> and open a PR</li>
-</ol>
-<h2 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h2>
-<ul>
-<li>OOMKilled repeatedly after memory increase → application has a memory leak; escalate to service owner</li>
-<li>All pods crashing and rollback fails → page platform team</li>
-</ul>
-<h2 id="post-incident">Post-Incident<a class="headerlink" href="#post-incident" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Record the exit code and cause in the incident thread</li>
-<li>If OOMKilled: add a memory profiling ticket for the service team</li>
-<li>If it was a broken deploy: review CI checks — was there a test that should have caught this?</li>
-</ul>
 
 
 
@@ -1686,7 +1624,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w">
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../deployment-rollback/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Deployment Rollback">
+          <a href="../cost-budget-exceeded/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Cost Budget Exceeded">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1696,27 +1634,11 @@ kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w">
                 Previous
               </span>
               <div class="md-ellipsis">
-                Deployment Rollback
+                Cost Budget Exceeded
               </div>
             </div>
           </a>
         
-        
-          
-          <a href="../high-memory/" class="md-footer__link md-footer__link--next" aria-label="Next: High Memory">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                High Memory
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-            </div>
-          </a>
         
       </nav>
     

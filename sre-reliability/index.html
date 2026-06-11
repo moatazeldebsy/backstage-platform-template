@@ -1,0 +1,2514 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../readiness-checklist/">
+      
+      
+        <link rel="next" href="../runbooks/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>SRE & Reliability - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sre-reliability" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SRE & Reliability
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../mobile-platform/" class="md-tabs__link">
+        
+  
+    
+  
+  Mobile Platform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../docker-recovery/" class="md-tabs__link">
+        
+  
+    
+  
+  Docker Recovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../dora-finops/" class="md-tabs__link">
+        
+  
+    
+  
+  DORA & FinOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
+          
+  
+  Shift-Left Quality
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security-scanning/" class="md-tabs__link">
+        
+  
+    
+  
+  Security Scanning (SonarCloud + Snyk)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+    
+  
+  SRE & Reliability
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Docker Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora-finops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DORA & FinOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    For Leadership
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security Scanning (SonarCloud + Snyk)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    SRE & Reliability
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    SRE & Reliability
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#slos-and-error-budgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      SLOs and Error Budgets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SLOs and Error Budgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defining-an-slo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Defining an SLO
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-window-burn-rate-alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-window burn-rate alerts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewing-slo-status-in-grafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      Viewing SLO status in Grafana
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#poddisruptionbudgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      PodDisruptionBudgets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PodDisruptionBudgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-ships-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      What ships by default
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-minavailable-1-means-in-practice" class="md-nav__link">
+    <span class="md-ellipsis">
+      What minAvailable: 1 means in practice
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overriding
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blameless-postmortem-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Blameless Postmortem Process
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Blameless Postmortem Process">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Process
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#opa-cost-tag-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      OPA Cost-Tag Enforcement
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-aggregation-loki-promtail" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log Aggregation — Loki + Promtail
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Log Aggregation — Loki + Promtail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#querying-logs-in-grafana-explore" class="md-nav__link">
+    <span class="md-ellipsis">
+      Querying logs in Grafana Explore
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traceid-linking-to-tempo" class="md-nav__link">
+    <span class="md-ellipsis">
+      TraceID linking to Tempo
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#distributed-tracing-grafana-tempo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Distributed Tracing — Grafana Tempo
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distributed Tracing — Grafana Tempo">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Endpoints
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instrumenting-a-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Instrumenting a service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewing-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Viewing traces
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pagerduty-escalation" class="md-nav__link">
+    <span class="md-ellipsis">
+      PagerDuty Escalation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PagerDuty Escalation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-pages-on-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      What pages on-call
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-goes-to-slack-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      What goes to Slack only
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canary-deployments-argo-rollouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Canary Deployments — Argo Rollouts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Canary Deployments — Argo Rollouts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opting-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      Opting in
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-rollback-via-clusteranalysistemplate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-rollback via ClusterAnalysisTemplate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaffolding-a-canary-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffolding a canary service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-argo-rollouts-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      Accessing Argo Rollouts UI
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-environment-gitops-promotion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-Environment GitOps Promotion
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-Environment GitOps Promotion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-promote-to-staging-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How promote-to-staging works
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smoke-test-in-ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      Smoke test in CI
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-team-cost-budgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-Team Cost Budgets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-Team Cost Budgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#current-budget-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Current budget values
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prometheus-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prometheus metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alerts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-a-teams-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating a team's budget
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kagent-guardrails-and-audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      KAgent Guardrails and Audit Log
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="KAgent Guardrails and Audit Log">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#structured-audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      Structured audit log
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#querying-audit-logs-in-loki" class="md-nav__link">
+    <span class="md-ellipsis">
+      Querying audit logs in Loki
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-agent-metrics-in-prometheusgrafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-agent metrics in Prometheus/Grafana
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dry_run-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      dry_run mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kagent-system-prompt-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      KAgent system-prompt guardrails
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-rate-alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agent rate alerts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        
+          
+          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_22">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost Budget Exceeded
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    KAgent Guardrails
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/sre-reliability.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="sre-reliability">SRE &amp; Reliability<a class="headerlink" href="#sre-reliability" title="Permanent link">&para;</a></h1>
+<p>This page covers the reliability practices and tooling shipped as part of the platform's SRE programme (Sprints 1–7). All items described here are already deployed and active.</p>
+<hr />
+<h2 id="slos-and-error-budgets">SLOs and Error Budgets<a class="headerlink" href="#slos-and-error-budgets" title="Permanent link">&para;</a></h2>
+<h3 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h3>
+<p>Service Level Objectives are defined using <a href="https://sloth.dev/">Sloth</a>, a YAML-based SLO generator that produces multi-window, multi-burn-rate Prometheus alerting rules from a simple specification. Sloth SLOs ship as the platform default for all new services via the <code>slo-definition</code> Backstage template.</p>
+<h3 id="defining-an-slo">Defining an SLO<a class="headerlink" href="#defining-an-slo" title="Permanent link">&para;</a></h3>
+<p>Use the Backstage scaffolder to add an SLO to any service:</p>
+<ol>
+<li>Go to <strong>Create</strong> → <strong>SLO Definition</strong></li>
+<li>Fill in service name, target (e.g. <code>99.5</code>), and latency threshold</li>
+<li>The template writes a Sloth YAML to <code>observability/slo/&lt;service&gt;-slos.yaml</code> and opens a PR</li>
+</ol>
+<p>Example reference: <code>observability/slo/hello-service-slos.yaml</code> — 99.5% availability, p99 &lt; 500 ms.</p>
+<h3 id="multi-window-burn-rate-alerts">Multi-window burn-rate alerts<a class="headerlink" href="#multi-window-burn-rate-alerts" title="Permanent link">&para;</a></h3>
+<p>The platform ships two alert groups in <code>observability/alertmanager/prometheus-rules.yaml</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Alert</th>
+<th>Window</th>
+<th>Burn rate</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slo-burn-rate</code></td>
+<td><code>SLOErrorBudgetFastBurn</code></td>
+<td>1 h / 5 min</td>
+<td>&gt; 14×</td>
+<td>Page on-call (Critical)</td>
+</tr>
+<tr>
+<td><code>slo-burn-rate</code></td>
+<td><code>SLOErrorBudgetSlowBurn</code></td>
+<td>6 h / 30 min</td>
+<td>&gt; 2×</td>
+<td>Slack warning</td>
+</tr>
+<tr>
+<td><code>dora-anomalies</code></td>
+<td><code>HighChangeFailureRate</code></td>
+<td>24 h</td>
+<td>CFR &gt; 10%</td>
+<td>Slack warning</td>
+</tr>
+</tbody>
+</table>
+<h3 id="viewing-slo-status-in-grafana">Viewing SLO status in Grafana<a class="headerlink" href="#viewing-slo-status-in-grafana" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>http://grafana.idp.local/d/slo
+</code></pre></div></td></tr></table></div>
+<p>The SLO dashboard shows current error budget burn rate, remaining budget percentage, and a 30-day trend per service.</p>
+<hr />
+<h2 id="poddisruptionbudgets">PodDisruptionBudgets<a class="headerlink" href="#poddisruptionbudgets" title="Permanent link">&para;</a></h2>
+<h3 id="what-ships-by-default">What ships by default<a class="headerlink" href="#what-ships-by-default" title="Permanent link">&para;</a></h3>
+<p>The golden-path Helm chart (<code>helm/service-template/</code>) includes a <code>PodDisruptionBudget</code> with <code>minAvailable: 1</code> enabled by default. This prevents voluntary disruptions (node drains, rolling upgrades) from taking all replicas offline simultaneously.</p>
+<h3 id="what-minavailable-1-means-in-practice">What <code>minAvailable: 1</code> means in practice<a class="headerlink" href="#what-minavailable-1-means-in-practice" title="Permanent link">&para;</a></h3>
+<ul>
+<li>During a <code>kubectl drain</code>, Kubernetes will not evict the last running pod of a service.</li>
+<li>Rolling deployments always keep at least one healthy replica serving traffic.</li>
+<li>For single-replica services this is a no-op — scale to at least 2 replicas to benefit fully.</li>
+</ul>
+<h3 id="overriding">Overriding<a class="headerlink" href="#overriding" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># helm-values-local.yaml or helm-values-aws.yaml</span>
+<span class="nt">podDisruptionBudget</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">minAvailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">   </span><span class="c1"># increase for critical services</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="blameless-postmortem-process">Blameless Postmortem Process<a class="headerlink" href="#blameless-postmortem-process" title="Permanent link">&para;</a></h2>
+<p>The platform includes a blameless postmortem template at <a href="../templates/postmortem/"><code>docs/templates/postmortem.md</code></a>.</p>
+<h3 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h3>
+<ol>
+<li>For any P1 or P2 incident, a postmortem must be filed within <strong>48 hours</strong> of resolution.</li>
+<li>Copy the template into <code>docs/postmortems/&lt;YYYY-MM-DD&gt;-&lt;incident-title&gt;.md</code>.</li>
+<li>Fill in the five sections: timeline, impact, root cause, contributing factors, action items.</li>
+<li>Open a PR — the platform team reviews within 24 hours.</li>
+<li>Action items are tracked as GitHub Issues with the <code>postmortem</code> label.</li>
+</ol>
+<p><strong>Key principle:</strong> The template explicitly focuses on <em>what happened</em> and <em>what we change</em>, not <em>who was at fault</em>.</p>
+<hr />
+<h2 id="opa-cost-tag-enforcement">OPA Cost-Tag Enforcement<a class="headerlink" href="#opa-cost-tag-enforcement" title="Permanent link">&para;</a></h2>
+<p>The <code>require-cost-tags</code> OPA/Gatekeeper policy (<code>kubernetes/policies/require-cost-tags.yaml</code>) was upgraded from <code>warn</code> mode to <strong><code>deny</code> mode</strong> in Sprint 1. This means:</p>
+<ul>
+<li>Any workload (Deployment, StatefulSet, DaemonSet) without <code>idp.io/cost-centre</code> and <code>team</code> labels will be <strong>rejected at admission</strong>.</li>
+<li>The golden-path Helm chart pre-populates both labels from template values so scaffolded services pass automatically.</li>
+<li>To add tags to a brownfield workload:</li>
+</ul>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">team</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">backend-team</span>
+<span class="w">    </span><span class="nt">idp.io/cost-centre</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">backend</span>
+</code></pre></div></td></tr></table></div>
+<p>Verify a manifest before applying:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>template<span class="w"> </span>my-svc<span class="w"> </span>helm/service-template<span class="w"> </span>--values<span class="w"> </span>helm-values.yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>-f<span class="w"> </span>-
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="log-aggregation-loki-promtail">Log Aggregation — Loki + Promtail<a class="headerlink" href="#log-aggregation-loki-promtail" title="Permanent link">&para;</a></h2>
+<h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
+<p>Promtail runs as a DaemonSet and ships all pod stdout/stderr to Loki. Grafana queries Loki via the built-in Loki datasource.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th>Loki location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local (Kind)</td>
+<td><code>local/observability/loki/</code> — single-binary mode</td>
+</tr>
+<tr>
+<td>AWS (EKS)</td>
+<td><code>aws/observability/loki/</code> — scalable distributed mode</td>
+</tr>
+</tbody>
+</table>
+<h3 id="querying-logs-in-grafana-explore">Querying logs in Grafana Explore<a class="headerlink" href="#querying-logs-in-grafana-explore" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>http://grafana.idp.local/explore
+</code></pre></div></td></tr></table></div>
+<p>Example queries:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code># All logs from a service
+{app=&quot;hello-service&quot;}
+
+# Error logs only
+{namespace=&quot;services-dev&quot;} |= &quot;error&quot;
+
+# Audit log entries from IDP MCP Server
+{app=&quot;idp-mcp-server&quot;} |= &quot;[AUDIT]&quot; | json
+
+# Follow logs for a specific pod
+{pod=&quot;contract-mcp-server-abc123&quot;}
+</code></pre></div></td></tr></table></div>
+<h3 id="traceid-linking-to-tempo">TraceID linking to Tempo<a class="headerlink" href="#traceid-linking-to-tempo" title="Permanent link">&para;</a></h3>
+<p>Loki is configured with a <strong>derived field</strong> that detects <code>traceId</code> in log lines and renders it as a clickable link to the matching Tempo trace. This means you can jump from a log line directly to the distributed trace that generated it.</p>
+<hr />
+<h2 id="distributed-tracing-grafana-tempo">Distributed Tracing — Grafana Tempo<a class="headerlink" href="#distributed-tracing-grafana-tempo" title="Permanent link">&para;</a></h2>
+<h3 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Protocol</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>http://tempo.idp.local</code></td>
+<td>HTTP</td>
+<td>Grafana UI, health checks</td>
+</tr>
+<tr>
+<td><code>tempo.idp.local:4317</code></td>
+<td>gRPC (OTLP)</td>
+<td>SDK instrumentation</td>
+</tr>
+<tr>
+<td><code>tempo.idp.local:4318</code></td>
+<td>HTTP (OTLP)</td>
+<td>SDK instrumentation, curl testing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="instrumenting-a-service">Instrumenting a service<a class="headerlink" href="#instrumenting-a-service" title="Permanent link">&para;</a></h3>
+<p><strong>Node.js / TypeScript:</strong></p>
+<div class="language-typescript highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">NodeSDK</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@opentelemetry/sdk-node&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">OTLPTraceExporter</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@opentelemetry/exporter-trace-otlp-http&#39;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">sdk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">NodeSDK</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">traceExporter</span><span class="o">:</span><span class="w"> </span><span class="kt">new</span><span class="w"> </span><span class="nx">OTLPTraceExporter</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="kt">process.env.OTEL_EXPORTER_OTLP_ENDPOINT</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">&#39;http://tempo.idp.local:4318/v1/traces&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="p">}),</span>
+<span class="p">});</span>
+<span class="nx">sdk</span><span class="p">.</span><span class="nx">start</span><span class="p">();</span>
+</code></pre></div></td></tr></table></div>
+<p><strong>Go:</strong></p>
+<div class="language-go highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="s">&quot;go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp&quot;</span>
+
+<span class="nx">exporter</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">otlptracehttp</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">otlptracehttp</span><span class="p">.</span><span class="nx">WithEndpoint</span><span class="p">(</span><span class="s">&quot;tempo.idp.local:4318&quot;</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">otlptracehttp</span><span class="p">.</span><span class="nx">WithInsecure</span><span class="p">(),</span>
+<span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+<p>Set the <code>OTEL_SERVICE_NAME</code> environment variable to your service name so traces appear labelled correctly in Tempo.</p>
+<h3 id="viewing-traces">Viewing traces<a class="headerlink" href="#viewing-traces" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>http://grafana.idp.local/explore
+</code></pre></div></td></tr></table></div>
+<p>Select the <strong>Tempo</strong> datasource and search by service name, trace ID, or span attributes.</p>
+<hr />
+<h2 id="pagerduty-escalation">PagerDuty Escalation<a class="headerlink" href="#pagerduty-escalation" title="Permanent link">&para;</a></h2>
+<h3 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
+<p>PagerDuty is wired into AlertManager as a receiver for <strong>Critical</strong> severity alerts. Configure it by setting the integration key in <code>local/.env</code>:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">PAGERDUTY_INTEGRATION_KEY</span><span class="o">=</span>your-events-api-v2-key
+</code></pre></div></td></tr></table></div>
+<p>The AlertManager config is at <code>observability/alertmanager/alertmanager-config.yaml</code>.</p>
+<h3 id="what-pages-on-call">What pages on-call<a class="headerlink" href="#what-pages-on-call" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Trigger condition</th>
+<th>Destination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SLOErrorBudgetFastBurn</code></td>
+<td>Error budget burns &gt; 14×</td>
+<td>PagerDuty (Critical)</td>
+</tr>
+<tr>
+<td><code>PodCrashLooping</code></td>
+<td>Pod restart count high</td>
+<td>PagerDuty (Critical)</td>
+</tr>
+<tr>
+<td><code>HighHTTP5xxRate</code></td>
+<td>5xx rate &gt; 5%</td>
+<td>PagerDuty (Critical)</td>
+</tr>
+<tr>
+<td><code>TeamBudgetExceeded</code></td>
+<td>Monthly cost &gt; 100% budget</td>
+<td>PagerDuty (Critical)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-goes-to-slack-only">What goes to Slack only<a class="headerlink" href="#what-goes-to-slack-only" title="Permanent link">&para;</a></h3>
+<p>Slow-burn SLO alerts, <code>HighMemoryUsage</code> (Warning), <code>TeamBudgetWarning</code> (80%), and <code>ScaffoldServiceHighRate</code> route to Slack <code>#platform-alerts</code> without paging.</p>
+<hr />
+<h2 id="canary-deployments-argo-rollouts">Canary Deployments — Argo Rollouts<a class="headerlink" href="#canary-deployments-argo-rollouts" title="Permanent link">&para;</a></h2>
+<h3 id="opting-in">Opting in<a class="headerlink" href="#opting-in" title="Permanent link">&para;</a></h3>
+<p>To enable canary deployments for a service, set in your <code>helm-values.yaml</code> (or <code>helm-values-local.yaml</code>):</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">rollout</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">canary</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">setWeight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">pause</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> duration</span><span class="p">:</span><span class="w"> </span><span class="nv">5m</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">setWeight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">pause</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> duration</span><span class="p">:</span><span class="w"> </span><span class="nv">10m</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div></td></tr></table></div>
+<p>The golden-path Helm chart converts the <code>Deployment</code> to an Argo <code>Rollout</code> resource when <code>rollout.enabled: true</code>.</p>
+<h3 id="auto-rollback-via-clusteranalysistemplate">Auto-rollback via ClusterAnalysisTemplate<a class="headerlink" href="#auto-rollback-via-clusteranalysistemplate" title="Permanent link">&para;</a></h3>
+<p>A platform-wide <code>ClusterAnalysisTemplate</code> named <code>http-error-rate</code> is deployed at <code>local/argocd/argo-rollouts-values.yaml</code> and <code>aws/argocd/argo-rollouts-values.yaml</code>. It automatically aborts and rolls back the canary if:</p>
+<ul>
+<li>5xx error rate exceeds <strong>1%</strong> during any analysis interval, or</li>
+<li>p99 latency exceeds <strong>500 ms</strong></li>
+</ul>
+<h3 id="scaffolding-a-canary-service">Scaffolding a canary service<a class="headerlink" href="#scaffolding-a-canary-service" title="Permanent link">&para;</a></h3>
+<p>Use the <strong>Canary Deployment</strong> Backstage template (Create → Canary Deployment) to add canary configuration to an existing service. The template writes <code>helm-values-staging.yaml</code> and wires the analysis template.</p>
+<h3 id="accessing-argo-rollouts-ui">Accessing Argo Rollouts UI<a class="headerlink" href="#accessing-argo-rollouts-ui" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>argo<span class="w"> </span>rollouts<span class="w"> </span>dashboard<span class="w"> </span>-n<span class="w"> </span>services-dev
+</code></pre></div></td></tr></table></div>
+<p>Or via ingress: <code>http://argo-rollouts.idp.local</code> (requires <code>bootstrap-ai.sh</code>).</p>
+<hr />
+<h2 id="multi-environment-gitops-promotion">Multi-Environment GitOps Promotion<a class="headerlink" href="#multi-environment-gitops-promotion" title="Permanent link">&para;</a></h2>
+<h3 id="flow">Flow<a class="headerlink" href="#flow" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>dev (auto)  →  staging (PR)  →  prod (manual approval)
+</code></pre></div></td></tr></table></div>
+<ul>
+<li><strong>dev</strong>: Every merge to <code>main</code> auto-deploys to the <code>services-dev</code> namespace via ArgoCD.</li>
+<li><strong>staging</strong>: A CI job (<code>promote-to-staging</code>) opens a PR that updates <code>helm-values-staging.yaml</code> with the new image SHA. Merging the PR triggers ArgoCD sync to <code>services-staging</code>.</li>
+<li><strong>prod</strong>: Promotion to production follows the same PR pattern for <code>helm-values-aws.yaml</code> in the <code>services</code> namespace.</li>
+</ul>
+<h3 id="how-promote-to-staging-works">How <code>promote-to-staging</code> works<a class="headerlink" href="#how-promote-to-staging-works" title="Permanent link">&para;</a></h3>
+<p>The CI job runs a smoke test after the dev deploy completes. If the smoke test passes, it:</p>
+<ol>
+<li>Checks out the platform repo</li>
+<li>Updates the <code>image.tag</code> in <code>helm-values-staging.yaml</code></li>
+<li>Opens a PR titled <code>chore: promote &lt;service&gt; &lt;tag&gt; to staging</code></li>
+</ol>
+<p>The PR must be reviewed and merged manually — there is no auto-merge for staging.</p>
+<h3 id="smoke-test-in-ci">Smoke test in CI<a class="headerlink" href="#smoke-test-in-ci" title="Permanent link">&para;</a></h3>
+<p>The <code>smoke-test</code> job runs after the dev deploy and hits <code>GET /healthz</code> on the deployed service. A non-200 response fails the CI run and blocks the staging promotion PR from being opened.</p>
+<hr />
+<h2 id="per-team-cost-budgets">Per-Team Cost Budgets<a class="headerlink" href="#per-team-cost-budgets" title="Permanent link">&para;</a></h2>
+<h3 id="overview_1">Overview<a class="headerlink" href="#overview_1" title="Permanent link">&para;</a></h3>
+<p>Monthly USD budgets are declared as annotations on Backstage <code>Group</code> entities and enforced via PrometheusRules. Actual costs are queried from OpenCost every 15 minutes by the tech-insights-exporter.</p>
+<h3 id="current-budget-values">Current budget values<a class="headerlink" href="#current-budget-values" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Team</th>
+<th>Monthly budget (USD)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>platform-team</td>
+<td>$2,000</td>
+</tr>
+<tr>
+<td>ml-team</td>
+<td>$1,500</td>
+</tr>
+<tr>
+<td>data-team</td>
+<td>$800</td>
+</tr>
+<tr>
+<td>backend-team</td>
+<td>$600</td>
+</tr>
+<tr>
+<td>frontend-team</td>
+<td>$400</td>
+</tr>
+<tr>
+<td>android-team</td>
+<td>$300</td>
+</tr>
+<tr>
+<td>ios-team</td>
+<td>$300</td>
+</tr>
+<tr>
+<td>qa-team</td>
+<td>$200</td>
+</tr>
+</tbody>
+</table>
+<h3 id="prometheus-metrics">Prometheus metrics<a class="headerlink" href="#prometheus-metrics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idp_team_budget_usd_monthly{team}</code></td>
+<td>Configured monthly budget</td>
+</tr>
+<tr>
+<td><code>idp_team_actual_cost_usd_monthly{team}</code></td>
+<td>Actual OpenCost spend (updated every 15 min)</td>
+</tr>
+<tr>
+<td><code>idp_team_budget_utilization_ratio{team}</code></td>
+<td><code>actual / budget</code> — alerts fire at 0.8 and 1.0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="alerts">Alerts<a class="headerlink" href="#alerts" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Threshold</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TeamBudgetWarning</code></td>
+<td>Utilisation &gt; 80%</td>
+<td>Warning → Slack</td>
+</tr>
+<tr>
+<td><code>TeamBudgetExceeded</code></td>
+<td>Utilisation &gt; 100%</td>
+<td>Critical → PagerDuty</td>
+</tr>
+</tbody>
+</table>
+<p>See the <a href="../runbooks/cost-budget-exceeded/">Cost Budget Exceeded runbook</a> for remediation steps.</p>
+<h3 id="updating-a-teams-budget">Updating a team's budget<a class="headerlink" href="#updating-a-teams-budget" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Edit the annotation in <code>backstage/catalog/catalog-info.yaml</code> or <code>backstage/catalog/qa-catalog.yaml</code>:
+   <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">idp.io/cost-budget-monthly-usd</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1000&quot;</span>
+</code></pre></div></td></tr></table></div></li>
+<li>Update the matching entry in <code>kubernetes/finops/team-budgets-configmap.yaml</code>.</li>
+<li>Commit and push — the exporter picks up the new value on the next 15-minute cycle.</li>
+</ol>
+<hr />
+<h2 id="kagent-guardrails-and-audit-log">KAgent Guardrails and Audit Log<a class="headerlink" href="#kagent-guardrails-and-audit-log" title="Permanent link">&para;</a></h2>
+<h3 id="structured-audit-log">Structured audit log<a class="headerlink" href="#structured-audit-log" title="Permanent link">&para;</a></h3>
+<p>Every MCP tool call on the <code>idp-mcp-server</code> and <code>contract-mcp-server</code> emits a structured <code>[AUDIT]</code> line to stdout:</p>
+<div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">[</span><span class="err">AUDIT</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="s2">&quot;2026-06-09T12:00:00Z&quot;</span><span class="p">,</span><span class="nt">&quot;server&quot;</span><span class="p">:</span><span class="s2">&quot;idp-mcp-server&quot;</span><span class="p">,</span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="s2">&quot;scaffold_service_requested&quot;</span><span class="p">,</span><span class="nt">&quot;agent&quot;</span><span class="p">:</span><span class="s2">&quot;idp-assistant&quot;</span><span class="p">,</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="s2">&quot;demo-svc&quot;</span><span class="p">,</span><span class="nt">&quot;template&quot;</span><span class="p">:</span><span class="s2">&quot;python-service&quot;</span><span class="p">,</span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="kc">false</span><span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+<p><strong>Fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ts</code></td>
+<td>ISO-8601 timestamp</td>
+</tr>
+<tr>
+<td><code>server</code></td>
+<td>MCP server name (<code>idp-mcp-server</code>, <code>contract-mcp-server</code>)</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>Tool-specific action identifier</td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>Agent ID (from <code>X-Agent-ID</code> header or <code>User-Agent</code>)</td>
+</tr>
+<tr>
+<td>Tool-specific fields</td>
+<td>e.g. <code>service</code>, <code>template</code>, <code>dry_run</code>, <code>provider</code>, <code>version</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="querying-audit-logs-in-loki">Querying audit logs in Loki<a class="headerlink" href="#querying-audit-logs-in-loki" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>{app=&quot;idp-mcp-server&quot;} |= &quot;[AUDIT]&quot; | json
+{app=&quot;contract-mcp-server&quot;} |= &quot;[AUDIT]&quot; | json | action=&quot;register_contract_requested&quot;
+</code></pre></div></td></tr></table></div>
+<h3 id="per-agent-metrics-in-prometheusgrafana">Per-agent metrics in Prometheus/Grafana<a class="headerlink" href="#per-agent-metrics-in-prometheusgrafana" title="Permanent link">&para;</a></h3>
+<div class="language-promql highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Tool call rate per agent</span>
+<span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_agent_tool_calls_total</span><span class="p">{</span><span class="nl">server</span><span class="o">=</span><span class="p">&quot;</span><span class="s">idp-mcp-server</span><span class="p">&quot;}[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+
+<span class="c1"># Error rate per tool</span>
+<span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_tool_calls_total</span><span class="p">{</span><span class="nl">outcome</span><span class="o">=</span><span class="p">&quot;</span><span class="s">error</span><span class="p">&quot;}[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span><span class="w"> </span><span class="o">/</span>
+<span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_tool_calls_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+</code></pre></div></td></tr></table></div>
+<p>The Grafana <strong>AI Platform</strong> dashboard (<code>http://grafana.idp.local/d/ai-platform</code>) shows these metrics broken down by server, tool, and agent.</p>
+<h3 id="dry_run-mode">dry_run mode<a class="headerlink" href="#dry_run-mode" title="Permanent link">&para;</a></h3>
+<p>Pass <code>dry_run: true</code> when calling <code>scaffold_service</code> to get a preview of what would be created without actually creating anything:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>User: &quot;dry run: scaffold a Go service called test-svc&quot;
+</code></pre></div></td></tr></table></div>
+<p>The agent detects the phrase "dry run" and passes <code>dry_run: true</code> to the tool, which returns a preview JSON without making any Backstage scaffolder calls.</p>
+<h3 id="kagent-system-prompt-guardrails">KAgent system-prompt guardrails<a class="headerlink" href="#kagent-system-prompt-guardrails" title="Permanent link">&para;</a></h3>
+<p><code>kubernetes/kagent/idp-agent.yaml</code> includes the following guardrail rules:</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>9</td>
+<td>Announce to the user before performing any destructive operation (scaffold, deploy)</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Support <code>dry_run: true</code> — use it when the user says "dry run", "preview", or "what would happen"</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Self-check: if <code>scaffold_service</code> has been called more than 3 times in the same session, pause and ask the user to confirm intent</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent-rate-alerts">Agent rate alerts<a class="headerlink" href="#agent-rate-alerts" title="Permanent link">&para;</a></h3>
+<p>Two PrometheusRules in the <code>kagent-guardrails</code> group alert on abnormal agent behaviour:</p>
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Condition</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ScaffoldServiceHighRate</code></td>
+<td>&gt; 5 scaffold calls in 10 minutes</td>
+<td>Warning → Slack</td>
+</tr>
+<tr>
+<td><code>McpToolErrorRateHigh</code></td>
+<td>&gt; 50% error rate on any MCP tool</td>
+<td>Warning → Slack</td>
+</tr>
+</tbody>
+</table>
+<p>See the <a href="../runbooks/kagent-guardrails/">KAgent Guardrails runbook</a> for investigation steps.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../readiness-checklist/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Readiness Checklist">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Readiness Checklist
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../runbooks/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Overview
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

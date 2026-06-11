@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../deployment-rollback/">
+        <link rel="prev" href="../kind-node-ip-mismatch/">
       
       
-        <link rel="next" href="../high-memory/">
+        <link rel="next" href="../kagent-guardrails/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Pod Crash Loop - Internal Developer Platform</title>
+        <title>Cost Budget Exceeded - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pod-crash-loop-runbook" class="md-skip">
+        <a href="#runbook-teambudgetwarning-teambudgetexceeded" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pod Crash Loop
+              Cost Budget Exceeded
             
           </span>
         </div>
@@ -1182,30 +1182,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Pod Crash Loop
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1214,140 +1194,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#alert-description" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alert Description
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#impact" class="md-nav__link">
-    <span class="md-ellipsis">
-      Impact
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#immediate-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Immediate Actions
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Immediate Actions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-identify-the-crashing-pod" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Identify the crashing pod
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-read-the-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Read the logs
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-oomkilled-increase-memory-limit" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. OOMKilled — increase memory limit
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-application-error-roll-back" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Application error — roll back
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-imagepullbackoff-fix-image-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. ImagePullBackOff — fix image reference
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#root-cause-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      Root Cause Analysis
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resolution-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Resolution Steps
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#escalation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Escalation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#post-incident" class="md-nav__link">
-    <span class="md-ellipsis">
-      Post-Incident
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1462,10 +1308,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../cost-budget-exceeded/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Cost Budget Exceeded
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1474,6 +1340,62 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-happening" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is happening
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#immediate-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Immediate triage
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remediation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Remediation steps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-budgets-are-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      How budgets are set
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1522,7 +1444,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/pod-crash-loop.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/cost-budget-exceeded.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1530,133 +1452,64 @@
   
 
 
-<h1 id="pod-crash-loop-runbook">Pod Crash Loop Runbook<a class="headerlink" href="#pod-crash-loop-runbook" title="Permanent link">&para;</a></h1>
-<h2 id="alert-description">Alert Description<a class="headerlink" href="#alert-description" title="Permanent link">&para;</a></h2>
-<p><strong>Alert:</strong> <code>PodCrashLooping</code>
-<strong>Severity:</strong> Critical
-<strong>Expression:</strong> Pod restart count increases more than 3 times in 5 minutes.</p>
-<h2 id="impact">Impact<a class="headerlink" href="#impact" title="Permanent link">&para;</a></h2>
-<p>The service is unavailable or has reduced capacity. Kubernetes is repeatedly trying to restart the container. Other pods in the Deployment may still be serving traffic (partial outage) or all pods may be failing (full outage).</p>
-<h2 id="immediate-actions">Immediate Actions<a class="headerlink" href="#immediate-actions" title="Permanent link">&para;</a></h2>
-<h3 id="1-identify-the-crashing-pod">1. Identify the crashing pod<a class="headerlink" href="#1-identify-the-crashing-pod" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Find crash-looping pods</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;CrashLoopBackOff|Error|OOMKilled&#39;</span>
+<h1 id="runbook-teambudgetwarning-teambudgetexceeded">Runbook: TeamBudgetWarning / TeamBudgetExceeded<a class="headerlink" href="#runbook-teambudgetwarning-teambudgetexceeded" title="Permanent link">&para;</a></h1>
+<p><strong>Alert:</strong> <code>TeamBudgetWarning</code> (&gt;80 % budget consumed) or <code>TeamBudgetExceeded</code> (&gt;100 %)<br />
+<strong>Severity:</strong> Warning / Critical<br />
+<strong>Category:</strong> finops</p>
+<h2 id="what-is-happening">What is happening<a class="headerlink" href="#what-is-happening" title="Permanent link">&para;</a></h2>
+<p>The <code>tech-insights-exporter</code> CronJob queries the OpenCost API every 15 minutes and pushes
+<code>idp_team_actual_cost_usd_monthly{team}</code> to Pushgateway. This alert fires when that value
+exceeds the configured threshold in <code>idp_team_budget_usd_monthly{team}</code>.</p>
+<h2 id="immediate-triage">Immediate triage<a class="headerlink" href="#immediate-triage" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Which teams are over budget?</span>
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-operator<span class="w"> </span>-c<span class="w"> </span>prometheus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>curl<span class="w"> </span>-s<span class="w"> </span>localhost:9090/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">&#39;query=idp_team_budget_utilization_ratio &gt; 0.8&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.data.result&#39;</span>
 
-<span class="c1"># Check restart count and last state</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
-</code></pre></div></td></tr></table></div>
-<p>Look at the <code>Last State</code> section — it tells you the exit code:
-- Exit code <code>0</code> — intentional exit (bug in startup logic)
-- Exit code <code>1</code> — application error
-- Exit code <code>137</code> — OOMKilled (out of memory)
-- Exit code <code>139</code> — segfault</p>
-<h3 id="2-read-the-logs">2. Read the logs<a class="headerlink" href="#2-read-the-logs" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Current container logs</span>
-kubectl<span class="w"> </span>logs<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
+<span class="c1"># What&#39;s running in the team&#39;s namespace?</span>
+kubectl<span class="w"> </span>top<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>--sort-by<span class="o">=</span>memory
+kubectl<span class="w"> </span>top<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w">     </span>--sort-by<span class="o">=</span>memory
 
-<span class="c1"># Previous container logs (before the crash)</span>
-kubectl<span class="w"> </span>logs<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--previous
+<span class="c1"># Check OpenCost breakdown for the team</span>
+open<span class="w"> </span>http://opencost.idp.local
 </code></pre></div></td></tr></table></div>
-<h3 id="3-oomkilled-increase-memory-limit">3. OOMKilled — increase memory limit<a class="headerlink" href="#3-oomkilled-increase-memory-limit" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Confirm OOMKilled</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A5<span class="w"> </span><span class="s2">&quot;Last State&quot;</span>
-
-<span class="c1"># Temporary fix: patch the deployment (edit helm-values.yaml for a permanent fix)</span>
-kubectl<span class="w"> </span><span class="nb">set</span><span class="w"> </span>resources<span class="w"> </span>deployment/&lt;service-name&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>services<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--limits<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>512Mi<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--requests<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>256Mi
-</code></pre></div></td></tr></table></div>
-<h3 id="4-application-error-roll-back">4. Application error — roll back<a class="headerlink" href="#4-application-error-roll-back" title="Permanent link">&para;</a></h3>
-<p>If logs show a startup error introduced in a recent deploy:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>rollback<span class="w"> </span>&lt;service-name&gt;<span class="w"> </span>-n<span class="w"> </span>services
-</code></pre></div></td></tr></table></div>
-<p>See <a href="../deployment-rollback/">Deployment Rollback</a> for full rollback procedure.</p>
-<h3 id="5-imagepullbackoff-fix-image-reference">5. ImagePullBackOff — fix image reference<a class="headerlink" href="#5-imagepullbackoff-fix-image-reference" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check the error</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod-name&gt;<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A10<span class="w"> </span><span class="s2">&quot;Events&quot;</span>
-
-<span class="c1"># Verify ECR image exists</span>
-aws<span class="w"> </span>ecr<span class="w"> </span>describe-images<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repository-name<span class="w"> </span>idp-mvp/&lt;service-name&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--image-ids<span class="w"> </span><span class="nv">imageTag</span><span class="o">=</span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-</code></pre></div></td></tr></table></div>
-<h2 id="root-cause-analysis">Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Likely Cause</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Exit code 137, OOMKilled</td>
-<td>Memory limit too low</td>
-</tr>
-<tr>
-<td>Exit code 1, stack trace in logs</td>
-<td>Application bug in new release</td>
-</tr>
-<tr>
-<td><code>ImagePullBackOff</code></td>
-<td>Wrong image tag or ECR permissions issue</td>
-</tr>
-<tr>
-<td><code>CreateContainerConfigError</code></td>
-<td>Missing ConfigMap or Secret</td>
-</tr>
-<tr>
-<td><code>CrashLoopBackOff</code> with empty logs</td>
-<td>Health probe failing before app is ready</td>
-</tr>
-</tbody>
-</table>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check for missing secrets / configmaps</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>-n<span class="w"> </span>services<span class="w"> </span>--sort-by<span class="o">=</span><span class="s1">&#39;.lastTimestamp&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;secret\|configmap&quot;</span>
-</code></pre></div></td></tr></table></div>
-<h2 id="resolution-steps">Resolution Steps<a class="headerlink" href="#resolution-steps" title="Permanent link">&para;</a></h2>
+<h2 id="remediation-steps">Remediation steps<a class="headerlink" href="#remediation-steps" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Identify the root cause using the table above</li>
-<li>Apply the immediate fix (rollback, resource patch, or secret fix)</li>
-<li>Verify pods stabilise: <code>kubectl get pods -n services -w</code></li>
-<li>For a permanent fix: update <code>helm-values.yaml</code> and open a PR</li>
+<li><strong>Identify the biggest spenders</strong> — sort OpenCost by namespace → drill into workload.</li>
+<li><strong>Scale down non-critical workloads</strong> — reduce replicas or apply a HPA max ceiling:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>deployment<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>--replicas<span class="o">=</span><span class="m">1</span>
+</code></pre></div></td></tr></table></div></li>
+<li><strong>Right-size resource requests</strong> — over-provisioned requests inflate cost allocation:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">set</span><span class="w"> </span>resources<span class="w"> </span>deployment/&lt;name&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--requests<span class="o">=</span><span class="nv">cpu</span><span class="o">=</span>100m,memory<span class="o">=</span>128Mi<span class="w"> </span>--limits<span class="o">=</span><span class="nv">cpu</span><span class="o">=</span>500m,memory<span class="o">=</span>512Mi
+</code></pre></div></td></tr></table></div></li>
+<li><strong>Update the team budget</strong> — if the current budget is too low, raise it:<ul>
+<li>Edit <code>idp.io/cost-budget-monthly-usd</code> annotation on the Group entity in
+   <code>backstage/catalog/catalog-info.yaml</code>.</li>
+<li>Update the matching entry in <code>kubernetes/finops/team-budgets-configmap.yaml</code>.</li>
+<li>The new value will take effect on the next exporter run (≤15 minutes).</li>
+</ul>
+</li>
 </ol>
-<h2 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h2>
-<ul>
-<li>OOMKilled repeatedly after memory increase → application has a memory leak; escalate to service owner</li>
-<li>All pods crashing and rollback fails → page platform team</li>
-</ul>
-<h2 id="post-incident">Post-Incident<a class="headerlink" href="#post-incident" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Record the exit code and cause in the incident thread</li>
-<li>If OOMKilled: add a memory profiling ticket for the service team</li>
-<li>If it was a broken deploy: review CI checks — was there a test that should have caught this?</li>
-</ul>
+<h2 id="how-budgets-are-set">How budgets are set<a class="headerlink" href="#how-budgets-are-set" title="Permanent link">&para;</a></h2>
+<p>Budgets live in two authoritative locations (keep in sync):
+- <strong>Backstage catalog</strong> — <code>idp.io/cost-budget-monthly-usd</code> annotation on each <code>Group</code> entity
+  in <code>backstage/catalog/catalog-info.yaml</code> and <code>backstage/catalog/qa-catalog.yaml</code>.
+- <strong>Kubernetes ConfigMap</strong> — <code>kubernetes/finops/team-budgets-configmap.yaml</code>
+  (<code>data.budgets.json</code>) read by the exporter via <code>TEAM_BUDGETS_JSON</code> env var.</p>
+<p>Defaults (USD/month): platform-team $2000, ml-team $1500, backend-team $600,
+data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $200.</p>
 
 
 
@@ -1686,7 +1539,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w">
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../deployment-rollback/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Deployment Rollback">
+          <a href="../kind-node-ip-mismatch/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Kind Node IP Mismatch">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1696,20 +1549,20 @@ kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w">
                 Previous
               </span>
               <div class="md-ellipsis">
-                Deployment Rollback
+                Kind Node IP Mismatch
               </div>
             </div>
           </a>
         
         
           
-          <a href="../high-memory/" class="md-footer__link md-footer__link--next" aria-label="Next: High Memory">
+          <a href="../kagent-guardrails/" class="md-footer__link md-footer__link--next" aria-label="Next: KAgent Guardrails">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                High Memory
+                KAgent Guardrails
               </div>
             </div>
             <div class="md-footer__button md-icon">

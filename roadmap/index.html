@@ -482,6 +482,23 @@
   
   
   
+    <li class="md-tabs__item">
+      <a href="../sre-reliability/" class="md-tabs__link">
+        
+  
+    
+  
+  SRE & Reliability
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
     
     
       <li class="md-tabs__item">
@@ -1176,9 +1193,18 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-7-successor-items-planned" class="md-nav__link">
+  <a href="#phase-7-successor-items" class="md-nav__link">
     <span class="md-ellipsis">
-      Phase 7 Successor Items (📋 Planned)
+      Phase 7 Successor Items
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-7d-agentic-platform-sprint-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7d — Agentic Platform (Sprint 4+) 📋
     </span>
   </a>
   
@@ -1186,6 +1212,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-7c-amazon-bedrock-ai-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7c — Amazon Bedrock AI Integration 💡
+    </span>
+  </a>
   
 </li>
       
@@ -1379,6 +1414,26 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../sre-reliability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SRE & Reliability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -1392,10 +1447,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1406,8 +1461,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_21">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_22">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1581,6 +1636,48 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost Budget Exceeded
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    KAgent Guardrails
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1657,6 +1754,10 @@ Project syncs from them.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>SRE reliability programme</td>
+<td>PodDisruptionBudgets, Sloth SLOs, burn-rate alerts, Loki+Tempo+PagerDuty observability, Argo Rollouts canary, multi-env GitOps promotion, blameless postmortem template, per-team cost budgets, KAgent guardrails + audit log</td>
+</tr>
 <tr>
 <td>Golden path templates</td>
 <td>Node.js, Python, Go, React, Terraform, Deploy-to-Kind (7 templates)</td>
@@ -1869,6 +1970,11 @@ Project syncs from them.</p>
 <td>OPA cost-tag enforcement</td>
 <td>✅</td>
 <td><code>kubernetes/policies/require-cost-tags.yaml</code> (warn mode)</td>
+</tr>
+<tr>
+<td>Per-team cost budgets</td>
+<td>✅</td>
+<td>Monthly budget annotations on Group entities; OpenCost-backed actuals; TeamBudgetWarning/TeamBudgetExceeded PrometheusRules; <code>idp_team_budget_utilization_ratio</code> metric in Pushgateway</td>
 </tr>
 <tr>
 <td>OpenCost in-cluster</td>
@@ -2179,11 +2285,11 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 <tr>
 <td>AI Cost Attribution</td>
 <td>✅</td>
-<td>MCP server metrics enhanced with <code>server</code> label; <code>ai_api_calls_total</code> counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking</td>
+<td>MCP server metrics enhanced with <code>server</code> label; <code>ai_api_calls_total</code> counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking; per-agent audit log ([AUDIT] JSON) and <code>dry_run</code> mode on <code>scaffold_service</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="phase-7-successor-items-planned">Phase 7 Successor Items (📋 Planned)<a class="headerlink" href="#phase-7-successor-items-planned" title="Permanent link">&para;</a></h3>
+<h3 id="phase-7-successor-items">Phase 7 Successor Items<a class="headerlink" href="#phase-7-successor-items" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -2193,6 +2299,51 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>KAgent tool-call audit log + guardrails</td>
+<td>✅</td>
+<td>Structured [AUDIT] JSON logs on every MCP tool call; mcp_agent_tool_calls_total{agent} counter; dry_run on scaffold_service; KAgent system-prompt guardrails; ScaffoldServiceHighRate + McpToolErrorRateHigh alerts</td>
+</tr>
+<tr>
+<td>Event Bus (<code>agent-event-router</code>)</td>
+<td>✅</td>
+<td>Receives GitHub / AlertManager / ArgoCD webhooks → fans out to agents via A2A; HMAC + bearer-token auth</td>
+</tr>
+<tr>
+<td><code>platform-assistant</code> unified agent</td>
+<td>✅</td>
+<td>Single Backstage entry point routing across IDP + QA + contract tools (22 tools); replaces direct <code>idp-assistant</code> calls</td>
+</tr>
+<tr>
+<td>Model routing (Sonnet / Opus ModelConfigs)</td>
+<td>✅</td>
+<td><code>claude-sonnet</code> (Sonnet 4.6) and <code>claude-opus</code> (Opus 4.8) ModelConfig CRDs; specialists upgraded to Sonnet</td>
+</tr>
+<tr>
+<td>Persistent user memory</td>
+<td>✅</td>
+<td>ConfigMap-backed per-user preferences (<code>get_user_memory</code> / <code>set_user_memory</code> tools); identity bound at HTTP layer, not LLM args</td>
+</tr>
+<tr>
+<td><code>github-mcp-server</code></td>
+<td>✅</td>
+<td><code>get_pr_diff</code>, <code>add_pr_comment</code>, <code>get_ci_status</code>; used by <code>qa-assistant</code> for automated PR review</td>
+</tr>
+<tr>
+<td><code>catalog_semantic_search</code> tool</td>
+<td>✅</td>
+<td>Natural-language vector search via Voyage AI + pgvector; added to <code>idp-mcp-server</code></td>
+</tr>
+<tr>
+<td>Quick-action chips in chat UI</td>
+<td>✅</td>
+<td>6 clickable suggestion chips on empty chat in <code>AiAssistantPage</code></td>
+</tr>
+<tr>
+<td><code>idp ai</code> CLI command</td>
+<td>✅</td>
+<td><code>idp ai "&lt;prompt&gt;"</code> — sends A2A message to <code>platform-assistant</code>, streams response to terminal</td>
+</tr>
 <tr>
 <td><code>ml-training-job</code> template</td>
 <td>📋</td>
@@ -2205,6 +2356,120 @@ one-click PR. This is the most-requested feature after first scaffold.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="phase-7d-agentic-platform-sprint-4">Phase 7d — Agentic Platform (Sprint 4+) 📋<a class="headerlink" href="#phase-7d-agentic-platform-sprint-4" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Sprint</th>
+<th>Features</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sprint 4</td>
+<td><code>argocd-mcp-server</code> + <code>release-agent</code> + <code>cost-mcp-server</code> + <code>cost-agent</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Sprint 5</td>
+<td><code>incident-mcp-server</code> + <code>incident-agent</code> + <code>notification-mcp-server</code></td>
+<td>📋</td>
+</tr>
+<tr>
+<td>Sprint 6</td>
+<td>RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig + A2A delegation</td>
+<td>📋</td>
+</tr>
+<tr>
+<td>Sprint 7</td>
+<td><code>security-mcp-server</code> + <code>security-agent</code> + <code>onboarding-agent</code></td>
+<td>📋</td>
+</tr>
+<tr>
+<td>Sprint 8</td>
+<td>HiTL approval workflow (<code>ApprovalRequest</code> CRD) + Policy-as-Prompt</td>
+<td>📋</td>
+</tr>
+<tr>
+<td>Sprint 9</td>
+<td>Agent regression test suite + A/B prompt testing</td>
+<td>📋</td>
+</tr>
+<tr>
+<td>Sprint 10</td>
+<td>Slack bot + IDE plugin (VS Code)</td>
+<td>📋</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-7c-amazon-bedrock-ai-integration">Phase 7c — Amazon Bedrock AI Integration 💡<a class="headerlink" href="#phase-7c-amazon-bedrock-ai-integration" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Evolve the AI platform from direct Anthropic API calls to AWS-native Bedrock, enabling IRSA-based auth (no API key secrets), managed RAG, content guardrails, and richer agentic workflows — all additive to the existing KAgent stack.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bedrock ModelConfig for KAgent</td>
+<td>🔴 High</td>
+<td>Add a <code>ModelConfig</code> CRD pointing to Bedrock (<code>us.anthropic.claude-haiku-*</code>); KAgent routes via IRSA — no <code>kagent-anthropic</code> secret needed. Files: <code>kubernetes/kagent/modelconfig.yaml</code>, <code>bootstrap-ai.sh</code></td>
+</tr>
+<tr>
+<td>Bedrock Knowledge Base (replace pgvector RAG)</td>
+<td>🔴 High</td>
+<td>Swap Voyage AI + pgvector (<code>idpRagSearch.ts</code>) for Bedrock KB backed by the existing S3 TechDocs bucket; Titan Embeddings handles chunking. AWS-only; local Kind path unchanged</td>
+</tr>
+<tr>
+<td>Bedrock Guardrails</td>
+<td>🟡 Medium</td>
+<td>Content filtering + PII masking + topic blocking on all AI assistant prompts; maps to AI Platform Scorecard Gold tier governance checks. Add guardrailIdentifier to ModelConfig CRD and Terraform resource</td>
+</tr>
+<tr>
+<td><code>idp:bedrock-generate</code> scaffolder action</td>
+<td>🟡 Medium</td>
+<td>New Backstage backend module that calls Bedrock Claude to generate boilerplate from a natural-language description inside any template (model selectable: Haiku/Sonnet). File: new <code>idpBedrockGenerate.ts</code></td>
+</tr>
+<tr>
+<td>Bedrock Agents with Action Groups</td>
+<td>🟡 Medium</td>
+<td>Standalone Bedrock Agent (Lambda action groups wrapping the 6 IDP MCP tools) exposed via API Gateway + Backstage proxy; AWS-native alternative/complement to KAgent. New <code>aws/bedrock/</code> Terraform directory</td>
+</tr>
+<tr>
+<td>Event-driven auto-remediation</td>
+<td>🟡 Medium</td>
+<td>K8s events → EventBridge → Lambda → Bedrock Agent → GitHub issue / PagerDuty. Agent diagnoses using CloudWatch Logs Insights before acting. No KAgent dependency</td>
+</tr>
+<tr>
+<td>Bedrock Inline Agent for IaC plan review</td>
+<td>🟢 Low</td>
+<td>Ephemeral (stateless) Bedrock agent invoked in CI before <code>terraform apply</code>; flags destructive changes, estimates cost delta, checks OPA policies. Integrates into <code>ci.yml</code></td>
+</tr>
+<tr>
+<td>Bedrock Flows for multi-step workflows</td>
+<td>🟢 Low</td>
+<td>Visual workflow: scaffold → CI trigger → deploy → health check → notify. Replaces ad-hoc polling in <code>idpLocalDeploy.ts</code> with a managed state machine. New <code>aws/bedrock/flows/</code> Terraform</td>
+</tr>
+<tr>
+<td>Bedrock multi-agent supervisor</td>
+<td>🟢 Low</td>
+<td>Supervisor Bedrock Agent routing to sub-agents (deploy, QA, cost) via Bedrock's native multi-agent orchestration; single developer entry-point</td>
+</tr>
+<tr>
+<td>Bedrock Model Evaluation</td>
+<td>🟢 Low</td>
+<td>Benchmark Claude Haiku vs Sonnet on the 6 IDP tool-use scenarios using a curated S3 prompt dataset; results feed into the AI Platform Scorecard</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Dependency:</strong> Items requiring IRSA assume Phase 10a TLS + IAM hardening is in place. The Bedrock ModelConfig item can ship independently on EKS as soon as IRSA is configured.</p>
+</blockquote>
 <hr />
 <h2 id="phase-7b-test-automation-golden-path">Phase 7b — Test Automation Golden Path ✅<a class="headerlink" href="#phase-7b-test-automation-golden-path" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> Every team has a one-click path to add any layer of the test pyramid to an existing service, with CI wired automatically.</p>
@@ -2697,6 +2962,12 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 <td><code>milestone/m7b-test-golden-path</code></td>
 </tr>
 <tr>
+<td>M7c: Amazon Bedrock AI integration</td>
+<td>Q4 2026</td>
+<td>Phase 7c</td>
+<td><code>milestone/m7c-bedrock</code></td>
+</tr>
+<tr>
 <td>M8: Developer experience</td>
 <td>Q3 2026</td>
 <td>Phase 8</td>
@@ -2720,21 +2991,23 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 <h2 id="github-project-setup">GitHub Project Setup<a class="headerlink" href="#github-project-setup" title="Permanent link">&para;</a></h2>
 <p>This roadmap is designed to sync directly with a <strong>GitHub Project (Roadmap view)</strong>:</p>
 <h3 id="labels-to-create">Labels to create<a class="headerlink" href="#labels-to-create" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code>priority/high    — #d93f0b
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code>priority/high    — #d93f0b
 priority/medium  — #e4e669
 priority/low     — #0075ca
 phase/0-oss-ready
 phase/5-oss-launch
 phase/6-gitops
 phase/7-aiml
+phase/7c-bedrock
 phase/8-dx
 phase/9-advanced
 </code></pre></div></td></tr></table></div>
