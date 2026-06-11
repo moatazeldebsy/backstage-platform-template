@@ -361,6 +361,11 @@ function AiAssistantPage() {
         ? { 'X-Backstage-User': userRef }
         : {};
 
+      // Capture sentAt BEFORE issuing the request — the a2a endpoint streams
+      // the full agent turn (10-60s), so timing this after the call would put
+      // it well past the session's created_at and break the window check below.
+      const sentAt = Date.now();
+
       const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/platform-assistant`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...identityHeaders },
@@ -376,14 +381,24 @@ function AiAssistantPage() {
         throw new Error(`KAgent request failed: ${a2aRes.status}`);
       }
 
-      // a2a endpoint returns event stream, contextId usually comes from session polling
+      // a2a returns a streamed text/event-stream response for normal turns;
+      // contextId (if present at all) comes via session polling instead.
+      // Only attempt to parse direct JSON responses — reading the body of an
+      // event-stream response would block until the full agent turn completes.
       let sessionId: string | null = contextIdRef.current;
-      try {
-        // Try to parse as JSON in case it's a direct response
-        const a2aBody = await a2aRes.json();
-        if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
-      } catch {
-        // Event stream response is expected; we'll find the session via polling
+      const contentType = a2aRes.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        try {
+          const a2aBody = await a2aRes.json();
+          if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
+        } catch {
+          // ignore — fall through to session polling
+        }
+      } else {
+        // Drain the event-stream body in the background without awaiting it —
+        // cancelling it instead would signal a client disconnect that can
+        // abort the in-flight agent turn server-side.
+        void a2aRes.text().catch(() => {});
       }
 
       // If we don't have a sessionId yet, poll the sessions list with
@@ -392,8 +407,7 @@ function AiAssistantPage() {
       // 45s deadline accounts for Claude API cold start on local Kind (~8–15s).
       if (!sessionId) {
         setStatusText('Connecting to agent — this may take a few seconds on local…');
-        const sentAt = Date.now();
-        const sessionDeadline = Date.now() + 45_000;
+        const sessionDeadline = sentAt + 45_000;
         let sAttempt = 0;
         let lastError = '';
         while (!sessionId && Date.now() < sessionDeadline) {
