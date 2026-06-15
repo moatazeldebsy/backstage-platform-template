@@ -1,0 +1,34 @@
+# Argo Rollouts controller — AWS EKS
+# helm repo add argo https://argoproj.github.io/argo-helm
+# helm upgrade --install argo-rollouts argo/argo-rollouts \
+#   -n argo-rollouts --create-namespace \
+#   -f aws/argocd/argo-rollouts-values.yaml
+
+dashboard:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    hosts:
+      - ""   # match any hostname; set real domain when DNS is ready
+
+controller:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: prometheus

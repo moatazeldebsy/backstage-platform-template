@@ -2,6 +2,26 @@
 
 ## Overview
 
+![Platform Architecture](assets/platform-architecture.jpg)
+
+Six layers — Developer Portal (Backstage + templates + AI), Golden Paths (21 service templates + 18 QA templates + 5 Crossplane Claims), AI-Native IDP (KAgent agents + MLflow + MCP servers + Argo Workflows), Delivery & Quality (GitHub Actions + ArgoCD + Helm + scorecard gates), Runtime (Kubernetes: Kind locally, EKS on AWS + Crossplane), Observability & Infra (Prometheus + Grafana + DORA + Terraform).
+
+## Interaction Model
+
+![Developer & Platform Engineer Interaction Flows](assets/interaction-flows.jpg)
+
+Three channels connect developers, platform engineers, and AI agents to the platform control plane:
+
+| # | Channel | Entry point | Reaches |
+|---|---------|-------------|---------|
+| 1 | **CLI** (`idp`) | `idp scaffold service`, `idp template list` | Scaffolder Engine → GitHub repo → CI |
+| 2 | **Backstage Portal** | Software Catalog, 21 software templates, 18 QA templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights | Scaffolder Backend → Catalog API → ArgoCD |
+| 3 | **AI Agent / MCP** | KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs |
+
+All three channels converge on the **Platform Control Plane**: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.29 in production.
+
+---
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       Developer Experience                           │
@@ -230,6 +250,10 @@ Host ~/.kube/config         docker-compose mounts as read-only
 ---
 
 ## AWS Architecture
+
+![AWS Architecture](assets/aws-architecture.jpg)
+
+Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.29 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data & Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).
 
 ### Network Topology
 

@@ -545,6 +545,11 @@
           "moved": 0,
           "ringId": "trial",
           "date": "2025-01-01"
+        },
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2026-06-09"
         }
       ],
       "id": "loki"
@@ -811,6 +816,11 @@
           "moved": 0,
           "ringId": "trial",
           "date": "2025-01-01"
+        },
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2026-06-09"
         }
       ],
       "id": "sre-slo"
@@ -996,6 +1006,342 @@
         }
       ],
       "id": "aws-device-farm"
+    },
+    {
+      "key": "kagent",
+      "title": "KAgent",
+      "quadrant": "tools",
+      "description": "Kubernetes-native AI agent runtime. Deploys Agent CRDs connected to MCP servers and exposes an A2A API. Powers the IDP Assistant, QA Assistant, and Contract Assistant on the platform.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "kagent"
+    },
+    {
+      "key": "mcp-protocol",
+      "title": "Model Context Protocol (MCP)",
+      "quadrant": "techniques",
+      "description": "Open standard for exposing tools to AI agents. The platform runs 3 MCP servers (idp, qa, contract) and provides an mcp-server scaffold template backed by the kmcp Kubernetes controller.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "mcp-protocol"
+    },
+    {
+      "key": "crossplane",
+      "title": "Crossplane",
+      "quadrant": "tools",
+      "description": "Kubernetes-native infrastructure provisioning via CRDs. Self-service S3, RDS, DynamoDB, SQS, and Kafka available via Backstage scaffold templates. AWS-only; local Kind path uses direct Helm.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "crossplane"
+    },
+    {
+      "key": "rancher-desktop",
+      "title": "Rancher Desktop",
+      "quadrant": "platforms",
+      "description": "Local Kubernetes using k3s — alternative to Kind. Supported by bootstrap-local.sh via KUBERNETES_PROVIDER=rancher-desktop. Requires Traefik disabled and dockerd engine.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "rancher-desktop"
+    },
+    {
+      "key": "kafka",
+      "title": "Apache Kafka",
+      "quadrant": "platforms",
+      "description": "Event streaming platform. Self-service topic provisioning via kafka-topic and kafka-topic-crossplane Backstage scaffold templates.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "kafka"
+    },
+    {
+      "key": "aws-sqs",
+      "title": "AWS SQS",
+      "quadrant": "platforms",
+      "description": "Managed message queuing. Self-service queue provisioning via the sqs-queue-crossplane Backstage scaffold template.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "aws-sqs"
+    },
+    {
+      "key": "k6",
+      "title": "k6",
+      "quadrant": "tools",
+      "description": "Load and performance testing framework. The k6-performance-suite scaffold template ships a k6 script with GitHub Actions CI integration and Prometheus metrics export.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "k6"
+    },
+    {
+      "key": "testcontainers",
+      "title": "Testcontainers",
+      "quadrant": "tools",
+      "description": "Integration testing with real containers (Postgres, Kafka, Redis) in CI. Used by the testcontainers-suite scaffold template to replace in-memory fakes.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "testcontainers"
+    },
+    {
+      "key": "wiremock",
+      "title": "WireMock",
+      "quadrant": "tools",
+      "description": "HTTP service stubbing for component and integration tests. Used by the component-test-suite scaffold template to isolate service dependencies in CI.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "wiremock"
+    },
+    {
+      "key": "newman",
+      "title": "Newman / Postman",
+      "quadrant": "tools",
+      "description": "CLI runner for Postman Collections in CI pipelines. The newman-api-suite scaffold template ships a collection runner with HTML reporting and environment support.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "newman"
+    },
+    {
+      "key": "zap-dast",
+      "title": "OWASP ZAP",
+      "quadrant": "tools",
+      "description": "Dynamic Application Security Testing. The zap-dast-suite scaffold template runs ZAP baseline scans against staging deployments in CI and uploads findings as SARIF.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "zap-dast"
+    },
+    {
+      "key": "swiftlint",
+      "title": "SwiftLint",
+      "quadrant": "tools",
+      "description": "Swift code linter enforced in CI for all iOS golden-path templates. Rules defined in skeleton/.swiftlint.yml; violations fail the CI build.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "swiftlint"
+    },
+    {
+      "key": "deepeval",
+      "title": "DeepEval",
+      "quadrant": "tools",
+      "description": "LLM evaluation framework for measuring AI model output quality (faithfulness, relevancy, hallucination). The deepeval-llm-eval-suite template scaffolds eval pipelines with CI integration.",
+      "timeline": [
+        {
+          "moved": 1,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "deepeval"
+    },
+    {
+      "key": "datadog",
+      "title": "Datadog",
+      "quadrant": "tools",
+      "description": "Cloud monitoring, APM, and synthetics. The datadog-synthetic-suite scaffold template provisions synthetic monitors for production services. Assess before adopting alongside the existing Prometheus/Grafana stack.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "datadog"
+    },
+    {
+      "key": "kotlin-multiplatform",
+      "title": "Kotlin Multiplatform",
+      "quadrant": "languages",
+      "description": "Cross-platform mobile library framework sharing business logic between Android and iOS. Supported by the mobile-sdk scaffold template alongside pure Android (Kotlin) and iOS (Swift Package) options.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "kotlin-multiplatform"
+    },
+    {
+      "key": "bdd-cucumber",
+      "title": "BDD / Cucumber",
+      "quadrant": "techniques",
+      "description": "Behavior-driven development using Gherkin syntax for living documentation. The bdd-cucumber-suite scaffold template adds Cucumber + step definitions to an existing service repo via PR.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "bdd-cucumber"
+    },
+    {
+      "key": "mutation-testing",
+      "title": "Mutation Testing",
+      "quadrant": "techniques",
+      "description": "Validates test suite quality by injecting code mutations and measuring kill rate. The mutation-testing-suite template ships Stryker (JS/TS) or Pitest (Java) with CI thresholds.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "mutation-testing"
+    },
+    {
+      "key": "visual-regression",
+      "title": "Visual Regression Testing",
+      "quadrant": "techniques",
+      "description": "Screenshot comparison testing to catch unintended UI changes. The visual-regression-suite template integrates Percy or BackstopJS into CI with baseline approval workflows.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-06-03"
+        }
+      ],
+      "id": "visual-regression"
+    },
+    {
+      "key": "opencost",
+      "title": "OpenCost",
+      "quadrant": "tools",
+      "description": "In-cluster Kubernetes cost allocation tool. Deployed as part of the platform FinOps stack; powers the per-team cost dashboard and `idp_team_actual_cost_usd_monthly` Prometheus metrics. Recommended for all teams tracking namespace-level spend.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "opencost"
+    },
+    {
+      "key": "sloth",
+      "title": "Sloth (SLO generator)",
+      "quadrant": "tools",
+      "description": "YAML-based SLO definition tool that generates multi-window, multi-burn-rate Prometheus alerts from a simple spec. The `slo-definition` Backstage template scaffolds Sloth YAML for any service.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "sloth"
+    },
+    {
+      "key": "pagerduty",
+      "title": "PagerDuty",
+      "quadrant": "tools",
+      "description": "On-call escalation platform wired into AlertManager. Critical SLO burn-rate and infrastructure alerts page the on-call engineer via Events API v2. Configure via PAGERDUTY_INTEGRATION_KEY in local/.env.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "pagerduty"
+    },
+    {
+      "key": "grafana-tempo",
+      "title": "Grafana Tempo",
+      "quadrant": "tools",
+      "description": "Distributed tracing backend. Deployed in single-binary mode locally (tempo.idp.local) and scalable distributed mode on EKS. OTLP ingest on :4317 (gRPC) / :4318 (HTTP). TraceIDs link directly to Loki log lines.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "grafana-tempo"
+    },
+    {
+      "key": "per-team-cost-budgets",
+      "title": "Per-Team Cost Budgets",
+      "quadrant": "techniques",
+      "description": "Monthly USD budget annotations on Backstage Group entities, enforced by PrometheusRules (TeamBudgetWarning at 80%, TeamBudgetExceeded at 100%). Actuals queried from OpenCost every 15 min by the tech-insights-exporter. Budgets in kubernetes/finops/team-budgets-configmap.yaml.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "per-team-cost-budgets"
+    },
+    {
+      "key": "kagent-guardrails",
+      "title": "AI Agent Guardrails",
+      "quadrant": "techniques",
+      "description": "Structured audit log ([AUDIT] JSON lines) on every MCP tool call; per-agent attribution via mcp_agent_tool_calls_total{server,tool,agent}; dry_run mode on scaffold_service; KAgent system-prompt rules requiring transparency before destructive operations. Runbook: docs/runbooks/kagent-guardrails.md.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "kagent-guardrails"
     }
   ]
 }

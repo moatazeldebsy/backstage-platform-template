@@ -23,6 +23,7 @@ Status is updated as work progresses.
 
 | Feature | Details |
 |---------|---------|
+| SRE reliability programme | PodDisruptionBudgets, Sloth SLOs, burn-rate alerts, Loki+Tempo+PagerDuty observability, Argo Rollouts canary, multi-env GitOps promotion, blameless postmortem template, per-team cost budgets, KAgent guardrails + audit log |
 | Golden path templates | Node.js, Python, Go, React, Terraform, Deploy-to-Kind (7 templates) |
 | CI pipeline | Multi-language test detection, ECR push, OIDC auth, graceful skip when secrets absent |
 | EKS platform | VPC, EKS v1.29, ECR, RDS, Secrets Manager via Terraform |
@@ -96,6 +97,7 @@ Status is updated as work progresses.
 | Item | Status | Notes |
 |------|--------|-------|
 | OPA cost-tag enforcement | ✅ | `kubernetes/policies/require-cost-tags.yaml` (warn mode) |
+| Per-team cost budgets | ✅ | Monthly budget annotations on Group entities; OpenCost-backed actuals; TeamBudgetWarning/TeamBudgetExceeded PrometheusRules; `idp_team_budget_utilization_ratio` metric in Pushgateway |
 | OpenCost in-cluster | ✅ | `kubernetes/finops/opencost.yaml` |
 | OpenCost Grafana dashboard | ✅ | `finops` provider in Grafana helm values |
 | AWS Cost Anomaly Detection | ✅ | `terraform/finops.tf` |
@@ -195,14 +197,56 @@ one-click PR. This is the most-requested feature after first scaffold.
 | Item | Status | Notes |
 |---|---|---|
 | Argo Workflows orchestration | ✅ | `local/argo-workflows/values.yaml` + `aws/argo-workflows/values.yaml` with S3 artifact storage (AWS IRSA); integrated into `bootstrap-local.sh` (--install-argo-workflows flag) and `bootstrap.sh` (Phase 6a) |
-| AI Cost Attribution | ✅ | MCP server metrics enhanced with `server` label; `ai_api_calls_total` counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking |
+| AI Cost Attribution | ✅ | MCP server metrics enhanced with `server` label; `ai_api_calls_total` counter tracks cost per model; Team labels on Agent CRDs; ServiceMonitor enables per-team tracking; per-agent audit log ([AUDIT] JSON) and `dry_run` mode on `scaffold_service` |
 
-### Phase 7 Successor Items (📋 Planned)
+### Phase 7 Successor Items
 
 | Item | Status | Notes |
 |---|---|---|
+| KAgent tool-call audit log + guardrails | ✅ | Structured [AUDIT] JSON logs on every MCP tool call; mcp_agent_tool_calls_total{agent} counter; dry_run on scaffold_service; KAgent system-prompt guardrails; ScaffoldServiceHighRate + McpToolErrorRateHigh alerts |
+| Event Bus (`agent-event-router`) | ✅ | Receives GitHub / AlertManager / ArgoCD webhooks → fans out to agents via A2A; HMAC + bearer-token auth |
+| `platform-assistant` unified agent | ✅ | Single Backstage entry point routing across IDP + QA + contract tools (22 tools); replaces direct `idp-assistant` calls |
+| Model routing (Sonnet / Opus ModelConfigs) | ✅ | `claude-sonnet` (Sonnet 4.6) and `claude-opus` (Opus 4.8) ModelConfig CRDs; specialists upgraded to Sonnet |
+| Persistent user memory | ✅ | ConfigMap-backed per-user preferences (`get_user_memory` / `set_user_memory` tools); identity bound at HTTP layer, not LLM args |
+| `github-mcp-server` | ✅ | `get_pr_diff`, `add_pr_comment`, `get_ci_status`; used by `qa-assistant` for automated PR review |
+| `catalog_semantic_search` tool | ✅ | Natural-language vector search via Voyage AI + pgvector; added to `idp-mcp-server` |
+| Quick-action chips in chat UI | ✅ | 6 clickable suggestion chips on empty chat in `AiAssistantPage` |
+| `idp ai` CLI command | ✅ | `idp ai "<prompt>"` — sends A2A message to `platform-assistant`, streams response to terminal |
 | `ml-training-job` template | 📋 | Argo Workflows scaffold with MLflow experiment logging; CronJob variant for scheduled model training |
 | Automated deepeval CI gate | 📋 | GitHub Actions workflow on PR to Agent prompts; blocks merge if AnswerRelevancy < 0.7 or ToolCorrectness < 0.8 |
+
+### Phase 7d — Agentic Platform (Sprint 4+) 📋
+
+| Sprint | Features | Status |
+|--------|---------|--------|
+| Sprint 4 | `argocd-mcp-server` + `release-agent` + `cost-mcp-server` + `cost-agent` | ✅ |
+| Sprint 5 | `incident-mcp-server` + `incident-agent` + `notification-mcp-server` | 📋 |
+| Sprint 6 | RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig + A2A delegation | 📋 |
+| Sprint 7 | `security-mcp-server` + `security-agent` + `onboarding-agent` | 📋 |
+| Sprint 8 | HiTL approval workflow (`ApprovalRequest` CRD) + Policy-as-Prompt | 📋 |
+| Sprint 9 | Agent regression test suite + A/B prompt testing | 📋 |
+| Sprint 10 | Slack bot + IDE plugin (VS Code) | 📋 |
+
+---
+
+## Phase 7c — Amazon Bedrock AI Integration 💡
+
+**Goal:** Evolve the AI platform from direct Anthropic API calls to AWS-native Bedrock, enabling IRSA-based auth (no API key secrets), managed RAG, content guardrails, and richer agentic workflows — all additive to the existing KAgent stack.
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Bedrock ModelConfig for KAgent | 🔴 High | Add a `ModelConfig` CRD pointing to Bedrock (`us.anthropic.claude-haiku-*`); KAgent routes via IRSA — no `kagent-anthropic` secret needed. Files: `kubernetes/kagent/modelconfig.yaml`, `bootstrap-ai.sh` |
+| Bedrock Knowledge Base (replace pgvector RAG) | 🔴 High | Swap Voyage AI + pgvector (`idpRagSearch.ts`) for Bedrock KB backed by the existing S3 TechDocs bucket; Titan Embeddings handles chunking. AWS-only; local Kind path unchanged |
+| Bedrock Guardrails | 🟡 Medium | Content filtering + PII masking + topic blocking on all AI assistant prompts; maps to AI Platform Scorecard Gold tier governance checks. Add guardrailIdentifier to ModelConfig CRD and Terraform resource |
+| `idp:bedrock-generate` scaffolder action | 🟡 Medium | New Backstage backend module that calls Bedrock Claude to generate boilerplate from a natural-language description inside any template (model selectable: Haiku/Sonnet). File: new `idpBedrockGenerate.ts` |
+| Bedrock Agents with Action Groups | 🟡 Medium | Standalone Bedrock Agent (Lambda action groups wrapping the 6 IDP MCP tools) exposed via API Gateway + Backstage proxy; AWS-native alternative/complement to KAgent. New `aws/bedrock/` Terraform directory |
+| Event-driven auto-remediation | 🟡 Medium | K8s events → EventBridge → Lambda → Bedrock Agent → GitHub issue / PagerDuty. Agent diagnoses using CloudWatch Logs Insights before acting. No KAgent dependency |
+| Bedrock Inline Agent for IaC plan review | 🟢 Low | Ephemeral (stateless) Bedrock agent invoked in CI before `terraform apply`; flags destructive changes, estimates cost delta, checks OPA policies. Integrates into `ci.yml` |
+| Bedrock Flows for multi-step workflows | 🟢 Low | Visual workflow: scaffold → CI trigger → deploy → health check → notify. Replaces ad-hoc polling in `idpLocalDeploy.ts` with a managed state machine. New `aws/bedrock/flows/` Terraform |
+| Bedrock multi-agent supervisor | 🟢 Low | Supervisor Bedrock Agent routing to sub-agents (deploy, QA, cost) via Bedrock's native multi-agent orchestration; single developer entry-point |
+| Bedrock Model Evaluation | 🟢 Low | Benchmark Claude Haiku vs Sonnet on the 6 IDP tool-use scenarios using a curated S3 prompt dataset; results feed into the AI Platform Scorecard |
+
+> **Dependency:** Items requiring IRSA assume Phase 10a TLS + IAM hardening is in place. The Bedrock ModelConfig item can ship independently on EKS as soon as IRSA is configured.
 
 ---
 
@@ -355,6 +399,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 | M6: Multi-env GitOps | Q3 2026 | Phase 6 | `milestone/m6-gitops` |
 | M7: AI/ML platform | Q2 2026 ✅ | Phase 7 | `milestone/m7-aiml` |
 | M7b: Test automation golden path | Q2 2026 ✅ | Phase 7b | `milestone/m7b-test-golden-path` |
+| M7c: Amazon Bedrock AI integration | Q4 2026 | Phase 7c | `milestone/m7c-bedrock` |
 | M8: Developer experience | Q3 2026 | Phase 8 | `milestone/m8-dx` |
 | M9: Advanced platform | Q4 2026 | Phase 9 | `milestone/m9-advanced` |
 | M10: Multi-team production scale | Q3 2026 | Phase 10 | `milestone/m10-scale` |
@@ -374,6 +419,7 @@ phase/0-oss-ready
 phase/5-oss-launch
 phase/6-gitops
 phase/7-aiml
+phase/7c-bedrock
 phase/8-dx
 phase/9-advanced
 ```

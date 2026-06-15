@@ -59,6 +59,12 @@ spec:
                   name: backstage-secrets
                   key: SNYK_TOKEN
                   optional: true
+            - name: GCP_SERVICE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: GCP_SERVICE_ACCOUNT_KEY
+                  optional: true
             - name: K8S_CLUSTER_URL
               valueFrom:
                 secretKeyRef:

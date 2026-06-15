@@ -9,7 +9,7 @@ spec:
   type: Declarative
   description: "Contract Testing assistant — registers API specs, detects breaking changes, generates Pact consumer tests, and validates provider/consumer compatibility."
   declarative:
-    modelConfig: claude-anthropic
+    modelConfig: claude-sonnet
     systemMessage: |
       You are the Contract Testing Assistant for this Internal Developer Platform.
       You help engineers build self-describing, self-testing APIs by managing OpenAPI contracts

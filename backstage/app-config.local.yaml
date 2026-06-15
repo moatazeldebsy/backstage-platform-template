@@ -40,7 +40,7 @@ backend:
   reading:
     allow:
       - host: raw.githubusercontent.com  # used when GITHUB_TOKEN is set (production)
-      - host: localhost:3000              # allows reading tech-radar.json from local static assets
+      - host: localhost:3000              # allows http://localhost:3000/... for locally served static assets
 
 # Auth — enable guest provider so the UI works without GitHub OAuth credentials.
 auth:
@@ -125,8 +125,10 @@ proxy:
         Accept: application/vnd.github+json
         X-GitHub-Api-Version: "2022-11-28"
 
-# Serve tech radar from the locally mounted catalog volume instead of GitHub raw URL.
-# This avoids the moatazeldebsy placeholder issue and works without a GitHub token.
+# Serve tech radar directly from the bind-mounted catalog volume via file:// URI.
+# Using file:// avoids the Brotli compression that the static HTTP server applies,
+# which causes the tech-radar UrlReader to fail with "Failed to parse JSON".
+# The catalog directory is mounted at /catalog inside the container.
 techRadar:
   url: http://localhost:3000/tech-radar.json
 

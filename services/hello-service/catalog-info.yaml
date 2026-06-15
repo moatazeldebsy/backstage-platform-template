@@ -11,6 +11,9 @@ metadata:
     backstage.io/kubernetes-namespace: services-dev
     backstage.io/techdocs-ref: dir:.
     grafana/alert-label-selector: service=hello-service
+    idp.io/slo-availability-target: "99.5"
+    idp.io/slo-latency-target: "99.0"
+    idp.io/sloth-service: hello-service
 spec:
   type: service
   lifecycle: production

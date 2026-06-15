@@ -13,6 +13,7 @@ RUN addgroup -S mcp && adduser -S mcp -G mcp
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY package.json ./
+COPY public/ ./public/
 USER mcp
 EXPOSE 3003
 HEALTHCHECK --interval=15s --timeout=3s CMD wget -qO- http://localhost:3003/healthz || exit 1

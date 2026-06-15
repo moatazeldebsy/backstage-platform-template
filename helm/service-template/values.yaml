@@ -74,6 +74,18 @@ lifecycle:
     exec:
       command: ["/bin/sh", "-c", "sleep 5"]
 
+# Argo Rollouts canary strategy — opt-in per service.
+# When enabled: renders an Argo Rollout instead of a Deployment and adds a
+# canary Service. Requires Argo Rollouts controller + http-error-rate
+# ClusterAnalysisTemplate deployed in the cluster.
+# Set rollout.enabled: true in the service's helm-values overlay to opt in.
+rollout:
+  enabled: false
+  canary:
+    initialWeight: 20         # % of traffic routed to canary pods in step 1
+    step1PauseDuration: "2m"  # how long to observe at initialWeight before analysis
+    step2PauseDuration: "5m"  # how long to observe at 50% before promoting to 100%
+
 # HPA is enabled by default so services on the golden path absorb traffic
 # spikes without manual scaling. Disable in dev/local overlays (e.g.
 # `helm-values-local.yaml`) when running a single replica is fine.
@@ -99,6 +111,12 @@ rbac:
   #   - apiGroups: ["apps"]
   #     resources: ["deployments"]
   #     verbs: ["get", "list", "watch"]
+
+# PodDisruptionBudget — keeps minAvailable pods running during voluntary disruptions
+# (node drains, cluster upgrades). Disable only for single-replica dev overlays.
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
 
 podAnnotations:
   prometheus.io/scrape: "true"

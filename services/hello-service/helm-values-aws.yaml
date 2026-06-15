@@ -1,7 +1,7 @@
 # Helm overrides for hello-service — dev environment
 # image.tag is updated automatically by CI when pushed to main
 image:
-  repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/idp-mvp/hello-service
+  repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service
   tag: "latest"
 
 replicaCount: 1

@@ -18,8 +18,10 @@ spec:
               revision: HEAD
               directories:
                 - path: services/*
-                # contract-mcp-server intentionally excluded — hidden from end users.
-                - path: services/contract-mcp-server
+                # agent-event-router is AI-stack-only (bootstrap-ai.sh manages it).
+                # Excluding it prevents ArgoCD from auto-deploying before the image
+                # exists in the local registry or required secrets are created.
+                - path: services/agent-event-router
                   exclude: true
           # Generator 2: one entry per environment
           - list:
