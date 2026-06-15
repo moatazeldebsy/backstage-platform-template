@@ -76,6 +76,9 @@ backstage:
 
 podLabels:
   backstage.io/kubernetes-id: contract-mcp-server
+  team: platform-team
+  cost-center: CC-1000
+  environment: local
 
 # Local overlay: single replica, no HPA (chart default enables HPA for prod).
 replicaCount: 1
