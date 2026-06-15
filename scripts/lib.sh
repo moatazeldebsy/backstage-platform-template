@@ -166,7 +166,7 @@ append_hosts_file() {
 #   $1 = env_suffix: "local" (Kind/Rancher) | "dev" (AWS)
 _cleanup_scaffolded_services() {
   local env_suffix="${1:-local}"
-  local PLATFORM_BUILTINS=("hello-service" "idp-mcp-server" "qa-mcp-server" "contract-mcp-server")
+  local PLATFORM_BUILTINS=("hello-service" "idp-mcp-server" "qa-mcp-server" "contract-mcp-server" "github-mcp-server" "argocd-mcp-server" "cost-mcp-server" "agent-event-router")
   local svc builtin skip
 
   local SCAFFOLDED=()

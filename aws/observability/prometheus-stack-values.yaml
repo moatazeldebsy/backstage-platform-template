@@ -114,9 +114,22 @@ grafana:
       alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     hosts: []
 
-  # kube-prometheus-stack automatically provisions the Prometheus datasource (uid: prometheus,
-  # isDefault: true) via the prometheus-kube-prometheus-grafana-datasource ConfigMap.
-  # Do NOT add a datasource here — a second isDefault entry crashes Grafana on startup.
+  sidecar:
+    datasources:
+      # kube-prometheus-stack normally auto-provisions a Prometheus datasource
+      # (uid: prometheus, isDefault: true) via its own grafana_datasource-labeled
+      # ConfigMap. V2 replaces that with the multi-region datasources ConfigMap
+      # (aws/observability/grafana-multi-region-datasources.yaml), which sets
+      # Thanos as isDefault and re-declares uid: prometheus for dashboard
+      # compatibility. Disable the chart's auto datasource so the two
+      # grafana_datasource ConfigMaps don't both set isDefault: true (that
+      # combination crashes Grafana on startup).
+      defaultDatasourceEnabled: false
+
+  # kube-prometheus-stack's auto-provisioned Prometheus datasource is disabled above
+  # (see sidecar.datasources). Datasources are instead provisioned via
+  # aws/observability/grafana-multi-region-datasources.yaml — do not add a second
+  # isDefault entry here.
   datasources:
     datasources.yaml:
       apiVersion: 1

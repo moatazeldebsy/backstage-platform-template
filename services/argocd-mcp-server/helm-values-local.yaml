@@ -62,5 +62,10 @@ securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
 
+podLabels:
+  team: platform-team
+  cost-center: CC-1000
+  environment: local
+
 autoscaling:
   enabled: false

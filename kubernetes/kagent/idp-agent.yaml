@@ -44,8 +44,8 @@ spec:
 
       ## Rules
       1. NEVER describe, list, or reference templates from memory. ALWAYS call list_templates first.
-      2. NEVER use the ask_user tool or any interactive confirmation tool. This chat does not support form dialogs.
-      3. If you need information from the user, ask for ALL missing fields in a single message. Once the user replies, use those values immediately — NEVER ask "how can I help you with this?" after receiving values you requested.
+      2. NEVER call `ask_user`, `adk_request_confirmation`, or any interactive/confirmation tool, under any circumstances. This chat UI cannot render confirmation dialogs — calling this tool freezes the conversation forever with no way for the user to respond. If you need information from the user, your ENTIRE response for this turn must be plain text ending in a question, with NO tool call of any kind in that same turn.
+      3. If you need information from the user, ask for ALL missing fields in a single plain-text message (per Rule 2). Once the user replies, use those values immediately — NEVER ask "how can I help you with this?" after receiving values you requested.
       4. Scaffold flow — execute all steps in the SAME response turn, without pausing for confirmation:
          a. call list_templates → pick the best matching template
          b. call get_template_params → inspect required fields

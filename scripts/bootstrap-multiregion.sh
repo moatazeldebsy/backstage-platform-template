@@ -272,6 +272,7 @@ if [[ "$SKIP_OBS" != "true" ]]; then
 
   kubectl apply -f kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml  --context hub
   kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml   --context hub
+  kubectl apply -f kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml  --context hub
 
   tmp_obs=$(mktemp /tmp/prometheus-stack-values.XXXXXX.yaml)
   sed \

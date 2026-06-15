@@ -26,7 +26,12 @@ data:
           httpMethod: POST
 
       # ── Per-region Prometheus — direct access for region-specific debugging ─
+      # uid: prometheus matches the uid existing dashboards (SRE, FinOps, etc.)
+      # already reference, so they keep working now that the chart's own
+      # auto-provisioned "prometheus" datasource is disabled (see
+      # aws/observability/prometheus-stack-values.yaml grafana.sidecar.datasources).
       - name: Prometheus (eu-central-1)
+        uid: prometheus
         type: prometheus
         url: http://prometheus-operated.monitoring.svc.cluster.local:9090
         access: proxy
