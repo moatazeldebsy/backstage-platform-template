@@ -59,12 +59,12 @@ fi
 header "Kubernetes Components Validation"
 
 # Check all namespaces exist
-for ns in backstage argocd monitoring services services-dev ml-platform kagent; do
+for ns in backstage argocd monitoring services services-dev services-staging argo-rollouts ml-platform kagent; do
   kubectl get namespace "$ns" &>/dev/null && log "Namespace: $ns" || err "Namespace missing: $ns"
 done
 
 # Check critical deployments
-for deploy_ns_name in "backstage:backstage" "argocd:argocd-server" "monitoring:prometheus-operator" "kagent:kagent-controller"; do
+for deploy_ns_name in "backstage:backstage" "argocd:argocd-server" "monitoring:prometheus-operator" "argo-rollouts:argo-rollouts" "kagent:kagent-controller"; do
   ns="${deploy_ns_name%:*}"
   name="${deploy_ns_name#*:}"
   REPLICAS=$(kubectl get deployment "$name" -n "$ns" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
@@ -118,6 +118,23 @@ PROMETHEUS_TARGETS=$(kubectl exec -n monitoring -l app.kubernetes.io/name=promet
 # Check Grafana (via ALB Ingress)
 GRAFANA_URL=$(kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
 [[ -n "$GRAFANA_URL" ]] && log "Grafana URL: http://$GRAFANA_URL" || err "Grafana ingress not ready"
+
+# Check Loki
+LOKI_READY=$(kubectl get pods -n monitoring -l app.kubernetes.io/name=loki --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+[[ $LOKI_READY -gt 0 ]] && log "Loki: $LOKI_READY pod(s) running" || err "Loki not running (log aggregation unavailable)"
+
+# Check Tempo
+TEMPO_READY=$(kubectl get pods -n monitoring -l app.kubernetes.io/name=tempo --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+[[ $TEMPO_READY -gt 0 ]] && log "Tempo: $TEMPO_READY pod(s) running" || err "Tempo not running (distributed tracing unavailable)"
+
+# Check Argo Rollouts controller
+ROLLOUTS_READY=$(kubectl get deployment argo-rollouts -n argo-rollouts -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+[[ "${ROLLOUTS_READY:-0}" -gt 0 ]] && log "Argo Rollouts controller ready ($ROLLOUTS_READY replicas)" || err "Argo Rollouts controller not ready"
+
+# Check ClusterAnalysisTemplate exists
+kubectl get clusteranalysistemplate http-error-rate &>/dev/null && \
+  log "ClusterAnalysisTemplate: http-error-rate present" || \
+  err "ClusterAnalysisTemplate http-error-rate missing (canary auto-rollback unavailable)"
 
 # ── 5. GitOps & CI/CD Tests ──────────────────────────────────────────────────
 header "GitOps & CI/CD Validation"
@@ -226,6 +243,32 @@ log "Cluster resource usage: CPU ${NODE_CPU}m, Memory ${NODE_MEMORY}Mi"
 # Check pod resource requests
 POD_CPU_REQ=$(kubectl get pods -A -o jsonpath='{.items[*].spec.containers[*].resources.requests.cpu}' 2>/dev/null | grep -o '[0-9]*m' | sed 's/m//' | awk '{s+=$1} END {print s}' || echo "0")
 log "Pod CPU requests: ${POD_CPU_REQ}m"
+
+# Check team budget ConfigMap
+kubectl get configmap team-budgets -n monitoring &>/dev/null && \
+  log "Team budget ConfigMap present (finops cost alerts enabled)" || \
+  err "Team budget ConfigMap missing in monitoring namespace"
+
+# Check tech-insights-exporter CronJob
+kubectl get cronjob tech-insights-exporter -n monitoring &>/dev/null && \
+  log "Tech-insights-exporter CronJob present" || \
+  err "Tech-insights-exporter CronJob missing (team cost metrics unavailable)"
+
+# Check PrometheusRules are loaded
+PROM_RULE_COUNT=$(kubectl get prometheusrule -n monitoring --no-headers 2>/dev/null | wc -l)
+[[ $PROM_RULE_COUNT -gt 0 ]] && \
+  log "PrometheusRules loaded: $PROM_RULE_COUNT rules (SLO burn-rate, budgets, guardrails)" || \
+  err "PrometheusRules missing in monitoring namespace — run: kubectl apply -f observability/alertmanager/prometheus-rules.yaml"
+
+# Check SLO Grafana dashboard ConfigMap
+kubectl get configmap grafana-dashboards-sre -n monitoring &>/dev/null && \
+  log "SRE Grafana dashboard ConfigMap present" || \
+  err "SRE Grafana dashboard ConfigMap missing (slo-error-budget dashboard unavailable)"
+
+# Check FinOps Grafana dashboard ConfigMap
+kubectl get configmap grafana-dashboards-finops -n monitoring &>/dev/null && \
+  log "FinOps Grafana dashboard ConfigMap present" || \
+  err "FinOps Grafana dashboard ConfigMap missing (team-budgets dashboard unavailable)"
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 echo ""

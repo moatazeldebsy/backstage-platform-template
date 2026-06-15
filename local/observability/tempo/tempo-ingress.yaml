@@ -1,0 +1,28 @@
+# nginx Ingress for Grafana Tempo OTLP ingest — local Kind only
+# Allows services instrumented with OTel SDK to send traces to http://tempo.idp.local
+# HTTP OTLP: POST http://tempo.idp.local/v1/traces
+# gRPC OTLP: tempo.idp.local:4317 (requires nginx --enable-ssl-passthrough for gRPC)
+# Apply: kubectl apply -f local/observability/tempo/tempo-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tempo
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tempo.idp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tempo
+                port:
+                  number: 3100

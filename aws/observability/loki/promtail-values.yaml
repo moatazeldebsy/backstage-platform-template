@@ -1,0 +1,51 @@
+# Promtail DaemonSet for AWS EKS — ships pod logs to Loki gateway
+# helm upgrade --install promtail grafana/promtail \
+#   -n monitoring --values aws/observability/loki/promtail-values.yaml
+
+config:
+  clients:
+    - url: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+
+  snippets:
+    pipelineStages:
+      - cri: {}
+
+    scrapeConfigs: |
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            target_label: app
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          - source_labels: [__meta_kubernetes_pod_label_team]
+            target_label: team
+          - source_labels: [__meta_kubernetes_pod_label_cost_center]
+            target_label: cost_center
+          - replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule

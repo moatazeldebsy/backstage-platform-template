@@ -46,7 +46,7 @@ kind: RequireCostTags
 metadata:
   name: require-cost-allocation-labels
 spec:
-  enforcementAction: warn   # Start with warn; switch to deny once teams have added labels
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]

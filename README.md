@@ -42,10 +42,10 @@
 | **Software templates** | 21 golden-path service & app templates — Node.js, Python, Go, React, Terraform, MCP Server, Model Serving API, Deploy-to-Kind, Team namespace, EKS Cluster, RDS, Add-secret, AI Agent, ML Experiment, plus 7 mobile templates (Android, iOS, Flutter, SDK, Code Signing, App Store Deploy, Device Farm) |
 | **QA / test templates** | 18 testing scaffold templates — Playwright E2E, k6 Performance, Pact Contract, Newman API, ZAP DAST, Datadog Synthetic, Visual Regression, Accessibility (axe), BDD Cucumber, Appium Mobile, Chaos Mesh, Stryker Mutation, Testcontainers Integration, DeepEval LLM Eval, Unit, Component, IaC, Flutter Integration — plus `enable-contract-testing` for MCP-driven contract gates |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm); 5 mobile Tech Insights scorecard checks; Appium + Firebase TestLab device-farm testing. See [docs/mobile-platform.md](docs/mobile-platform.md). |
-| **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired |
+| **Golden-path chart** | Single reusable Helm chart for all services — health checks, metrics, RBAC pre-wired; PodDisruptionBudget (default minAvailable: 1), optional Argo Rollouts canary with auto-rollback |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 checks + 5 mobile checks, visible in Backstage Tech Insights + Grafana); PR gates for coverage ≥70%, vuln scan, static analysis; ArgoCD PreSync contract gate blocks breaking API changes. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) for the programme overview. |
-| **AI/ML platform** | **AI-Native IDP (Phase 7a Complete)** — KAgent agents (Claude + OpenAI GPT-4o) + MLflow experiment tracking + **IDP MCP Server** (6 tools) + **QA MCP Server** (QA-specific tools) + **Contract MCP Server** (9 contract tools) + Model Serving API (Ollama/vLLM) + AI Scorecard (Bronze/Silver/Gold) + Prompt Lifecycle Management (ConfigMaps) + Argo Workflows (ML pipelines) + Cost Attribution (team labels + metrics) + AI Observability Dashboard + RAG semantic search over TechDocs |
-| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); DORA entity tab on every Component (Elite/High/Medium/Low badges, 7-day sparklines); FinOps cost overview with breakdown by namespace/team; DORA metrics exporter; QA KPI dashboard. See [docs/dora-finops.md](docs/dora-finops.md). |
+| **AI/ML platform** | **AI-Native IDP (Phase 7a Complete)** — KAgent agents (Claude + OpenAI GPT-4o) + MLflow experiment tracking + **IDP MCP Server** (6 tools) + **QA MCP Server** (QA-specific tools) + **Contract MCP Server** (9 contract tools) + Model Serving API (Ollama/vLLM) + AI Scorecard (Bronze/Silver/Gold) + Prompt Lifecycle Management (ConfigMaps) + Argo Workflows (ML pipelines) + Cost Attribution (team labels + metrics) + AI Observability Dashboard + RAG semantic search over TechDocs + KAgent guardrails (structured audit log, dry_run mode, per-agent attribution) |
+| **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki log aggregation + Grafana Tempo distributed tracing (local + AWS); PagerDuty on-call escalation; Sloth SLO definitions with multi-window burn-rate alerts; DORA entity tab on every Component (Elite/High/Medium/Low badges, 7-day sparklines); FinOps cost overview with breakdown by namespace/team; DORA metrics exporter; QA KPI dashboard. See [docs/dora-finops.md](docs/dora-finops.md). |
 | **Infrastructure** | **Terraform** for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3, Secrets Manager) + **Crossplane** for per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) via in-cluster Claims reconciled by ArgoCD. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) for the boundary. |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
@@ -151,6 +151,8 @@ After `bootstrap-local.sh` completes and Backstage is running, everything is rea
 | **AI Assistant** | http://backstage.idp.local/ai-assistant | — (requires `bootstrap-ai.sh`) |
 | **AI Search** | http://backstage.idp.local/ai-search | — (requires `VOYAGE_API_KEY` in `local/backstage/.env`) |
 | **IDP Assistant (A2A)** | http://idp-assistant.idp.local | — (requires `bootstrap-ai.sh`) |
+| **Tempo (tracing)** | http://tempo.idp.local (gRPC :4317 / HTTP :4318) | — (auto-deployed by `bootstrap-local.sh`) |
+| **Argo Rollouts** | http://argo-rollouts.idp.local | — (auto-deployed by `bootstrap-local.sh`) |
 | **MLflow UI** | http://mlflow.idp.local | — (requires `bootstrap-ai.sh`) |
 | **IDP MCP Server** | http://idp-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
 | **QA MCP Server** | http://qa-mcp-server.idp.local/healthz | — (requires `bootstrap-ai.sh`) |
@@ -426,6 +428,32 @@ EKS is **not free-tier compatible** — the control plane costs $0.10/hr (~$73/m
 | **Total (optimized)** | | **~$150–$187/month** |
 
 > **Without optimization** (3 nodes, no scaler, 20 Gi Prometheus, gp2): ~$300–400/month.
+
+### Monthly estimate — v2 multi-region (active-passive)
+
+eu-central-1 (primary) + us-east-1 (standby) with Karpenter spot autoscaling, Aurora Global DB, and Backstage warm standby. The standby region runs a minimal EKS cluster at all times — failover is fast but the control plane fee is unavoidable.
+
+| Service | Config | Est. cost/month |
+|---------|--------|-----------------|
+| EKS control planes | 2× clusters (primary + standby) | ~$146 |
+| EC2 worker nodes | 2× t3.medium spot primary + 1× t3.medium standby | ~$35–55 |
+| NAT Gateways | 2× single gateway (one per region) | ~$66 + data |
+| Aurora Global DB | db.t3.medium writer + read replica, 20 GB | ~$110 |
+| DynamoDB Global Tables | On-demand reads/writes + global replication | ~$10 |
+| ALB / NLB | 2× per region (4 total) | ~$36–72 |
+| Transit Gateway | 2 VPC attachments + inter-region data | ~$36 |
+| CloudFront + WAF | CDN distribution + Web ACL | ~$10–20 |
+| Global Accelerator | 1 accelerator + data transfer | ~$18 |
+| S3 + cross-region replication | TechDocs, Thanos metrics, state | ~$8 |
+| CloudWatch | Logs + metrics (both regions) | ~$10–20 |
+| Secrets Manager | ~8 secrets replicated to standby | ~$4 |
+| Route53 | Health checks + failover routing | ~$5 |
+| EBS | Prometheus + MLflow per region | ~$3 |
+| **Total (v2 multi-region)** | | **~$497–$573/month** |
+
+> **Without spot / optimizer** (on-demand nodes, full replica count both regions): ~$700–900/month.
+>
+> Aurora Global DB replaces RDS PostgreSQL; DynamoDB Global Tables replace any single-region DynamoDB. S3 cross-region replication is enabled on the TechDocs and Thanos buckets. Failover RTO is ~5–10 minutes with automated Route53 health-check cutover.
 
 ### Cost optimizer (enabled by default)
 

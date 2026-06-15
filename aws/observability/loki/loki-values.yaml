@@ -1,0 +1,77 @@
+# Loki scalable (read/write/backend split) for AWS EKS with S3 storage
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm upgrade --install loki grafana/loki \
+#   -n monitoring --values aws/observability/loki/loki-values.yaml \
+#   --set loki.storage.bucketNames.chunks="${LOKI_S3_BUCKET}" \
+#   --set loki.storage.bucketNames.ruler="${LOKI_S3_BUCKET}" \
+#   --set loki.storage.s3.region="${AWS_REGION}"
+#
+# Prerequisites (bootstrap.sh handles these):
+#   - S3 bucket for Loki chunks (created by terraform/loki.tf)
+#   - IRSA role for Loki pods (eks.amazonaws.com/role-arn annotation below)
+
+deploymentMode: SimpleScalable
+
+loki:
+  auth_enabled: false
+  storage:
+    type: s3
+    bucketNames:
+      chunks: "idp-mvp-loki-chunks"   # replaced by bootstrap.sh with real bucket name
+      ruler: "idp-mvp-loki-chunks"
+    s3:
+      region: "us-east-1"             # replaced by bootstrap.sh with $AWS_REGION
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  commonConfig:
+    replication_factor: 2
+  limits_config:
+    retention_period: 30d
+    ingestion_rate_mb: 16
+    ingestion_burst_size_mb: 32
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: ""   # set by bootstrap.sh after terraform apply
+
+read:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+write:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+backend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+gateway:
+  enabled: true
+  ingress:
+    enabled: false   # Loki is accessed internally via Grafana proxy only

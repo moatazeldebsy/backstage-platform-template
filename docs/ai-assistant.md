@@ -1,8 +1,9 @@
 # AI Assistant
 
-The AI Assistant is a chat interface embedded in the Backstage portal backed by a
-[KAgent](https://kagent.dev) AI agent (Claude) that has live access to the service
-catalog, Prometheus metrics, Kubernetes deployments, and the Backstage scaffolder.
+The AI Assistant is a chat interface embedded in the Backstage portal backed by
+[KAgent](https://kagent.dev) AI agents (Claude) with live access to the service
+catalog, Prometheus metrics, Kubernetes deployments, Backstage scaffolder, test
+suites, contract testing, GitHub PRs, and persistent user memory.
 
 ---
 
@@ -15,34 +16,42 @@ The AI Assistant is a **native React chat component** embedded directly in the B
 │  Backstage (Docker Compose / EKS pod)                            │
 │                                                                  │
 │  extensions.tsx — AiAssistantPage                                │
-│    POST /api/proxy/kagent/a2a/kagent/idp-assistant               │
+│    POST /api/proxy/kagent/a2a/kagent/platform-assistant          │
 │    GET  /api/proxy/kagent/api/sessions/<id>  (poll)              │
+│    X-Backstage-User: <userRef>  header on every request          │
 └───────────────────────┬──────────────────────────────────────────┘
                         │  Backstage proxy
                         ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  KAgent UI  (namespace: kagent)                                  │
+│  KAgent  (namespace: kagent)                                     │
 │  kagent-ui.kagent.svc.cluster.local:8080  (in-cluster)           │
 │  http://kagent.idp.local  (local ingress)                        │
 │                                                                  │
-│  A2A server — routes /a2a/kagent/<agent-name>                    │
-│  Sessions API — GET /api/sessions/:id                            │
-└───────────────────────┬──────────────────────────────────────────┘
-                        │  MCP over HTTP
-                        ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  IDP MCP Server  (namespace: kagent)                             │
-│  service: idp-mcp-server  port: 3001                             │
-│  POST /mcp  (Streamable HTTP, stateless, one McpServer/request)  │
-│                                                                  │
-│  Tools:                                                          │
-│    catalog_search       → Backstage catalog API                  │
-│    get_service_metrics  → Prometheus query API                   │
-│    list_templates       → Backstage catalog (kind=Template)      │
-│    get_template_params  → Backstage catalog entity by name       │
-│    scaffold_service     → Backstage scaffolder v2 tasks API      │
-│    list_deployments     → Kubernetes apps/v1 Deployments API     │
-└──────────────────────────────────────────────────────────────────┘
+│  Agents:                                                         │
+│    platform-assistant  — unified entry point (claude-sonnet)     │
+│    idp-assistant       — platform / scaffolding (claude-haiku)   │
+│    qa-assistant        — test suites + PR review (claude-sonnet) │
+│    contract-assistant  — API contracts (claude-sonnet)           │
+└────────────┬──────────────┬──────────────┬────────────┬──────────┘
+             │ MCP/HTTP     │              │            │
+             ▼              ▼              ▼            ▼
+    ┌──────────────┐ ┌──────────┐ ┌──────────────┐ ┌──────────────┐
+    │ idp-mcp      │ │ qa-mcp   │ │ contract-mcp │ │ github-mcp   │
+    │ :3001        │ │ :3002    │ │ :3003        │ │ :3005        │
+    │ 9 tools      │ │ 4 tools  │ │ 9 tools      │ │ 3 tools      │
+    └──────────────┘ └──────────┘ └──────────────┘ └──────────────┘
+
+Event Bus (agent-event-router :3004)
+  ← GitHub webhooks (PR open/update → qa-assistant)
+  ← AlertManager webhooks (firing alerts → idp-assistant)
+  ← ArgoCD webhooks (OutOfSync/Degraded → idp-assistant)
+```
+
+### CLI
+
+```bash
+idp ai "scaffold a Go payment service for team-platform"
+# Calls platform-assistant via A2A, streams response to terminal
 ```
 
 ---
@@ -57,14 +66,25 @@ Registered as a Backstage frontend plugin extension at route `/ai-assistant` wit
 nav item (chat icon) in the sidebar. The component is registered via `createFrontendPlugin`
 in `extensions.tsx` using Backstage's new declarative plugin API (`@backstage/frontend-plugin-api` v0.15+).
 
+**Quick-action chips:** On an empty chat, 6 clickable suggestion chips appear (e.g.
+"Scaffold a Go service", "List deployments", "Find payment services"). Clicking one
+pre-fills the input — the user still hits Enter to send.
+
+**User identity:** On every request the frontend sets `X-Backstage-User: <userRef>`
+(e.g. `user:default/moataz.nabil`) as an HTTP header. This header is forwarded to
+the `platform-assistant` A2A call and propagated to every MCP tool call. The MCP
+server binds the user's memory key at the HTTP boundary — the LLM never receives or
+controls this value, preventing cross-user IDOR.
+
 **Message flow per user turn:**
 
 ```
 1. Generate a UUID contextId (used to locate the session after creation)
-2. POST /api/proxy/kagent/a2a/kagent/idp-assistant  { jsonrpc: "2.0", method: "message/send", … }
+2. POST /api/proxy/kagent/a2a/kagent/platform-assistant  { jsonrpc: "2.0", method: "message/send", … }
+   headers: { X-Backstage-User: <userRef> }
    — fire and ignore the SSE response (KAgent streams SSE, not JSON)
 3. Poll GET /api/proxy/kagent/api/sessions  every 500 ms for up to 12 s
-   — find the session whose id matches contextId (or the most-recent idp_assistant session)
+   — find the session whose id matches contextId (or the most-recent platform_assistant session)
 4. Poll GET /api/proxy/kagent/api/sessions/<sessionId>  every 1 s for up to 90 s
    — inspect the last agent event:
        function_call present  → tool round-trip in progress, keep polling
@@ -115,36 +135,24 @@ to `127.0.0.1` is sufficient.
 
 ---
 
-### 3. KAgent agent manifest
+### 3. KAgent agents
 
-**File:** `kubernetes/kagent/idp-agent.yaml`
+#### `platform-assistant` — unified entry point
 
-```yaml
-apiVersion: kagent.dev/v1alpha2
-kind: Agent
-metadata:
-  name: idp-assistant
-  namespace: kagent
-spec:
-  type: Declarative
-  declarative:
-    modelConfig: claude-anthropic   # references kubernetes/kagent/modelconfig.yaml
-    systemMessage: |
-      …
-    tools:
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
-            - catalog_search
-            - get_service_metrics
-            - get_template_params
-            - scaffold_service
-            - list_deployments
-            - list_templates
-```
+**File:** `kubernetes/kagent/platform-agent.yaml`  
+**Model:** `claude-sonnet` (claude-sonnet-4-6)
+
+The primary agent exposed in the Backstage chat UI and the `idp ai` CLI. Holds all
+22 tools from all four MCP servers and routes by intent. On every new session it
+calls `get_user_memory` to load the user's preferences (language, team, owner) before
+responding, so defaults are pre-filled without asking.
+
+| Domain | Tools |
+|--------|-------|
+| Platform / IDP | `catalog_search`, `catalog_semantic_search`, `get_service_metrics`, `list_templates`, `get_template_params`, `scaffold_service`, `list_deployments` |
+| User memory | `get_user_memory`, `set_user_memory` |
+| QA / testing | `list_test_suites`, `scaffold_test_suite`, `search_test_catalog`, `get_test_metrics` |
+| Contract testing | `register_contract`, `get_contract`, `list_contracts`, `generate_contract_tests`, `validate_compatibility`, `detect_breaking_changes`, `get_compatibility_report`, `fetch_service_contract`, `auto_discover_contracts` |
 
 **System message rules (summarised):**
 
@@ -152,48 +160,148 @@ spec:
 |------|-----------|
 | 1 | Never reference templates from memory — always call `list_templates` first |
 | 2 | Never call `ask_user` or any interactive confirmation tool |
-| 3 | Ask for missing info as plain text; wait for the next user message |
+| 3 | Ask for missing info as plain text; ask for ALL fields in one message |
 | 4 | Scaffold flow: `list_templates` → `get_template_params` → `scaffold_service` — **immediately, no confirmation prompt** |
-| 5 | Minimum required fields to scaffold: `name`, `description`, `owner` — proceed without asking when all three are present |
-| 6 | Catalog/metric/deployment: call the relevant tool immediately |
-| 7 | Be concise; show real tool results, not assumptions |
+| 5 | Minimum required fields: `name`, `owner` — scaffold immediately when both are present |
+| 6 | Session start: call `get_user_memory` before responding; use stored preferences |
+| 7 | After scaffold: call `set_user_memory` to record service and update count |
+| 8 | Be concise; show real tool results, not assumptions |
 
-**Why Rule 4 + 5 matter:** If the agent asks "Should I proceed?" and the user replies
-in a new message, the agent loses the scaffolding context (the previous tool results
-are not re-sent) and resets to its opening prompt. The fix was to prohibit confirmation
-questions entirely and call `scaffold_service` in the same response turn.
+#### Specialist agents
+
+| Agent | File | Model | Purpose |
+|-------|------|-------|---------|
+| `idp-assistant` | `kubernetes/kagent/idp-agent.yaml` | claude-haiku | Platform / scaffolding only |
+| `qa-assistant` | `kubernetes/kagent/qa-agent.yaml` | claude-sonnet | Test suites + GitHub PR review |
+| `contract-assistant` | `kubernetes/kagent/contract-agent.yaml` | claude-sonnet | API contracts |
+
+Specialist agents are still available at `/a2a/kagent/<name>` but `platform-assistant`
+is the recommended entry point for all developer interactions.
+
+#### ModelConfigs
+
+| Name | Model | Use |
+|------|-------|-----|
+| `claude-anthropic` | claude-haiku-4-5-20251001 | Fast, cheap — `idp-assistant` |
+| `claude-sonnet` | claude-sonnet-4-6 | Balanced — `platform-assistant`, `qa-assistant`, `contract-assistant` |
+| `claude-opus` | claude-opus-4-8 | Highest quality — available for future agents |
+| `openai-prod` | gpt-4o | Optional; set `OPENAI_API_KEY` to enable |
 
 ---
 
-### 4. IDP MCP Server
+### 4. MCP Servers
+
+All MCP servers use the `@modelcontextprotocol/sdk` Streamable HTTP transport. Because
+`McpServer.connect()` can only be called once per instance, a fresh `McpServer` is
+created per request (`createServer()` factory).
+
+#### `idp-mcp-server` (port 3001)
 
 **File:** `services/idp-mcp-server/src/index.ts`
 
-Node.js/TypeScript process exposed on port `3001`. Uses the
-`@modelcontextprotocol/sdk` Streamable HTTP transport. Because `McpServer.connect()`
-can only be called once per instance, a fresh `McpServer` is created per request
-(`createServer()` factory).
-
-| Tool | Upstream call | Notes |
-|------|--------------|-------|
-| `catalog_search` | `GET /api/catalog/entities` | Exact-match first, falls back to client-side fuzzy filter (200 entities) |
+| Tool | Upstream | Notes |
+|------|----------|-------|
+| `catalog_search` | Backstage `/api/catalog/entities` | Exact-match first, falls back to fuzzy filter |
+| `catalog_semantic_search` | Backstage `/api/rag-search/search` | Natural-language vector search via Voyage AI + pgvector |
 | `get_service_metrics` | Prometheus `/api/v1/query` | Defaults to `http_requests_total` |
-| `list_templates` | `GET /api/catalog/entities?filter=kind=Template` | Returns name, title, description, templateRef |
-| `get_template_params` | `GET /api/catalog/entities/by-name/Template/default/<name>` | Returns full parameter schema for a template — groups with required/optional fields |
-| `scaffold_service` | `POST /api/scaffolder/v2/tasks` then polls status | Auto-builds `repoUrl` from `name`+`owner` if omitted; normalises full HTTPS GitHub URLs; polls for up to 3 min |
-| `list_deployments` | Kubernetes `/apis/apps/v1/namespaces/<ns>/deployments` | Defaults to namespace `services`; uses in-cluster service account token |
+| `list_templates` | Backstage catalog (kind=Template) | Returns name, title, description, templateRef |
+| `get_template_params` | Backstage catalog entity by name | Returns full parameter schema for a template |
+| `scaffold_service` | Backstage scaffolder v2 tasks API | Auto-builds repoUrl; polls for up to 3 min; supports `dry_run: true` |
+| `list_deployments` | Kubernetes apps/v1 Deployments | Defaults to namespace `services` |
+| `get_user_memory` | Kubernetes ConfigMap in `kagent` ns | Reads `user-memory-<userRef>` preferences JSON |
+| `set_user_memory` | Kubernetes ConfigMap in `kagent` ns | Patch-merges key/value into preferences JSON |
+
+**User memory RBAC:** `idp-mcp-server` has a `Role` in the `kagent` namespace granting
+`configmaps` get/create/update, bound to the `services-dev/idp-mcp-server` service
+account. See `kubernetes/kagent/idp-mcp-server-rbac.yaml`.
 
 **Environment variables:**
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BACKSTAGE_URL` | `http://host.docker.internal:3000` (local) | Internal Backstage URL; overridden by `helm-values-local.yaml` |
+| `BACKSTAGE_URL` | `http://host.docker.internal:3000` | Internal Backstage URL |
 | `BACKSTAGE_EXTERNAL_URL` | `http://backstage.idp.local` | Browser-accessible URL (used in task output links) |
 | `BACKSTAGE_TOKEN` | *(empty)* | Static token from `app-config.local.yaml` |
 | `PROMETHEUS_URL` | `http://prometheus-kube-prometheus-prometheus.monitoring:9090` | In-cluster Prometheus |
 | `K8S_API` | `https://kubernetes.default.svc` | In-cluster Kubernetes API |
-| `K8S_TOKEN` | *(empty)* | Falls back to in-cluster service account token |
 | `PORT` | `3001` | HTTP listen port |
+
+#### `qa-mcp-server` (port 3002)
+
+4 tools: `list_test_suites`, `scaffold_test_suite`, `search_test_catalog`, `get_test_metrics`. See `services/qa-mcp-server/`.
+
+#### `contract-mcp-server` (port 3003)
+
+9 tools for self-describing, self-testing APIs. See `docs/contract-testing.md`.
+
+#### `github-mcp-server` (port 3005)
+
+**File:** `services/github-mcp-server/src/index.ts`
+
+| Tool | GitHub API call | Notes |
+|------|----------------|-------|
+| `get_pr_diff` | `GET /repos/{repo}/pulls/{pr}/files` | Returns changed files with additions/deletions |
+| `add_pr_comment` | `POST /repos/{repo}/issues/{pr}/comments` | Posts a markdown comment; emits `[AUDIT]` log |
+| `get_ci_status` | PR head SHA → `GET /repos/{repo}/commits/{sha}/check-runs` | Returns all check-run results |
+
+**Secret:** `github-mcp-server-token` in `services-dev` namespace, key `token`.
+Optional locally (warns on startup if missing), required in AWS.
+
+**Used by:** `qa-assistant` for automated PR review; `platform-assistant` for cross-domain queries.
+
+---
+
+### 5. Event Bus — `agent-event-router`
+
+**File:** `services/agent-event-router/src/index.ts`
+
+A small Express service (port 3004) that receives webhooks from GitHub, AlertManager,
+and ArgoCD and fans out to agents via A2A. This is what makes agents **proactive** —
+they respond to platform events without a human initiating the conversation.
+
+| Source | Trigger | Target agent | Action |
+|--------|---------|--------------|--------|
+| GitHub | `pull_request` opened/updated | `qa-assistant` | Review test coverage, post PR comment |
+| GitHub | `push` to main | `idp-assistant` | Notify of new deployment candidate |
+| AlertManager | `firing` alert (critical/warning) | `idp-assistant` | Diagnose + suggest remediation |
+| ArgoCD | App `OutOfSync` or `Degraded` | `idp-assistant` | Check sync status |
+
+**Security:**
+- GitHub webhooks: HMAC-SHA256 signature verified via `crypto.timingSafeEqual` with
+  raw body capture. Fails closed (503) if `GITHUB_WEBHOOK_SECRET` is not configured.
+- AlertManager / ArgoCD webhooks: `Authorization: Bearer <WEBHOOK_TOKEN>` required.
+- All routes respond 200 immediately (fire-and-forget) to avoid webhook timeout.
+
+**Secrets:**
+- `agent-event-router-webhook-token` in `services-dev` namespace (key: `token`) — used
+  as the bearer token in AlertManager's `http_config.authorization.credentials`.
+- `GITHUB_WEBHOOK_SECRET` env var on the deployment.
+
+**Local ingress:** `http://agent-event-router.idp.local`
+
+---
+
+### 6. `idp ai` CLI
+
+**File:** `cli/cmd/idp/ai.go`
+
+```bash
+# Ask anything — streams the platform-assistant response to your terminal
+idp ai "scaffold a Go payment service for team-platform"
+idp ai "what services are owned by team-qa?"
+idp ai "show me the error rate for hello-service"
+
+# Override the KAgent URL (defaults to http://kagent.idp.local)
+KAGENT_URL=http://my-cluster.example.com idp ai "list deployments"
+idp ai --kagent-url http://my-cluster.example.com "list deployments"
+
+# Adjust timeout (default 300s)
+idp ai --timeout 60 "quick catalog search"
+```
+
+The command posts a JSON-RPC 2.0 A2A message to `platform-assistant`, then polls
+`/api/sessions` for a response. Tool status lines are printed to stderr during
+processing so you can see what the agent is doing.
 
 ---
 
@@ -219,6 +327,94 @@ Agent turn 1 (same response):
 ```
 
 The agent never breaks this into multiple turns or asks for confirmation.
+
+---
+
+## Guardrails & Audit Log
+
+### Structured audit log
+
+Every tool call on the `idp-mcp-server` and `contract-mcp-server` emits a structured `[AUDIT]` JSON line to stdout:
+
+```json
+[AUDIT] {"ts":"2026-06-09T12:00:00Z","server":"idp-mcp-server","action":"scaffold_service_requested","agent":"platform-assistant","service":"demo-svc","template":"python-service","dry_run":false}
+```
+
+| Field | Description |
+|-------|-------------|
+| `ts` | ISO-8601 timestamp |
+| `server` | MCP server name (`idp-mcp-server`, `contract-mcp-server`) |
+| `action` | Tool-specific action identifier (e.g. `scaffold_service_requested`, `register_contract_requested`) |
+| `agent` | Agent ID extracted from the `X-Agent-ID` header, falling back to `User-Agent` |
+| Tool-specific fields | e.g. `service`, `template`, `dry_run`, `provider`, `version` |
+
+### Querying audit logs in Loki
+
+```logql
+# All audit events from the IDP MCP server
+{app="idp-mcp-server"} |= "[AUDIT]" | json
+
+# Scaffold calls only
+{app="idp-mcp-server"} |= "[AUDIT]" | json | action="scaffold_service_requested"
+
+# Contract registration events
+{app="contract-mcp-server"} |= "[AUDIT]" | json | action="register_contract_requested"
+```
+
+### Per-agent attribution metrics
+
+The `mcp_agent_tool_calls_total{server,tool,agent}` Prometheus counter tracks every tool call broken down by MCP server, tool name, and agent ID:
+
+```promql
+# Tool call rate per agent
+rate(mcp_agent_tool_calls_total{server="idp-mcp-server"}[5m])
+
+# Error rate per tool
+rate(mcp_tool_calls_total{outcome="error"}[5m]) /
+rate(mcp_tool_calls_total[5m])
+```
+
+These metrics are visible in the **AI Platform** Grafana dashboard at `http://grafana.idp.local/d/ai-platform`.
+
+### dry_run mode
+
+Pass `dry_run: true` to `scaffold_service` to get a preview of what would be created without actually creating anything:
+
+```
+User: "dry run: scaffold a Go service called test-svc, owner platform-team"
+```
+
+The agent detects "dry run", "preview", or "what would happen" phrasing and passes `dry_run: true` to the tool. The tool returns a preview JSON showing the template, values, and computed `repoUrl` without making any Backstage scaffolder calls.
+
+### KAgent system-prompt guardrails
+
+`kubernetes/kagent/idp-agent.yaml` includes guardrail rules that govern agent behaviour:
+
+| Rule | Behaviour |
+|------|-----------|
+| 9 | Announce to the user before performing any destructive or state-changing operation (scaffold, deploy) |
+| 10 | Support `dry_run: true` — use it when the user says "dry run", "preview", or "what would happen if" |
+| 11 | If `scaffold_service` has been called more than 3 times in the same session, pause and ask the user to confirm intent before proceeding |
+
+### Agent ID extraction
+
+The MCP server extracts the calling agent's identity from HTTP headers in priority order:
+
+1. `X-Agent-ID` header (set explicitly by KAgent)
+2. `User-Agent` header (fallback — includes the KAgent agent name)
+
+This identity is used in both the `[AUDIT]` log entry and the `mcp_agent_tool_calls_total{agent}` label, enabling per-agent attribution in Grafana and Loki.
+
+### Guardrail alerts
+
+Two PrometheusRules in the `kagent-guardrails` group alert on abnormal agent behaviour:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `ScaffoldServiceHighRate` | > 5 scaffold calls in 10 min from any agent | Warning |
+| `McpToolErrorRateHigh` | > 50% error rate on any MCP tool | Warning |
+
+Both alerts route to Slack `#platform-alerts`. See the [KAgent Guardrails runbook](runbooks/kagent-guardrails.md).
 
 ---
 
@@ -360,17 +556,37 @@ Dashboard: **Grafana** → "AI Platform"
 
 ---
 
-## Next Steps (Phase 7b)
+## Re-applying after a cluster rebuild
 
-- `ml-training-job` template — Argo Workflows scaffold with MLflow logging
-- Automated `deepeval` CI gate — block PRs if LLM eval score < threshold
-- Contract testing via `contract-mcp-server` — auto-register services + validate compatibility
+`bootstrap-ai.sh` applies all agents, MCP servers, and ModelConfigs automatically.
+To target specific resources manually:
 
-To re-apply after a cluster rebuild:
 ```bash
-kubectl apply -f kubernetes/kagent/idp-agent.yaml
-# (bootstrap-ai.sh does this automatically on every run)
+# Redeploy a single MCP server
+helm upgrade --install github-mcp-server helm/service-template \
+  --namespace services-dev --create-namespace \
+  --values services/github-mcp-server/helm-values-local.yaml --wait
+
+# Re-apply all KAgent resources
+kubectl apply -f kubernetes/kagent/modelconfig-sonnet.yaml
+kubectl apply -f kubernetes/kagent/toolserver.yaml
+kubectl apply -f kubernetes/kagent/platform-agent.yaml
+kubectl apply -f kubernetes/kagent/github-toolserver.yaml
+
+# Rebuild a service image after code changes
+cd services/github-mcp-server && docker build -t localhost:5003/github-mcp-server:0.1.0 . && docker push localhost:5003/github-mcp-server:0.1.0
+kubectl rollout restart deployment/github-mcp-server -n services-dev
 ```
+
+## What's next (Sprint 4+)
+
+| Sprint | Features |
+|--------|---------|
+| Sprint 4 | `argocd-mcp-server` + `release-agent` + `cost-mcp-server` + `cost-agent` |
+| Sprint 5 | `incident-mcp-server` + `incident-agent` + `notification-mcp-server` |
+| Sprint 6 | RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig |
+| Sprint 7 | `security-mcp-server` + `security-agent` + `onboarding-agent` |
+| Sprint 8 | HiTL approval workflow + Policy-as-Prompt |
 
 ### Scaffold task stuck in "processing"
 

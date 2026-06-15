@@ -346,7 +346,7 @@ function AiAssistantPage() {
     const proxyBase = `${base}/api/proxy/kagent`;
 
     try {
-      // Include contextId to continue the same session (agent keeps full history)
+      // Include contextId to continue the same session (agent keeps full history).
       const message: any = {
         messageId: uuidv4(),
         role: 'user',
@@ -354,9 +354,21 @@ function AiAssistantPage() {
       };
       if (contextIdRef.current) message.contextId = contextIdRef.current;
 
-      const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/idp-assistant`, {
+      // X-Backstage-User is set from the authenticated identity and forwarded
+      // by KAgent to outgoing MCP calls — the LLM cannot influence it.
+      // This is the out-of-band identity binding for user memory (IDOR prevention).
+      const identityHeaders: Record<string, string> = userRef
+        ? { 'X-Backstage-User': userRef }
+        : {};
+
+      // Capture sentAt BEFORE issuing the request — the a2a endpoint streams
+      // the full agent turn (10-60s), so timing this after the call would put
+      // it well past the session's created_at and break the window check below.
+      const sentAt = Date.now();
+
+      const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/platform-assistant`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...identityHeaders },
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'message/send',
@@ -369,14 +381,24 @@ function AiAssistantPage() {
         throw new Error(`KAgent request failed: ${a2aRes.status}`);
       }
 
-      // a2a endpoint returns event stream, contextId usually comes from session polling
+      // a2a returns a streamed text/event-stream response for normal turns;
+      // contextId (if present at all) comes via session polling instead.
+      // Only attempt to parse direct JSON responses — reading the body of an
+      // event-stream response would block until the full agent turn completes.
       let sessionId: string | null = contextIdRef.current;
-      try {
-        // Try to parse as JSON in case it's a direct response
-        const a2aBody = await a2aRes.json();
-        if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
-      } catch {
-        // Event stream response is expected; we'll find the session via polling
+      const contentType = a2aRes.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        try {
+          const a2aBody = await a2aRes.json();
+          if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
+        } catch {
+          // ignore — fall through to session polling
+        }
+      } else {
+        // Drain the event-stream body in the background without awaiting it —
+        // cancelling it instead would signal a client disconnect that can
+        // abort the in-flight agent turn server-side.
+        void a2aRes.text().catch(() => {});
       }
 
       // If we don't have a sessionId yet, poll the sessions list with
@@ -385,8 +407,7 @@ function AiAssistantPage() {
       // 45s deadline accounts for Claude API cold start on local Kind (~8–15s).
       if (!sessionId) {
         setStatusText('Connecting to agent — this may take a few seconds on local…');
-        const sentAt = Date.now();
-        const sessionDeadline = Date.now() + 45_000;
+        const sessionDeadline = sentAt + 45_000;
         let sAttempt = 0;
         let lastError = '';
         while (!sessionId && Date.now() < sessionDeadline) {
@@ -409,7 +430,7 @@ function AiAssistantPage() {
             // Find the most recent matching session (they're usually sorted newest first)
             // Look for idp-assistant agent, created within a wide time window
             for (const s of sessions) {
-              if (s.agent_id === 'kagent__NS__idp_assistant') {
+              if (s.agent_id === 'kagent__NS__platform_assistant') {
                 const sessionTime = new Date(s.created_at).getTime();
                 // Accept sessions created from 5 seconds before to 30 seconds after send time
                 // This accounts for clock skew and agent startup time
@@ -511,7 +532,7 @@ function AiAssistantPage() {
 
   return (
     <Page themeId="tool">
-      <Header title="AI Assistant" subtitle="Powered by KAgent · idp-assistant" />
+      <Header title="AI Assistant" subtitle="Powered by KAgent · platform-assistant" />
       <Content>
         <Box display="flex" flexDirection="column" height="calc(100vh - 180px)">
           {/* Toolbar */}
@@ -531,11 +552,43 @@ function AiAssistantPage() {
             </Tooltip>
           </Box>
 
+          {/* Quick-action chips — only shown on an empty chat */}
+          {messages.length === 0 && !loading && (
+            <Box mb={2}>
+              <Typography variant="caption" color="textSecondary" display="block" gutterBottom style={{ fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                Suggested
+              </Typography>
+              <Box display="flex" flexWrap="wrap" style={{ gap: 8 }}>
+                {[
+                  { label: 'List my services', prompt: 'List all services in the catalog' },
+                  { label: 'Scaffold a Go service', prompt: 'Scaffold a new Go microservice' },
+                  { label: 'Add a Playwright suite', prompt: 'Add a Playwright E2E test suite to an existing service' },
+                  { label: 'Check hello-service metrics', prompt: 'Show me the request rate, error rate and latency for hello-service' },
+                  { label: 'List deployments', prompt: 'List all running Kubernetes deployments and their health' },
+                  { label: 'Find payment services', prompt: 'Find all services related to payments' },
+                  { label: 'Check ArgoCD apps', prompt: 'List all ArgoCD applications and their sync status' },
+                  { label: 'Team budget status', prompt: 'Show me all teams over 80% budget utilisation' },
+                  { label: 'Rightsizing savings', prompt: 'What are the top rightsizing opportunities to reduce cost?' },
+                ].map(({ label, prompt }) => (
+                  <Chip
+                    key={label}
+                    label={label}
+                    size="small"
+                    clickable
+                    variant="outlined"
+                    onClick={() => { setInput(prompt); }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+
           {/* Message list */}
           <Box flex={1} overflow="auto" mb={2} px={1}>
             {messages.length === 0 && !loading && (
-              <Typography variant="body2" color="textSecondary" align="center" style={{ marginTop: 40 }}>
-                Ask me about services, deployments, metrics, or scaffold a new service.
+              <Typography variant="body2" color="textSecondary" align="center" style={{ marginTop: 16 }}>
+                Select a suggestion above or type your question below.
               </Typography>
             )}
             {messages.map((msg, i) => (
@@ -2015,6 +2068,396 @@ const doraEntityContent = EntityContentBlueprint.make({
   },
 });
 
+// ── Team Budget entity tab (kind:group) ───────────────────────────────────────
+// Reads idp.io/cost-budget-monthly-usd and idp.io/cost-namespace annotations.
+// Queries Prometheus for actual spend and utilization ratio pushed by tech-insights-exporter.
+
+function TeamBudgetEntityContent() {
+  const { entity } = useEntity();
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const teamName   = entity.metadata.name;
+  const budgetStr  = (entity.metadata.annotations as Record<string, string> | undefined)?.['idp.io/cost-budget-monthly-usd'];
+  const namespaces = (entity.metadata.annotations as Record<string, string> | undefined)?.['idp.io/cost-namespace'];
+  const budget     = budgetStr ? parseFloat(budgetStr) : null;
+
+  const [actual, setActual]   = useState<number | null>(null);
+  const [ratio, setRatio]     = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [noData, setNoData]   = useState(false);
+
+  useEffect(() => {
+    const promQuery = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then((d: any) => {
+          const val = d?.data?.result?.[0]?.value?.[1];
+          return val != null ? parseFloat(val) : NaN;
+        });
+
+    Promise.all([
+      promQuery(`idp_team_actual_cost_usd_monthly{team="${teamName}"}`),
+      promQuery(`idp_team_budget_utilization_ratio{team="${teamName}"}`),
+    ])
+      .then(([a, r]) => {
+        if (!isNaN(a)) setActual(a);
+        if (!isNaN(r)) setRatio(r);
+        setNoData(isNaN(a));
+        setLoading(false);
+      })
+      .catch(() => { setNoData(true); setLoading(false); });
+  }, [base, fetchApi, teamName]);
+
+  const utilization = ratio ?? (budget != null && actual != null ? actual / budget : null);
+  const pct = utilization != null ? Math.round(utilization * 100) : null;
+  const barColor = pct == null ? '#9e9e9e' : pct >= 100 ? '#f44336' : pct >= 80 ? '#ff9800' : '#4caf50';
+  const remaining = budget != null && actual != null ? budget - actual : null;
+
+  return (
+    <Content>
+      {loading && <Progress />}
+      {!loading && (
+        <>
+          {!budgetStr && (
+            <Paper style={{ padding: 16, marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+              <Typography variant="body2" style={{ color: '#7c6000' }}>
+                No budget set for this team. Add the annotation{' '}
+                <code>idp.io/cost-budget-monthly-usd</code> to this Group entity.
+              </Typography>
+            </Paper>
+          )}
+          {noData && budgetStr && (
+            <Paper style={{ padding: 16, marginBottom: 16, background: '#e3f2fd', border: '1px solid #90caf9' }}>
+              <Typography variant="body2" style={{ color: '#0d47a1' }}>
+                Budget configured at <strong>${budget?.toFixed(0)}/month</strong>. Actual spend metrics are
+                pushed every 15 min by tech-insights-exporter once OpenCost is running.
+              </Typography>
+            </Paper>
+          )}
+
+          <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+            <Paper style={{ padding: 16, minWidth: 260, flex: 2 }}>
+              <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#666' }}>
+                Monthly Budget
+              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mt={1} mb={1}>
+                <Typography variant="h4" style={{ fontWeight: 700 }}>
+                  {budgetStr ? `$${budget?.toFixed(0)}` : '—'}
+                </Typography>
+                {pct != null && (
+                  <Chip label={`${pct}% used`} style={{ backgroundColor: barColor, color: 'white', fontWeight: 700 }} />
+                )}
+              </Box>
+              {pct != null && (
+                <div style={{ height: 12, borderRadius: 6, background: '#eee', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: barColor, borderRadius: 6, transition: 'width 0.4s ease' }} />
+                </div>
+              )}
+            </Paper>
+
+            <Paper style={{ padding: 16, minWidth: 140, flex: 1 }}>
+              <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#666' }}>
+                Actual (MTD)
+              </Typography>
+              <Typography variant="h4" style={{ fontWeight: 700, marginTop: 8 }}>
+                {actual != null ? `$${actual.toFixed(2)}` : '—'}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">month-to-date</Typography>
+            </Paper>
+
+            <Paper style={{ padding: 16, minWidth: 140, flex: 1 }}>
+              <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#666' }}>
+                Remaining
+              </Typography>
+              <Typography variant="h4" style={{ fontWeight: 700, marginTop: 8, color: remaining != null && remaining < 0 ? '#f44336' : '#1b5e20' }}>
+                {remaining != null
+                  ? remaining >= 0 ? `$${remaining.toFixed(2)}` : `-$${Math.abs(remaining).toFixed(2)}`
+                  : '—'}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                {remaining != null && remaining < 0 ? 'over budget' : 'available'}
+              </Typography>
+            </Paper>
+          </Box>
+
+          <Paper style={{ padding: 16 }}>
+            <Typography variant="subtitle1" gutterBottom>Budget Configuration</Typography>
+            <MuiTable size="small">
+              <TableBody>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600, width: 200 }}>Team</TableCell>
+                  <TableCell><code>{teamName}</code></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600 }}>Monthly budget</TableCell>
+                  <TableCell>{budgetStr ? `$${budget?.toFixed(2)} USD` : <em style={{ color: '#9e9e9e' }}>Not configured</em>}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600 }}>Cost namespaces</TableCell>
+                  <TableCell>
+                    {namespaces
+                      ? namespaces.split(',').map((ns: string) => (
+                          <Chip key={ns} label={ns.trim()} size="small" style={{ marginRight: 4, marginBottom: 2 }} />
+                        ))
+                      : <em style={{ color: '#9e9e9e' }}>Not configured</em>}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600 }}>Alert thresholds</TableCell>
+                  <TableCell>Warning at 80% · Critical at 100%</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600 }}>Data source</TableCell>
+                  <TableCell>OpenCost → Pushgateway (every 15 min)</TableCell>
+                </TableRow>
+              </TableBody>
+            </MuiTable>
+          </Paper>
+          <Box mt={2}>
+            <Typography variant="caption" color="textSecondary">
+              Annotations: <code>idp.io/cost-budget-monthly-usd</code> · <code>idp.io/cost-namespace</code> ·{' '}
+              <Link href="https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/dora-finops.md" target="_blank" rel="noopener">
+                docs/dora-finops.md ↗
+              </Link>
+            </Typography>
+          </Box>
+        </>
+      )}
+    </Content>
+  );
+}
+
+const teamBudgetEntityContent = EntityContentBlueprint.make({
+  name: 'team-budget',
+  params: {
+    path: '/budget',
+    title: 'Budget',
+    filter: 'kind:group',
+    loader: async () => <TeamBudgetEntityContent />,
+  },
+});
+
+// ── SLO / Error Budget entity tab (kind:component) ────────────────────────────
+// Reads idp.io/slo-availability-target and idp.io/slo-latency-target annotations.
+// Queries Prometheus for Sloth-generated recording rules (sloth_slo_info +
+// slo:slo_error_ratio:ratio_rate5m) to show live error budget gauges per SLO.
+
+interface SlothSloInfo {
+  sloth_id: string;
+  sloth_slo: string;
+  objective: string;
+}
+
+function SloGauge({ label, objective, errorRatio }: { label: string; objective: number; errorRatio: number | null }) {
+  const errorBudget = 1 - objective / 100;
+  const budgetRemaining = errorRatio != null && errorBudget > 0
+    ? Math.max(0, (1 - errorRatio / errorBudget)) * 100
+    : null;
+
+  const color = budgetRemaining == null ? '#9e9e9e'
+    : budgetRemaining > 50 ? '#4caf50'
+    : budgetRemaining > 10 ? '#ff9800'
+    : '#f44336';
+
+  const status = budgetRemaining == null ? 'No data'
+    : budgetRemaining > 50 ? 'Healthy'
+    : budgetRemaining > 10 ? 'Burning fast'
+    : 'Critical';
+
+  return (
+    <Paper style={{ padding: 16, flex: 1, minWidth: 200 }}>
+      <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#666' }}>
+        {label}
+      </Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mt={1} mb={1}>
+        <Typography variant="h4" style={{ fontWeight: 700 }}>
+          {objective}%
+        </Typography>
+        <Chip label={status} style={{ backgroundColor: color, color: 'white', fontWeight: 700, fontSize: 11 }} />
+      </Box>
+      <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginBottom: 6 }}>
+        SLO target · error budget {errorBudget < 0.001 ? `${(errorBudget * 100).toFixed(3)}%` : `${(errorBudget * 100).toFixed(2)}%`}
+      </Typography>
+      {budgetRemaining != null && (
+        <>
+          <div style={{ height: 10, borderRadius: 5, background: '#eee', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${budgetRemaining}%`, background: color, borderRadius: 5, transition: 'width 0.4s ease' }} />
+          </div>
+          <Typography variant="caption" color="textSecondary" style={{ marginTop: 4, display: 'block' }}>
+            {budgetRemaining.toFixed(1)}% error budget remaining
+          </Typography>
+        </>
+      )}
+    </Paper>
+  );
+}
+
+function SloEntityContent() {
+  const { entity } = useEntity();
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const annotations = entity.metadata.annotations as Record<string, string> | undefined;
+  const slothService = annotations?.['idp.io/sloth-service'] ?? entity.metadata.name;
+  const availTarget  = annotations?.['idp.io/slo-availability-target'];
+  const latencyTarget = annotations?.['idp.io/slo-latency-target'];
+
+  const [sloInfos, setSloInfos]   = useState<SlothSloInfo[]>([]);
+  const [errorRatios, setRatios]  = useState<Record<string, number>>({});
+  const [loading, setLoading]     = useState(true);
+  const [hasSloth, setHasSloth]   = useState(false);
+
+  useEffect(() => {
+    const promQuery = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+
+    (async () => {
+      try {
+        // Fetch SLO metadata from Sloth's info metric
+        const infoResult = await promQuery(`sloth_slo_info{sloth_service="${slothService}"}`);
+        const infos: SlothSloInfo[] = (infoResult?.data?.result ?? []).map((r: any) => ({
+          sloth_id:  r.metric.sloth_id ?? '',
+          sloth_slo: r.metric.sloth_slo ?? '',
+          objective: r.metric.objective ?? '99',
+        }));
+        setSloInfos(infos);
+        setHasSloth(infos.length > 0);
+
+        // Fetch current error ratios for each SLO
+        const ratioResult = await promQuery(`slo:slo_error_ratio:ratio_rate5m{sloth_service="${slothService}"}`);
+        const ratios: Record<string, number> = {};
+        for (const r of ratioResult?.data?.result ?? []) {
+          const id = r.metric.sloth_id ?? '';
+          ratios[id] = parseFloat(r.value?.[1] ?? 'NaN');
+        }
+        setRatios(ratios);
+      } catch { /* Prometheus unreachable */ }
+      setLoading(false);
+    })();
+  }, [base, fetchApi, slothService]);
+
+  const annotationSlos = [
+    availTarget  && { id: 'availability', label: 'Availability',      objective: parseFloat(availTarget) },
+    latencyTarget && { id: 'latency',     label: 'Latency (p99<500ms)', objective: parseFloat(latencyTarget) },
+  ].filter(Boolean) as { id: string; label: string; objective: number }[];
+
+  // Merge: prefer live Sloth data; fall back to annotations
+  const displaySlos: { id: string; label: string; objective: number }[] =
+    hasSloth
+      ? sloInfos.map(s => ({
+          id:        s.sloth_id,
+          label:     s.sloth_id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          objective: parseFloat(s.objective),
+        }))
+      : annotationSlos;
+
+  return (
+    <Content>
+      {loading && <Progress />}
+      {!loading && (
+        <>
+          {!hasSloth && annotationSlos.length === 0 && (
+            <Paper style={{ padding: 16, marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+              <Typography variant="body2" style={{ color: '#7c6000' }}>
+                No SLOs configured for this service. Use the{' '}
+                <strong>SLO Definition</strong> template in the Backstage catalog to generate Sloth SLO manifests,
+                or add annotations <code>idp.io/slo-availability-target</code> and <code>idp.io/slo-latency-target</code>.
+              </Typography>
+            </Paper>
+          )}
+
+          {!hasSloth && annotationSlos.length > 0 && (
+            <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#e3f2fd', border: '1px solid #90caf9' }}>
+              <Typography variant="body2" style={{ color: '#0d47a1' }}>
+                SLO targets loaded from entity annotations. Live error budget data will appear once Sloth recording
+                rules are applied to Prometheus (<code>sloth generate -i observability/slo/... | kubectl apply -f -</code>).
+              </Typography>
+            </Paper>
+          )}
+
+          {hasSloth && (
+            <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#e8f5e9', border: '1px solid #a5d6a7' }}>
+              <Typography variant="body2" style={{ color: '#1b5e20' }}>
+                Live SLO data from Prometheus — Sloth recording rules active for <strong>{slothService}</strong>.
+              </Typography>
+            </Paper>
+          )}
+
+          {displaySlos.length > 0 && (
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+              {displaySlos.map(s => (
+                <SloGauge
+                  key={s.id}
+                  label={s.label}
+                  objective={s.objective}
+                  errorRatio={errorRatios[s.id] ?? null}
+                />
+              ))}
+            </Box>
+          )}
+
+          <Paper style={{ padding: 16 }}>
+            <Typography variant="subtitle1" gutterBottom>SLO Configuration</Typography>
+            <MuiTable size="small">
+              <TableBody>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600, width: 200 }}>Service</TableCell>
+                  <TableCell><code>{slothService}</code></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600 }}>SLO engine</TableCell>
+                  <TableCell>
+                    <Link href="https://sloth.slok.dev" target="_blank" rel="noopener">Sloth ↗</Link>
+                    {' '}(Prometheus multi-window burn-rate)
+                  </TableCell>
+                </TableRow>
+                {availTarget && (
+                  <TableRow>
+                    <TableCell style={{ fontWeight: 600 }}>Availability target</TableCell>
+                    <TableCell>{availTarget}% · error budget {(100 - parseFloat(availTarget)).toFixed(2)}%</TableCell>
+                  </TableRow>
+                )}
+                {latencyTarget && (
+                  <TableRow>
+                    <TableCell style={{ fontWeight: 600 }}>Latency target</TableCell>
+                    <TableCell>{latencyTarget}% requests under 500ms</TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell style={{ fontWeight: 600 }}>Alert tiers</TableCell>
+                  <TableCell>Page (critical burn rate) · Ticket (slow burn rate)</TableCell>
+                </TableRow>
+              </TableBody>
+            </MuiTable>
+          </Paper>
+          <Box mt={2}>
+            <Typography variant="caption" color="textSecondary">
+              Annotations: <code>idp.io/slo-availability-target</code> · <code>idp.io/sloth-service</code> ·{' '}
+              <Link href="https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/sre-reliability.md" target="_blank" rel="noopener">
+                docs/sre-reliability.md ↗
+              </Link>
+            </Typography>
+          </Box>
+        </>
+      )}
+    </Content>
+  );
+}
+
+const sloEntityContent = EntityContentBlueprint.make({
+  name: 'slo-error-budget',
+  params: {
+    path: '/slo',
+    title: 'SLOs',
+    filter: 'kind:component',
+    loader: async () => <SloEntityContent />,
+  },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
@@ -2034,6 +2477,8 @@ export const customPagesPlugin = createFrontendPlugin({
     pagerDutyEntityContent,
     grafanaEntityContent,
     jiraEntityContent,
+    teamBudgetEntityContent,
+    sloEntityContent,
     copilotPage,
     copilotNavItem,
   ],

@@ -40,6 +40,31 @@ datasources:
         url: http://prometheus-kube-prometheus-alertmanagertheus-alertmanager.monitoring:9093
         jsonData:
           implementation: prometheus
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.monitoring.svc.cluster.local
+        jsonData:
+          derivedFields:
+            - datasourceName: Tempo
+              datasourceUid: tempo
+              matcherRegex: '"trace_id":"(\w+)"'
+              name: TraceID
+              url: '$${__value.raw}'
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo-query-frontend.monitoring.svc.cluster.local:3100
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
 
 dashboardProviders:
   dashboardproviders.yaml:

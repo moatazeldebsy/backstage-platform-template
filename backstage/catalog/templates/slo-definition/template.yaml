@@ -1,0 +1,147 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: slo-definition
+  title: Define Service SLOs
+  description: >
+    Generate Sloth-format SLO definitions (availability + latency) for any service,
+    wire multi-window burn-rate alerts to AlertManager, and open a PR to
+    observability/slo/ in this platform repo.
+  tags:
+    - sre
+    - slo
+    - observability
+    - reliability
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service Details
+      required:
+        - serviceName
+        - team
+        - namespace
+      properties:
+        serviceName:
+          title: Service name
+          type: string
+          description: Kubernetes service name (must match Prometheus job label)
+          ui:autofocus: true
+        team:
+          title: Owning team
+          type: string
+          description: Team label for alert routing and cost attribution
+        namespace:
+          title: Namespace
+          type: string
+          description: Kubernetes namespace the service runs in
+          default: services-dev
+          enum:
+            - services-dev
+            - services-staging
+            - services-prod
+
+    - title: Availability SLO
+      required:
+        - availabilityObjective
+      properties:
+        availabilityObjective:
+          title: Availability objective (%)
+          type: number
+          description: "Target availability percentage. E.g. 99.5 = 43 min/month error budget"
+          default: 99.5
+          minimum: 90
+          maximum: 99.99
+        httpMetricJob:
+          title: Prometheus job label override
+          type: string
+          description: "Leave blank to use the service name. Override if your Prometheus job label differs."
+
+    - title: Latency SLO
+      required:
+        - latencyObjective
+        - latencyThresholdMs
+      properties:
+        latencyObjective:
+          title: Latency objective (%)
+          type: number
+          description: "% of requests that must complete within the threshold"
+          default: 99.0
+          minimum: 90
+          maximum: 99.99
+        latencyThresholdMs:
+          title: Latency threshold (ms)
+          type: integer
+          description: "Maximum acceptable response time in milliseconds"
+          default: 500
+          enum:
+            - 100
+            - 200
+            - 500
+            - 1000
+            - 2000
+
+    - title: Runbook & Alerting
+      required:
+        - runbookUrl
+      properties:
+        runbookUrl:
+          title: Runbook URL
+          type: string
+          description: URL to the operational runbook for this service
+          default: "https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/runbooks/deployment-rollback.md"
+        pagerdutyServiceId:
+          title: PagerDuty service ID (optional)
+          type: string
+          description: "If set, page alerts will include a PagerDuty service link"
+
+  steps:
+    - id: fetch
+      name: Generate SLO definition
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          team: ${{ parameters.team }}
+          namespace: ${{ parameters.namespace }}
+          availabilityObjective: ${{ parameters.availabilityObjective }}
+          latencyObjective: ${{ parameters.latencyObjective }}
+          latencyThresholdMs: ${{ parameters.latencyThresholdMs }}
+          latencyThresholdSeconds: ${{ (parameters.latencyThresholdMs / 1000) }}
+          httpMetricJob: ${{ parameters.httpMetricJob or parameters.serviceName }}
+          runbookUrl: ${{ parameters.runbookUrl }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+
+    - id: pr
+      name: Open pull request to platform repo
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        branchName: slo/${{ parameters.serviceName }}
+        title: "feat(slo): add SLO definitions for ${{ parameters.serviceName }}"
+        description: |
+          ## SLO Definitions for `${{ parameters.serviceName }}`
+
+          Generated via the **Define Service SLOs** Backstage template.
+
+          ### What's included
+          - Availability SLO: ${{ parameters.availabilityObjective }}%
+          - Latency SLO: ${{ parameters.latencyObjective }}% of requests < ${{ parameters.latencyThresholdMs }}ms
+          - Multi-window burn-rate alerts (page + ticket tiers)
+
+          ### Apply after merge
+          ```bash
+          sloth generate -i observability/slo/${{ parameters.serviceName }}-slos.yaml | kubectl apply -f -
+          ```
+
+          Owned by: **${{ parameters.team }}**
+        targetBranchName: main
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps.pr.output.remoteUrl }}
+      - title: SLO Documentation
+        url: "https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/shift-left.md"

@@ -1,0 +1,53 @@
+# AnalysisTemplate — HTTP error rate + latency gate for canary deployments.
+# Referenced by Rollout resources via spec.strategy.canary.analysis.templates.
+# Runs every 30s during canary steps; fails fast if error budget is burning.
+#
+# Deploy: kubectl apply -f kubernetes/argo-rollouts/analysis-template.yaml -n services-dev
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterAnalysisTemplate
+metadata:
+  name: http-error-rate
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+      value: services-dev
+  metrics:
+    - name: error-rate
+      interval: 30s
+      # Fail if more than 1% of requests are 5xx over the last 5 minutes
+      failureCondition: result[0] > 0.01
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{
+              namespace="{{args.namespace}}",
+              service="{{args.service-name}}",
+              status=~"5.."
+            }[5m]))
+            /
+            sum(rate(http_requests_total{
+              namespace="{{args.namespace}}",
+              service="{{args.service-name}}"
+            }[5m]))
+
+    - name: p99-latency
+      interval: 30s
+      # Fail if p99 latency exceeds 500ms over the last 5 minutes
+      failureCondition: result[0] > 0.5
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.99,
+              sum by (le) (
+                rate(http_request_duration_seconds_bucket{
+                  namespace="{{args.namespace}}",
+                  service="{{args.service-name}}"
+                }[5m])
+              )
+            )

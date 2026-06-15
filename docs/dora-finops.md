@@ -117,3 +117,78 @@ The DORA exporter (`observability/dora-exporter/`) is a Python script running as
 3. Pushes metrics to Prometheus Pushgateway with `service=<name>` labels
 
 The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Local metrics also accept synthetic data via `./scripts/seed-qa-metrics.sh` for demo purposes.
+
+---
+
+## Team Cost Budgets
+
+### What it is
+
+Monthly USD budget limits are declared as annotations on Backstage `Group` entities in `backstage/catalog/catalog-info.yaml` and `backstage/catalog/qa-catalog.yaml`. Actual spend is queried from OpenCost (via `/allocation/compute?window=month&aggregate=label:team`) every 15 minutes by the tech-insights-exporter (`observability/tech-insights-exporter/exporter.py`). Canonical budget values are also stored in `kubernetes/finops/team-budgets-configmap.yaml`.
+
+### Prometheus metrics
+
+| Metric | Labels | Description |
+|--------|--------|-------------|
+| `idp_team_budget_usd_monthly` | `{team}` | Configured monthly budget in USD |
+| `idp_team_actual_cost_usd_monthly` | `{team}` | Actual spend from OpenCost (updated every 15 min) |
+| `idp_team_budget_utilization_ratio` | `{team}` | Ratio of actual to budget (`actual / budget`) |
+
+### AlertManager alerts
+
+Two PrometheusRules in the `team-cost-budgets` group fire when teams approach or exceed their budget:
+
+| Alert | Condition | Severity | Destination |
+|-------|-----------|----------|-------------|
+| `TeamBudgetWarning` | Utilisation > 80% | Warning | Slack `#platform-alerts` |
+| `TeamBudgetExceeded` | Utilisation > 100% | Critical | PagerDuty + Slack |
+
+See the [Cost Budget Exceeded runbook](runbooks/cost-budget-exceeded.md) for remediation steps.
+
+### Viewing budgets in Grafana and Prometheus
+
+**Grafana:**
+
+The **AI Platform Cost** dashboard (`http://grafana.idp.local/d/ai-platform`) includes a per-team budget vs actual panel. For a dedicated view, query the metrics directly in Explore:
+
+```promql
+# Budget utilisation per team (as percentage)
+idp_team_budget_utilization_ratio * 100
+
+# Teams over budget
+idp_team_budget_utilization_ratio > 1.0
+```
+
+**Prometheus:**
+
+```
+http://prometheus.idp.local/graph?g0.expr=idp_team_budget_utilization_ratio
+```
+
+### How to update a team's budget
+
+1. Edit the `idp.io/cost-budget-monthly-usd` annotation on the Group entity:
+
+   ```yaml
+   # backstage/catalog/catalog-info.yaml (or qa-catalog.yaml)
+   metadata:
+     name: backend-team
+     annotations:
+       idp.io/cost-budget-monthly-usd: "800"
+   ```
+
+2. Update the matching entry in `kubernetes/finops/team-budgets-configmap.yaml`.
+3. Commit and push. The exporter picks up the new value on the next 15-minute polling cycle.
+
+### Current budget values
+
+| Team | Monthly budget (USD) |
+|------|---------------------|
+| platform-team | $2,000 |
+| ml-team | $1,500 |
+| data-team | $800 |
+| backend-team | $600 |
+| frontend-team | $400 |
+| android-team | $300 |
+| ios-team | $300 |
+| qa-team | $200 |

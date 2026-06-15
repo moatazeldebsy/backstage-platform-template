@@ -1,0 +1,10 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: claude-opus
+  namespace: kagent
+spec:
+  provider: Anthropic
+  model: claude-opus-4-8
+  apiKeySecret: kagent-anthropic
+  apiKeySecretKey: ANTHROPIC_API_KEY

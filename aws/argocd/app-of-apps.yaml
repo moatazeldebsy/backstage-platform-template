@@ -20,8 +20,18 @@ spec:
               revision: HEAD
               directories:
                 - path: services/*
-                # contract-mcp-server intentionally excluded — hidden from end users.
+                # The following services are AI-stack-only (bootstrap-ai.sh manages them).
+                # Excluding them prevents ArgoCD from auto-deploying before the image
+                # exists in ECR or required secrets are created.
                 - path: services/contract-mcp-server
+                  exclude: true
+                - path: services/agent-event-router
+                  exclude: true
+                - path: services/github-mcp-server
+                  exclude: true
+                - path: services/argocd-mcp-server
+                  exclude: true
+                - path: services/cost-mcp-server
                   exclude: true
           # Generator 2: one entry per environment
           - list:
@@ -29,6 +39,9 @@ spec:
                 - env: dev
                   namespace: services-dev
                   valuesFile: helm-values-aws.yaml
+                - env: staging
+                  namespace: services-staging
+                  valuesFile: helm-values-staging.yaml
   template:
     metadata:
       name: "{{path.basename}}-{{env}}"

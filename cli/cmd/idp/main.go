@@ -17,6 +17,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(scaffoldCmd)
+	rootCmd.AddCommand(aiCmd)
 }
 
 func main() {

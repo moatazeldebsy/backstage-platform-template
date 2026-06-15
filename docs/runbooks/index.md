@@ -6,16 +6,22 @@ Operational procedures for the Internal Developer Platform. Each runbook maps to
 
 ## Alert → Runbook Map
 
-| Alert | Severity | Runbook |
-|-------|----------|---------|
-| `PodCrashLooping` | Critical | [Pod Crash Loop](pod-crash-loop.md) |
-| `HighMemoryUsage` | Warning / Critical | [High Memory](high-memory.md) |
-| `HighCPUUsage` | Warning | [High CPU](high-cpu.md) |
-| `DeploymentReplicasMismatch` | Warning | [Deployment Rollback](deployment-rollback.md) |
-| `HighHTTP5xxRate` | Critical | [Deployment Rollback](deployment-rollback.md) |
-| RDS unavailable | Critical | [Database Recovery](db-recovery.md) |
-| `ImagePullBackOff` (local) | Warning | [ImagePullBackOff](image-pull-backoff.md) |
-| Kind node `NotReady` after crash (local) | Warning | [Kind Node IP Mismatch](kind-node-ip-mismatch.md) |
+| Alert | Severity | Group | Runbook |
+|-------|----------|-------|---------|
+| `PodCrashLooping` | Critical | `kubernetes` | [Pod Crash Loop](pod-crash-loop.md) |
+| `HighMemoryUsage` | Warning / Critical | `kubernetes` | [High Memory](high-memory.md) |
+| `HighCPUUsage` | Warning | `kubernetes` | [High CPU](high-cpu.md) |
+| `DeploymentReplicasMismatch` | Warning | `kubernetes` | [Deployment Rollback](deployment-rollback.md) |
+| `HighHTTP5xxRate` | Critical | `kubernetes` | [Deployment Rollback](deployment-rollback.md) |
+| RDS unavailable | Critical | `database` | [Database Recovery](db-recovery.md) |
+| `ImagePullBackOff` (local) | Warning | `kubernetes` | [ImagePullBackOff](image-pull-backoff.md) |
+| Kind node `NotReady` after crash (local) | Warning | `local` | [Kind Node IP Mismatch](kind-node-ip-mismatch.md) |
+| `TeamBudgetWarning` | Warning | `finops` | [Cost Budget Exceeded](cost-budget-exceeded.md) |
+| `TeamBudgetExceeded` | Critical | `finops` | [Cost Budget Exceeded](cost-budget-exceeded.md) |
+| `ScaffoldServiceHighRate` | Warning | `ai-ops` | [KAgent Guardrails](kagent-guardrails.md) |
+| `McpToolErrorRateHigh` | Warning | `ai-ops` | [KAgent Guardrails](kagent-guardrails.md) |
+| `SLOErrorBudgetFastBurn` | Critical | `slo` | [Deployment Rollback](deployment-rollback.md) |
+| `SLOErrorBudgetSlowBurn` | Warning | `slo` | [Deployment Rollback](deployment-rollback.md) |
 
 ## Local Dev Issues
 
@@ -38,4 +44,4 @@ These are not alert-driven but are common when running the platform locally with
 2. Open an incident thread in `#incidents` with: service name, start time, symptoms
 3. Follow the relevant runbook
 4. Post resolution summary + timeline to the incident thread
-5. File a post-mortem within 48 hours for P1/P2 incidents
+5. File a post-mortem within 48 hours for P1/P2 incidents — use the [post-mortem template](../templates/postmortem.md)

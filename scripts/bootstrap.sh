@@ -218,6 +218,8 @@ kubectl create configmap grafana-dashboards-idp \
 
 kubectl apply -f kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml
+kubectl apply -f kubernetes/monitoring/grafana-finops-dashboard-configmap.yaml
+kubectl apply -f kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml
 
 # Substitute region and Grafana IRSA ARN placeholders in the values file
 tmp_obs_values=$(mktemp /tmp/prometheus-stack-values-aws.XXXXXX.yaml)
@@ -233,6 +235,9 @@ helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
   --wait --timeout 10m
 rm -f "${tmp_obs_values}"
+
+kubectl apply -f observability/alertmanager/prometheus-rules.yaml
+log "  PrometheusRules applied (SLO burn-rate, DORA anomalies, team budgets, KAgent guardrails)."
 
 # ── Phase 4a: Prometheus Pushgateway ─────────────────────────────────────────
 log "Phase 4a: Installing Prometheus Pushgateway..."
@@ -317,6 +322,47 @@ kubectl apply \
 log "  OPA/Gatekeeper policies applied (health-probes, resource-limits, labels, deny-latest-tag, cost-tags)."
 fi # --skip-policies
 
+# ── Phase 4.4-pre: Argo Rollouts (progressive delivery) ─────────────────────
+log "Phase 4.4-pre: Installing Argo Rollouts (canary deployments)..."
+helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
+helm repo update argo
+
+kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+
+helm upgrade --install argo-rollouts argo/argo-rollouts \
+  --namespace argo-rollouts \
+  --values "${ROOT_DIR}/aws/argocd/argo-rollouts-values.yaml" \
+  --wait --timeout 5m
+
+kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
+log "  Argo Rollouts installed. Services can opt into canary by setting rollout.enabled: true in their helm-values overlay."
+
+# ── Phase 4.4-pre-b: Loki + Promtail (log aggregation) ───────────────────────
+log "Phase 4.4-pre-b: Installing Loki + Promtail (log aggregation)..."
+helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+helm repo update grafana
+
+helm upgrade --install loki grafana/loki \
+  --namespace monitoring \
+  --values "${ROOT_DIR}/aws/observability/loki/loki-values.yaml" \
+  --set "loki.storage.s3.region=${AWS_REGION}" \
+  --wait --timeout 8m || log "WARNING: Loki install had issues — check aws/observability/loki/loki-values.yaml (requires S3 bucket)"
+
+helm upgrade --install promtail grafana/promtail \
+  --namespace monitoring \
+  --values "${ROOT_DIR}/aws/observability/loki/promtail-values.yaml" \
+  --wait --timeout 3m
+log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
+
+# ── Phase 4.4-pre-c: Grafana Tempo (distributed tracing) ─────────────────────
+log "Phase 4.4-pre-c: Installing Grafana Tempo (distributed tracing)..."
+helm upgrade --install tempo grafana/tempo-distributed \
+  --namespace monitoring \
+  --values "${ROOT_DIR}/aws/observability/tempo/tempo-values.yaml" \
+  --set "storage.trace.s3.region=${AWS_REGION}" \
+  --wait --timeout 8m || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
+log "  Tempo installed. Traces available in Grafana → Explore → Tempo datasource."
+
 # ── Phase 4.4: Tech Insights Exporter ────────────────────────────────────────
 log "Phase 4.4: Deploying Tech Insights Exporter CronJob..."
 kubectl create configmap tech-insights-exporter-script \
@@ -324,6 +370,11 @@ kubectl create configmap tech-insights-exporter-script \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
 log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
+
+# Deploy team budget ConfigMap so the exporter can reference it and AlertManager
+# fires TeamBudgetWarning/TeamBudgetExceeded PrometheusRules correctly.
+kubectl apply -f kubernetes/finops/team-budgets-configmap.yaml
+log "  Team budget ConfigMap applied (monitoring/team-budgets)."
 
 # ── Phase 4.4a2: Flaky-Test Exporter ─────────────────────────────────────────
 log "Phase 4.4a2: Deploying Flaky-Test Exporter CronJob..."
@@ -567,7 +618,7 @@ if [[ "$SKIP_DORA" != "true" ]]; then
   log "  Catalog exporter deployed."
 fi
 
-# ── Phase 5.8: AlertManager Slack webhook ────────────────────────────────────
+# ── Phase 5.8: AlertManager routing (Slack + PagerDuty) ─────────────────────
 log "Phase 5.8: Wiring AlertManager Slack webhook..."
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
   kubectl create secret generic alertmanager-slack-webhook \
@@ -578,6 +629,16 @@ if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
 else
   log "  SLACK_WEBHOOK_URL not set — skipping AlertManager Slack routing."
   log "  To enable: export SLACK_WEBHOOK_URL=https://hooks.slack.com/... and re-run."
+fi
+
+if [[ -n "${PAGERDUTY_INTEGRATION_KEY:-}" ]]; then
+  kubectl create secret generic alertmanager-pagerduty \
+    --from-literal=integration-key="${PAGERDUTY_INTEGRATION_KEY}" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  log "  PagerDuty secret created — critical alerts will page on-call."
+else
+  log "  PAGERDUTY_INTEGRATION_KEY not set — PagerDuty on-call paging disabled."
+  log "  To enable: export PAGERDUTY_INTEGRATION_KEY=<key> and re-run."
 fi
 
 # ── Phase 6: AI/ML platform (KAgent + MLflow + MCP servers) ──────────────────
@@ -646,6 +707,7 @@ log "║    AI Assistant    http://${BACKSTAGE_URL:-PENDING}/ai-assistant"
 log "╠══════════════════════════════════════════════════════════════════════════════╣"
 log "║  PLATFORM SERVICES"
 log "║    ArgoCD          http://$(_alb argocd-server argocd)"
+log "║    Argo Rollouts   http://$(_alb argo-rollouts-dashboard argo-rollouts)"
 log "║    Grafana         http://$(_alb grafana monitoring)"
 log "║    Prometheus      http://$(_alb prometheus monitoring)"
 log "║    AlertManager    http://$(_alb alertmanager monitoring)"

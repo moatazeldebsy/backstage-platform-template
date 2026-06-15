@@ -28,6 +28,22 @@ PUSHGATEWAY_URL = os.environ.get("PUSHGATEWAY_URL", "http://prometheus-pushgatew
 MODE            = os.environ.get("MODE", "pushgateway")
 CW_NAMESPACE    = os.environ.get("CLOUDWATCH_NS", "IDP/TechInsights")
 AWS_REGION      = os.environ.get("AWS_REGION", "us-east-1")
+OPENCOST_URL    = os.environ.get("OPENCOST_URL", "http://opencost.opencost.svc.cluster.local:9003")
+
+# Monthly budget USD per team — mirrors idp.io/cost-budget-monthly-usd annotations
+# in backstage/catalog/catalog-info.yaml and kubernetes/finops/team-budgets-configmap.yaml.
+import json as _json
+_BUDGET_JSON = os.environ.get("TEAM_BUDGETS_JSON", "")
+TEAM_BUDGETS: dict[str, float] = _json.loads(_BUDGET_JSON) if _BUDGET_JSON else {
+    "platform-team": 2000.0,
+    "ml-team":       1500.0,
+    "backend-team":   600.0,
+    "data-team":      800.0,
+    "frontend-team":  400.0,
+    "android-team":   300.0,
+    "ios-team":       300.0,
+    "qa-team":        200.0,
+}
 
 HEADERS = {"Authorization": f"Bearer {BACKSTAGE_TOKEN}"} if BACKSTAGE_TOKEN else {}
 
@@ -57,6 +73,66 @@ SCORECARD_CHECKS = HYGIENE_CHECKS + QUALITY_GATE_CHECKS
 TIER_THRESHOLDS = {"bronze": 4, "silver": 7, "gold": 10}
 
 
+def fetch_team_costs() -> dict[str, float]:
+    """Query OpenCost /allocation API for month-to-date cost per team label.
+
+    Returns {team_name: total_cost_usd}. Falls back to an empty dict so
+    scorecard export still succeeds even when OpenCost is unavailable.
+    """
+    try:
+        url = (
+            f"{OPENCOST_URL}/allocation/compute"
+            "?window=month&aggregate=label:team&accumulate=true"
+        )
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+        # OpenCost returns a list with one element per window chunk.
+        costs: dict[str, float] = {}
+        for chunk in data:
+            for team, alloc in chunk.items():
+                if team == "__idle__":
+                    continue
+                costs[team] = costs.get(team, 0.0) + float(alloc.get("totalCost", 0.0))
+        return costs
+    except Exception as e:
+        log.warning("OpenCost unavailable — skipping team cost metrics: %s", e)
+        return {}
+
+
+def push_team_budget_metrics(actuals: dict[str, float]) -> None:
+    """Push idp_team_budget_usd_monthly and idp_team_actual_cost_usd_monthly to Pushgateway."""
+    lines = [
+        "# HELP idp_team_budget_usd_monthly Configured monthly budget in USD for the team",
+        "# TYPE idp_team_budget_usd_monthly gauge",
+    ]
+    for team, budget in TEAM_BUDGETS.items():
+        lines.append(f'idp_team_budget_usd_monthly{{team="{team}"}} {budget}')
+
+    lines += [
+        "# HELP idp_team_actual_cost_usd_monthly Month-to-date actual Kubernetes spend in USD",
+        "# TYPE idp_team_actual_cost_usd_monthly gauge",
+    ]
+    for team, budget in TEAM_BUDGETS.items():
+        actual = actuals.get(team, 0.0)
+        lines.append(f'idp_team_actual_cost_usd_monthly{{team="{team}"}} {actual:.4f}')
+
+    lines += [
+        "# HELP idp_team_budget_utilization_ratio Ratio of actual cost to monthly budget (0–1+)",
+        "# TYPE idp_team_budget_utilization_ratio gauge",
+    ]
+    for team, budget in TEAM_BUDGETS.items():
+        actual = actuals.get(team, 0.0)
+        ratio = actual / budget if budget > 0 else 0.0
+        lines.append(f'idp_team_budget_utilization_ratio{{team="{team}"}} {ratio:.4f}')
+
+    payload = "\n".join(lines) + "\n"
+    url = f"{PUSHGATEWAY_URL}/metrics/job/team-cost-budget-exporter"
+    resp = requests.post(url, data=payload, timeout=30)
+    resp.raise_for_status()
+    log.info("Pushed team cost budget metrics to Pushgateway (%d teams)", len(TEAM_BUDGETS))
+
+
 def fetch_entities():
     url = f"{BACKSTAGE_URL}/api/catalog/entities?filter=kind=Component"
     resp = requests.get(url, headers=HEADERS, timeout=30)
@@ -65,12 +141,13 @@ def fetch_entities():
 
 
 def fetch_facts(entity_ref: str):
-    url = f"{BACKSTAGE_URL}/api/tech-insights/facts/latest?entity={entity_ref}"
+    url = f"{BACKSTAGE_URL}/api/tech-insights/facts/latest?entity={entity_ref}&ids[]=idp-entity-facts"
     resp = requests.get(url, headers=HEADERS, timeout=30)
     if resp.status_code == 404:
         return {}
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    return data.get("idp-entity-facts", {}).get("facts", {})
 
 
 def score_entity(facts: dict) -> dict:
@@ -195,6 +272,11 @@ def main():
         push_to_cloudwatch(metrics)
     else:
         push_to_pushgateway(metrics)
+
+    # ── Team cost budgets (Pushgateway only; CloudWatch cost data comes from AWS Budgets) ──
+    if MODE == "pushgateway":
+        actuals = fetch_team_costs()
+        push_team_budget_metrics(actuals)
 
 
 if __name__ == "__main__":

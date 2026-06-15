@@ -29,7 +29,7 @@ spec:
                   pip install requests --quiet && python /app/exporter.py
               env:
                 - name: BACKSTAGE_URL
-                  value: "http://backstage.backstage.svc.cluster.local:7007"
+                  value: "http://backstage.default.svc.cluster.local:3000"
                 - name: BACKSTAGE_TOKEN
                   valueFrom:
                     secretKeyRef:
@@ -61,16 +61,10 @@ spec:
             - name: exporter-script
               configMap:
                 name: flaky-test-exporter-script
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: flaky-test-exporter-script
-  namespace: monitoring
-data:
-  exporter.py: |
-    # Mounted from observability/flaky-test-exporter/exporter.py
-    # Re-build this ConfigMap after editing the exporter:
-    #   kubectl create configmap flaky-test-exporter-script \
-    #     --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
-    #     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+# The flaky-test-exporter-script ConfigMap is created separately from the
+# real exporter.py source (see scripts/bootstrap-local.sh / bootstrap.sh):
+#   kubectl create configmap flaky-test-exporter-script \
+#     --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+#     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+# Do NOT define it here — applying this file would overwrite the real script
+# with a placeholder.

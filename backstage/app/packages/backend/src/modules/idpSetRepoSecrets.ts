@@ -6,10 +6,11 @@
  * GitHub REST API with libsodium-wrappers encryption (required by GitHub).
  *
  * Secrets set on every service repo:
- *   AWS_ROLE_ARN       — OIDC role for ECR push + EKS deploy (from template input)
- *   IDP_PLATFORM_TOKEN — PAT for checking out platform Helm chart (auto from $GITHUB_TOKEN)
- *   SONAR_TOKEN        — SonarCloud analysis upload (auto from $SONAR_TOKEN, if set)
- *   SNYK_TOKEN         — Snyk test/monitor (auto from $SNYK_TOKEN, if set)
+ *   AWS_ROLE_ARN           — OIDC role for ECR push + EKS deploy (from template input)
+ *   IDP_PLATFORM_TOKEN     — PAT for checking out platform Helm chart (auto from $GITHUB_TOKEN)
+ *   SONAR_TOKEN            — SonarCloud analysis upload (auto from $SONAR_TOKEN, if set)
+ *   SNYK_TOKEN             — Snyk test/monitor (auto from $SNYK_TOKEN, if set)
+ *   GCP_SERVICE_ACCOUNT_KEY — GCP service account JSON for Firebase Test Lab (auto from $GCP_SERVICE_ACCOUNT_KEY, if set)
  *
  * Auto-injected secrets are pulled from the Backstage backend pod's environment
  * (local: docker-compose env file; AWS: K8s secret backstage-secrets). When the
@@ -67,9 +68,10 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
       // locally and K8s secret backstage-secrets (Secrets Manager: idp-mvp/backstage) on AWS.
       const secrets: Record<string, string> = { ...(ctx.input['secrets'] as Record<string, string>) };
       const autoInject: Array<[string, string | undefined]> = [
-        ['IDP_PLATFORM_TOKEN', process.env.GITHUB_TOKEN],
-        ['SONAR_TOKEN', process.env.SONAR_TOKEN],
-        ['SNYK_TOKEN', process.env.SNYK_TOKEN],
+        ['IDP_PLATFORM_TOKEN',      process.env.GITHUB_TOKEN],
+        ['SONAR_TOKEN',             process.env.SONAR_TOKEN],
+        ['SNYK_TOKEN',              process.env.SNYK_TOKEN],
+        ['GCP_SERVICE_ACCOUNT_KEY', process.env.GCP_SERVICE_ACCOUNT_KEY],
       ];
       for (const [name, value] of autoInject) {
         if (value && !secrets[name]) secrets[name] = value;
