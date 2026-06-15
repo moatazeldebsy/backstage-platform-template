@@ -128,8 +128,16 @@ spec:
 
           ### Next steps
           1. Enable Firebase Test Lab in project `${{ parameters.firebaseProjectId }}`.
-          2. Set the `GCP_SERVICE_ACCOUNT_KEY` GitHub secret.
+          2. `GCP_SERVICE_ACCOUNT_KEY` is auto-injected from the platform if `GCP_SERVICE_ACCOUNT_KEY` is set in `local/backstage/.env` — verify it was set by the step below.
           3. Merge this PR — tests will run on the next push/PR.
+
+    - id: inject-secrets
+      name: Inject GCP credentials into repo secrets
+      action: idp:repo:set-secrets
+      continueOnError: true
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        secrets: {}
 
   output:
     links:

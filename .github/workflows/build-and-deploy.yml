@@ -288,3 +288,182 @@ jobs:
           payload: |
             channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             text: ":x: *GitOps tag update failed for `${{ matrix.service }}`*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+
+  # ─── Smoke test dev before promoting to staging ────────────────────────────
+  # Waits for ArgoCD to finish syncing dev, then hits /healthz to confirm the
+  # new image is live and healthy before opening a staging promotion PR.
+  smoke-test-dev:
+    needs: [detect-changes, update-image-tag]
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check AWS_ROLE_ARN secret
+        id: guard
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "has_aws=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_aws=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        if: steps.guard.outputs.has_aws == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        if: steps.guard.outputs.has_aws == 'true'
+        env:
+          CLUSTER: ${{ env.EKS_CLUSTER_NAME }}
+          REGION: ${{ env.AWS_REGION }}
+        run: aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION"
+
+      - name: Wait for ArgoCD sync (dev)
+        if: steps.guard.outputs.has_aws == 'true'
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          kubectl rollout status "deployment/${SERVICE}" \
+            -n services-dev --timeout=5m 2>/dev/null || \
+          kubectl rollout status "rollout/${SERVICE}" \
+            -n services-dev --timeout=5m 2>/dev/null || true
+
+      - name: Smoke test /healthz
+        if: steps.guard.outputs.has_aws == 'true'
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          kubectl port-forward "svc/${SERVICE}" 8080:80 \
+            -n services-dev &>/tmp/pf.log &
+          PF_PID=$!
+          sleep 3
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/healthz || echo "000")
+          kill $PF_PID 2>/dev/null || true
+          echo "Health check status: ${HTTP_STATUS}"
+          if [ "${HTTP_STATUS}" != "200" ]; then
+            echo "::error::Smoke test failed — /healthz returned ${HTTP_STATUS}"
+            exit 1
+          fi
+
+  # ─── Promote to staging (open PR) ──────────────────────────────────────────
+  # Opens a PR updating helm-values-staging.yaml with the new image tag.
+  # A human reviews and merges; ArgoCD deploys to the staging namespace.
+  promote-to-staging:
+    needs: [detect-changes, build-and-push, smoke-test-dev]
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.IDP_PLATFORM_TOKEN }}
+          fetch-depth: 0
+
+      - name: Check AWS_ROLE_ARN secret
+        id: guard
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "has_aws=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_aws=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        if: steps.guard.outputs.has_aws == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        if: steps.guard.outputs.has_aws == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create staging promotion PR
+        if: steps.guard.outputs.has_aws == 'true'
+        env:
+          SERVICE: ${{ matrix.service }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          IMAGE_REPO: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
+          GH_TOKEN: ${{ secrets.IDP_PLATFORM_TOKEN }}
+        run: |
+          BRANCH="promote/${SERVICE}-${IMAGE_TAG}-staging"
+          git config user.name "idp-bot"
+          git config user.email "idp-bot@platform"
+          git checkout -b "${BRANCH}"
+
+          # Copy dev values file to staging if it doesn't exist yet
+          if [ ! -f "services/${SERVICE}/helm-values-staging.yaml" ]; then
+            cp "services/${SERVICE}/helm-values-aws.yaml" \
+               "services/${SERVICE}/helm-values-staging.yaml"
+            sed -i 's/ENVIRONMENT: dev/ENVIRONMENT: staging/' \
+              "services/${SERVICE}/helm-values-staging.yaml" 2>/dev/null || true
+          fi
+
+          yq -i ".image.repository = \"${IMAGE_REPO}\"" \
+            "services/${SERVICE}/helm-values-staging.yaml"
+          yq -i ".image.tag = \"${IMAGE_TAG}\"" \
+            "services/${SERVICE}/helm-values-staging.yaml"
+
+          git add "services/${SERVICE}/helm-values-staging.yaml"
+          git diff --staged --quiet && echo "No staging changes to promote." && exit 0
+          git commit -m "chore(gitops): promote ${SERVICE} → ${IMAGE_TAG} [staging] [skip ci]"
+          git push origin "${BRANCH}"
+
+          gh pr create \
+            --title "chore(promote): ${SERVICE} → ${IMAGE_TAG} to staging" \
+            --body "## Staging Promotion
+
+**Service:** \`${SERVICE}\`
+**Image tag:** \`${IMAGE_TAG}\`
+**Promoted from:** dev (smoke test passed ✅)
+
+### What this PR does
+Updates \`helm-values-staging.yaml\` with the new image tag.
+ArgoCD will deploy to \`services-staging\` namespace after merge.
+
+### Pre-merge checklist
+- [ ] Dev smoke test passed (automated above)
+- [ ] No open P1/P2 incidents on this service
+- [ ] DORA change failure rate is acceptable
+
+_Opened automatically by the GitOps promotion pipeline._" \
+            --base main \
+            --head "${BRANCH}" \
+            --label "gitops-promotion"
+
+      - name: Notify Slack — staging PR opened
+        if: steps.guard.outputs.has_aws == 'true' && success()
+        continue-on-error: true
+        env:
+          SERVICE: ${{ matrix.service }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}/pulls
+        uses: slackapi/slack-github-action@v3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
+            text: ":rocket: *`${{ env.SERVICE }}`* dev smoke test passed — staging promotion PR opened for `${{ env.IMAGE_TAG }}`\n<${{ env.REPO_URL }}|View PRs>"

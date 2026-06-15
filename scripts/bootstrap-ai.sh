@@ -77,12 +77,22 @@ if $DESTROY; then
   # KAgent Helm releases + resources
   helm uninstall kagent      --namespace kagent 2>/dev/null || true
   helm uninstall kagent-crds --namespace kagent 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"    2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"     2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"   2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"  2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/platform-agent.yaml"  2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"       2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"        2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-mcp-server-rbac.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"      2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"     2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"        2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"         2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"  2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"  2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"    2>/dev/null || true
+  helm uninstall agent-event-router --namespace services-dev 2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
   kubectl delete secret kagent-openai -n kagent 2>/dev/null || true
   # Residue from the pre-fe4fce2 HTTPS-with-mkcert install. Harmless once the
@@ -105,6 +115,13 @@ if $DESTROY; then
   helm uninstall idp-mcp-server      --namespace services-dev 2>/dev/null || true
   helm uninstall qa-mcp-server       --namespace services-dev 2>/dev/null || true
   helm uninstall contract-mcp-server --namespace services-dev 2>/dev/null || true
+  helm uninstall github-mcp-server   --namespace services-dev 2>/dev/null || true
+  helm uninstall argocd-mcp-server   --namespace services-dev 2>/dev/null || true
+  helm uninstall cost-mcp-server     --namespace services-dev 2>/dev/null || true
+  # AI-stack service secrets
+  kubectl delete secret github-mcp-server-token     -n services-dev 2>/dev/null || true
+  kubectl delete secret argocd-mcp-server-token     -n services-dev 2>/dev/null || true
+  kubectl delete secret agent-event-router-secrets  -n services-dev 2>/dev/null || true
   # Remove services-dev only if it is now empty
   if [[ -z "$(kubectl get all -n services-dev --ignore-not-found -o name 2>/dev/null)" ]]; then
     kubectl delete namespace services-dev 2>/dev/null || true
@@ -194,10 +211,14 @@ else
     kubectl cluster-info --context rancher-desktop &>/dev/null || \
       die "Rancher Desktop cluster not reachable. Start Rancher Desktop and run ./scripts/bootstrap-local.sh --provider rancher-desktop first."
   fi
-  # Load ANTHROPIC_API_KEY and OPENAI_API_KEY from local/.env if not already set
+  # Load all AI-stack env vars from local/.env if not already set in environment
   if [[ -f "${ENV_FILE}" ]]; then
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
     OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
+    GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep '^GITHUB_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
   fi
 fi
 
@@ -280,6 +301,54 @@ if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret kagent-openai ready"
+fi
+
+# ── 2b. AI-stack service secrets (services-dev namespace) ────────────────────
+# These secrets are required before the MCP server deploy loop runs. Services
+# use optional: true on their secretKeyRef so they start with a warning rather
+# than crash when a token is not configured locally.
+
+kubectl create namespace services-dev --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+
+# github-mcp-server token (same GITHUB_TOKEN already used by Backstage scaffolder)
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  info "Creating github-mcp-server-token secret in services-dev..."
+  kubectl create secret generic github-mcp-server-token \
+    --namespace services-dev \
+    --from-literal=token="${GITHUB_TOKEN}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret github-mcp-server-token ready"
+else
+  warn "GITHUB_TOKEN not set — github-mcp-server will start without a GitHub token (PR tools will fail). Add GITHUB_TOKEN to local/.env."
+fi
+
+# argocd-mcp-server token
+if [[ -n "${ARGOCD_TOKEN:-}" ]]; then
+  info "Creating argocd-mcp-server-token secret in services-dev..."
+  kubectl create secret generic argocd-mcp-server-token \
+    --namespace services-dev \
+    --from-literal=token="${ARGOCD_TOKEN}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret argocd-mcp-server-token ready"
+else
+  warn "ARGOCD_TOKEN not set — argocd-mcp-server will start without an ArgoCD token (all ArgoCD tools will fail). Add ARGOCD_TOKEN to local/.env."
+  warn "  Get token: argocd account generate-token --account admin (or kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
+fi
+
+# agent-event-router secrets (GITHUB_WEBHOOK_SECRET + WEBHOOK_TOKEN)
+_ghws="${GITHUB_WEBHOOK_SECRET:-}"
+_wt="${WEBHOOK_TOKEN:-}"
+if [[ -n "$_ghws" || -n "$_wt" ]]; then
+  info "Creating agent-event-router-secrets in services-dev..."
+  kubectl create secret generic agent-event-router-secrets \
+    --namespace services-dev \
+    --from-literal=github-webhook-secret="${_ghws:-placeholder-set-in-github-webhook}" \
+    --from-literal=webhook-token="${_wt:-placeholder-set-webhook-token}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret agent-event-router-secrets ready"
+else
+  warn "GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN not set — agent-event-router will start but /webhook/github will return 503."
+  warn "  Add GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN to local/.env, then re-run bootstrap-ai.sh."
 fi
 
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────
@@ -409,13 +478,22 @@ else
 
   info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"
   if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"
   fi
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-mcp-server-rbac.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/platform-agent.yaml"
   # Contract-testing KAgent resources intentionally disabled (hidden from end users).
   # To re-enable, uncomment the two lines below.
   # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
@@ -623,7 +701,7 @@ else
 
   # contract-mcp-server intentionally excluded — hidden from end users.
   # To re-enable, add `contract-mcp-server` back to the list below.
-  for SVC in idp-mcp-server qa-mcp-server; do
+  for SVC in idp-mcp-server qa-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
@@ -686,7 +764,7 @@ fi
 
 if [[ "$DEPLOY_MODE" == "local" ]]; then
   append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server"
+    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
@@ -708,6 +786,9 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://$(_alb_ai idp-mcp-server services-dev)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://$(_alb_ai qa-mcp-server services-dev)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://$(_alb_ai contract-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  GitHub MCP Server   http://$(_alb_ai github-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  ArgoCD MCP Server   http://$(_alb_ai argocd-mcp-server services-dev)"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Cost MCP Server     http://$(_alb_ai cost-mcp-server services-dev)"
 else
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local"
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant"
@@ -715,6 +796,10 @@ else
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Event Router        http://agent-event-router.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  GitHub MCP Server   http://github-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  ArgoCD MCP Server   http://argocd-mcp-server.idp.local/healthz"
+  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Cost MCP Server     http://cost-mcp-server.idp.local/healthz"
 fi
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
 echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"

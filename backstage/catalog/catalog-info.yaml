@@ -3,6 +3,9 @@ kind: Group
 metadata:
   name: platform-team
   description: Platform engineering team — owns the IDP infrastructure and golden paths
+  annotations:
+    idp.io/cost-budget-monthly-usd: "2000"
+    idp.io/cost-namespace: "services,services-dev,monitoring,argocd,kagent"
 spec:
   type: team
   profile:
@@ -27,6 +30,9 @@ metadata:
   description: Data Engineering team — data pipelines and analytics
   tags:
     - data
+  annotations:
+    idp.io/cost-budget-monthly-usd: "800"
+    idp.io/cost-namespace: "services-dev,services"
 spec:
   type: team
   profile:
@@ -45,6 +51,9 @@ metadata:
   tags:
     - ml
     - ai
+  annotations:
+    idp.io/cost-budget-monthly-usd: "1500"
+    idp.io/cost-namespace: "ml-platform,services-dev"
 spec:
   type: team
   profile:
@@ -126,6 +135,9 @@ metadata:
     - android
     - mobile
     - kotlin
+  annotations:
+    idp.io/cost-budget-monthly-usd: "300"
+    idp.io/cost-namespace: "services-dev,services"
 spec:
   type: team
   profile:
@@ -170,6 +182,9 @@ metadata:
     - ios
     - mobile
     - swift
+  annotations:
+    idp.io/cost-budget-monthly-usd: "300"
+    idp.io/cost-namespace: "services-dev,services"
 spec:
   type: team
   profile:
@@ -215,6 +230,9 @@ metadata:
     - react
     - typescript
     - web
+  annotations:
+    idp.io/cost-budget-monthly-usd: "400"
+    idp.io/cost-namespace: "services-dev,services"
 spec:
   type: team
   profile:
@@ -260,6 +278,9 @@ metadata:
     - go
     - nodejs
     - python
+  annotations:
+    idp.io/cost-budget-monthly-usd: "600"
+    idp.io/cost-namespace: "services-dev,services"
 spec:
   type: team
   profile:

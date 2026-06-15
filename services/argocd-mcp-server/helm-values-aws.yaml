@@ -1,0 +1,56 @@
+fullnameOverride: argocd-mcp-server
+
+replicaCount: 2
+
+image:
+  repository: ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/argocd-mcp-server
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3006
+  targetPort: 3006
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: argocd-mcp-server.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  - name: PORT
+    value: "3006"
+  - name: ARGOCD_URL
+    value: "http://argocd-server.argocd.svc.cluster.local"
+  - name: ARGOCD_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: argocd-mcp-server-token
+        key: token
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70

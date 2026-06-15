@@ -5,6 +5,9 @@ metadata:
   name: qa-team
   title: QA Platform Team
   description: Owns the QA Platform & Quality Enablement capability — test tooling, quality gates, and E2E scaffolds.
+  annotations:
+    idp.io/cost-budget-monthly-usd: "200"
+    idp.io/cost-namespace: "services-dev"
 spec:
   type: team
   profile:

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contract Registry</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; line-height: 1.4; }
+  h1 { margin-bottom: 0.25rem; }
+  .sub { color: #888; margin-top: 0; }
+  section { border: 1px solid #ccc8; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; }
+  h2 { margin-top: 0; font-size: 1.05rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 0.5rem 0 0.2rem; }
+  input, textarea, select { width: 100%; box-sizing: border-box; padding: 0.4rem; font-family: inherit; font-size: 0.9rem; border: 1px solid #ccc8; border-radius: 4px; background: transparent; color: inherit; }
+  textarea { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; min-height: 8rem; }
+  button { margin-top: 0.6rem; padding: 0.45rem 1rem; border: none; border-radius: 4px; background: #2563eb; color: #fff; font-size: 0.9rem; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  button.secondary { background: #6b7280; }
+  pre { background: #0001; padding: 0.6rem; border-radius: 6px; overflow: auto; font-size: 0.78rem; max-height: 22rem; white-space: pre-wrap; word-break: break-word; }
+  .row { display: flex; gap: 0.6rem; }
+  .row > div { flex: 1; }
+  .status { font-size: 0.8rem; margin-top: 0.4rem; }
+  .status.ok { color: #16a34a; }
+  .status.err { color: #dc2626; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #ccc5; }
+</style>
+</head>
+<body>
+<h1>Contract Registry</h1>
+<p class="sub">Minimal UI for the contract-mcp-server REST API — register specs, check compatibility, and detect breaking changes.</p>
+
+<section>
+  <h2>Server status</h2>
+  <button id="btn-health">Check /healthz</button>
+  <pre id="out-health">—</pre>
+</section>
+
+<section>
+  <h2>Registered contracts</h2>
+  <button id="btn-list">Refresh list</button>
+  <div id="out-list"></div>
+</section>
+
+<section>
+  <h2>Register a contract</h2>
+  <div class="row">
+    <div>
+      <label for="reg-service">Service name</label>
+      <input id="reg-service" placeholder="payments-api">
+    </div>
+    <div>
+      <label for="reg-version">Version</label>
+      <input id="reg-version" placeholder="1.0.0">
+    </div>
+  </div>
+  <label for="reg-key">X-Api-Key (optional)</label>
+  <input id="reg-key" placeholder="leave blank if API_KEY is not set on the server">
+  <label for="reg-spec">OpenAPI spec (JSON or YAML)</label>
+  <textarea id="reg-spec" placeholder='{"openapi": "3.0.0", "info": {...}, "paths": {...}}'></textarea>
+  <button id="btn-register">Register</button>
+  <button id="btn-example" class="secondary" type="button">Load example payload</button>
+  <div id="out-register" class="status"></div>
+</section>
+
+<section>
+  <h2>Get a contract</h2>
+  <div class="row">
+    <div>
+      <label for="get-service">Service name</label>
+      <input id="get-service" placeholder="payments-api">
+    </div>
+    <div>
+      <label for="get-version">Version (optional → latest)</label>
+      <input id="get-version" placeholder="1.0.0">
+    </div>
+  </div>
+  <button id="btn-get">Fetch contract</button>
+  <pre id="out-get">—</pre>
+</section>
+
+<section>
+  <h2>Compatibility check</h2>
+  <div class="row">
+    <div>
+      <label for="compat-provider">Provider</label>
+      <input id="compat-provider" placeholder="payments-api">
+    </div>
+    <div>
+      <label for="compat-consumer">Consumer</label>
+      <input id="compat-consumer" placeholder="checkout-service">
+    </div>
+  </div>
+  <button id="btn-compat">Check compatibility</button>
+  <pre id="out-compat">—</pre>
+</section>
+
+<section>
+  <h2>Detect breaking changes</h2>
+  <div class="row">
+    <div>
+      <label for="bc-service">Service name</label>
+      <input id="bc-service" placeholder="payments-api">
+    </div>
+    <div>
+      <label for="bc-from">From version</label>
+      <input id="bc-from" placeholder="1.0.0">
+    </div>
+    <div>
+      <label for="bc-to">To version</label>
+      <input id="bc-to" placeholder="2.0.0">
+    </div>
+  </div>
+  <button id="btn-bc">Compare versions</button>
+  <pre id="out-bc">—</pre>
+</section>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const show = (el, data) => { el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); };
+
+async function call(path, opts) {
+  const res = await fetch(path, opts);
+  let body;
+  try { body = await res.json(); } catch { body = await res.text(); }
+  return { ok: res.ok, status: res.status, body };
+}
+
+$('btn-health').onclick = async () => {
+  show($('out-health'), 'loading…');
+  const { body } = await call('/healthz');
+  show($('out-health'), body);
+};
+
+async function refreshList() {
+  const out = $('out-list');
+  out.textContent = 'loading…';
+  const { ok, body } = await call('/api/contracts');
+  if (!ok || !Array.isArray(body) || body.length === 0) { out.innerHTML = '<p class="status">No contracts registered yet.</p>'; return; }
+  const rows = body.map(c => `<tr><td>${c.serviceName}</td><td>${c.latestVersion}</td><td>${(c.versions || []).join(', ')}</td><td>${c.registeredAt ?? ''}</td></tr>`).join('');
+  out.innerHTML = `<table><thead><tr><th>Service</th><th>Latest</th><th>All versions</th><th>Last registered</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+$('btn-list').onclick = refreshList;
+refreshList();
+
+// ── Example payload ───────────────────────────────────────────────────────
+const EXAMPLE_SPEC = {
+  openapi: '3.0.0',
+  info: { title: 'Payments API', version: '1.0.0', description: 'Handles payment intents and refunds.' },
+  paths: {
+    '/v1/payments': {
+      get: {
+        summary: 'List payments',
+        responses: {
+          '200': { description: 'A page of payments', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Payment' } } } } },
+        },
+      },
+      post: {
+        summary: 'Create a payment',
+        requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/PaymentRequest' } } } },
+        responses: {
+          '201': { description: 'Payment created', content: { 'application/json': { schema: { $ref: '#/components/schemas/Payment' } } } },
+          '422': { description: 'Validation error' },
+        },
+      },
+    },
+    '/v1/payments/{id}': {
+      get: {
+        summary: 'Get a payment by ID',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'The payment', content: { 'application/json': { schema: { $ref: '#/components/schemas/Payment' } } } },
+          '404': { description: 'Not found' },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      Payment: { type: 'object', properties: { id: { type: 'string' }, amount: { type: 'number' }, currency: { type: 'string' }, status: { type: 'string' } } },
+      PaymentRequest: { type: 'object', required: ['amount', 'currency'], properties: { amount: { type: 'number' }, currency: { type: 'string' } } },
+    },
+  },
+};
+$('btn-example').onclick = () => {
+  $('reg-service').value ||= 'payments-api';
+  $('reg-version').value ||= '1.0.0';
+  $('reg-spec').value = JSON.stringify(EXAMPLE_SPEC, null, 2);
+};
+
+$('btn-register').onclick = async () => {
+  const service = $('reg-service').value.trim();
+  const version = $('reg-version').value.trim();
+  const spec = $('reg-spec').value.trim();
+  const key = $('reg-key').value.trim();
+  const status = $('out-register');
+  if (!service || !version || !spec) { status.className = 'status err'; status.textContent = 'Service, version, and spec are required.'; return; }
+  status.className = 'status'; status.textContent = 'registering…';
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers['X-Api-Key'] = key;
+  const { ok, status: code, body } = await call(`/api/contracts/${encodeURIComponent(service)}/${encodeURIComponent(version)}`, { method: 'POST', headers, body: spec });
+  status.className = ok ? 'status ok' : 'status err';
+  status.textContent = `[${code}] ${JSON.stringify(body)}`;
+  if (ok) refreshList();
+};
+
+$('btn-get').onclick = async () => {
+  const service = $('get-service').value.trim();
+  const version = $('get-version').value.trim();
+  const out = $('out-get');
+  if (!service) { show(out, 'Service name is required.'); return; }
+  show(out, 'loading…');
+  const qs = version ? `?version=${encodeURIComponent(version)}` : '';
+  const { body } = await call(`/api/contracts/${encodeURIComponent(service)}${qs}`);
+  show(out, body);
+};
+
+$('btn-compat').onclick = async () => {
+  const provider = $('compat-provider').value.trim();
+  const consumer = $('compat-consumer').value.trim();
+  const out = $('out-compat');
+  if (!provider || !consumer) { show(out, 'Provider and consumer are required.'); return; }
+  show(out, 'loading…');
+  const { body } = await call(`/api/compatibility/${encodeURIComponent(provider)}/${encodeURIComponent(consumer)}`);
+  show(out, body);
+};
+
+$('btn-bc').onclick = async () => {
+  const service_name = $('bc-service').value.trim();
+  const from_version = $('bc-from').value.trim();
+  const to_version = $('bc-to').value.trim();
+  const out = $('out-bc');
+  if (!service_name || !from_version || !to_version) { show(out, 'Service, from, and to versions are required.'); return; }
+  show(out, 'loading…');
+  const { body } = await call('/api/breaking-changes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service_name, from_version, to_version }),
+  });
+  show(out, body);
+};
+
+</script>
+</body>
+</html>

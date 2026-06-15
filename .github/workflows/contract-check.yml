@@ -1,0 +1,165 @@
+name: Contract Check
+
+on:
+  pull_request:
+    paths:
+      - 'openapi.json'
+      - 'openapi.yaml'
+      - 'api/**'
+      - 'src/**'   # Adjust to match your service's source paths
+
+# ── Usage ─────────────────────────────────────────────────────────────────
+# Add these repository secrets:
+#   CONTRACT_TOKEN       — X-Api-Key value (if API_KEY is set on the server)
+#
+# Add these repository variables:
+#   CONTRACT_SERVER_URL  — URL of the contract-mcp-server
+#   SERVICE_NAME         — Your service name as registered in the contract registry
+#   OPENAPI_SPEC_PATH    — Path to OpenAPI file (default: openapi.json)
+#   AWS_ROLE_ARN         — IAM role ARN for OIDC auth (optional)
+#   AWS_REGION           — AWS region (default: us-east-1)
+
+jobs:
+  contract-check:
+    name: Contract validation
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write      # OIDC token for AWS
+      contents: read
+      pull-requests: write # Post contract check summary as PR comment
+
+    env:
+      # All GitHub context expressions go through env vars — never interpolated directly in run: steps
+      CONTRACT_SERVER: ${{ vars.CONTRACT_SERVER_URL || 'http://localhost:3003' }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME || github.event.repository.name }}
+      SPEC_PATH: ${{ vars.OPENAPI_SPEC_PATH || 'openapi.json' }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      GIT_SHA: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Optional: authenticate to AWS if contract server requires AWS OIDC
+      - name: Configure AWS credentials
+        if: ${{ vars.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Check OpenAPI spec exists
+        run: |
+          if [ ! -f "$SPEC_PATH" ]; then
+            echo "⚠️  No OpenAPI spec found at $SPEC_PATH — skipping contract check"
+            echo "SKIP_CONTRACT_CHECK=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Fetch previous spec version
+        if: env.SKIP_CONTRACT_CHECK != 'true'
+        # CONTRACT_TOKEN is a secret — always pass via env, never inline in run:
+        env:
+          CONTRACT_TOKEN: ${{ secrets.CONTRACT_TOKEN }}
+        run: |
+          PREV_RESPONSE=$(curl -sf \
+            -H "X-Api-Key: $CONTRACT_TOKEN" \
+            "$CONTRACT_SERVER/api/contracts/$SERVICE_NAME" || echo '{}')
+          PREV_VERSION=$(echo "$PREV_RESPONSE" | jq -r '.version // empty')
+          echo "PREV_VERSION=${PREV_VERSION}" >> "$GITHUB_ENV"
+          echo "Previous registered version: ${PREV_VERSION:-none}"
+
+      - name: Register PR contract
+        if: env.SKIP_CONTRACT_CHECK != 'true'
+        env:
+          CONTRACT_TOKEN: ${{ secrets.CONTRACT_TOKEN }}
+        run: |
+          # Build version from env vars (not from inline GitHub expressions)
+          NEW_VERSION="pr-${PR_NUMBER}-${GIT_SHA}"
+          echo "NEW_VERSION=${NEW_VERSION}" >> "$GITHUB_ENV"
+
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "$CONTRACT_SERVER/api/contracts/$SERVICE_NAME/$NEW_VERSION" \
+            -H "X-Api-Key: $CONTRACT_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$SPEC_PATH")
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ Failed to register contract (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+          echo "✅ Contract registered as $SERVICE_NAME@$NEW_VERSION"
+
+      - name: Detect breaking changes
+        if: env.SKIP_CONTRACT_CHECK != 'true' && env.PREV_VERSION != ''
+        run: |
+          RESULT=$(curl -sf -X POST \
+            "$CONTRACT_SERVER/api/breaking-changes" \
+            -H "Content-Type: application/json" \
+            -d "{\"service_name\":\"$SERVICE_NAME\",\"from_version\":\"$PREV_VERSION\",\"to_version\":\"$NEW_VERSION\"}")
+
+          BREAKING_COUNT=$(echo "$RESULT" | jq '.breaking | length')
+          echo "BREAKING_COUNT=${BREAKING_COUNT}" >> "$GITHUB_ENV"
+
+          # Write multi-line value safely using heredoc syntax
+          {
+            echo "BREAKING_RESULT<<EOF_BREAKING"
+            echo "$RESULT"
+            echo "EOF_BREAKING"
+          } >> "$GITHUB_ENV"
+
+          echo "Breaking changes found: $BREAKING_COUNT"
+          if [ "$BREAKING_COUNT" -gt 0 ]; then
+            echo "BREAKING_DETECTED=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Post PR comment with results
+        if: env.SKIP_CONTRACT_CHECK != 'true'
+        uses: actions/github-script@v7
+        env:
+          BREAKING_RESULT: ${{ env.BREAKING_RESULT }}
+          BREAKING_COUNT: ${{ env.BREAKING_COUNT }}
+          PREV_VERSION: ${{ env.PREV_VERSION }}
+          NEW_VERSION: ${{ env.NEW_VERSION }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          CONTRACT_SERVER: ${{ env.CONTRACT_SERVER }}
+        with:
+          script: |
+            const breakingResult = JSON.parse(process.env.BREAKING_RESULT || '{}');
+            const breakingCount = parseInt(process.env.BREAKING_COUNT || '0');
+            const prevVersion = process.env.PREV_VERSION;
+            const newVersion = process.env.NEW_VERSION;
+            const serviceName = process.env.SERVICE_NAME;
+            const contractServer = process.env.CONTRACT_SERVER;
+
+            let comment = `## 📋 Contract Check Results — \`${serviceName}\`\n\n`;
+
+            // Breaking changes
+            if (prevVersion) {
+              comment += `### Breaking Changes (${prevVersion} → ${newVersion})\n`;
+              if (breakingCount === 0) {
+                comment += `✅ No breaking changes detected.\n`;
+              } else {
+                comment += `❌ **${breakingCount} breaking change(s) detected:**\n`;
+                for (const change of (breakingResult.breaking || [])) {
+                  comment += `- \`${change.type}\`: ${change.detail}\n`;
+                }
+              }
+            } else {
+              comment += `> ℹ️ No previous version registered — first-time contract registration.\n`;
+            }
+
+            comment += `\n<sub>Checked by [contract-mcp-server](${contractServer})</sub>`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment,
+            });
+
+      - name: Fail if breaking changes detected
+        if: env.BREAKING_DETECTED == 'true'
+        run: |
+          echo "❌ Breaking changes detected in $SERVICE_NAME."
+          echo "Consumer teams must be notified before merging."
+          echo "Call generate_migration_guide on the contract server to generate a migration guide."
+          exit 1

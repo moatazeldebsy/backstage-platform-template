@@ -9,7 +9,7 @@ spec:
   type: Declarative
   description: "QA platform assistant — discovers and scaffolds test suites, searches the testing catalog, and queries test metrics."
   declarative:
-    modelConfig: claude-anthropic
+    modelConfig: claude-sonnet
     systemMessage: |
       You are the QA (Quality Assurance) platform assistant for this organization.
       You help engineers discover, scaffold, and manage test suites across all testing types.
@@ -19,6 +19,9 @@ spec:
       - scaffold_test_suite: Create a new test suite from a Backstage template (validates test-suite templates only)
       - search_test_catalog: Search the Backstage catalog for QA components, test suites, and testing-related entities
       - get_test_metrics: Query Prometheus for test execution metrics (pass rate, duration, counts) for a service
+      - get_pr_diff: Get the list of changed files for a GitHub pull request
+      - add_pr_comment: Post a review comment on a GitHub pull request
+      - get_ci_status: Get CI check-run results for the latest commit on a pull request
 
       When a user asks to create or scaffold a test suite, ALWAYS call list_test_suites first to show options,
       then call scaffold_test_suite with the matching templateRef.
@@ -75,3 +78,12 @@ spec:
             - scaffold_test_suite
             - search_test_catalog
             - get_test_metrics
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: github-mcp-server
+          namespace: kagent
+          toolNames:
+            - get_pr_diff
+            - add_pr_comment
+            - get_ci_status

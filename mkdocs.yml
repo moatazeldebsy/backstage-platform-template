@@ -41,6 +41,7 @@ nav:
   - Demo Runbook: demo-runbook.md
   - Roadmap: roadmap.md
   - Readiness Checklist: readiness-checklist.md
+  - SRE & Reliability: sre-reliability.md
   - Runbooks:
     - Overview: runbooks/index.md
     - Deployment Rollback: runbooks/deployment-rollback.md
@@ -50,3 +51,5 @@ nav:
     - Database Recovery: runbooks/db-recovery.md
     - ImagePullBackOff: runbooks/image-pull-backoff.md
     - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
+    - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
+    - KAgent Guardrails: runbooks/kagent-guardrails.md

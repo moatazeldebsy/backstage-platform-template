@@ -1,0 +1,194 @@
+{
+  "title": "SRE — SLO Error Budgets",
+  "uid": "sre-slo-error-budget",
+  "tags": ["sre", "slo", "error-budget", "sloth"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "1m",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(sloth_slo_info, sloth_service)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active SLOs",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "count(count by (sloth_service, sloth_id)(sloth_slo_info{sloth_service=~\"$service\"})) or vector(0)", "refId": "A", "legendFormat": "SLOs" }],
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 2,
+      "title": "Services with Active SLOs",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "count(count by (sloth_service)(sloth_slo_info{sloth_service=~\"$service\"})) or vector(0)", "refId": "A", "legendFormat": "Services" }],
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 3,
+      "title": "SLOs Burning Fast (5m error ratio > 1%)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "count(slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"} > 0.01) or vector(0)", "refId": "A", "legendFormat": "Burning Fast" }],
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 3 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 4,
+      "title": "Max Error Ratio (5m)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "max(slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"}) or vector(0)", "refId": "A", "legendFormat": "Max Error Ratio" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    },
+    {
+      "id": 5,
+      "title": "Current Error Ratio by SLO (5m window)",
+      "description": "Lower is better. Dashed lines: 0.5% and 1% error budget thresholds.",
+      "type": "bargauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 4 },
+      "targets": [{ "expr": "sort_desc(slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"})", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 0.02,
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal", "displayMode": "lcd", "showUnfilled": true }
+    },
+    {
+      "id": 6,
+      "title": "SLO Metadata",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "sloth_slo_info{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "", "instant": true },
+        { "expr": "slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"}", "refId": "B", "legendFormat": "", "instant": true }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": {
+          "renameByName": {
+            "sloth_service": "Service",
+            "sloth_id": "SLO",
+            "objective": "Target",
+            "Value #A": "Info",
+            "Value #B": "Error Ratio (5m)"
+          },
+          "excludeByName": { "Value #A": true, "__name__": true, "job": true, "instance": true, "sloth_mode": true, "sloth_spec": true, "sloth_version": true, "sloth_slo": true, "sloth_window": true }
+        }}
+      ],
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error Ratio (5m)" }, "properties": [
+            { "id": "unit", "value": "percentunit" },
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] } }
+          ]}
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "title": "Error Ratio Trend — 5m window",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 14 },
+      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Error Ratio Trend — 30m window",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 14 },
+      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate30m{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Burn Rate — 1h window",
+      "description": "Multi-window burn rate. High values mean the error budget is being consumed faster than it accrues. Alert fires at >14x (1h) or >6x (6h).",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 23 },
+      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate1h{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Burn Rate — 6h window",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 23 },
+      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate6h{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }
+      }
+    }
+  ]
+}

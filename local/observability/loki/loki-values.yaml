@@ -1,0 +1,50 @@
+# Loki single-binary (monolithic) for local Kind
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm upgrade --install loki grafana/loki \
+#   -n monitoring --values local/observability/loki/loki-values.yaml
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    size: 5Gi
+
+# Promtail is deployed as a separate chart
+# See local/observability/loki/promtail-values.yaml
+
+# Disable all scaled components (monolithic mode)
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Expose Loki for Grafana queries (no external ingress — internal only)
+gateway:
+  enabled: false

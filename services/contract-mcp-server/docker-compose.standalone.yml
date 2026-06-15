@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: contract_registry
+      POSTGRES_USER: contract
+      POSTGRES_PASSWORD: contract
+    volumes:
+      - contracts-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contract -d contract_registry"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  contract-mcp-server:
+    build: .
+    ports:
+      - "${PORT:-3003}:3003"
+    environment:
+      PORT: "3003"
+      STORAGE_TYPE: postgres
+      DATABASE_URL: "postgresql://contract:contract@postgres:5432/contract_registry"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      DISCOVERY_MODE: "${DISCOVERY_MODE:-http}"
+      SERVICES_REGISTRY: "${SERVICES_REGISTRY:-}"
+      BREAKING_CHANGE_WEBHOOK_URL: "${BREAKING_CHANGE_WEBHOOK_URL:-}"
+      API_KEY: "${API_KEY:-}"
+      # Pass through AWS credentials if set via env vars (takes precedence over mounted creds)
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      AWS_SESSION_TOKEN: "${AWS_SESSION_TOKEN:-}"
+      AWS_PROFILE: "${AWS_PROFILE:-}"
+      # Container runs as non-root (mcp user); point SDK to the mounted credential files
+      AWS_SHARED_CREDENTIALS_FILE: "/root/.aws/credentials"
+      AWS_CONFIG_FILE: "/root/.aws/config"
+    user: root
+    volumes:
+      # Mount ~/.aws for SSO / credential file auth (read-only)
+      - "${HOME}/.aws:/root/.aws:ro"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  contracts-pgdata:

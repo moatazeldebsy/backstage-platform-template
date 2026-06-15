@@ -259,6 +259,14 @@ catalog:
       rules:
         - allow: [Template]
     - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/slo-definition/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/canary-deployment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/iac-test-suite/template.yaml
       rules:
         - allow: [Template]

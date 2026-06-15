@@ -545,6 +545,11 @@
           "moved": 0,
           "ringId": "trial",
           "date": "2025-01-01"
+        },
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2026-06-09"
         }
       ],
       "id": "loki"
@@ -811,6 +816,11 @@
           "moved": 0,
           "ringId": "trial",
           "date": "2025-01-01"
+        },
+        {
+          "moved": 1,
+          "ringId": "adopt",
+          "date": "2026-06-09"
         }
       ],
       "id": "sre-slo"
@@ -1248,6 +1258,90 @@
         }
       ],
       "id": "visual-regression"
+    },
+    {
+      "key": "opencost",
+      "title": "OpenCost",
+      "quadrant": "tools",
+      "description": "In-cluster Kubernetes cost allocation tool. Deployed as part of the platform FinOps stack; powers the per-team cost dashboard and `idp_team_actual_cost_usd_monthly` Prometheus metrics. Recommended for all teams tracking namespace-level spend.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "adopt",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "opencost"
+    },
+    {
+      "key": "sloth",
+      "title": "Sloth (SLO generator)",
+      "quadrant": "tools",
+      "description": "YAML-based SLO definition tool that generates multi-window, multi-burn-rate Prometheus alerts from a simple spec. The `slo-definition` Backstage template scaffolds Sloth YAML for any service.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "sloth"
+    },
+    {
+      "key": "pagerduty",
+      "title": "PagerDuty",
+      "quadrant": "tools",
+      "description": "On-call escalation platform wired into AlertManager. Critical SLO burn-rate and infrastructure alerts page the on-call engineer via Events API v2. Configure via PAGERDUTY_INTEGRATION_KEY in local/.env.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "pagerduty"
+    },
+    {
+      "key": "grafana-tempo",
+      "title": "Grafana Tempo",
+      "quadrant": "tools",
+      "description": "Distributed tracing backend. Deployed in single-binary mode locally (tempo.idp.local) and scalable distributed mode on EKS. OTLP ingest on :4317 (gRPC) / :4318 (HTTP). TraceIDs link directly to Loki log lines.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "grafana-tempo"
+    },
+    {
+      "key": "per-team-cost-budgets",
+      "title": "Per-Team Cost Budgets",
+      "quadrant": "techniques",
+      "description": "Monthly USD budget annotations on Backstage Group entities, enforced by PrometheusRules (TeamBudgetWarning at 80%, TeamBudgetExceeded at 100%). Actuals queried from OpenCost every 15 min by the tech-insights-exporter. Budgets in kubernetes/finops/team-budgets-configmap.yaml.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "per-team-cost-budgets"
+    },
+    {
+      "key": "kagent-guardrails",
+      "title": "AI Agent Guardrails",
+      "quadrant": "techniques",
+      "description": "Structured audit log ([AUDIT] JSON lines) on every MCP tool call; per-agent attribution via mcp_agent_tool_calls_total{server,tool,agent}; dry_run mode on scaffold_service; KAgent system-prompt rules requiring transparency before destructive operations. Runbook: docs/runbooks/kagent-guardrails.md.",
+      "timeline": [
+        {
+          "moved": 0,
+          "ringId": "trial",
+          "date": "2026-06-09"
+        }
+      ],
+      "id": "kagent-guardrails"
     }
   ]
 }

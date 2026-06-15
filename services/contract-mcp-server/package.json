@@ -1,7 +1,7 @@
 {
   "name": "contract-mcp-server",
-  "version": "1.0.0",
-  "description": "MCP server exposing contract testing capabilities as AI tools",
+  "version": "2.0.0",
+  "description": "Self-describing, self-testing API contract registry",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -12,15 +12,19 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "express": "^4.19.0",
     "js-yaml": "^4.1.0",
+    "pg": "^8.12.0",
     "prom-client": "^15.1.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.0",
     "tsx": "^4.15.0",
     "typescript": "^5.4.0"
   }
