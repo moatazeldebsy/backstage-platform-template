@@ -41,10 +41,6 @@ spec:
                   namespace: services-dev
                   valuesFile: helm-values-aws.yaml
                   region: eu-central-1
-                - env: staging
-                  namespace: services-staging
-                  valuesFile: helm-values-staging.yaml
-                  region: eu-central-1
   template:
     metadata:
       name: "{{path.basename}}-{{env}}"
