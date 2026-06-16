@@ -50,3 +50,5 @@ spec:
                 toFieldPath: spec.forProvider.tags["idp:owner"]
               - fromFieldPath: spec.parameters.costCenter
                 toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: spec.forProvider.tags["idp:team"]

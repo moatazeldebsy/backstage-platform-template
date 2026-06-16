@@ -1,0 +1,91 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xglobalacceleratorendpointgroups.idp.platform
+spec:
+  group: idp.platform
+  names:
+    kind: XGlobalAcceleratorEndpointGroup
+    plural: xglobalacceleratorendpointgroups
+  claimNames:
+    kind: GlobalAcceleratorEndpointGroup
+    plural: globalacceleratorendpointgroups
+  defaultCompositionRef:
+    name: xglobalacceleratorendpointgroup.aws
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [listenerArn, endpointRegion, endpointArn, owner]
+                  properties:
+                    listenerArn:
+                      type: string
+                      description: ARN of the Global Accelerator Listener to attach this endpoint group to.
+                    endpointRegion:
+                      type: string
+                      description: AWS region where the endpoint (ALB/NLB) resides.
+                      default: eu-central-1
+                    endpointArn:
+                      type: string
+                      description: ARN of the ALB or NLB to register as the endpoint.
+                    clientIpPreservation:
+                      type: boolean
+                      description: Preserve the client IP address at the endpoint (supported for ALBs).
+                      default: true
+                    trafficDialPercentage:
+                      type: integer
+                      description: Percentage of traffic to route to this endpoint group (0–100). Useful for weighted failover.
+                      default: 100
+                      minimum: 0
+                      maximum: 100
+                    healthCheckPort:
+                      type: integer
+                      description: Port used by Global Accelerator to health-check the endpoint. Defaults to the listener port.
+                      default: 443
+                    healthCheckProtocol:
+                      type: string
+                      description: Protocol used for Global Accelerator health checks.
+                      enum: [HTTP, HTTPS, TCP]
+                      default: HTTPS
+                    healthCheckPath:
+                      type: string
+                      description: HTTP/HTTPS path for health checks (e.g. /healthz).
+                      default: /healthz
+                    thresholdCount:
+                      type: integer
+                      description: Number of consecutive health checks before changing endpoint health state.
+                      default: 3
+                      minimum: 1
+                      maximum: 10
+                    owner:
+                      type: string
+                      description: Owning team or service.
+            status:
+              type: object
+              properties:
+                endpointGroupArn:
+                  type: string
+                  description: ARN of the provisioned endpoint group.
+      additionalPrinterColumns:
+        - name: REGION
+          type: string
+          jsonPath: .spec.parameters.endpointRegion
+        - name: TRAFFIC
+          type: string
+          jsonPath: .spec.parameters.trafficDialPercentage
+        - name: SYNCED
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status

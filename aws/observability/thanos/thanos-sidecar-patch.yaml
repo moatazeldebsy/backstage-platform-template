@@ -1,0 +1,63 @@
+# Prometheus Thanos Sidecar patch — applied to the existing kube-prometheus-stack.
+# Adds a Thanos sidecar to each Prometheus pod so it can upload TSDB blocks to S3
+# and answer Thanos Query gRPC requests for recent (in-memory) data.
+#
+# Merge this into aws/observability/prometheus-stack-values.yaml under:
+#   prometheus.prometheusSpec.thanos
+
+# ── Add to prometheus-stack-values.yaml ──────────────────────────────────────
+# prometheus:
+#   prometheusSpec:
+#     thanos:
+#       image: quay.io/thanos/thanos:v0.36.1
+#       objectStorageConfig:
+#         key: objstore.yml
+#         name: thanos-objstore-config
+#       listenLocal: false
+#       grpcListenLocal: false
+#
+#     # Expose gRPC port so Thanos Query can reach the sidecar
+#     containers:
+#       - name: thanos-sidecar
+#         ports:
+#           - name: grpc
+#             containerPort: 10901
+#           - name: http
+#             containerPort: 10902
+
+# ── Thanos object store config Secret ─────────────────────────────────────────
+# Created by Terraform (terraform/global/thanos-config.tf) after the S3 bucket
+# is provisioned. The bucket name includes the account ID suffix, so it cannot
+# be hardcoded here. Terraform writes the ExternalSecret that pulls the bucket
+# name from Secrets Manager (idp-mvp/thanos/objstore-config).
+#
+# To apply manually (replace BUCKET_NAME with terraform output thanos_metrics_bucket):
+#   kubectl create secret generic thanos-objstore-config \
+#     --namespace monitoring \
+#     --from-literal=objstore.yml="$(cat <<EOF
+#   type: S3
+#   config:
+#     bucket: BUCKET_NAME
+#     region: eu-central-1
+#     sse_config:
+#       type: SSE-S3
+#   EOF
+#   )"
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: thanos-objstore-config
+  namespace: monitoring
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: thanos-objstore-config
+    creationPolicy: Owner
+  data:
+    - secretKey: objstore.yml
+      remoteRef:
+        key: idp-mvp/thanos/objstore-config
+        property: objstore.yml

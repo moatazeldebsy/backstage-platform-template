@@ -1,7 +1,31 @@
 variable "aws_region" {
   description = "AWS region for all resources"
   type        = string
+  default     = "eu-central-1"
+}
+
+variable "secondary_region" {
+  description = "Secondary (standby) AWS region for replication and failover"
+  type        = string
   default     = "us-east-1"
+}
+
+variable "is_primary_region" {
+  description = "Set to true for the primary region (eu-central-1). Controls whether Secrets Manager CRR replicas are created — only the primary replicates to the secondary."
+  type        = bool
+  default     = true
+}
+
+variable "enable_multi_az_nat" {
+  description = "Deploy one NAT gateway per AZ instead of a single shared one. Required for production HA; costs ~$100/month extra per region."
+  type        = bool
+  default     = false
+}
+
+variable "domain_name" {
+  description = "Root domain name managed in Route 53 (e.g. idp.example.com). Used by the global module for health-check and failover DNS records."
+  type        = string
+  default     = ""
 }
 
 variable "github_org" {
@@ -67,6 +91,24 @@ variable "rds_instance_class" {
   description = "RDS instance class for Backstage PostgreSQL"
   type        = string
   default     = "db.t3.micro"
+}
+
+variable "rds_multi_az" {
+  description = "Enable Multi-AZ standby for RDS (recommended for Medium/Large tiers)"
+  type        = bool
+  default     = false
+}
+
+variable "rds_allocated_storage" {
+  description = "Allocated storage in GB for RDS instance"
+  type        = number
+  default     = 20
+}
+
+variable "enable_karpenter" {
+  description = "Install Karpenter for intelligent node autoscaling (recommended for Medium/Large tiers)"
+  type        = bool
+  default     = false
 }
 
 variable "rds_db_name" {

@@ -12,6 +12,8 @@ metadata:
     - aws
     - msk
     - golden-path
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: resource

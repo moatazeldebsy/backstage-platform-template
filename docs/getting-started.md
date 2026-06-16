@@ -168,6 +168,26 @@ Add these secrets to any scaffolded service repo to enable AWS CD:
 | `ECR_REGISTRY` | `<account>.dkr.ecr.us-east-1.amazonaws.com` |
 | `EKS_CLUSTER` | `idp-mvp` |
 
+Add these to the **platform repo** to enable the auto-merge workflow (recommended over a PAT):
+
+| Secret | Value |
+|--------|-------|
+| `APP_ID` | Numeric GitHub App ID (see [docs/github-app-setup.md](github-app-setup.md)) |
+| `APP_PRIVATE_KEY` | PEM contents of the App's private key |
+
+### 4. Team namespace setup
+
+After the platform is bootstrapped, onboard teams using the **Provision Team Namespace** scaffold template (tagged `blessed`). Each team gets:
+- An isolated `team-<name>` namespace with quota, LimitRange, NetworkPolicy
+- A per-team ArgoCD AppProject + ApplicationSet scanning `teams/<name>/services/*`
+- A scoped SecretStore (access only to `/<name>/*` in Secrets Manager)
+- A Grafana folder
+
+For the full walkthrough, see [docs/team-management.md](team-management.md).
+
+> **Path convention**: Team service values files go under `teams/<teamName>/services/<serviceName>/`,
+> **not** `services/<teamName>/`. The `services/` path is reserved for legacy platform-owned services.
+
 ### 4. Verify
 
 ```bash

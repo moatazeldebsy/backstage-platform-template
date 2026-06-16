@@ -3,9 +3,10 @@
 #
 # Phases:
 #   0. Personalise placeholders (GitHub org, AWS account, region, cluster name)
-#   1. Ask which environment to start: local | aws | skip
-#   2A. Local — pre-flight → bootstrap-local.sh (includes k8s credentials + catalog exporter) → Backstage
-#   2B. AWS   — pre-flight → bootstrap.sh
+#   1. Ask which environment to start: local | aws | multi | skip
+#   2A. Local       — pre-flight → bootstrap-local.sh → Backstage
+#   2B. AWS         — single-region EKS → bootstrap.sh
+#   2C. Multi-region — active-standby EKS (eu-central-1 + us-east-1) → bootstrap-multiregion.sh
 #
 # Individual scripts in scripts/ remain fully standalone for day-2 use.
 set -euo pipefail
@@ -20,17 +21,26 @@ _print_skip_summary() {
   echo ""
   echo -e "${BOLD}Next steps (manual):${RESET}"
   echo "  1. Fill in secrets in local/.env and local/backstage/.env"
-  echo "  2. Local platform:"
-  echo "       ./scripts/bootstrap-local.sh          # cluster + platform (includes K8s creds + catalog exporter)"
-  echo "       ./scripts/bootstrap-local.sh --start-backstage   # build, start, wire Backstage"
-  echo "  3. AWS platform:"
+  echo ""
+  echo "  2. Local platform (Kind — no AWS required):"
+  echo "       ./scripts/bootstrap-local.sh          # cluster + platform + K8s creds"
+  echo "       ./scripts/bootstrap-local.sh --start-backstage   # build + start Backstage"
+  echo ""
+  echo "  3. AWS platform — single-region (us-east-1 or custom):"
   echo "       cd terraform && cp terraform.tfvars.example terraform.tfvars"
   echo "       # edit terraform.tfvars, then:"
-  echo "       ./scripts/bootstrap.sh"
-  echo "  4. Commit your personalised repo:"
+  echo "       ./scripts/bootstrap.sh [--region eu-central-1] [--cluster-name idp-mvp]"
+  echo ""
+  echo "  4. AWS platform — multi-region active-standby (eu-central-1 primary + us-east-1 standby):"
+  echo "       # review terraform/tfvars/eu-central-1.tfvars and terraform/tfvars/us-east-1.tfvars"
+  echo "       # review terraform/global/terraform.tfvars.example → terraform/global/terraform.tfvars"
+  echo "       ./scripts/bootstrap-multiregion.sh"
+  echo "       # optional flags: --skip-global  --skip-standby  --skip-obs  --skip-ai"
+  echo ""
+  echo "  5. Commit your personalised repo:"
   echo "       git add . && git commit -m 'chore: initialise from backstage-platform-template'"
   echo ""
-  echo "Full docs: docs/  |  Day-2 tools: idp scaffold service / test-suite  |  scripts/setup-runner.sh"
+  echo "Full docs: docs/  |  Multi-region guide: docs/multi-region.md  |  Day-2: idp scaffold service"
   echo ""
 }
 
@@ -55,11 +65,12 @@ _bootstrap_local() {
   fi
 
   echo ""
-  echo -e "${BOLD}Before bootstrapping, you need three credentials:${RESET}"
+  echo -e "${BOLD}Before bootstrapping, you need these credentials:${RESET}"
   echo ""
   echo -e "${CYAN}1. GitHub Personal Access Token (PAT)${RESET} → set GITHUB_TOKEN in local/.env"
   echo "   Create at: https://github.com/settings/tokens"
   echo "   Token type: Classic | Required scopes: repo, read:org, workflow, delete_repo"
+  echo "   Used by: DORA exporter, scaffolder templates, catalog import (local dev)"
   echo ""
   echo -e "${CYAN}2. GitHub OAuth App Client ID & Secret${RESET} → set AUTH_GITHUB_CLIENT_ID and"
   echo "   AUTH_GITHUB_CLIENT_SECRET in local/backstage/.env"
@@ -75,6 +86,15 @@ _bootstrap_local() {
   echo -e "${CYAN}3. Backstage auth secret${RESET} → set BACKSTAGE_AUTH_SECRET in local/backstage/.env"
   echo "   Any string works locally; for production use: openssl rand -hex 32"
   echo "   (Leave blank to use the built-in dev default.)"
+  echo ""
+  echo -e "${CYAN}4. GitHub App (production/AWS only — optional for local dev)${RESET}"
+  echo "   Replaces the PAT for Backstage API calls and auto-merge CI."
+  echo "   Higher rate limits, no expiry, per-repo scoping."
+  echo "   Create at: github.com/settings/apps/new"
+  echo "   Required permissions: Contents=Read, Pull requests=Write, Members=Read"
+  echo "   After creating: add APP_ID + APP_PRIVATE_KEY as GitHub Actions repo secrets."
+  echo "   For AWS/production: store the 5 keys in Secrets Manager (bootstrap.sh handles this)."
+  echo "   See: docs/github-app-setup.md for the full walkthrough."
   echo ""
   echo "  Edit: local/.env  and  local/backstage/.env"
   echo ""
@@ -92,7 +112,8 @@ _bootstrap_local() {
   [[ -f "$env_shared" ]] && github_token=$(grep -E '^GITHUB_TOKEN=' "$env_shared" | cut -d= -f2- | tr -d '"' || true)
   if [[ -z "$github_token" ]]; then
     warn "GITHUB_TOKEN is still empty in local/.env."
-    warn "The DORA exporter and scaffolder templates require it."
+    warn "The DORA exporter and scaffolder templates require it for local dev."
+    warn "For AWS/production, a GitHub App (docs/github-app-setup.md) is recommended instead."
     echo ""
     read -rp "$(echo -e "${CYAN}Continue without GITHUB_TOKEN?${RESET} [y/N] ")" SKIP_TOKEN
     [[ "${SKIP_TOKEN}" =~ ^[Yy]$ ]] || { echo "Aborted. Set GITHUB_TOKEN in local/.env and re-run."; exit 0; }
@@ -126,7 +147,7 @@ _bootstrap_local() {
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
-# PHASE 2B — AWS bootstrap
+# PHASE 2B — AWS single-region bootstrap
 # ════════════════════════════════════════════════════════════════════════════════
 
 _bootstrap_aws() {
@@ -172,7 +193,7 @@ Install them and re-run this script, or run manually:
   fi
 
   # ── Bootstrap AWS ────────────────────────────────────────────────────────────
-  step "Bootstrapping AWS EKS platform..."
+  step "Bootstrapping AWS EKS platform (single-region)..."
   log "Running scripts/bootstrap.sh (this takes 15–25 minutes)..."
   "${ROOT_DIR}/scripts/bootstrap.sh" \
     --region "${AWS_REGION}" \
@@ -181,7 +202,7 @@ Install them and re-run this script, or run manually:
   # ── Summary ──────────────────────────────────────────────────────────────────
   step "Done!"
   echo ""
-  echo -e "${GREEN}✓ AWS IDP platform provisioned.${RESET}"
+  echo -e "${GREEN}✓ AWS IDP platform provisioned (single-region).${RESET}"
   echo ""
   echo -e "${BOLD}Next steps:${RESET}"
   echo "  1. Verify EKS cluster:  kubectl get nodes"
@@ -189,12 +210,96 @@ Install them and re-run this script, or run manually:
   echo "  3. Push first image:    git push origin main  (triggers GitHub Actions CI/CD)"
   echo ""
   echo -e "${BOLD}Day-2 tools:${RESET}"
-  echo "  Scaffold a service:   idp scaffold service --name my-svc --type nodejs"
+  echo "  Scaffold a service:    idp scaffold service --name my-svc --type nodejs"
   echo "  Scaffold a test suite: idp scaffold test-suite --name my-e2e --type playwright --service my-svc"
-  echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
+  echo "  Register a CI runner:  ./scripts/setup-runner.sh --repo <repo-name>"
+  echo ""
+  echo -e "${BOLD}Upgrade to multi-region later:${RESET}"
+  echo "  ./scripts/bootstrap-multiregion.sh --skip-global  # adds standby cluster"
   echo ""
   echo "  Commit your personalised repo:"
   echo "    git add . && git commit -m 'chore: initialise from backstage-platform-template'"
+  echo ""
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PHASE 2C — AWS multi-region active-standby bootstrap
+# ════════════════════════════════════════════════════════════════════════════════
+
+_bootstrap_aws_multiregion() {
+  step "Phase 2C — AWS multi-region bootstrap (active-standby)"
+
+  # ── Pre-flight ──────────────────────────────────────────────────────────────
+  log "Checking required tools..."
+  local missing=()
+  for cmd in aws terraform kubectl helm docker jq argocd; do
+    command -v "$cmd" &>/dev/null || missing+=("$cmd")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    err "Missing required tools: ${missing[*]}
+Install them and re-run, or run directly:
+  ./scripts/bootstrap-multiregion.sh"
+  fi
+
+  log "Verifying AWS credentials..."
+  aws sts get-caller-identity &>/dev/null \
+    || err "AWS credentials not configured. Run 'aws configure' or set AWS_PROFILE and retry."
+
+  local caller
+  caller=$(aws sts get-caller-identity --query 'Arn' --output text)
+  log "Authenticated as: ${caller}"
+
+  # ── Review per-region tfvars ────────────────────────────────────────────────
+  echo ""
+  echo -e "${BOLD}Multi-region topology:${RESET}"
+  echo "  Primary (active)  : eu-central-1  — terraform/tfvars/eu-central-1.tfvars"
+  echo "  Standby (DR)      : us-east-1     — terraform/tfvars/us-east-1.tfvars"
+  echo "  Global module     : terraform/global/ (KMS, Route53, TGW, Aurora Global, CloudFront)"
+  echo ""
+  warn "Review both tfvars files and terraform/global/terraform.tfvars before proceeding."
+  warn "At minimum confirm: cluster_name, vpc_cidr (must not overlap), rds_instance_class."
+  echo ""
+  read -rp "$(echo -e "${CYAN}Have you reviewed the tfvars and are ready to proceed?${RESET} [y/N] ")" MR_READY
+  [[ "${MR_READY}" =~ ^[Yy]$ ]] || { echo "Aborted. Edit the tfvars files and re-run."; exit 0; }
+
+  # ── Optional flags ──────────────────────────────────────────────────────────
+  echo ""
+  echo "Bootstrap options (press Enter to accept defaults):"
+  read -rp "$(echo -e "${CYAN}Skip global Terraform module (if already applied)?${RESET} [y/N] ")" _SKIP_GL
+  read -rp "$(echo -e "${CYAN}Skip standby cluster provisioning (primary only)?${RESET} [y/N] ")" _SKIP_SB
+  read -rp "$(echo -e "${CYAN}Skip observability stack (Thanos, Grafana)?${RESET} [y/N] ")" _SKIP_OB
+  read -rp "$(echo -e "${CYAN}Skip AI/ML platform (KAgent, MLflow)?${RESET} [y/N] ")" _SKIP_AI
+
+  local mr_flags=()
+  [[ "${_SKIP_GL}" =~ ^[Yy]$ ]] && mr_flags+=(--skip-global)
+  [[ "${_SKIP_SB}" =~ ^[Yy]$ ]] && mr_flags+=(--skip-standby)
+  [[ "${_SKIP_OB}" =~ ^[Yy]$ ]] && mr_flags+=(--skip-obs)
+  [[ "${_SKIP_AI}" =~ ^[Yy]$ ]] && mr_flags+=(--skip-ai)
+
+  # ── Bootstrap multi-region ──────────────────────────────────────────────────
+  step "Bootstrapping V2 multi-region platform (this takes 30–50 minutes)..."
+  "${ROOT_DIR}/scripts/bootstrap-multiregion.sh" \
+    --primary-region "${AWS_REGION:-eu-central-1}" \
+    --standby-region "us-east-1" \
+    "${mr_flags[@]}"
+
+  # ── Summary ──────────────────────────────────────────────────────────────────
+  step "Done!"
+  echo ""
+  echo -e "${GREEN}✓ V2 multi-region platform provisioned.${RESET}"
+  echo ""
+  echo -e "${BOLD}Next steps:${RESET}"
+  echo "  1. Set Slack token:    kubectl edit secret argocd-notifications-secret -n argocd --context hub"
+  echo "  2. Test failover:      argo submit aws/argo-workflows/failover-runbook.yaml --context hub"
+  echo "  3. Read the DR guide:  docs/multi-region.md"
+  echo ""
+  echo -e "${BOLD}Day-2 tools:${RESET}"
+  echo "  Scaffold a service:    idp scaffold service --name my-svc --type nodejs"
+  echo "  Multi-region template: Backstage → Templates → EKS Multi-Region"
+  echo "  Register a CI runner:  ./scripts/setup-runner.sh --repo <repo-name>"
+  echo ""
+  echo "  Commit your personalised repo:"
+  echo "    git add . && git commit -m 'chore: initialise from backstage-platform-template (multi-region)'"
   echo ""
 }
 
@@ -483,10 +588,11 @@ echo -e "${GREEN}✓ Personalisation complete.${RESET}"
 echo ""
 echo "What would you like to do next?"
 echo "  local  — Bootstrap the full platform locally (Kind cluster, no AWS needed)"
-echo "  aws    — Provision and bootstrap on AWS EKS (requires Terraform + AWS creds)"
+echo "  aws    — Single-region AWS EKS (one cluster, simpler, good for evaluation)"
+echo "  multi  — Multi-region AWS EKS: eu-central-1 (primary) + us-east-1 (standby DR)"
 echo "  skip   — Stop here; run scripts manually when ready"
 echo ""
-read -rp "$(echo -e "${CYAN}Environment${RESET} [local/aws/skip]: ")" SETUP_MODE
+read -rp "$(echo -e "${CYAN}Environment${RESET} [local/aws/multi/skip]: ")" SETUP_MODE
 SETUP_MODE="${SETUP_MODE:-skip}"
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -494,8 +600,9 @@ SETUP_MODE="${SETUP_MODE:-skip}"
 # ════════════════════════════════════════════════════════════════════════════════
 
 case "${SETUP_MODE}" in
-  local) _bootstrap_local ;;
-  aws)   _bootstrap_aws   ;;
+  local) _bootstrap_local            ;;
+  aws)   _bootstrap_aws              ;;
+  multi) _bootstrap_aws_multiregion  ;;
   skip)
     _print_skip_summary
     exit 0

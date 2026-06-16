@@ -12,6 +12,8 @@ metadata:
     - testing
     - integration
     - qa
+    - v1
+    - advanced
 spec:
   owner: qa-team
   type: test-suite

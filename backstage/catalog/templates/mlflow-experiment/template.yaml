@@ -11,6 +11,8 @@ metadata:
     - training
     - local
     - aws
+    - v1
+    - advanced
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:

@@ -1,0 +1,113 @@
+# Backstage deployment for the standby cluster (us-east-1).
+# Key differences from the primary deployment:
+#   - Connects to Aurora reader endpoint (read-only DB access)
+#   - Reduced to 1 replica (warm standby — scale up on failover)
+#   - Catalog writes (scaffolder, entity mutation) are disabled in read-only mode
+#   - After Aurora failover, update POSTGRES_HOST to the promoted writer endpoint
+#     and scale replicas back to production count.
+#
+# Apply: kubectl apply -f aws/backstage/deployment-standby.yaml -n backstage
+#   (targets eks-us-east-1 via ArgoCD standby ApplicationSet)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+    cluster-role: standby
+spec:
+  replicas: 1   # warm standby — scale to 3+ after failover activation
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+        cluster-role: standby
+    spec:
+      serviceAccountName: backstage
+      containers:
+        - name: backstage
+          image: REPLACE_WITH_ECR_IMAGE
+          ports:
+            - containerPort: 7007
+          env:
+            # Aurora reader endpoint — becomes writer after failover promotion
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: POSTGRES_HOST_READER
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: POSTGRES_PASSWORD
+            - name: AUTH_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: AUTH_SESSION_SECRET
+            - name: AWS_REGION
+              value: us-east-1
+            # Read-only mode — disables scaffolder and catalog mutations
+            # until this cluster is promoted to primary.
+            - name: BACKSTAGE_READONLY_MODE
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+      # Run on platform nodes (not Karpenter spot) for reliability
+      nodeSelector:
+        role: platform
+      tolerations:
+        - key: idp/platform
+          operator: Exists
+          effect: PreferNoSchedule
+---
+# HPA — scale out automatically once failover is triggered
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backstage-standby
+  namespace: backstage
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backstage
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

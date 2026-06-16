@@ -1,0 +1,30 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: platform
+  title: Platform Engineering
+  description: Internal Developer Platform — golden paths, IDP infrastructure, CI/CD, and developer tooling
+  tags:
+    - platform
+    - idp
+    - infrastructure
+  links:
+    - url: http://backstage.idp.local
+      title: Backstage Portal
+    - url: http://argocd.idp.local
+      title: ArgoCD
+spec:
+  owner: group:default/platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: idp-platform
+  title: IDP Platform Services
+  description: Core IDP infrastructure — ArgoCD, Crossplane, Kyverno, External Secrets, Observability
+  tags:
+    - platform
+    - kubernetes
+spec:
+  owner: group:default/platform-team
+  domain: platform

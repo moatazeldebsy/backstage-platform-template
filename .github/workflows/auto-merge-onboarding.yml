@@ -7,6 +7,14 @@ name: Auto-merge service onboarding PRs
 # as CI passes and the ArgoCD ApplicationSet auto-discovers the new service.
 #
 # Prerequisite: enable "Allow auto-merge" in the repo's Settings → General.
+#
+# GitHub App setup (preferred over GH_PAT):
+#   1. Create a GitHub App at github.com/settings/apps/new (personal) or
+#      github.com/organizations/<org>/settings/apps/new (org).
+#   2. Permissions: Contents=Write, Pull requests=Write, Metadata=Read.
+#   3. Install the App on this repo.
+#   4. Add two repo secrets: APP_ID (numeric) and APP_PRIVATE_KEY (PEM content).
+#   5. Remove the legacy GH_PAT secret.
 
 on:
   pull_request:
@@ -24,6 +32,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Generate a short-lived token from the GitHub App (preferred).
+      # Falls back gracefully when APP_ID / APP_PRIVATE_KEY are absent.
+      - name: Generate GitHub App token
+        id: app-token
+        if: ${{ secrets.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Verify only GitOps values files changed
         id: check
         env:
@@ -34,24 +52,25 @@ jobs:
           echo "Changed files:"
           echo "$files"
 
-          unsafe=$(echo "$files" | grep -vE '^services/[^/]+/helm-values[^/]*\.yaml$' || true)
+          unsafe=$(echo "$files" | grep -vE '^services/[^/]+(/[^/]+)?/helm-values[^/]*\.yaml$' || true)
           if [ -n "$unsafe" ]; then
-            echo "::error::PR touches files outside services/*/helm-values-*.yaml — manual review required, skipping auto-merge"
+            echo "::error::PR touches files outside services/**/helm-values-*.yaml — manual review required, skipping auto-merge"
             echo "$unsafe"
             exit 1
           fi
           echo "All changed files are safe GitOps values files."
 
       - name: Approve PR
-        # GITHUB_TOKEN cannot approve its own PR (GitHub blocks self-approval).
-        # Set GH_PAT to a PAT from a different account with repo scope.
-        # If GH_PAT is absent this step is skipped; the PR requires manual approval.
+        # Uses GitHub App token (no rate-limit risk, no rotation needed).
+        # Falls back to legacy GH_PAT if App secrets are absent.
+        # If neither is set, skips — PR requires manual approval.
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          # App token takes precedence; fall back to PAT; fall back to empty
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GH_PAT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "GH_PAT not configured — skipping auto-approval. Merge the PR manually or set the GH_PAT secret."
+            echo "No approval token configured (set APP_ID+APP_PRIVATE_KEY or GH_PAT) — skipping auto-approval."
             exit 0
           fi
           gh pr review "$PR_NUMBER" --approve \

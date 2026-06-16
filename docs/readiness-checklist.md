@@ -102,6 +102,17 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] RBAC reviewed — `github-actions` ClusterRole limited to required verbs/resources
 - [ ] Backstage users are provisioned via GitHub org membership, not manual catalog entries
 - [ ] ArgoCD RBAC policy restricts non-admins to read-only on production apps
+- [ ] `permission.enabled: true` set in `backstage/app-config.aws.yaml`
+- [ ] Permission backend plugin wired in `packages/backend/src/plugins/permission.ts`
+
+### Team Isolation
+- [ ] At least one team namespace provisioned via the **Provision Team Namespace** scaffold
+- [ ] Per-team SecretStore is healthy: `kubectl get secretstore -A | grep team-`
+- [ ] Per-team IRSA roles restricted to `/<team>/*` secret paths (verify in IAM console)
+- [ ] Kyverno `crossplane-team-label-policy` is Enforcing: `kubectl get clusterpolicy crossplane-require-cost-tags`
+- [ ] All Crossplane resources in `team-*` namespaces carry `idp:team` AWS tag
+- [ ] DORA metrics have `team=` label: `curl <pushgateway>/metrics | grep 'dora_deploy.*team='`
+- [ ] Catalog uses `all-templates.yaml` (not 49 individual URL entries): check `app-config.aws.yaml`
 
 ---
 

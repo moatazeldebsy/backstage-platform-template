@@ -297,16 +297,16 @@ to under 10 minutes.
 
 **Goal:** Platform is self-healing, cost-attributed, and secure by default at scale.
 
-| Item | Notes |
-|------|-------|
-| Network policies cluster-wide | Default-deny + explicit allow; Cilium or Calico |
-| Ephemeral PR environments | PR label `env: preview` → Helm install into `services-preview-<pr#>`; torn down on close |
-| Multi-region / HA | Second AWS region; Route53 weighted failover; cross-region ECR replication |
-| AI/ML platform namespace | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
-| LLM gateway resource | Anthropic Claude API (all envs); AI agent templates `dependsOn: resource:claude-api` |
-| Chaos engineering integration | Chaos Mesh; `chaos-experiment` Backstage template |
-| Platform API (FastAPI) | REST API for programmatic service creation |
-| Backstage plugin: security posture | Aggregate Trivy + OPA pass/fail per service into a single security score |
+| Item | Status | Notes |
+|------|--------|-------|
+| Network policies cluster-wide | 💡 | Default-deny + explicit allow; Cilium or Calico |
+| Ephemeral PR environments | 💡 | PR label `env: preview` → Helm install into `services-preview-<pr#>`; torn down on close |
+| **Multi-region / HA** | ✅ | Active-standby eu-central-1 (primary) + us-east-1 (standby); see `feat/v2-multi-region` branch and [docs/multi-region.md](multi-region.md) |
+| AI/ML platform namespace | 💡 | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
+| LLM gateway resource | 💡 | Anthropic Claude API (all envs); AI agent templates `dependsOn: resource:claude-api` |
+| Chaos engineering integration | 💡 | Chaos Mesh; `chaos-experiment` Backstage template |
+| Platform API (FastAPI) | 💡 | REST API for programmatic service creation |
+| Backstage plugin: security posture | 💡 | Aggregate Trivy + OPA pass/fail per service into a single security score |
 
 ---
 
@@ -382,7 +382,8 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 | Feature | Notes |
 |---------|-------|
 | Secret rotation template | Backstage template wrapping `idp:provision-secret` with rotation schedule UI |
-| Multi-region / HA | Second AWS region, Route53 failover |
+| ~~Multi-region / HA~~ | ✅ Shipped in `feat/v2-multi-region` — see [docs/multi-region.md](multi-region.md) |
+| Cilium Cluster Mesh | Cross-cluster DNS + direct pod routing; deferred after Phase 1 traffic layer stable |
 
 ---
 

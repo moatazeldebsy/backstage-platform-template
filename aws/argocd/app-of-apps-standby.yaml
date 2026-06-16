@@ -1,0 +1,70 @@
+# ArgoCD ApplicationSet — STANDBY cluster (us-east-1).
+# Managed by the ArgoCD hub in eu-central-1.
+# Targets the registered standby cluster via its ArgoCD cluster secret.
+#
+# Key differences from the primary ApplicationSet:
+#   - destination.server points to the standby cluster (registered via cluster-secrets/eks-us-east-1.yaml)
+#   - syncPolicy.automated is DISABLED — standby syncs are triggered only during failover runbooks.
+#     To sync manually: argocd app sync --selector region=us-east-1
+#
+# Failover procedure:
+#   1. Run the ArgoCD Workflow in aws/argo-workflows/failover-runbook.yaml
+#   2. It enables automated sync on this ApplicationSet and updates Route 53 records.
+#
+# Apply: kubectl apply -f aws/argocd/app-of-apps-standby.yaml -n argocd
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: idp-services-standby
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+              revision: HEAD
+              directories:
+                - path: services/*
+                - path: services/contract-mcp-server
+                  exclude: true
+          - list:
+              elements:
+                - env: dev
+                  namespace: services-dev
+                  valuesFile: helm-values-aws.yaml
+                  region: us-east-1
+  template:
+    metadata:
+      name: "standby-{{path.basename}}-{{env}}"
+      labels:
+        environment: "{{env}}"
+        service: "{{path.basename}}"
+        region: "{{region}}"
+        cluster-role: standby
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+          targetRevision: HEAD
+          path: helm/service-template
+          helm:
+            parameters:
+              - name: backstage.kubernetesId
+                value: "{{path.basename}}"
+              - name: global.region
+                value: "{{region}}"
+            valueFiles:
+              - $values/services/{{path.basename}}/{{valuesFile}}
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        # ArgoCD cluster name registered via cluster-secrets/eks-us-east-1.yaml
+        name: eks-us-east-1
+        namespace: "{{namespace}}"
+      syncPolicy:
+        # Automated sync intentionally disabled for standby — enabled by failover runbook only.
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

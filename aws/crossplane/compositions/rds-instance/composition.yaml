@@ -72,6 +72,8 @@ spec:
                 toFieldPath: spec.forProvider.tags["idp:owner"]
               - fromFieldPath: spec.parameters.costCenter
                 toFieldPath: spec.forProvider.tags["idp:cost-center"]
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: spec.forProvider.tags["idp:team"]
               - fromFieldPath: spec.writeConnectionSecretToRef.name
                 toFieldPath: spec.writeConnectionSecretToRef.name
               - type: ToCompositeFieldPath
@@ -82,3 +84,50 @@ spec:
               - fromConnectionSecretKey: port
               - fromConnectionSecretKey: username
               - fromConnectionSecretKey: password
+
+          # Aurora Global Database — replica cluster in the standby region.
+          # Only active when globalDatabase: true. Uses the us-east-1 ProviderConfig
+          # so Crossplane creates the replica cluster in the standby region.
+          # The global cluster shell is managed by terraform/global/aurora-global.tf;
+          # this resource attaches to it via globalClusterIdentifierRef.
+          - name: aurora-replica-cluster
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta2
+              kind: Cluster
+              spec:
+                deletionPolicy: Orphan
+                forProvider:
+                  engine: aurora-postgresql
+                  skipFinalSnapshot: true
+                  storageEncrypted: true
+                  tags:
+                    "idp:provisioner": crossplane
+                    "idp:resource": rds-aurora-replica
+                    "idp:role": replica
+                providerConfigRef:
+                  name: us-east-1
+            patches:
+              - fromFieldPath: spec.parameters.instanceName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      fmt: "%s-replica"
+              - fromFieldPath: spec.parameters.replicaRegion
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.engineVersion
+                toFieldPath: spec.forProvider.engineVersion
+              - fromFieldPath: spec.parameters.globalWriteForwarding
+                toFieldPath: spec.forProvider.enableGlobalWriteForwarding
+              - fromFieldPath: spec.parameters.owner
+                toFieldPath: spec.forProvider.tags["idp:owner"]
+              - fromFieldPath: spec.parameters.team
+                toFieldPath: spec.forProvider.tags["idp:team"]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.readerEndpoint
+                toFieldPath: status.replicaEndpoint
+            readinessChecks:
+              - type: MatchCondition
+                matchCondition:
+                  type: Ready
+                  status: "True"

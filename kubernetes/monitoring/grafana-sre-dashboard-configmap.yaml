@@ -8,6 +8,420 @@ metadata:
   labels:
     app.kubernetes.io/part-of: kube-prometheus-stack
 data:
+  kubernetes-overview.json: |
+    {
+        "title": "Kubernetes Overview",
+        "uid": "k8s-overview",
+        "tags": [
+            "kubernetes",
+            "cluster",
+            "overview"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 38,
+        "refresh": "1m",
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        },
+        "panels": [
+            {
+                "id": 1,
+                "title": "Clusters",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 4,
+                    "w": 4,
+                    "x": 0,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "count(count by (cluster) (kube_node_info)) or vector(1)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "noValue": "0",
+                        "color": {
+                            "mode": "fixed",
+                            "fixedColor": "blue"
+                        }
+                    }
+                },
+                "options": {
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    },
+                    "colorMode": "background",
+                    "textMode": "value_and_name"
+                }
+            },
+            {
+                "id": 2,
+                "title": "Nodes",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 4,
+                    "w": 4,
+                    "x": 4,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "count(kube_node_info) or vector(0)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "noValue": "0",
+                        "color": {
+                            "mode": "fixed",
+                            "fixedColor": "blue"
+                        }
+                    }
+                },
+                "options": {
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    },
+                    "colorMode": "background",
+                    "textMode": "value_and_name"
+                }
+            },
+            {
+                "id": 3,
+                "title": "Namespaces",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 4,
+                    "w": 4,
+                    "x": 8,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "count(kube_namespace_status_phase{phase=\"Active\"}) or vector(0)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "noValue": "0",
+                        "color": {
+                            "mode": "fixed",
+                            "fixedColor": "blue"
+                        }
+                    }
+                },
+                "options": {
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    },
+                    "colorMode": "background",
+                    "textMode": "value_and_name"
+                }
+            },
+            {
+                "id": 4,
+                "title": "Workloads",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 4,
+                    "w": 4,
+                    "x": 12,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "(count(kube_deployment_created) or vector(0)) + (count(kube_statefulset_created) or vector(0)) + (count(kube_daemonset_created) or vector(0))",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "noValue": "0",
+                        "color": {
+                            "mode": "fixed",
+                            "fixedColor": "blue"
+                        }
+                    }
+                },
+                "options": {
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    },
+                    "colorMode": "background",
+                    "textMode": "value_and_name"
+                }
+            },
+            {
+                "id": 5,
+                "title": "Pods",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 4,
+                    "w": 4,
+                    "x": 16,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "count(kube_pod_info) or vector(0)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "noValue": "0",
+                        "color": {
+                            "mode": "fixed",
+                            "fixedColor": "blue"
+                        }
+                    }
+                },
+                "options": {
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    },
+                    "colorMode": "background",
+                    "textMode": "value_and_name"
+                }
+            },
+            {
+                "id": 6,
+                "title": "Containers",
+                "type": "stat",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 4,
+                    "w": 4,
+                    "x": 20,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "count(kube_pod_container_info) or vector(0)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "noValue": "0",
+                        "color": {
+                            "mode": "fixed",
+                            "fixedColor": "blue"
+                        }
+                    }
+                },
+                "options": {
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ]
+                    },
+                    "colorMode": "background",
+                    "textMode": "value_and_name"
+                }
+            },
+            {
+                "id": 7,
+                "title": "CPU Usage by Cluster",
+                "type": "timeseries",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 9,
+                    "w": 12,
+                    "x": 0,
+                    "y": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum by (cluster) (rate(container_cpu_usage_seconds_total{container!=\"\", image!=\"\"}[5m]))",
+                        "refId": "A",
+                        "legendFormat": "{{cluster}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "custom": {
+                            "lineWidth": 2,
+                            "fillOpacity": 10
+                        }
+                    }
+                },
+                "options": {
+                    "tooltip": {
+                        "mode": "multi"
+                    },
+                    "legend": {
+                        "displayMode": "table",
+                        "placement": "bottom",
+                        "calcs": [
+                            "lastNotNull",
+                            "max"
+                        ]
+                    }
+                }
+            },
+            {
+                "id": 8,
+                "title": "Memory Usage by Cluster",
+                "type": "timeseries",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 9,
+                    "w": 12,
+                    "x": 12,
+                    "y": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum by (cluster) (container_memory_working_set_bytes{container!=\"\", image!=\"\"})",
+                        "refId": "A",
+                        "legendFormat": "{{cluster}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "bytes",
+                        "custom": {
+                            "lineWidth": 2,
+                            "fillOpacity": 10
+                        }
+                    }
+                },
+                "options": {
+                    "tooltip": {
+                        "mode": "multi"
+                    },
+                    "legend": {
+                        "displayMode": "table",
+                        "placement": "bottom",
+                        "calcs": [
+                            "lastNotNull",
+                            "max"
+                        ]
+                    }
+                }
+            },
+            {
+                "id": 9,
+                "title": "Deployed Container Images",
+                "type": "table",
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "gridPos": {
+                    "h": 10,
+                    "w": 24,
+                    "x": 0,
+                    "y": 13
+                },
+                "targets": [
+                    {
+                        "expr": "sort_desc(count by (image) (kube_pod_container_info{image!=\"\"}))",
+                        "refId": "A",
+                        "format": "table",
+                        "instant": true
+                    }
+                ],
+                "transformations": [
+                    {
+                        "id": "organize",
+                        "options": {
+                            "renameByName": {
+                                "image": "Image",
+                                "Value": "Containers"
+                            },
+                            "excludeByName": {
+                                "Time": true
+                            }
+                        }
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "custom": {
+                            "align": "left"
+                        }
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Containers"
+                            },
+                            "properties": [
+                                {
+                                    "id": "custom.align",
+                                    "value": "right"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "showHeader": true,
+                    "sortBy": [
+                        {
+                            "displayName": "Containers",
+                            "desc": true
+                        }
+                    ]
+                }
+            }
+        ]
+    }
   slo-error-budget.json: |
     {
         "title": "SRE \u2014 SLO Error Budgets",

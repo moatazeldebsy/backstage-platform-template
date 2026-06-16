@@ -1,0 +1,47 @@
+# ── ArgoCD Helm values — Large tier (75+ teams / 300+ ArgoCD apps) ─────────────
+# Target chart: argo/argo-cd
+# Apply: helm upgrade argocd argo/argo-cd -n argocd -f helm/values-tiers/argocd-large.yaml
+#
+# Key change: application controller sharding distributes app reconciliation across
+# 3 replicas using round-robin shard assignment, removing the single-controller bottleneck.
+
+server:
+  replicas: 3
+
+repoServer:
+  replicas: 3
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+applicationSet:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+controller:
+  replicas: 3
+  env:
+    - name: ARGOCD_CONTROLLER_SHARDING_ALGORITHM
+      value: round-robin
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+
+configs:
+  cm:
+    applicationsetcontroller.enable.progressive.syncs: "true"
+    # Increase concurrent reconcile workers per shard
+    controller.status.processors: "50"
+    controller.operation.processors: "25"

@@ -14,6 +14,8 @@ metadata:
     - golden-path
     - local
     - aws
+    - v1
+    - blessed
 spec:
   owner: platform-team
   type: website

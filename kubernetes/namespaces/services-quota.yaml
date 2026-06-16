@@ -1,0 +1,142 @@
+# ResourceQuota + LimitRange for the shared services-* namespaces.
+# These catch runaway pods before team namespaces are fully adopted.
+# Values are sized for ~25 co-located services; raise for large tiers
+# (see helm/values-tiers/ for node/cluster sizing guidance).
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: services-quota
+  namespace: services-dev
+  labels:
+    managed-by: platform-team
+spec:
+  hard:
+    requests.cpu: "40"
+    requests.memory: 80Gi
+    limits.cpu: "80"
+    limits.memory: 160Gi
+    pods: "200"
+    services: "100"
+    persistentvolumeclaims: "50"
+    secrets: "200"
+    configmaps: "200"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: services-default-limits
+  namespace: services-dev
+  labels:
+    managed-by: platform-team
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 128Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "4"
+        memory: 4Gi
+      min:
+        cpu: 10m
+        memory: 16Mi
+    - type: Pod
+      max:
+        cpu: "8"
+        memory: 8Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: services-quota
+  namespace: services-staging
+  labels:
+    managed-by: platform-team
+spec:
+  hard:
+    requests.cpu: "40"
+    requests.memory: 80Gi
+    limits.cpu: "80"
+    limits.memory: 160Gi
+    pods: "200"
+    services: "100"
+    persistentvolumeclaims: "50"
+    secrets: "200"
+    configmaps: "200"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: services-default-limits
+  namespace: services-staging
+  labels:
+    managed-by: platform-team
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 128Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "4"
+        memory: 4Gi
+      min:
+        cpu: 10m
+        memory: 16Mi
+    - type: Pod
+      max:
+        cpu: "8"
+        memory: 8Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: services-quota
+  namespace: services-prod
+  labels:
+    managed-by: platform-team
+spec:
+  hard:
+    requests.cpu: "80"
+    requests.memory: 160Gi
+    limits.cpu: "160"
+    limits.memory: 320Gi
+    pods: "400"
+    services: "200"
+    persistentvolumeclaims: "100"
+    secrets: "400"
+    configmaps: "400"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: services-default-limits
+  namespace: services-prod
+  labels:
+    managed-by: platform-team
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 128Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "4"
+        memory: 4Gi
+      min:
+        cpu: 10m
+        memory: 16Mi
+    - type: Pod
+      max:
+        cpu: "8"
+        memory: 8Gi

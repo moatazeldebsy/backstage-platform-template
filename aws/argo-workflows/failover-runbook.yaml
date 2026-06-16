@@ -1,0 +1,215 @@
+# Failover Runbook — Argo Workflow
+# Promotes the us-east-1 standby cluster to primary when eu-central-1 is unhealthy.
+#
+# Trigger manually:
+#   argo submit aws/argo-workflows/failover-runbook.yaml \
+#     -p targetRegion=us-east-1 \
+#     -p globalClusterIdentifier=idp-mvp-global \
+#     --watch
+#
+# Prerequisites:
+#   - Argo Workflows installed and running in eu-central-1
+#   - ServiceAccount failover-runner with IRSA permissions for: rds, route53, secretsmanager, ga
+#   - Both clusters registered in ArgoCD hub (see aws/argocd/cluster-secrets/)
+
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: failover-runbook
+  namespace: argo
+  labels:
+    idp.platform/type: dr-runbook
+    idp.platform/version: v2
+spec:
+  entrypoint: failover
+  serviceAccountName: failover-runner
+
+  arguments:
+    parameters:
+      - name: targetRegion
+        value: us-east-1
+      - name: globalClusterIdentifier
+        value: idp-mvp-global
+      - name: targetAuroraCluster
+        value: idp-us-east-1-backstage
+      - name: gaAcceleratorArn
+        value: ""   # set at runtime or read from Secrets Manager
+      - name: backstageSecretName
+        value: idp-mvp/backstage
+
+  templates:
+    - name: failover
+      dag:
+        tasks:
+          - name: pre-check
+            template: health-check
+
+          - name: promote-aurora
+            template: aurora-failover
+            dependencies: [pre-check]
+
+          - name: enable-standby-argocd-sync
+            template: argocd-enable-sync
+            dependencies: [pre-check]
+
+          - name: shift-ga-traffic
+            template: global-accelerator-shift
+            dependencies: [promote-aurora]
+
+          - name: promote-backstage-db
+            template: backstage-db-promote
+            dependencies: [promote-aurora]
+
+          - name: notify-slack
+            template: slack-notify
+            dependencies: [shift-ga-traffic, enable-standby-argocd-sync, promote-backstage-db]
+            arguments:
+              parameters:
+                - name: message
+                  value: "✅ Failover to {{inputs.parameters.targetRegion}} complete. Aurora promoted, Backstage DB updated, ArgoCD sync enabled, GA traffic shifted."
+
+    # ── Step 1: Pre-check — verify standby cluster is reachable ────────────────
+    - name: health-check
+      container:
+        image: amazon/aws-cli:2
+        command: [sh, -c]
+        args:
+          - |
+            echo "Checking standby Aurora cluster health..."
+            STATUS=$(aws rds describe-db-clusters \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --db-cluster-identifier "{{inputs.parameters.targetAuroraCluster}}" \
+              --query "DBClusters[0].Status" --output text)
+            echo "Standby cluster status: $STATUS"
+            [ "$STATUS" = "available" ] || { echo "ERROR: Standby cluster not available (status: $STATUS)"; exit 1; }
+
+    # ── Step 2: Promote Aurora replica to primary ──────────────────────────────
+    - name: aurora-failover
+      container:
+        image: amazon/aws-cli:2
+        command: [sh, -c]
+        args:
+          - |
+            echo "Promoting Aurora global cluster to target region {{inputs.parameters.targetRegion}}..."
+            aws rds failover-global-cluster \
+              --global-cluster-identifier "{{inputs.parameters.globalClusterIdentifier}}" \
+              --target-db-cluster-identifier "{{inputs.parameters.targetAuroraCluster}}"
+
+            echo "Waiting for Aurora promotion to complete (up to 10 minutes)..."
+            aws rds wait db-cluster-available \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --db-cluster-identifier "{{inputs.parameters.targetAuroraCluster}}"
+            echo "Aurora promotion complete."
+
+    # ── Step 3: Enable ArgoCD automated sync on standby ApplicationSet ─────────
+    - name: argocd-enable-sync
+      container:
+        image: argoproj/argocd:v2.12.0
+        command: [sh, -c]
+        args:
+          - |
+            echo "Enabling ArgoCD automated sync for standby cluster applications..."
+            # Patch all apps with label cluster-role=standby to enable automated sync
+            argocd app list --selector cluster-role=standby -o name | while read APP; do
+              echo "Enabling sync on: $APP"
+              argocd app set "$APP" --sync-policy automated
+            done
+            echo "ArgoCD sync enabled for all standby apps."
+        env:
+          - name: ARGOCD_SERVER
+            value: argocd-server.argocd.svc.cluster.local
+          - name: ARGOCD_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: argocd-failover-token
+                key: token
+
+    # ── Step 4: Shift Global Accelerator traffic to standby region ────────────
+    - name: global-accelerator-shift
+      container:
+        image: amazon/aws-cli:2
+        command: [sh, -c]
+        args:
+          - |
+            echo "Shifting Global Accelerator traffic to {{inputs.parameters.targetRegion}}..."
+
+            # Get endpoint group ARNs
+            LISTENER_ARN=$(aws globalaccelerator list-listeners \
+              --accelerator-arn "{{inputs.parameters.gaAcceleratorArn}}" \
+              --query "Listeners[0].ListenerArn" --output text)
+
+            PRIMARY_GROUP=$(aws globalaccelerator list-endpoint-groups \
+              --listener-arn "$LISTENER_ARN" \
+              --query "EndpointGroups[?EndpointGroupRegion=='eu-central-1'].EndpointGroupArn" \
+              --output text)
+
+            STANDBY_GROUP=$(aws globalaccelerator list-endpoint-groups \
+              --listener-arn "$LISTENER_ARN" \
+              --query "EndpointGroups[?EndpointGroupRegion=='us-east-1'].EndpointGroupArn" \
+              --output text)
+
+            # Drain primary (0%) and activate standby (100%)
+            aws globalaccelerator update-endpoint-group \
+              --endpoint-group-arn "$PRIMARY_GROUP" \
+              --traffic-dial-percentage 0
+
+            aws globalaccelerator update-endpoint-group \
+              --endpoint-group-arn "$STANDBY_GROUP" \
+              --traffic-dial-percentage 100
+
+            echo "Global Accelerator traffic shifted to us-east-1."
+
+    # ── Step 5: Update Backstage DB endpoint to promoted writer ───────────────
+    # After Aurora failover, us-east-1 cluster endpoint becomes the writer.
+    # We update POSTGRES_HOST in the Backstage Secrets Manager secret so the
+    # standby Backstage pod (deployment-standby.yaml) reconnects to the writer.
+    - name: backstage-db-promote
+      container:
+        image: amazon/aws-cli:2
+        command: [sh, -c]
+        args:
+          - |
+            echo "Fetching promoted Aurora writer endpoint in {{inputs.parameters.targetRegion}}..."
+            WRITER_ENDPOINT=$(aws rds describe-db-clusters \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --db-cluster-identifier "{{inputs.parameters.targetAuroraCluster}}" \
+              --query "DBClusters[0].Endpoint" --output text)
+
+            echo "Promoted writer endpoint: $WRITER_ENDPOINT"
+
+            echo "Updating Backstage secret POSTGRES_HOST → $WRITER_ENDPOINT"
+            CURRENT=$(aws secretsmanager get-secret-value \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --secret-id "{{inputs.parameters.backstageSecretName}}" \
+              --query "SecretString" --output text)
+
+            UPDATED=$(echo "$CURRENT" | jq --arg host "$WRITER_ENDPOINT" '.POSTGRES_HOST = $host')
+
+            aws secretsmanager put-secret-value \
+              --region "{{inputs.parameters.targetRegion}}" \
+              --secret-id "{{inputs.parameters.backstageSecretName}}" \
+              --secret-string "$UPDATED"
+
+            echo "Backstage secret updated. ExternalSecret will refresh within 1h."
+            echo "To force immediate refresh: kubectl annotate externalsecret backstage -n backstage force-sync=\$(date +%s)"
+
+    # ── Step 6: Slack notification ────────────────────────────────────────────
+    - name: slack-notify
+      inputs:
+        parameters:
+          - name: message
+      container:
+        image: curlimages/curl:8.5.0
+        command: [sh, -c]
+        args:
+          - |
+            curl -s -X POST \
+              -H "Content-type: application/json" \
+              --data "{\"text\": \"{{inputs.parameters.message}}\"}" \
+              "$SLACK_WEBHOOK_URL"
+        env:
+          - name: SLACK_WEBHOOK_URL
+            valueFrom:
+              secretKeyRef:
+                name: slack-webhook
+                key: url

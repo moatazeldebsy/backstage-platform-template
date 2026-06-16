@@ -13,6 +13,8 @@ metadata:
     - kotlin
     - swift
     - flutter
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: library

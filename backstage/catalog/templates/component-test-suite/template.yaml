@@ -13,6 +13,8 @@ metadata:
     - shift-left
     - local
     - aws
+    - v1
+    - advanced
 spec:
   owner: qa-team
   type: test-suite

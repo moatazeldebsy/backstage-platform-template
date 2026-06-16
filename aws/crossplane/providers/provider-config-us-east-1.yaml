@@ -1,0 +1,19 @@
+# Crossplane ProviderConfig for the standby region (us-east-1).
+# Service claims that should provision resources in the standby region
+# reference this config via:
+#   providerConfigRef:
+#     name: us-east-1
+#
+# The IRSA role ARN is patched in by bootstrap.sh from the Terraform output
+# crossplane_aws_role_arn of the us-east-1 cluster.
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: us-east-1
+  annotations:
+    # Placeholder — bootstrap.sh replaces this with the actual IRSA ARN from
+    # the standby cluster's Terraform output (crossplane_aws_role_arn).
+    idp.platform/irsa-role: "REPLACE_WITH_STANDBY_IRSA_ARN"
+spec:
+  credentials:
+    source: IRSA

@@ -1,0 +1,30 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: quality
+  title: Quality Platform
+  description: Shift-left quality programme — E2E, contract, performance, security, and accessibility testing golden paths
+  tags:
+    - qa
+    - testing
+    - shift-left
+  links:
+    - url: http://backstage.idp.local/catalog?filters[kind]=template&filters[tags]=testing
+      title: QA Templates
+spec:
+  owner: group:default/qa-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: qa-platform
+  title: QA Platform
+  description: Test automation infrastructure — Playwright, k6, Pact, ZAP, chaos testing, and scorecard checks
+  tags:
+    - playwright
+    - k6
+    - pact
+    - zap
+spec:
+  owner: group:default/qa-team
+  domain: quality

@@ -6,8 +6,11 @@ for the boundary (TF for foundation, Crossplane for day-2 per-service infra).
 
 ```
 providers/    AWS providers + IRSA runtime config + ProviderConfig
-compositions/ XRDs + Compositions: XS3Bucket, XRDSInstance, XKafkaTopic,
-              XDynamoTable, XSQSQueue
+compositions/ XRDs + Compositions:
+                Single-region:  XS3Bucket, XRDSInstance, XKafkaTopic,
+                                XDynamoTable, XSQSQueue
+                Multi-region:   XECRReplicationRule, XRoute53HealthCheck,
+                                XGlobalAcceleratorEndpointGroup
 ```
 
 ArgoCD owns the lifecycle. Three Applications in
@@ -40,4 +43,5 @@ kubectl get providerconfigs.aws.upbound.io
 
 kubectl get xrds
 # XS3Bucket, XRDSInstance, XKafkaTopic, XDynamoTable, XSQSQueue all Established
+# XECRReplicationRule, XRoute53HealthCheck, XGlobalAcceleratorEndpointGroup all Established
 ```

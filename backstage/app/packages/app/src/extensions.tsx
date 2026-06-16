@@ -284,11 +284,11 @@ function uuidv4(): string {
 }
 
 // ── AI Assistant page ─────────────────────────────────────────────────────────
-// Native chat UI that talks to the idp-assistant KAgent agent via the Backstage
+// Native chat UI that talks to the platform-assistant KAgent agent via the Backstage
 // proxy (/api/proxy/kagent → kagent-ui:8080).
 //
 // Flow per user turn:
-//   1. POST /a2a/kagent/idp-assistant  (KAgent Next.js route adds auth headers)
+//   1. POST /a2a/kagent/platform-assistant  (KAgent Next.js route adds auth headers)
 //   2. Poll GET /api/sessions           every 500 ms for up to 12 s — find session
 //   3. Poll GET /api/sessions/<id>      every 1 s for up to 90 s — wait for text
 
@@ -428,7 +428,7 @@ function AiAssistantPage() {
             const body = await res.json();
             const sessions: any[] = body.data ?? [];
             // Find the most recent matching session (they're usually sorted newest first)
-            // Look for idp-assistant agent, created within a wide time window
+            // Look for platform-assistant agent, created within a wide time window
             for (const s of sessions) {
               if (s.agent_id === 'kagent__NS__platform_assistant') {
                 const sessionTime = new Date(s.created_at).getTime();
@@ -478,7 +478,7 @@ function AiAssistantPage() {
         }).filter(Boolean);
 
         const agentEvents = parsed.filter(
-          (d: any) => d?.author === 'idp_assistant' && d?.content?.parts,
+          (d: any) => d?.author === 'platform_assistant' && d?.content?.parts,
         );
 
         if (agentEvents.length === 0) continue;

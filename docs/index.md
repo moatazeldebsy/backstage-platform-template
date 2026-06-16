@@ -17,11 +17,16 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [Crossplane vs Terraform](crossplane-vs-terraform.md) — Which tool owns what, and why
 - [Shift-Left Quality](shift-left.md) — How the platform embeds testing at scaffold, PR, deploy, and runtime
 
+### Team Management
+- [Team Management](team-management.md) — Onboard a team: namespace, SecretStore, ArgoCD ApplicationSet, Grafana folder, DORA metrics
+- [GitHub App Setup](github-app-setup.md) — Replace PAT with GitHub App for higher rate limits and per-installation scoping
+- [Scaling Runbook](scaling-runbook.md) — Small/Medium/Large tiers, scaling signals, implementation status
+
 ### Advanced Topics
 - [Contract Testing](contract-testing.md) — Self-describing, self-testing APIs with MCP
 - [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage
-- [DORA & FinOps](dora-finops.md) — DORA entity tab (Elite/High/Medium/Low badges) + FinOps cost overview in Backstage
-- [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC, production hardening
+- [DORA & FinOps](dora-finops.md) — DORA entity tab (Elite/High/Medium/Low badges) + FinOps cost overview with team dimension in Backstage
+- [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC, per-team secret isolation, production hardening
 
 ### Operations
 - [Improvements Summary](IMPROVEMENTS_SUMMARY.md) — Critical fixes, AI/ML enhancements, cost savings analysis (read first after your first AWS deployment)

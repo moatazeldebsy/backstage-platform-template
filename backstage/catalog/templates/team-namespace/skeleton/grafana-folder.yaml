@@ -1,0 +1,21 @@
+# ConfigMap picked up by the Grafana sidecar to provision a per-team folder.
+# The sidecar watches ConfigMaps labeled grafana_folder in the monitoring namespace.
+# Grafana must have sidecar.dashboards.enabled=true (see observability/grafana/grafana-helm-values.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-folder-team-${{ values.teamName }}
+  namespace: monitoring
+  labels:
+    grafana_folder: "Team — ${{ values.teamName }}"
+    team: ${{ values.teamName }}
+    managed-by: idp-backstage
+data:
+  # Empty — this ConfigMap's existence and label tell Grafana to create the folder.
+  # Team members can create dashboards in this folder via the Grafana UI or
+  # by adding dashboards as ConfigMaps labeled grafana_folder: "Team — <teamName>".
+  _placeholder: |
+    Folder auto-created by IDP team-namespace scaffold for team ${{ values.teamName }}.
+    Add dashboards by creating ConfigMaps with label:
+      grafana_folder: "Team — ${{ values.teamName }}"
+    in the monitoring namespace.

@@ -213,8 +213,8 @@ else
   fi
   # Load all AI-stack env vars from local/.env if not already set in environment
   if [[ -f "${ENV_FILE}" ]]; then
-    ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
-    OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2-)}"
+    ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep '^GITHUB_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2- || true)}"
@@ -494,9 +494,12 @@ else
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/platform-agent.yaml"
-  # Contract-testing KAgent resources intentionally disabled (hidden from end users).
-  # To re-enable, uncomment the two lines below.
-  # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
+  # contract-mcp-server RemoteMCPServer registration is required: idp-agent and
+  # platform-agent both reference it as a tool source, so without it those
+  # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
+  # The standalone contract-assistant agent stays disabled/hidden from end users.
+  # To re-enable it, uncomment the line below.
   # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then

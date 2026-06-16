@@ -12,6 +12,8 @@ metadata:
     - security
     - golden-path
     - local
+    - v1
+    - blessed
 spec:
   owner: platform-team
   type: service

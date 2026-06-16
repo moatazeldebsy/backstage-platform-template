@@ -52,3 +52,21 @@ subjects:
   - kind: ServiceAccount
     name: deployer
     namespace: team-${{ values.teamName }}
+---
+# Bind the platform idp-developer ClusterRole to the team's Backstage group.
+# This grants team members deploy + observe access scoped to their namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: idp-developer-binding
+  namespace: team-${{ values.teamName }}
+  labels:
+    managed-by: idp-backstage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: idp-developer
+subjects:
+  - kind: Group
+    name: ${{ values.ownerGroup }}
+    apiGroup: rbac.authorization.k8s.io

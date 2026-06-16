@@ -109,6 +109,36 @@ Deploys MLflow, KAgent, idp-assistant, and MCP servers. Requires `ANTHROPIC_API_
 
 ---
 
+### Step 5: Provision team namespaces
+
+After the platform is up, onboard teams via the Backstage **Provision Team Namespace** template.
+Before running it, create the per-team ESO IAM role:
+
+```bash
+cd terraform
+
+# Add each team (repeat for all teams)
+terraform apply -var='team_eso_roles=[
+  {name="payments", cost_center="CC-1234"},
+  {name="platform", cost_center="CC-0001"}
+]'
+
+# Get role ARNs to paste into the scaffold form
+terraform output team_eso_role_arns
+```
+
+Then in Backstage → **Create** → **Provision Team Namespace** → fill in team name, tier, and the
+IAM role ARN. The scaffold PR creates:
+- `kubernetes/teams/<name>/` with namespace, quota, RBAC, AppProject, ApplicationSet, SecretStore, Grafana folder
+- `backstage/catalog/groups/<name>.yaml` — team auto-registers in catalog
+
+Merge the PR — CI (`scaffold.yml`) applies the manifests.
+
+> **Service path convention**: Team service values go under `teams/<teamName>/services/<serviceName>/`,
+> **not** `services/<teamName>/`. See [docs/team-management.md](team-management.md) for details.
+
+---
+
 ## Post-Deployment Validation
 
 ```bash

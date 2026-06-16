@@ -103,6 +103,33 @@ proxy:
         Accept: application/vnd.github+json
         X-GitHub-Api-Version: "2022-11-28"
 
+# GitHub App integration — replaces the personal access token used in app-config.yaml.
+# Higher rate limits (5 000 req/hr per installation vs 5 000/hr per PAT globally),
+# no rotation needed, works on personal accounts and orgs.
+#
+# Setup (one-time):
+#   1. Create the App: github.com/settings/apps/new (personal) or
+#      github.com/organizations/<org>/settings/apps/new (org).
+#      Required permissions: Contents=Read, Pull requests=Write, Members=Read, Metadata=Read.
+#   2. Generate a private key and note the App ID.
+#   3. Install the App on the platform repo (and any team repos you want Backstage to access).
+#   4. Store secrets in AWS Secrets Manager under idp-mvp/:
+#        idp-mvp/GITHUB_APP_ID           → numeric App ID
+#        idp-mvp/GITHUB_APP_CLIENT_ID    → OAuth client ID
+#        idp-mvp/GITHUB_APP_CLIENT_SECRET→ OAuth client secret
+#        idp-mvp/GITHUB_APP_PRIVATE_KEY  → full PEM content (newlines preserved)
+#        idp-mvp/GITHUB_APP_WEBHOOK_SECRET → webhook secret (can be empty)
+#   5. Remove the legacy GITHUB_TOKEN secret once confirmed working.
+integrations:
+  github:
+    - host: github.com
+      apps:
+        - appId: ${GITHUB_APP_ID}
+          clientId: ${GITHUB_APP_CLIENT_ID}
+          clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+          webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
+          privateKey: ${GITHUB_APP_PRIVATE_KEY}
+
 techRadar:
   url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json
 
@@ -118,227 +145,15 @@ catalog:
     entityFilename: catalog-info.yaml
     pullRequestBranchName: backstage-integration
   rules:
-    - allow: [Component, System, API, Resource, Location, Template, User, Group]
+    - allow: [Component, System, API, Resource, Location, Template, User, Group, Domain]
   locations:
-    # ── Service templates ────────────────────────────────────────────────────
+    # ── Templates (all tiers) ──────────────────────────────────────────────────
+    # Single entry — all templates indexed in backstage/catalog/all-templates.yaml.
+    # To add a template: add one line there; no app-config edit needed.
     - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/nodejs-service/template.yaml
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/all-templates.yaml
       rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/python-service/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/go-service/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/react-frontend/template.yaml
-      rules:
-        - allow: [Template]
-    # ── Infrastructure & cloud resource templates ────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/terraform-module/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/rds-database/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/rds-database-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/s3-bucket/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/s3-bucket-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/dynamodb-table-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/kafka-topic/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/kafka-topic-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/sqs-queue-crossplane/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/eks-cluster/template.yaml
-      rules:
-        - allow: [Template]
-    # ── Platform self-service templates ─────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/team-namespace/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/add-secret/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mcp-server/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/decommission-service/template.yaml
-      rules:
-        - allow: [Template]
-    # deploy-to-kind template is local-only — registered in app-config.yaml (base)
-    # ── AI / ML templates ────────────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/ai-agent-kagent/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mlflow-experiment/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: E2E & API testing ───────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/playwright-e2e-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/newman-api-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/bdd-cucumber-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: Performance ─────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/k6-performance-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: Contract testing ────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/pact-contract-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/contract-testing-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/enable-contract-testing/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: Unit & component ────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/unit-test-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/component-test-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/testcontainers-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: Security & quality ──────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/zap-dast-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/enable-security-scanning/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/slo-definition/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/canary-deployment/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/iac-test-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mutation-testing-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: Accessibility, visual & mobile ───────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/accessibility-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/visual-regression-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/appium-mobile-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── Mobile golden-path templates ─────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/android-app/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/flutter-app/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/flutter-integration-test-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/ios-app/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-code-signing/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-app-store-deploy/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-device-farm/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/mobile-sdk/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: Chaos & synthetic ───────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/chaos-mesh-suite/template.yaml
-      rules:
-        - allow: [Template]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/datadog-synthetic-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── QA Platform: LLM eval ────────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/deepeval-llm-eval-suite/template.yaml
-      rules:
-        - allow: [Template]
-    # ── AI/ML: Model serving ──────────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/model-serving-api/template.yaml
-      rules:
-        - allow: [Template]
+        - allow: [Template, Location]
     # ── Platform entities ─────────────────────────────────────────────────────
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/catalog-info.yaml
@@ -348,6 +163,32 @@ catalog:
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/catalog-info.yaml
       rules:
         - allow: [Component, System, User, Group]
+    # Team Group entities auto-created by the team-namespace scaffold template
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/groups
+      rules:
+        - allow: [Group]
+    # Domain + System entities — one file per business domain
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/platform.yaml
+      rules:
+        - allow: [Domain, System]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/engineering.yaml
+      rules:
+        - allow: [Domain, System]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/mobile.yaml
+      rules:
+        - allow: [Domain, System]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/ai-ml.yaml
+      rules:
+        - allow: [Domain, System]
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/quality.yaml
+      rules:
+        - allow: [Domain, System]
     - type: url
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/apis/hello-service-api.yaml
       rules:
@@ -408,3 +249,95 @@ catalog:
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }
+
+    # GitHub org sync — automatically imports User and Group entities from the GitHub
+    # organisation so teams don't need to maintain User/Group YAML manually.
+    # Members, team memberships, and avatars stay in sync with GitHub at the schedule below.
+    githubOrg:
+      idpOrgSync:
+        id: idpOrgSync
+        githubUrl: https://github.com
+        orgs:
+          - name: moatazeldebsy
+        schedule:
+          frequency: { minutes: 30 }
+          timeout: { minutes: 5 }
+
+# Backstage permission framework.
+# Requires @backstage/plugin-permission-backend and a policy plugin in packages/backend.
+# In production this enforces read-only access for guests and restricts scaffolder
+# template execution to authenticated GitHub org members.
+#
+# To enable: install the permission backend plugin, then set enabled: true here.
+# See: https://backstage.io/docs/permissions/getting-started
+# ── Multi-cluster Kubernetes plugin (V2) ─────────────────────────────────────
+# Shows pods, deployments, and services from both EKS clusters on entity pages.
+# The `backstage.io/kubernetes-id` annotation on the entity matches against
+# the label selector on Kubernetes objects (set by the Helm chart).
+#
+# Auth: uses service account tokens stored in Secrets Manager (populated by
+# register-argocd-cluster.sh which creates argocd-manager — reuse that SA or
+# create a dedicated backstage-k8s-reader SA with read-only ClusterRole).
+kubernetes:
+  serviceLocatorMethod:
+    type: multiTenant    # show resources from all clusters the entity label matches
+  clusterLocatorMethods:
+    - type: config
+      clusters:
+        - name: eks-eu-central-1
+          url: ${K8S_EU_CENTRAL_1_URL}
+          authProvider: serviceAccount
+          serviceAccountToken: ${K8S_EU_CENTRAL_1_TOKEN}
+          skipTLSVerify: false
+          caData: ${K8S_EU_CENTRAL_1_CA_DATA}
+          customResources:
+            - group: argoproj.io
+              apiVersion: v1alpha1
+              plural: rollouts
+            - group: idp.platform
+              apiVersion: v1alpha1
+              plural: s3buckets
+            - group: idp.platform
+              apiVersion: v1alpha1
+              plural: dynamotables
+
+        - name: eks-us-east-1
+          url: ${K8S_US_EAST_1_URL}
+          authProvider: serviceAccount
+          serviceAccountToken: ${K8S_US_EAST_1_TOKEN}
+          skipTLSVerify: false
+          caData: ${K8S_US_EAST_1_CA_DATA}
+          dashboardApp: standard
+          customResources:
+            - group: argoproj.io
+              apiVersion: v1alpha1
+              plural: rollouts
+
+permission:
+  enabled: true
+  # Policy: allow all for authenticated users; deny for unauthenticated (guest).
+  # Replace with a custom OPA/Cedar policy plugin for fine-grained team RBAC.
+  # The minimal policy below blocks the scaffolder for unauthenticated users,
+  # which is the highest-risk default at org scale.
+  #
+  # To add team-scoped template visibility (item 7 from the scaling checklist),
+  # implement a custom PolicyDecision that checks the user's Backstage Group
+  # membership against the template's spec.owner before allowing execution.
+  #
+  # Ref: packages/backend/src/plugins/permission.ts (add this file)
+  #   import { createRouter } from '@backstage/plugin-permission-backend';
+  #   import { AuthorizeResult } from '@backstage/plugin-permission-common';
+  #   export default async function createPlugin(env) {
+  #     return createRouter({
+  #       config: env.config,
+  #       logger: env.logger,
+  #       discovery: env.discovery,
+  #       identity: env.identity,
+  #       policy: {
+  #         async handle(request, user) {
+  #           if (!user) return { result: AuthorizeResult.DENY };
+  #           return { result: AuthorizeResult.ALLOW };
+  #         }
+  #       }
+  #     });
+  #   }

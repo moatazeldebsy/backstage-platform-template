@@ -55,6 +55,29 @@ spec:
                     costCenter:
                       type: string
                       default: engineering
+                    team:
+                      type: string
+                      description: Team name for cost attribution (auto-injected by Kyverno in team-* namespaces).
+                      default: ""
+                    crossRegionReplication:
+                      type: boolean
+                      description: Enable MSK Replicator to replicate this topic to replicaRegion. Requires an MSK cluster in the standby region (provisioned via Terraform). Uses last-writer-wins for conflicting offsets.
+                      default: false
+                    replicaClusterArn:
+                      type: string
+                      description: ARN of the target MSK cluster in the standby region. Required when crossRegionReplication is true.
+                      default: ""
+                    replicationStartingPosition:
+                      type: string
+                      description: Where replication starts for existing topics — LATEST (default, replicate only new messages) or EARLIEST (full replay).
+                      enum: [LATEST, EARLIEST]
+                      default: LATEST
+            status:
+              type: object
+              properties:
+                replicatorArn:
+                  type: string
+                  description: ARN of the MSK Replicator resource (set when crossRegionReplication is true).
       additionalPrinterColumns:
         - name: TOPIC
           type: string

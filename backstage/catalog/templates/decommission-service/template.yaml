@@ -16,6 +16,8 @@ metadata:
     - admin
     - decommission
     - dangerous
+    - v1
+    - blessed
 spec:
   owner: platform-team
   type: service

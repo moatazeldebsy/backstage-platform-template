@@ -12,6 +12,8 @@ metadata:
     - android
     - mobile
     - security
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: service

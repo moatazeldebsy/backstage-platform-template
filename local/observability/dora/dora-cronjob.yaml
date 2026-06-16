@@ -84,6 +84,18 @@ spec:
                   value: "moatazeldebsy"
                 - name: LOOKBACK_HOURS
                   value: "24"
+                # Optional: map repo names to team names for per-team DORA metrics.
+                # Falls back to repos tagged with GitHub topic "team:<name>" if unset.
+                # To enable: create a ConfigMap named dora-team-map in monitoring namespace:
+                #   kubectl create configmap dora-team-map -n monitoring \
+                #     --from-literal=TEAM_MAP='{"orders-service":"payments"}'
+                # Then uncomment the block below:
+                # - name: TEAM_MAP
+                #   valueFrom:
+                #     configMapKeyRef:
+                #       name: dora-team-map
+                #       key: TEAM_MAP
+                #       optional: true
                 - name: PUSHGATEWAY_URL
                   value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
               resources:

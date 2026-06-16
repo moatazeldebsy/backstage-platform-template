@@ -1,17 +1,12 @@
 ---
 # Kubernetes Service + Endpoints that allow in-cluster pods to reach the Backstage
-# Docker Compose container over the shared "kind" Docker network.
+# Docker Compose container.
 #
-# How to update after Kind cluster recreation (IP may change):
-#   1. docker inspect backstage-backstage-1 | python3 -c \
-#        "import sys,json; c=json.load(sys.stdin)[0]; \
-#         print(c['NetworkSettings']['Networks']['kind']['IPAddress'])"
-#   2. Update the 'ip' field in the Endpoints below
-#   3. kubectl apply -f local/backstage/backstage-k8s-endpoints.yaml --context kind-idp-mvp
-#
-# Current Backstage container IP on 'kind' network: 172.21.0.6 (port 3000)
-# NOTE: Backstage listens on port 3000 inside the container. The ingress routes
-# external port 80 to service port 3000, which forwards to container port 3000.
+# Kind:            container IP on the shared "kind" Docker network (dynamic, set
+#                  by bootstrap-local.sh --update-backstage-ip on each cluster reset)
+# Rancher Desktop: 172.17.0.1 (docker0 host gateway) — kube-router iptables rules
+#                  in the Lima VM block direct container IPs from k3s pods, so the
+#                  host-gateway proxy via the exposed port 3000 is used instead.
 apiVersion: v1
 kind: Endpoints
 metadata:
@@ -19,7 +14,7 @@ metadata:
   namespace: default
 subsets:
   - addresses:
-      - ip: "172.21.0.6"
+      - ip: "172.17.0.1"
     ports:
       - port: 3000
         protocol: TCP

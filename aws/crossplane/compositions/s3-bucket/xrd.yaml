@@ -55,12 +55,31 @@ spec:
                       type: string
                       description: Cost center tag value.
                       default: engineering
+                    team:
+                      type: string
+                      description: Team name for cost attribution (auto-injected by Kyverno in team-* namespaces).
+                      default: ""
+                    crossRegionReplication:
+                      type: boolean
+                      description: Enable S3 Cross-Region Replication to replicaRegion. Requires versioning (always enabled when this is true). A Terraform-managed IAM replication role named idp-s3-replication must exist in the account.
+                      default: false
+                    replicaRegion:
+                      type: string
+                      description: Destination region for cross-region replication. Only used when crossRegionReplication is true.
+                      default: us-east-1
+                    multiRegionAccessPoint:
+                      type: boolean
+                      description: Create an S3 Multi-Region Access Point providing a single hostname that routes to the nearest healthy bucket. Requires crossRegionReplication to be true.
+                      default: false
             status:
               type: object
               properties:
                 bucketArn:
                   type: string
                   description: ARN of the provisioned bucket.
+                replicaBucketArn:
+                  type: string
+                  description: ARN of the replica bucket in replicaRegion (set when crossRegionReplication is true).
       additionalPrinterColumns:
         - name: BUCKET
           type: string

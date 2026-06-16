@@ -1,0 +1,106 @@
+# Kyverno policy: enforce tier-appropriate ResourceQuota on team namespaces.
+# Namespaces created by the team-namespace scaffold template carry the label
+# idp.io/tier=small|medium|large. This policy mutates new team namespaces to
+# create a ResourceQuota matching the declared tier.
+#
+# Note: this policy requires Kyverno 1.10+ with generateExisting=true so that
+# it back-fills quotas on namespaces created before the policy was installed.
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: team-namespace-quota
+  annotations:
+    policies.kyverno.io/title: Team Namespace Resource Quota
+    policies.kyverno.io/category: Resource Management
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Generates a tier-matched ResourceQuota in every team-* namespace.
+      Tiers: small (4 CPU / 8Gi), medium (16 CPU / 32Gi), large (LimitRange defaults only).
+spec:
+  generateExisting: true
+  rules:
+    # ── Small tier ─────────────────────────────────────────────────────────────
+    - name: generate-quota-small
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+              selector:
+                matchLabels:
+                  idp.io/tier: small
+              names: ["team-*"]
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: idp-tier-quota
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              requests.cpu: "4"
+              requests.memory: 8Gi
+              limits.cpu: "8"
+              limits.memory: 16Gi
+              pods: "30"
+              services: "10"
+              persistentvolumeclaims: "5"
+              secrets: "20"
+              configmaps: "20"
+
+    # ── Medium tier ────────────────────────────────────────────────────────────
+    - name: generate-quota-medium
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+              selector:
+                matchLabels:
+                  idp.io/tier: medium
+              names: ["team-*"]
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: idp-tier-quota
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              requests.cpu: "16"
+              requests.memory: 32Gi
+              limits.cpu: "32"
+              limits.memory: 64Gi
+              pods: "100"
+              services: "30"
+              persistentvolumeclaims: "20"
+              secrets: "50"
+              configmaps: "50"
+
+    # ── Large tier — LimitRange defaults only; no hard quota cap ──────────────
+    - name: generate-limitrange-large
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+              selector:
+                matchLabels:
+                  idp.io/tier: large
+              names: ["team-*"]
+      generate:
+        apiVersion: v1
+        kind: LimitRange
+        name: idp-tier-defaults
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            limits:
+              - type: Container
+                default:
+                  cpu: "1"
+                  memory: 512Mi
+                defaultRequest:
+                  cpu: 250m
+                  memory: 256Mi

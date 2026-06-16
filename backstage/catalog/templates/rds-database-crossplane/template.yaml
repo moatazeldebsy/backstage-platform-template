@@ -17,6 +17,8 @@ metadata:
     - aws
     - crossplane
     - golden-path
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: resource

@@ -43,6 +43,31 @@ prometheus:
             requests:
               storage: 5Gi
 
+    # ── Thanos sidecar (V2 multi-region) ──────────────────────────────────────
+    # Enables long-term storage to S3 and cross-region query federation.
+    # The thanos-objstore-config Secret is created by the ExternalSecret in
+    # aws/observability/thanos/thanos-sidecar-patch.yaml (populated from
+    # Secrets Manager by terraform/global/thanos-config.tf).
+    thanos:
+      image:
+        registry: quay.io
+        repository: thanos/thanos
+        tag: v0.36.1
+      objectStorageConfig:
+        existingSecret:
+          name: thanos-objstore-config
+          key: objstore.yml
+      # Expose gRPC port so Thanos Query can scrape in-memory (recent) blocks
+      grpcListenLocal: false
+      httpListenLocal: false
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
 alertmanager:
   enabled: true
   ingress:
@@ -89,9 +114,22 @@ grafana:
       alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     hosts: []
 
-  # kube-prometheus-stack automatically provisions the Prometheus datasource (uid: prometheus,
-  # isDefault: true) via the prometheus-kube-prometheus-grafana-datasource ConfigMap.
-  # Do NOT add a datasource here — a second isDefault entry crashes Grafana on startup.
+  sidecar:
+    datasources:
+      # kube-prometheus-stack normally auto-provisions a Prometheus datasource
+      # (uid: prometheus, isDefault: true) via its own grafana_datasource-labeled
+      # ConfigMap. V2 replaces that with the multi-region datasources ConfigMap
+      # (aws/observability/grafana-multi-region-datasources.yaml), which sets
+      # Thanos as isDefault and re-declares uid: prometheus for dashboard
+      # compatibility. Disable the chart's auto datasource so the two
+      # grafana_datasource ConfigMaps don't both set isDefault: true (that
+      # combination crashes Grafana on startup).
+      defaultDatasourceEnabled: false
+
+  # kube-prometheus-stack's auto-provisioned Prometheus datasource is disabled above
+  # (see sidecar.datasources). Datasources are instead provisioned via
+  # aws/observability/grafana-multi-region-datasources.yaml — do not add a second
+  # isDefault entry here.
   datasources:
     datasources.yaml:
       apiVersion: 1

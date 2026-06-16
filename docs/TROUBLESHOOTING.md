@@ -696,6 +696,142 @@ helm upgrade --install <service-name> helm/service-template \
 
 ## Getting help
 
+---
+
+## Team Infrastructure (v0.4.0+)
+
+### Symptom: Crossplane claim rejected — "owner is required"
+
+Kyverno validate policy `crossplane-require-cost-tags` is blocking the claim.
+
+```bash
+# Confirm policy is active
+kubectl get clusterpolicy crossplane-require-cost-tags -o jsonpath='{.spec.validationFailureAction}'
+# → Enforce
+
+# Add the missing field to your claim
+spec:
+  parameters:
+    owner: payments-team      # required on all claims
+    costCenter: CC-1234       # required on all claims
+```
+
+If the policy is too strict for a specific namespace (e.g. during migration), temporarily
+set `validationFailureAction: Audit` and remediate claims before re-enforcing.
+
+---
+
+### Symptom: `idp:team` tag missing on Crossplane-provisioned AWS resource
+
+1. Check the claim namespace — mutation only runs in `team-*` namespaces:
+   ```bash
+   kubectl get s3bucket <name> -n <namespace> -o jsonpath='{.spec.parameters.team}'
+   ```
+2. Verify Kyverno is running:
+   ```bash
+   kubectl get deployment kyverno-admission-controller -n kyverno
+   ```
+3. Inspect Kyverno policy events:
+   ```bash
+   kubectl get policyreport -n <namespace>
+   ```
+4. If the claim was created before Kyverno was installed, delete and recreate it to trigger mutation.
+
+---
+
+### Symptom: `ExternalSecret` error — "SecretStore not found: team-<name>-secrets"
+
+The namespace-scoped SecretStore was not created (IAM role ARN was blank when the team was scaffolded).
+
+```bash
+# Check if SecretStore exists
+kubectl get secretstore -n team-<name>
+
+# If missing, re-run the scaffold with the IAM role ARN, or apply manually:
+# 1. terraform apply -var='team_eso_roles=[{name="<name>",cost_center="CC-1234"}]'
+# 2. terraform output team_eso_role_arns  → copy ARN
+# 3. kubectl apply -f - <<EOF
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: team-<name>-eso-sa
+#   namespace: team-<name>
+#   annotations:
+#     eks.amazonaws.com/role-arn: <ARN>
+# ---
+# apiVersion: external-secrets.io/v1
+# kind: SecretStore
+# metadata:
+#   name: team-<name>-secrets
+#   namespace: team-<name>
+# spec:
+#   provider:
+#     aws:
+#       service: SecretsManager
+#       region: us-east-1
+#       auth:
+#         jwt:
+#           serviceAccountRef:
+#             name: team-<name>-eso-sa
+#             namespace: team-<name>
+# EOF
+```
+
+---
+
+### Symptom: `all-templates.yaml` not loading templates in Backstage catalog
+
+The URL pointing to `backstage/catalog/all-templates.yaml` in `app-config.aws.yaml` must
+resolve via the GitHub integration. Check:
+
+1. The `integrations.github.apps` block is configured (or `GITHUB_TOKEN` is set as fallback)
+2. The file was merged to `main` branch before Backstage started
+3. Force catalog refresh: **Settings → Catalog → Refresh all**
+
+```bash
+# Check catalog errors in Backstage logs
+kubectl logs -n backstage deploy/backstage | grep -i "all-templates\|location.*error"
+```
+
+---
+
+### Symptom: `team=unknown` on DORA Prometheus metrics
+
+The team could not be resolved from `TEAM_MAP` or GitHub topics.
+
+```bash
+# Check current metric labels
+curl http://prometheus-pushgateway.monitoring.svc.cluster.local:9091/metrics \
+  | grep dora_deploy | head -5
+# Should show: dora_deploy_frequency_per_day{service="orders-api",team="payments"} 2
+
+# Option 1: Add team topic to the GitHub repo
+gh repo edit moatazeldebsy/orders-api --add-topic "team:payments"
+
+# Option 2: Add to TEAM_MAP in Secrets Manager (see docs/dora-finops.md#team-dimension)
+```
+
+---
+
+### Symptom: Grafana "Team — payments" folder not appearing
+
+1. Confirm the scaffold PR was merged and the ConfigMap exists:
+   ```bash
+   kubectl get cm -n monitoring -l grafana_folder | grep team
+   ```
+2. Check Grafana sidecar is running:
+   ```bash
+   kubectl get pod -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].spec.containers[*].name}'
+   # Should include: grafana-sc-dashboard
+   ```
+3. If sidecar is absent, re-upgrade Grafana with the sidecar values:
+   ```bash
+   helm upgrade grafana grafana/grafana -n monitoring \
+     -f observability/grafana/grafana-helm-values.yaml --reuse-values
+   ```
+
+---
+
 If an issue is not covered here:
 
 1. Check the [docs/runbooks/](runbooks/index.md) directory for alert-specific procedures.

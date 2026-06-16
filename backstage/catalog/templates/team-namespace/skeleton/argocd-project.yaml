@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-${{ values.teamName }}
+  namespace: argocd
+  labels:
+    team: ${{ values.teamName }}
+    idp.io/tier: ${{ values.tier }}
+    managed-by: idp-backstage
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: ArgoCD project for team ${{ values.teamName }}
+
+  # Team can only deploy to their own namespace
+  destinations:
+    - namespace: team-${{ values.teamName }}
+      server: https://kubernetes.default.svc
+
+  # Source repos: platform repo + any repo owned by the team
+  sourceRepos:
+    - '*'
+
+  # Cluster-scoped resources are managed by the platform team only
+  clusterResourceWhitelist: []
+
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: ReplicaSet
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: ServiceAccount
+    - group: ''
+      kind: PersistentVolumeClaim
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: policy
+      kind: PodDisruptionBudget
+
+  roles:
+    - name: team-deployer
+      description: CI/CD deployer role for team ${{ values.teamName }}
+      policies:
+        - p, proj:team-${{ values.teamName }}:team-deployer, applications, get, team-${{ values.teamName }}/*, allow
+        - p, proj:team-${{ values.teamName }}:team-deployer, applications, sync, team-${{ values.teamName }}/*, allow
+        - p, proj:team-${{ values.teamName }}:team-deployer, applications, create, team-${{ values.teamName }}/*, allow
+        - p, proj:team-${{ values.teamName }}:team-deployer, applications, update, team-${{ values.teamName }}/*, allow

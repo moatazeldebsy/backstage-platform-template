@@ -1,0 +1,36 @@
+# ── Backstage Helm values — Medium tier (26–75 teams / 150–750 engineers) ─────
+# Target chart: backstage/backstage (official chart) or a custom wrapper.
+# Apply: helm upgrade backstage backstage/backstage -f helm/values-tiers/backstage-medium.yaml
+#
+# Prerequisites:
+#   - Elasticsearch 8.x deployed in the cluster (see kubernetes/search/elasticsearch.yaml)
+#   - @backstage/plugin-search-backend-module-elasticsearch registered in backend/src/index.ts
+
+backstage:
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+  appConfig:
+    catalog:
+      schedule:
+        frequency:
+          minutes: 1
+        timeout:
+          minutes: 2
+
+    # Switch from in-memory Lunr to Elasticsearch for catalog search at this scale
+    search:
+      elasticsearch:
+        node: http://elasticsearch-master.search.svc.cluster.local:9200
+
+postgresql:
+  primary:
+    persistence:
+      size: 50Gi

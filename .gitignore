@@ -17,6 +17,10 @@ services/*/bin/
 services/*/*.test
 bin/
 cli/bin/
+cli/idp
+
+# Xcode / Swift build artifacts
+.build/
 
 # Node
 node_modules/

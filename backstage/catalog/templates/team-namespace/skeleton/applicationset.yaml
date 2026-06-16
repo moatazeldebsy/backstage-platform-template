@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: team-${{ values.teamName }}
+  namespace: argocd
+  labels:
+    team: ${{ values.teamName }}
+    idp.io/tier: ${{ values.tier }}
+    managed-by: idp-backstage
+spec:
+  generators:
+    - matrix:
+        generators:
+          # Discover services owned by this team under teams/<teamName>/services/*.
+          # Convention: team services live under teams/<teamName>/services/<service>/
+          # NOT under services/ — that path is reserved for legacy flat services.
+          - git:
+              repoURL: https://github.com/${{ values.githubOrg }}/${{ values.platformRepo }}.git
+              revision: HEAD
+              directories:
+                - path: teams/${{ values.teamName }}/services/*
+          # One entry per environment — extend this list for staging/prod
+          - list:
+              elements:
+                - env: dev
+                  namespace: team-${{ values.teamName }}
+                  valuesFile: helm-values-aws.yaml
+  template:
+    metadata:
+      name: "${{ values.teamName }}-{{path.basename}}-{{env}}"
+      labels:
+        team: ${{ values.teamName }}
+        environment: "{{env}}"
+        service: "{{path.basename}}"
+    spec:
+      project: team-${{ values.teamName }}
+      sources:
+        - repoURL: https://github.com/${{ values.githubOrg }}/${{ values.platformRepo }}.git
+          targetRevision: HEAD
+          path: helm/service-template
+          helm:
+            parameters:
+              - name: backstage.kubernetesId
+                value: "{{path.basename}}"
+            valueFiles:
+              - $values/teams/${{ values.teamName }}/services/{{path.basename}}/{{valuesFile}}
+        - repoURL: https://github.com/${{ values.githubOrg }}/${{ values.platformRepo }}.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: team-${{ values.teamName }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=false
+          - ServerSideApply=true

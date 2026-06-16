@@ -1,0 +1,37 @@
+# ── ArgoCD Helm values — Medium tier (26–75 teams / up to ~300 ArgoCD apps) ───
+# Target chart: argo/argo-cd
+# Apply: helm upgrade argocd argo/argo-cd -n argocd -f helm/values-tiers/argocd-medium.yaml
+
+server:
+  replicas: 2
+
+repoServer:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+applicationSet:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+controller:
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+configs:
+  cm:
+    # Increase ApplicationSet concurrency to handle burst scaffold events
+    applicationsetcontroller.enable.progressive.syncs: "true"
