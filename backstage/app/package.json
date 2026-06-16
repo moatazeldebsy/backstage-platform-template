@@ -50,6 +50,7 @@
   },
   "resolutions": {
     "esbuild": "^0.28.1",
+    "react-router": "^6.30.4",
     "@grpc/grpc-js": "^1.14.4",
     "shell-quote": "^1.8.4",
     "@types/react": "^18",
