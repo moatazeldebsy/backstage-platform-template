@@ -8,22 +8,20 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+---
+
+## [0.5.0] — 2026-06-16
+
 ### Added
 
-#### V2 Multi-Region Architecture (`feat/v2-multi-region` feature branch)
+#### V2 Multi-Region Architecture — now on `main` (opt-in)
 
 Active-standby multi-region topology: **eu-central-1 (primary)** + **us-east-1 (standby)**.
-Kept as a feature branch — teams opt in by branching from `feat/v2-multi-region` when they need multi-region.
+Merged from `feat/v2-multi-region`. Single-region local (Kind) and single-region AWS deployments are fully unaffected — multi-region is opt-in via `./scripts/bootstrap-multiregion.sh`.
 
 **Phase 1 — Foundation**
-- `terraform/multi-region/` — secondary EKS cluster (us-east-1 mirror)
-- `terraform/global/` — Route 53 hosted zones, Global Accelerator, CloudFront distribution
-- `terraform/ecr-replication/` — account-level ECR replication rules
-- `terraform/transit-gateway/` — inter-region VPC peering over AWS backbone
-- `terraform/kms-multi-region/` — multi-region CMK for encryption at rest
+- `terraform/global/` — Route 53 hosted zones, Global Accelerator, CloudFront distribution, ECR replication, Transit Gateway, KMS multi-region CMKs, Secrets Manager CRR
 - ArgoCD hub-spoke ApplicationSet matrix generator (eu-central-1 hub → both clusters)
-- ECR cross-region replication and pull-through cache
-- Secrets Manager CRR + KMS multi-region keys
 - Route 53 latency-based routing + health-check failover
 
 **Phase 2 — Data Replication**
@@ -47,18 +45,19 @@ Kept as a feature branch — teams opt in by branching from `feat/v2-multi-regio
 **Phase 5 — Platform Wiring**
 - Platform S3 buckets + Transit Gateway inter-region peering
 - Failover IRSA roles + Crossplane ProviderConfig per region
-- Backstage V2 template registration for multi-region resources
+- `scripts/bootstrap-multiregion.sh` — full multi-region setup script
+- `scripts/setup-v2-multiregion.sh` — post-deploy failover wiring script
 
 **Phase 6 — Karpenter + Backstage HA**
 - Karpenter spot-aware node autoscaling (EC2NodeClass + NodePool per region)
 - Backstage warm-standby DB wiring (Aurora Global read replica in us-east-1)
 
-**New Crossplane XRDs (V2 platform resources)**
-- `XECRReplicationRule` / `ECRReplicationRule` — account-level ECR cross-region replication as a Crossplane claim
-- `XRoute53HealthCheck` / `Route53HealthCheck` — Route 53 health check + optional DNS failover record as a claim
+**New Crossplane XRDs**
+- `XECRReplicationRule` / `ECRReplicationRule` — account-level ECR cross-region replication
+- `XRoute53HealthCheck` / `Route53HealthCheck` — Route 53 health check + DNS failover record
 - `XGlobalAcceleratorEndpointGroup` / `GlobalAcceleratorEndpointGroup` — GA endpoint group per region (supports `trafficDialPercentage: 0` for warm standby)
 
-**V2 Crossplane XRD extensions (existing XRDs)**
+**Crossplane XRD extensions (existing XRDs)**
 - `XS3Bucket` — added `crossRegionReplication`, `replicaRegion`, `multiRegionAccessPoint`
 - `XRDSInstance` — added `globalDatabase`, `replicaRegion`, `globalWriteForwarding`
 - `XDynamoTable` — added `globalTable`, `replicaRegions[]`
@@ -68,7 +67,26 @@ Kept as a feature branch — teams opt in by branching from `feat/v2-multi-regio
 - `aurora-global-cluster` — provision Aurora Global Database via Terraform PR
 - `dynamodb-global-table` — provision DynamoDB Global Table via Crossplane claim
 - `s3-multiregion-access-point` — provision S3 MRAP + CRR via Crossplane claim
-- `eks-multi-region` — scaffold ArgoCD ApplicationSet for hub-spoke multi-region deployment (matrix generator, sync-wave eu-central-1 → us-east-1, traffic dial parameters)
+- `eks-multi-region` — scaffold ArgoCD ApplicationSet for hub-spoke multi-region deployment
+
+### Fixed
+
+#### Security — Dependabot alerts (0 open)
+- Resolved all 31 open Dependabot alerts via PRs #65–68, #59, #61–64, #72, #74:
+  - Bumped `esbuild` ≥ 0.28.1 across all services (cost/idp/qa/contract/github/argocd/agent-event-router MCP servers and `backstage/app`)
+  - Bumped `react-router` ≥ 6.30.4, `@grpc/grpc-js` ≥ 1.14.4, `shell-quote` ≥ 1.8.4, `hono` (idp/qa MCP servers)
+  - Bumped transitive deps via yarn `resolutions` / npm `overrides`: `tar`, `form-data`, `protobufjs`, `dompurify`, `js-yaml`, `@babel/core`, `launch-editor`, `markdown-it`
+
+#### Local bootstrap (`bootstrap-local.sh`)
+- **Pushgateway admin wipe**: corrected HTTP method from `DELETE` to `PUT` — eliminates the spurious pod restart on every fresh install
+- **QA metrics seed race condition**: added ingress readiness retry loop (15 × 2 s) after Pushgateway restart before calling `seed-qa-metrics.sh`
+- **`monitoring` namespace PodSecurity**: changed `enforce` level from `baseline` to `privileged` — `prometheus-node-exporter` (requires `hostNetwork`/`hostPort`) and `promtail` (requires `hostPath`) were being blocked from re-creation under the previous policy
+
+#### KAgent — contract-mcp-server RemoteMCPServer registration
+- `scripts/bootstrap-ai.sh` now applies `kubernetes/kagent/contract-toolserver.yaml` on every install — fixes `idp-assistant` and `platform-assistant` agents reporting `Accepted: False` / `Ready: Unknown` because the `contract-mcp-server` RemoteMCPServer they reference was never registered
+
+### Changed
+- `README.md`, `docs/multi-region.md`, `docs/roadmap.md` — removed stale `feat/v2-multi-region` branch references; updated opt-in instructions to point to `bootstrap-multiregion.sh`
 
 ---
 
