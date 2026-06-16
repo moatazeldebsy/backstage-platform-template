@@ -17,7 +17,7 @@
 
 > **Golden path in 60 seconds:** scaffold a service → CI runs tests + builds image → ArgoCD deploys to Kind → Backstage shows health + metrics.
 
-> **Coming in v2 — Multi-Region:** Active-passive AWS across eu-central-1 (primary) + us-east-1 (standby) — Aurora Global DB, DynamoDB Global Tables, S3 cross-region replication, Transit Gateway, CloudFront + WAF, Global Accelerator, Karpenter spot autoscaling, Thanos multi-region metrics, Backstage warm standby, and automated failover runbook. Track progress on the [`feat/v2-multi-region`](https://github.com/moatazeldebsy/backstage-platform-template/tree/feat/v2-multi-region) branch.
+> **v2 Multi-Region is now on `main`:** Active-passive AWS across eu-central-1 (primary) + us-east-1 (standby) — Aurora Global DB, DynamoDB Global Tables, S3 cross-region replication, Transit Gateway, CloudFront + WAF, Global Accelerator, Karpenter spot autoscaling, Thanos multi-region metrics, Backstage warm standby, and automated failover runbook. Single-region setups are unaffected — multi-region is opt-in via `./scripts/bootstrap-multiregion.sh`. See [docs/multi-region.md](docs/multi-region.md).
 
 ## Compatibility
 
@@ -48,7 +48,7 @@
 | **AI/ML platform** | **AI-Native IDP (Phase 7a Complete)** — KAgent agents (Claude + OpenAI GPT-4o) + MLflow experiment tracking + **IDP MCP Server** (6 tools) + **QA MCP Server** (QA-specific tools) + **Contract MCP Server** (9 contract tools) + Model Serving API (Ollama/vLLM) + AI Scorecard (Bronze/Silver/Gold) + Prompt Lifecycle Management (ConfigMaps) + Argo Workflows (ML pipelines) + Cost Attribution (team labels + metrics) + AI Observability Dashboard + RAG semantic search over TechDocs + KAgent guardrails (structured audit log, dry_run mode, per-agent attribution) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki log aggregation + Grafana Tempo distributed tracing (local + AWS); PagerDuty on-call escalation; Sloth SLO definitions with multi-window burn-rate alerts; DORA entity tab on every Component (Elite/High/Medium/Low badges, 7-day sparklines); DORA metrics carry `team=` label for per-team dashboards; FinOps cost overview with breakdown by namespace/team; DORA metrics exporter; QA KPI dashboard. See [docs/dora-finops.md](docs/dora-finops.md). |
 | **Infrastructure** | **Terraform** for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3, Secrets Manager) + **Crossplane** for per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) via in-cluster Claims reconciled by ArgoCD. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) for the boundary. |
-| **Multi-region V2** | Feature branch `feat/v2-multi-region` — active-standby across eu-central-1 (primary) + us-east-1 (standby). Includes: Transit Gateway, Aurora Global DB, DynamoDB Global Tables, S3 CRR + MRAP, Global Accelerator, CloudFront+WAF, Argo Rollouts, Thanos multi-region metrics, Security Hub aggregation, Karpenter spot nodes, 3 new Crossplane XRDs, and 4 V2 Backstage templates. Teams opt in by branching from `feat/v2-multi-region`. See [docs/multi-region.md](docs/multi-region.md). |
+| **Multi-region V2** | Active-standby across eu-central-1 (primary) + us-east-1 (standby) — now on `main`. Includes: Transit Gateway, Aurora Global DB, DynamoDB Global Tables, S3 CRR + MRAP, Global Accelerator, CloudFront+WAF, Argo Rollouts, Thanos multi-region metrics, Security Hub aggregation, Karpenter spot nodes, 3 new Crossplane XRDs, and 4 V2 Backstage templates. Single-region deployments are unaffected — opt in via `./scripts/bootstrap-multiregion.sh`. See [docs/multi-region.md](docs/multi-region.md). |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
 ## Quick Start
@@ -329,7 +329,7 @@ Backstage → scaffold repo → push code
 - Team Namespace, EKS Cluster, Deploy to Kind
 - RDS Database, Add Secret
 
-*Multi-region templates (V2 — opt-in via `feat/v2-multi-region` branch):*
+*Multi-region templates (V2 — opt-in via `./scripts/bootstrap-multiregion.sh`):*
 - Aurora Global Database, DynamoDB Global Table, S3 Multi-Region Access Point
 - EKS Multi-Region (ArgoCD ApplicationSet — hub-spoke matrix, eu-central-1 → us-east-1)
 

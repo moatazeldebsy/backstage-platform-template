@@ -1,10 +1,10 @@
 # V2 Multi-Region Architecture
 
-> **Feature branch:** `feat/v2-multi-region`
+> **Available on `main`** — merged in v2.
 >
-> The multi-region topology is delivered as an opt-in feature branch. Teams that need
-> active-standby disaster recovery branch from `feat/v2-multi-region` rather than `main`.
-> `main` stays single-region to keep the default setup simple.
+> The multi-region topology is opt-in. Single-region deployments (local Kind and single-region AWS)
+> are fully unaffected — no changes to `bootstrap-local.sh` or `bootstrap.sh` are required.
+> To deploy multi-region, use `./scripts/bootstrap-multiregion.sh` instead of `bootstrap.sh`.
 
 ## Topology
 
@@ -171,8 +171,8 @@ Sync-wave ordering ensures eu-central-1 is always deployed first. Argo Rollouts 
 
 Teams that need multi-region support should:
 
-1. Branch from `feat/v2-multi-region` (not `main`).
-2. Use the V2 Backstage templates (available in the Create page on the V2 branch).
+1. Clone or pull `main` — multi-region scripts and templates are included.
+2. Use the V2 Backstage templates (available in the Create page — search for "Multi-Region" or "V2").
 3. Enable V2 fields on existing XRDs (`crossRegionReplication: true`, `globalTable: true`, etc.) in their Crossplane claims.
 4. Apply the three new platform-level claims (`ECRReplicationRule`, `Route53HealthCheck`, `GlobalAcceleratorEndpointGroup`) via the platform team.
 

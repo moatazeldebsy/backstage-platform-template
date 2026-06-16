@@ -301,7 +301,7 @@ to under 10 minutes.
 |------|--------|-------|
 | Network policies cluster-wide | 💡 | Default-deny + explicit allow; Cilium or Calico |
 | Ephemeral PR environments | 💡 | PR label `env: preview` → Helm install into `services-preview-<pr#>`; torn down on close |
-| **Multi-region / HA** | ✅ | Active-standby eu-central-1 (primary) + us-east-1 (standby); see `feat/v2-multi-region` branch and [docs/multi-region.md](multi-region.md) |
+| **Multi-region / HA** | ✅ | Active-standby eu-central-1 (primary) + us-east-1 (standby); merged to `main` in v2 — see [docs/multi-region.md](multi-region.md) |
 | AI/ML platform namespace | 💡 | `ml-platform` namespace; GPU node group in Terraform; `LimitRange` for GPU quota |
 | LLM gateway resource | 💡 | Anthropic Claude API (all envs); AI agent templates `dependsOn: resource:claude-api` |
 | Chaos engineering integration | 💡 | Chaos Mesh; `chaos-experiment` Backstage template |
@@ -382,7 +382,7 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 | Feature | Notes |
 |---------|-------|
 | Secret rotation template | Backstage template wrapping `idp:provision-secret` with rotation schedule UI |
-| ~~Multi-region / HA~~ | ✅ Shipped in `feat/v2-multi-region` — see [docs/multi-region.md](multi-region.md) |
+| ~~Multi-region / HA~~ | ✅ Shipped in v2, merged to `main` — see [docs/multi-region.md](multi-region.md) |
 | Cilium Cluster Mesh | Cross-cluster DNS + direct pod routing; deferred after Phase 1 traffic layer stable |
 
 ---
