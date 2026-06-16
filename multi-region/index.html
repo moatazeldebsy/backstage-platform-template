@@ -1367,10 +1367,10 @@
 
 <h1 id="v2-multi-region-architecture">V2 Multi-Region Architecture<a class="headerlink" href="#v2-multi-region-architecture" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Feature branch:</strong> <code>feat/v2-multi-region</code></p>
-<p>The multi-region topology is delivered as an opt-in feature branch. Teams that need
-active-standby disaster recovery branch from <code>feat/v2-multi-region</code> rather than <code>main</code>.
-<code>main</code> stays single-region to keep the default setup simple.</p>
+<p><strong>Available on <code>main</code></strong> — merged in v2.</p>
+<p>The multi-region topology is opt-in. Single-region deployments (local Kind and single-region AWS)
+are fully unaffected — no changes to <code>bootstrap-local.sh</code> or <code>bootstrap.sh</code> are required.
+To deploy multi-region, use <code>./scripts/bootstrap-multiregion.sh</code> instead of <code>bootstrap.sh</code>.</p>
 </blockquote>
 <h2 id="topology">Topology<a class="headerlink" href="#topology" title="Permanent link">&para;</a></h2>
 <table>
@@ -1731,8 +1731,8 @@ Example claims: <code>aws/crossplane/compositions/&lt;name&gt;/example-claim.yam
 <h2 id="opting-in">Opting In<a class="headerlink" href="#opting-in" title="Permanent link">&para;</a></h2>
 <p>Teams that need multi-region support should:</p>
 <ol>
-<li>Branch from <code>feat/v2-multi-region</code> (not <code>main</code>).</li>
-<li>Use the V2 Backstage templates (available in the Create page on the V2 branch).</li>
+<li>Clone or pull <code>main</code> — multi-region scripts and templates are included.</li>
+<li>Use the V2 Backstage templates (available in the Create page — search for "Multi-Region" or "V2").</li>
 <li>Enable V2 fields on existing XRDs (<code>crossRegionReplication: true</code>, <code>globalTable: true</code>, etc.) in their Crossplane claims.</li>
 <li>Apply the three new platform-level claims (<code>ECRReplicationRule</code>, <code>Route53HealthCheck</code>, <code>GlobalAcceleratorEndpointGroup</code>) via the platform team.</li>
 </ol>
