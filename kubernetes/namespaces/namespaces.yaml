@@ -21,7 +21,9 @@ kind: Namespace
 metadata:
   name: monitoring
   labels:
-    pod-security.kubernetes.io/enforce: baseline
+    # privileged required: node-exporter needs hostNetwork/hostPort, promtail needs hostPath
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: baseline
 ---
 # ── Service environments (dev / staging / prod) ──────────────────────────────
 apiVersion: v1

@@ -1271,13 +1271,19 @@ if ! $SKIP_DORA; then
       log "Pushgateway ingress: http://pushgateway.idp.local"
 
       kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
+      # Admin wipe uses PUT (not DELETE) per Pushgateway API spec
       if ! kubectl exec -n monitoring deploy/prometheus-pushgateway -- \
-          wget -q -O- --method=DELETE http://localhost:9091/api/v1/admin/wipe 2>/dev/null; then
+          wget -q -O- --method=PUT http://localhost:9091/api/v1/admin/wipe 2>/dev/null; then
         warn "  Pushgateway admin wipe failed — restarting pod."
         kubectl rollout restart deployment/prometheus-pushgateway -n monitoring
         kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
       fi
       log "Seeding QA metrics..."
+      # Wait for Pushgateway to be reachable via ingress before seeding
+      for _i in {1..15}; do
+        if curl -sf http://pushgateway.idp.local/-/healthy &>/dev/null; then break; fi
+        sleep 2
+      done
       "${ROOT_DIR}/scripts/seed-qa-metrics.sh" || warn "QA metrics seed failed — run ./scripts/seed-qa-metrics.sh manually."
     fi
 
