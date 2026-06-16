@@ -1260,6 +1260,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#team-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Team Isolation
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1692,6 +1701,18 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RBAC reviewed — <code>github-actions</code> ClusterRole limited to required verbs/resources</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage users are provisioned via GitHub org membership, not manual catalog entries</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD RBAC policy restricts non-admins to read-only on production apps</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>permission.enabled: true</code> set in <code>backstage/app-config.aws.yaml</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Permission backend plugin wired in <code>packages/backend/src/plugins/permission.ts</code></li>
+</ul>
+<h3 id="team-isolation">Team Isolation<a class="headerlink" href="#team-isolation" title="Permanent link">&para;</a></h3>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> At least one team namespace provisioned via the <strong>Provision Team Namespace</strong> scaffold</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Per-team SecretStore is healthy: <code>kubectl get secretstore -A | grep team-</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Per-team IRSA roles restricted to <code>/&lt;team&gt;/*</code> secret paths (verify in IAM console)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Kyverno <code>crossplane-team-label-policy</code> is Enforcing: <code>kubectl get clusterpolicy crossplane-require-cost-tags</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All Crossplane resources in <code>team-*</code> namespaces carry <code>idp:team</code> AWS tag</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> DORA metrics have <code>team=</code> label: <code>curl &lt;pushgateway&gt;/metrics | grep 'dora_deploy.*team='</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Catalog uses <code>all-templates.yaml</code> (not 49 individual URL entries): check <code>app-config.aws.yaml</code></li>
 </ul>
 <hr />
 <h2 id="template-readiness-before-sharing-publicly">Template Readiness (before sharing publicly)<a class="headerlink" href="#template-readiness-before-sharing-publicly" title="Permanent link">&para;</a></h2>

@@ -1,0 +1,1855 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>IDP Scaling Runbook - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#idp-scaling-runbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IDP Scaling Runbook
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../mobile-platform/" class="md-tabs__link">
+        
+  
+    
+  
+  Mobile Platform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../docker-recovery/" class="md-tabs__link">
+        
+  
+    
+  
+  Docker Recovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../dora-finops/" class="md-tabs__link">
+        
+  
+    
+  
+  DORA & FinOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
+          
+  
+  Shift-Left Quality
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security-scanning/" class="md-tabs__link">
+        
+  
+    
+  
+  Security Scanning (SonarCloud + Snyk)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../sre-reliability/" class="md-tabs__link">
+        
+  
+    
+  
+  SRE & Reliability
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Docker Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora-finops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DORA & FinOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    For Leadership
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security Scanning (SonarCloud + Snyk)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sre-reliability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SRE & Reliability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        
+          
+          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_22">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost Budget Exceeded
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    KAgent Guardrails
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/scaling-runbook.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="idp-scaling-runbook">IDP Scaling Runbook<a class="headerlink" href="#idp-scaling-runbook" title="Permanent link">&para;</a></h1>
+<p>This runbook covers when and how to move between the three reference tiers as your
+organisation grows, what to apply at each step, and how to verify the outcome.</p>
+<hr />
+<h2 id="tier-reference">Tier Reference<a class="headerlink" href="#tier-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Teams</th>
+<th>Engineers</th>
+<th>EKS nodes (desired)</th>
+<th>RDS class</th>
+<th>Search backend</th>
+<th>ArgoCD controllers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small</td>
+<td>≤ 25</td>
+<td>≤ 150</td>
+<td>3 (t3.large)</td>
+<td>db.t3.medium</td>
+<td>Lunr (in-mem)</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Medium</td>
+<td>26–75</td>
+<td>150–750</td>
+<td>6 (m5.xlarge)</td>
+<td>db.m5.large</td>
+<td>Elasticsearch</td>
+<td>1 (scaled)</td>
+</tr>
+<tr>
+<td>Large</td>
+<td>75+</td>
+<td>750+</td>
+<td>12 (m5.2xlarge)</td>
+<td>db.r5.xlarge</td>
+<td>Elasticsearch</td>
+<td>3 (sharded)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="signals-to-move-up-a-tier">Signals to move up a tier<a class="headerlink" href="#signals-to-move-up-a-tier" title="Permanent link">&para;</a></h2>
+<p>Move from <strong>Small → Medium</strong> when any of these are true:
+- Backstage catalog entity count &gt; 500
+- Backstage pod CPU &gt; 70% sustained for &gt; 10 minutes
+- ArgoCD sync queue depth &gt; 20 apps waiting
+- Team count approaches 20 (plan ahead — provisioning takes 30–60 min)</p>
+<p>Move from <strong>Medium → Large</strong> when any of these are true:
+- Team count approaches 60
+- ArgoCD application count &gt; 250
+- EKS node group <code>desired_size</code> &gt; 15 consistently
+- RDS CPU &gt; 60% sustained (Backstage catalog queries)</p>
+<hr />
+<h2 id="step-1-apply-terraform-profile-infrastructure-resize">Step 1 — Apply Terraform profile (infrastructure resize)<a class="headerlink" href="#step-1-apply-terraform-profile-infrastructure-resize" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>terraform
+
+<span class="c1"># Dry-run first — inspect what changes</span>
+terraform<span class="w"> </span>plan<span class="w"> </span>-var-file<span class="o">=</span>profiles/medium.tfvars
+
+<span class="c1"># Apply (EKS node group resize is rolling, ~10 min; RDS Multi-AZ failover takes ~5 min)</span>
+terraform<span class="w"> </span>apply<span class="w"> </span>-var-file<span class="o">=</span>profiles/medium.tfvars
+</code></pre></div></td></tr></table></div>
+<p>Key changes per tier:
+- <strong>Small → Medium</strong>: EKS nodes t3.large→m5.xlarge, RDS db.t3.medium→db.m5.large,
+  <code>rds_multi_az=true</code> (triggers RDS modification, brief failover), Karpenter enabled.
+- <strong>Medium → Large</strong>: EKS nodes m5.xlarge→m5.2xlarge, RDS db.m5.large→db.r5.xlarge,
+  VPC CIDR expands (requires VPC replacement — plan a maintenance window).</p>
+<blockquote>
+<p><strong>Large tier VPC note</strong>: Expanding <code>vpc_cidr</code> from <code>10.0.0.0/16</code> to <code>10.0.0.0/8</code> requires
+destroying and recreating the VPC and all dependent resources. Do this with a blue/green
+cluster approach — provision the new VPC in a separate Terraform workspace, migrate teams,
+then decommission the old one.</p>
+</blockquote>
+<hr />
+<h2 id="step-2-apply-helm-tier-values-platform-service-resize">Step 2 — Apply Helm tier values (platform service resize)<a class="headerlink" href="#step-2-apply-helm-tier-values-platform-service-resize" title="Permanent link">&para;</a></h2>
+<h3 id="backstage">Backstage<a class="headerlink" href="#backstage" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Replace &lt;tier&gt; with small, medium, or large</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>backstage<span class="w"> </span>backstage/backstage<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>backstage<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>helm/values-tiers/backstage-&lt;tier&gt;.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reuse-values
+</code></pre></div></td></tr></table></div>
+<p>At <strong>Medium+</strong>, Elasticsearch must be running before applying the medium/large values:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Deploy Elasticsearch (one-time)</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>elasticsearch<span class="w"> </span>elastic/elasticsearch<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>search<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span><span class="nv">replicas</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>resources.requests.memory<span class="o">=</span>2Gi
+
+<span class="c1"># Then install the ES search backend plugin in Backstage</span>
+<span class="c1"># See backstage/packages/backend/src/index.ts — add:</span>
+<span class="c1"># backend.add(import(&#39;@backstage/plugin-search-backend-module-elasticsearch&#39;));</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="argocd">ArgoCD<a class="headerlink" href="#argocd" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>argocd<span class="w"> </span>argo/argo-cd<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>helm/values-tiers/argocd-&lt;tier&gt;.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reuse-values
+</code></pre></div></td></tr></table></div>
+<p>At <strong>Large</strong>, controller sharding is enabled (3 replicas with round-robin algorithm).
+Verify sharding is active:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>argocd<span class="w"> </span>admin<span class="w"> </span>controller-info
+<span class="c1"># Should show shard assignments across 3 controller pods</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="step-3-onboard-teams-at-scale-team-namespace-template">Step 3 — Onboard teams at scale (Team Namespace template)<a class="headerlink" href="#step-3-onboard-teams-at-scale-team-namespace-template" title="Permanent link">&para;</a></h2>
+<p>Each new team should go through the <strong>Provision Team Namespace</strong> Backstage template.
+It creates in one scaffold run:
+- <code>team-&lt;slug&gt;</code> Namespace with tier label and cost tags
+- ResourceQuota (Small/Medium) or LimitRange defaults (Large)
+- ArgoCD AppProject scoped to the namespace
+- <code>idp-developer</code> RoleBinding for team members
+- <code>deployer</code> ServiceAccount for CI/CD
+- Backstage Group entity (auto-registered in catalog)</p>
+<p>Navigate to: <strong>Backstage → Create → Provision Team Namespace</strong></p>
+<p>For bulk onboarding (migration from existing namespaces), use the scaffold API directly:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Trigger scaffold via Backstage API for each team</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>https://&lt;backstage-url&gt;/api/scaffolder/v2/tasks<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$BACKSTAGE_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;templateRef&quot;: &quot;template:default/team-namespace&quot;,</span>
+<span class="s1">    &quot;values&quot;: {</span>
+<span class="s1">      &quot;teamName&quot;: &quot;payments&quot;,</span>
+<span class="s1">      &quot;ownerGroup&quot;: &quot;engineering&quot;,</span>
+<span class="s1">      &quot;costCenter&quot;: &quot;CC-1234&quot;,</span>
+<span class="s1">      &quot;tier&quot;: &quot;medium&quot;,</span>
+<span class="s1">      &quot;githubOrg&quot;: &quot;your-org&quot;,</span>
+<span class="s1">      &quot;platformRepo&quot;: &quot;backstage-platform-template&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="step-4-verify-after-tier-change">Step 4 — Verify after tier change<a class="headerlink" href="#step-4-verify-after-tier-change" title="Permanent link">&para;</a></h2>
+<h3 id="infrastructure">Infrastructure<a class="headerlink" href="#infrastructure" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># EKS nodes are the right instance type and count</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>wide
+
+<span class="c1"># RDS Multi-AZ is active (Medium+)</span>
+aws<span class="w"> </span>rds<span class="w"> </span>describe-db-instances<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">&#39;DBInstances[].{id:DBInstanceIdentifier,multiAZ:MultiAZ,class:DBInstanceClass}&#39;</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="backstage_1">Backstage<a class="headerlink" href="#backstage_1" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Pods are healthy and replicas match tier</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>backstage
+
+<span class="c1"># Search backend is reachable (Medium+)</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>deploy/backstage<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>elasticsearch
+</code></pre></div></td></tr></table></div>
+<h3 id="argocd_1">ArgoCD<a class="headerlink" href="#argocd_1" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># All apps are synced; no apps stuck in queue</span>
+argocd<span class="w"> </span>app<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Synced
+
+<span class="c1"># Shard distribution (Large)</span>
+argocd<span class="w"> </span>admin<span class="w"> </span>controller-info
+</code></pre></div></td></tr></table></div>
+<h3 id="quota-policy">Quota policy<a class="headerlink" href="#quota-policy" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Kyverno generated the quota for a test namespace</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>resourcequota<span class="w"> </span>-n<span class="w"> </span>team-&lt;slug&gt;
+
+<span class="c1"># Attempt a quota-busting pod (should be denied at Medium/Small)</span>
+kubectl<span class="w"> </span>run<span class="w"> </span>quota-test<span class="w"> </span>--image<span class="o">=</span>nginx<span class="w"> </span>-n<span class="w"> </span>team-&lt;slug&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--overrides<span class="o">=</span><span class="s1">&#39;{&quot;spec&quot;:{&quot;containers&quot;:[{&quot;name&quot;:&quot;c&quot;,&quot;image&quot;:&quot;nginx&quot;,&quot;resources&quot;:{&quot;requests&quot;:{&quot;cpu&quot;:&quot;100&quot;}}}]}}&#39;</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="scaling-checklist-implementation-status">Scaling checklist — implementation status<a class="headerlink" href="#scaling-checklist-implementation-status" title="Permanent link">&para;</a></h2>
+<p>The items below map to the original 25-team scaling analysis. ✅ = shipped in v0.4.0.</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Item</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tenancy</strong></td>
+<td>Per-team namespace (quota, LimitRange, NetworkPolicy)</td>
+<td>✅ team-namespace scaffold skeleton</td>
+</tr>
+<tr>
+<td><strong>Tenancy</strong></td>
+<td><code>services-dev/staging/prod</code> ResourceQuota + LimitRange</td>
+<td>✅ <code>kubernetes/namespaces/services-quota.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Tenancy</strong></td>
+<td>Pod Security Admission per namespace</td>
+<td>✅ labels on all namespaces</td>
+</tr>
+<tr>
+<td><strong>Ownership</strong></td>
+<td>Per-team ArgoCD AppProject</td>
+<td>✅ <code>skeleton/argocd-project.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Ownership</strong></td>
+<td>Per-team ArgoCD ApplicationSet (<code>teams/&lt;team&gt;/services/*</code>)</td>
+<td>✅ <code>skeleton/applicationset.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Ownership</strong></td>
+<td><code>idp-developer</code> / <code>idp-team-lead</code> / <code>idp-platform-admin</code> ClusterRoles</td>
+<td>✅ <code>kubernetes/rbac/cluster-roles.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Secrets</strong></td>
+<td>Per-team namespace-scoped SecretStore</td>
+<td>✅ <code>skeleton/secret-store.yaml</code> + <code>terraform/iam-team-secret-store.tf</code></td>
+</tr>
+<tr>
+<td><strong>Secrets</strong></td>
+<td>Per-team IRSA roles scoped to <code>/&lt;team&gt;/*</code></td>
+<td>✅ <code>terraform/iam-team-secret-store.tf</code></td>
+</tr>
+<tr>
+<td><strong>Crossplane</strong></td>
+<td>Kyverno auto-inject <code>idp:team</code> tag on all claims</td>
+<td>✅ <code>kubernetes/policies/kyverno/crossplane-team-label-policy.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Crossplane</strong></td>
+<td>Validate: block claims with no owner/costCenter</td>
+<td>✅ same policy (Enforce mode)</td>
+</tr>
+<tr>
+<td><strong>Crossplane</strong></td>
+<td><code>team</code> field on all 5 XRDs + compositions</td>
+<td>✅ S3, RDS, DynamoDB, SQS, Kafka</td>
+</tr>
+<tr>
+<td><strong>CI/CD</strong></td>
+<td>Concurrency groups + <code>max-parallel</code> cap</td>
+<td>✅ all workflows</td>
+</tr>
+<tr>
+<td><strong>CI/CD</strong></td>
+<td>GitHub App replacing PAT</td>
+<td>✅ <code>auto-merge-onboarding.yml</code> + <code>app-config.aws.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Backstage</strong></td>
+<td>Small/Medium/Large Helm value tiers</td>
+<td>✅ <code>helm/values-tiers/</code></td>
+</tr>
+<tr>
+<td><strong>Backstage</strong></td>
+<td>GitHub org sync (User/Group auto-import)</td>
+<td>✅ <code>app-config.aws.yaml</code> <code>githubOrg</code> provider</td>
+</tr>
+<tr>
+<td><strong>Backstage</strong></td>
+<td>Catalog consolidation (49 URLs → 1 file)</td>
+<td>✅ <code>backstage/catalog/all-templates.yaml</code></td>
+</tr>
+<tr>
+<td><strong>Backstage</strong></td>
+<td>Template versioning (<code>v1</code> + <code>blessed</code>/<code>advanced</code> tags)</td>
+<td>✅ all 50 templates</td>
+</tr>
+<tr>
+<td><strong>Backstage</strong></td>
+<td>Permission framework (<code>permission.enabled: true</code>)</td>
+<td>✅ config added; backend plugin code still needed</td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td>DORA <code>team=</code> label on all Prometheus metrics</td>
+<td>✅ <code>dora-exporter.py</code></td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td><code>TEAM_MAP</code> env var for repo→team mapping</td>
+<td>✅ <code>dora-exporter.py</code> + CronJob YAMLs</td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td>Per-team Grafana folder via sidecar ConfigMap</td>
+<td>✅ <code>skeleton/grafana-folder.yaml</code> + sidecar enabled</td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td>Kyverno install in bootstrap scripts</td>
+<td>✅ Step 9b / Phase 3.8</td>
+</tr>
+</tbody>
+</table>
+<h3 id="still-open-not-yet-implemented">Still open (not yet implemented)<a class="headerlink" href="#still-open-not-yet-implemented" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub discovery plugin (replace URL catalog list for services)</td>
+<td>Still URL-based for service <code>catalog-info.yaml</code> files; templates use <code>all-templates.yaml</code></td>
+</tr>
+<tr>
+<td>Group-based template visibility in Backstage</td>
+<td>Requires permission backend plugin code (<code>packages/backend/src/plugins/permission.ts</code>)</td>
+</tr>
+<tr>
+<td>Per-team Grafana RBAC (org → team mapping)</td>
+<td>Grafana folder exists; team RBAC provisioning via API not yet automated</td>
+</tr>
+<tr>
+<td>DORA team dimension in Grafana dashboard</td>
+<td>Dashboard JSON needs <code>team</code> variable + per-team panel</td>
+</tr>
+<tr>
+<td>Thanos / Mimir for Prometheus HA</td>
+<td>Plan when &gt; 1M active series</td>
+</tr>
+<tr>
+<td>CODEOWNERS auto-generation in scaffold templates</td>
+<td>Add <code>CODEOWNERS</code> file step in service template <code>steps:</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="multi-cluster-topology-large-tier">Multi-cluster topology (Large tier)<a class="headerlink" href="#multi-cluster-topology-large-tier" title="Permanent link">&para;</a></h2>
+<p>At Large scale, split into two clusters to contain blast radius:</p>
+<table>
+<thead>
+<tr>
+<th>Cluster</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idp-platform</code></td>
+<td>Backstage, ArgoCD, MCP servers, observability, Kyverno</td>
+</tr>
+<tr>
+<td><code>idp-workloads</code></td>
+<td>All <code>team-*</code> namespaces, Crossplane, ESO</td>
+</tr>
+</tbody>
+</table>
+<p>Steps:
+1. Run <code>terraform apply -var-file=profiles/large.tfvars</code> with <code>cluster_name=idp-workloads</code>
+   in a separate Terraform workspace.
+2. Register the workload cluster in ArgoCD on the platform cluster:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>argocd<span class="w"> </span>cluster<span class="w"> </span>add<span class="w"> </span>&lt;workload-kubeconfig-context&gt;
+</code></pre></div></td></tr></table></div>
+3. Update ArgoCD ApplicationSets to target <code>https://&lt;workload-cluster-api&gt;</code> for team apps.
+4. Update Kyverno <code>ClusterPolicy</code> to target the workload cluster (install Kyverno on workload cluster).</p>
+<hr />
+<h2 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h2>
+<p>All changes are backward-compatible. To roll back a tier:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Terraform: reapply the previous tier profile</span>
+terraform<span class="w"> </span>apply<span class="w"> </span>-var-file<span class="o">=</span>profiles/small.tfvars
+
+<span class="c1"># Helm: re-apply smaller tier values</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>backstage<span class="w"> </span>backstage/backstage<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>helm/values-tiers/backstage-small.yaml<span class="w"> </span>--reuse-values
+</code></pre></div></td></tr></table></div>
+<p>Note: RDS instance class downgrades require a brief DB restart. EKS node group downgrades
+are rolling and non-disruptive if pods fit on the smaller nodes.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

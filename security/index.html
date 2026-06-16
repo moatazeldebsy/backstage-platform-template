@@ -1066,6 +1066,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#per-team-secret-isolation-irsa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-team secret isolation (IRSA)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#github-app-vs-pat-security-posture" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub App vs PAT security posture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#crossplane-data-safety-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       Crossplane data-safety defaults
@@ -1624,6 +1642,59 @@ with <strong>scoped inline policies</strong> — one per resource family:</p>
 </tbody>
 </table>
 <p>The <code>idp-*</code> prefix constraint aligns with the <code>pattern</code> validations in each XRD, so a Claim can never request a resource name that falls outside the policy scope.</p>
+<h2 id="per-team-secret-isolation-irsa">Per-team secret isolation (IRSA)<a class="headerlink" href="#per-team-secret-isolation-irsa" title="Permanent link">&para;</a></h2>
+<p>Each team provisioned via the <strong>Provision Team Namespace</strong> scaffold gets its own
+IRSA role (<code>terraform/iam-team-secret-store.tf</code>):</p>
+<ul>
+<li>The role is trusted only by <code>team-&lt;name&gt;:team-&lt;name&gt;-eso-sa</code> (namespace-scoped ServiceAccount)</li>
+<li>The inline policy allows only <code>secretsmanager:GetSecretValue</code> and <code>secretsmanager:DescribeSecret</code>
+  on <code>arn:aws:secretsmanager:*:*:secret:&lt;teamName&gt;/*</code></li>
+<li>Cross-team reads are blocked at the IAM level — no policy override inside the cluster
+  can grant access to another team's secrets</li>
+</ul>
+<p>The team's namespace-scoped <code>SecretStore</code> references only this role, so even if a team
+member can <code>kubectl apply</code> in their namespace, they cannot read secrets outside <code>/&lt;team&gt;/*</code>.</p>
+<p>Compare with the global <code>ClusterSecretStore</code> (<code>aws-secretsmanager</code>) which is used only
+by platform-owned services (backstage, dora-exporter, kagent) and is tied to the platform-team IRSA role.</p>
+<h2 id="github-app-vs-pat-security-posture">GitHub App vs PAT security posture<a class="headerlink" href="#github-app-vs-pat-security-posture" title="Permanent link">&para;</a></h2>
+<p>The IDP uses a GitHub App (configured in <code>app-config.aws.yaml</code> and <code>.github/workflows/auto-merge-onboarding.yml</code>) rather than a Personal Access Token:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>PAT</th>
+<th>GitHub App</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scope</td>
+<td>All repos the user can access</td>
+<td>Only repos the App is installed on</td>
+</tr>
+<tr>
+<td>Expiry</td>
+<td>90 days / 1 year</td>
+<td>Never (private key rotates independently)</td>
+</tr>
+<tr>
+<td>Rotation blast radius</td>
+<td>Must update everywhere the PAT is used</td>
+<td>Rotate private key; App ID/installation unchanged</td>
+</tr>
+<tr>
+<td>Rate limit</td>
+<td>5 000 req/hr total</td>
+<td>5 000 req/hr per installation</td>
+</tr>
+<tr>
+<td>CI self-approval</td>
+<td>Blocked by GitHub</td>
+<td>Allowed (App is a distinct identity)</td>
+</tr>
+</tbody>
+</table>
+<p>To set up, see <a href="../github-app-setup/">docs/github-app-setup.md</a>.</p>
 <h2 id="crossplane-data-safety-defaults">Crossplane data-safety defaults<a class="headerlink" href="#crossplane-data-safety-defaults" title="Permanent link">&para;</a></h2>
 <p>All five Compositions (<code>aws/crossplane/compositions/*/composition.yaml</code>) ship
 with these safety defaults:</p>

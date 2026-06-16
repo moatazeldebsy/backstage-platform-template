@@ -877,6 +877,39 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Resources covered">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-service-resources-team-self-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-service resources (team self-service)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-region-platform-resources-v2-platform-team" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-region / platform resources (V2 — platform team)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#team-label-injection-kyverno" class="md-nav__link">
+    <span class="md-ellipsis">
+      Team label injection (Kyverno)
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1602,6 +1635,7 @@ human running <code>terraform apply</code>. No manual step between "PR merged" a
    <code>READY=True</code> within ~60 s of merge.</li>
 </ol>
 <h2 id="resources-covered">Resources covered<a class="headerlink" href="#resources-covered" title="Permanent link">&para;</a></h2>
+<h3 id="per-service-resources-team-self-service">Per-service resources (team self-service)<a class="headerlink" href="#per-service-resources-team-self-service" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1609,7 +1643,7 @@ human running <code>terraform apply</code>. No manual step between "PR merged" a
 <th>XRD kind</th>
 <th>Claim kind</th>
 <th>Template</th>
-<th>Notes</th>
+<th><code>idp:team</code> tag</th>
 </tr>
 </thead>
 <tbody>
@@ -1618,41 +1652,99 @@ human running <code>terraform apply</code>. No manual step between "PR merged" a
 <td><code>XS3Bucket</code></td>
 <td><code>S3Bucket</code></td>
 <td><code>s3-bucket-crossplane</code></td>
-<td>AES256 encrypted, public-access blocked, versioning configurable</td>
+<td>AWS resource tag</td>
 </tr>
 <tr>
 <td>RDS Postgres</td>
 <td><code>XRDSInstance</code></td>
 <td><code>RDSInstance</code></td>
 <td><code>rds-database-crossplane</code></td>
-<td>Encrypted at rest, connection secret auto-written, backup retention 30 days default</td>
+<td>AWS resource tag</td>
 </tr>
 <tr>
 <td>MSK topic</td>
 <td><code>XKafkaTopic</code></td>
 <td><code>KafkaTopic</code></td>
 <td><code>kafka-topic-crossplane</code></td>
-<td>Targets existing Terraform-managed MSK cluster via <code>clusterArn</code></td>
+<td>K8s label (MSK topics don't support AWS tags)</td>
 </tr>
 <tr>
 <td>DynamoDB table</td>
 <td><code>XDynamoTable</code></td>
 <td><code>DynamoTable</code></td>
 <td><code>dynamodb-table-crossplane</code></td>
-<td>PITR on by default; supports optional sort key (<code>rangeKey</code> + <code>rangeKeyType</code>)</td>
+<td>AWS resource tag</td>
 </tr>
 <tr>
 <td>SQS queue</td>
 <td><code>XSQSQueue</code></td>
 <td><code>SQSQueue</code></td>
 <td><code>sqs-queue-crossplane</code></td>
-<td>SSE enabled by default; FIFO opt-in</td>
+<td>AWS resource tag</td>
 </tr>
 </tbody>
 </table>
-<p>All five Compositions live in <code>aws/crossplane/compositions/</code>. Adding
+<h3 id="multi-region-platform-resources-v2-platform-team">Multi-region / platform resources (V2 — platform team)<a class="headerlink" href="#multi-region-platform-resources-v2-platform-team" title="Permanent link">&para;</a></h3>
+<p>These XRDs are applied by the platform team (not individual service teams) and model
+account-level or global AWS resources introduced in the <code>feat/v2-multi-region</code> branch.</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>XRD kind</th>
+<th>Claim kind</th>
+<th>Key fields</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ECR cross-region replication</td>
+<td><code>XECRReplicationRule</code></td>
+<td><code>ECRReplicationRule</code></td>
+<td><code>sourceRegion</code>, <code>destinationRegion</code>, <code>repositoryFilter</code></td>
+<td>Account-level; one claim per account</td>
+</tr>
+<tr>
+<td>Route 53 health check + failover record</td>
+<td><code>XRoute53HealthCheck</code></td>
+<td><code>Route53HealthCheck</code></td>
+<td><code>fqdn</code>, <code>healthCheckType</code>, <code>failureThreshold</code>, <code>hostedZoneId</code> (opt)</td>
+<td>DNS failover record created only when <code>hostedZoneId</code> is set</td>
+</tr>
+<tr>
+<td>Global Accelerator endpoint group</td>
+<td><code>XGlobalAcceleratorEndpointGroup</code></td>
+<td><code>GlobalAcceleratorEndpointGroup</code></td>
+<td><code>listenerArn</code>, <code>endpointRegion</code>, <code>endpointArn</code>, <code>trafficDialPercentage</code></td>
+<td>One claim per region; set <code>trafficDialPercentage: 0</code> for warm standby</td>
+</tr>
+</tbody>
+</table>
+<p>All eight Compositions live in <code>aws/crossplane/compositions/</code>. Adding
 a new resource type is a matter of dropping in another <code>xrd.yaml</code> +
 <code>composition.yaml</code> pair plus a matching scaffolder template.</p>
+<h2 id="team-label-injection-kyverno">Team label injection (Kyverno)<a class="headerlink" href="#team-label-injection-kyverno" title="Permanent link">&para;</a></h2>
+<p>A pair of Kyverno policies in <code>kubernetes/policies/kyverno/crossplane-team-label-policy.yaml</code>
+enforce cost-attribution discipline on all Crossplane claims:</p>
+<p><strong>Mutate</strong> — when a Claim is created in a <code>team-*</code> namespace, Kyverno automatically adds
+<code>spec.parameters.team: &lt;teamName&gt;</code> (derived by stripping the <code>team-</code> prefix from the namespace).
+Teams never need to set this field manually.</p>
+<p><strong>Validate (Enforce)</strong> — rejects any Claim (in any namespace) that is missing <code>spec.parameters.owner</code>
+or <code>spec.parameters.costCenter</code>. This prevents untagged AWS resources that OpenCost cannot attribute.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Verify the policies are active</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>clusterpolicy<span class="w"> </span>crossplane-inject-team-tag<span class="w"> </span>crossplane-require-cost-tags
+
+<span class="c1"># See team tag on a provisioned S3 bucket</span>
+aws<span class="w"> </span>s3api<span class="w"> </span>get-bucket-tagging<span class="w"> </span>--bucket<span class="w"> </span>my-bucket<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.TagSet[] | select(.Key == &quot;idp:team&quot;)&#39;</span>
+</code></pre></div></td></tr></table></div>
+<p>Kyverno is installed by <code>bootstrap-local.sh</code> (Step 9b) and <code>bootstrap.sh</code> (Phase 3.8).
+If you see Kyverno admission errors, verify the <code>kyverno-admission-controller</code> deployment
+is <code>Available</code> in the <code>kyverno</code> namespace.</p>
 <h2 id="iam-least-privilege-provider-roles">IAM: least-privilege provider roles<a class="headerlink" href="#iam-least-privilege-provider-roles" title="Permanent link">&para;</a></h2>
 <p>The Crossplane IRSA role (<code>terraform/iam-crossplane.tf</code>) uses one <strong>inline
 policy per resource family</strong>, each scoped to the minimum actions the
@@ -1803,7 +1895,7 @@ broken annotation.</p>
 <span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># All five providers Healthy</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io
 
-<span class="c1"># XRDs established</span>
+<span class="c1"># XRDs established (5 per-service + 3 multi-region = 8 total)</span>
 kubectl<span class="w"> </span>get<span class="w"> </span>xrds
 
 <span class="c1"># ProviderConfig default present</span>

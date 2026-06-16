@@ -1293,6 +1293,75 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#team-infrastructure-v040" class="md-nav__link">
+    <span class="md-ellipsis">
+      Team Infrastructure (v0.4.0+)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Team Infrastructure (v0.4.0+)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptom-crossplane-claim-rejected-owner-is-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Crossplane claim rejected — "owner is required"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-idpteam-tag-missing-on-crossplane-provisioned-aws-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: idp:team tag missing on Crossplane-provisioned AWS resource
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-externalsecret-error-secretstore-not-found-team-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: ExternalSecret error — "SecretStore not found: team--secrets"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-all-templatesyaml-not-loading-templates-in-backstage-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: all-templates.yaml not loading templates in Backstage catalog
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-teamunknown-on-dora-prometheus-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: team=unknown on DORA Prometheus metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptom-grafana-team-payments-folder-not-appearing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: Grafana "Team — payments" folder not appearing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2678,6 +2747,161 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="getting-help">Getting help<a class="headerlink" href="#getting-help" title="Permanent link">&para;</a></h2>
+<hr />
+<h2 id="team-infrastructure-v040">Team Infrastructure (v0.4.0+)<a class="headerlink" href="#team-infrastructure-v040" title="Permanent link">&para;</a></h2>
+<h3 id="symptom-crossplane-claim-rejected-owner-is-required">Symptom: Crossplane claim rejected — "owner is required"<a class="headerlink" href="#symptom-crossplane-claim-rejected-owner-is-required" title="Permanent link">&para;</a></h3>
+<p>Kyverno validate policy <code>crossplane-require-cost-tags</code> is blocking the claim.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Confirm policy is active</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>clusterpolicy<span class="w"> </span>crossplane-require-cost-tags<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.validationFailureAction}&#39;</span>
+<span class="c1"># → Enforce</span>
+
+<span class="c1"># Add the missing field to your claim</span>
+spec:
+<span class="w">  </span>parameters:
+<span class="w">    </span>owner:<span class="w"> </span>payments-team<span class="w">      </span><span class="c1"># required on all claims</span>
+<span class="w">    </span>costCenter:<span class="w"> </span>CC-1234<span class="w">       </span><span class="c1"># required on all claims</span>
+</code></pre></div></td></tr></table></div>
+<p>If the policy is too strict for a specific namespace (e.g. during migration), temporarily
+set <code>validationFailureAction: Audit</code> and remediate claims before re-enforcing.</p>
+<hr />
+<h3 id="symptom-idpteam-tag-missing-on-crossplane-provisioned-aws-resource">Symptom: <code>idp:team</code> tag missing on Crossplane-provisioned AWS resource<a class="headerlink" href="#symptom-idpteam-tag-missing-on-crossplane-provisioned-aws-resource" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Check the claim namespace — mutation only runs in <code>team-*</code> namespaces:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>s3bucket<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.parameters.team}&#39;</span>
+</code></pre></div></td></tr></table></div></li>
+<li>Verify Kyverno is running:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>deployment<span class="w"> </span>kyverno-admission-controller<span class="w"> </span>-n<span class="w"> </span>kyverno
+</code></pre></div></td></tr></table></div></li>
+<li>Inspect Kyverno policy events:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>policyreport<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;
+</code></pre></div></td></tr></table></div></li>
+<li>If the claim was created before Kyverno was installed, delete and recreate it to trigger mutation.</li>
+</ol>
+<hr />
+<h3 id="symptom-externalsecret-error-secretstore-not-found-team-secrets">Symptom: <code>ExternalSecret</code> error — "SecretStore not found: team-<name>-secrets"<a class="headerlink" href="#symptom-externalsecret-error-secretstore-not-found-team-secrets" title="Permanent link">&para;</a></h3>
+<p>The namespace-scoped SecretStore was not created (IAM role ARN was blank when the team was scaffolded).</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check if SecretStore exists</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>secretstore<span class="w"> </span>-n<span class="w"> </span>team-&lt;name&gt;
+
+<span class="c1"># If missing, re-run the scaffold with the IAM role ARN, or apply manually:</span>
+<span class="c1"># 1. terraform apply -var=&#39;team_eso_roles=[{name=&quot;&lt;name&gt;&quot;,cost_center=&quot;CC-1234&quot;}]&#39;</span>
+<span class="c1"># 2. terraform output team_eso_role_arns  → copy ARN</span>
+<span class="c1"># 3. kubectl apply -f - &lt;&lt;EOF</span>
+<span class="c1"># apiVersion: v1</span>
+<span class="c1"># kind: ServiceAccount</span>
+<span class="c1"># metadata:</span>
+<span class="c1">#   name: team-&lt;name&gt;-eso-sa</span>
+<span class="c1">#   namespace: team-&lt;name&gt;</span>
+<span class="c1">#   annotations:</span>
+<span class="c1">#     eks.amazonaws.com/role-arn: &lt;ARN&gt;</span>
+<span class="c1"># ---</span>
+<span class="c1"># apiVersion: external-secrets.io/v1</span>
+<span class="c1"># kind: SecretStore</span>
+<span class="c1"># metadata:</span>
+<span class="c1">#   name: team-&lt;name&gt;-secrets</span>
+<span class="c1">#   namespace: team-&lt;name&gt;</span>
+<span class="c1"># spec:</span>
+<span class="c1">#   provider:</span>
+<span class="c1">#     aws:</span>
+<span class="c1">#       service: SecretsManager</span>
+<span class="c1">#       region: us-east-1</span>
+<span class="c1">#       auth:</span>
+<span class="c1">#         jwt:</span>
+<span class="c1">#           serviceAccountRef:</span>
+<span class="c1">#             name: team-&lt;name&gt;-eso-sa</span>
+<span class="c1">#             namespace: team-&lt;name&gt;</span>
+<span class="c1"># EOF</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="symptom-all-templatesyaml-not-loading-templates-in-backstage-catalog">Symptom: <code>all-templates.yaml</code> not loading templates in Backstage catalog<a class="headerlink" href="#symptom-all-templatesyaml-not-loading-templates-in-backstage-catalog" title="Permanent link">&para;</a></h3>
+<p>The URL pointing to <code>backstage/catalog/all-templates.yaml</code> in <code>app-config.aws.yaml</code> must
+resolve via the GitHub integration. Check:</p>
+<ol>
+<li>The <code>integrations.github.apps</code> block is configured (or <code>GITHUB_TOKEN</code> is set as fallback)</li>
+<li>The file was merged to <code>main</code> branch before Backstage started</li>
+<li>Force catalog refresh: <strong>Settings → Catalog → Refresh all</strong></li>
+</ol>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check catalog errors in Backstage logs</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>deploy/backstage<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;all-templates\|location.*error&quot;</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="symptom-teamunknown-on-dora-prometheus-metrics">Symptom: <code>team=unknown</code> on DORA Prometheus metrics<a class="headerlink" href="#symptom-teamunknown-on-dora-prometheus-metrics" title="Permanent link">&para;</a></h3>
+<p>The team could not be resolved from <code>TEAM_MAP</code> or GitHub topics.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check current metric labels</span>
+curl<span class="w"> </span>http://prometheus-pushgateway.monitoring.svc.cluster.local:9091/metrics<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>dora_deploy<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-5
+<span class="c1"># Should show: dora_deploy_frequency_per_day{service=&quot;orders-api&quot;,team=&quot;payments&quot;} 2</span>
+
+<span class="c1"># Option 1: Add team topic to the GitHub repo</span>
+gh<span class="w"> </span>repo<span class="w"> </span>edit<span class="w"> </span>moatazeldebsy/orders-api<span class="w"> </span>--add-topic<span class="w"> </span><span class="s2">&quot;team:payments&quot;</span>
+
+<span class="c1"># Option 2: Add to TEAM_MAP in Secrets Manager (see docs/dora-finops.md#team-dimension)</span>
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="symptom-grafana-team-payments-folder-not-appearing">Symptom: Grafana "Team — payments" folder not appearing<a class="headerlink" href="#symptom-grafana-team-payments-folder-not-appearing" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Confirm the scaffold PR was merged and the ConfigMap exists:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>cm<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span>grafana_folder<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>team
+</code></pre></div></td></tr></table></div></li>
+<li>Check Grafana sidecar is running:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>grafana<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0].spec.containers[*].name}&#39;</span>
+<span class="c1"># Should include: grafana-sc-dashboard</span>
+</code></pre></div></td></tr></table></div></li>
+<li>If sidecar is absent, re-upgrade Grafana with the sidecar values:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>grafana<span class="w"> </span>grafana/grafana<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>observability/grafana/grafana-helm-values.yaml<span class="w"> </span>--reuse-values
+</code></pre></div></td></tr></table></div></li>
+</ol>
+<hr />
 <p>If an issue is not covered here:</p>
 <ol>
 <li>Check the <a href="../runbooks/">docs/runbooks/</a> directory for alert-specific procedures.</li>

@@ -2615,40 +2615,49 @@ wildcard ingress DNS, and concurrent-PR race conditions make this a Phase 9+ ite
 <thead>
 <tr>
 <th>Item</th>
+<th>Status</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Network policies cluster-wide</td>
+<td>💡</td>
 <td>Default-deny + explicit allow; Cilium or Calico</td>
 </tr>
 <tr>
 <td>Ephemeral PR environments</td>
+<td>💡</td>
 <td>PR label <code>env: preview</code> → Helm install into <code>services-preview-&lt;pr#&gt;</code>; torn down on close</td>
 </tr>
 <tr>
-<td>Multi-region / HA</td>
-<td>Second AWS region; Route53 weighted failover; cross-region ECR replication</td>
+<td><strong>Multi-region / HA</strong></td>
+<td>✅</td>
+<td>Active-standby eu-central-1 (primary) + us-east-1 (standby); see <code>feat/v2-multi-region</code> branch and <a href="../multi-region/">docs/multi-region.md</a></td>
 </tr>
 <tr>
 <td>AI/ML platform namespace</td>
+<td>💡</td>
 <td><code>ml-platform</code> namespace; GPU node group in Terraform; <code>LimitRange</code> for GPU quota</td>
 </tr>
 <tr>
 <td>LLM gateway resource</td>
+<td>💡</td>
 <td>Anthropic Claude API (all envs); AI agent templates <code>dependsOn: resource:claude-api</code></td>
 </tr>
 <tr>
 <td>Chaos engineering integration</td>
+<td>💡</td>
 <td>Chaos Mesh; <code>chaos-experiment</code> Backstage template</td>
 </tr>
 <tr>
 <td>Platform API (FastAPI)</td>
+<td>💡</td>
 <td>REST API for programmatic service creation</td>
 </tr>
 <tr>
 <td>Backstage plugin: security posture</td>
+<td>💡</td>
 <td>Aggregate Trivy + OPA pass/fail per service into a single security score</td>
 </tr>
 </tbody>
@@ -2890,8 +2899,12 @@ in ArgoCD, observability completeness, infrastructure right-sizing, and CI secur
 <td>Backstage template wrapping <code>idp:provision-secret</code> with rotation schedule UI</td>
 </tr>
 <tr>
-<td>Multi-region / HA</td>
-<td>Second AWS region, Route53 failover</td>
+<td><del>Multi-region / HA</del></td>
+<td>✅ Shipped in <code>feat/v2-multi-region</code> — see <a href="../multi-region/">docs/multi-region.md</a></td>
+</tr>
+<tr>
+<td>Cilium Cluster Mesh</td>
+<td>Cross-cluster DNS + direct pod routing; deferred after Phase 1 traffic layer stable</td>
 </tr>
 </tbody>
 </table>

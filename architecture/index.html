@@ -1869,12 +1869,27 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 <tr>
 <td><code>kubernetes/</code></td>
 <td>Both scripts</td>
-<td>Namespaces, RBAC, OPA/Gatekeeper policies, team entities, shared monitoring dashboards (ConfigMaps), KAgent agent CRDs, Backstage RBAC + configmap</td>
+<td>Namespaces (<code>namespaces.yaml</code>, <code>services-quota.yaml</code>), RBAC, OPA/Gatekeeper policies, <strong>Kyverno team policies</strong> (<code>policies/kyverno/</code>), team entities, shared monitoring dashboards (ConfigMaps), KAgent agent CRDs, Backstage RBAC + configmap</td>
+</tr>
+<tr>
+<td><code>kubernetes/namespaces/services-quota.yaml</code></td>
+<td>Both scripts</td>
+<td>ResourceQuota + LimitRange for <code>services-dev/staging/prod</code> namespaces</td>
+</tr>
+<tr>
+<td><code>kubernetes/policies/kyverno/</code></td>
+<td>Both scripts</td>
+<td>Kyverno ClusterPolicies: <code>team-quota-policy.yaml</code> (auto-generate quota from tier label), <code>crossplane-team-label-policy.yaml</code> (inject <code>idp:team</code> tag + require owner/costCenter)</td>
+</tr>
+<tr>
+<td><code>kubernetes/rbac/cluster-roles.yaml</code></td>
+<td>Both scripts</td>
+<td><code>idp-developer</code>, <code>idp-team-lead</code>, <code>idp-platform-admin</code> ClusterRoles</td>
 </tr>
 <tr>
 <td><code>terraform/</code></td>
 <td>Manual (<code>terraform apply</code>)</td>
-<td>EKS, VPC, RDS, ECR, IAM/OIDC, Secrets Manager scaffolding</td>
+<td>EKS, VPC, RDS, ECR, IAM/OIDC, Secrets Manager scaffolding, <strong><code>iam-team-secret-store.tf</code></strong> (per-team ESO IAM roles)</td>
 </tr>
 <tr>
 <td><code>helm/service-template/</code></td>
@@ -1882,19 +1897,34 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 <td>Single Helm chart used by every service</td>
 </tr>
 <tr>
+<td><code>helm/values-tiers/</code></td>
+<td>Manual</td>
+<td>Small/Medium/Large Helm value tiers for Backstage and ArgoCD</td>
+</tr>
+<tr>
 <td><code>services/&lt;svc&gt;/</code></td>
 <td>Per-service CI</td>
-<td>Source, Dockerfile, <code>helm-values-local.yaml</code> (Kind), <code>helm-values-aws.yaml</code> (EKS)</td>
+<td>Legacy flat service values: <code>helm-values-local.yaml</code> (Kind), <code>helm-values-aws.yaml</code> (EKS)</td>
+</tr>
+<tr>
+<td><code>teams/&lt;teamName&gt;/services/&lt;svc&gt;/</code></td>
+<td>Per-team CI</td>
+<td>Team-scoped service values (auto-discovered by per-team ApplicationSet)</td>
+</tr>
+<tr>
+<td><code>backstage/catalog/all-templates.yaml</code></td>
+<td>Both</td>
+<td>Single Location file indexing all 50 templates; replaces 49 individual URL entries in <code>app-config.aws.yaml</code></td>
 </tr>
 <tr>
 <td><code>observability/</code></td>
 <td>Both</td>
-<td>Shared alerting rules, Grafana dashboards, DORA/tech-insights exporters</td>
+<td>Shared alerting rules, Grafana dashboards (<code>grafana-helm-values.yaml</code> with sidecar enabled), DORA/tech-insights exporters</td>
 </tr>
 <tr>
 <td><code>backstage/</code></td>
 <td>Both</td>
-<td>Portal source, <code>app-config.yaml</code> (base), <code>app-config.local.yaml</code> (local overrides), catalog templates</td>
+<td>Portal source, <code>app-config.yaml</code> (base), <code>app-config.local.yaml</code> (local overrides), catalog templates (all tagged <code>v1</code> + <code>blessed</code>/<code>advanced</code>)</td>
 </tr>
 <tr>
 <td><code>scripts/</code></td>
@@ -2096,7 +2126,42 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <tr>
 <td>ClusterSecretStore</td>
 <td><code>aws/external-secrets/cluster-secret-store.yaml</code></td>
-<td>ESO → AWS Secrets Manager backend</td>
+<td>Global ESO → AWS Secrets Manager backend</td>
+</tr>
+<tr>
+<td>Per-team SecretStore</td>
+<td><code>kubernetes/teams/&lt;name&gt;/secret-store.yaml</code> (scaffold)</td>
+<td>Namespace-scoped SecretStore; access restricted to <code>/&lt;team&gt;/*</code> in Secrets Manager</td>
+</tr>
+<tr>
+<td>Per-team ESO IRSA roles</td>
+<td><code>terraform/iam-team-secret-store.tf</code></td>
+<td>One IAM role per team; <code>secretsmanager:GetSecretValue</code> on <code>/&lt;team&gt;/*</code> only</td>
+</tr>
+<tr>
+<td>Kyverno</td>
+<td><code>kyverno</code> namespace</td>
+<td>Admission controller for team label injection + quota enforcement</td>
+</tr>
+<tr>
+<td>Kyverno team policies</td>
+<td><code>kubernetes/policies/kyverno/</code></td>
+<td>Mutate: auto-inject <code>idp:team</code>; Validate: require <code>owner</code>+<code>costCenter</code> on Crossplane claims</td>
+</tr>
+<tr>
+<td>services-quota</td>
+<td><code>kubernetes/namespaces/services-quota.yaml</code></td>
+<td>ResourceQuota + LimitRange for <code>services-dev/staging/prod</code></td>
+</tr>
+<tr>
+<td>Grafana per-team folders</td>
+<td><code>kubernetes/teams/&lt;name&gt;/grafana-folder.yaml</code> (scaffold)</td>
+<td>ConfigMap → Grafana sidecar creates team dashboard folder</td>
+</tr>
+<tr>
+<td>Grafana sidecar</td>
+<td><code>observability/grafana/grafana-helm-values.yaml</code></td>
+<td><code>sidecar.dashboards.enabled=true</code>, <code>searchNamespace: ALL</code>, <code>folderAnnotation: grafana_folder</code></td>
 </tr>
 <tr>
 <td>Tech Insights Exporter</td>
@@ -2106,12 +2171,22 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <tr>
 <td>DORA exporter (local)</td>
 <td><code>local/observability/dora/dora-cronjob.yaml</code></td>
-<td>DORA metrics → Pushgateway (local)</td>
+<td>DORA metrics → Pushgateway; <code>team=</code> label via <code>TEAM_MAP</code> or GitHub topic</td>
 </tr>
 <tr>
 <td>DORA exporter (AWS)</td>
 <td><code>aws/observability/dora/dora-cronjob.yaml</code></td>
-<td>DORA metrics → Pushgateway + CloudWatch (AWS)</td>
+<td>DORA metrics → Pushgateway + CloudWatch; <code>TEAM_MAP</code> from Secrets Manager</td>
+</tr>
+<tr>
+<td>Template catalog</td>
+<td><code>backstage/catalog/all-templates.yaml</code></td>
+<td>Single Location file for all 50 templates (tagged <code>v1</code> + <code>blessed</code>/<code>advanced</code>)</td>
+</tr>
+<tr>
+<td>Permission framework</td>
+<td><code>backstage/app-config.aws.yaml</code></td>
+<td><code>permission.enabled: true</code>; blocks unauthenticated scaffolder access</td>
 </tr>
 <tr>
 <td>hello-service</td>
@@ -2345,7 +2420,22 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <span class="normal">53</span>
 <span class="normal">54</span>
 <span class="normal">55</span>
-<span class="normal">56</span></pre></div></td><td class="code"><div><pre><span></span><code>EKS Cluster: idp-mvp (us-east-1)
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span></pre></div></td><td class="code"><div><pre><span></span><code>EKS Cluster: idp-mvp (us-east-1)
 │
 ├── kube-system
 │   ├── aws-load-balancer-controller  (creates ALBs from Ingress resources)
@@ -2357,9 +2447,16 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 │   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
 │   └── service/backstage             (ALB ingress)
 │
+├── kyverno                           (admission controller)
+│   ├── kyverno-admission-controller  (mutate + validate webhooks)
+│   ├── ClusterPolicy: crossplane-inject-team-tag   (auto-inject idp:team on Crossplane claims)
+│   └── ClusterPolicy: crossplane-require-cost-tags (block claims without owner/costCenter)
+│
 ├── argocd                            (GitOps controller)
 │   ├── argocd-server                 (UI + API, ALB ingress)
-│   ├── ApplicationSet: idp-services  (auto-discovers services/*/)
+│   ├── ApplicationSet: idp-services  (auto-discovers services/*/ — legacy flat services)
+│   ├── AppProject: team-&lt;name&gt;       (one per team, created by scaffold; scoped to team-&lt;name&gt; ns)
+│   ├── ApplicationSet: team-&lt;name&gt;   (auto-discovers teams/&lt;name&gt;/services/*/)
 │   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
 │
 ├── monitoring                        (observability stack)
@@ -2376,11 +2473,19 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 ├── services                          (manually deployed services)
 │   └── deployment/hello-service      (reference Go service)
 │
-├── services-dev                      (ArgoCD-managed dev services)
+├── services-dev                      (ArgoCD-managed dev services; ResourceQuota + LimitRange applied)
 │   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
 │   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
 │   ├── deployment/qa-mcp-server      (QA MCP server)
 │   └── deployment/contract-mcp-server (contract testing tools)
+│
+├── team-&lt;name&gt;                       (one per team; created by Provision Team Namespace scaffold)
+│   ├── ResourceQuota / LimitRange    (tier-based; auto-generated by Kyverno team-quota-policy)
+│   ├── NetworkPolicy                 (deny-all ingress; allow intra-ns + monitoring + ingress-nginx)
+│   ├── RoleBinding: idp-developer    (team members get deploy+observe access)
+│   ├── ServiceAccount: deployer      (CI/CD identity for the team)
+│   ├── SecretStore: team-&lt;name&gt;-secrets  (scoped to /&lt;name&gt;/* in Secrets Manager)
+│   └── ConfigMap: grafana-folder-team-&lt;name&gt;  (→ Grafana sidecar creates team dashboard folder)
 │
 ├── kagent                            (AI agents)
 │   ├── deployment/kagent-controller  (KAgent operator)
@@ -2428,7 +2533,9 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span>
-<span class="normal">26</span></pre></div></td><td class="code"><div><pre><span></span><code>Terraform
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code>Terraform
   └── creates placeholders in AWS Secrets Manager
         idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
                                K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET
@@ -2440,7 +2547,9 @@ bootstrap.sh
   └── injects real values (reads from local/.env and cluster)
         K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
         BACKSTAGE_CATALOG_TOKEN   ← generated random value
-        GITHUB_TOKEN              ← read from local/.env
+        GITHUB_TOKEN              ← read from env
+        GITHUB_APP_ID/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET ← GitHub App (optional; replaces PAT)
+        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
 
 External Secrets Operator (ESO)
   ├── ClusterSecretStore: aws-secretsmanager
@@ -2500,6 +2609,11 @@ External Secrets Operator (ESO)
 <td>GitHub OIDC (org-level)</td>
 <td>PowerUser + IAM + S3 tfstate (for CI/CD)</td>
 </tr>
+<tr>
+<td><code>team-&lt;name&gt;-eso</code></td>
+<td><code>team-&lt;name&gt;:team-&lt;name&gt;-eso-sa</code></td>
+<td><code>secretsmanager:GetSecretValue</code> on <code>/&lt;name&gt;/*</code> only (one role per team; provisioned by <code>terraform/iam-team-secret-store.tf</code>)</td>
+</tr>
 </tbody>
 </table>
 <h3 id="bootstrap-sequence">Bootstrap Sequence<a class="headerlink" href="#bootstrap-sequence" title="Permanent link">&para;</a></h3>
@@ -2537,7 +2651,10 @@ External Secrets Operator (ESO)
 <span class="normal">32</span>
 <span class="normal">33</span>
 <span class="normal">34</span>
-<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
   └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
 
 ./scripts/bootstrap.sh
@@ -2545,12 +2662,15 @@ External Secrets Operator (ESO)
   │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
   │
   ├── Phase 2 — Platform base (~5 min)
-  │     Namespaces · RBAC · AWS Load Balancer Controller
+  │     Namespaces · `services-quota.yaml` (ResourceQuota+LimitRange for services-dev/staging/prod)
+  │     RBAC · AWS Load Balancer Controller
   │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
   │
-  ├── Phase 3 — GitOps (~5 min)
+  ├── Phase 3 — GitOps (~8 min)
   │     ArgoCD · OPA/Gatekeeper · Crossplane
   │     idp-services ApplicationSet (auto-discovers services/*/)
+  │     Kyverno 3.2.7 + team policies (crossplane-team-label-policy, team-quota-policy)
+  │     Secrets Manager updated: GITHUB_APP_* + TEAM_MAP (if env vars set)
   │
   ├── Phase 4 — Observability (~10 min)
   │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)

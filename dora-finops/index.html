@@ -915,6 +915,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#team-dimension" class="md-nav__link">
+    <span class="md-ellipsis">
+      Team dimension
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Team dimension">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-team-is-resolved-in-priority-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      How team is resolved (in priority order)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-team_map-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure TEAM_MAP (AWS)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-team_map-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure TEAM_MAP (local)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dora-exporter" class="md-nav__link">
     <span class="md-ellipsis">
       DORA Exporter
@@ -1647,6 +1689,7 @@
 <li>Prometheus proxy must be reachable: <code>http://prometheus.idp.local</code> (local) or the in-cluster DNS endpoint (AWS)</li>
 <li>The Prometheus proxy is configured in <code>backstage/app-config.local.yaml</code> (<code>/api/proxy/prometheus</code>) and <code>backstage/app-config.aws.yaml</code></li>
 <li>DORA metrics are pushed by the DORA exporter CronJob — see <code>observability/dora-exporter/</code> for the metric definitions</li>
+<li>All metrics carry a <code>team=</code> label (see <a href="#team-dimension">Team dimension</a> below)</li>
 </ul>
 <h3 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Permanent link">&para;</a></h3>
 <p>The tab is implemented in <code>backstage/app/packages/app/src/extensions.tsx</code>. It registers as a <code>EntityContent</code> extension under the route path <code>dora</code> and queries Prometheus on component mount.</p>
@@ -1741,6 +1784,58 @@
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="team-dimension">Team dimension<a class="headerlink" href="#team-dimension" title="Permanent link">&para;</a></h2>
+<p>All four DORA metrics carry a <code>team=</code> Prometheus label so dashboards can be
+filtered or grouped by team:</p>
+<div class="language-promql highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Deploy frequency for a specific team</span>
+<span class="nv">dora_deploy_frequency_per_day</span><span class="p">{</span><span class="nl">team</span><span class="o">=</span><span class="p">&quot;</span><span class="s">payments</span><span class="p">&quot;}</span>
+
+<span class="c1"># Average lead time across all teams</span>
+<span class="k">avg</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">team</span><span class="o">)</span><span class="w"> </span><span class="o">(</span><span class="nv">dora_lead_time_minutes</span><span class="o">)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="how-team-is-resolved-in-priority-order">How team is resolved (in priority order)<a class="headerlink" href="#how-team-is-resolved-in-priority-order" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>TEAM_MAP</code> env var — a JSON map of <code>{"repo-name": "team-name"}</code> stored in AWS
+   Secrets Manager under <code>idp-mvp/backstage</code> (key: <code>TEAM_MAP</code>).</li>
+<li>GitHub repo topic <code>team:&lt;name&gt;</code> — tag any service repo with topic <code>team:payments</code>
+   and the exporter picks it up automatically.</li>
+<li>Falls back to <code>team="unknown"</code> if neither is configured.</li>
+</ol>
+<h3 id="configure-team_map-aws">Configure TEAM_MAP (AWS)<a class="headerlink" href="#configure-team_map-aws" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Add team mappings to Secrets Manager</span>
+<span class="nv">CURRENT</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="k">)</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CURRENT</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import json, sys</span>
+<span class="s2">s = json.load(sys.stdin)</span>
+<span class="s2">s[&#39;TEAM_MAP&#39;] = json.dumps({&#39;orders-api&#39;: &#39;payments&#39;, &#39;auth-service&#39;: &#39;platform&#39;})</span>
+<span class="s2">print(json.dumps(s))</span>
+<span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>update-secret<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--secret-string<span class="w"> </span>file:///dev/stdin
+</code></pre></div></td></tr></table></div>
+<h3 id="configure-team_map-local">Configure TEAM_MAP (local)<a class="headerlink" href="#configure-team_map-local" title="Permanent link">&para;</a></h3>
+<p>Uncomment the <code>TEAM_MAP</code> block in <code>local/observability/dora/dora-cronjob.yaml</code> and
+create a ConfigMap:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>configmap<span class="w"> </span>dora-team-map<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">TEAM_MAP</span><span class="o">=</span><span class="s1">&#39;{&quot;orders-api&quot;:&quot;payments&quot;}&#39;</span>
+</code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="dora-exporter">DORA Exporter<a class="headerlink" href="#dora-exporter" title="Permanent link">&para;</a></h2>
 <p>The DORA exporter (<code>observability/dora-exporter/</code>) is a Python script running as a Kubernetes CronJob. It:</p>

@@ -1509,6 +1509,39 @@
 </code></pre></div></td></tr></table></div>
 <p>Deploys MLflow, KAgent, idp-assistant, and MCP servers. Requires <code>ANTHROPIC_API_KEY</code>.</p>
 <hr />
+<h3 id="step-5-provision-team-namespaces">Step 5: Provision team namespaces<a class="headerlink" href="#step-5-provision-team-namespaces" title="Permanent link">&para;</a></h3>
+<p>After the platform is up, onboard teams via the Backstage <strong>Provision Team Namespace</strong> template.
+Before running it, create the per-team ESO IAM role:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>terraform
+
+<span class="c1"># Add each team (repeat for all teams)</span>
+terraform<span class="w"> </span>apply<span class="w"> </span>-var<span class="o">=</span><span class="s1">&#39;team_eso_roles=[</span>
+<span class="s1">  {name=&quot;payments&quot;, cost_center=&quot;CC-1234&quot;},</span>
+<span class="s1">  {name=&quot;platform&quot;, cost_center=&quot;CC-0001&quot;}</span>
+<span class="s1">]&#39;</span>
+
+<span class="c1"># Get role ARNs to paste into the scaffold form</span>
+terraform<span class="w"> </span>output<span class="w"> </span>team_eso_role_arns
+</code></pre></div></td></tr></table></div>
+<p>Then in Backstage → <strong>Create</strong> → <strong>Provision Team Namespace</strong> → fill in team name, tier, and the
+IAM role ARN. The scaffold PR creates:
+- <code>kubernetes/teams/&lt;name&gt;/</code> with namespace, quota, RBAC, AppProject, ApplicationSet, SecretStore, Grafana folder
+- <code>backstage/catalog/groups/&lt;name&gt;.yaml</code> — team auto-registers in catalog</p>
+<p>Merge the PR — CI (<code>scaffold.yml</code>) applies the manifests.</p>
+<blockquote>
+<p><strong>Service path convention</strong>: Team service values go under <code>teams/&lt;teamName&gt;/services/&lt;serviceName&gt;/</code>,
+<strong>not</strong> <code>services/&lt;teamName&gt;/</code>. See <a href="../team-management/">docs/team-management.md</a> for details.</p>
+</blockquote>
+<hr />
 <h2 id="post-deployment-validation">Post-Deployment Validation<a class="headerlink" href="#post-deployment-validation" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/validate-deployment.sh
 </code></pre></div></td></tr></table></div>

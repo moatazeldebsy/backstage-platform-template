@@ -748,6 +748,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#4-team-namespace-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Team namespace setup
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#4-verify" class="md-nav__link">
     <span class="md-ellipsis">
       4. Verify
@@ -1906,6 +1915,36 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 </tr>
 </tbody>
 </table>
+<p>Add these to the <strong>platform repo</strong> to enable the auto-merge workflow (recommended over a PAT):</p>
+<table>
+<thead>
+<tr>
+<th>Secret</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>APP_ID</code></td>
+<td>Numeric GitHub App ID (see <a href="../github-app-setup/">docs/github-app-setup.md</a>)</td>
+</tr>
+<tr>
+<td><code>APP_PRIVATE_KEY</code></td>
+<td>PEM contents of the App's private key</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4-team-namespace-setup">4. Team namespace setup<a class="headerlink" href="#4-team-namespace-setup" title="Permanent link">&para;</a></h3>
+<p>After the platform is bootstrapped, onboard teams using the <strong>Provision Team Namespace</strong> scaffold template (tagged <code>blessed</code>). Each team gets:
+- An isolated <code>team-&lt;name&gt;</code> namespace with quota, LimitRange, NetworkPolicy
+- A per-team ArgoCD AppProject + ApplicationSet scanning <code>teams/&lt;name&gt;/services/*</code>
+- A scoped SecretStore (access only to <code>/&lt;name&gt;/*</code> in Secrets Manager)
+- A Grafana folder</p>
+<p>For the full walkthrough, see <a href="../team-management/">docs/team-management.md</a>.</p>
+<blockquote>
+<p><strong>Path convention</strong>: Team service values files go under <code>teams/&lt;teamName&gt;/services/&lt;serviceName&gt;/</code>,
+<strong>not</strong> <code>services/&lt;teamName&gt;/</code>. The <code>services/</code> path is reserved for legacy platform-owned services.</p>
+</blockquote>
 <h3 id="4-verify">4. Verify<a class="headerlink" href="#4-verify" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>

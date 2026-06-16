@@ -1818,9 +1818,24 @@ docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;nam
 </thead>
 <tbody>
 <tr>
-<td>Namespace</td>
+<td>Namespace (legacy services)</td>
 <td><code>services</code></td>
 <td><code>services</code></td>
+</tr>
+<tr>
+<td>Namespace (team services)</td>
+<td><code>team-&lt;name&gt;</code></td>
+<td><code>team-&lt;name&gt;</code></td>
+</tr>
+<tr>
+<td>Service values path (legacy)</td>
+<td><code>services/&lt;name&gt;/helm-values-local.yaml</code></td>
+<td><code>services/&lt;name&gt;/helm-values-aws.yaml</code></td>
+</tr>
+<tr>
+<td>Service values path (team)</td>
+<td><code>teams/&lt;name&gt;/services/&lt;svc&gt;/helm-values-local.yaml</code></td>
+<td><code>teams/&lt;name&gt;/services/&lt;svc&gt;/helm-values-aws.yaml</code></td>
 </tr>
 <tr>
 <td>Image registry</td>
@@ -1851,6 +1866,21 @@ docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;nam
 <td>Memory request</td>
 <td>32Mi</td>
 <td>128Mi</td>
+</tr>
+<tr>
+<td>Team label (K8s)</td>
+<td><code>team: &lt;name&gt;</code></td>
+<td><code>team: &lt;name&gt;</code></td>
+</tr>
+<tr>
+<td>Team tag (AWS)</td>
+<td><code>idp:team=&lt;name&gt;</code> (Kyverno auto-injects on Crossplane claims)</td>
+<td>same</td>
+</tr>
+<tr>
+<td>Secret path</td>
+<td>n/a (local uses ConfigMaps)</td>
+<td><code>/&lt;teamName&gt;/&lt;secret-name&gt;</code> in Secrets Manager</td>
 </tr>
 </tbody>
 </table>
