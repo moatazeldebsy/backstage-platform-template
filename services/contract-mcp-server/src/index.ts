@@ -8,7 +8,8 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 import { register, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
 import { createStore, type ContractStore } from './store.js';
-import { parseSpec, generatePactJson, generatePactTestCode, detectBreakingChanges } from './generator.js';
+import { parseSpec, generatePactJson, generatePactTestCode, detectBreakingChanges, extractSchemaContext } from './generator.js';
+import { createApp, parseServicesRegistry, resolveServiceBaseUrl } from './app.js';
 
 const PORT = parseInt(process.env.PORT ?? '3003', 10);
 const K8S_API = process.env.K8S_API ?? 'https://kubernetes.default.svc';
@@ -32,22 +33,6 @@ try {
     });
   }
 } catch { /* not running in-cluster; K8S_TOKEN env var used instead */ }
-
-// ── Service registry (http discovery mode) ────────────────────────────────
-
-function parseServicesRegistry(): Map<string, string> {
-  const map = new Map<string, string>();
-  const raw = process.env.SERVICES_REGISTRY ?? '';
-  if (!raw) return map;
-  for (const pair of raw.split(',')) {
-    const eqIdx = pair.indexOf('=');
-    if (eqIdx < 1) continue;
-    const name = pair.slice(0, eqIdx).trim();
-    const url = pair.slice(eqIdx + 1).trim();
-    if (name && url) map.set(name, url);
-  }
-  return map;
-}
 
 // ── HTTP helpers ──────────────────────────────────────────────────────────
 
@@ -161,21 +146,6 @@ async function probeServiceForSpec(
   return null;
 }
 
-function resolveServiceBaseUrl(
-  serviceName: string,
-  namespace: string,
-  port: number,
-): string {
-  if (DISCOVERY_MODE === 'http') {
-    const registry = parseServicesRegistry();
-    const url = registry.get(serviceName);
-    if (!url) throw new Error(`Service "${serviceName}" not found in SERVICES_REGISTRY. Format: name1=http://url1,name2=http://url2`);
-    return url.replace(/\/$/, '');
-  }
-  // kubernetes (default)
-  return `http://${serviceName}.${namespace}.svc.cluster.local:${port}`;
-}
-
 // ── MCP server factory (stateless — fresh instance per request) ──────────
 
 function createServer(agentId: string = 'unknown') {
@@ -253,10 +223,18 @@ function createServer(agentId: string = 'unknown') {
         if (!entry) {
           return { content: [{ type: 'text' as const, text: `No contract found for service "${service_name}"${version ? ` version ${version}` : ''}. Register one first with register_contract.` }] };
         }
+        const spec = parseSpec(entry.specJson);
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify({ serviceName: service_name, version: entry.version, timestamp: entry.timestamp, paths: entry.paths, spec: JSON.parse(entry.specJson) }, null, 2),
+            text: JSON.stringify({
+              serviceName: service_name,
+              version: entry.version,
+              timestamp: entry.timestamp,
+              paths: entry.paths,
+              schemas: extractSchemaContext(spec),
+              spec,
+            }, null, 2),
           }],
         };
       } catch (err) {
@@ -529,6 +507,7 @@ function createServer(agentId: string = 'unknown') {
               version: specVersion, title: parsed.info?.title,
               description: parsed.info?.description,
               pathCount: entry.paths.length, paths: entry.paths,
+              schemas: extractSchemaContext(parsed),
               timestamp: entry.timestamp,
             }, null, 2),
           }],
@@ -635,116 +614,21 @@ function createServer(agentId: string = 'unknown') {
 
 // ── Express HTTP server ────────────────────────────────────────────────────
 
-const app = express();
+const app = createApp(store);
 
-// ── Static UI — minimal browser frontend for the REST shim ────────────────
-// dist/index.js → ../public, since the compiled output lives in dist/ alongside public/.
+// Static UI (browser frontend for the REST shim)
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
-// ── REST shim — team-friendly HTTP API (no MCP client needed) ─────────────
-
-function requireApiKey(req: express.Request, res: express.Response, next: express.NextFunction): void {
-  if (!API_KEY) { next(); return; }
-  if (req.headers['x-api-key'] !== API_KEY) {
-    res.status(401).json({ error: 'Missing or invalid X-Api-Key header' });
-    return;
-  }
-  next();
-}
-
-// Register contract: POST /api/contracts/:service/:version
-// Body: raw OpenAPI spec (JSON or YAML), Content-Type: application/json | text/plain | application/x-yaml
-app.post(
-  '/api/contracts/:service/:version',
-  requireApiKey,
-  express.text({ type: ['application/json', 'text/plain', 'application/x-yaml', 'application/yaml'], limit: '5mb' }),
-  async (req, res) => {
-    try {
-      const { service, version } = req.params;
-      const spec = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-      const previous = await store.getLatest(service);
-      const entry = await store.register(service, version, spec);
-      if (previous && previous.version !== version) {
-        void fireBreakingChangeWebhook(service, previous.version, version, previous.paths, entry.paths, previous.specJson, entry.specJson);
-      }
-      res.json({ registered: true, service, version, pathCount: entry.paths.length, timestamp: entry.timestamp });
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
-    }
-  },
-);
-
-// Get contract: GET /api/contracts/:service  (query: ?version=1.0.0)
-app.get('/api/contracts/:service', async (req, res) => {
-  try {
-    const { service } = req.params;
-    const version = typeof req.query['version'] === 'string' ? req.query['version'] : undefined;
-    const entry = version ? await store.getByVersion(service, version) : await store.getLatest(service);
-    if (!entry) { res.status(404).json({ error: `No contract for "${service}"${version ? ` v${version}` : ''}` }); return; }
-    res.json({ service, version: entry.version, timestamp: entry.timestamp, paths: entry.paths, spec: JSON.parse(entry.specJson) });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
-
-// List all contracts: GET /api/contracts
-app.get('/api/contracts', async (_req, res) => {
-  try {
-    res.json(await store.listAll());
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
-
-// Check compatibility: GET /api/compatibility/:provider/:consumer
-app.get('/api/compatibility/:provider/:consumer', async (req, res) => {
-  try {
-    const { provider, consumer } = req.params;
-    const providerEntry = await store.getLatest(provider);
-    const consumerEntry = await store.getLatest(consumer);
-    if (!providerEntry) { res.status(404).json({ error: `Provider "${provider}" not registered` }); return; }
-    if (!consumerEntry) { res.status(404).json({ error: `Consumer "${consumer}" not registered` }); return; }
-    const providerPaths = new Set(providerEntry.paths);
-    const missingPaths = consumerEntry.paths.filter(p => !providerPaths.has(p));
-    const compatible = missingPaths.length === 0;
-    res.status(compatible ? 200 : 409).json({ compatible, provider, consumer, missingPaths });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
-
-// Detect breaking changes: POST /api/breaking-changes
-// Body: { service_name, from_version, to_version }
-app.post('/api/breaking-changes', express.json(), async (req, res) => {
-  try {
-    const { service_name, from_version, to_version } = req.body as { service_name: string; from_version: string; to_version: string };
-    const fromEntry = await store.getByVersion(service_name, from_version);
-    const toEntry = await store.getByVersion(service_name, to_version);
-    if (!fromEntry) { res.status(404).json({ error: `Version ${from_version} of "${service_name}" not found` }); return; }
-    if (!toEntry) { res.status(404).json({ error: `Version ${to_version} of "${service_name}" not found` }); return; }
-    const result = detectBreakingChanges(parseSpec(fromEntry.specJson), parseSpec(toEntry.specJson));
-    res.status(result.breaking.length > 0 ? 422 : 200).json({ service: service_name, from_version, to_version, ...result });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
-
-// ── Standard probes and MCP endpoint ─────────────────────────────────────
-
 app.get('/healthz', (_req, res) => res.json({ status: 'ok', version: '2.0.0', storageType: process.env.STORAGE_TYPE ?? 'memory', discoveryMode: DISCOVERY_MODE }));
-app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
+app.get('/ready',   (_req, res) => res.json({ status: 'ready' }));
 app.get('/metrics', async (_req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
 });
 
 app.post('/mcp', express.json(), async (req, res) => {
-  const agentId = (
-    req.get('x-agent-id') ??
-    req.get('user-agent') ??
-    'unknown'
-  ).slice(0, 64);
+  const agentId = (req.get('x-agent-id') ?? req.get('user-agent') ?? 'unknown').slice(0, 64);
   const srv = createServer(agentId);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   await srv.connect(transport);

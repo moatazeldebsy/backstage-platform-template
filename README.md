@@ -234,7 +234,6 @@ All scripts live in `scripts/`. They can be run standalone (day-2) or are called
 | `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
 | `seed-qa-metrics.sh` | Push synthetic QA metrics so the Grafana QA dashboard shows data immediately. | Optional — demo / dev only |
 
-> `create-service.sh` and `create-test-suite.sh` are deprecated. Use `idp scaffold` instead.
 
 ### Execution flow
 

@@ -11,6 +11,17 @@ app:
         config:
           path: /
 
+    # AI feature flags — set disabled: true in an env-specific config to hide
+    # the AI Assistant and AI Search pages and their sidebar nav items.
+    - custom-pages/page:ai-assistant:
+        disabled: false
+    - custom-pages/nav-item:ai-assistant:
+        disabled: false
+    - custom-pages/page:ai-search:
+        disabled: false
+    - custom-pages/nav-item:ai-search:
+        disabled: false
+
 organization:
   name: My Organization
 

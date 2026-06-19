@@ -119,6 +119,10 @@ PROMETHEUS_TARGETS=$(kubectl exec -n monitoring -l app.kubernetes.io/name=promet
 GRAFANA_URL=$(kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
 [[ -n "$GRAFANA_URL" ]] && log "Grafana URL: http://$GRAFANA_URL" || err "Grafana ingress not ready"
 
+# Check AlertManager (via ALB Ingress)
+ALERTMANAGER_URL=$(kubectl get ingress -n monitoring -l app.kubernetes.io/name=alertmanager -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+[[ -n "$ALERTMANAGER_URL" ]] && log "AlertManager URL: http://$ALERTMANAGER_URL" || err "AlertManager ingress not ready"
+
 # Check Loki
 LOKI_READY=$(kubectl get pods -n monitoring -l app.kubernetes.io/name=loki --no-headers 2>/dev/null | grep -c "Running" || echo "0")
 [[ $LOKI_READY -gt 0 ]] && log "Loki: $LOKI_READY pod(s) running" || err "Loki not running (log aggregation unavailable)"

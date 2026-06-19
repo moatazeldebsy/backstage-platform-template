@@ -569,6 +569,10 @@ function AiAssistantPage() {
                   { label: 'Check ArgoCD apps', prompt: 'List all ArgoCD applications and their sync status' },
                   { label: 'Team budget status', prompt: 'Show me all teams over 80% budget utilisation' },
                   { label: 'Rightsizing savings', prompt: 'What are the top rightsizing opportunities to reduce cost?' },
+                  { label: 'List contracts', prompt: 'List all registered API contracts' },
+                  { label: 'Check breaking changes', prompt: 'Detect breaking changes across all registered API contracts' },
+                  { label: 'Validate compatibility', prompt: 'Validate compatibility between all consumer and provider contracts' },
+                  { label: 'Discover contracts', prompt: 'Auto-discover contracts for all services in the catalog' },
                 ].map(({ label, prompt }) => (
                   <Chip
                     key={label}

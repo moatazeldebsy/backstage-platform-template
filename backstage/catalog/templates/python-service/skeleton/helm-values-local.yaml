@@ -48,3 +48,8 @@ env:
 
 labels:
   backstage.io/kubernetes-id: ${{ values.name }}
+
+contractCheck:
+  enabled: true
+  mcpServerUrl: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
+  checkBreaking: true

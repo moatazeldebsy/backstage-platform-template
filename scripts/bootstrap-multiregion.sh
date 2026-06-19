@@ -572,6 +572,20 @@ step "Phase 4: Post-wiring (IRSA, cluster registration, failover, Aurora, notifi
 if [[ "$SKIP_GITOPS" == "true" ]]; then
   warn "Skipping Phase 4 ArgoCD wiring (--skip-gitops)."
 else
+  # 4.0 — Patch Crossplane standby ProviderConfig with IRSA ARN
+  if [[ -n "${CROSSPLANE_ROLE_STANDBY:-}" ]]; then
+    local _pc="${ROOT_DIR}/aws/crossplane/providers/provider-config-us-east-1.yaml"
+    if grep -q 'REPLACE_WITH_STANDBY_IRSA_ARN' "$_pc" 2>/dev/null; then
+      log "4.0: Patching Crossplane ProviderConfig for standby (${STANDBY_REGION})..."
+      sed -i.bak "s|REPLACE_WITH_STANDBY_IRSA_ARN|${CROSSPLANE_ROLE_STANDBY}|g" "$_pc"
+      rm -f "${_pc}.bak"
+    else
+      log "4.0: Crossplane ProviderConfig already patched — skipping."
+    fi
+  else
+    warn "4.0: crossplane_aws_role_arn not found for standby workspace — patch provider-config-us-east-1.yaml manually."
+  fi
+
   # 4.1 — Register both clusters in ArgoCD hub
   log "4.1: Registering clusters in ArgoCD hub..."
   bash scripts/register-argocd-cluster.sh \

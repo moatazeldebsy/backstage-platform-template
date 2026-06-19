@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gopkg.in/yaml.v3"
 )
 
 var version = "dev"
@@ -47,6 +48,7 @@ func main() {
 	mux.HandleFunc("/", handleRoot)
 	mux.HandleFunc("/healthz", handleLiveness)
 	mux.HandleFunc("/ready", handleReadiness)
+	mux.HandleFunc("/openapi.json", handleOpenAPI)
 	mux.Handle("/metrics", promhttp.Handler())
 
 	srv := &http.Server{
@@ -76,6 +78,21 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("forced shutdown", "error", err)
 	}
+}
+
+func handleOpenAPI(w http.ResponseWriter, r *http.Request) {
+	specPath := getEnv("OPENAPI_SPEC_PATH", "openapi.yaml")
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		http.Error(w, "spec not found", http.StatusNotFound)
+		return
+	}
+	var spec any
+	if err := yaml.Unmarshal(data, &spec); err != nil {
+		http.Error(w, "failed to parse spec", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, spec)
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {

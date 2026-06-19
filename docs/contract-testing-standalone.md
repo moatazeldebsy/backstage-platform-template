@@ -121,14 +121,29 @@ The server exposes 9 tools at `POST /mcp` (JSON-RPC 2.0 + StreamableHTTP).
 | Tool | Description |
 |------|-------------|
 | `register_contract` | Register/update OpenAPI spec; auto-detects breaking changes and fires webhook |
-| `get_contract` | Retrieve registered spec |
+| `get_contract` | Retrieve registered spec + `schemas` field (per-operation parameters, requestBody, response examples) |
 | `list_contracts` | List all services and versions |
-| `generate_contract_tests` | Generate Pact consumer test code from provider spec |
+| `generate_contract_tests` | Generate Pact consumer tests with real schema matchers (`like`, `integer`, `regex`, `eachLike`) |
 | `validate_compatibility` | Check provider satisfies consumer's required paths |
 | `detect_breaking_changes` | Compare two spec versions |
 | `get_compatibility_report` | Full compatibility matrix for a provider |
-| `fetch_service_contract` | Pull spec from running service and register it |
+| `fetch_service_contract` | Pull spec from running service, register it, return `schemas` context |
 | `auto_discover_contracts` | Scan all services (K8s/Docker/registry) and register specs |
+
+**`generate_contract_tests` output:** produces TypeScript using `@pact-foundation/pact` MatchersV3. Request bodies are populated from OpenAPI `requestBody` schemas. Response bodies use `like()`, `integer()`, `decimal()`, `regex()`, and `eachLike()` matchers derived from the provider's response schemas. The more complete your OpenAPI spec (schemas, required fields, format hints), the more realistic the generated tests.
+
+**`get_contract` and `fetch_service_contract` response:** include a `schemas` field alongside `spec` and `paths`. This gives AI agents and tooling structured per-operation context without parsing raw OpenAPI:
+```json
+"schemas": {
+  "/api/v1/users": {
+    "post": {
+      "parameters": [],
+      "requestBody": { "required": true, "properties": ["name", "email"], "example": {...} },
+      "responses": { "201": { "properties": ["id", "name"], "example": {...} } }
+    }
+  }
+}
+```
 
 ## Breaking Change Webhook
 

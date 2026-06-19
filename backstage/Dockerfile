@@ -26,9 +26,13 @@ COPY packages/backend/package.json ./packages/backend/
 RUN --mount=type=cache,target=/root/.yarn/berry/cache \
     yarn install --immutable
 
-# Now copy the actual source — only invalidates the build step below.
+# Now copy the actual source — only invalidates the build steps below.
 COPY packages ./packages
 COPY plugins ./plugins
+
+# Build the frontend bundle first — plugin-app-backend serves static files from
+# packages/app/dist/ at runtime, so this must run before yarn build:backend.
+RUN yarn workspace app build
 
 # Produces packages/backend/dist/{skeleton,bundle}.tar.gz
 RUN yarn build:backend

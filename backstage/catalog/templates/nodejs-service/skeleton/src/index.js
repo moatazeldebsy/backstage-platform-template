@@ -1,5 +1,8 @@
 const express = require('express');
 const client = require('prom-client');
+const fs = require('fs');
+const path = require('path');
+const yaml = require('js-yaml');
 
 const app = express();
 const PORT = process.env.PORT || ${{ values.port }};
@@ -42,6 +45,12 @@ app.get('/ready', instrument('GET', '/ready', (req, res) => {
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
+});
+
+app.get('/openapi.json', (req, res) => {
+  const specPath = path.join(__dirname, '..', 'openapi.yaml');
+  const spec = yaml.load(fs.readFileSync(specPath, 'utf8'));
+  res.json(spec);
 });
 
 app.get('/', instrument('GET', '/', (req, res) => {

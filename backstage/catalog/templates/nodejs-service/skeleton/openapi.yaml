@@ -1,0 +1,51 @@
+openapi: 3.0.3
+info:
+  title: ${{ values.name }}
+  description: ${{ values.description }}
+  version: 1.0.0
+paths:
+  /:
+    get:
+      summary: Service info
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: ${{ values.name }}
+                  status:
+                    type: string
+                    example: running
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready

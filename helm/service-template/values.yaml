@@ -55,7 +55,8 @@ livenessProbe:
     port: http
   initialDelaySeconds: 30
   periodSeconds: 30
-  failureThreshold: 3
+  timeoutSeconds: 5
+  failureThreshold: 5
 
 readinessProbe:
   httpGet:
@@ -63,7 +64,8 @@ readinessProbe:
     port: http
   initialDelaySeconds: 15
   periodSeconds: 10
-  failureThreshold: 3
+  timeoutSeconds: 5
+  failureThreshold: 5
   successThreshold: 1
 
 # Grace period given to a terminating pod before SIGTERM. nginx takes ~2 s to

@@ -10,6 +10,10 @@ metadata:
     # to prevent 502 Bad Gateway when clients (e.g. Chrome) negotiate HTTP/2
     nginx.ingress.kubernetes.io/use-http2: "false"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # A2A agent turns (platform-assistant) can take 60–180s on cold start or
+    # when chaining multiple MCP tool calls — raise nginx timeouts to avoid 504.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
 spec:
   ingressClassName: nginx
   rules:

@@ -15,6 +15,16 @@ app:
     - page:kubernetes:
         disabled: true
 
+    # Uncomment to hide AI features in this environment:
+    # - custom-pages/page:ai-assistant:
+    #     disabled: true
+    # - custom-pages/nav-item:ai-assistant:
+    #     disabled: true
+    # - custom-pages/page:ai-search:
+    #     disabled: true
+    # - custom-pages/nav-item:ai-search:
+    #     disabled: true
+
 backend:
   # All traffic (frontend + API) is served through port 3000 (docker port mapping)
   baseUrl: http://backstage.idp.local
@@ -89,6 +99,9 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+      # A2A agent turns can take 60–180s (cold start + chained MCP tool calls).
+      # Node.js http-proxy-middleware default is ~60s; raise to match ingress.
+      timeout: 300000
     /contract-mcp:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']

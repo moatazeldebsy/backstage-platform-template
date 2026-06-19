@@ -28,15 +28,19 @@ livenessProbe:
   httpGet:
     path: /healthz
     port: http            # 'http' is the named port (targetPort 3003)
-  initialDelaySeconds: 10
+  initialDelaySeconds: 15
   periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
 
 readinessProbe:
   httpGet:
     path: /ready
     port: http
-  initialDelaySeconds: 5
+  initialDelaySeconds: 10
   periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 5
 
 resources:
   requests:
