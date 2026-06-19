@@ -265,7 +265,8 @@ _print_url_banner() {
   echo "║  Pushgateway      http://pushgateway.idp.local                            ║"
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
-  echo "║  AI / ML Platform  (install: ./scripts/bootstrap-ai.sh)                  ║"
+  if kubectl get ns kagent &>/dev/null 2>&1; then
+  echo "║  AI / ML Platform                                                         ║"
   echo "║  KAgent UI           http://kagent.idp.local                            ║"
   echo "║  AI Assistant        http://backstage.idp.local/ai-assistant            ║"
   echo "║  MLflow              http://mlflow.idp.local                            ║"
@@ -273,6 +274,7 @@ _print_url_banner() {
   echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz             ║"
   echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz       ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  fi
   echo "║  Local registry   localhost:5003                                          ║"
   echo "╚═══════════════════════════════════════════════════════════════════════════╝"
   echo ""
@@ -283,7 +285,9 @@ _print_url_banner() {
   fi
   echo "  Next steps:"
   echo "    Start Backstage:   ./scripts/bootstrap-local.sh --start-backstage"
+  if ! kubectl get ns kagent &>/dev/null 2>&1; then
   echo "    Install AI/ML:     ./scripts/bootstrap-ai.sh"
+  fi
   echo "    Scaffold service:  ./bin/idp scaffold service --name my-svc --type nodejs"
   echo "    Print URLs again:  ./scripts/bootstrap-local.sh --print-urls"
   echo "    Teardown:          ./scripts/bootstrap-local.sh --destroy"
@@ -489,14 +493,23 @@ _setup_kind_registry_mirrors() {
 # Kind cluster running Backstage + KAgent + ArgoCD + observability. When kube-proxy
 # hits "too many open files" it crashes, breaking cross-node Service routing and
 # manifesting as 502s in kagent UI and stuck DB migrations in kagent-controller.
+#
+# Docker Desktop resets these limits every time its Linux VM restarts (i.e. after
+# every machine reboot). The privileged Alpine container targets the Docker VM
+# kernel directly, which is the only fix that survives VM restarts. The per-node
+# exec is belt-and-suspenders for containerd's own watchers inside each node.
 _raise_kind_inotify_limits() {
+  docker run --rm --privileged alpine sysctl -w \
+    fs.inotify.max_user_instances=8192 \
+    fs.inotify.max_user_watches=524288 >/dev/null 2>&1 || \
+    warn "  Could not raise inotify limits at Docker VM level — kubelet may fail after a machine reboot."
   for node in $(kind get nodes --name "$CLUSTER_NAME" 2>/dev/null); do
     docker exec --privileged "${node}" sysctl -w \
       fs.inotify.max_user_instances=8192 \
       fs.inotify.max_user_watches=524288 >/dev/null 2>&1 || \
       warn "  Node ${node}: failed to raise inotify limits."
   done
-  log "  Inotify limits raised on Kind nodes."
+  log "  Inotify limits raised (Docker VM + Kind nodes)."
 }
 
 # ── Helper: apply Backstage K8s Service, Endpoints, and nginx Ingress ────────
@@ -553,6 +566,11 @@ _start_backstage() {
   step "Starting Backstage..."
   if [[ "$PROVIDER" == "kind" ]]; then
     kubectl config use-context "kind-${CLUSTER_NAME}" 2>/dev/null || true
+    # Docker Desktop resets inotify limits on every VM restart (i.e. after every
+    # machine reboot). Re-apply them here so the kubelet on the control-plane node
+    # can watch files again — without this, the ingress-nginx pod stays Pending
+    # and Backstage is unreachable via its hostname.
+    _raise_kind_inotify_limits
   else
     kubectl config use-context rancher-desktop 2>/dev/null || true
   fi
@@ -623,16 +641,20 @@ _start_backstage() {
   echo "  AlertManager:   http://alertmanager.idp.local"
   echo "  Pushgateway:    http://pushgateway.idp.local"
   echo "  OpenCost:       http://opencost.idp.local"
+  echo "  Local registry: localhost:5003"
+  if kubectl get ns kagent &>/dev/null 2>&1; then
   echo "  KAgent UI:      http://kagent.idp.local"
   echo "  AI Assistant:   http://backstage.idp.local/ai-assistant"
   echo "  MLflow:         http://mlflow.idp.local"
-  echo "  Local registry: localhost:5003"
+  fi
   echo ""
   echo -e "${BOLD}Day-2 tools:${RESET}"
   echo "  Scaffold a service:   ./bin/idp scaffold service --name my-svc --type nodejs"
   echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
   echo "  Seed QA demo metrics: ./scripts/seed-qa-metrics.sh"
+  if ! kubectl get ns kagent &>/dev/null 2>&1; then
   echo "  Install AI/ML stack:  ./scripts/bootstrap-ai.sh"
+  fi
   echo "  Restart Backstage:    ./scripts/bootstrap-local.sh --start-backstage"
   echo "  Teardown cluster:     ./scripts/bootstrap-local.sh --destroy"
   echo ""
