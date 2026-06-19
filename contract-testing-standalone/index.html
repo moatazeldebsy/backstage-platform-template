@@ -1537,7 +1537,7 @@ Required repository variables: <code>CONTRACT_SERVER_URL</code>, <code>SERVICE_N
 </tr>
 <tr>
 <td><code>get_contract</code></td>
-<td>Retrieve registered spec</td>
+<td>Retrieve registered spec + <code>schemas</code> field (per-operation parameters, requestBody, response examples)</td>
 </tr>
 <tr>
 <td><code>list_contracts</code></td>
@@ -1545,7 +1545,7 @@ Required repository variables: <code>CONTRACT_SERVER_URL</code>, <code>SERVICE_N
 </tr>
 <tr>
 <td><code>generate_contract_tests</code></td>
-<td>Generate Pact consumer test code from provider spec</td>
+<td>Generate Pact consumer tests with real schema matchers (<code>like</code>, <code>integer</code>, <code>regex</code>, <code>eachLike</code>)</td>
 </tr>
 <tr>
 <td><code>validate_compatibility</code></td>
@@ -1561,7 +1561,7 @@ Required repository variables: <code>CONTRACT_SERVER_URL</code>, <code>SERVICE_N
 </tr>
 <tr>
 <td><code>fetch_service_contract</code></td>
-<td>Pull spec from running service and register it</td>
+<td>Pull spec from running service, register it, return <code>schemas</code> context</td>
 </tr>
 <tr>
 <td><code>auto_discover_contracts</code></td>
@@ -1569,6 +1569,26 @@ Required repository variables: <code>CONTRACT_SERVER_URL</code>, <code>SERVICE_N
 </tr>
 </tbody>
 </table>
+<p><strong><code>generate_contract_tests</code> output:</strong> produces TypeScript using <code>@pact-foundation/pact</code> MatchersV3. Request bodies are populated from OpenAPI <code>requestBody</code> schemas. Response bodies use <code>like()</code>, <code>integer()</code>, <code>decimal()</code>, <code>regex()</code>, and <code>eachLike()</code> matchers derived from the provider's response schemas. The more complete your OpenAPI spec (schemas, required fields, format hints), the more realistic the generated tests.</p>
+<p><strong><code>get_contract</code> and <code>fetch_service_contract</code> response:</strong> include a <code>schemas</code> field alongside <code>spec</code> and <code>paths</code>. This gives AI agents and tooling structured per-operation context without parsing raw OpenAPI:
+<div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">&quot;schemas&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;/api/v1/users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;post&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;parameters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;requestBody&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;required&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;email&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;responses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;201&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;name&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></td></tr></table></div></p>
 <h2 id="breaking-change-webhook">Breaking Change Webhook<a class="headerlink" href="#breaking-change-webhook" title="Permanent link">&para;</a></h2>
 <p>Set <code>BREAKING_CHANGE_WEBHOOK_URL</code> to receive a POST whenever a provider registers a breaking new version:</p>
 <div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
