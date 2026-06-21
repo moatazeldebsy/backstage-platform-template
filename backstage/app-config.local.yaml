@@ -9,9 +9,6 @@ app:
   # Kubernetes info is still available via entity tabs in the catalog.
   # catalog-graph plugin is fully removed from App.tsx (showed no data locally).
   extensions:
-    - page:catalog:
-        config:
-          path: /
     - page:kubernetes:
         disabled: true
 
@@ -134,6 +131,15 @@ proxy:
       headers:
         Authorization: Basic ${JIRA_TOKEN}
         Accept: application/json
+    /argocd:
+      target: http://argocd.idp.local
+      allowedMethods: ['GET', 'POST', 'DELETE', 'PATCH']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${ARGOCD_AUTH_TOKEN}
+        Content-Type: application/json
+      pathRewrite:
+        '^/api/proxy/argocd': ''
     /github-copilot:
       target: https://api.github.com
       allowedMethods: ['GET']

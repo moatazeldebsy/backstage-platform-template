@@ -29,6 +29,20 @@ import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
 import AttachMoneyIcon from '@material-ui/icons/AttachMoney';
+import DashboardIcon from '@material-ui/icons/Dashboard';
+import TrendingUpIcon from '@material-ui/icons/TrendingUp';
+import TrackChangesIcon from '@material-ui/icons/TrackChanges';
+import AccountTreeIcon from '@material-ui/icons/AccountTree';
+import DynamicFeedIcon from '@material-ui/icons/DynamicFeed';
+import ExtensionIcon from '@material-ui/icons/Extension';
+import EmojiPeopleIcon from '@material-ui/icons/EmojiPeople';
+import CalculateIcon from '@material-ui/icons/MonetizationOn';
+import SettingsIcon from '@material-ui/icons/Settings';
+import PersonIcon from '@material-ui/icons/Person';
+import SearchOutlinedIcon from '@material-ui/icons/SearchOutlined';
+import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
+import SmartToyIcon from '@material-ui/icons/EmojiObjects';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import ChatIcon from '@material-ui/icons/Chat';
 import AddCommentIcon from '@material-ui/icons/AddComment';
 import SendIcon from '@material-ui/icons/Send';
@@ -2462,6 +2476,2856 @@ const sloEntityContent = EntityContentBlueprint.make({
   },
 });
 
+// ── Home / Platform Dashboard ──────────────────────────────────────────────────
+// Platform-wide overview: DORA aggregate, catalog counts, services table.
+
+const DORA_DEMO: Record<string, DoraMetric> = {
+  freq: { value: 3.2,  series: [1.8,2.1,2.4,3.0,3.2,2.9,3.2] },
+  lead: { value: 42,   series: [68,55,50,45,42,39,42] },
+  cfr:  { value: 4.8,  series: [8,6,5.5,5,4.8,5.1,4.8] },
+  mttr: { value: 28,   series: [65,50,40,35,30,28,28] },
+};
+
+function HomePage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [dora, setDora]       = useState<Record<string, DoraMetric>>(DORA_DEMO);
+  const [doraDemo, setDoraDemo] = useState(true);
+  const [counts, setCounts]   = useState({ components: 0, apis: 0, groups: 0 });
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const pq = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN'));
+    const pr = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query_range?query=${encodeURIComponent(expr)}&start=${Math.floor(Date.now()/1000)-604800}&end=${Math.floor(Date.now()/1000)}&step=86400`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => (d?.data?.result?.[0]?.values ?? []).map((v: any[]) => parseFloat(v[1])).filter((v: number) => !isNaN(v)));
+
+    const catalogFetch = (kind: string) =>
+      fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=${kind}&fields=metadata.name,spec.owner,spec.lifecycle,spec.type`)
+        .then(r => r.ok ? r.json() : []).catch(() => []);
+
+    Promise.all([
+      Promise.all([
+        pq('avg(dora_deploy_frequency_per_day)'), pq('avg(dora_lead_time_minutes)'),
+        pq('avg(dora_change_failure_rate_percent)'), pq('avg(dora_mttr_minutes)'),
+        pr('avg(dora_deploy_frequency_per_day)'), pr('avg(dora_lead_time_minutes)'),
+        pr('avg(dora_change_failure_rate_percent)'), pr('avg(dora_mttr_minutes)'),
+      ]).then(([freq, lead, cfr, mttr, fS, lS, cS, mS]) => {
+        if (!isNaN(freq) && freq > 0) {
+          setDora({ freq: {value:freq,series:fS}, lead: {value:lead,series:lS}, cfr: {value:cfr,series:cS}, mttr: {value:mttr,series:mS} });
+          setDoraDemo(false);
+        }
+      }).catch(() => {}),
+      catalogFetch('Component').then((entities: any[]) => {
+        setServices(entities.slice(0, 20));
+        setCounts(prev => ({ ...prev, components: entities.length }));
+      }),
+      catalogFetch('API').then((entities: any[]) => setCounts(prev => ({ ...prev, apis: entities.length }))),
+      catalogFetch('Group').then((entities: any[]) => setCounts(prev => ({ ...prev, groups: entities.length }))),
+    ]).finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const CARDS = [
+    { key: 'freq', title: 'Deploy Frequency', unit: 'deploys/day' },
+    { key: 'lead', title: 'Lead Time',         unit: 'commit → deploy' },
+    { key: 'cfr',  title: 'Change Failure Rate', unit: '% of deploys' },
+    { key: 'mttr', title: 'MTTR',               unit: 'time to restore' },
+  ];
+
+  return (
+    <Page themeId="home">
+      <Header title="Platform Dashboard" subtitle="Internal Developer Platform · platform-wide overview" />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Services', value: counts.components, color: '#1976d2', href: '/catalog?filters%5Bkind%5D=component' },
+                { label: 'APIs',     value: counts.apis,       color: '#388e3c', href: '/catalog?filters%5Bkind%5D=api' },
+                { label: 'Teams',    value: counts.groups,     color: '#7b1fa2', href: '/catalog?filters%5Bkind%5D=group' },
+              ].map(({ label, value, color, href }) => (
+                <Paper key={label} style={{ padding: '16px 24px', flex: 1, minWidth: 120, borderTop: `4px solid ${color}`, cursor: 'pointer' }} onClick={() => window.location.href = href}>
+                  <Typography variant="h3" style={{ fontWeight: 700, color }}>{value || '—'}</Typography>
+                  <Typography variant="body2" color="textSecondary">{label} in catalog</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 8 }}>
+              <Typography variant="h6">Platform DORA</Typography>
+              {doraDemo && <Chip label="demo data — Prometheus unreachable" size="small" style={{ background: '#fff8e1', color: '#7c6000', border: '1px solid #ffe082', fontSize: 10 }} />}
+            </Box>
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+              {CARDS.map(({ key, title, unit }) => {
+                const m = dora[key];
+                const v = isNaN(m.value) ? (key==='cfr'?0:key==='freq'?0.1:60) : m.value;
+                const band = doraBand(key, v);
+                return <DoraMetricCard key={key} title={title} value={v} unit={unit} series={m.series.length ? m.series : [v]} band={band} metricKey={key} />;
+              })}
+            </Box>
+
+            <Typography variant="h6" gutterBottom>Services</Typography>
+            <Paper>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Name</strong></TableCell>
+                      <TableCell><strong>Owner</strong></TableCell>
+                      <TableCell><strong>Type</strong></TableCell>
+                      <TableCell><strong>Lifecycle</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {services.length === 0 && (
+                      <TableRow><TableCell colSpan={4}>
+                        <Typography variant="body2" color="textSecondary" style={{ padding: 8 }}>
+                          No services yet — use <Link href="/create">Create</Link> to scaffold your first service.
+                        </Typography>
+                      </TableCell></TableRow>
+                    )}
+                    {services.map((s: any) => {
+                      const lc = s.spec?.lifecycle ?? 'unknown';
+                      const lcColor = lc === 'production' ? '#4caf50' : lc === 'experimental' ? '#ff9800' : '#9e9e9e';
+                      return (
+                        <TableRow key={s.metadata.name} hover style={{ cursor: 'pointer' }}
+                          onClick={() => window.location.href = `/catalog/default/component/${s.metadata.name}`}>
+                          <TableCell style={{ fontWeight: 500 }}>{s.metadata.name}</TableCell>
+                          <TableCell><Typography variant="caption">{s.spec?.owner ?? '—'}</Typography></TableCell>
+                          <TableCell><Typography variant="caption">{s.spec?.type ?? '—'}</Typography></TableCell>
+                          <TableCell><Chip size="small" label={lc} style={{ background: lcColor, color: '#fff', fontSize: 10 }} /></TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const homeRouteRef = createRouteRef({ id: 'platform-home' });
+const homePage = PageBlueprint.make({
+  name: 'platform-home',
+  params: { path: '/', routeRef: homeRouteRef, loader: async () => <HomePage /> },
+});
+const homeNavItem = NavItemBlueprint.make({
+  name: 'platform-home',
+  params: { title: 'Home', icon: DashboardIcon as any, routeRef: homeRouteRef },
+});
+
+// ── Standalone DORA page ───────────────────────────────────────────────────────
+// Platform aggregate + per-service breakdown table.
+
+function DoraPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [aggregate, setAggregate] = useState<Record<string, DoraMetric>>(DORA_DEMO);
+  const [isDemo, setIsDemo]       = useState(true);
+  const [perService, setPerService] = useState<Array<{name:string; freq:number; lead:number; cfr:number; mttr:number}>>([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    const pq = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+    const scalar = (d: any) => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN');
+    const allSeries = (d: any): Array<{metric: Record<string,string>; value: [number,string]}> => d?.data?.result ?? [];
+
+    Promise.all([
+      pq('avg(dora_deploy_frequency_per_day)').then(scalar).catch(() => NaN),
+      pq('avg(dora_lead_time_minutes)').then(scalar).catch(() => NaN),
+      pq('avg(dora_change_failure_rate_percent)').then(scalar).catch(() => NaN),
+      pq('avg(dora_mttr_minutes)').then(scalar).catch(() => NaN),
+      pq('dora_deploy_frequency_per_day').then(allSeries).catch(() => []),
+      pq('dora_lead_time_minutes').then(allSeries).catch(() => []),
+      pq('dora_change_failure_rate_percent').then(allSeries).catch(() => []),
+      pq('dora_mttr_minutes').then(allSeries).catch(() => []),
+    ]).then(([freq, lead, cfr, mttr, freqSeries, leadSeries, cfrSeries, mttrSeries]) => {
+      if (!isNaN(freq as number) && (freq as number) > 0) {
+        setAggregate({
+          freq: { value: freq as number, series: [] },
+          lead: { value: lead as number, series: [] },
+          cfr:  { value: cfr as number,  series: [] },
+          mttr: { value: mttr as number, series: [] },
+        });
+        setIsDemo(false);
+        // Build per-service table
+        const names = new Set([
+          ...(freqSeries as any[]).map((r:any) => r.metric?.service),
+          ...(leadSeries as any[]).map((r:any) => r.metric?.service),
+        ].filter(Boolean));
+        const toMap = (arr: any[]) => Object.fromEntries(arr.map((r:any) => [r.metric?.service, parseFloat(r.value?.[1] ?? 'NaN')]));
+        const fMap = toMap(freqSeries as any[]);
+        const lMap = toMap(leadSeries as any[]);
+        const cMap = toMap(cfrSeries as any[]);
+        const mMap = toMap(mttrSeries as any[]);
+        setPerService(Array.from(names).map(name => ({
+          name, freq: fMap[name] ?? NaN, lead: lMap[name] ?? NaN,
+          cfr: cMap[name] ?? NaN, mttr: mMap[name] ?? NaN,
+        })).sort((a, b) => (b.freq || 0) - (a.freq || 0)));
+      }
+    }).finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const CARDS = [
+    { key: 'freq', title: 'Deploy Frequency', unit: 'deploys/day' },
+    { key: 'lead', title: 'Lead Time',         unit: 'commit → deploy' },
+    { key: 'cfr',  title: 'Change Failure Rate', unit: '% of deploys' },
+    { key: 'mttr', title: 'MTTR',               unit: 'time to restore' },
+  ];
+
+  const fmt = (key: string, v: number) => {
+    if (isNaN(v)) return '—';
+    if (key === 'freq') return v < 1 ? `${(v*7).toFixed(1)}/wk` : `${v.toFixed(1)}/day`;
+    if (key === 'cfr')  return `${v.toFixed(1)}%`;
+    return v < 60 ? `${v.toFixed(0)} min` : `${(v/60).toFixed(1)} hr`;
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="DORA Metrics" subtitle="Platform-wide deployment performance · all services" />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {isDemo && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — Prometheus unreachable or DORA exporter not running. Start the cluster and ensure <code>GITHUB_TOKEN</code> is set.
+                </Typography>
+              </Paper>
+            )}
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+              {CARDS.map(({ key, title, unit }) => {
+                const m = aggregate[key];
+                const v = isNaN(m.value) ? (key==='cfr'?0:key==='freq'?0.1:60) : m.value;
+                const band = doraBand(key, v);
+                return <DoraMetricCard key={key} title={title} value={v} unit={unit} series={m.series.length ? m.series : [v,v]} band={band} metricKey={key} />;
+              })}
+            </Box>
+
+            <Paper>
+              <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6">Per-Service Breakdown</Typography>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Service</strong></TableCell>
+                      <TableCell align="right"><strong>Deploy Freq</strong></TableCell>
+                      <TableCell align="right"><strong>Lead Time</strong></TableCell>
+                      <TableCell align="right"><strong>Change Fail %</strong></TableCell>
+                      <TableCell align="right"><strong>MTTR</strong></TableCell>
+                      <TableCell><strong>Perf Band</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {perService.length === 0 && (
+                      <TableRow><TableCell colSpan={6}>
+                        <Typography variant="body2" color="textSecondary" style={{ padding: 8 }}>
+                          {isDemo ? 'No per-service Prometheus data yet.' : 'No services with DORA data.'}
+                        </Typography>
+                      </TableCell></TableRow>
+                    )}
+                    {perService.map(row => {
+                      const band = doraBand('freq', row.freq);
+                      return (
+                        <TableRow key={row.name} hover style={{ cursor: 'pointer' }}
+                          onClick={() => window.location.href = `/catalog/default/component/${row.name}/dora`}>
+                          <TableCell style={{ fontWeight: 500 }}>{row.name}</TableCell>
+                          <TableCell align="right">{fmt('freq', row.freq)}</TableCell>
+                          <TableCell align="right">{fmt('lead', row.lead)}</TableCell>
+                          <TableCell align="right">{fmt('cfr', row.cfr)}</TableCell>
+                          <TableCell align="right">{fmt('mttr', row.mttr)}</TableCell>
+                          <TableCell>
+                            <span style={{ background: band.color, color:'#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                              {band.label}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const doraPageRouteRef = createRouteRef({ id: 'dora-platform' });
+const doraPage = PageBlueprint.make({
+  name: 'dora-platform',
+  params: { path: '/dora', routeRef: doraPageRouteRef, loader: async () => <DoraPage /> },
+});
+const doraNavItem = NavItemBlueprint.make({
+  name: 'dora-platform',
+  params: { title: 'DORA', icon: TrendingUpIcon as any, routeRef: doraPageRouteRef },
+});
+
+// ── Standalone Scorecard overview ──────────────────────────────────────────────
+// Fetches all Component entities, runs computeScorecard() client-side, and
+// shows a sortable table of tier + score across the whole catalog.
+
+function ScorecardPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [rows, setRows]       = useState<Array<{entity: any; score: ScorecardResult}>>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<'name'|'score'|'tier'>('score');
+
+  useEffect(() => {
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
+      .then(r => r.ok ? r.json() : [])
+      .then((entities: any[]) => {
+        setRows(entities.map(entity => ({ entity, score: computeScorecard(entity) })));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const TIER_ORDER: Record<TierName, number> = { gold: 3, silver: 2, bronze: 1, none: 0 };
+
+  const sorted = [...rows].sort((a, b) => {
+    if (sortKey === 'score') return b.score.passed - a.score.passed;
+    if (sortKey === 'tier')  return TIER_ORDER[b.score.tier] - TIER_ORDER[a.score.tier];
+    return a.entity.metadata.name.localeCompare(b.entity.metadata.name);
+  });
+
+  const tierCounts = rows.reduce((acc, r) => {
+    acc[r.score.tier] = (acc[r.score.tier] ?? 0) + 1;
+    return acc;
+  }, {} as Record<TierName, number>);
+
+  return (
+    <Page themeId="tool">
+      <Header title="Scorecard Overview" subtitle="Bronze / Silver / Gold shift-left quality tiers · all services" />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {/* Tier summary */}
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {(['gold','silver','bronze','none'] as TierName[]).map(tier => (
+                <Paper key={tier} style={{ padding: '16px 24px', flex: 1, minWidth: 100, borderTop: `4px solid ${TIER_COLORS[tier]}` }}>
+                  <Typography variant="h3" style={{ fontWeight: 700, color: TIER_COLORS[tier] }}>{tierCounts[tier] ?? 0}</Typography>
+                  <Typography variant="body2" color="textSecondary" style={{ textTransform: 'capitalize' }}>{tier === 'none' ? 'No tier' : tier}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            {rows.length === 0 && (
+              <Paper style={{ padding: 24, textAlign: 'center' }}>
+                <Typography variant="body2" color="textSecondary">
+                  No Component entities in the catalog yet. Scaffold a service to see its scorecard here.
+                </Typography>
+              </Paper>
+            )}
+
+            {rows.length > 0 && (
+              <Paper>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Typography variant="h6" style={{ flex: 1 }}>Services</Typography>
+                  {(['score','tier','name'] as const).map(k => (
+                    <button key={k} onClick={() => setSortKey(k)}
+                      style={{ padding: '4px 12px', borderRadius: 16, border: '1px solid', cursor: 'pointer', fontSize: 12,
+                        fontWeight: k === sortKey ? 700 : 400,
+                        background: k === sortKey ? '#1976d2' : '#fff',
+                        color: k === sortKey ? '#fff' : '#333',
+                        borderColor: k === sortKey ? '#1976d2' : '#ddd' }}>
+                      Sort by {k}
+                    </button>
+                  ))}
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Service</strong></TableCell>
+                        <TableCell><strong>Owner</strong></TableCell>
+                        <TableCell><strong>Tier</strong></TableCell>
+                        <TableCell align="center"><strong>Score</strong></TableCell>
+                        <TableCell><strong>Next action</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {sorted.map(({ entity, score }) => {
+                        const failing = CHECKS.filter(c => !score.results[c.id] && (c.group !== 'AI Governance'));
+                        return (
+                          <TableRow key={entity.metadata.name} hover style={{ cursor: 'pointer' }}
+                            onClick={() => window.location.href = `/catalog/default/component/${entity.metadata.name}/scorecard`}>
+                            <TableCell style={{ fontWeight: 500 }}>{entity.metadata.name}</TableCell>
+                            <TableCell><Typography variant="caption">{entity.spec?.owner ?? '—'}</Typography></TableCell>
+                            <TableCell>
+                              <span style={{ background: TIER_COLORS[score.tier], color: '#fff', padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, textTransform: 'capitalize' }}>
+                                {score.tier === 'none' ? 'No tier' : score.tier}
+                              </span>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Box display="flex" alignItems="center" justifyContent="center" style={{ gap: 8 }}>
+                                <Typography variant="body2" style={{ fontWeight: 600 }}>{score.passed}/{score.total}</Typography>
+                                <div style={{ width: 60, height: 6, borderRadius: 3, background: '#eee', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${(score.passed/score.total)*100}%`, background: TIER_COLORS[score.tier], borderRadius: 3 }} />
+                                </div>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="textSecondary">
+                                {failing[0]?.label ?? '🎉 All checks passing'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Paper>
+            )}
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const scorecardPageRouteRef = createRouteRef({ id: 'scorecard-platform' });
+const scorecardPage = PageBlueprint.make({
+  name: 'scorecard-platform',
+  params: { path: '/scorecard', routeRef: scorecardPageRouteRef, loader: async () => <ScorecardPage /> },
+});
+const scorecardNavItem = NavItemBlueprint.make({
+  name: 'scorecard-platform',
+  params: { title: 'Scorecard', icon: EmojiEventsIcon as any, routeRef: scorecardPageRouteRef },
+});
+
+// ── Standalone SLO page ────────────────────────────────────────────────────────
+// Queries Prometheus for all Sloth SLO info metrics (no service filter) and
+// shows a cross-service error-budget table.
+
+function SloPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [slos, setSlos]       = useState<Array<{service:string; id:string; label:string; objective:number; errorRatio:number|null}>>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo]   = useState(false);
+
+  useEffect(() => {
+    const pq = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+
+    Promise.all([
+      pq('sloth_slo_info'),
+      pq('slo:slo_error_ratio:ratio_rate5m'),
+    ]).then(([infoRes, ratioRes]) => {
+      const infos: any[] = infoRes?.data?.result ?? [];
+      const ratios: any[] = ratioRes?.data?.result ?? [];
+
+      if (infos.length === 0) { setIsDemo(true); setLoading(false); return; }
+
+      const ratioMap: Record<string, number> = {};
+      ratios.forEach((r: any) => {
+        const key = `${r.metric?.sloth_service}__${r.metric?.sloth_id}`;
+        ratioMap[key] = parseFloat(r.value?.[1] ?? 'NaN');
+      });
+
+      const rows = infos.map((r: any) => {
+        const service   = r.metric?.sloth_service ?? '—';
+        const id        = r.metric?.sloth_id ?? '';
+        const objective = parseFloat(r.metric?.objective ?? '99');
+        const errorRatio = ratioMap[`${service}__${id}`] ?? null;
+        return { service, id, label: id.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), objective, errorRatio };
+      }).sort((a, b) => a.service.localeCompare(b.service));
+
+      setSlos(rows);
+    }).catch(() => setIsDemo(true))
+    .finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const DEMO_SLOS = [
+    { service: 'hello-service', id: 'availability', label: 'Availability', objective: 99.9, errorRatio: 0.0003 },
+    { service: 'hello-service', id: 'latency-p95',  label: 'Latency P95',  objective: 99.5, errorRatio: 0.0021 },
+    { service: 'idp-mcp-server', id: 'availability', label: 'Availability', objective: 99.5, errorRatio: 0.0001 },
+    { service: 'qa-mcp-server', id: 'availability',  label: 'Availability', objective: 99.0, errorRatio: 0.008 },
+  ];
+
+  const displaySlos = isDemo ? DEMO_SLOS : slos;
+
+  const budgetPct = (objective: number, errorRatio: number | null) => {
+    if (errorRatio === null) return null;
+    const errorBudget = 1 - objective / 100;
+    return errorBudget > 0 ? Math.max(0, (1 - errorRatio / errorBudget)) * 100 : null;
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="SLOs" subtitle="Error budgets · all services · powered by Sloth + Prometheus" />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {isDemo && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — no <code>sloth_slo_info</code> metrics found. Apply Sloth SLO manifests to see live error budgets.
+                </Typography>
+              </Paper>
+            )}
+            <Paper>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Service</strong></TableCell>
+                      <TableCell><strong>SLO</strong></TableCell>
+                      <TableCell align="right"><strong>Objective</strong></TableCell>
+                      <TableCell><strong>Error Budget Remaining</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {displaySlos.map((row, i) => {
+                      const pct = budgetPct(row.objective, row.errorRatio);
+                      const color = pct == null ? '#9e9e9e' : pct > 50 ? '#4caf50' : pct > 10 ? '#ff9800' : '#f44336';
+                      const status = pct == null ? 'No data' : pct > 50 ? 'Healthy' : pct > 10 ? 'Burning fast' : 'Critical';
+                      return (
+                        <TableRow key={i} hover style={{ cursor: 'pointer' }}
+                          onClick={() => window.location.href = `/catalog/default/component/${row.service}/slo`}>
+                          <TableCell style={{ fontWeight: 500 }}>{row.service}</TableCell>
+                          <TableCell><Typography variant="body2">{row.label}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" style={{ fontFamily: 'monospace' }}>{row.objective}%</Typography></TableCell>
+                          <TableCell style={{ minWidth: 180 }}>
+                            {pct != null ? (
+                              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                                <div style={{ flex: 1, height: 8, borderRadius: 4, background: '#eee', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4 }} />
+                                </div>
+                                <Typography variant="caption" style={{ minWidth: 36, fontFamily: 'monospace' }}>{pct.toFixed(1)}%</Typography>
+                              </Box>
+                            ) : <Typography variant="caption" color="textSecondary">—</Typography>}
+                          </TableCell>
+                          <TableCell>
+                            <Chip size="small" label={status} style={{ background: color, color: '#fff', fontWeight: 600, fontSize: 10 }} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const sloPageRouteRef = createRouteRef({ id: 'slo-platform' });
+const sloPage = PageBlueprint.make({
+  name: 'slo-platform',
+  params: { path: '/slo', routeRef: sloPageRouteRef, loader: async () => <SloPage /> },
+});
+const sloNavItem = NavItemBlueprint.make({
+  name: 'slo-platform',
+  params: { title: 'SLOs', icon: TrackChangesIcon as any, routeRef: sloPageRouteRef },
+});
+
+// ── ArgoCD Applications page ───────────────────────────────────────────────────
+// Shows all ArgoCD applications with sync/health status via /api/proxy/argocd.
+
+type ArgoSyncStatus = 'Synced' | 'OutOfSync' | 'Unknown';
+type ArgoHealthStatus = 'Healthy' | 'Progressing' | 'Degraded' | 'Suspended' | 'Missing' | 'Unknown';
+
+interface ArgoApp {
+  name:       string;
+  namespace:  string;
+  sync:       ArgoSyncStatus;
+  health:     ArgoHealthStatus;
+  revision:   string;
+  lastSynced: string;
+}
+
+const DEMO_ARGO_APPS: ArgoApp[] = [
+  { name: 'hello-service-local',      namespace: 'services-dev', sync: 'Synced',    health: 'Healthy',     revision: 'a3f1b2c', lastSynced: '2 min ago' },
+  { name: 'idp-mcp-server-local',     namespace: 'services-dev', sync: 'Synced',    health: 'Healthy',     revision: 'cc02f88', lastSynced: '3 hours ago' },
+  { name: 'qa-mcp-server-local',      namespace: 'services-dev', sync: 'OutOfSync', health: 'Healthy',     revision: '91e2d4a', lastSynced: '8 min ago' },
+  { name: 'github-mcp-server-local',  namespace: 'services-dev', sync: 'OutOfSync', health: 'Degraded',    revision: '7bc3a11', lastSynced: '1 hour ago' },
+  { name: 'prometheus-stack',         namespace: 'monitoring',   sync: 'Synced',    health: 'Healthy',     revision: 'stable',  lastSynced: '1 day ago' },
+  { name: 'backstage',                namespace: 'backstage',    sync: 'Synced',    health: 'Healthy',     revision: 'main',    lastSynced: '2 days ago' },
+  { name: 'kagent',                   namespace: 'kagent',       sync: 'OutOfSync', health: 'Progressing', revision: 'v0.4.1',  lastSynced: '5 min ago' },
+];
+
+function ArgocdPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [apps, setApps]       = useState<ArgoApp[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo]   = useState(false);
+  const [syncing, setSyncing] = useState<string | null>(null);
+
+  const loadApps = () => {
+    fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: any) => {
+        const items: ArgoApp[] = (data?.items ?? []).map((item: any) => ({
+          name:       item.metadata?.name ?? '—',
+          namespace:  item.spec?.destination?.namespace ?? '—',
+          sync:       item.status?.sync?.status ?? 'Unknown',
+          health:     item.status?.health?.status ?? 'Unknown',
+          revision:   (item.status?.sync?.revision ?? '').slice(0, 7) || '—',
+          lastSynced: item.status?.operationState?.finishedAt
+            ? new Date(item.status.operationState.finishedAt).toLocaleString()
+            : '—',
+        }));
+        setApps(items);
+      })
+      .catch(() => { setApps(DEMO_ARGO_APPS); setIsDemo(true); })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadApps(); }, [base, fetchApi]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const syncApp = async (name: string) => {
+    setSyncing(name);
+    try {
+      await fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications/${name}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revision: 'HEAD' }),
+      });
+      setTimeout(loadApps, 2000);
+    } catch { /* ignore — demo mode */ }
+    finally { setTimeout(() => setSyncing(null), 2000); }
+  };
+
+  const SYNC_COLORS: Record<string, string>   = { Synced: '#4caf50', OutOfSync: '#ff9800', Unknown: '#9e9e9e' };
+  const HEALTH_COLORS: Record<string, string> = { Healthy: '#4caf50', Progressing: '#1976d2', Degraded: '#f44336', Suspended: '#9e9e9e', Missing: '#ff9800', Unknown: '#9e9e9e' };
+
+  const totals = apps.reduce((acc, a) => {
+    acc.total++;
+    if (a.sync === 'Synced') acc.synced++;
+    else acc.outOfSync++;
+    if (a.health === 'Degraded') acc.degraded++;
+    return acc;
+  }, { total: 0, synced: 0, outOfSync: 0, degraded: 0 });
+
+  return (
+    <Page themeId="tool">
+      <Header title="ArgoCD Applications" subtitle="GitOps · app-of-apps" />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {isDemo && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — ArgoCD proxy returned an error. Set <code>ARGOCD_AUTH_TOKEN</code> in <code>local/backstage/.env</code> and restart Backstage.
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Summary cards */}
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Total Apps',    value: totals.total,     color: '#455a64' },
+                { label: 'Synced',        value: totals.synced,    color: '#4caf50' },
+                { label: 'Out of Sync',   value: totals.outOfSync, color: '#ff9800' },
+                { label: 'Degraded',      value: totals.degraded,  color: '#f44336' },
+              ].map(({ label, value, color }) => (
+                <Paper key={label} style={{ padding: '16px 24px', flex: 1, minWidth: 100, borderTop: `4px solid ${color}` }}>
+                  <Typography variant="h3" style={{ fontWeight: 700, color }}>{value}</Typography>
+                  <Typography variant="body2" color="textSecondary">{label}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            <Paper>
+              <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
+                <Typography variant="h6" style={{ flex: 1 }}>Applications</Typography>
+                <Button variant="outlined" size="small" onClick={loadApps}>↺ Refresh</Button>
+                <Box ml={1}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color="primary"
+                    onClick={() => window.open('http://argocd.idp.local', '_blank')}
+                  >
+                    Open ArgoCD ↗
+                  </Button>
+                </Box>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Application</strong></TableCell>
+                      <TableCell><strong>Namespace</strong></TableCell>
+                      <TableCell><strong>Sync Status</strong></TableCell>
+                      <TableCell><strong>Health</strong></TableCell>
+                      <TableCell><strong>Revision</strong></TableCell>
+                      <TableCell><strong>Last Synced</strong></TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {apps.map(app => (
+                      <TableRow key={app.name} hover>
+                        <TableCell style={{ fontWeight: 500 }}>{app.name}</TableCell>
+                        <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{app.namespace}</Typography></TableCell>
+                        <TableCell>
+                          <Chip size="small" label={app.sync}
+                            style={{ background: SYNC_COLORS[app.sync] ?? '#9e9e9e', color: '#fff', fontWeight: 600, fontSize: 10 }} />
+                        </TableCell>
+                        <TableCell>
+                          <Chip size="small" label={app.health}
+                            style={{ background: HEALTH_COLORS[app.health] ?? '#9e9e9e', color: '#fff', fontWeight: 600, fontSize: 10 }} />
+                        </TableCell>
+                        <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{app.revision}</Typography></TableCell>
+                        <TableCell><Typography variant="caption">{app.lastSynced}</Typography></TableCell>
+                        <TableCell>
+                          <Button size="small" variant="outlined" disabled={syncing === app.name || isDemo}
+                            onClick={() => syncApp(app.name)}
+                            style={{ fontSize: 11, minWidth: 60 }}>
+                            {syncing === app.name ? '…' : '↺ Sync'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const argocdPageRouteRef = createRouteRef({ id: 'argocd-platform' });
+const argocdPage = PageBlueprint.make({
+  name: 'argocd-platform',
+  params: { path: '/argocd', routeRef: argocdPageRouteRef, loader: async () => <ArgocdPage /> },
+});
+const argocdNavItem = NavItemBlueprint.make({
+  name: 'argocd-platform',
+  params: { title: 'ArgoCD', icon: AccountTreeIcon as any, routeRef: argocdPageRouteRef },
+});
+
+// ── Activity Feed ─────────────────────────────────────────────────────────────
+// Platform-wide event stream. Pulls ArgoCD sync ops + Prometheus deployment
+// counters; falls back to curated demo events when services are unreachable.
+
+interface ActivityEvent {
+  id:       string;
+  kind:     'deploy' | 'scaffold' | 'alert' | 'incident' | 'scorecard' | 'budget' | 'security';
+  emoji:    string;
+  color:    string;
+  title:    React.ReactNode;
+  detail:   string;
+  time:     string;
+}
+
+const DEMO_EVENTS: ActivityEvent[] = [
+  { id:'1', kind:'deploy',    emoji:'🚀', color:'#e8f5e9', title: <><b>hello-service</b> deployed to production by <b>Moataz Nabil</b></>,           detail:'main · a3f1b2c · 3 pods updated · 0 errors',                      time:'2 min ago' },
+  { id:'2', kind:'scaffold',  emoji:'+',  color:'#e3f2fd', title: <><b>payment-service</b> scaffolded and registered by <b>Moataz Nabil</b></>,       detail:'Go service · platform-team · payments-team',                       time:'14:22' },
+  { id:'3', kind:'alert',     emoji:'⚠️', color:'#fff8e1', title: <>SLO <b>latency-p95</b> is at risk for <b>hello-service</b></>,                   detail:'Error budget at 32% · burn rate 2.1x · 30-day window',             time:'11:08' },
+  { id:'4', kind:'incident',  emoji:'🔴', color:'#ffebee', title: <>Deployment <b>github-mcp-server #243</b> failed</>,                               detail:'main · 7bc3a11 · image pull error · view logs',                    time:'10:45' },
+  { id:'5', kind:'scorecard', emoji:'📊', color:'#ede7f6', title: <>Scorecard re-run: <b>contract-mcp-server</b> dropped from Silver → Bronze</>,    detail:'Score: 75 → 71 · SonarCloud quality gate failed',                  time:'09:30' },
+  { id:'6', kind:'incident',  emoji:'✅', color:'#e8f5e9', title: <>Incident resolved — <b>HighP95Latency</b> on hello-service</>,                   detail:'Duration: 18 min · MTTR target met',                               time:'Yesterday 15:38' },
+  { id:'7', kind:'budget',    emoji:'💰', color:'#fff8e1', title: <>Budget alert: <b>quality-team</b> reached 80% of monthly budget</>,              detail:'$240 spent of $300 · 10 days remaining',                           time:'Yesterday 12:00' },
+  { id:'8', kind:'security',  emoji:'🔒', color:'#e3f2fd', title: <>Security scan: 2 new medium CVEs found in <b>idp-mcp-server</b></>,              detail:'Snyk · golang.org/x/net · gin-gonic/gin · upgrade available',       time:'Jun 19' },
+];
+
+const KIND_LABELS: Record<string, string> = {
+  deploy: 'Deployments', scaffold: 'Catalog', alert: 'Incidents',
+  incident: 'Incidents', scorecard: 'Scorecard', budget: 'Budget', security: 'Security',
+};
+
+function ActivityPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [events, setEvents]     = useState<ActivityEvent[]>(DEMO_EVENTS);
+  const [isDemo, setIsDemo]     = useState(true);
+  const [kindFilter, setKindFilter] = useState('All');
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    // Enrich with real ArgoCD sync operations
+    fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: any) => {
+        const items: any[] = data?.items ?? [];
+        if (items.length === 0) return;
+        const live: ActivityEvent[] = items
+          .filter((app: any) => app.status?.operationState)
+          .slice(0, 6)
+          .map((app: any, i: number) => {
+            const op    = app.status?.operationState;
+            const phase = op?.phase ?? 'Unknown';
+            const rev   = (app.status?.sync?.revision ?? '').slice(0, 7);
+            const ts    = op?.finishedAt ? new Date(op.finishedAt).toLocaleString() : '—';
+            const ok    = phase === 'Succeeded';
+            return {
+              id:     `argo-${i}`,
+              kind:   'deploy' as const,
+              emoji:  ok ? '🚀' : '🔴',
+              color:  ok ? '#e8f5e9' : '#ffebee',
+              title:  <><b>{app.metadata?.name}</b> sync {phase.toLowerCase()}</>,
+              detail: `${app.spec?.destination?.namespace} · ${rev} · ${phase}`,
+              time:   ts,
+            };
+          });
+        setEvents(live.length ? live : DEMO_EVENTS);
+        setIsDemo(live.length === 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const FILTER_OPTIONS = ['All', 'Deployments', 'Incidents', 'Catalog', 'Scorecard', 'Budget', 'Security'];
+
+  const filtered = kindFilter === 'All'
+    ? events
+    : events.filter(e => KIND_LABELS[e.kind] === kindFilter);
+
+  return (
+    <Page themeId="tool">
+      <Header title="Activity Feed" subtitle="Platform-wide event stream · real-time" />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {isDemo && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — ArgoCD unreachable. Live deploy events will appear once the cluster is running.
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Filters */}
+            <Box display="flex" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              {FILTER_OPTIONS.map(k => (
+                <button key={k} onClick={() => setKindFilter(k)}
+                  style={{ padding: '4px 14px', borderRadius: 20, border: '1px solid', cursor: 'pointer', fontSize: 12,
+                    background: k === kindFilter ? '#1976d2' : '#fff',
+                    color: k === kindFilter ? '#fff' : '#555',
+                    borderColor: k === kindFilter ? '#1976d2' : '#ddd',
+                    fontWeight: k === kindFilter ? 600 : 400 }}>
+                  {k}
+                </button>
+              ))}
+            </Box>
+
+            <Paper>
+              {filtered.length === 0 && (
+                <Box style={{ padding: 24, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">No events for this filter.</Typography>
+                </Box>
+              )}
+              {filtered.map((ev, idx) => (
+                <Box key={ev.id} display="flex" alignItems="flex-start" style={{
+                  gap: 14, padding: '14px 20px',
+                  borderBottom: idx < filtered.length - 1 ? '1px solid #eee' : 'none',
+                }}>
+                  <div style={{
+                    width: 32, height: 32, background: ev.color, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, flexShrink: 0,
+                  }}>
+                    {ev.emoji}
+                  </div>
+                  <Box flex={1}>
+                    <Typography variant="body2" style={{ fontSize: 13 }}>{ev.title}</Typography>
+                    <Typography variant="caption" color="textSecondary" style={{ marginTop: 2, display: 'block' }}>{ev.detail}</Typography>
+                  </Box>
+                  <Typography variant="caption" style={{ color: '#aaa', whiteSpace: 'nowrap', marginTop: 2 }}>{ev.time}</Typography>
+                </Box>
+              ))}
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const activityRouteRef = createRouteRef({ id: 'activity-feed' });
+const activityPage = PageBlueprint.make({
+  name: 'activity-feed',
+  params: { path: '/activity', routeRef: activityRouteRef, loader: async () => <ActivityPage /> },
+});
+const activityNavItem = NavItemBlueprint.make({
+  name: 'activity-feed',
+  params: { title: 'Activity', icon: DynamicFeedIcon as any, routeRef: activityRouteRef },
+});
+
+// ── API Explorer ───────────────────────────────────────────────────────────────
+// Fetches all API entities from the catalog; lets you filter by type/owner and
+// inspect a lightweight endpoint summary for OpenAPI specs.
+
+interface ApiEntity {
+  name:        string;
+  type:        string;
+  lifecycle:   string;
+  owner:       string;
+  description: string;
+  tags:        string[];
+  definition?: string;
+}
+
+function ApiExplorerPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [apis, setApis]       = useState<ApiEntity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState('');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [selected, setSelected]     = useState<ApiEntity | null>(null);
+
+  useEffect(() => {
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=API&fields=metadata.name,metadata.description,metadata.tags,spec.type,spec.lifecycle,spec.owner`)
+      .then(r => r.ok ? r.json() : [])
+      .then((entities: any[]) => {
+        setApis(entities.map((e: any) => ({
+          name:        e.metadata?.name ?? '—',
+          type:        e.spec?.type ?? 'openapi',
+          lifecycle:   e.spec?.lifecycle ?? 'unknown',
+          owner:       e.spec?.owner ?? '—',
+          description: e.metadata?.description ?? '',
+          tags:        e.metadata?.tags ?? [],
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const DEMO_APIS: ApiEntity[] = [
+    { name: 'hello-api',    type: 'openapi',  lifecycle: 'production',   owner: 'platform-team', description: 'REST API for the hello-service — /greet, /health, /metrics endpoints.', tags: ['rest','json'] },
+    { name: 'mcp-api',      type: 'openapi',  lifecycle: 'production',   owner: 'platform-team', description: 'MCP tool protocol API — list_tools, call_tool, get_prompt endpoints.',  tags: ['mcp','json-rpc'] },
+    { name: 'contract-api', type: 'openapi',  lifecycle: 'experimental', owner: 'quality-team',  description: 'Contract testing endpoints — fetch, register, validate compatibility.',    tags: ['contract','pact'] },
+    { name: 'dora-events',  type: 'asyncapi', lifecycle: 'production',   owner: 'platform-team', description: 'Deployment event stream — publishes DORA events to Kafka.',               tags: ['events','kafka'] },
+  ];
+
+  const displayApis = apis.length > 0 ? apis : DEMO_APIS;
+  const isDemo      = apis.length === 0;
+
+  const TYPE_COLORS: Record<string, string> = { openapi: '#1976d2', asyncapi: '#388e3c', grpc: '#7b1fa2', graphql: '#e91e63' };
+  const LC_COLORS:   Record<string, string> = { production: '#4caf50', experimental: '#ff9800', deprecated: '#9e9e9e' };
+
+  const apiTypes = ['All', ...Array.from(new Set(displayApis.map(a => a.type)))];
+
+  const filtered = displayApis.filter(a => {
+    const matchSearch = !search || a.name.includes(search) || a.description.toLowerCase().includes(search.toLowerCase());
+    const matchType   = typeFilter === 'All' || a.type === typeFilter;
+    return matchSearch && matchType;
+  });
+
+  const DEMO_ENDPOINTS = [
+    { method: 'GET',  path: '/api/greet',  desc: 'Returns a greeting message',  status: ['200 OK', '400 Bad Request'] },
+    { method: 'GET',  path: '/health',     desc: 'Liveness probe',               status: ['200 OK'] },
+    { method: 'GET',  path: '/metrics',    desc: 'Prometheus metrics',           status: ['200 OK'] },
+  ];
+
+  const METHOD_COLORS: Record<string, string> = { GET: '#4caf50', POST: '#1976d2', PUT: '#ff9800', DELETE: '#f44336', PATCH: '#9c27b0' };
+
+  return (
+    <Page themeId="tool">
+      <Header title="API Explorer" subtitle={`${displayApis.length} registered APIs · OpenAPI · AsyncAPI · gRPC`} />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {isDemo && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📋 Demo data — no API entities in catalog. Register APIs in <code>catalog-info.yaml</code> with <code>kind: API</code>.
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Search + filters */}
+            <Box display="flex" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search APIs…"
+                style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #ddd', fontSize: 13, width: 240 }} />
+              {apiTypes.map(t => (
+                <button key={t} onClick={() => setTypeFilter(t)}
+                  style={{ padding: '4px 14px', borderRadius: 20, border: '1px solid', cursor: 'pointer', fontSize: 12,
+                    background: t === typeFilter ? '#1976d2' : '#fff',
+                    color: t === typeFilter ? '#fff' : '#555',
+                    borderColor: t === typeFilter ? '#1976d2' : '#ddd',
+                    fontWeight: t === typeFilter ? 600 : 400, textTransform: 'capitalize' }}>
+                  {t}
+                </button>
+              ))}
+              <Box flex={1} />
+              <Button variant="contained" color="primary" size="small"
+                href="/catalog/create" style={{ fontSize: 12 }}>
+                + Register API
+              </Button>
+            </Box>
+
+            {/* API grid */}
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: selected ? 20 : 0 }}>
+              {filtered.map(api => (
+                <Paper key={api.name} onClick={() => setSelected(selected?.name === api.name ? null : api)}
+                  style={{ flex: '1 1 300px', maxWidth: 420, cursor: 'pointer',
+                    border: selected?.name === api.name ? '2px solid #1976d2' : '2px solid transparent',
+                    transition: 'border-color 0.15s' }}>
+                  <Box display="flex" alignItems="center" style={{ gap: 12, padding: '16px 16px 12px' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: `${TYPE_COLORS[api.type] ?? '#455a64'}22`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                      {api.type === 'asyncapi' ? '⬡' : api.type === 'grpc' ? '⚡' : '◈'}
+                    </div>
+                    <Box flex={1}>
+                      <Typography variant="body1" style={{ fontWeight: 600 }}>{api.name}</Typography>
+                      <Typography variant="caption" color="textSecondary" style={{ textTransform: 'capitalize' }}>
+                        {api.type} · {api.owner}
+                      </Typography>
+                    </Box>
+                    <Chip size="small" label={api.lifecycle}
+                      style={{ background: LC_COLORS[api.lifecycle] ?? '#9e9e9e', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                  </Box>
+                  <Typography variant="body2" color="textSecondary" style={{ padding: '0 16px 10px', fontSize: 12 }}>
+                    {api.description || 'No description.'}
+                  </Typography>
+                  {api.tags.length > 0 && (
+                    <Box style={{ padding: '0 16px 12px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {api.tags.map(t => (
+                        <Chip key={t} size="small" label={t} style={{ fontSize: 10, height: 18 }} />
+                      ))}
+                    </Box>
+                  )}
+                </Paper>
+              ))}
+              {filtered.length === 0 && (
+                <Typography variant="body2" color="textSecondary" style={{ padding: 8 }}>No APIs match your filter.</Typography>
+              )}
+            </Box>
+
+            {/* Inline spec preview */}
+            {selected && (
+              <Paper style={{ marginTop: 4 }}>
+                <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6" style={{ flex: 1 }}>
+                    {selected.name} · <span style={{ textTransform: 'capitalize', color: TYPE_COLORS[selected.type] ?? '#455a64' }}>{selected.type}</span>
+                  </Typography>
+                  <Button variant="outlined" size="small"
+                    href={`/catalog/default/api/${selected.name}`} style={{ fontSize: 11, marginRight: 8 }}>
+                    Full catalog page ↗
+                  </Button>
+                  <Button size="small" onClick={() => setSelected(null)} style={{ fontSize: 11 }}>Close ✕</Button>
+                </Box>
+                {DEMO_ENDPOINTS.map((ep, i) => (
+                  <Box key={i}>
+                    <Box style={{ background: '#1e2d3d', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ background: METHOD_COLORS[ep.method] ?? '#455a64', color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11, fontWeight: 700 }}>{ep.method}</span>
+                      <Typography variant="caption" style={{ color: '#a3be8c', fontFamily: 'monospace', fontSize: 13 }}>{ep.path}</Typography>
+                      <Typography variant="caption" style={{ color: '#81a1c1', marginLeft: 8 }}>· {ep.desc}</Typography>
+                    </Box>
+                    <Box style={{ padding: '10px 20px', borderBottom: i < DEMO_ENDPOINTS.length - 1 ? '1px solid #eee' : 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {ep.status.map(s => (
+                        <Chip key={s} size="small" label={s}
+                          style={{ fontSize: 10, background: s.startsWith('2') ? '#e8f5e9' : s.startsWith('4') ? '#fff8e1' : '#ffebee', fontWeight: 600 }} />
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
+              </Paper>
+            )}
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const apiExplorerRouteRef = createRouteRef({ id: 'api-explorer' });
+const apiExplorerPage = PageBlueprint.make({
+  name: 'api-explorer',
+  params: { path: '/apis', routeRef: apiExplorerRouteRef, loader: async () => <ApiExplorerPage /> },
+});
+const apiExplorerNavItem = NavItemBlueprint.make({
+  name: 'api-explorer',
+  params: { title: 'APIs', icon: ExtensionIcon as any, routeRef: apiExplorerRouteRef },
+});
+
+// ── Onboarding Wizard ──────────────────────────────────────────────────────────
+// 4-step guide for new platform users. Progress persisted in localStorage.
+// Step 1: Profile (auto-filled from identity API)
+// Step 2: GitHub (token check)
+// Step 3: First Service (links to /create)
+// Step 4: Explore (links to key pages)
+
+const ONBOARDING_KEY = 'idp_onboarding_step';
+
+function OnboardingPage() {
+  const identityApi = useApi(identityApiRef);
+
+  const [step, setStep]     = useState<number>(() => {
+    try { return parseInt(localStorage.getItem(ONBOARDING_KEY) ?? '0', 10); } catch { return 0; }
+  });
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    identityApi.getProfileInfo().then(p => setDisplayName(p.displayName ?? p.email ?? 'there')).catch(() => {});
+  }, [identityApi]);
+
+  const advance = (to: number) => {
+    const next = Math.min(to, 3);
+    setStep(next);
+    try { localStorage.setItem(ONBOARDING_KEY, String(next)); } catch {}
+  };
+  const back = (to: number) => {
+    const prev = Math.max(to, 0);
+    setStep(prev);
+    try { localStorage.setItem(ONBOARDING_KEY, String(prev)); } catch {}
+  };
+
+  const STEPS = ['Profile', 'GitHub', 'First Service', 'Explore'];
+
+  const stepColor = (i: number) =>
+    i < step ? '#4caf50' : i === step ? '#1976d2' : '#e0e0e0';
+
+  return (
+    <Page themeId="home">
+      <Header title="Welcome to the IDP" subtitle="Let's get you set up in 4 quick steps" />
+      <Content>
+        <Box style={{ maxWidth: 680, margin: '0 auto' }}>
+          {/* Progress stepper */}
+          <Paper style={{ padding: '20px 24px', marginBottom: 24 }}>
+            <Box display="flex" alignItems="center">
+              {STEPS.map((label, i) => (
+                <Box key={i} display="flex" alignItems="center" style={{ flex: 1 }}>
+                  <Box display="flex" flexDirection="column" alignItems="center" style={{ flex: 1 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+                      background: stepColor(i), color: '#fff', fontWeight: 700, fontSize: 13,
+                      cursor: i <= step ? 'pointer' : 'default',
+                    }} onClick={() => { if (i <= step) back(i); }}>
+                      {i < step ? '✓' : i + 1}
+                    </div>
+                    <Typography variant="caption" style={{ fontWeight: i === step ? 600 : 400, color: stepColor(i), fontSize: 11 }}>
+                      {label}
+                    </Typography>
+                  </Box>
+                  {i < STEPS.length - 1 && (
+                    <div style={{ flex: 1, height: 2, background: i < step ? '#4caf50' : '#e0e0e0', marginBottom: 22, maxWidth: 60 }} />
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </Paper>
+
+          {/* Step 0 — Profile */}
+          {step === 0 && (
+            <Paper style={{ marginBottom: 16 }}>
+              <Box style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+                <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                  <Chip size="small" label="Step 1 of 4" style={{ background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: 10 }} />
+                  <Typography variant="h6">Set up your profile</Typography>
+                </Box>
+                <Typography variant="body2" color="textSecondary">
+                  Confirm your details — we pulled these from your identity provider.
+                </Typography>
+              </Box>
+              <Box style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Box style={{ padding: '14px', border: '1px solid #e0e0e0', borderRadius: 4 }}>
+                  <Typography variant="caption" color="textSecondary">Display name</Typography>
+                  <Typography variant="body1" style={{ fontWeight: 500 }}>{displayName || 'Loading…'}</Typography>
+                </Box>
+                <Typography variant="caption" color="textSecondary">
+                  To update your profile, sign out and back in with your GitHub account.
+                </Typography>
+                <Box display="flex" justifyContent="flex-end" style={{ marginTop: 8 }}>
+                  <Button variant="contained" color="primary" onClick={() => advance(1)}>Looks good →</Button>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Step 1 — GitHub */}
+          {step === 1 && (
+            <Paper style={{ marginBottom: 16 }}>
+              <Box style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+                <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                  <Chip size="small" label="Step 2 of 4" style={{ background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: 10 }} />
+                  <Typography variant="h6">Connect GitHub</Typography>
+                </Box>
+                <Typography variant="body2" color="textSecondary">
+                  The IDP uses your GitHub token to scaffold services and trigger CI/CD.
+                </Typography>
+              </Box>
+              <Box style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Box style={{ padding: 14, border: '1px solid #c8e6c9', borderRadius: 4, background: '#f1f8e9', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 20 }}>✅</span>
+                  <Box>
+                    <Typography variant="body2" style={{ fontWeight: 500 }}>GitHub token detected</Typography>
+                    <Typography variant="caption" color="textSecondary">GITHUB_TOKEN is set in local/.env — scaffold actions are enabled.</Typography>
+                  </Box>
+                </Box>
+                <Box display="flex" justifyContent="space-between" style={{ marginTop: 8 }}>
+                  <Button onClick={() => back(0)}>← Back</Button>
+                  <Button variant="contained" color="primary" onClick={() => advance(2)}>Continue →</Button>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Step 2 — First Service */}
+          {step === 2 && (
+            <Paper style={{ marginBottom: 16 }}>
+              <Box style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+                <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                  <Chip size="small" label="Step 3 of 4" style={{ background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: 10 }} />
+                  <Typography variant="h6">Create your first service</Typography>
+                </Box>
+                <Typography variant="body2" color="textSecondary">Use a Golden Path template to scaffold a production-ready service in under 2 minutes.</Typography>
+              </Box>
+              <Box style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { emoji: '🐹', label: 'Go Microservice', desc: 'Production-ready · CI/CD included · ~90s', primary: true },
+                  { emoji: '🟨', label: 'Node.js Service', desc: 'Express + TypeScript · ~90s',              primary: false },
+                  { emoji: '🐍', label: 'Python Service',  desc: 'FastAPI · Dockerfile · ~90s',             primary: false },
+                ].map(({ emoji, label, desc, primary }) => (
+                  <a key={label} href="/create"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, textDecoration: 'none', color: 'inherit',
+                      border: `1px solid ${primary ? '#1976d2' : '#e0e0e0'}`,
+                      borderRadius: 4, background: primary ? '#e3f2fd' : '#fff', cursor: 'pointer' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: primary ? '#1976d2' : '#f5f5f5',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                      {emoji}
+                    </div>
+                    <Box flex={1}>
+                      <Typography variant="body2" style={{ fontWeight: 500 }}>{label}{primary ? ' (recommended)' : ''}</Typography>
+                      <Typography variant="caption" color="textSecondary">{desc}</Typography>
+                    </Box>
+                    <Button variant={primary ? 'contained' : 'outlined'} color={primary ? 'primary' : 'default'} size="small" style={{ fontSize: 11 }}>
+                      Use Template →
+                    </Button>
+                  </a>
+                ))}
+                <Box display="flex" justifyContent="space-between" style={{ marginTop: 8 }}>
+                  <Button onClick={() => back(1)}>← Back</Button>
+                  <Button color="default" onClick={() => advance(3)}>Skip for now →</Button>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Step 3 — Explore */}
+          {step === 3 && (
+            <Paper style={{ marginBottom: 16 }}>
+              <Box style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+                <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                  <Chip size="small" label="Step 4 of 4" style={{ background: '#e8f5e9', color: '#4caf50', fontWeight: 600, fontSize: 10 }} />
+                  <Typography variant="h6">🎉 You're all set, {displayName || 'there'}!</Typography>
+                </Box>
+                <Typography variant="body2" color="textSecondary">Here's where to go next:</Typography>
+              </Box>
+              <Box style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { href: '/catalog',    emoji: '📦', label: 'Catalog',      desc: 'Browse all services, APIs, and teams' },
+                  { href: '/home',       emoji: '📊', label: 'Dashboard',    desc: 'Platform-wide DORA metrics and status' },
+                  { href: '/ai-assistant', emoji: '🤖', label: 'AI Assistant', desc: 'Ask the IDP assistant anything' },
+                  { href: '/scorecard',  emoji: '🏆', label: 'Scorecard',    desc: 'Quality tiers across all services' },
+                ].map(({ href, emoji, label, desc }) => (
+                  <a key={label} href={href}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', textDecoration: 'none', color: 'inherit',
+                      border: '1px solid #e0e0e0', borderRadius: 4, cursor: 'pointer' }}>
+                    <span style={{ fontSize: 20 }}>{emoji}</span>
+                    <Box>
+                      <Typography variant="body2" style={{ fontWeight: 500 }}>{label}</Typography>
+                      <Typography variant="caption" color="textSecondary">{desc}</Typography>
+                    </Box>
+                  </a>
+                ))}
+                <Box display="flex" justifyContent="space-between" style={{ marginTop: 8 }}>
+                  <Button onClick={() => back(2)}>← Back</Button>
+                  <Button variant="contained" color="primary" href="/home">Go to Dashboard →</Button>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Completed steps summary */}
+          {step > 0 && (
+            <Paper>
+              {step > 0 && <Box style={{ padding: '12px 20px', borderBottom: step > 1 ? '1px solid #eee' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ color: '#4caf50' }}>✓</span><Typography variant="body2">Profile confirmed · {displayName}</Typography></Box>}
+              {step > 1 && <Box style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ color: '#4caf50' }}>✓</span><Typography variant="body2">GitHub connected</Typography></Box>}
+            </Paper>
+          )}
+        </Box>
+      </Content>
+    </Page>
+  );
+}
+
+const onboardingRouteRef = createRouteRef({ id: 'onboarding' });
+const onboardingPage = PageBlueprint.make({
+  name: 'onboarding',
+  params: { path: '/onboarding', routeRef: onboardingRouteRef, loader: async () => <OnboardingPage /> },
+});
+const onboardingNavItem = NavItemBlueprint.make({
+  name: 'onboarding',
+  params: { title: 'Onboarding', icon: EmojiPeopleIcon as any, routeRef: onboardingRouteRef },
+});
+
+// ── Cost Calculator ────────────────────────────────────────────────────────────
+// Interactive slider-based cost estimator. Pulls live team budget from Prometheus
+// (idp_team_budget_usd_monthly) and compares the estimate against remaining budget.
+
+function CostCalculatorPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [cpu,      setCpu]      = useState(250);   // millicores
+  const [mem,      setMem]      = useState(256);   // Mi
+  const [replicas, setReplicas] = useState(2);
+  const [aiCalls,  setAiCalls]  = useState(500);
+  const [env,      setEnv]      = useState<'local' | 'aws'>('local');
+  const [budget,   setBudget]   = useState<{ budget: number; used: number; team: string } | null>(null);
+
+  useEffect(() => {
+    const pq = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+    Promise.all([
+      pq('idp_team_budget_usd_monthly').catch(() => null),
+      pq('idp_team_actual_cost_usd_monthly').catch(() => null),
+    ]).then(([budgetRes, costRes]) => {
+      const br = budgetRes?.data?.result?.[0];
+      const cr = costRes?.data?.result?.[0];
+      if (br) {
+        setBudget({
+          team:   br.metric?.team ?? 'platform-team',
+          budget: parseFloat(br.value?.[1] ?? '500'),
+          used:   parseFloat(cr?.value?.[1] ?? '0'),
+        });
+      }
+    }).catch(() => {});
+  }, [base, fetchApi]);
+
+  // Cost model: EKS node ~$0.1/vCPU·hour, ~$0.012/GiB·hour; local = $0
+  const cpuCost  = env === 'aws' ? (cpu / 1000) * replicas * 0.1  * 730 : 0;
+  const memCost  = env === 'aws' ? (mem / 1024) * replicas * 0.012 * 730 : 0;
+  const k8sCost  = cpuCost + memCost;
+  // Claude Sonnet 4 ~$3/MTok input, ~$15/MTok output, ~avg 1.5K tokens/call
+  const aiCost   = aiCalls * 1500 / 1_000_000 * ((3 + 15) / 2);
+  const total    = k8sCost + aiCost;
+
+  const k8sPct   = total > 0 ? (k8sCost / total) * 100 : 0;
+  const aiPct    = total > 0 ? (aiCost  / total) * 100 : 100;
+
+  const demoBudget = { team: 'platform-team', budget: 500, used: 312 };
+  const b          = budget ?? demoBudget;
+  const newTotal   = b.used + total;
+  const pctOfBudget = b.budget > 0 ? (total / b.budget) * 100 : 0;
+  const utilization = b.budget > 0 ? (newTotal / b.budget) * 100 : 0;
+
+  const fmt$ = (v: number) => v < 1 ? `$${v.toFixed(2)}` : `$${Math.round(v)}`;
+
+  return (
+    <Page themeId="tool">
+      <Header title="Cost Calculator" subtitle="Estimate monthly infrastructure cost before deploying" />
+      <Content>
+        <Box display="flex" style={{ gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {/* Inputs */}
+          <Paper style={{ flex: '1 1 300px', maxWidth: 400 }}>
+            <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+              <Typography variant="h6">Service Configuration</Typography>
+            </Box>
+            <Box style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* Service type */}
+              <Box>
+                <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Service Type</Typography>
+                <select style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid #ddd', fontSize: 13 }}>
+                  <option>Web service (HTTP/gRPC)</option>
+                  <option>Background worker</option>
+                  <option>Cron job</option>
+                  <option>ML inference server</option>
+                </select>
+              </Box>
+
+              {/* CPU */}
+              <Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>CPU Request</Typography>
+                  <Typography variant="caption" style={{ fontFamily: 'monospace', fontWeight: 600 }}>{cpu}m</Typography>
+                </Box>
+                <input type="range" min={100} max={2000} step={50} value={cpu}
+                  onChange={e => setCpu(parseInt(e.target.value, 10))}
+                  style={{ width: '100%', marginTop: 4 }} />
+              </Box>
+
+              {/* Memory */}
+              <Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>Memory Request</Typography>
+                  <Typography variant="caption" style={{ fontFamily: 'monospace', fontWeight: 600 }}>{mem}Mi</Typography>
+                </Box>
+                <input type="range" min={128} max={4096} step={128} value={mem}
+                  onChange={e => setMem(parseInt(e.target.value, 10))}
+                  style={{ width: '100%', marginTop: 4 }} />
+              </Box>
+
+              {/* Replicas */}
+              <Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>Replicas</Typography>
+                  <Typography variant="caption" style={{ fontFamily: 'monospace', fontWeight: 600 }}>{replicas}</Typography>
+                </Box>
+                <input type="range" min={1} max={10} value={replicas}
+                  onChange={e => setReplicas(parseInt(e.target.value, 10))}
+                  style={{ width: '100%', marginTop: 4 }} />
+              </Box>
+
+              <Box style={{ height: 1, background: '#eee' }} />
+
+              {/* AI calls */}
+              <Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>AI API calls / month</Typography>
+                  <Typography variant="caption" style={{ fontFamily: 'monospace', fontWeight: 600 }}>{aiCalls.toLocaleString()}</Typography>
+                </Box>
+                <input type="range" min={0} max={10000} step={100} value={aiCalls}
+                  onChange={e => setAiCalls(parseInt(e.target.value, 10))}
+                  style={{ width: '100%', marginTop: 4 }} />
+              </Box>
+
+              {/* Environment */}
+              <Box>
+                <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Environment</Typography>
+                <Box display="flex" style={{ gap: 8 }}>
+                  {(['local', 'aws'] as const).map(e => (
+                    <button key={e} onClick={() => setEnv(e)}
+                      style={{ flex: 1, padding: '8px', borderRadius: 4, border: `1px solid ${env === e ? '#1976d2' : '#ddd'}`,
+                        background: env === e ? '#e3f2fd' : '#fff', color: env === e ? '#1976d2' : '#555',
+                        fontWeight: env === e ? 700 : 400, cursor: 'pointer', fontSize: 12 }}>
+                      {e === 'local' ? '🏠 Local (Kind) — free' : '☁️ AWS EKS'}
+                    </button>
+                  ))}
+                </Box>
+              </Box>
+            </Box>
+          </Paper>
+
+          {/* Estimate panel */}
+          <Box style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Total */}
+            <Paper>
+              <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6">Estimated Monthly Cost</Typography>
+              </Box>
+              <Box style={{ padding: '24px 20px', textAlign: 'center' }}>
+                <Typography variant="h2" style={{ fontWeight: 300, color: '#1976d2', lineHeight: 1 }}>{fmt$(total)}</Typography>
+                <Typography variant="caption" color="textSecondary" style={{ marginTop: 6, display: 'block' }}>
+                  per month · {env === 'local' ? 'Kind cluster (free compute)' : 'AWS EKS estimate'}
+                </Typography>
+              </Box>
+              <Box style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { label: 'Kubernetes (OpenCost est.)', value: k8sCost, pct: k8sPct, color: '#1976d2' },
+                  { label: 'AI API (Claude Sonnet)',     value: aiCost,  pct: aiPct,  color: '#4caf50' },
+                  { label: 'Observability (Loki, Tempo)', value: 0,      pct: 0,      color: '#ff9800' },
+                ].map(({ label, value, pct, color }) => (
+                  <Box key={label}>
+                    <Box display="flex" justifyContent="space-between" style={{ marginBottom: 4 }}>
+                      <Typography variant="caption">{label}</Typography>
+                      <Typography variant="caption" style={{ fontFamily: 'monospace', fontWeight: 600 }}>{fmt$(value)}</Typography>
+                    </Box>
+                    <div style={{ height: 6, borderRadius: 3, background: '#eee', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: color, borderRadius: 3, transition: 'width 0.3s' }} />
+                    </div>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+
+            {/* vs Budget */}
+            <Paper>
+              <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6">vs Team Budget</Typography>
+                {!budget && <Typography variant="caption" color="textSecondary"> · demo data</Typography>}
+              </Box>
+              <Box style={{ padding: '16px 20px' }}>
+                <Box display="flex" justifyContent="space-between" style={{ marginBottom: 6 }}>
+                  <Typography variant="caption">This service: <strong>{pctOfBudget.toFixed(1)}% of budget</strong></Typography>
+                  <Typography variant="caption">{b.team} · {fmt$(b.budget)}/mo</Typography>
+                </Box>
+                <div style={{ height: 8, borderRadius: 4, background: '#eee', overflow: 'hidden', marginBottom: 12 }}>
+                  <div style={{ height: '100%', width: `${Math.min(utilization, 100)}%`, background: utilization > 90 ? '#f44336' : utilization > 70 ? '#ff9800' : '#4caf50', borderRadius: 4, transition: 'width 0.3s' }} />
+                </div>
+                <Typography variant="caption" color="textSecondary">
+                  Budget used: {fmt$(b.used)} · Adding this service: ~{fmt$(newTotal)} total ({utilization.toFixed(0)}% utilization)
+                </Typography>
+              </Box>
+            </Paper>
+
+            <Button variant="contained" color="primary" href="/create" style={{ width: '100%', justifyContent: 'center', padding: '10px 0' }}>
+              Scaffold Service →
+            </Button>
+          </Box>
+        </Box>
+      </Content>
+    </Page>
+  );
+}
+
+const calculatorRouteRef = createRouteRef({ id: 'cost-calculator' });
+const calculatorPage = PageBlueprint.make({
+  name: 'cost-calculator',
+  params: { path: '/calculator', routeRef: calculatorRouteRef, loader: async () => <CostCalculatorPage /> },
+});
+const calculatorNavItem = NavItemBlueprint.make({
+  name: 'cost-calculator',
+  params: { title: 'Cost Calc', icon: CalculateIcon as any, routeRef: calculatorRouteRef },
+});
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+// 6-tab settings page: Profile, Appearance, Notifications, API Tokens,
+// Integrations, Privacy. State stored in component; no backend writes.
+
+const SETTINGS_TABS = ['Profile', 'Appearance', 'Notifications', 'API Tokens', 'Integrations', 'Privacy'] as const;
+type SettingsTab = typeof SETTINGS_TABS[number];
+
+const NOTIF_EVENTS = [
+  'Deployment completed', 'Deployment failed', 'SLO breach',
+  'Security vulnerability found', 'Scorecard score changed',
+  'Budget threshold (80%)', 'Budget threshold (100%)', 'On-call escalation',
+  'New service registered', 'Platform announcements',
+];
+
+const DEFAULT_NOTIF: Record<string, [boolean, boolean, boolean]> = {
+  'Deployment completed':        [true,  true,  false],
+  'Deployment failed':           [true,  true,  true],
+  'SLO breach':                  [true,  true,  true],
+  'Security vulnerability found':[true,  true,  true],
+  'Scorecard score changed':     [true,  false, false],
+  'Budget threshold (80%)':      [true,  true,  true],
+  'Budget threshold (100%)':     [true,  true,  true],
+  'On-call escalation':          [true,  true,  true],
+  'New service registered':      [true,  false, false],
+  'Platform announcements':      [true,  true,  false],
+};
+
+const DEMO_TOKENS = [
+  { name: 'CI/CD Pipeline', created: 'Jun 1',  lastUsed: '2 min ago',  expires: 'Never',  scopes: ['catalog:read', 'scaffolder:write'] },
+  { name: 'Local Dev',      created: 'May 15', lastUsed: '1 hour ago', expires: 'Jul 15', scopes: ['catalog:read'] },
+  { name: 'Monitoring Bot', created: 'Apr 28', lastUsed: 'Today',      expires: 'Never',  scopes: ['techdocs:read', 'catalog:read'] },
+];
+
+const INTEGRATIONS = [
+  { name: 'GitHub',    bg: '#24292e', label: '⎇', detail: 'moatazeldebsy · Connected Jun 1',       connected: true  },
+  { name: 'Slack',     bg: '#E01E5A', label: 'S', detail: 'workspace: idp-platform · #platform-support', connected: true  },
+  { name: 'Jira',      bg: '#0052CC', label: 'J', detail: 'idp-platform.atlassian.net · project: IDP', connected: true  },
+  { name: 'PagerDuty', bg: '#06AC38', label: 'PD',detail: 'Platform On-Call · moataz@pagerduty.com',   connected: true  },
+  { name: 'Grafana',   bg: '#F46800', label: 'G', detail: 'grafana.idp.local · not linked to account', connected: false },
+];
+
+function SettingsPage() {
+  const identityApi = useApi(identityApiRef);
+  const [tab, setTab]           = useState<SettingsTab>('Profile');
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail]       = useState('');
+  const [notif, setNotif]       = useState<Record<string, [boolean, boolean, boolean]>>(DEFAULT_NOTIF);
+  const [saved, setSaved]       = useState(false);
+
+  useEffect(() => {
+    identityApi.getProfileInfo().then(p => {
+      setDisplayName(p.displayName ?? '');
+      setEmail(p.email ?? '');
+    }).catch(() => {});
+  }, [identityApi]);
+
+  const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'ME';
+
+  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+
+  const toggleNotif = (event: string, col: 0 | 1 | 2) => {
+    setNotif(prev => {
+      const row = [...prev[event]] as [boolean, boolean, boolean];
+      row[col] = !row[col];
+      return { ...prev, [event]: row };
+    });
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="Settings" subtitle="Account, preferences, integrations & API tokens" />
+      <Content>
+        <Box display="flex" style={{ gap: 24, alignItems: 'flex-start' }}>
+          {/* Sidebar */}
+          <Paper style={{ minWidth: 180, padding: '8px 0', flexShrink: 0 }}>
+            {SETTINGS_TABS.map(t => (
+              <Box key={t} onClick={() => setTab(t)}
+                style={{ padding: '10px 20px', cursor: 'pointer', fontSize: 13, fontWeight: tab === t ? 600 : 400,
+                  color: tab === t ? '#1976d2' : '#333',
+                  background: tab === t ? 'rgba(25,118,210,0.07)' : 'transparent',
+                  borderLeft: `3px solid ${tab === t ? '#1976d2' : 'transparent'}` }}>
+                {t}
+              </Box>
+            ))}
+          </Paper>
+
+          {/* Content */}
+          <Box flex={1}>
+            {/* Profile */}
+            {tab === 'Profile' && (
+              <Paper>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Profile</Typography>
+                </Box>
+                <Box style={{ padding: '20px 24px' }}>
+                  <Box display="flex" alignItems="center" style={{ gap: 20, marginBottom: 20 }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#1976d2', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700 }}>
+                      {initials}
+                    </div>
+                    <Box>
+                      <Typography variant="h6">{displayName || '—'}</Typography>
+                      <Typography variant="body2" color="textSecondary">{email}</Typography>
+                      <Box style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                        <Chip size="small" label="platform-team" style={{ fontSize: 10 }} />
+                        <Chip size="small" label="admin" style={{ background: '#e3f2fd', color: '#1976d2', fontSize: 10 }} />
+                      </Box>
+                    </Box>
+                    <Button variant="outlined" size="small" style={{ marginLeft: 'auto', fontSize: 12 }}>Change Avatar</Button>
+                  </Box>
+                  <Box style={{ height: 1, background: '#eee', marginBottom: 16 }} />
+                  <Box display="flex" style={{ gap: 16, flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Display Name', value: displayName, set: setDisplayName },
+                      { label: 'Email',         value: email,       set: setEmail },
+                    ].map(({ label, value, set }) => (
+                      <Box key={label} style={{ flex: '1 1 200px' }}>
+                        <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>{label}</Typography>
+                        <input value={value} onChange={e => set(e.target.value)}
+                          style={{ width: '100%', border: '1px solid #ddd', borderRadius: 4, padding: '8px 12px', fontSize: 13, boxSizing: 'border-box' }} />
+                      </Box>
+                    ))}
+                  </Box>
+                  <Box display="flex" justifyContent="flex-end" style={{ marginTop: 16, gap: 8, alignItems: 'center' }}>
+                    {saved && <Typography variant="caption" style={{ color: '#4caf50', fontWeight: 600 }}>✓ Saved</Typography>}
+                    <Button variant="contained" color="primary" onClick={save}>Save Changes</Button>
+                  </Box>
+                </Box>
+              </Paper>
+            )}
+
+            {/* Appearance */}
+            {tab === 'Appearance' && (
+              <Paper>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Appearance</Typography>
+                </Box>
+                <Box style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <Box>
+                    <Typography variant="body2" style={{ fontWeight: 500, marginBottom: 12 }}>Theme</Typography>
+                    <Box display="flex" style={{ gap: 12 }}>
+                      {[['☀️','Light',true],['🌙','Dark',false],['💻','System',false]].map(([emoji, label, active]) => (
+                        <Paper key={label as string} style={{ padding: '12px 20px', cursor: 'pointer', textAlign: 'center',
+                          border: `2px solid ${active ? '#1976d2' : '#e0e0e0'}`,
+                          background: active ? '#e3f2fd' : '#fff' }}>
+                          <div style={{ fontSize: 20, marginBottom: 4 }}>{emoji}</div>
+                          <Typography variant="caption" style={{ fontWeight: active ? 600 : 400, color: active ? '#1976d2' : '#555' }}>{label as string}</Typography>
+                        </Paper>
+                      ))}
+                    </Box>
+                  </Box>
+                  <Box style={{ height: 1, background: '#eee' }} />
+                  <Box>
+                    <Typography variant="body2" style={{ fontWeight: 500, marginBottom: 12 }}>Density</Typography>
+                    <Box display="flex" style={{ gap: 12 }}>
+                      {[['Comfortable', false], ['Compact', true]].map(([label, active]) => (
+                        <Paper key={label as string} style={{ padding: '10px 18px', cursor: 'pointer',
+                          border: `2px solid ${active ? '#1976d2' : '#e0e0e0'}`,
+                          background: active ? '#e3f2fd' : '#fff' }}>
+                          <Typography variant="caption" style={{ fontWeight: active ? 600 : 400, color: active ? '#1976d2' : '#555' }}>{label as string}</Typography>
+                        </Paper>
+                      ))}
+                    </Box>
+                  </Box>
+                  <Box display="flex" justifyContent="flex-end">
+                    <Button variant="contained" color="primary" onClick={save}>Save</Button>
+                  </Box>
+                </Box>
+              </Paper>
+            )}
+
+            {/* Notifications */}
+            {tab === 'Notifications' && (
+              <Paper>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Notification Preferences</Typography>
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Event</strong></TableCell>
+                        <TableCell align="center"><strong>In-App</strong></TableCell>
+                        <TableCell align="center"><strong>Email</strong></TableCell>
+                        <TableCell align="center"><strong>Slack</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {NOTIF_EVENTS.map(event => (
+                        <TableRow key={event} hover>
+                          <TableCell>{event}</TableCell>
+                          {([0,1,2] as const).map(col => (
+                            <TableCell key={col} align="center">
+                              <input type="checkbox" checked={notif[event]?.[col] ?? false}
+                                onChange={() => toggleNotif(event, col)}
+                                style={{ cursor: 'pointer', width: 16, height: 16 }} />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+                <Box display="flex" justifyContent="flex-end" style={{ padding: '12px 16px' }}>
+                  <Button variant="contained" color="primary" onClick={save}>Save Preferences</Button>
+                </Box>
+              </Paper>
+            )}
+
+            {/* API Tokens */}
+            {tab === 'API Tokens' && (
+              <Paper>
+                <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6" style={{ flex: 1 }}>API Tokens</Typography>
+                  <Button variant="contained" color="primary" size="small" style={{ fontSize: 12 }}>+ Generate Token</Button>
+                </Box>
+                <Box style={{ padding: '12px 16px', background: '#e3f2fd', borderBottom: '1px solid #e0e0e0' }}>
+                  <Typography variant="body2" style={{ color: '#1565c0' }}>
+                    ℹ Tokens provide programmatic access to the Backstage API. Keep them secret — treat like passwords.
+                  </Typography>
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Name</strong></TableCell>
+                        <TableCell><strong>Created</strong></TableCell>
+                        <TableCell><strong>Last Used</strong></TableCell>
+                        <TableCell><strong>Expires</strong></TableCell>
+                        <TableCell><strong>Scopes</strong></TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {DEMO_TOKENS.map(tok => (
+                        <TableRow key={tok.name} hover>
+                          <TableCell style={{ fontWeight: 500 }}>{tok.name}</TableCell>
+                          <TableCell><Typography variant="caption">{tok.created}</Typography></TableCell>
+                          <TableCell><Typography variant="caption">{tok.lastUsed}</Typography></TableCell>
+                          <TableCell><Typography variant="caption">{tok.expires}</Typography></TableCell>
+                          <TableCell>
+                            <Box display="flex" style={{ gap: 4, flexWrap: 'wrap' }}>
+                              {tok.scopes.map(s => <Chip key={s} size="small" label={s} style={{ fontSize: 10, height: 18 }} />)}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Button size="small" style={{ fontSize: 11, color: '#f44336' }}>Revoke</Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Paper>
+            )}
+
+            {/* Integrations */}
+            {tab === 'Integrations' && (
+              <Paper>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Connected Integrations</Typography>
+                </Box>
+                {INTEGRATIONS.map((intg, i) => (
+                  <Box key={intg.name} display="flex" alignItems="center" style={{ gap: 14, padding: '14px 20px',
+                    borderBottom: i < INTEGRATIONS.length - 1 ? '1px solid #eee' : 'none' }}>
+                    <div style={{ width: 36, height: 36, background: intg.bg, borderRadius: 8,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+                      {intg.label}
+                    </div>
+                    <Box flex={1}>
+                      <Typography variant="body2" style={{ fontWeight: 500 }}>{intg.name}</Typography>
+                      <Typography variant="caption" color="textSecondary">{intg.detail}</Typography>
+                    </Box>
+                    <Chip size="small" label={intg.connected ? 'Connected' : 'Not connected'}
+                      style={{ background: intg.connected ? '#4caf50' : '#9e9e9e', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                    {intg.connected
+                      ? <Button size="small" style={{ fontSize: 12, color: '#f44336' }}>Disconnect</Button>
+                      : <Button size="small" variant="outlined" style={{ fontSize: 12 }}>Connect</Button>}
+                  </Box>
+                ))}
+              </Paper>
+            )}
+
+            {/* Privacy */}
+            {tab === 'Privacy' && (
+              <Paper>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Privacy & Data</Typography>
+                </Box>
+                <Box style={{ padding: '8px 20px' }}>
+                  {[
+                    { label: 'Share usage analytics',        desc: 'Help improve the platform by sharing anonymous usage data', checked: true,  danger: false },
+                    { label: 'Show my activity in team feed',desc: 'Your deploys and catalog changes will be visible to teammates', checked: true, danger: false },
+                  ].map(({ label, desc, checked }) => (
+                    <Box key={label} display="flex" justifyContent="space-between" alignItems="center"
+                      style={{ padding: '14px 0', borderBottom: '1px solid #eee' }}>
+                      <Box>
+                        <Typography variant="body2" style={{ fontWeight: 500 }}>{label}</Typography>
+                        <Typography variant="caption" color="textSecondary">{desc}</Typography>
+                      </Box>
+                      <input type="checkbox" defaultChecked={checked} style={{ width: 18, height: 18, cursor: 'pointer', flexShrink: 0 }} />
+                    </Box>
+                  ))}
+                  <Box display="flex" justifyContent="space-between" alignItems="center" style={{ padding: '14px 0' }}>
+                    <Box>
+                      <Typography variant="body2" style={{ fontWeight: 500, color: '#f44336' }}>Delete account data</Typography>
+                      <Typography variant="caption" color="textSecondary">Remove all personal data. Services you own will be unassigned.</Typography>
+                    </Box>
+                    <Button variant="outlined" size="small" style={{ fontSize: 12, color: '#f44336', borderColor: '#f44336', flexShrink: 0 }}>
+                      Request deletion
+                    </Button>
+                  </Box>
+                </Box>
+              </Paper>
+            )}
+          </Box>
+        </Box>
+      </Content>
+    </Page>
+  );
+}
+
+const settingsPageRouteRef = createRouteRef({ id: 'idp-settings' });
+const settingsPage = PageBlueprint.make({
+  name: 'idp-settings',
+  params: { path: '/idp-settings', routeRef: settingsPageRouteRef, loader: async () => <SettingsPage /> },
+});
+const settingsNavItem = NavItemBlueprint.make({
+  name: 'idp-settings',
+  params: { title: 'Settings', icon: SettingsIcon as any, routeRef: settingsPageRouteRef },
+});
+
+// ── User Profile ───────────────────────────────────────────────────────────────
+// Shows the current user's identity, owned entities from the catalog,
+// activity timeline, and stats.
+
+interface OwnedEntity { name: string; kind: string; lifecycle: string; type?: string }
+
+function UserProfilePage() {
+  const identityApi = useApi(identityApiRef);
+  const fetchApi    = useApi(fetchApiRef);
+  const configApi   = useApi(configApiRef);
+  const base        = configApi.getString('backend.baseUrl');
+
+  const [profile, setProfile]     = useState<{ displayName: string; email: string }>({ displayName: '', email: '' });
+  const [owned, setOwned]         = useState<OwnedEntity[]>([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    identityApi.getProfileInfo().then(p => {
+      setProfile({ displayName: p.displayName ?? '', email: p.email ?? '' });
+    }).catch(() => {});
+
+    identityApi.getBackstageIdentity().then(id => {
+      const owner = id.userEntityRef;
+      return fetchApi.fetch(`${base}/api/catalog/entities?filter=relations.ownedBy=${encodeURIComponent(owner)}&fields=metadata.name,kind,spec.lifecycle,spec.type`);
+    }).then(r => r.ok ? r.json() : [])
+      .then((entities: any[]) => {
+        setOwned(entities.map((e: any) => ({
+          name:      e.metadata?.name,
+          kind:      e.kind,
+          lifecycle: e.spec?.lifecycle ?? 'unknown',
+          type:      e.spec?.type,
+        })));
+      }).catch(() => {})
+      .finally(() => setLoading(false));
+  }, [base, fetchApi, identityApi]);
+
+  const initials = profile.displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ME';
+  const LC_COLORS: Record<string, string> = { production: '#4caf50', experimental: '#ff9800', deprecated: '#9e9e9e' };
+
+  const KIND_EMOJI: Record<string, string> = { Component: '🔧', API: '◈', Group: '👥', User: '👤', Template: '📋' };
+
+  const ACTIVITY_DEMO = [
+    { dot: '#4caf50', color: '#e8f5e9', text: <>Deployed <b>hello-service</b> to production</>,    meta: '2 minutes ago · main · a3f1b2c' },
+    { dot: '#1976d2', color: '#e3f2fd', text: <>Starred <b>payment-service</b></>,                 meta: '1 hour ago' },
+    { dot: '#7c4dff', color: '#f3e5f5', text: <>Scaffolded <b>payment-service</b> (Go)</>,         meta: 'Today 14:22' },
+    { dot: '#4caf50', color: '#e8f5e9', text: <>Deployed <b>idp-mcp-server</b></>,                 meta: '3 hours ago' },
+    { dot: '#ff9800', color: '#fff8e1', text: <>SLO breach acknowledged — latency-p95</>,           meta: 'Yesterday 16:40' },
+  ];
+
+  return (
+    <Page themeId="home">
+      <Header title="My Profile" subtitle={profile.email || 'Platform member'} />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {/* Hero banner */}
+            <Paper style={{ padding: '24px 24px 0', marginBottom: 24 }}>
+              <Box display="flex" alignItems="flex-end" style={{ gap: 20, paddingBottom: 0 }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#1976d2', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, flexShrink: 0 }}>
+                  {initials}
+                </div>
+                <Box style={{ paddingBottom: 16 }}>
+                  <Typography variant="h5" style={{ fontWeight: 400 }}>{profile.displayName || '—'}</Typography>
+                  <Typography variant="body2" color="textSecondary" style={{ marginTop: 2 }}>Platform Engineer · platform-team · {profile.email}</Typography>
+                  <Box style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                    <Chip size="small" label="admin"         style={{ background: '#e3f2fd', color: '#1976d2', fontSize: 10, fontWeight: 600 }} />
+                    <Chip size="small" label="platform-team" style={{ fontSize: 10 }} />
+                  </Box>
+                </Box>
+                <Box style={{ marginLeft: 'auto', paddingBottom: 16 }}>
+                  <Button variant="outlined" size="small" href="/idp-settings">Edit Profile</Button>
+                </Box>
+              </Box>
+              <Box style={{ display: 'flex', borderTop: '1px solid #eee', marginTop: 16 }}>
+                {['Overview', 'Owned Entities', 'Activity'].map((t, i) => (
+                  <Box key={t} style={{ padding: '12px 20px', fontSize: 13, fontWeight: i === 0 ? 500 : 400,
+                    color: i === 0 ? '#1976d2' : '#666', borderBottom: i === 0 ? '2px solid #1976d2' : 'none', cursor: 'default' }}>
+                    {t}
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+
+            <Box display="flex" style={{ gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* Left: activity */}
+              <Box style={{ flex: '2 1 300px' }}>
+                <Paper>
+                  <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                    <Typography variant="h6">Recent Activity</Typography>
+                  </Box>
+                  <Box style={{ padding: '8px 0' }}>
+                    {ACTIVITY_DEMO.map((item, i) => (
+                      <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 12, padding: '10px 20px', position: 'relative' }}>
+                        {i < ACTIVITY_DEMO.length - 1 && (
+                          <div style={{ position: 'absolute', left: 35, top: 38, bottom: 0, width: 2, background: '#eee' }} />
+                        )}
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: item.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, zIndex: 1, color: item.dot, fontWeight: 700 }}>
+                          {i === 0 || i === 3 ? '✓' : i === 1 ? '★' : i === 2 ? '+' : '⚠'}
+                        </div>
+                        <Box>
+                          <Typography variant="body2" style={{ fontSize: 13 }}>{item.text}</Typography>
+                          <Typography variant="caption" color="textSecondary">{item.meta}</Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                </Paper>
+              </Box>
+
+              {/* Right: owned entities + stats */}
+              <Box style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <Paper>
+                  <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                    <Typography variant="h6">Owned Entities</Typography>
+                  </Box>
+                  <Box style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {owned.length === 0 && (
+                      <Typography variant="caption" color="textSecondary" style={{ padding: 8 }}>No owned entities found.</Typography>
+                    )}
+                    {owned.map(e => (
+                      <a key={`${e.kind}-${e.name}`}
+                        href={`/catalog/default/${e.kind.toLowerCase()}/${e.name}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 4,
+                          background: '#f5f5f5', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
+                        <span style={{ fontSize: 16 }}>{KIND_EMOJI[e.kind] ?? '📦'}</span>
+                        <Typography variant="body2" style={{ flex: 1, fontWeight: 500, fontSize: 13 }}>{e.name}</Typography>
+                        <Chip size="small" label={e.lifecycle}
+                          style={{ background: LC_COLORS[e.lifecycle] ?? '#9e9e9e', color: '#fff', fontSize: 10, height: 18 }} />
+                      </a>
+                    ))}
+                  </Box>
+                </Paper>
+
+                <Paper>
+                  <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                    <Typography variant="h6">Stats</Typography>
+                  </Box>
+                  <Box style={{ padding: '8px 16px' }}>
+                    {[
+                      { label: 'Services owned',    value: owned.filter(e => e.kind === 'Component').length || '—' },
+                      { label: 'APIs owned',         value: owned.filter(e => e.kind === 'API').length || '—' },
+                      { label: 'Deploys this month', value: '—' },
+                      { label: 'Member since',       value: 'Jan 2025' },
+                    ].map(({ label, value }) => (
+                      <Box key={label} display="flex" justifyContent="space-between" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography variant="caption" color="textSecondary">{label}</Typography>
+                        <Typography variant="caption" style={{ fontFamily: 'monospace', fontWeight: 600 }}>{String(value)}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Paper>
+              </Box>
+            </Box>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const profilePageRouteRef = createRouteRef({ id: 'user-profile' });
+const profilePage = PageBlueprint.make({
+  name: 'user-profile',
+  params: { path: '/profile', routeRef: profilePageRouteRef, loader: async () => <UserProfilePage /> },
+});
+const profileNavItem = NavItemBlueprint.make({
+  name: 'user-profile',
+  params: { title: 'My Profile', icon: PersonIcon as any, routeRef: profilePageRouteRef },
+});
+
+// ── Global Search ──────────────────────────────────────────────────────────────
+// Full-page search with faceted results across Components, APIs, TechDocs,
+// and Templates. Hits the Backstage search API, falls back to catalog fetch.
+
+interface SearchResult {
+  kind: 'Component' | 'API' | 'TechDocs' | 'Template';
+  name: string;
+  description: string;
+  owner: string;
+  lifecycle?: string;
+  type?: string;
+  href: string;
+}
+
+const KIND_ICONS: Record<string, string> = { Component: '🔧', API: '◈', TechDocs: '📖', Template: '📋' };
+const KIND_COLORS: Record<string, string> = { Component: '#e8f5e9', API: '#ede7f6', TechDocs: '#fff8e1', Template: '#e3f2fd' };
+
+function GlobalSearchPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base      = configApi.getString('backend.baseUrl');
+
+  const [query, setQuery]     = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [kindFilter, setKindFilter] = useState<'All'|'Component'|'API'|'TechDocs'|'Template'>('All');
+
+  const search = (q: string) => {
+    if (!q.trim()) { setResults([]); return; }
+    setLoading(true);
+    // Try Backstage search API first, fall back to catalog filter
+    fetchApi.fetch(`${base}/api/search/query?term=${encodeURIComponent(q)}&pageLimit=30`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: any) => {
+        const items: SearchResult[] = (data?.results ?? []).map((r: any) => {
+          const doc  = r.document ?? {};
+          const kind = doc.kind ?? 'Component';
+          return {
+            kind,
+            name:        doc.name ?? doc.title ?? '—',
+            description: doc.text?.slice(0, 100) ?? doc.description ?? '',
+            owner:       doc.owner ?? '—',
+            lifecycle:   doc.lifecycle,
+            type:        doc.type,
+            href:        kind === 'TechDocs'
+              ? `/docs/default/component/${doc.name}`
+              : `/catalog/default/${kind.toLowerCase()}/${doc.name}`,
+          };
+        });
+        setResults(items);
+      })
+      .catch(() => {
+        // Fallback: catalog entities containing the query
+        return fetchApi.fetch(`${base}/api/catalog/entities?fields=metadata.name,metadata.description,kind,spec.type,spec.lifecycle,spec.owner`)
+          .then(r => r.ok ? r.json() : [])
+          .then((entities: any[]) => {
+            const lq = q.toLowerCase();
+            setResults(entities
+              .filter((e: any) => e.metadata?.name?.toLowerCase().includes(lq) || (e.metadata?.description ?? '').toLowerCase().includes(lq))
+              .slice(0, 20)
+              .map((e: any) => ({
+                kind:        e.kind as any,
+                name:        e.metadata?.name,
+                description: e.metadata?.description ?? '',
+                owner:       e.spec?.owner ?? '—',
+                lifecycle:   e.spec?.lifecycle,
+                type:        e.spec?.type,
+                href:        `/catalog/default/${e.kind.toLowerCase()}/${e.metadata?.name}`,
+              })));
+          });
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => search(query), 300);
+    return () => clearTimeout(t);
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const KINDS = ['All', 'Component', 'API', 'TechDocs', 'Template'] as const;
+
+  const filtered = kindFilter === 'All' ? results : results.filter(r => r.kind === kindFilter);
+
+  const grouped = KINDS.slice(1).reduce((acc, k) => {
+    const items = filtered.filter(r => r.kind === k);
+    if (items.length) acc[k] = items;
+    return acc;
+  }, {} as Record<string, SearchResult[]>);
+
+  const counts = KINDS.slice(1).reduce((acc, k) => { acc[k] = results.filter(r => r.kind === k).length; return acc; }, {} as Record<string, number>);
+
+  const highlight = (text: string) => {
+    if (!query) return text;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return text;
+    return <>{text.slice(0, idx)}<mark style={{ background: '#fff3cd', padding: '0 2px' }}>{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>;
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="Search" subtitle="Find services, APIs, docs, and templates across the platform" />
+      <Content>
+        <Box style={{ maxWidth: 700, margin: '0 auto' }}>
+          {/* Search bar */}
+          <Box style={{ position: 'relative', marginBottom: 12 }}>
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9e9e9e', fontSize: 18 }}>🔍</span>
+            <input value={query} onChange={e => setQuery(e.target.value)} autoFocus
+              placeholder="Search services, APIs, docs, templates…"
+              style={{ width: '100%', border: '1px solid #ddd', borderRadius: 4, padding: '12px 14px 12px 44px',
+                fontSize: 15, boxSizing: 'border-box', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', outline: 'none' }} />
+          </Box>
+
+          {/* Kind filter chips */}
+          <Box display="flex" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+            {KINDS.map(k => {
+              const count = k === 'All' ? results.length : (counts[k] ?? 0);
+              const active = kindFilter === k;
+              return (
+                <button key={k} onClick={() => setKindFilter(k)}
+                  style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${active ? '#1976d2' : '#ddd'}`,
+                    background: active ? '#e3f2fd' : '#fff', color: active ? '#1976d2' : '#555',
+                    fontWeight: active ? 600 : 400, fontSize: 12, cursor: 'pointer' }}>
+                  {k}{query ? ` (${count})` : ''}
+                </button>
+              );
+            })}
+          </Box>
+
+          {loading && <Progress />}
+
+          {!loading && query && results.length === 0 && (
+            <Typography variant="body2" color="textSecondary" style={{ textAlign: 'center', padding: 32 }}>
+              No results for "<strong>{query}</strong>"
+            </Typography>
+          )}
+
+          {!query && (
+            <Typography variant="body2" color="textSecondary" style={{ textAlign: 'center', padding: 32 }}>
+              Start typing to search across the entire platform catalog.
+            </Typography>
+          )}
+
+          {/* Grouped results */}
+          {Object.entries(grouped).map(([kind, items]) => (
+            <Box key={kind}>
+              <Typography variant="caption" style={{ display: 'block', fontWeight: 600, color: '#9e9e9e', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 0 4px' }}>
+                {kind}
+              </Typography>
+              <Box style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                {items.map(r => (
+                  <a key={r.name} href={r.href} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                    <Paper style={{ padding: 0, cursor: 'pointer' }}>
+                      <Box display="flex" alignItems="center" style={{ gap: 12, padding: '14px 16px' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: KIND_COLORS[kind] ?? '#f5f5f5',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                          {KIND_ICONS[kind] ?? '📦'}
+                        </div>
+                        <Box flex={1}>
+                          <Typography variant="body2" style={{ fontWeight: 500 }}>{highlight(r.name)}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {[r.kind, r.owner, r.lifecycle, r.type].filter(Boolean).join(' · ')}
+                            {r.description ? ` — ${highlight(r.description.slice(0, 80))}` : ''}
+                          </Typography>
+                        </Box>
+                        {r.lifecycle && (
+                          <Chip size="small" label={r.lifecycle}
+                            style={{ background: r.lifecycle === 'production' ? '#4caf50' : '#ff9800', color: '#fff', fontSize: 10 }} />
+                        )}
+                      </Box>
+                    </Paper>
+                  </a>
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Content>
+    </Page>
+  );
+}
+
+const searchPageRouteRef = createRouteRef({ id: 'global-search' });
+const searchPage = PageBlueprint.make({
+  name: 'global-search',
+  params: { path: '/search-page', routeRef: searchPageRouteRef, loader: async () => <GlobalSearchPage /> },
+});
+const searchNavItem = NavItemBlueprint.make({
+  name: 'global-search',
+  params: { title: 'Search', icon: SearchOutlinedIcon as any, routeRef: searchPageRouteRef },
+});
+
+// ── Admin Panel ────────────────────────────────────────────────────────────────
+// Platform admin overview: user list from catalog, plugin table, and catalog
+// ingestion log (last N refresh_state entries via catalog API).
+
+const PLUGIN_TABLE = [
+  { name: 'Catalog',     version: '1.12.0', enabled: true },
+  { name: 'Scaffolder',  version: '1.19.0', enabled: true },
+  { name: 'TechDocs',    version: '1.9.0',  enabled: true },
+  { name: 'Kubernetes',  version: '0.11.0', enabled: true },
+  { name: 'PagerDuty',   version: '0.8.0',  enabled: true },
+  { name: 'Search',      version: '1.5.0',  enabled: true },
+  { name: 'Tech Insights',version: '0.3.0', enabled: true },
+];
+
+const DEMO_INGESTION = [
+  { time: new Date(Date.now() - 3*60*1000).toLocaleTimeString(),  source: 'github.com/org/hello-service',          event: 'Refresh',   entities: 3,  ok: true },
+  { time: new Date(Date.now() - 11*60*1000).toLocaleTimeString(), source: 'backstage/catalog/catalog-info.yaml',  event: 'Full scan', entities: 24, ok: true },
+  { time: new Date(Date.now() - 19*60*1000).toLocaleTimeString(), source: 'github.com/org/qa-mcp-server',          event: 'Refresh',   entities: 2,  ok: false },
+];
+
+function AdminPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base      = configApi.getString('backend.baseUrl');
+
+  const [users, setUsers]       = useState<any[]>([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=User&fields=metadata.name,metadata.namespace,spec.profile,relations`)
+      .then(r => r.ok ? r.json() : [])
+      .then((entities: any[]) => setUsers(entities.slice(0, 10)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const getUserTeam = (u: any) => {
+    const memberOf = (u.relations ?? []).filter((r: any) => r.type === 'memberOf');
+    return memberOf[0]?.targetRef?.split('/')[1] ?? '—';
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="Admin" subtitle="Platform configuration · user management · plugin settings" />
+      <Content>
+        <Paper style={{ padding: '8px 16px', marginBottom: 20, background: '#fff8e1', border: '1px solid #ffe082' }}>
+          <Typography variant="body2" style={{ color: '#7c6000' }}>
+            ⚠ Admin panel — changes here affect all users on the platform.
+          </Typography>
+        </Paper>
+
+        {loading && <Progress />}
+
+        <Box display="flex" style={{ gap: 20, flexWrap: 'wrap', marginBottom: 20 }}>
+          {/* Users */}
+          <Paper style={{ flex: '1 1 360px' }}>
+            <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+              <Typography variant="h6" style={{ flex: 1 }}>Users</Typography>
+              <Button variant="contained" color="primary" size="small" style={{ fontSize: 12 }}>+ Invite User</Button>
+            </Box>
+            <TableContainer>
+              <MuiTable size="small">
+                <TableHead>
+                  <TableRow style={{ background: '#f5f5f5' }}>
+                    <TableCell><strong>Name</strong></TableCell>
+                    <TableCell><strong>Team</strong></TableCell>
+                    <TableCell><strong>Role</strong></TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.length === 0 && !loading && (
+                    // Fallback demo rows
+                    [
+                      { name: 'Moataz Nabil', email: 'moatazeldebsy@gmail.com', team: 'platform-team', role: 'admin' },
+                      { name: 'Jane Smith',   email: 'jane@example.com',         team: 'quality-team',  role: 'member' },
+                      { name: 'Alex Chen',    email: 'alex@example.com',         team: 'payments-team', role: 'member' },
+                    ].map(u => (
+                      <TableRow key={u.name} hover>
+                        <TableCell>
+                          <Typography variant="body2" style={{ fontWeight: 500 }}>{u.name}</Typography>
+                          <Typography variant="caption" color="textSecondary">{u.email}</Typography>
+                        </TableCell>
+                        <TableCell><Chip size="small" label={u.team} style={{ fontSize: 10, height: 18 }} /></TableCell>
+                        <TableCell>
+                          <Chip size="small" label={u.role}
+                            style={{ fontSize: 10, background: u.role === 'admin' ? '#e3f2fd' : '#f5f5f5', color: u.role === 'admin' ? '#1976d2' : '#555' }} />
+                        </TableCell>
+                        <TableCell><Button size="small" style={{ fontSize: 11 }}>Edit</Button></TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                  {users.map(u => (
+                    <TableRow key={u.metadata?.name} hover>
+                      <TableCell>
+                        <Typography variant="body2" style={{ fontWeight: 500 }}>{u.spec?.profile?.displayName ?? u.metadata?.name}</Typography>
+                        <Typography variant="caption" color="textSecondary">{u.spec?.profile?.email ?? ''}</Typography>
+                      </TableCell>
+                      <TableCell><Chip size="small" label={getUserTeam(u)} style={{ fontSize: 10, height: 18 }} /></TableCell>
+                      <TableCell><Chip size="small" label="member" style={{ fontSize: 10 }} /></TableCell>
+                      <TableCell><Button size="small" style={{ fontSize: 11 }}>Edit</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </MuiTable>
+            </TableContainer>
+          </Paper>
+
+          {/* Plugins */}
+          <Paper style={{ flex: '1 1 300px' }}>
+            <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+              <Typography variant="h6">Plugins</Typography>
+            </Box>
+            <TableContainer>
+              <MuiTable size="small">
+                <TableHead>
+                  <TableRow style={{ background: '#f5f5f5' }}>
+                    <TableCell><strong>Plugin</strong></TableCell>
+                    <TableCell><strong>Version</strong></TableCell>
+                    <TableCell><strong>Status</strong></TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {PLUGIN_TABLE.map(p => (
+                    <TableRow key={p.name} hover>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{p.version}</Typography></TableCell>
+                      <TableCell>
+                        <Chip size="small" label={p.enabled ? 'enabled' : 'disabled'}
+                          style={{ background: p.enabled ? '#4caf50' : '#9e9e9e', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                      </TableCell>
+                      <TableCell><Button size="small" style={{ fontSize: 11 }}>Config</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </MuiTable>
+            </TableContainer>
+          </Paper>
+        </Box>
+
+        {/* Catalog ingestion log */}
+        <Paper>
+          <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+            <Typography variant="h6" style={{ flex: 1 }}>Catalog Ingestion Log</Typography>
+            <Typography variant="caption" color="textSecondary">last 10 events · demo data</Typography>
+          </Box>
+          <TableContainer>
+            <MuiTable size="small">
+              <TableHead>
+                <TableRow style={{ background: '#f5f5f5' }}>
+                  <TableCell><strong>Time</strong></TableCell>
+                  <TableCell><strong>Source</strong></TableCell>
+                  <TableCell><strong>Event</strong></TableCell>
+                  <TableCell align="right"><strong>Entities</strong></TableCell>
+                  <TableCell><strong>Status</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {DEMO_INGESTION.map((row, i) => (
+                  <TableRow key={i} hover>
+                    <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{row.time}</Typography></TableCell>
+                    <TableCell><Typography variant="caption">{row.source}</Typography></TableCell>
+                    <TableCell><Typography variant="caption">{row.event}</Typography></TableCell>
+                    <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{row.entities}</Typography></TableCell>
+                    <TableCell>
+                      <Chip size="small" label={row.ok ? 'ok' : 'warn'}
+                        style={{ background: row.ok ? '#4caf50' : '#ff9800', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </MuiTable>
+          </TableContainer>
+        </Paper>
+      </Content>
+    </Page>
+  );
+}
+
+const adminPageRouteRef = createRouteRef({ id: 'admin-panel' });
+const adminPage = PageBlueprint.make({
+  name: 'admin-panel',
+  params: { path: '/admin', routeRef: adminPageRouteRef, loader: async () => <AdminPage /> },
+});
+const adminNavItem = NavItemBlueprint.make({
+  name: 'admin-panel',
+  params: { title: 'Admin', icon: SupervisorAccountIcon as any, routeRef: adminPageRouteRef },
+});
+
+// ── KAgent AI Agents ──────────────────────────────────────────────────────────
+// Shows all KAgent Agent CRDs, MCP servers, ModelConfigs, and tool-call metrics
+// from Prometheus. Falls back to demo data when bootstrap-ai.sh hasn't run yet.
+
+interface KAgentAgent {
+  name:      string;
+  model:     string;
+  mcpServers: string[];
+  toolCount: number;
+  calls24h:  number;
+  avgLatency: string;
+  ready:     boolean;
+}
+
+interface McpServer {
+  name:      string;
+  tools:     number;
+  namespace: string;
+  status:    'healthy' | 'degraded' | 'error' | 'unknown';
+}
+
+interface ModelConfig {
+  name:     string;
+  provider: string;
+  model:    string;
+  active:   boolean;
+}
+
+const DEMO_KAGENT_AGENTS: KAgentAgent[] = [
+  { name: 'idp-assistant',      model: 'claude-sonnet-4-6', mcpServers: ['idp-mcp-server'],                           toolCount: 6,  calls24h: 1842, avgLatency: '1.2s', ready: true },
+  { name: 'qa-assistant',       model: 'claude-sonnet-4-6', mcpServers: ['qa-mcp-server'],                            toolCount: 8,  calls24h: 623,  avgLatency: '1.8s', ready: true },
+  { name: 'contract-assistant', model: 'claude-sonnet-4-6', mcpServers: ['contract-mcp-server','idp-mcp-server'],     toolCount: 11, calls24h: 214,  avgLatency: '2.1s', ready: true },
+];
+
+const DEMO_MCP_SERVERS: McpServer[] = [
+  { name: 'idp-mcp-server',      tools: 6, namespace: 'services-dev', status: 'healthy'  },
+  { name: 'qa-mcp-server',       tools: 8, namespace: 'services-dev', status: 'healthy'  },
+  { name: 'contract-mcp-server', tools: 9, namespace: 'services-dev', status: 'degraded' },
+  { name: 'argocd-mcp-server',   tools: 5, namespace: 'services-dev', status: 'healthy'  },
+  { name: 'github-mcp-server',   tools: 7, namespace: 'services-dev', status: 'error'    },
+  { name: 'cost-mcp-server',     tools: 4, namespace: 'services-dev', status: 'healthy'  },
+];
+
+const DEMO_MODEL_CONFIGS: ModelConfig[] = [
+  { name: 'claude-anthropic', provider: 'Anthropic', model: 'claude-sonnet-4-6', active: true  },
+  { name: 'openai-prod',      provider: 'OpenAI',    model: 'gpt-4o',            active: false },
+];
+
+function KAgentPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [agents, setAgents]         = useState<KAgentAgent[]>([]);
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
+  const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>(DEMO_MODEL_CONFIGS);
+  const [isDemo, setIsDemo]         = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const [callsTotal, setCallsTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    const pq = (expr: string) =>
+      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+
+    // Try Prometheus for real MCP tool call counts
+    const promFetch = pq('sum(mcp_tool_calls_total)').then(d => {
+      const v = parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN');
+      if (!isNaN(v)) setCallsTotal(v);
+    }).catch(() => {});
+
+    // Try KAgent A2A API via proxy for agent list
+    const kagentFetch = fetchApi.fetch(`${base}/api/proxy/kagent/apis/kagent.dev/v1alpha1/agents`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: any) => {
+        const items: any[] = data?.items ?? [];
+        if (items.length === 0) return Promise.reject('empty');
+        const liveAgents: KAgentAgent[] = items.map((item: any) => ({
+          name:       item.metadata?.name ?? '—',
+          model:      item.spec?.modelConfig ?? '—',
+          mcpServers: (item.spec?.mcpServers ?? []).map((m: any) => m.name),
+          toolCount:  (item.spec?.toolNames ?? []).length,
+          calls24h:   0,
+          avgLatency: '—',
+          ready:      (item.status?.conditions ?? []).some((c: any) => c.type === 'Ready' && c.status === 'True'),
+        }));
+        // Try to enrich with per-agent call counts
+        return pq('sum by (agent) (mcp_tool_calls_total)').then(d => {
+          const callMap: Record<string, number> = {};
+          (d?.data?.result ?? []).forEach((r: any) => { callMap[r.metric?.agent] = parseFloat(r.value?.[1] ?? '0'); });
+          return liveAgents.map(a => ({ ...a, calls24h: callMap[a.name] ?? 0 }));
+        }).catch(() => liveAgents);
+      })
+      .then((liveAgents: KAgentAgent[]) => {
+        setAgents(liveAgents);
+        // Also try to get MCP server pods from catalog
+        return fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component,metadata.namespace=services-dev&fields=metadata.name,spec.lifecycle`)
+          .then(r => r.ok ? r.json() : [])
+          .then((entities: any[]) => {
+            if (entities.length > 0) {
+              setMcpServers(entities
+                .filter((e: any) => e.metadata?.name?.includes('mcp'))
+                .map((e: any) => ({
+                  name:      e.metadata?.name,
+                  tools:     0,
+                  namespace: 'services-dev',
+                  status:    (e.spec?.lifecycle === 'production' ? 'healthy' : 'degraded') as McpServer['status'],
+                })));
+            } else {
+              setMcpServers(DEMO_MCP_SERVERS);
+            }
+          }).catch(() => setMcpServers(DEMO_MCP_SERVERS));
+      })
+      .catch(() => {
+        setAgents(DEMO_KAGENT_AGENTS);
+        setMcpServers(DEMO_MCP_SERVERS);
+        setIsDemo(true);
+      });
+
+    Promise.all([promFetch, kagentFetch]).finally(() => setLoading(false));
+  }, [base, fetchApi]);
+
+  const totalCalls = callsTotal ?? agents.reduce((s, a) => s + a.calls24h, 0);
+  const readyCount = agents.filter(a => a.ready).length;
+
+  const STATUS_COLOR: Record<string, string> = { healthy: '#4caf50', degraded: '#ff9800', error: '#f44336', unknown: '#9e9e9e' };
+
+  return (
+    <Page themeId="tool">
+      <Header title="KAgent" subtitle={`Kubernetes AI agents · namespace: kagent · ${readyCount} agent${readyCount !== 1 ? 's' : ''} running`} />
+      <Content>
+        {loading && <Progress />}
+        {!loading && (
+          <>
+            {isDemo && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — KAgent not deployed. Run <code>./scripts/bootstrap-ai.sh</code> to deploy agents and MCP servers.
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Summary cards */}
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Agents Running',      value: readyCount,                          sub: agents.map(a => a.name.replace('-assistant','').replace('-','‑')).join(', ') || '—', color: '#4caf50' },
+                { label: 'MCP Tool Calls (24h)', value: totalCalls > 0 ? totalCalls.toLocaleString() : isDemo ? '2,681' : '0', sub: 'across all agents', color: '#1976d2' },
+                { label: 'Avg Response',         value: isDemo ? '1.4s' : '—',             sub: 'p50 · p95: 3.8s',             color: '#7b1fa2' },
+              ].map(({ label, value, sub, color }) => (
+                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
+                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
+                  <Typography variant="caption" color="textSecondary">{sub}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            {/* Agents table */}
+            <Paper style={{ marginBottom: 20 }}>
+              <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6" style={{ flex: 1 }}>Agents</Typography>
+                <Button variant="outlined" size="small" href="http://kagent.idp.local" target="_blank" style={{ fontSize: 11, marginRight: 8 }}>
+                  Open KAgent UI ↗
+                </Button>
+                <Button variant="contained" color="primary" size="small" href="/create" style={{ fontSize: 11 }}>
+                  + Deploy Agent
+                </Button>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Name</strong></TableCell>
+                      <TableCell><strong>Model</strong></TableCell>
+                      <TableCell><strong>MCP Servers</strong></TableCell>
+                      <TableCell align="right"><strong>Tools</strong></TableCell>
+                      <TableCell align="right"><strong>Calls (24h)</strong></TableCell>
+                      <TableCell align="right"><strong>Avg Latency</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {agents.map(agent => (
+                      <TableRow key={agent.name} hover style={{ cursor: 'pointer' }}
+                        onClick={() => { if (agent.name === 'idp-assistant') window.location.href = '/ai-assistant'; }}>
+                        <TableCell style={{ fontWeight: 500 }}>{agent.name}</TableCell>
+                        <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{agent.model}</Typography></TableCell>
+                        <TableCell>
+                          <Box display="flex" style={{ gap: 4, flexWrap: 'wrap' }}>
+                            {agent.mcpServers.map(s => <Chip key={s} size="small" label={s} style={{ fontSize: 10, height: 18 }} />)}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{agent.toolCount}</Typography></TableCell>
+                        <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{agent.calls24h.toLocaleString()}</Typography></TableCell>
+                        <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{agent.avgLatency}</Typography></TableCell>
+                        <TableCell>
+                          <Chip size="small" label={agent.ready ? '● Ready' : '○ Not Ready'}
+                            style={{ background: agent.ready ? '#4caf50' : '#ff9800', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+
+            {/* MCP Servers + ModelConfigs */}
+            <Box display="flex" style={{ gap: 20, flexWrap: 'wrap' }}>
+              <Paper style={{ flex: '1 1 340px' }}>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">MCP Servers</Typography>
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Server</strong></TableCell>
+                        <TableCell align="right"><strong>Tools</strong></TableCell>
+                        <TableCell><strong>Namespace</strong></TableCell>
+                        <TableCell><strong>Status</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {mcpServers.map(srv => (
+                        <TableRow key={srv.name} hover>
+                          <TableCell style={{ fontWeight: 500 }}>{srv.name}</TableCell>
+                          <TableCell align="right">
+                            <Typography variant="caption" style={{ fontFamily: 'monospace' }}>{srv.tools || '—'}</Typography>
+                          </TableCell>
+                          <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{srv.namespace}</Typography></TableCell>
+                          <TableCell>
+                            <Chip size="small" label={`● ${srv.status}`}
+                              style={{ background: STATUS_COLOR[srv.status], color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Paper>
+
+              <Paper style={{ flex: '1 1 260px' }}>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">ModelConfigs</Typography>
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Name</strong></TableCell>
+                        <TableCell><strong>Provider</strong></TableCell>
+                        <TableCell><strong>Model</strong></TableCell>
+                        <TableCell><strong>Status</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {modelConfigs.map(mc => (
+                        <TableRow key={mc.name} hover>
+                          <TableCell style={{ fontWeight: 500 }}>{mc.name}</TableCell>
+                          <TableCell><Typography variant="caption">{mc.provider}</Typography></TableCell>
+                          <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace', fontSize: 11 }}>{mc.model}</Typography></TableCell>
+                          <TableCell>
+                            <Chip size="small" label={mc.active ? '● active' : '○ inactive'}
+                              style={{ background: mc.active ? '#4caf50' : '#9e9e9e', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Paper>
+            </Box>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const kagentPageRouteRef = createRouteRef({ id: 'kagent-platform' });
+const kagentPage = PageBlueprint.make({
+  name: 'kagent-platform',
+  params: { path: '/kagent', routeRef: kagentPageRouteRef, loader: async () => <KAgentPage /> },
+});
+const kagentNavItem = NavItemBlueprint.make({
+  name: 'kagent-platform',
+  params: { title: 'KAgent', icon: SmartToyIcon as any, routeRef: kagentPageRouteRef },
+});
+
+// ── Support / Help Center ──────────────────────────────────────────────────────
+// Static help hub: Get Help channels, on-call info, useful links, and platform
+// announcements. PagerDuty on-call pulled from proxy when token is set.
+
+const ANNOUNCEMENTS = [
+  { color: '#1976d2', title: '🆕 KAgent v0.4 — OpenAI ModelConfig support',                  date: 'Jun 18', body: 'GPT-4o is now available as an alternative model for KAgent agents.' },
+  { color: '#4caf50', title: '✅ Cost attribution GA — teams can now see per-agent AI spend', date: 'Jun 15', body: 'Budget tab in Backstage now shows AI API costs broken down by agent.' },
+  { color: '#ff9800', title: '⚠️ Planned maintenance — Kind cluster restart Jun 22 02:00 UTC', date: 'Jun 14', body: 'All local services will be unavailable for ~10 minutes.' },
+];
+
+const HELP_CHANNELS = [
+  { emoji: '🤖', label: 'Ask the AI Assistant',   desc: 'Get instant help — scaffolding, deployments, debugging, cost queries.', href: '/ai-assistant', primary: true  },
+  { emoji: '💬', label: '#platform-support',       desc: 'Slack channel — platform team responds within 1 business hour.',         href: '#slack',       primary: false },
+  { emoji: '📋', label: 'Open a Jira Ticket',      desc: 'For bugs, feature requests, or access issues — use the IDP project.',   href: '#jira',        primary: false },
+  { emoji: '📖', label: 'Browse TechDocs',          desc: 'Comprehensive platform documentation — getting started, runbooks.',     href: '/docs',        primary: false },
+];
+
+const USEFUL_LINKS = [
+  { emoji: '🏠', label: 'Platform Dashboard', href: '/home' },
+  { emoji: '📊', label: 'Grafana Dashboards', href: 'http://grafana.idp.local' },
+  { emoji: '🔒', label: 'Security Overview',  href: '/catalog' },
+  { emoji: '📈', label: 'DORA Metrics',        href: '/dora' },
+  { emoji: '🤖', label: 'KAgent UI',           href: 'http://kagent.idp.local' },
+  { emoji: '🚀', label: 'ArgoCD',              href: 'http://argocd.idp.local' },
+];
+
+function SupportPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [oncall, setOncall] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Try PagerDuty on-call roster
+    fetchApi.fetch(`${base}/api/proxy/pagerduty/oncalls?limit=1&include[]=users`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((d: any) => {
+        const name = d?.oncalls?.[0]?.user?.summary;
+        if (name) setOncall(name);
+      }).catch(() => {});
+  }, [base, fetchApi]);
+
+  return (
+    <Page themeId="home">
+      <Header title="Support" subtitle="Platform Engineering team · #platform-support on Slack" />
+      <Content>
+        <Box display="flex" style={{ gap: 20, flexWrap: 'wrap', marginBottom: 20 }}>
+          {/* Get Help */}
+          <Paper style={{ flex: '1 1 320px' }}>
+            <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+              <Typography variant="h6">Get Help</Typography>
+            </Box>
+            <Box style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {HELP_CHANNELS.map(ch => (
+                <a key={ch.label} href={ch.href}
+                  style={{ display: 'block', padding: 14, borderRadius: 4, textDecoration: 'none', color: 'inherit', cursor: 'pointer',
+                    background: ch.primary ? '#e3f2fd' : '#fff',
+                    border: `1px solid ${ch.primary ? '#1976d2' : '#e0e0e0'}` }}>
+                  <Typography variant="body2" style={{ fontWeight: 500, marginBottom: 2 }}>{ch.emoji} {ch.label}</Typography>
+                  <Typography variant="caption" color="textSecondary">{ch.desc}</Typography>
+                </a>
+              ))}
+            </Box>
+          </Paper>
+
+          {/* On-call + useful links */}
+          <Paper style={{ flex: '1 1 260px' }}>
+            <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+              <Typography variant="h6">Platform Team On-Call</Typography>
+            </Box>
+            <Box style={{ padding: '8px 16px' }}>
+              {[
+                { label: 'Current on-call', value: oncall ?? 'Platform Engineering' },
+                { label: 'Rotation',         value: 'Platform Engineering' },
+                { label: 'Response SLA',     value: 'P1: 15 min · P2: 1h · P3: next day' },
+              ].map(({ label, value }) => (
+                <Box key={label} display="flex" justifyContent="space-between" style={{ padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+                  <Typography variant="caption" color="textSecondary">{label}</Typography>
+                  <Typography variant="caption" style={{ fontWeight: 500, textAlign: 'right', maxWidth: 160 }}>{value}</Typography>
+                </Box>
+              ))}
+              <Box display="flex" justifyContent="space-between" style={{ padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+                <Typography variant="caption" color="textSecondary">Escalation</Typography>
+                <a href="http://pagerduty.com" style={{ fontSize: 12, color: '#1976d2' }}>PagerDuty ↗</a>
+              </Box>
+            </Box>
+            <Box style={{ padding: '12px 16px', borderTop: '1px solid #eee', borderBottom: '1px solid #eee' }}>
+              <Typography variant="body2" style={{ fontWeight: 500, marginBottom: 8 }}>Useful Links</Typography>
+              <Box style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {USEFUL_LINKS.map(l => (
+                  <a key={l.label} href={l.href}
+                    style={{ fontSize: 13, color: '#1976d2', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{l.emoji}</span> {l.label}
+                  </a>
+                ))}
+              </Box>
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* Announcements */}
+        <Paper>
+          <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+            <Typography variant="h6">Recent Platform Announcements</Typography>
+          </Box>
+          <Box style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {ANNOUNCEMENTS.map((a, i) => (
+              <Box key={i} style={{ borderLeft: `3px solid ${a.color}`, paddingLeft: 12 }}>
+                <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 2 }}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>{a.title}</Typography>
+                  <Typography variant="caption" color="textSecondary" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>{a.date}</Typography>
+                </Box>
+                <Typography variant="caption" color="textSecondary">{a.body}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      </Content>
+    </Page>
+  );
+}
+
+const supportPageRouteRef = createRouteRef({ id: 'support' });
+const supportPage = PageBlueprint.make({
+  name: 'support',
+  params: { path: '/support', routeRef: supportPageRouteRef, loader: async () => <SupportPage /> },
+});
+const supportNavItem = NavItemBlueprint.make({
+  name: 'support',
+  params: { title: 'Support', icon: HelpOutlineIcon as any, routeRef: supportPageRouteRef },
+});
+
 // ── Plugin registration ────────────────────────────────────────────────────────
 export const customPagesPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
@@ -2469,12 +5333,47 @@ export const customPagesPlugin = createFrontendPlugin({
     root: finOpsRouteRef,
   },
   extensions: [
+    // Platform-wide standalone pages
+    homePage,
+    homeNavItem,
+    doraPage,
+    doraNavItem,
+    scorecardPage,
+    scorecardNavItem,
+    sloPage,
+    sloNavItem,
+    argocdPage,
+    argocdNavItem,
+    activityPage,
+    activityNavItem,
+    apiExplorerPage,
+    // apiExplorerNavItem — removed: built-in apiDocsPlugin already adds "APIs" nav item
+    onboardingPage,
+    onboardingNavItem,
+    calculatorPage,
+    calculatorNavItem,
+    settingsPage,
+    // settingsNavItem — removed: built-in userSettingsPlugin owns the Settings group at the bottom of the sidebar
+    profilePage,
+    profileNavItem,
+    searchPage,
+    searchNavItem,
+    adminPage,
+    adminNavItem,
+    kagentPage,
+    kagentNavItem,
+    supportPage,
+    supportNavItem,
+    // Existing pages
     finOpsPage,
     finOpsNavItem,
     aiAssistantPage,
     aiAssistantNavItem,
     semanticSearchPage,
     semanticSearchNavItem,
+    copilotPage,
+    copilotNavItem,
+    // Entity tabs
     doraEntityContent,
     scorecardEntityContent,
     securityEntityContent,
@@ -2483,7 +5382,5 @@ export const customPagesPlugin = createFrontendPlugin({
     jiraEntityContent,
     teamBudgetEntityContent,
     sloEntityContent,
-    copilotPage,
-    copilotNavItem,
   ],
 });

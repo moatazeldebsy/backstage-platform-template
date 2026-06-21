@@ -12,6 +12,7 @@ import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
 import { SidebarSearchModal } from '@backstage/plugin-search';
 import { UserSettingsSignInAvatar } from '@backstage/plugin-user-settings';
+
 export const SidebarContent = NavContentBlueprint.make({
   params: {
     component: ({ navItems }) => {
@@ -19,8 +20,7 @@ export const SidebarContent = NavContentBlueprint.make({
         <SidebarItem icon={() => item.icon} to={item.href} text={item.title} />
       ));
 
-      // Skipped items
-      nav.take('page:search'); // Using search modal instead
+      nav.take('page:search');
 
       return (
         <Sidebar>
@@ -29,16 +29,24 @@ export const SidebarContent = NavContentBlueprint.make({
             <SidebarSearchModal />
           </SidebarGroup>
           <SidebarDivider />
+
           <SidebarGroup label="Menu" icon={<MenuIcon />}>
+            {/* Home pinned at top */}
+            {nav.take('nav:custom-pages/platform-home')}
+            <SidebarDivider />
+            {/* Core IDP — always visible */}
             {nav.take('page:catalog')}
             {nav.take('page:scaffolder')}
             <SidebarDivider />
+            {/* All remaining nav items scroll alphabetically */}
             <SidebarScrollWrapper>
               {nav.rest({ sortBy: 'title' })}
             </SidebarScrollWrapper>
           </SidebarGroup>
+
           <SidebarSpace />
           <SidebarDivider />
+
           <SidebarGroup
             label="Settings"
             icon={<UserSettingsSignInAvatar />}

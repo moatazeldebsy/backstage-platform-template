@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDP Design System — Precision Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-void: #080A0F;
+  --bg-base: #0D1017;
+  --bg-raised: #141820;
+  --bg-overlay: #1C2230;
+  --bg-hover: #222B3A;
+  --border: #1E2A3A;
+  --border-bright: #2E3F55;
+  --cyan: #00D4FF;
+  --cyan-dim: #00A8CC;
+  --cyan-ghost: rgba(0,212,255,0.08);
+  --amber: #FFB300;
+  --amber-ghost: rgba(255,179,0,0.08);
+  --green: #00E676;
+  --green-ghost: rgba(0,230,118,0.08);
+  --red: #FF3D71;
+  --red-ghost: rgba(255,61,113,0.08);
+  --purple: #B388FF;
+  --text-primary: #E8EDF5;
+  --text-secondary: #7A8BA0;
+  --text-muted: #3D5068;
+  --text-accent: #00D4FF;
+  --font-ui: 'DM Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ─── NAV ─────────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 52px;
+  background: rgba(8,10,15,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  color: var(--text-primary); letter-spacing: 0.05em;
+}
+.nav-logo-mark {
+  width: 28px; height: 28px;
+  background: var(--cyan);
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-logo-mark span {
+  color: var(--bg-void); font-size: 11px; font-weight: 700;
+  font-family: var(--font-mono); margin-top: -4px; margin-right: -3px;
+}
+.nav-links {
+  display: flex; gap: 4px; align-items: center;
+}
+.nav-link {
+  padding: 5px 12px; border-radius: 3px;
+  font-size: 13px; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.15s;
+  border: 1px solid transparent;
+  font-weight: 400;
+}
+.nav-link:hover { color: var(--text-primary); background: var(--bg-raised); }
+.nav-link.active {
+  color: var(--cyan); border-color: var(--border-bright);
+  background: var(--cyan-ghost);
+}
+.nav-actions { display: flex; align-items: center; gap: 10px; }
+.nav-badge {
+  background: var(--bg-overlay); border: 1px solid var(--border-bright);
+  padding: 3px 8px; border-radius: 3px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
+}
+.nav-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan-dim), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--bg-void); cursor: pointer;
+}
+
+/* ─── SIDEBAR ─────────────────────────────────────── */
+.layout {
+  display: flex;
+  padding-top: 52px;
+  min-height: 100vh;
+}
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  background: var(--bg-base);
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  position: fixed; top: 52px; bottom: 0; left: 0;
+  overflow-y: auto;
+}
+.sidebar-section { margin-bottom: 20px; }
+.sidebar-label {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 0 16px 6px;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px; cursor: pointer;
+  transition: all 0.12s; color: var(--text-secondary);
+  font-size: 13px; font-weight: 400;
+  border-left: 2px solid transparent;
+}
+.sidebar-item:hover { color: var(--text-primary); background: var(--bg-raised); }
+.sidebar-item.active {
+  color: var(--cyan); border-left-color: var(--cyan);
+  background: var(--cyan-ghost);
+}
+.sidebar-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
+.sidebar-item.active svg { opacity: 1; }
+.sidebar-count {
+  margin-left: auto;
+  background: var(--bg-overlay); border-radius: 3px;
+  padding: 1px 6px; font-family: var(--font-mono);
+  font-size: 10px; color: var(--text-muted);
+}
+
+/* ─── MAIN ─────────────────────────────────────────── */
+.main {
+  margin-left: 220px;
+  flex: 1;
+  padding: 28px 32px;
+  min-height: calc(100vh - 52px);
+}
+
+/* ─── PAGE HEADER ──────────────────────────────────── */
+.page-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 28px;
+}
+.page-title {
+  font-size: 22px; font-weight: 600; color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.page-subtitle {
+  font-size: 12px; color: var(--text-secondary);
+  font-family: var(--font-mono); margin-top: 4px;
+}
+.page-actions { display: flex; gap: 8px; }
+
+/* ─── BUTTONS ──────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 3px; font-size: 13px;
+  font-family: var(--font-ui); font-weight: 500;
+  cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+}
+.btn-primary {
+  background: var(--cyan); color: var(--bg-void);
+  border-color: var(--cyan);
+}
+.btn-primary:hover { background: #1ADEFF; }
+.btn-secondary {
+  background: var(--bg-overlay); color: var(--text-primary);
+  border-color: var(--border-bright);
+}
+.btn-secondary:hover { background: var(--bg-hover); border-color: var(--cyan); color: var(--cyan); }
+.btn-ghost {
+  color: var(--text-secondary); border-color: transparent;
+  background: transparent;
+}
+.btn-ghost:hover { background: var(--bg-raised); color: var(--text-primary); }
+
+/* ─── METRICS GRID ─────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.metric-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.metric-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.metric-card.cyan::before { background: var(--cyan); }
+.metric-card.amber::before { background: var(--amber); }
+.metric-card.green::before { background: var(--green); }
+.metric-card.red::before { background: var(--red); }
+.metric-card:hover { border-color: var(--border-bright); }
+.metric-label {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 10px;
+}
+.metric-value {
+  font-family: var(--font-mono); font-size: 32px;
+  font-weight: 600; color: var(--text-primary);
+  line-height: 1; letter-spacing: -0.02em;
+}
+.metric-unit {
+  font-size: 14px; color: var(--text-secondary); font-weight: 300;
+}
+.metric-delta {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 8px; font-family: var(--font-mono); font-size: 11px;
+}
+.delta-up { color: var(--green); }
+.delta-down { color: var(--red); }
+.metric-sub { color: var(--text-muted); font-size: 11px; }
+
+/* ─── SECTION GRID ─────────────────────────────────── */
+.section-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 20px;
+}
+.card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+.card-meta {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ─── SERVICE LIST ─────────────────────────────────── */
+.service-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.service-row:last-child { border-bottom: none; }
+.service-row:hover { margin: 0 -20px; padding: 10px 20px; background: var(--bg-hover); }
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.status-dot.healthy { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.warning { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.status-dot.error { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.service-name {
+  font-size: 13px; font-weight: 500; flex: 1;
+}
+.service-type {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); background: var(--bg-overlay);
+  padding: 2px 6px; border-radius: 2px;
+}
+.service-lang {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-secondary);
+  min-width: 50px; text-align: right;
+}
+
+/* ─── DORA CHART AREA ──────────────────────────────── */
+.chart-area {
+  height: 140px;
+  display: flex; align-items: flex-end; gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.chart-bar {
+  flex: 1; background: var(--bg-overlay);
+  position: relative; cursor: pointer;
+  transition: background 0.1s;
+  border-top: 1px solid transparent;
+}
+.chart-bar:hover { background: var(--cyan-ghost); border-top-color: var(--cyan); }
+.chart-bar .fill {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,212,255,0.5), rgba(0,212,255,0.1));
+  border-top: 1px solid var(--cyan);
+  transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chart-labels {
+  display: flex; gap: 6px;
+}
+.chart-label {
+  flex: 1; text-align: center;
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-muted);
+}
+
+/* ─── PIPELINE / ACTIVITY ──────────────────────────── */
+.pipeline-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+}
+.pipeline-row:last-child { border-bottom: none; }
+.pipeline-icon {
+  width: 26px; height: 26px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0;
+}
+.pipeline-icon.success { background: var(--green-ghost); color: var(--green); }
+.pipeline-icon.fail { background: var(--red-ghost); color: var(--red); }
+.pipeline-icon.running { background: var(--cyan-ghost); color: var(--cyan); }
+.pipeline-info { flex: 1; }
+.pipeline-name { font-size: 12px; font-weight: 500; }
+.pipeline-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.pipeline-time {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+}
+
+/* ─── TABS ──────────────────────────────────────────── */
+.tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.tab {
+  padding: 10px 18px; font-size: 13px; font-weight: 500;
+  color: var(--text-secondary); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+/* ─── BADGE ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+}
+.badge-green { background: var(--green-ghost); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+.badge-amber { background: var(--amber-ghost); color: var(--amber); border: 1px solid rgba(255,179,0,0.2); }
+.badge-red { background: var(--red-ghost); color: var(--red); border: 1px solid rgba(255,61,113,0.2); }
+.badge-cyan { background: var(--cyan-ghost); color: var(--cyan); border: 1px solid rgba(0,212,255,0.2); }
+.badge-muted { background: var(--bg-overlay); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ─── PROGRESS BAR ──────────────────────────────────── */
+.progress-track {
+  height: 4px; background: var(--bg-overlay); border-radius: 0; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 0;
+  transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+.progress-fill.cyan { background: var(--cyan); }
+.progress-fill.green { background: var(--green); }
+.progress-fill.amber { background: var(--amber); }
+.progress-fill.red { background: var(--red); }
+
+/* ─── SCORE RING ────────────────────────────────────── */
+.score-ring-wrap {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+}
+.score-ring {
+  width: 72px; height: 72px; flex-shrink: 0;
+  position: relative;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-label {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-family: var(--font-mono); font-size: 16px; font-weight: 600;
+  color: var(--text-primary);
+}
+.score-checks { flex: 1; }
+.check-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; font-size: 12px; color: var(--text-secondary);
+}
+.check-item svg { width: 13px; height: 13px; flex-shrink: 0; }
+.check-pass { color: var(--green); }
+.check-fail { color: var(--red); }
+.check-warn { color: var(--amber); }
+
+/* ─── AI CHAT ───────────────────────────────────────── */
+.ai-layout {
+  display: grid; grid-template-columns: 280px 1fr; gap: 0;
+  height: calc(100vh - 52px - 56px - 24px);
+  border: 1px solid var(--border);
+}
+.ai-sessions {
+  background: var(--bg-base); border-right: 1px solid var(--border);
+  padding: 16px 0;
+  overflow-y: auto;
+}
+.ai-session-header {
+  padding: 0 16px 12px;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;
+}
+.ai-session-item {
+  padding: 10px 16px; cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.12s;
+}
+.ai-session-item:hover { background: var(--bg-raised); }
+.ai-session-item.active { border-left-color: var(--cyan); background: var(--cyan-ghost); }
+.ai-session-title { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+.ai-session-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.ai-chat { display: flex; flex-direction: column; background: var(--bg-base); }
+.ai-chat-toolbar {
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ai-agent-badge {
+  display: flex; align-items: center; gap: 8px;
+}
+.ai-agent-icon {
+  width: 28px; height: 28px; background: var(--cyan-ghost);
+  border: 1px solid rgba(0,212,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 10px; color: var(--cyan);
+}
+.ai-agent-name { font-size: 13px; font-weight: 600; }
+.ai-agent-model { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+
+.ai-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.ai-msg { display: flex; gap: 12px; }
+.ai-msg.user { flex-direction: row-reverse; }
+.ai-msg-avatar {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+}
+.ai-msg-avatar.agent { background: var(--cyan-ghost); border: 1px solid rgba(0,212,255,0.3); color: var(--cyan); }
+.ai-msg-avatar.user { background: linear-gradient(135deg, var(--cyan-dim), var(--purple)); color: var(--bg-void); }
+.ai-bubble {
+  max-width: 70%; padding: 12px 16px;
+  font-size: 13px; line-height: 1.6;
+}
+.ai-msg.agent .ai-bubble {
+  background: var(--bg-overlay); border: 1px solid var(--border);
+  border-radius: 0 6px 6px 6px;
+}
+.ai-msg.user .ai-bubble {
+  background: var(--cyan-ghost); border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 6px 0 6px 6px; color: var(--text-primary);
+}
+.ai-code-block {
+  background: var(--bg-void); border: 1px solid var(--border);
+  padding: 12px 14px; margin-top: 10px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--cyan); line-height: 1.7; overflow-x: auto;
+}
+.ai-input-area {
+  padding: 16px 20px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: flex-end;
+}
+.ai-input {
+  flex: 1; background: var(--bg-overlay); border: 1px solid var(--border);
+  padding: 10px 14px; color: var(--text-primary); font-family: var(--font-ui);
+  font-size: 13px; resize: none; outline: none; min-height: 40px; max-height: 120px;
+  transition: border-color 0.15s; border-radius: 3px;
+}
+.ai-input:focus { border-color: var(--cyan); }
+.ai-input::placeholder { color: var(--text-muted); }
+.ai-send {
+  width: 38px; height: 38px; background: var(--cyan); border: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s; flex-shrink: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+}
+.ai-send:hover { background: #1ADEFF; }
+
+/* ─── CATALOG GRID ──────────────────────────────────── */
+.catalog-filters {
+  display: flex; gap: 8px; margin-bottom: 20px; align-items: center;
+}
+.filter-input {
+  flex: 1; background: var(--bg-raised); border: 1px solid var(--border);
+  padding: 8px 12px; color: var(--text-primary); font-family: var(--font-ui);
+  font-size: 13px; outline: none; transition: border-color 0.15s; border-radius: 3px;
+}
+.filter-input:focus { border-color: var(--cyan); }
+.filter-input::placeholder { color: var(--text-muted); }
+.filter-chip {
+  padding: 6px 12px; background: var(--bg-overlay);
+  border: 1px solid var(--border); color: var(--text-secondary);
+  font-size: 12px; cursor: pointer; transition: all 0.12s; border-radius: 3px;
+}
+.filter-chip:hover { border-color: var(--cyan); color: var(--cyan); }
+.filter-chip.active { background: var(--cyan-ghost); border-color: var(--cyan); color: var(--cyan); }
+
+.catalog-table { width: 100%; border-collapse: collapse; }
+.catalog-table th {
+  text-align: left; padding: 10px 14px;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+  background: var(--bg-base); border-bottom: 1px solid var(--border);
+  font-weight: 400;
+}
+.catalog-table td {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  font-size: 13px; vertical-align: middle;
+}
+.catalog-table tr:hover td { background: var(--bg-hover); }
+.catalog-table tr:last-child td { border-bottom: none; }
+.entity-name {
+  font-weight: 600; color: var(--text-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.entity-icon {
+  width: 22px; height: 22px; background: var(--bg-overlay);
+  border: 1px solid var(--border); display: flex; align-items: center;
+  justify-content: center; font-size: 10px; flex-shrink: 0;
+}
+.owner-chip {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); background: var(--bg-overlay);
+  padding: 2px 6px; border-radius: 2px;
+}
+
+/* ─── SCORECARD ─────────────────────────────────────── */
+.scorecard-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.scorecard-item {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  padding: 16px;
+}
+.scorecard-item-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 12px;
+}
+.scorecard-item-title { font-size: 12px; font-weight: 600; }
+.scorecard-item-score {
+  font-family: var(--font-mono); font-size: 18px; font-weight: 600;
+}
+.scorecard-bars { display: flex; flex-direction: column; gap: 8px; }
+.scorecard-bar-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.scorecard-bar-label {
+  font-size: 11px; color: var(--text-muted); min-width: 100px;
+}
+.scorecard-bar-track { flex: 1; }
+.scorecard-bar-val {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-secondary); min-width: 30px; text-align: right;
+}
+
+/* ─── SLO TABLE ─────────────────────────────────────── */
+.slo-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 100px;
+  gap: 12px; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.slo-row.header {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+  padding-bottom: 8px;
+}
+.slo-name { font-weight: 500; font-size: 13px; }
+.slo-val { font-family: var(--font-mono); font-size: 12px; }
+.budget-bar-wrap { position: relative; }
+
+/* ─── SECTION SCREENS ───────────────────────────────── */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ─── ANIMATIONS ────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.status-dot.healthy { animation: pulse-dot 2.5s infinite; }
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.metric-card, .card { animation: slide-up 0.35s ease both; }
+.metric-card:nth-child(1) { animation-delay: 0.05s; }
+.metric-card:nth-child(2) { animation-delay: 0.1s; }
+.metric-card:nth-child(3) { animation-delay: 0.15s; }
+.metric-card:nth-child(4) { animation-delay: 0.2s; }
+
+/* ─── SCROLLBAR ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+/* ─── SCREEN SWITCHER ───────────────────────────────── */
+.screen-switcher {
+  position: fixed; bottom: 20px; right: 24px; z-index: 200;
+  display: flex; gap: 6px;
+}
+.switch-btn {
+  padding: 6px 12px; background: var(--bg-overlay);
+  border: 1px solid var(--border-bright); color: var(--text-secondary);
+  font-size: 11px; font-family: var(--font-mono); cursor: pointer;
+  transition: all 0.15s; border-radius: 2px;
+}
+.switch-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.switch-btn.active { background: var(--cyan-ghost); border-color: var(--cyan); color: var(--cyan); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-mark"><span>IDP</span></div>
+    Internal Developer Platform
+  </div>
+  <div class="nav-links">
+    <div class="nav-link active" onclick="switchScreen('home',this)">Home</div>
+    <div class="nav-link" onclick="switchScreen('catalog',this)">Catalog</div>
+    <div class="nav-link" onclick="switchScreen('create',this)">Create</div>
+    <div class="nav-link" onclick="switchScreen('ai',this)">AI Assistant</div>
+    <div class="nav-link" onclick="switchScreen('docs',this)">TechDocs</div>
+  </div>
+  <div class="nav-actions">
+    <div class="nav-badge">kind-cluster · local</div>
+    <div class="nav-avatar">MN</div>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Platform</div>
+      <div class="sidebar-item active" onclick="switchScreen('home',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg>
+        Dashboard
+      </div>
+      <div class="sidebar-item" onclick="switchScreen('catalog',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="14" height="2"/><rect x="1" y="5" width="14" height="2"/><rect x="1" y="9" width="10" height="2"/><rect x="1" y="13" width="7" height="2"/></svg>
+        Catalog
+        <span class="sidebar-count">24</span>
+      </div>
+      <div class="sidebar-item" onclick="switchScreen('create',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="7" y="1" width="2" height="14"/><rect x="1" y="7" width="14" height="2"/></svg>
+        Create
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Observe</div>
+      <div class="sidebar-item" onclick="switchScreen('dora',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><polygon points="1,14 4,6 7,10 10,3 13,8 15,2 15,14"/></svg>
+        DORA Metrics
+      </div>
+      <div class="sidebar-item" onclick="switchScreen('slo',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        SLOs
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="10" width="3" height="4"/><rect x="6" y="6" width="3" height="8"/><rect x="11" y="2" width="3" height="12"/></svg>
+        Grafana
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Governance</div>
+      <div class="sidebar-item" onclick="switchScreen('scorecard',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><polygon points="8,1 10,6 15,6 11,9 13,15 8,11 3,15 5,9 1,6 6,6"/></svg>
+        Scorecard
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        Security
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="11" width="14" height="2"/><rect x="3" y="7" width="10" height="2"/><rect x="5" y="3" width="6" height="2"/></svg>
+        Budget
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Agents</div>
+      <div class="sidebar-item" onclick="switchScreen('ai',null)">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="1" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="5" r="1"/><circle cx="10" cy="5" r="1"/><path d="M5 8s1 2 3 2 3-2 3-2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M6 11v2M10 11v2" stroke="currentColor" stroke-width="1.5"/><path d="M4 13h8" stroke="currentColor" stroke-width="1.5"/></svg>
+        IDP Assistant
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        QA Assistant
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main">
+
+    <!-- ── SCREEN: HOME/DASHBOARD ── -->
+    <div id="screen-home" class="screen active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Platform Overview</div>
+          <div class="page-subtitle">kind-cluster · 24 services · last sync 2m ago</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary">↓ Export</button>
+          <button class="btn btn-primary">+ Create Service</button>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card cyan">
+          <div class="metric-label">Deployment Frequency</div>
+          <div class="metric-value">4.2<span class="metric-unit">/d</span></div>
+          <div class="metric-delta"><span class="delta-up">↑ 12%</span><span class="metric-sub">vs last week</span></div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Lead Time for Changes</div>
+          <div class="metric-value">2.1<span class="metric-unit">h</span></div>
+          <div class="metric-delta"><span class="delta-up">↑ 8%</span><span class="metric-sub">Elite performer</span></div>
+        </div>
+        <div class="metric-card amber">
+          <div class="metric-label">Change Failure Rate</div>
+          <div class="metric-value">3.2<span class="metric-unit">%</span></div>
+          <div class="metric-delta"><span class="delta-down">↓ 0.4%</span><span class="metric-sub">High performer</span></div>
+        </div>
+        <div class="metric-card red">
+          <div class="metric-label">Mean Time to Restore</div>
+          <div class="metric-value">18<span class="metric-unit">min</span></div>
+          <div class="metric-delta"><span class="delta-up">↑ 22%</span><span class="metric-sub">Elite performer</span></div>
+        </div>
+      </div>
+
+      <div class="section-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Services</div>
+            <div class="card-meta">24 components · 3 teams</div>
+          </div>
+          <div class="service-row"><div class="status-dot healthy"></div><div class="service-name">hello-service</div><div class="service-type">service</div><div class="service-lang">Go</div><span class="badge badge-green">healthy</span></div>
+          <div class="service-row"><div class="status-dot healthy"></div><div class="service-name">idp-mcp-server</div><div class="service-type">service</div><div class="service-lang">Python</div><span class="badge badge-green">healthy</span></div>
+          <div class="service-row"><div class="status-dot healthy"></div><div class="service-name">qa-mcp-server</div><div class="service-type">service</div><div class="service-lang">Python</div><span class="badge badge-green">healthy</span></div>
+          <div class="service-row"><div class="status-dot warning"></div><div class="service-name">contract-mcp-server</div><div class="service-type">service</div><div class="service-lang">Python</div><span class="badge badge-amber">degraded</span></div>
+          <div class="service-row"><div class="status-dot error"></div><div class="service-name">github-mcp-server</div><div class="service-type">service</div><div class="service-lang">Node</div><span class="badge badge-red">error</span></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Recent Deploys</div>
+            <div class="card-meta">last 24h</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-icon success">✓</div>
+            <div class="pipeline-info"><div class="pipeline-name">hello-service</div><div class="pipeline-meta">main · a3f1b2c</div></div>
+            <div class="pipeline-time">2m</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-icon running">⟳</div>
+            <div class="pipeline-info"><div class="pipeline-name">qa-mcp-server</div><div class="pipeline-meta">feat/tools · 91e2d4a</div></div>
+            <div class="pipeline-time">8m</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-icon fail">✗</div>
+            <div class="pipeline-info"><div class="pipeline-name">github-mcp-server</div><div class="pipeline-meta">main · 7bc3a11</div></div>
+            <div class="pipeline-time">1h</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-icon success">✓</div>
+            <div class="pipeline-info"><div class="pipeline-name">idp-mcp-server</div><div class="pipeline-meta">main · cc02f88</div></div>
+            <div class="pipeline-time">3h</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deploy frequency chart -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Deployment Frequency — Last 14 Days</div>
+          <div class="card-meta">all services combined</div>
+        </div>
+        <div class="chart-area">
+          <div class="chart-bar"><div class="fill" style="height:45%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:60%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:35%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:75%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:55%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:90%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:40%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:65%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:80%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:50%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:70%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:85%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:95%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:100%"></div></div>
+        </div>
+        <div class="chart-labels">
+          <div class="chart-label">Jun 7</div><div class="chart-label">8</div><div class="chart-label">9</div><div class="chart-label">10</div><div class="chart-label">11</div><div class="chart-label">12</div><div class="chart-label">13</div><div class="chart-label">14</div><div class="chart-label">15</div><div class="chart-label">16</div><div class="chart-label">17</div><div class="chart-label">18</div><div class="chart-label">19</div><div class="chart-label">Jun 20</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: CATALOG ── -->
+    <div id="screen-catalog" class="screen">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Software Catalog</div>
+          <div class="page-subtitle">24 components · 6 apis · 3 systems · 4 groups</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary">⊞ Grid</button>
+          <button class="btn btn-primary">+ Register</button>
+        </div>
+      </div>
+      <div class="catalog-filters">
+        <input class="filter-input" placeholder="Search by name, owner, tag..." style="max-width:320px">
+        <div class="filter-chip active">All</div>
+        <div class="filter-chip">Component</div>
+        <div class="filter-chip">API</div>
+        <div class="filter-chip">System</div>
+        <div class="filter-chip">Group</div>
+        <div class="filter-chip">User</div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <div class="filter-chip">Owner ▾</div>
+          <div class="filter-chip">Lifecycle ▾</div>
+          <div class="filter-chip">Tag ▾</div>
+        </div>
+      </div>
+      <div class="card" style="padding:0">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Kind</th><th>Owner</th><th>System</th><th>Lifecycle</th><th>Score</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><div class="entity-name"><div class="entity-icon">⬡</div>hello-service</div></td><td><span class="badge badge-muted">Component</span></td><td><span class="owner-chip">platform-team</span></td><td>idp-core</td><td><span class="badge badge-green">production</span></td><td style="font-family:var(--font-mono);color:var(--cyan)">92</td><td><span class="status-dot healthy" style="display:inline-block"></span></td></tr>
+            <tr><td><div class="entity-name"><div class="entity-icon">⬡</div>idp-mcp-server</div></td><td><span class="badge badge-muted">Component</span></td><td><span class="owner-chip">platform-team</span></td><td>ai-platform</td><td><span class="badge badge-green">production</span></td><td style="font-family:var(--font-mono);color:var(--cyan)">88</td><td><span class="status-dot healthy" style="display:inline-block"></span></td></tr>
+            <tr><td><div class="entity-name"><div class="entity-icon">⬡</div>qa-mcp-server</div></td><td><span class="badge badge-muted">Component</span></td><td><span class="owner-chip">quality-team</span></td><td>ai-platform</td><td><span class="badge badge-green">production</span></td><td style="font-family:var(--font-mono);color:var(--cyan)">85</td><td><span class="status-dot healthy" style="display:inline-block"></span></td></tr>
+            <tr><td><div class="entity-name"><div class="entity-icon">⬡</div>contract-mcp-server</div></td><td><span class="badge badge-muted">Component</span></td><td><span class="owner-chip">platform-team</span></td><td>ai-platform</td><td><span class="badge badge-amber">experimental</span></td><td style="font-family:var(--font-mono);color:var(--amber)">71</td><td><span class="status-dot warning" style="display:inline-block"></span></td></tr>
+            <tr><td><div class="entity-name"><div class="entity-icon">◈</div>hello-api</div></td><td><span class="badge badge-cyan">API</span></td><td><span class="owner-chip">platform-team</span></td><td>idp-core</td><td><span class="badge badge-green">production</span></td><td style="font-family:var(--font-mono);color:var(--cyan)">90</td><td><span class="status-dot healthy" style="display:inline-block"></span></td></tr>
+            <tr><td><div class="entity-name"><div class="entity-icon">◈</div>mcp-api</div></td><td><span class="badge badge-cyan">API</span></td><td><span class="owner-chip">platform-team</span></td><td>ai-platform</td><td><span class="badge badge-green">production</span></td><td style="font-family:var(--font-mono);color:var(--cyan)">87</td><td><span class="status-dot healthy" style="display:inline-block"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: AI ASSISTANT ── -->
+    <div id="screen-ai" class="screen">
+      <div class="page-header" style="margin-bottom:16px">
+        <div>
+          <div class="page-title">AI Assistant</div>
+          <div class="page-subtitle">idp-assistant · claude-sonnet-4-6 · KAgent A2A</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary">⊕ New Session</button>
+          <button class="btn btn-ghost">⊞ Agents</button>
+        </div>
+      </div>
+      <div class="ai-layout">
+        <div class="ai-sessions">
+          <div class="ai-session-header">Recent Sessions</div>
+          <div class="ai-session-item active">
+            <div class="ai-session-title">Scaffold payment-service</div>
+            <div class="ai-session-time">Today · 14:22</div>
+          </div>
+          <div class="ai-session-item">
+            <div class="ai-session-title">Debug ArgoCD sync failure</div>
+            <div class="ai-session-time">Today · 11:08</div>
+          </div>
+          <div class="ai-session-item">
+            <div class="ai-session-title">Add SLO for hello-service</div>
+            <div class="ai-session-time">Yesterday</div>
+          </div>
+          <div class="ai-session-item">
+            <div class="ai-session-title">Cost breakdown June</div>
+            <div class="ai-session-time">Jun 18</div>
+          </div>
+          <div class="ai-session-item">
+            <div class="ai-session-title">Contract test setup</div>
+            <div class="ai-session-time">Jun 17</div>
+          </div>
+        </div>
+        <div class="ai-chat">
+          <div class="ai-chat-toolbar">
+            <div class="ai-agent-badge">
+              <div class="ai-agent-icon">IDP</div>
+              <div>
+                <div class="ai-agent-name">IDP Assistant</div>
+                <div class="ai-agent-model">claude-sonnet-4-6 · 6 tools available</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <span class="badge badge-green">● connected</span>
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Tools ▾</button>
+            </div>
+          </div>
+          <div class="ai-messages">
+            <div class="ai-msg agent">
+              <div class="ai-msg-avatar agent">AI</div>
+              <div class="ai-bubble">
+                Hello! I'm your IDP Assistant. I can help you scaffold services, check deployments, search the catalog, and manage your platform. What would you like to do today?
+              </div>
+            </div>
+            <div class="ai-msg user">
+              <div class="ai-msg-avatar user">MN</div>
+              <div class="ai-bubble">Scaffold a new Go microservice called payment-service for the payments team</div>
+            </div>
+            <div class="ai-msg agent">
+              <div class="ai-msg-avatar agent">AI</div>
+              <div class="ai-bubble">
+                I'll scaffold <strong>payment-service</strong> using the Go service template. Let me check available templates first.
+                <div class="ai-code-block">→ tool: list_templates
+← found: go-service, nodejs-service, python-service, ...
+
+→ tool: scaffold_service
+  name: payment-service
+  type: go
+  team: payments-team
+
+← ✓ Service scaffolded
+  repo: github.com/org/payment-service
+  argocd: payment-service-local
+  helm: services/payment-service/</div>
+                Done! <strong>payment-service</strong> has been created and registered in the catalog. ArgoCD will sync it automatically. The service includes Go test scaffolding, Dockerfile, and Helm values for both local and AWS.
+              </div>
+            </div>
+          </div>
+          <div class="ai-input-area">
+            <textarea class="ai-input" placeholder="Ask anything about your platform…" rows="1"></textarea>
+            <button class="ai-send">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="#080A0F"><path d="M2 8l12-6-6 12V9L2 8z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: SCORECARD ── -->
+    <div id="screen-scorecard" class="screen">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Platform Scorecard</div>
+          <div class="page-subtitle">hello-service · production · last checked 5m ago</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary">↺ Re-run</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">Overview</div>
+        <div class="tab">CI/CD</div>
+        <div class="tab">Security</div>
+        <div class="tab">Observability</div>
+        <div class="tab">Docs</div>
+        <div class="tab">Mobile</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:24px;margin-bottom:24px;padding:20px;background:var(--bg-raised);border:1px solid var(--border)">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" stroke-width="8"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--cyan)" stroke-width="8"
+            stroke-dasharray="263.9" stroke-dashoffset="52.8"
+            style="transform:rotate(-90deg);transform-origin:50px 50px"/>
+          <text x="50" y="55" text-anchor="middle" fill="var(--text-primary)" font-family="IBM Plex Mono" font-size="22" font-weight="600">92</text>
+        </svg>
+        <div>
+          <div style="font-size:20px;font-weight:700;color:var(--cyan);font-family:var(--font-mono)">Gold Tier</div>
+          <div style="color:var(--text-secondary);font-size:13px;margin-top:4px">18/20 checks passing · 2 warnings · 0 failures</div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <span class="badge badge-green">✓ CI/CD</span>
+            <span class="badge badge-green">✓ Security</span>
+            <span class="badge badge-green">✓ Observability</span>
+            <span class="badge badge-amber">⚠ Docs</span>
+            <span class="badge badge-amber">⚠ SLOs</span>
+          </div>
+        </div>
+      </div>
+      <div class="scorecard-grid">
+        <div class="scorecard-item">
+          <div class="scorecard-item-header">
+            <div class="scorecard-item-title">CI/CD</div>
+            <div class="scorecard-item-score" style="color:var(--green)">100</div>
+          </div>
+          <div class="scorecard-bars">
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="currentColor" stroke-width="1.5" class="check-pass" style="stroke:#00E676"/></svg><span>Dockerfile present</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>GitHub Actions workflow</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>Trivy scan configured</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>Image signing (Cosign)</span></div>
+          </div>
+        </div>
+        <div class="scorecard-item">
+          <div class="scorecard-item-header">
+            <div class="scorecard-item-title">Observability</div>
+            <div class="scorecard-item-score" style="color:var(--green)">95</div>
+          </div>
+          <div class="scorecard-bars">
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>Prometheus metrics</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>Grafana dashboard</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>OpenTelemetry tracing</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#FFB300" stroke-width="1.5"/></svg><span style="color:var(--amber)">SLO definitions</span></div>
+          </div>
+        </div>
+        <div class="scorecard-item">
+          <div class="scorecard-item-header">
+            <div class="scorecard-item-title">Documentation</div>
+            <div class="scorecard-item-score" style="color:var(--amber)">75</div>
+          </div>
+          <div class="scorecard-bars">
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>README.md</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#00E676" stroke-width="1.5"/></svg><span>API spec (OpenAPI)</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M2 7l3 3 6-6" stroke="#FFB300" stroke-width="1.5"/></svg><span style="color:var(--amber)">TechDocs site</span></div>
+            <div class="check-item"><svg viewBox="0 0 13 13" fill="none"><path d="M6.5 2v4.5L9 9" stroke="#3D5068" stroke-width="1.5"/><rect x="1" y="1" width="11" height="11" rx="1" stroke="#3D5068" stroke-width="1.2"/></svg><span style="color:var(--text-muted)">Architecture ADR</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: SLO ── -->
+    <div id="screen-slo" class="screen">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Service Level Objectives</div>
+          <div class="page-subtitle">hello-service · Prometheus Sloth · 30d window</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary">+ Add SLO</button>
+        </div>
+      </div>
+      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="metric-card cyan">
+          <div class="metric-label">Availability SLO</div>
+          <div class="metric-value">99.94<span class="metric-unit">%</span></div>
+          <div class="metric-delta"><span class="metric-sub">Target: 99.9% · </span><span class="delta-up">+14min budget</span></div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Latency p95 SLO</div>
+          <div class="metric-value">87<span class="metric-unit">%</span></div>
+          <div class="metric-delta"><span class="metric-sub">Target: &lt;200ms · 87% requests OK</span></div>
+        </div>
+        <div class="metric-card amber">
+          <div class="metric-label">Error Budget Remaining</div>
+          <div class="metric-value">68<span class="metric-unit">%</span></div>
+          <div class="metric-delta"><span class="delta-up">14.4h remaining this period</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">All SLOs</div>
+          <div class="card-meta">30-day rolling window</div>
+        </div>
+        <div class="slo-row header">
+          <div>SLO Name</div><div>Current</div><div>Target</div><div>Budget</div><div>Status</div><div></div>
+        </div>
+        <div class="slo-row">
+          <div class="slo-name">availability</div>
+          <div class="slo-val" style="color:var(--cyan)">99.94%</div>
+          <div class="slo-val" style="color:var(--text-muted)">99.9%</div>
+          <div class="budget-bar-wrap">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--green);margin-bottom:4px">68%</div>
+            <div class="progress-track"><div class="progress-fill green" style="width:68%"></div></div>
+          </div>
+          <span class="badge badge-green">healthy</span>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Details</button>
+        </div>
+        <div class="slo-row">
+          <div class="slo-name">latency-p95</div>
+          <div class="slo-val" style="color:var(--cyan)">87%</div>
+          <div class="slo-val" style="color:var(--text-muted)">95%</div>
+          <div class="budget-bar-wrap">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-bottom:4px">32%</div>
+            <div class="progress-track"><div class="progress-fill amber" style="width:32%"></div></div>
+          </div>
+          <span class="badge badge-amber">at risk</span>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Details</button>
+        </div>
+        <div class="slo-row">
+          <div class="slo-name">error-rate</div>
+          <div class="slo-val" style="color:var(--cyan)">99.7%</div>
+          <div class="slo-val" style="color:var(--text-muted)">99.5%</div>
+          <div class="budget-bar-wrap">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--green);margin-bottom:4px">81%</div>
+            <div class="progress-track"><div class="progress-fill green" style="width:81%"></div></div>
+          </div>
+          <span class="badge badge-green">healthy</span>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Details</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: DORA ── -->
+    <div id="screen-dora" class="screen">
+      <div class="page-header">
+        <div>
+          <div class="page-title">DORA Metrics</div>
+          <div class="page-subtitle">hello-service · GitHub Actions · 30 day window</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary">Period: 30d ▾</button>
+        </div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card cyan">
+          <div class="metric-label">Deployment Frequency</div>
+          <div class="metric-value">4.2<span class="metric-unit">/d</span></div>
+          <div class="metric-delta"><span class="badge badge-green">Elite</span></div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Lead Time</div>
+          <div class="metric-value">2.1<span class="metric-unit">h</span></div>
+          <div class="metric-delta"><span class="badge badge-green">Elite</span></div>
+        </div>
+        <div class="metric-card amber">
+          <div class="metric-label">Change Failure Rate</div>
+          <div class="metric-value">3.2<span class="metric-unit">%</span></div>
+          <div class="metric-delta"><span class="badge badge-cyan">High</span></div>
+        </div>
+        <div class="metric-card red">
+          <div class="metric-label">MTTR</div>
+          <div class="metric-value">18<span class="metric-unit">min</span></div>
+          <div class="metric-delta"><span class="badge badge-green">Elite</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Deployment Trend</div>
+          <div class="card-meta">deployments per day</div>
+        </div>
+        <div class="chart-area" style="height:180px">
+          <div class="chart-bar"><div class="fill" style="height:30%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:50%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:40%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:70%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:60%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:85%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:55%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:75%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:90%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:65%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:80%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:95%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:100%"></div></div>
+          <div class="chart-bar"><div class="fill" style="height:88%"></div></div>
+        </div>
+        <div class="chart-labels">
+          <div class="chart-label">Jun 7</div><div class="chart-label">8</div><div class="chart-label">9</div><div class="chart-label">10</div><div class="chart-label">11</div><div class="chart-label">12</div><div class="chart-label">13</div><div class="chart-label">14</div><div class="chart-label">15</div><div class="chart-label">16</div><div class="chart-label">17</div><div class="chart-label">18</div><div class="chart-label">19</div><div class="chart-label">Jun 20</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: CREATE (SCAFFOLDER) ── -->
+    <div id="screen-create" class="screen">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Create</div>
+          <div class="page-subtitle">Golden Path templates · 32 available</div>
+        </div>
+      </div>
+      <div class="catalog-filters">
+        <input class="filter-input" placeholder="Search templates..." style="max-width:300px">
+        <div class="filter-chip active">All</div>
+        <div class="filter-chip">Services</div>
+        <div class="filter-chip">Testing</div>
+        <div class="filter-chip">Infrastructure</div>
+        <div class="filter-chip">Security</div>
+        <div class="filter-chip">AI/ML</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div class="card" style="cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:var(--cyan-ghost);border:1px solid rgba(0,212,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;color:var(--cyan)">Go</div>
+            <div>
+              <div style="font-weight:600;font-size:13px">Go Microservice</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">go-service</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Production-ready Go service with gRPC, Prometheus metrics, OTel tracing, and GitHub Actions CI.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-muted">go</span><span class="badge badge-muted">grpc</span><span class="badge badge-muted">prometheus</span>
+          </div>
+        </div>
+        <div class="card" style="cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:var(--green-ghost);border:1px solid rgba(0,230,118,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:var(--green)">Node</div>
+            <div>
+              <div style="font-weight:600;font-size:13px">Node.js Service</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">nodejs-service</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Express + TypeScript service with Jest testing, Docker multi-stage build, and ArgoCD GitOps.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-muted">node</span><span class="badge badge-muted">typescript</span><span class="badge badge-muted">jest</span>
+          </div>
+        </div>
+        <div class="card" style="cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:var(--amber-ghost);border:1px solid rgba(255,179,0,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:var(--amber)">Py</div>
+            <div>
+              <div style="font-weight:600;font-size:13px">Python Service</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">python-service</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">FastAPI service with pytest, Pydantic models, OpenAPI docs, and Snyk security scanning.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-muted">python</span><span class="badge badge-muted">fastapi</span><span class="badge badge-muted">pytest</span>
+          </div>
+        </div>
+        <div class="card" style="cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:rgba(179,136,255,0.1);border:1px solid rgba(179,136,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--purple)">E2E</div>
+            <div>
+              <div style="font-weight:600;font-size:13px">Playwright E2E Suite</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">playwright-e2e-suite</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">End-to-end browser test suite with Playwright, page objects, and CI integration.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-muted">playwright</span><span class="badge badge-muted">e2e</span>
+          </div>
+        </div>
+        <div class="card" style="cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:var(--red-ghost);border:1px solid rgba(255,61,113,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--red)">SEC</div>
+            <div>
+              <div style="font-weight:600;font-size:13px">Enable Security Scanning</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">enable-security-scanning</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Add SAST (SonarCloud), SCA (Snyk), DAST (ZAP), and container scanning to an existing service.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-muted">sast</span><span class="badge badge-muted">snyk</span><span class="badge badge-muted">zap</span>
+          </div>
+        </div>
+        <div class="card" style="cursor:pointer;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:var(--cyan-ghost);border:1px solid rgba(0,212,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--cyan)">MCP</div>
+            <div>
+              <div style="font-weight:600;font-size:13px">Deploy MCP Server</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">deploy-mcp-server</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Deploy a Model Context Protocol server with KAgent integration and Prometheus metrics.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-muted">mcp</span><span class="badge badge-muted">kagent</span><span class="badge badge-muted">ai</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCS placeholder screen -->
+    <div id="screen-docs" class="screen">
+      <div class="page-header">
+        <div><div class="page-title">TechDocs</div><div class="page-subtitle">Documentation hub · MkDocs · 12 sites</div></div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:300px;flex-direction:column;gap:12px">
+        <div style="font-family:var(--font-mono);font-size:32px;color:var(--text-muted)">[ docs ]</div>
+        <div style="color:var(--text-secondary);font-size:13px">TechDocs screen — see screen switcher below for other views</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- SCREEN SWITCHER -->
+<div class="screen-switcher">
+  <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);padding:6px 8px;align-self:center">View:</div>
+  <div class="switch-btn active" onclick="switchScreen('home',this)">Dashboard</div>
+  <div class="switch-btn" onclick="switchScreen('catalog',this)">Catalog</div>
+  <div class="switch-btn" onclick="switchScreen('ai',this)">AI Chat</div>
+  <div class="switch-btn" onclick="switchScreen('scorecard',this)">Scorecard</div>
+  <div class="switch-btn" onclick="switchScreen('slo',this)">SLOs</div>
+  <div class="switch-btn" onclick="switchScreen('dora',this)">DORA</div>
+  <div class="switch-btn" onclick="switchScreen('create',this)">Create</div>
+</div>
+
+<script>
+function switchScreen(name, el) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  // sync switcher buttons
+  document.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
+  // find matching switch btn by text
+  document.querySelectorAll('.switch-btn').forEach(b => {
+    if (b.textContent.toLowerCase().replace(' ','') === name ||
+        (name==='home' && b.textContent==='Dashboard') ||
+        (name==='ai' && b.textContent==='AI Chat') ||
+        (name==='create' && b.textContent==='Create') ||
+        (name==='scorecard' && b.textContent==='Scorecard') ||
+        (name==='catalog' && b.textContent==='Catalog') ||
+        (name==='slo' && b.textContent==='SLOs') ||
+        (name==='dora' && b.textContent==='DORA'))
+      b.classList.add('active');
+  });
+
+  // sync sidebar
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+
+  // sync nav links
+  document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+}
+
+// Animate bars on load
+window.addEventListener('load', () => {
+  document.querySelectorAll('.chart-bar .fill').forEach(fill => {
+    const h = fill.style.height;
+    fill.style.height = '0%';
+    setTimeout(() => { fill.style.height = h; }, 100);
+  });
+});
+</script>
+</body>
+</html>

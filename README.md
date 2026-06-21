@@ -1,11 +1,14 @@
-# backstage-platform-template
+<div align="center">
+
+# 🚀 Backstage Platform Template
+
+### A production-ready Internal Developer Platform — in a single `git clone`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![GitHub stars](https://img.shields.io/github/stars/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
-[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
 
 **A production-ready Internal Developer Platform template** — Backstage developer portal, golden-path Helm chart, 21 service & app templates (including 7 mobile) + 18 QA/test scaffold templates + 5 Crossplane Claim templates + 4 multi-region V2 templates, AI/ML platform (KAgent + MLflow + 3 MCP servers), shift-left quality programme (Bronze/Silver/Gold scorecard + contract testing), Prometheus + Grafana observability + DORA entity tab, AWS EKS via Terraform, per-service cloud resources via Crossplane, and an opt-in **V2 multi-region architecture** (active-standby eu-central-1 + us-east-1). Runs locally on Kind in ~15 minutes.
 
@@ -15,16 +18,16 @@
 
 ![Platform Architecture](docs/assets/platform-architecture.jpg)
 
-> **Golden path in 60 seconds:** scaffold a service → CI runs tests + builds image → ArgoCD deploys to Kind → Backstage shows health + metrics.
+</div>
 
 > **v2 Multi-Region is now on `main`:** Active-passive AWS across eu-central-1 (primary) + us-east-1 (standby) — Aurora Global DB, DynamoDB Global Tables, S3 cross-region replication, Transit Gateway, CloudFront + WAF, Global Accelerator, Karpenter spot autoscaling, Thanos multi-region metrics, Backstage warm standby, and automated failover runbook. Single-region setups are unaffected — multi-region is opt-in via `./scripts/bootstrap-multiregion.sh`. See [docs/multi-region.md](docs/multi-region.md).
 
 ## Compatibility
 
 | Component | Tested version |
-|-----------|---------------|
+|---|---|
 | Backstage | v1.49.1 |
-| Kubernetes | 1.29 (EKS), 1.33.1 (Kind) |
+| Kubernetes | 1.29 (EKS) · 1.33.1 (Kind) |
 | Helm | 3.x / 4.x |
 | Kind | ≥ 0.27 |
 | ArgoCD | v3.4 (chart 9.5.13) |
@@ -187,28 +190,37 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ## Project Structure
 
 ```
-idp-mvp/
-├── terraform/              # AWS foundation — EKS, VPC, ECR, IAM, + Crossplane IRSA role
-├── local/                  # Local — Kind config, Prometheus values, Backstage compose
-├── kubernetes/             # Namespace, RBAC, Backstage manifests, ArgoCD app-of-apps
-│   └── crossplane/         # Crossplane providers + XRDs/Compositions (AWS-only)
-├── helm/service-template/  # Golden-path Helm chart (both envs)
-├── backstage/              # Developer portal: config, templates, custom actions
-│   ├── app/                # Backstage monorepo (v1.49.1)
-│   │   └── packages/backend/src/modules/idpLocalDeploy.ts
-│   ├── catalog/templates/  # nodejs-service, python-service, deploy-to-kind
-│   ├── app-config.yaml
-│   ├── app-config.local.yaml
-│   └── Dockerfile          # Production image (requires yarn build:backend first)
-├── services/hello-service/ # Reference service (Go)
-├── observability/          # CloudWatch agent + Grafana
-├── docs/                   # Architecture, golden path, getting started, local setup
-└── scripts/                # All automation scripts — see Scripts Reference below
+backstage-platform-template/
+├── scripts/                    # setup.sh · bootstrap-local.sh · bootstrap-ai.sh · cleanup.sh
+├── backstage/
+│   ├── app/                    # Backstage monorepo (v1.49.1)
+│   ├── catalog/templates/      # 39 golden-path templates
+│   ├── app-config.yaml         # base config
+│   ├── app-config.local.yaml   # Kind overrides
+│   └── app-config.aws.yaml     # EKS overrides
+├── helm/service-template/      # single reusable Helm chart
+├── services/hello-service/     # reference Go service
+├── kubernetes/                 # namespaces · RBAC · ArgoCD app-of-apps · KAgent CRDs
+├── local/                      # Kind config · nginx values · Docker Compose
+├── aws/                        # EKS-specific: ArgoCD values · External Secrets · Crossplane
+├── terraform/                  # EKS · VPC · ECR · IAM · IRSA
+├── cli/                        # `idp` CLI (Go)
+└── docs/                       # Architecture · golden path · runbooks
 ```
+
+---
 
 ## Scripts Reference
 
-All scripts live in `scripts/`. They can be run standalone (day-2) or are called automatically by `setup.sh` / `bootstrap-local.sh`.
+| Script | What it does |
+|---|---|
+| `setup.sh` | **Start here.** Guided interactive setup — replaces placeholders, creates `.env` files, then bootstraps local or AWS |
+| `bootstrap-local.sh` | Day-2: re-create Kind cluster + platform. Flags: `--start-backstage`, `--skip-obs`, `--destroy`, `--print-urls` |
+| `bootstrap-ai.sh` | Add AI/ML stack on top of a running cluster. Flags: `--skip-mlflow`, `--skip-mcp`, `--skip-kagent`, `--aws`, `--destroy` |
+| `bootstrap.sh` | AWS bootstrap: Terraform → EKS → all platform components (~45–60 min) |
+| `validate-deployment.sh` | Post-deploy: 50+ automated checks across infra, K8s, Backstage, observability, GitOps, AI, security |
+| `cleanup.sh` | Safe AWS teardown: 8 ordered phases, removes scaffolded services from ArgoCD + Git before `terraform destroy` |
+| `recover-docker-restart.sh` | Patch Kind after Docker Desktop restarts — fixes IPs, restarts ingress, smoke-tests all URLs |
 
 ### Day-0 / Day-1 — Platform setup
 
@@ -271,24 +283,33 @@ idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
 scripts/seed-qa-metrics.sh
 ```
 
+---
+
 ## `idp` CLI
 
-The `idp` CLI is the day-2 golden path for scaffolding. It is built automatically by `setup.sh` and `bootstrap-local.sh`. To build manually:
+Built automatically by `setup.sh`. To build manually:
 
 ```bash
 make cli-build     # → ./bin/idp
-make cli-install   # → $(go env GOPATH)/bin/idp  (adds to PATH)
+make cli-install   # → $(go env GOPATH)/bin/idp
 ```
 
-### Scaffold a service
+### All scaffold types
 
 ```bash
-idp scaffold service --name payments-api --type nodejs   # nodejs | python | go
-idp scaffold service --name payments-api --type python --local  # force local generation
-idp scaffold service --help
+# Services (uses Backstage API when running, local generation with --local)
+idp scaffold service --name my-svc --type nodejs   # nodejs | python | go
+
+# Test suites (18 types)
+idp scaffold test-suite --name my-e2e   --type playwright    --service my-svc
+idp scaffold test-suite --name my-perf  --type k6            --service my-svc --vus 50 --duration 5m
+idp scaffold test-suite --name my-sec   --type zap           --service my-svc --scan-type baseline
+idp scaffold test-suite --name my-a11y  --type accessibility --service my-svc --wcag wcag21aa
+idp scaffold test-suite --name my-chaos --type chaos         --service my-svc --chaos-duration 2m
+idp scaffold test-suite --help   # all 18 types and flags
 ```
 
-### Scaffold a test suite
+**All 18 test-suite types:** `playwright` · `k6` · `pact` · `newman` · `zap` · `datadog` · `visual` · `accessibility` · `cucumber` · `appium` · `chaos` · `mutation` · `testcontainers` · `unit` · `component` · `iac` · `flutter-integration` · `deepeval`
 
 ```bash
 # 18 types: playwright | k6 | pact | newman | zap | datadog | visual |
@@ -392,129 +413,83 @@ helm upgrade --install my-svc ./helm/service-template \
 
 > **Backstage Kubernetes tab — CPU/memory shows "unknown":** metrics-server is not running. `bootstrap-local.sh` installs it automatically; if you set up the cluster manually run: `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml && kubectl patch deployment metrics-server -n kube-system --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'`
 
+---
+
 ## Implementation Phases
 
 | Phase | What | Status |
-|-------|------|--------|
-| 1 | EKS + VPC + ECR + IAM (Terraform) | Ready |
-| 2 | GitHub Actions CI (test + smoke-check) | Ready |
-| 3 | Helm service template + conventions | Ready |
-| 4 | Backstage + software templates + README generation | Ready |
-| 5 | CloudWatch + Grafana observability | Ready |
-| 6 | hello-service end-to-end example | Ready |
-| 7 | `idp:deploy-local` custom Backstage action | Ready |
-| 8 | "Deploy to Kind" standalone Backstage template | Ready |
-| 9 | GitHub Actions CD (ECR push → EKS Helm deploy) | Ready |
-| 10 | Prometheus ServiceMonitor for app metrics scraping | Ready |
-| 11 | EKS access entry for GitHub Actions IAM role | Ready |
-| 12 | AI/ML platform — KAgent, MLflow, IDP MCP Server, 3 Backstage AI/ML templates, `bootstrap-ai.sh` | Ready |
+|---|---|---|
+| 1 | EKS + VPC + ECR + IAM (Terraform) | ✅ |
+| 2 | GitHub Actions CI (test + smoke-check) | ✅ |
+| 3 | Helm service template + conventions | ✅ |
+| 4 | Backstage + software templates + README generation | ✅ |
+| 5 | CloudWatch + Grafana observability | ✅ |
+| 6 | hello-service end-to-end example | ✅ |
+| 7 | `idp:deploy-local` custom Backstage action | ✅ |
+| 8 | "Deploy to Kind" standalone Backstage template | ✅ |
+| 9 | GitHub Actions CD (ECR push → EKS Helm deploy) | ✅ |
+| 10 | Prometheus ServiceMonitor for app metrics scraping | ✅ |
+| 11 | EKS access entry for GitHub Actions IAM role | ✅ |
+| 12 | AI/ML platform — KAgent + MLflow + 3 MCP servers + AI templates | ✅ |
+| v2 | Multi-region active-passive (eu-central-1 + us-east-1) — Aurora Global DB, DynamoDB Global Tables, Route53 failover, Global Accelerator, Thanos multi-cluster metrics | ✅ |
 
-## AWS Cost & Scalability
-
-### Free-tier reality check
-
-EKS is **not free-tier compatible** — the control plane costs $0.10/hr (~$73/month) regardless of node count, and the NAT Gateway adds ~$33/month with no free tier. The minimum you'll spend with EKS running continuously is ~$120–150/month.
-
-**To stay near $0:** use `./scripts/bootstrap-local.sh --full` for daily development. Reserve AWS for demos only, then run cleanup. The overnight cost optimizer (enabled by default) shuts nodes down at 8 PM UTC and brings them back at 7 AM, cutting EC2 costs by ~60%.
-
-### Monthly estimate — optimized config (default)
-
-| Service | Config | Est. cost/month |
-|---------|--------|-----------------|
-| EKS control plane | 1 cluster | ~$73 |
-| EC2 worker nodes | 1× t3.medium + overnight scale-to-0 | ~$16 |
-| NAT Gateway | 1× single gateway | ~$33 + data |
-| RDS PostgreSQL | db.t3.micro, 20 GB — free tier 750 h (yr 1) | ~$0–15 |
-| ALB / NLB | Load balancers (free tier: 750 h for 1 ALB) | ~$18–36 |
-| EBS | Prometheus 5 Gi gp3 + MLflow 1 Gi | ~$1 |
-| CloudWatch | Logs + custom metrics | ~$5–10 |
-| Secrets Manager | 5 secrets × $0.40 | ~$2 |
-| ECR + S3 | Images + TechDocs | ~$2 |
-| **Total (optimized)** | | **~$150–$187/month** |
-
-> **Without optimization** (3 nodes, no scaler, 20 Gi Prometheus, gp2): ~$300–400/month.
-
-### Monthly estimate — v2 multi-region (active-passive)
-
-eu-central-1 (primary) + us-east-1 (standby) with Karpenter spot autoscaling, Aurora Global DB, and Backstage warm standby. The standby region runs a minimal EKS cluster at all times — failover is fast but the control plane fee is unavoidable.
-
-| Service | Config | Est. cost/month |
-|---------|--------|-----------------|
-| EKS control planes | 2× clusters (primary + standby) | ~$146 |
-| EC2 worker nodes | 2× t3.medium spot primary + 1× t3.medium standby | ~$35–55 |
-| NAT Gateways | 2× single gateway (one per region) | ~$66 + data |
-| Aurora Global DB | db.t3.medium writer + read replica, 20 GB | ~$110 |
-| DynamoDB Global Tables | On-demand reads/writes + global replication | ~$10 |
-| ALB / NLB | 2× per region (4 total) | ~$36–72 |
-| Transit Gateway | 2 VPC attachments + inter-region data | ~$36 |
-| CloudFront + WAF | CDN distribution + Web ACL | ~$10–20 |
-| Global Accelerator | 1 accelerator + data transfer | ~$18 |
-| S3 + cross-region replication | TechDocs, Thanos metrics, state | ~$8 |
-| CloudWatch | Logs + metrics (both regions) | ~$10–20 |
-| Secrets Manager | ~8 secrets replicated to standby | ~$4 |
-| Route53 | Health checks + failover routing | ~$5 |
-| EBS | Prometheus + MLflow per region | ~$3 |
-| **Total (v2 multi-region)** | | **~$497–$573/month** |
-
-> **Without spot / optimizer** (on-demand nodes, full replica count both regions): ~$700–900/month.
->
-> Aurora Global DB replaces RDS PostgreSQL; DynamoDB Global Tables replace any single-region DynamoDB. S3 cross-region replication is enabled on the TechDocs and Thanos buckets. Failover RTO is ~5–10 minutes with automated Route53 health-check cutover.
-
-### Cost optimizer (enabled by default)
-
-`terraform/terraform.tfvars` ships with:
-
-```hcl
-node_group_min_size     = 0        # allows scale-to-zero
-node_group_desired_size = 1        # single node during the day
-enable_cost_optimizer   = true     # EventBridge Lambdas: nodes→0 at 8 PM UTC, back at 7 AM
-budget_monthly_limit_usd = "100"   # SNS alert at $80 actual / $100 forecasted
-```
-
-To adjust the schedule (e.g. keep nodes up later):
-```hcl
-cost_optimizer_scale_down_cron = "cron(0 22 * * ? *)"  # 10 PM UTC
-cost_optimizer_scale_up_cron   = "cron(0 6  * * ? *)"  # 6 AM UTC
-```
-
-### Skip optional components to save more
-
-The AI/ML stack (KAgent, MLflow, MCP servers) adds ~2–4 extra ALBs and ~6 Gi EBS. Skip it unless you need it:
-
-```bash
-./scripts/bootstrap.sh               # core platform only (no AI/ML)
-./scripts/bootstrap-ai.sh --aws      # add AI/ML stack later (opt-in)
-```
-
-### Production hardening: right-sizing
-
-For production, increase node capacity after confirming cost impact:
-
-```hcl
-node_instance_types     = ["t3.large"]
-node_group_min_size     = 2
-node_group_desired_size = 3
-node_group_max_size     = 8
-enable_cost_optimizer   = false   # keep nodes up 24/7
-environment             = "prod"  # enables RDS deletion protection + 7-day backup
-```
-
-See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) → Cost Optimization and Production Hardening for the full checklist.
+---
 
 ## Known Issues (local development)
 
-| Issue | Status | Workaround |
-|-------|--------|------------|
-| `/kubernetes` standalone page crashes | By design — disabled in `app-config.local.yaml` | Use the Kubernetes tab on any catalog entity |
-| `/catalog-graph` page crashes | Disabled | N/A |
-| Cost Overview shows "OpenCost returned 500" | OpenCost pod not running / slow start | `kubectl get pods -n opencost` — wait for it to be Ready |
-| Catalog empty on first load | Backstage v1.29+ shows 401 before sign-in completes | Fixed: `dangerouslyDisableDefaultAuthPolicy: true` in local config |
+| Issue | Workaround |
+|---|---|
+| `/kubernetes` standalone page crashes | By design — disabled in local config. Use the Kubernetes tab on any catalog entity instead |
+| `Cost Overview` shows "OpenCost returned 500" | Wait for the OpenCost pod: `kubectl get pods -n opencost` |
+| Catalog empty on first load | Fixed: `dangerouslyDisableDefaultAuthPolicy: true` in local config prevents 401 flash before sign-in |
+| `ImagePullBackOff` after scaffold | Image hasn't been pushed yet. See [docs/runbooks/image-pull-backoff.md](docs/runbooks/image-pull-backoff.md) |
+| Backstage K8s tab shows "unknown" for CPU/memory | metrics-server not running. `bootstrap-local.sh` installs it; if you set up manually, apply the upstream manifest with `--kubelet-insecure-tls` |
+
+---
 
 ## Documentation
 
-- [Local Setup (Kind)](docs/local-setup.md)
-- [Getting Started (AWS)](docs/getting-started.md)
-- [Golden Path](docs/golden-path.md)
-- [Architecture](docs/architecture.md)
-- [AI Assistant](docs/ai-assistant.md)
-- [Multi-Region V2](docs/multi-region.md)
+| Doc | Description |
+|---|---|
+| [Local Setup (Kind)](docs/local-setup.md) | Full local walkthrough |
+| [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Step-by-step, pre-flight checklist, 4 known issues with solutions |
+| [Golden Path](docs/golden-path.md) | End-to-end scaffold → deploy → observe flow |
+| [Architecture](docs/architecture.md) | Deep-dive into each layer |
+| [AI Assistant](docs/ai-assistant.md) | KAgent + MCP server setup and usage |
+| [DORA + FinOps](docs/dora-finops.md) | DORA entity tab, SLOs, cost budgets |
+| [Contract Testing](docs/contract-testing.md) | MCP-driven contract gates |
+| [Mobile Platform](docs/mobile-platform.md) | Android / iOS / Flutter templates |
+| [Crossplane vs Terraform](docs/crossplane-vs-terraform.md) | When to use each |
+| [Security Scanning](docs/security-scanning.md) | SAST, DAST, SCA setup |
+| [Shift-Left Leadership](docs/shift-left-leadership.md) | Bronze/Silver/Gold programme overview |
+| [Docker Recovery](docs/docker-recovery.md) | Recover Kind after Docker Desktop restarts |
+| [Pre-Deployment Checklist](docs/PRE_DEPLOYMENT_CHECKLIST.md) | AWS pre-flight checklist |
+
+---
+
+## Contributing
+
+Issues and PRs are welcome. Before opening a PR, run:
+
+```bash
+helm lint helm/service-template
+cd backstage/app && yarn lint && yarn test
+cd services/hello-service && go test ./...
+cd cli && go build ./... && go vet ./...
+```
+
+---
+
+## License
+
+[MIT](LICENSE) — free to use, fork, and build on.
+
+---
+
+<div align="center">
+
+**Built with ❤️ for platform engineering teams who want to ship faster.**
+
+[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/moatazeldebsy/backstage-platform-template/generate)
+
+</div>
