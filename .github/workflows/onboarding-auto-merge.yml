@@ -12,51 +12,20 @@ permissions:
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: "startsWith(github.event.pull_request.title, 'feat: onboard ')"
+    if: startsWith(github.event.pull_request.title, 'feat(onboard)')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Generate GitHub App token
-        id: app-token
-        if: "${{ secrets.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}"
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Verify only GitOps values files changed
-        id: check
+      - name: Verify safe files and auto-merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           files=$(gh pr view "$PR_NUMBER" --json files --jq '[.files[].path] | join("\n")')
-          echo "Changed files:"
-          echo "$files"
-          unsafe=$(echo "$files" | grep -vE '^services/[^/]+(/[^/]+)?/helm-values[^/]*\.yaml$' || true)
+          unsafe=$(echo "$files" | grep -vE '^services/[^/]+/helm-values[^/]*\.yaml$' || true)
           if [ -n "$unsafe" ]; then
             echo "::error::PR touches files outside helm-values -- manual review required"
-            echo "$unsafe"
             exit 1
           fi
-          echo "All changed files are safe GitOps values files."
-
-      - name: Approve PR
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GH_PAT }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "No approval token configured -- skipping."
-            exit 0
-          fi
-          gh pr review "$PR_NUMBER" --approve \
-            --body "Auto-approved: PR only adds Helm values files."
-
-      - name: Enable auto-merge
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch \
-            --subject "feat: onboard service to GitOps (auto-merged)"
+          gh pr review "$PR_NUMBER" --approve --body "Auto-approved: only GitOps values files changed."
+          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch
