@@ -40,10 +40,10 @@ resource "aws_iam_role" "team_eso" {
   })
 
   tags = {
-    Team        = each.key
-    CostCenter  = each.value.cost_center
-    ManagedBy   = "terraform"
-    Component   = "external-secrets"
+    Team       = each.key
+    CostCenter = each.value.cost_center
+    ManagedBy  = "terraform"
+    Component  = "external-secrets"
   }
 }
 

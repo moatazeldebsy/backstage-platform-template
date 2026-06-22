@@ -19,11 +19,11 @@ module "vpc" {
   private_subnets = local.private_subnets
   public_subnets  = local.public_subnets
 
-  enable_nat_gateway   = true
-  single_nat_gateway   = !var.enable_multi_az_nat  # false in production → one NAT per AZ
+  enable_nat_gateway     = true
+  single_nat_gateway     = !var.enable_multi_az_nat # false in production → one NAT per AZ
   one_nat_gateway_per_az = var.enable_multi_az_nat
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  enable_dns_hostnames   = true
+  enable_dns_support     = true
 
   # Required for EKS load balancer controller
   public_subnet_tags = {

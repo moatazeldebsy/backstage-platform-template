@@ -34,7 +34,7 @@ module "eks" {
     platform = {
       instance_types = var.node_instance_types
       min_size       = var.node_group_min_size
-      max_size       = var.enable_karpenter ? 6 : var.node_group_max_size   # cap platform NG when Karpenter takes over burst
+      max_size       = var.enable_karpenter ? 6 : var.node_group_max_size # cap platform NG when Karpenter takes over burst
       desired_size   = var.node_group_desired_size
 
       labels = {

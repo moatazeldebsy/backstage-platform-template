@@ -47,7 +47,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "thanos_metrics" {
     id     = "expire-raw-blocks"
     status = "Enabled"
     filter { prefix = "" }
-    expiration { days = 45 }   # slightly longer than Thanos 30d raw retention
+    expiration { days = 45 } # slightly longer than Thanos 30d raw retention
   }
 }
 
@@ -63,7 +63,7 @@ resource "aws_s3_bucket_replication_configuration" "thanos_metrics" {
 
     destination {
       bucket        = aws_s3_bucket.thanos_metrics_replica.arn
-      storage_class = "STANDARD_IA"   # cheaper — read only during failover
+      storage_class = "STANDARD_IA" # cheaper — read only during failover
     }
 
     delete_marker_replication { status = "Enabled" }

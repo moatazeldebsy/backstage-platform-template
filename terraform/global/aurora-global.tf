@@ -17,7 +17,7 @@
 
 resource "random_password" "aurora" {
   length  = 32
-  special = false  # Aurora password cannot contain / @ " space
+  special = false # Aurora password cannot contain / @ " space
 }
 
 # Global cluster shell — no engine or storage, just the logical global entity
@@ -57,7 +57,7 @@ resource "aws_rds_cluster" "primary" {
 }
 
 resource "aws_rds_cluster_instance" "primary" {
-  count = 2   # writer + 1 reader within eu-central-1 for local HA
+  count = 2 # writer + 1 reader within eu-central-1 for local HA
 
   identifier         = "idp-eu-central-1-backstage-${count.index}"
   cluster_identifier = aws_rds_cluster.primary.id

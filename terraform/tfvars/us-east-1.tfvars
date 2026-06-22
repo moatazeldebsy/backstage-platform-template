@@ -4,12 +4,12 @@
 #   terraform workspace new us-east-1
 #   terraform apply -var-file=tfvars/us-east-1.tfvars
 
-aws_region         = "us-east-1"
-secondary_region   = "eu-central-1"
-is_primary_region  = false
-cluster_name       = "idp-us-east-1"
-vpc_cidr           = "10.1.0.0/16"   # Non-overlapping — required for Transit Gateway
-environment        = "prod"
+aws_region        = "us-east-1"
+secondary_region  = "eu-central-1"
+is_primary_region = false
+cluster_name      = "idp-us-east-1"
+vpc_cidr          = "10.1.0.0/16" # Non-overlapping — required for Transit Gateway
+environment       = "prod"
 
 # Node groups — warm standby (scaled down until failover)
 node_instance_types     = ["m6g.large"]

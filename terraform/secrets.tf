@@ -36,8 +36,8 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     # V2: Aurora Global endpoints — POSTGRES_HOST_READER is used by standby Backstage.
     # After Aurora Global failover, us-east-1 cluster endpoint becomes the writer.
     # bootstrap.sh (or the post-failover runbook) updates POSTGRES_HOST to the new writer.
-    POSTGRES_HOST_WRITER      = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
-    POSTGRES_HOST_READER      = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
+    POSTGRES_HOST_WRITER = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
+    POSTGRES_HOST_READER = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
   })
 
   lifecycle {
@@ -175,9 +175,9 @@ resource "aws_secretsmanager_secret_version" "backstage_k8s" {
   secret_id = aws_secretsmanager_secret.backstage_k8s.id
 
   secret_string = jsonencode({
-    url     = module.eks.cluster_endpoint
-    caData  = module.eks.cluster_certificate_authority_data
-    token   = "REPLACE_ME_RUN_register-argocd-cluster.sh"
+    url    = module.eks.cluster_endpoint
+    caData = module.eks.cluster_certificate_authority_data
+    token  = "REPLACE_ME_RUN_register-argocd-cluster.sh"
   })
 
   lifecycle {

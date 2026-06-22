@@ -38,7 +38,7 @@ resource "aws_globalaccelerator_listener" "https" {
 resource "aws_globalaccelerator_endpoint_group" "primary" {
   listener_arn                  = aws_globalaccelerator_listener.https.id
   endpoint_group_region         = var.primary_region
-  traffic_dial_percentage       = 100   # primary receives 100% by default
+  traffic_dial_percentage       = 100 # primary receives 100% by default
   health_check_path             = var.health_check_path
   health_check_protocol         = "HTTPS"
   health_check_interval_seconds = 30
@@ -54,7 +54,7 @@ resource "aws_globalaccelerator_endpoint_group" "primary" {
 resource "aws_globalaccelerator_endpoint_group" "standby" {
   listener_arn                  = aws_globalaccelerator_listener.https.id
   endpoint_group_region         = var.standby_region
-  traffic_dial_percentage       = 0     # standby receives 0% until failover
+  traffic_dial_percentage       = 0 # standby receives 0% until failover
   health_check_path             = var.health_check_path
   health_check_protocol         = "HTTPS"
   health_check_interval_seconds = 30

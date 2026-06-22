@@ -47,7 +47,7 @@ resource "aws_ec2_transit_gateway" "standby" {
   provider = aws.standby
 
   description                     = "IDP platform inter-region TGW (us-east-1)"
-  amazon_side_asn                 = 64513   # different ASN — required for peering
+  amazon_side_asn                 = 64513 # different ASN — required for peering
   auto_accept_shared_attachments  = "enable"
   default_route_table_association = "enable"
   default_route_table_propagation = "enable"
@@ -89,8 +89,8 @@ resource "aws_ec2_transit_gateway_peering_attachment" "primary_to_standby" {
 
 # Accept the peering from the standby side
 resource "aws_ec2_transit_gateway_peering_attachment_accepter" "standby" {
-  provider                        = aws.standby
-  transit_gateway_attachment_id   = aws_ec2_transit_gateway_peering_attachment.primary_to_standby.id
+  provider                      = aws.standby
+  transit_gateway_attachment_id = aws_ec2_transit_gateway_peering_attachment.primary_to_standby.id
 
   tags = {
     Name = "idp-mvp-tgw-peering-eu-us-accepter"

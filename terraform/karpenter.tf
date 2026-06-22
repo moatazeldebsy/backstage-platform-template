@@ -9,8 +9,8 @@
 # Only provisioned when enable_karpenter = true (set in tfvars/eu-central-1.tfvars)
 
 module "karpenter" {
-  count  = var.enable_karpenter ? 1 : 0
-  source = "terraform-aws-modules/eks/aws//modules/karpenter"
+  count   = var.enable_karpenter ? 1 : 0
+  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   version = "~> 20.0"
 
   cluster_name           = module.eks.cluster_name
