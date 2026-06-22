@@ -16,7 +16,7 @@ name: Auto-merge service onboarding PRs
 #   4. Add two repo secrets: APP_ID (numeric) and APP_PRIVATE_KEY (PEM content).
 #   5. Remove the legacy GH_PAT secret.
 
-on:
+'on':
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
@@ -37,7 +37,7 @@ jobs:
       - name: Generate GitHub App token
         id: app-token
         if: ${{ secrets.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}

@@ -40,7 +40,9 @@ resource "aws_wafv2_web_acl" "platform" {
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
     priority = 1
-    override_action { none {} }
+    override_action {
+      none {}
+    }
     statement {
       managed_rule_group_statement {
         name        = "AWSManagedRulesCommonRuleSet"
@@ -57,7 +59,9 @@ resource "aws_wafv2_web_acl" "platform" {
   rule {
     name     = "AWSManagedRulesKnownBadInputsRuleSet"
     priority = 2
-    override_action { none {} }
+    override_action {
+      none {}
+    }
     statement {
       managed_rule_group_statement {
         name        = "AWSManagedRulesKnownBadInputsRuleSet"
@@ -74,10 +78,12 @@ resource "aws_wafv2_web_acl" "platform" {
   rule {
     name     = "RateLimit"
     priority = 3
-    action { block {} }
+    action {
+      block {}
+    }
     statement {
       rate_based_statement {
-        limit              = 2000    # requests per 5-minute window per IP
+        limit              = 2000 # requests per 5-minute window per IP
         aggregate_key_type = "IP"
       }
     }
@@ -113,7 +119,7 @@ resource "aws_cloudfront_distribution" "platform" {
   default_root_object = "index.html"
   aliases             = ["idp.${var.domain_name}"]
   web_acl_id          = aws_wafv2_web_acl.platform.arn
-  price_class         = "PriceClass_100"   # US + Europe only — cheapest for GDPR scope
+  price_class         = "PriceClass_100" # US + Europe only — cheapest for GDPR scope
 
   # Origin group with failover: primary (eu-central-1) → secondary (us-east-1)
   origin_group {
@@ -182,7 +188,7 @@ resource "aws_cloudfront_distribution" "platform" {
     }
 
     min_ttl     = 0
-    default_ttl = 0     # no caching for dynamic API content
+    default_ttl = 0 # no caching for dynamic API content
     max_ttl     = 0
   }
 
@@ -201,8 +207,8 @@ resource "aws_cloudfront_distribution" "platform" {
     }
 
     min_ttl     = 0
-    default_ttl = 86400    # 1 day
-    max_ttl     = 604800   # 7 days
+    default_ttl = 86400  # 1 day
+    max_ttl     = 604800 # 7 days
   }
 
   ordered_cache_behavior {
@@ -219,8 +225,8 @@ resource "aws_cloudfront_distribution" "platform" {
     }
 
     min_ttl     = 0
-    default_ttl = 604800   # 7 days
-    max_ttl     = 2592000  # 30 days
+    default_ttl = 604800  # 7 days
+    max_ttl     = 2592000 # 30 days
   }
 
   restrictions {

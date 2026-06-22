@@ -439,24 +439,27 @@ jobs:
           git commit -m "chore(gitops): promote ${SERVICE} → ${IMAGE_TAG} [staging] [skip ci]"
           git push origin "${BRANCH}"
 
+          {
+            echo "## Staging Promotion"
+            echo ""
+            echo "**Service:** \`${SERVICE}\`"
+            echo "**Image tag:** \`${IMAGE_TAG}\`"
+            echo "**Promoted from:** dev (smoke test passed ✅)"
+            echo ""
+            echo "### What this PR does"
+            echo "Updates \`helm-values-staging.yaml\` with the new image tag."
+            echo "ArgoCD will deploy to \`services-staging\` namespace after merge."
+            echo ""
+            echo "### Pre-merge checklist"
+            echo "- [ ] Dev smoke test passed (automated above)"
+            echo "- [ ] No open P1/P2 incidents on this service"
+            echo "- [ ] DORA change failure rate is acceptable"
+            echo ""
+            echo "_Opened automatically by the GitOps promotion pipeline._"
+          } > /tmp/pr-body.md
           gh pr create \
             --title "chore(promote): ${SERVICE} → ${IMAGE_TAG} to staging" \
-            --body "## Staging Promotion
-
-**Service:** \`${SERVICE}\`
-**Image tag:** \`${IMAGE_TAG}\`
-**Promoted from:** dev (smoke test passed ✅)
-
-### What this PR does
-Updates \`helm-values-staging.yaml\` with the new image tag.
-ArgoCD will deploy to \`services-staging\` namespace after merge.
-
-### Pre-merge checklist
-- [ ] Dev smoke test passed (automated above)
-- [ ] No open P1/P2 incidents on this service
-- [ ] DORA change failure rate is acceptable
-
-_Opened automatically by the GitOps promotion pipeline._" \
+            --body-file /tmp/pr-body.md \
             --base main \
             --head "${BRANCH}" \
             --label "gitops-promotion"

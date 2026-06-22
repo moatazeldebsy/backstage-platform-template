@@ -43,11 +43,19 @@ resource "aws_guardduty_detector" "standby" {
   enable   = true
 
   datasources {
-    s3_logs { enable = true }
-    kubernetes { audit_logs { enable = true } }
+    s3_logs {
+      enable = true
+    }
+    kubernetes {
+      audit_logs {
+        enable = true
+      }
+    }
     malware_protection {
       scan_ec2_instance_with_findings {
-        ebs_volumes { enable = true }
+        ebs_volumes {
+          enable = true
+        }
       }
     }
   }
@@ -74,8 +82,8 @@ resource "aws_securityhub_standards_subscription" "cis_primary" {
 
 # Aggregate findings from all linked regions into eu-central-1
 resource "aws_securityhub_finding_aggregator" "primary" {
-  depends_on   = [aws_securityhub_account.primary]
-  linking_mode = "SPECIFIED_REGIONS"
+  depends_on        = [aws_securityhub_account.primary]
+  linking_mode      = "SPECIFIED_REGIONS"
   specified_regions = [var.standby_region]
 }
 
