@@ -72,6 +72,16 @@ integrations:
     - host: github.com
       token: ${GITHUB_TOKEN:-local-dev-no-github}
 
+# Browser-facing "open in new tab" links for the custom ArgoCD/Grafana/KAgent
+# pages — distinct from the `proxy:` targets below, which are server-side and
+# already differ per environment. These are read by the frontend via
+# configApi.getOptionalString('externalLinks.<name>'); see app-config.aws.yaml
+# for the AWS equivalents (populated by scripts/bootstrap.sh at deploy time).
+externalLinks:
+  argocd: http://argocd.idp.local
+  grafana: http://grafana.idp.local
+  kagent: http://kagent.idp.local
+
 # Override the OpenCost proxy target — in-cluster DNS is not reachable from Docker;
 # use the ingress hostname that is mapped to host-gateway in docker-compose extra_hosts.
 proxy:
