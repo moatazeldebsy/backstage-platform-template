@@ -803,6 +803,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#symptom-manyall-idplocal-services-return-503-or-504-at-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: many/all *.idp.local services return 503 or 504 at once
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#symptom-etchosts-entries-missing-after-bootstrap" class="md-nav__link">
     <span class="md-ellipsis">
       Symptom: /etc/hosts entries missing after bootstrap
@@ -2161,6 +2170,46 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
 <span class="c1"># If pending, describe for events</span>
 kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>ingress-nginx<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>controller
 </code></pre></div></td></tr></table></div>
+<h3 id="symptom-manyall-idplocal-services-return-503-or-504-at-once">Symptom: many/all <code>*.idp.local</code> services return 503 or 504 at once<a class="headerlink" href="#symptom-manyall-idplocal-services-return-503-or-504-at-once" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> the Kind cluster's host (Docker Desktop) is oversubscribed — the
+3-node cluster plus Backstage/Postgres are asking for more CPU/memory than the
+host has, so <code>kube-apiserver</code> itself starts timing out under load. That
+timeout cascades into seemingly unrelated failures: ArgoCD's repo-server fails
+its own liveness probe and CrashLoops, the Prometheus operator and
+kagent's <code>kmcp-controller-manager</code> lose their leader-election lease and
+CrashLoop, and Grafana's readiness probe flaps, which nginx reports to
+the browser as 503 (or 504 if the backend hangs instead of refusing).</p>
+<p>Diagnose with:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Is any node pinned at/near 100%+ CPU?</span>
+docker<span class="w"> </span>stats<span class="w"> </span>--no-stream
+
+<span class="c1"># Inside the cluster: which nodes are hot?</span>
+kubectl<span class="w"> </span>top<span class="w"> </span>nodes
+
+<span class="c1"># Any pod not Running/Completed? CrashLoopBackOff here is usually a symptom,</span>
+<span class="c1"># not the root cause — check the *reason* with `kubectl describe pod`, and</span>
+<span class="c1"># look for &quot;context deadline exceeded&quot; / &quot;context canceled&quot; talking to</span>
+<span class="c1"># 10.96.0.1:443 (the in-cluster apiserver address) before chasing the pod itself.</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-vE<span class="w"> </span><span class="s2">&quot;Running|Completed&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p><strong>Fix:</strong>
+1. Give Docker Desktop more CPU/memory (Settings → Resources) if the host has
+   headroom — 12 CPU / 24GB is comfortable for this stack.
+2. <code>local/kind-config.yaml</code> runs a single worker node by default for this
+   reason; don't add more worker nodes locally unless you've also raised the
+   Docker Desktop allocation to match.
+3. Re-run <code>./scripts/bootstrap-local.sh</code> after freeing up resources — the
+   CrashLoop is usually self-healing once <code>kube-apiserver</code> stops timing out.</p>
 <h3 id="symptom-etchosts-entries-missing-after-bootstrap">Symptom: <code>/etc/hosts</code> entries missing after bootstrap<a class="headerlink" href="#symptom-etchosts-entries-missing-after-bootstrap" title="Permanent link">&para;</a></h3>
 <p>The bootstrap writes hosts entries automatically, but may fail silently if <code>/etc/hosts</code> is read-only or if the script was interrupted.</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -2257,15 +2306,36 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <p>Check the OAuth app callback URL in GitHub — it must be exactly:
    <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>http://backstage.idp.local/api/auth/github/handler/frame
 </code></pre></div></td></tr></table></div>
-   (Or <code>http://localhost:3000/api/auth/github/handler/frame</code> if accessing via localhost.)</p>
+   This is fixed by <code>app.baseUrl</code> in <code>backstage/app-config.local.yaml</code>
+   (<code>http://backstage.idp.local</code>) — Backstage always generates this exact
+   <code>redirect_uri</code> regardless of which host/port you loaded the page from, so
+   there is no <code>localhost:3000</code> variant to register.</p>
+<p><strong>Always open <code>http://backstage.idp.local</code> in the browser, never
+ <code>http://localhost:3000</code></strong>, even though <code>docker-compose.yml</code> also publishes
+ port 3000 directly. The GitHub sign-in flow uses a popup that posts a message
+ back to the window that opened it; that handshake is keyed off <code>app.baseUrl</code>,
+ so if the app was loaded from <code>localhost:3000</code> the popup (which always lands
+ on <code>backstage.idp.local</code>) is on a different origin than the opener and the
+ sign-in silently never completes. You can sanity-check the redirect Backstage
+ is sending without a browser:
+ <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>curl<span class="w"> </span>-sI<span class="w"> </span>http://backstage.idp.local/api/auth/github/start<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>location
+<span class="c1"># Location header must show: redirect_uri=http%3A%2F%2Fbackstage.idp.local%2Fapi%2Fauth%2Fgithub%2Fhandler%2Fframe</span>
+</code></pre></div></td></tr></table></div></p>
 </li>
 <li>
 <p>Check <code>local/backstage/.env</code> has both <code>AUTH_GITHUB_CLIENT_ID</code> and <code>AUTH_GITHUB_CLIENT_SECRET</code> set.</p>
 </li>
 <li>
-<p>Restart Backstage after any change:
-   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
-</code></pre></div></td></tr></table></div></p>
+<p>Restart Backstage after any <code>.env</code> change:
+   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div></td></tr></table></div>
+   Don't use <code>docker compose restart backstage</code> here — <code>restart</code> does <strong>not</strong> re-read
+   <code>.env</code>, so a newly added/edited <code>AUTH_GITHUB_CLIENT_ID</code>/<code>AUTH_GITHUB_CLIENT_SECRET</code>
+   is never picked up and login keeps failing. On the Kind provider, recreating the
+   container can also change its IP on the <code>kind</code> Docker network, which <code>--start-backstage</code>
+   re-wires automatically — see <a href="#symptom-backstage-url-inaccessible-after-docker-restart">Backstage URL inaccessible after Docker restart</a>
+   below if <code>backstage.idp.local</code> stops responding after a restart.</p>
 </li>
 </ol>
 <h3 id="symptom-catalog-exporter-cronjob-in-crashloopbackoff">Symptom: <code>catalog-exporter</code> CronJob in <code>CrashLoopBackOff</code><a class="headerlink" href="#symptom-catalog-exporter-cronjob-in-crashloopbackoff" title="Permanent link">&para;</a></h3>

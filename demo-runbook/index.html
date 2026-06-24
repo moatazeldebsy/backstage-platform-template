@@ -1101,6 +1101,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#step-3b-refresh-the-argocd-token-if-bootstrap-ran-24h-ago" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3b — Refresh the ArgoCD token if bootstrap ran &gt;24h ago
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#step-4-verify-everything-is-green" class="md-nav__link">
     <span class="md-ellipsis">
       Step 4 — Verify everything is green
@@ -1575,16 +1584,33 @@ yarn<span class="w"> </span>build:backend
 <p>Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, and triggers catalog export:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
 </code></pre></div></td></tr></table></div>
-<h3 id="step-4-verify-everything-is-green">Step 4 — Verify everything is green<a class="headerlink" href="#step-4-verify-everything-is-green" title="Permanent link">&para;</a></h3>
+<h3 id="step-3b-refresh-the-argocd-token-if-bootstrap-ran-24h-ago">Step 3b — Refresh the ArgoCD token if bootstrap ran &gt;24h ago<a class="headerlink" href="#step-3b-refresh-the-argocd-token-if-bootstrap-ran-24h-ago" title="Permanent link">&para;</a></h3>
+<p><code>ARGOCD_AUTH_TOKEN</code> is a session JWT (~24h TTL by default) written to <code>local/backstage/.env</code>
+during bootstrap. It is <strong>not</strong> auto-refreshed. If the cluster was bootstrapped more than a
+day before the demo, the <code>/argocd</code> proxy in Backstage will silently 401 — the ArgoCD entity
+tab and any "deploy status" widgets will show empty/error states with no obvious error in
+the UI. Refresh it and restart Backstage to pick up the new value (<code>docker compose restart</code>
+does <strong>not</strong> re-read <code>.env</code> — use <code>--start-backstage</code>):</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage portal</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--install-argocd<span class="w">     </span><span class="c1"># regenerates ARGOCD_AUTH_TOKEN</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">    </span><span class="c1"># picks up the new .env value</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="step-4-verify-everything-is-green">Step 4 — Verify everything is green<a class="headerlink" href="#step-4-verify-everything-is-green" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage portal</span>
 curl<span class="w"> </span>-sf<span class="w"> </span>http://localhost:3000<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Backstage OK&quot;</span>
 
 <span class="c1"># hello-service in Kind</span>
@@ -1593,6 +1619,12 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
 
 <span class="c1"># Grafana</span>
 curl<span class="w"> </span>-sf<span class="w"> </span>http://grafana.idp.local<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Grafana OK&quot;</span>
+
+<span class="c1"># ArgoCD — and that Backstage&#39;s proxy token is still valid</span>
+curl<span class="w"> </span>-sf<span class="w"> </span>http://argocd.idp.local<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ArgoCD OK&quot;</span>
+curl<span class="w"> </span>-sf<span class="w"> </span>http://localhost:3000/api/proxy/argocd/api/v1/applications<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Backstage-&gt;ArgoCD proxy OK (token valid)&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Backstage-&gt;ArgoCD proxy FAILED — see Step 3b&quot;</span>
 </code></pre></div></td></tr></table></div>
 <h3 id="step-5-open-browser-tabs-in-advance">Step 5 — Open browser tabs in advance<a class="headerlink" href="#step-5-open-browser-tabs-in-advance" title="Permanent link">&para;</a></h3>
 <table>
