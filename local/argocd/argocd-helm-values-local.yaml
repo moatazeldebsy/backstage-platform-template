@@ -21,12 +21,46 @@ server:
     tls: false
   extraArgs:
     - --insecure   # nginx does not terminate TLS locally; ArgoCD listens on plain HTTP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Does the heavy lifting on "Refresh"/sync (reconciliation diffing against
+# every Application's live state) — caps it so a refresh can't starve the
+# node and take down ingress-nginx + every other *.idp.local service with it.
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 repoServer:
   replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 applicationSet:
   replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 configs:
   params:
@@ -48,11 +82,3 @@ configs:
       p, role:backstage-read, clusters, get, *, allow
       p, role:backstage-read, repositories, get, *, allow
       g, backstage, role:backstage-read
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi

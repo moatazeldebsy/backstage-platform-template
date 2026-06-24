@@ -522,7 +522,8 @@ _raise_kind_inotify_limits() {
 # ── Helper: apply Backstage K8s Service, Endpoints, and nginx Ingress ────────
 # Auto-detects the live container IP on the 'kind' Docker network so nginx can
 # proxy to the Docker Compose Backstage container. Falls back to the hardcoded
-# default (172.21.0.6) when the container is not yet running.
+# default (172.17.0.1, matching local/backstage/backstage-k8s-endpoints.yaml)
+# when the container is not yet running.
 apply_backstage_k8s_objects() {
   local endpoints_file="${ROOT_DIR}/local/backstage/backstage-k8s-endpoints.yaml"
   local ingress_file="${ROOT_DIR}/local/backstage/backstage-ingress.yaml"
@@ -811,6 +812,10 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --create-namespace \
   --set controller.hostPort.enabled=true \
   --set controller.service.type=NodePort \
+  --set controller.resources.requests.cpu=100m \
+  --set controller.resources.requests.memory=128Mi \
+  --set controller.resources.limits.cpu=500m \
+  --set controller.resources.limits.memory=256Mi \
   "${_INGRESS_EXTRA_ARGS[@]}" \
   --wait --timeout 5m
 
@@ -1271,25 +1276,25 @@ if ! $SKIP_POLICIES; then
       --set replicaCount=1 \
       --set resources.requests.cpu=100m \
       --set resources.requests.memory=256Mi \
-      --set cleanupJobs.admissionReports.image.registry=registry.k8s.io \
-      --set cleanupJobs.admissionReports.image.repository=kubectl \
-      --set cleanupJobs.admissionReports.image.tag=v1.28.5 \
-      --set cleanupJobs.clusterAdmissionReports.image.registry=registry.k8s.io \
-      --set cleanupJobs.clusterAdmissionReports.image.repository=kubectl \
-      --set cleanupJobs.clusterAdmissionReports.image.tag=v1.28.5 \
-      --set cleanupJobs.ephemeralReports.image.registry=registry.k8s.io \
-      --set cleanupJobs.ephemeralReports.image.repository=kubectl \
-      --set cleanupJobs.ephemeralReports.image.tag=v1.28.5 \
-      --set cleanupJobs.clusterEphemeralReports.image.registry=registry.k8s.io \
-      --set cleanupJobs.clusterEphemeralReports.image.repository=kubectl \
-      --set cleanupJobs.clusterEphemeralReports.image.tag=v1.28.5 \
-      --set policyReportsCleanup.image.registry=registry.k8s.io \
-      --set policyReportsCleanup.image.repository=kubectl \
-      --set policyReportsCleanup.image.tag=v1.28.5 \
-      --set webhooksCleanup.image.registry=registry.k8s.io \
-      --set webhooksCleanup.image.repository=kubectl \
-      --set webhooksCleanup.image.tag=v1.28.5 \
+      --set cleanupJobs.admissionReports.enabled=false \
+      --set cleanupJobs.clusterAdmissionReports.enabled=false \
+      --set cleanupJobs.ephemeralReports.enabled=false \
+      --set cleanupJobs.clusterEphemeralReports.enabled=false \
+      --set policyReportsCleanup.enabled=false \
+      --set webhooksCleanup.enabled=false \
       --wait --timeout 5m
+    # The 6 lines above disable Kyverno's optional report/webhook GC jobs rather
+    # than pointing them at registry.k8s.io/kubectl (as a previous pass tried):
+    # that image has no shell at all (`/bin/sh`, `/bin/bash` both missing), but
+    # every one of these jobs' chart-embedded command is a `/bin/bash -c "..."`
+    # pipeline — so they fail outright regardless of securityContext, and the
+    # policyReportsCleanup one failing as a post-upgrade hook was also breaking
+    # `helm upgrade` itself. bitnami/kubectl (the chart default, which has bash)
+    # is no longer pullable at pinned tags on Docker Hub's free tier. These are
+    # non-essential GC for report CRDs/stale webhooks (the chart still cleans
+    # up if you `helm uninstall`); disabling them is harmless for local dev —
+    # the worst case is AdmissionReport/EphemeralReport CRs accumulating, which
+    # doesn't affect cluster health below the 10k-row threshold these jobs use.
 
     log "  Waiting for Kyverno webhook to be ready..."
     kubectl wait deployment kyverno-admission-controller \

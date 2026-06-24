@@ -94,6 +94,42 @@ kubectl get pods -n ingress-nginx
 kubectl describe pod -n ingress-nginx -l app.kubernetes.io/component=controller
 ```
 
+### Symptom: many/all `*.idp.local` services return 503 or 504 at once
+
+**Cause:** the Kind cluster's host (Docker Desktop) is oversubscribed — the
+3-node cluster plus Backstage/Postgres are asking for more CPU/memory than the
+host has, so `kube-apiserver` itself starts timing out under load. That
+timeout cascades into seemingly unrelated failures: ArgoCD's repo-server fails
+its own liveness probe and CrashLoops, the Prometheus operator and
+kagent's `kmcp-controller-manager` lose their leader-election lease and
+CrashLoop, and Grafana's readiness probe flaps, which nginx reports to
+the browser as 503 (or 504 if the backend hangs instead of refusing).
+
+Diagnose with:
+
+```bash
+# Is any node pinned at/near 100%+ CPU?
+docker stats --no-stream
+
+# Inside the cluster: which nodes are hot?
+kubectl top nodes
+
+# Any pod not Running/Completed? CrashLoopBackOff here is usually a symptom,
+# not the root cause — check the *reason* with `kubectl describe pod`, and
+# look for "context deadline exceeded" / "context canceled" talking to
+# 10.96.0.1:443 (the in-cluster apiserver address) before chasing the pod itself.
+kubectl get pods -A | grep -vE "Running|Completed"
+```
+
+**Fix:**
+1. Give Docker Desktop more CPU/memory (Settings → Resources) if the host has
+   headroom — 12 CPU / 24GB is comfortable for this stack.
+2. `local/kind-config.yaml` runs a single worker node by default for this
+   reason; don't add more worker nodes locally unless you've also raised the
+   Docker Desktop allocation to match.
+3. Re-run `./scripts/bootstrap-local.sh` after freeing up resources — the
+   CrashLoop is usually self-healing once `kube-apiserver` stops timing out.
+
 ### Symptom: `/etc/hosts` entries missing after bootstrap
 
 The bootstrap writes hosts entries automatically, but may fail silently if `/etc/hosts` is read-only or if the script was interrupted.
@@ -192,14 +228,36 @@ docker compose -f local/backstage/docker-compose.yml restart backstage
    ```
    http://backstage.idp.local/api/auth/github/handler/frame
    ```
-   (Or `http://localhost:3000/api/auth/github/handler/frame` if accessing via localhost.)
+   This is fixed by `app.baseUrl` in `backstage/app-config.local.yaml`
+   (`http://backstage.idp.local`) — Backstage always generates this exact
+   `redirect_uri` regardless of which host/port you loaded the page from, so
+   there is no `localhost:3000` variant to register.
+
+   **Always open `http://backstage.idp.local` in the browser, never
+   `http://localhost:3000`**, even though `docker-compose.yml` also publishes
+   port 3000 directly. The GitHub sign-in flow uses a popup that posts a message
+   back to the window that opened it; that handshake is keyed off `app.baseUrl`,
+   so if the app was loaded from `localhost:3000` the popup (which always lands
+   on `backstage.idp.local`) is on a different origin than the opener and the
+   sign-in silently never completes. You can sanity-check the redirect Backstage
+   is sending without a browser:
+   ```bash
+   curl -sI http://backstage.idp.local/api/auth/github/start | grep -i location
+   # Location header must show: redirect_uri=http%3A%2F%2Fbackstage.idp.local%2Fapi%2Fauth%2Fgithub%2Fhandler%2Fframe
+   ```
 
 2. Check `local/backstage/.env` has both `AUTH_GITHUB_CLIENT_ID` and `AUTH_GITHUB_CLIENT_SECRET` set.
 
-3. Restart Backstage after any change:
+3. Restart Backstage after any `.env` change:
    ```bash
-   docker compose -f local/backstage/docker-compose.yml restart backstage
+   ./scripts/bootstrap-local.sh --start-backstage
    ```
+   Don't use `docker compose restart backstage` here — `restart` does **not** re-read
+   `.env`, so a newly added/edited `AUTH_GITHUB_CLIENT_ID`/`AUTH_GITHUB_CLIENT_SECRET`
+   is never picked up and login keeps failing. On the Kind provider, recreating the
+   container can also change its IP on the `kind` Docker network, which `--start-backstage`
+   re-wires automatically — see [Backstage URL inaccessible after Docker restart](#symptom-backstage-url-inaccessible-after-docker-restart)
+   below if `backstage.idp.local` stops responding after a restart.
 
 ### Symptom: `catalog-exporter` CronJob in `CrashLoopBackOff`
 

@@ -41,6 +41,20 @@ Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, 
 ./scripts/bootstrap-local.sh --start-backstage
 ```
 
+### Step 3b — Refresh the ArgoCD token if bootstrap ran >24h ago
+
+`ARGOCD_AUTH_TOKEN` is a session JWT (~24h TTL by default) written to `local/backstage/.env`
+during bootstrap. It is **not** auto-refreshed. If the cluster was bootstrapped more than a
+day before the demo, the `/argocd` proxy in Backstage will silently 401 — the ArgoCD entity
+tab and any "deploy status" widgets will show empty/error states with no obvious error in
+the UI. Refresh it and restart Backstage to pick up the new value (`docker compose restart`
+does **not** re-read `.env` — use `--start-backstage`):
+
+```bash
+./scripts/bootstrap-local.sh --install-argocd     # regenerates ARGOCD_AUTH_TOKEN
+./scripts/bootstrap-local.sh --start-backstage    # picks up the new .env value
+```
+
 ### Step 4 — Verify everything is green
 
 ```bash
@@ -53,6 +67,12 @@ kubectl get pods -n services
 
 # Grafana
 curl -sf http://grafana.idp.local > /dev/null && echo "Grafana OK"
+
+# ArgoCD — and that Backstage's proxy token is still valid
+curl -sf http://argocd.idp.local > /dev/null && echo "ArgoCD OK"
+curl -sf http://localhost:3000/api/proxy/argocd/api/v1/applications > /dev/null \
+  && echo "Backstage->ArgoCD proxy OK (token valid)" \
+  || echo "Backstage->ArgoCD proxy FAILED — see Step 3b"
 ```
 
 ### Step 5 — Open browser tabs in advance
