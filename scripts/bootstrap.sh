@@ -660,10 +660,10 @@ done
 log "  Looking up ArgoCD + Grafana LoadBalancer hostnames..."
 ARGOCD_URL=""
 GRAFANA_URL=""
-for i in $(seq 1 12); do
+for i in $(seq 1 24); do
   [[ -z "$ARGOCD_URL" ]] && ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(kubectl get ingress grafana -n monitoring \
+  [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(kubectl get ingress prometheus-grafana -n monitoring \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]] && break
   sleep 10
