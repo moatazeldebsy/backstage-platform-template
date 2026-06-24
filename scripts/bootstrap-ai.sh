@@ -500,9 +500,7 @@ else
   # platform-agent both reference it as a tool source, so without it those
   # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
-  # The standalone contract-assistant agent stays disabled/hidden from end users.
-  # To re-enable it, uncomment the line below.
-  # kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     # Apply ServiceMonitor for Prometheus scraping of MCP servers
