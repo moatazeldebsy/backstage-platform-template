@@ -56,12 +56,21 @@ services:
       # External SaaS proxy tokens — empty values render an empty state in the Security tab.
       SONAR_TOKEN: ${SONAR_TOKEN:-}
       SNYK_TOKEN: ${SNYK_TOKEN:-}
+      PAGERDUTY_TOKEN: ${PAGERDUTY_TOKEN:-}
+      JIRA_URL: ${JIRA_URL:-}
+      JIRA_TOKEN: ${JIRA_TOKEN:-}
       # Grafana viewer token — referenced by the /grafana/api proxy.
       GRAFANA_TOKEN: ${GRAFANA_TOKEN:-}
       # ArgoCD session token (JWT, not the admin password) — referenced by the /argocd proxy.
       ARGOCD_AUTH_TOKEN: ${ARGOCD_AUTH_TOKEN:-}
     ports:
       - "3000:3000"   # Backstage backend (Node.js) listens on port 3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     extra_hosts:
       - "backstage.idp.local:host-gateway"
       - "hello-service.idp.local:host-gateway"

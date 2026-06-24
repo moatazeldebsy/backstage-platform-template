@@ -205,6 +205,9 @@ prometheusOperator:
     requests:
       cpu: 50m
       memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
 
 # Note: Prometheus Pushgateway is installed as a separate Helm release (not a subchart of kube-prometheus-stack):
 #   helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \

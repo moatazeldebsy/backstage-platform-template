@@ -18,7 +18,11 @@ nodes:
       - containerPort: 443
         hostPort: 443
         protocol: TCP
-  - role: worker
-    image: kindest/node:v1.33.1
+  # Single worker — the control-plane + 2 workers footprint was oversubscribing
+  # an 8 CPU / 16GB Docker Desktop host (docker stats showed ~6.7 cores in use
+  # just for the 3 Kind node containers + Backstage), which made kube-apiserver
+  # calls start timing out under load and cascaded into CrashLoopBackOffs
+  # (argocd-repo-server, prometheus-operator, kagent-kmcp-controller-manager)
+  # and intermittent 503s through nginx (Grafana, kagent UI).
   - role: worker
     image: kindest/node:v1.33.1
