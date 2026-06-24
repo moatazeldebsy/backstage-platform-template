@@ -3134,10 +3134,11 @@ function ArgocdPage() {
   const totals = apps.reduce((acc, a) => {
     acc.total++;
     if (a.sync === 'Synced') acc.synced++;
-    else acc.outOfSync++;
+    else if (a.sync === 'OutOfSync') acc.outOfSync++;
+    else acc.unknown++;
     if (a.health === 'Degraded') acc.degraded++;
     return acc;
-  }, { total: 0, synced: 0, outOfSync: 0, degraded: 0 });
+  }, { total: 0, synced: 0, outOfSync: 0, unknown: 0, degraded: 0 });
 
   return (
     <Page themeId="tool">
@@ -3160,6 +3161,7 @@ function ArgocdPage() {
                 { label: 'Total Apps',    value: totals.total,     color: '#455a64' },
                 { label: 'Synced',        value: totals.synced,    color: '#4caf50' },
                 { label: 'Out of Sync',   value: totals.outOfSync, color: '#ff9800' },
+                { label: 'Unknown',       value: totals.unknown,   color: '#9e9e9e' },
                 { label: 'Degraded',      value: totals.degraded,  color: '#f44336' },
               ].map(({ label, value, color }) => (
                 <Paper key={label} style={{ padding: '16px 24px', flex: 1, minWidth: 100, borderTop: `4px solid ${color}` }}>
