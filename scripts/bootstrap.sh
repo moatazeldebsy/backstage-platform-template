@@ -652,10 +652,31 @@ for i in $(seq 1 36); do
   sleep 10
 done
 
-# Patch the configmap with the real ALB URL and restart the pod
+# ArgoCD and Grafana Ingresses are created earlier (Phase 4 / 4.5), so their
+# ALB hostnames are usually already assigned by now — but ALB provisioning is
+# async, so poll briefly rather than assuming. KAgent's ALB isn't up yet at
+# this point (Phase 6 runs after this) — its URL gets patched separately in
+# bootstrap-ai.sh once its own Ingress exists.
+log "  Looking up ArgoCD + Grafana LoadBalancer hostnames..."
+ARGOCD_URL=""
+GRAFANA_URL=""
+for i in $(seq 1 12); do
+  [[ -z "$ARGOCD_URL" ]] && ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+  [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(kubectl get ingress grafana -n monitoring \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+  [[ -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]] && break
+  sleep 10
+done
+[[ -z "$ARGOCD_URL" ]] && log "  ArgoCD ALB hostname not ready — leaving externalLinks.argocd as a placeholder."
+[[ -z "$GRAFANA_URL" ]] && log "  Grafana ALB hostname not ready — leaving externalLinks.grafana as a placeholder."
+
+# Patch the configmap with the real ALB URLs and restart the pod
 if [[ "$BACKSTAGE_URL" != "PENDING" ]]; then
   kubectl get configmap backstage-config -n backstage -o json \
     | sed "s|BACKSTAGE_ALB_URL|${BACKSTAGE_URL}|g" \
+    | sed "s|ARGOCD_ALB_URL|${ARGOCD_URL:-ARGOCD_ALB_URL}|g" \
+    | sed "s|GRAFANA_ALB_URL|${GRAFANA_URL:-GRAFANA_ALB_URL}|g" \
     | kubectl apply -f -
   kubectl rollout restart deployment/backstage -n backstage
 fi

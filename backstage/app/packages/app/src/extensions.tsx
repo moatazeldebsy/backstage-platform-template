@@ -3087,6 +3087,7 @@ function ArgocdPage() {
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const base = configApi.getString('backend.baseUrl');
+  const argocdUrl = configApi.getOptionalString('externalLinks.argocd') ?? 'http://argocd.idp.local';
 
   const [apps, setApps]       = useState<ArgoApp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3180,7 +3181,7 @@ function ArgocdPage() {
                     variant="contained"
                     size="small"
                     color="primary"
-                    onClick={() => window.open('http://argocd.idp.local', '_blank')}
+                    onClick={() => window.open(argocdUrl, '_blank')}
                   >
                     Open ArgoCD ↗
                   </Button>
@@ -4961,6 +4962,7 @@ function KAgentPage() {
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const base = configApi.getString('backend.baseUrl');
+  const kagentUrl = configApi.getOptionalString('externalLinks.kagent') ?? 'http://kagent.idp.local';
 
   const [agents, setAgents]         = useState<KAgentAgent[]>([]);
   const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
@@ -5071,7 +5073,7 @@ function KAgentPage() {
             <Paper style={{ marginBottom: 20 }}>
               <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
                 <Typography variant="h6" style={{ flex: 1 }}>Agents</Typography>
-                <Button variant="outlined" size="small" href="http://kagent.idp.local" target="_blank" style={{ fontSize: 11, marginRight: 8 }}>
+                <Button variant="outlined" size="small" href={kagentUrl} target="_blank" style={{ fontSize: 11, marginRight: 8 }}>
                   Open KAgent UI ↗
                 </Button>
                 <Button variant="contained" color="primary" size="small" href="/create" style={{ fontSize: 11 }}>
@@ -5216,19 +5218,24 @@ const HELP_CHANNELS = [
   { emoji: '📖', label: 'Browse TechDocs',          desc: 'Comprehensive platform documentation — getting started, runbooks.',     href: '/docs',        primary: false },
 ];
 
-const USEFUL_LINKS = [
+const getUsefulLinks = (urls: { grafana: string; kagent: string; argocd: string }) => [
   { emoji: '🏠', label: 'Platform Dashboard', href: '/home' },
-  { emoji: '📊', label: 'Grafana Dashboards', href: 'http://grafana.idp.local' },
+  { emoji: '📊', label: 'Grafana Dashboards', href: urls.grafana },
   { emoji: '🔒', label: 'Security Overview',  href: '/catalog' },
   { emoji: '📈', label: 'DORA Metrics',        href: '/dora' },
-  { emoji: '🤖', label: 'KAgent UI',           href: 'http://kagent.idp.local' },
-  { emoji: '🚀', label: 'ArgoCD',              href: 'http://argocd.idp.local' },
+  { emoji: '🤖', label: 'KAgent UI',           href: urls.kagent },
+  { emoji: '🚀', label: 'ArgoCD',              href: urls.argocd },
 ];
 
 function SupportPage() {
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const base = configApi.getString('backend.baseUrl');
+  const usefulLinks = getUsefulLinks({
+    grafana: configApi.getOptionalString('externalLinks.grafana') ?? 'http://grafana.idp.local',
+    kagent:  configApi.getOptionalString('externalLinks.kagent')  ?? 'http://kagent.idp.local',
+    argocd:  configApi.getOptionalString('externalLinks.argocd')  ?? 'http://argocd.idp.local',
+  });
 
   const [oncall, setOncall] = useState<string | null>(null);
 
@@ -5289,7 +5296,7 @@ function SupportPage() {
             <Box style={{ padding: '12px 16px', borderTop: '1px solid #eee', borderBottom: '1px solid #eee' }}>
               <Typography variant="body2" style={{ fontWeight: 500, marginBottom: 8 }}>Useful Links</Typography>
               <Box style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {USEFUL_LINKS.map(l => (
+                {usefulLinks.map(l => (
                   <a key={l.label} href={l.href}
                     style={{ fontSize: 13, color: '#1976d2', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>{l.emoji}</span> {l.label}

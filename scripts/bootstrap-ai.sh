@@ -525,6 +525,29 @@ else
     check "KAgent ExternalSecret → idp-mvp/kagent (Secrets Manager)"
     check "KAgent UI ingress → ALB (AWS Load Balancer Controller)"
     check "IDP Assistant A2A ingress → ALB (AWS Load Balancer Controller)"
+
+    # Patch Backstage's externalLinks.kagent with the real ALB hostname, now
+    # that the Ingress above exists — Backstage is already deployed by this
+    # point (bootstrap.sh runs this script in Phase 6, after deploying
+    # Backstage in Phase 5.6), so this is a separate patch+restart from the
+    # ArgoCD/Grafana one bootstrap.sh does for its own two externalLinks.
+    info "Waiting for KAgent UI LoadBalancer hostname..."
+    KAGENT_URL=""
+    for i in $(seq 1 18); do
+      KAGENT_URL=$(kubectl get ingress kagent-ui -n kagent \
+        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+      [[ -n "$KAGENT_URL" ]] && break
+      sleep 10
+    done
+    if [[ -n "$KAGENT_URL" ]]; then
+      kubectl get configmap backstage-config -n backstage -o json \
+        | sed "s|KAGENT_ALB_URL|${KAGENT_URL}|g" \
+        | kubectl apply -f -
+      kubectl rollout restart deployment/backstage -n backstage
+      check "externalLinks.kagent patched with ALB hostname"
+    else
+      warn "KAgent UI ALB hostname not ready — leaving externalLinks.kagent as a placeholder."
+    fi
   else
     # Local: create API key secret directly + nginx ingresses (HTTP)
     # Delete first: machines that ran the pre-fe4fce2 bootstrap-ai.sh have

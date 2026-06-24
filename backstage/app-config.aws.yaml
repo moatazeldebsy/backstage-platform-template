@@ -103,6 +103,19 @@ proxy:
         Accept: application/vnd.github+json
         X-GitHub-Api-Version: "2022-11-28"
 
+# Browser-facing "open in new tab" links for the custom ArgoCD/Grafana/KAgent
+# pages — distinct from the in-cluster `proxy:` targets above. ALB hostnames
+# aren't known until each Ingress is provisioned, so these start as placeholders
+# and get sed-substituted with the real ALB DNS names by scripts/bootstrap.sh
+# (ArgoCD + Grafana, once their Ingresses are up) and scripts/bootstrap-ai.sh
+# --aws (KAgent, once its Ingress is up) — same pattern as BACKSTAGE_ALB_URL
+# below. Until substituted, the links 404 rather than silently pointing at the
+# wrong place.
+externalLinks:
+  argocd: http://ARGOCD_ALB_URL
+  grafana: http://GRAFANA_ALB_URL
+  kagent: http://KAGENT_ALB_URL
+
 # GitHub App integration — replaces the personal access token used in app-config.yaml.
 # Higher rate limits (5 000 req/hr per installation vs 5 000/hr per PAT globally),
 # no rotation needed, works on personal accounts and orgs.
