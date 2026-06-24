@@ -152,7 +152,53 @@ catalog:
       target: /catalog/templates/s3-bucket/template.yaml
       rules:
         - allow: [Template]
-    # eks-cluster template is AWS-only (creates EKS clusters) — registered in app-config.aws.yaml
+    - type: file
+      target: /catalog/templates/decommission-service/template.yaml
+      rules:
+        - allow: [Template]
+    # ── Advanced: Infrastructure & cloud resources (Crossplane) ───────────────
+    - type: file
+      target: /catalog/templates/rds-database-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/s3-bucket-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/dynamodb-table-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/kafka-topic-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/sqs-queue-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+    # eks-cluster creates a real AWS EKS cluster — requires AWS credentials even when run locally.
+    - type: file
+      target: /catalog/templates/eks-cluster/template.yaml
+      rules:
+        - allow: [Template]
+    # ── Advanced: Multi-region (V2) — require a real multi-account/multi-region AWS setup ──
+    - type: file
+      target: /catalog/templates/dynamodb-global-table/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/s3-multiregion-access-point/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/aurora-global-cluster/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/eks-multi-region/template.yaml
+      rules:
+        - allow: [Template]
     # QA golden-path testing scaffolds
     - type: file
       target: /catalog/templates/playwright-e2e-suite/template.yaml

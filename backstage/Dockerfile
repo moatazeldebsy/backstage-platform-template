@@ -3,7 +3,7 @@
 # BuildKit cache mounts keep repeat builds fast.
 
 # ─── Stage 1: build the backend bundle ───────────────────────────────────────
-FROM node:24-bookworm-slim AS builder
+FROM node:22.22-bookworm-slim AS builder
 WORKDIR /app
 
 # Native build deps for sqlite/better-sqlite3/bcrypt etc.
@@ -39,7 +39,7 @@ RUN yarn build:backend
 
 
 # ─── Stage 2: runtime image ──────────────────────────────────────────────────
-FROM node:24-bookworm-slim
+FROM node:22.22-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev python3 python3-pip make g++ curl ca-certificates \

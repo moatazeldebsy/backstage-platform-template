@@ -343,6 +343,24 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
     --create-namespace \
     --version 3.2.7 \
     --set replicaCount=2 \
+    --set cleanupJobs.admissionReports.image.registry=registry.k8s.io \
+    --set cleanupJobs.admissionReports.image.repository=kubectl \
+    --set cleanupJobs.admissionReports.image.tag=v1.28.5 \
+    --set cleanupJobs.clusterAdmissionReports.image.registry=registry.k8s.io \
+    --set cleanupJobs.clusterAdmissionReports.image.repository=kubectl \
+    --set cleanupJobs.clusterAdmissionReports.image.tag=v1.28.5 \
+    --set cleanupJobs.ephemeralReports.image.registry=registry.k8s.io \
+    --set cleanupJobs.ephemeralReports.image.repository=kubectl \
+    --set cleanupJobs.ephemeralReports.image.tag=v1.28.5 \
+    --set cleanupJobs.clusterEphemeralReports.image.registry=registry.k8s.io \
+    --set cleanupJobs.clusterEphemeralReports.image.repository=kubectl \
+    --set cleanupJobs.clusterEphemeralReports.image.tag=v1.28.5 \
+    --set policyReportsCleanup.image.registry=registry.k8s.io \
+    --set policyReportsCleanup.image.repository=kubectl \
+    --set policyReportsCleanup.image.tag=v1.28.5 \
+    --set webhooksCleanup.image.registry=registry.k8s.io \
+    --set webhooksCleanup.image.repository=kubectl \
+    --set webhooksCleanup.image.tag=v1.28.5 \
     --kube-context hub \
     --wait --timeout 5m
 

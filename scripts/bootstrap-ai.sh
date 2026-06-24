@@ -89,6 +89,7 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"        2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"         2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-haiku.yaml"   2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"  2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"  2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"    2>/dev/null || true
@@ -478,6 +479,7 @@ else
 
   info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-haiku.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"
   if [[ -n "${OPENAI_API_KEY:-}" ]]; then

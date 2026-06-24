@@ -57,3 +57,11 @@ spec:
           namespace: kagent
           toolNames:
             - catalog_search
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 250m
+          memory: 512Mi

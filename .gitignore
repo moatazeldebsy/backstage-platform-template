@@ -25,6 +25,8 @@ cli/idp
 # Node
 node_modules/
 npm-debug.log*
+coverage/
+lcov.info
 
 # Python
 __pycache__/

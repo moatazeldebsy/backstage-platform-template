@@ -56,3 +56,11 @@ spec:
           toolNames:
             - catalog_search
             - list_deployments
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 250m
+          memory: 512Mi

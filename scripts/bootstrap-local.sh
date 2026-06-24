@@ -323,11 +323,18 @@ if $INSTALL_ARGOCD; then
   log "ArgoCD ready. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'secret not yet available'})"
 
   if [[ -n "$ARGOCD_PASS" ]]; then
+    # The Backstage proxy sends ARGOCD_AUTH_TOKEN as a Bearer token, which
+    # the ArgoCD API server only accepts as a session JWT — not the raw
+    # admin password. Exchange the password for a real token via the API.
+    ARGOCD_TOKEN=$(curl -s -X POST http://argocd.idp.local/api/v1/session \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASS}\"}" \
+      | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
     local_env="${ROOT_DIR}/local/backstage/.env"
     if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
-      sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}|" "$local_env" && rm -f "${local_env}.bak"
+      sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}|" "$local_env" && rm -f "${local_env}.bak"
     else
-      echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
+      echo "ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}" >> "$local_env"
     fi
     log "  ArgoCD token written to local/backstage/.env"
   fi
@@ -1092,11 +1099,18 @@ if ! $SKIP_GITOPS; then
     log "ArgoCD installed. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
 
     if [[ -n "$ARGOCD_PASS" ]]; then
+      # The Backstage proxy sends ARGOCD_AUTH_TOKEN as a Bearer token, which
+      # the ArgoCD API server only accepts as a session JWT — not the raw
+      # admin password. Exchange the password for a real token via the API.
+      ARGOCD_TOKEN=$(curl -s -X POST http://argocd.idp.local/api/v1/session \
+        -H "Content-Type: application/json" \
+        -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASS}\"}" \
+        | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
       local_env="${ROOT_DIR}/local/backstage/.env"
       if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
-        sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}|" "$local_env" && rm -f "${local_env}.bak"
+        sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}|" "$local_env" && rm -f "${local_env}.bak"
       else
-        echo "ARGOCD_AUTH_TOKEN=${ARGOCD_PASS}" >> "$local_env"
+        echo "ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}" >> "$local_env"
       fi
       log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
     fi
@@ -1257,6 +1271,24 @@ if ! $SKIP_POLICIES; then
       --set replicaCount=1 \
       --set resources.requests.cpu=100m \
       --set resources.requests.memory=256Mi \
+      --set cleanupJobs.admissionReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.admissionReports.image.repository=kubectl \
+      --set cleanupJobs.admissionReports.image.tag=v1.28.5 \
+      --set cleanupJobs.clusterAdmissionReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.clusterAdmissionReports.image.repository=kubectl \
+      --set cleanupJobs.clusterAdmissionReports.image.tag=v1.28.5 \
+      --set cleanupJobs.ephemeralReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.ephemeralReports.image.repository=kubectl \
+      --set cleanupJobs.ephemeralReports.image.tag=v1.28.5 \
+      --set cleanupJobs.clusterEphemeralReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.clusterEphemeralReports.image.repository=kubectl \
+      --set cleanupJobs.clusterEphemeralReports.image.tag=v1.28.5 \
+      --set policyReportsCleanup.image.registry=registry.k8s.io \
+      --set policyReportsCleanup.image.repository=kubectl \
+      --set policyReportsCleanup.image.tag=v1.28.5 \
+      --set webhooksCleanup.image.registry=registry.k8s.io \
+      --set webhooksCleanup.image.repository=kubectl \
+      --set webhooksCleanup.image.tag=v1.28.5 \
       --wait --timeout 5m
 
     log "  Waiting for Kyverno webhook to be ready..."

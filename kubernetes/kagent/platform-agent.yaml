@@ -100,3 +100,11 @@ spec:
             - list_budget_overruns
             - get_namespace_cost
             - get_rightsizing_recommendations
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 250m
+          memory: 512Mi

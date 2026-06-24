@@ -87,3 +87,11 @@ spec:
             - get_pr_diff
             - add_pr_comment
             - get_ci_status
+    deployment:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 250m
+          memory: 512Mi

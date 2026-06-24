@@ -1978,7 +1978,8 @@ function DoraEntityContent() {
       return { freq: { value: freq, series: fS }, lead: { value: lead, series: lS }, cfr: { value: cfr, series: cS }, mttr: { value: mttr, series: mS } };
     };
 
-    const hasData = (m: Record<string, DoraMetric>) => !isNaN(m.freq.value) && m.freq.value > 0;
+    // freq===0 is a real "no deploys" reading, not missing data — only NaN means the query failed.
+    const hasData = (m: Record<string, DoraMetric>) => !isNaN(m.freq.value);
 
     const DEMO: Record<string, DoraMetric> = {
       freq: { value: 3.2,  series: [1.8,2.1,2.4,3.0,3.2,2.9,3.2] },
@@ -2518,7 +2519,8 @@ function HomePage() {
         pr('avg(dora_deploy_frequency_per_day)'), pr('avg(dora_lead_time_minutes)'),
         pr('avg(dora_change_failure_rate_percent)'), pr('avg(dora_mttr_minutes)'),
       ]).then(([freq, lead, cfr, mttr, fS, lS, cS, mS]) => {
-        if (!isNaN(freq) && freq > 0) {
+        // freq===0 is a real "no deploys" reading, not missing data — only NaN means the query failed.
+        if (!isNaN(freq)) {
           setDora({ freq: {value:freq,series:fS}, lead: {value:lead,series:lS}, cfr: {value:cfr,series:cS}, mttr: {value:mttr,series:mS} });
           setDoraDemo(false);
         }
@@ -2656,7 +2658,8 @@ function DoraPage() {
       pq('dora_change_failure_rate_percent').then(allSeries).catch(() => []),
       pq('dora_mttr_minutes').then(allSeries).catch(() => []),
     ]).then(([freq, lead, cfr, mttr, freqSeries, leadSeries, cfrSeries, mttrSeries]) => {
-      if (!isNaN(freq as number) && (freq as number) > 0) {
+      // freq===0 is a real "no deploys" reading, not missing data — only NaN means the query failed.
+      if (!isNaN(freq as number)) {
         setAggregate({
           freq: { value: freq as number, series: [] },
           lead: { value: lead as number, series: [] },
@@ -4975,8 +4978,9 @@ function KAgentPage() {
       if (!isNaN(v)) setCallsTotal(v);
     }).catch(() => {});
 
-    // Try KAgent A2A API via proxy for agent list
-    const kagentFetch = fetchApi.fetch(`${base}/api/proxy/kagent/apis/kagent.dev/v1alpha1/agents`)
+    // Try KAgent A2A API via the Kubernetes plugin's proxy for agent list
+    // (the /api/proxy/kagent endpoint points at the KAgent UI, not the K8s API server).
+    const kagentFetch = fetchApi.fetch(`${base}/api/kubernetes/proxy/apis/kagent.dev/v1alpha1/namespaces/kagent/agents`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: any) => {
         const items: any[] = data?.items ?? [];
