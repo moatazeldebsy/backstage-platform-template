@@ -200,6 +200,14 @@ data:
           headers:
             Authorization: token ${SNYK_TOKEN}
 
+    # Browser-facing "open in new tab" links — patched by bootstrap.sh
+    # (ArgoCD, Grafana) and bootstrap-ai.sh --aws (KAgent) once each
+    # Ingress's ALB hostname is known. See backstage/app-config.aws.yaml.
+    externalLinks:
+      argocd: http://ARGOCD_ALB_URL
+      grafana: http://GRAFANA_ALB_URL
+      kagent: http://KAGENT_ALB_URL
+
     techRadar:
       url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json
 
