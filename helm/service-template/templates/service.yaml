@@ -4,6 +4,7 @@ metadata:
   name: {{ include "service-template.fullname" . }}
   labels:
     {{- include "service-template.labels" . | nindent 4 }}
+    backstage.io/kubernetes-id: {{ .Values.backstage.kubernetesId | default .Release.Name }}
 spec:
   type: {{ .Values.service.type }}
   ports:

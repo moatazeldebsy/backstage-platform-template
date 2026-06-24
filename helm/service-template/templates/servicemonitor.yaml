@@ -7,6 +7,11 @@ metadata:
     {{- include "service-template.labels" . | nindent 4 }}
     release: prometheus
 spec:
+  # Use the plain service name (not the mangled "<release>-service-template"
+  # ServiceMonitor name) as the Prometheus `job` label, so Sloth SLO specs
+  # (which assume job="<serviceName>") match real metrics regardless of the
+  # Helm release name used per environment.
+  jobLabel: backstage.io/kubernetes-id
   selector:
     matchLabels:
       {{- include "service-template.selectorLabels" . | nindent 6 }}
