@@ -26,8 +26,8 @@ server:
       cpu: 50m
       memory: 64Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 500m
+      memory: 384Mi
 
 # Does the heavy lifting on "Refresh"/sync (reconciliation diffing against
 # every Application's live state) — caps it so a refresh can't starve the
@@ -39,8 +39,8 @@ controller:
       cpu: 100m
       memory: 128Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 1000m
+      memory: 768Mi
 
 repoServer:
   replicas: 1
@@ -49,8 +49,8 @@ repoServer:
       cpu: 100m
       memory: 128Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 1000m
+      memory: 768Mi
 
 applicationSet:
   replicas: 1
