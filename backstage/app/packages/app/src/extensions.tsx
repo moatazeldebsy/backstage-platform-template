@@ -3766,7 +3766,7 @@ function OnboardingPage() {
               <Box style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { href: '/catalog',    emoji: '📦', label: 'Catalog',      desc: 'Browse all services, APIs, and teams' },
-                  { href: '/home',       emoji: '📊', label: 'Dashboard',    desc: 'Platform-wide DORA metrics and status' },
+                  { href: '/',           emoji: '📊', label: 'Dashboard',    desc: 'Platform-wide DORA metrics and status' },
                   { href: '/ai-assistant', emoji: '🤖', label: 'AI Assistant', desc: 'Ask the IDP assistant anything' },
                   { href: '/scorecard',  emoji: '🏆', label: 'Scorecard',    desc: 'Quality tiers across all services' },
                 ].map(({ href, emoji, label, desc }) => (
@@ -3782,7 +3782,7 @@ function OnboardingPage() {
                 ))}
                 <Box display="flex" justifyContent="space-between" style={{ marginTop: 8 }}>
                   <Button onClick={() => back(2)}>← Back</Button>
-                  <Button variant="contained" color="primary" href="/home">Go to Dashboard →</Button>
+                  <Button variant="contained" color="primary" href="/">Go to Dashboard →</Button>
                 </Box>
               </Box>
             </Paper>
@@ -5219,7 +5219,7 @@ const HELP_CHANNELS = [
 ];
 
 const getUsefulLinks = (urls: { grafana: string; kagent: string; argocd: string }) => [
-  { emoji: '🏠', label: 'Platform Dashboard', href: '/home' },
+  { emoji: '🏠', label: 'Platform Dashboard', href: '/' },
   { emoji: '📊', label: 'Grafana Dashboards', href: urls.grafana },
   { emoji: '🔒', label: 'Security Overview',  href: '/catalog' },
   { emoji: '📈', label: 'DORA Metrics',        href: '/dora' },
