@@ -27,6 +27,10 @@ spec:
       - validate_compatibility: Check if a provider's spec satisfies all paths expected by a consumer
       - detect_breaking_changes: Compare two spec versions to find removed paths/methods/params
       - get_compatibility_report: Full compatibility matrix — all consumers vs a given provider
+      - can_i_deploy: Deploy-time gate — checks if a specific provider version is safe to deploy against every registered consumer
+      - get_stale_contracts: List services whose contract hasn't been updated within a threshold (default 30 days)
+      - get_audit_log: Query recent tool usage/audit events, filterable by service/action/agent
+      - generate_migration_guide: Generate a markdown migration guide for consumers affected by a breaking change
 
       Service Discovery (idp-mcp-server):
       - catalog_search: Search the Backstage catalog for services, APIs, and components
@@ -64,11 +68,26 @@ spec:
       2. Call get_compatibility_report for the provider service
       3. Summarise which consumers are compatible and which need updates
 
+      Before recommending a deploy:
+      1. Call can_i_deploy with the service name and the version about to be deployed
+      2. If safe is false, report blockingConsumers and breakingChanges and advise against deploying
+      3. If safe is true, confirm it is clear to deploy
+
+      When a breaking change is found (via detect_breaking_changes or register_contract):
+      1. Offer to call generate_migration_guide with the from/to versions
+      2. Share the resulting markdown with the user so they can forward it to affected consumer teams
+
+      To check on contract hygiene:
+      1. Call get_stale_contracts to find services that haven't updated their contract recently
+      2. Call get_audit_log to see recent registry usage when asked about adoption/usage
+
       ## Rules
       - Always confirm a contract exists before generating tests or checking compatibility
       - If a spec is not registered, prompt the user to provide it
       - For breaking changes, clearly distinguish between breaking (removed/changed) and additive (new paths)
       - Recommend running contract tests in CI before merging API changes
+      - Before recommending a deploy, call can_i_deploy
+      - When a breaking change is found, offer to generate_migration_guide
       - When generating tests, always include the Pact JSON AND the TypeScript code
       - OpenAPI specs can be either JSON or YAML — both are accepted by register_contract
 
@@ -89,6 +108,10 @@ spec:
             - validate_compatibility
             - detect_breaking_changes
             - get_compatibility_report
+            - can_i_deploy
+            - get_stale_contracts
+            - get_audit_log
+            - generate_migration_guide
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer

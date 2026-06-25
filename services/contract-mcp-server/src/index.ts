@@ -8,8 +8,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 import { register, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
 import { createStore, type ContractStore } from './store.js';
-import { parseSpec, generatePactJson, generatePactTestCode, detectBreakingChanges, extractSchemaContext } from './generator.js';
-import { createApp, parseServicesRegistry, resolveServiceBaseUrl } from './app.js';
+import { parseSpec, generatePactJson, generatePactTestCode, detectBreakingChanges, extractSchemaContext, generateMigrationGuide } from './generator.js';
+import { createApp, parseServicesRegistry, resolveServiceBaseUrl, findAffectedConsumers } from './app.js';
+import { auditLog, getAuditLog } from './audit.js';
 
 const PORT = parseInt(process.env.PORT ?? '3003', 10);
 const K8S_API = process.env.K8S_API ?? 'https://kubernetes.default.svc';
@@ -77,10 +78,6 @@ const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP t
 const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['server', 'tool'] });
 const agentToolCalls = new Counter({ name: 'mcp_agent_tool_calls_total', help: 'Tool calls attributed per calling agent', labelNames: ['server', 'tool', 'agent'] });
 
-function auditLog(event: Record<string, unknown>): void {
-  console.log('[AUDIT] ' + JSON.stringify({ ts: new Date().toISOString(), server: SERVER_NAME, ...event }));
-}
-
 // ── Async initialisation (top-level await — ESM) ──────────────────────────
 
 const store: ContractStore = await createStore();
@@ -101,16 +98,7 @@ async function fireBreakingChangeWebhook(
     const { breaking } = detectBreakingChanges(parseSpec(previousSpecJson), parseSpec(newSpecJson));
     if (breaking.length === 0) return;
 
-    const providerPathSet = new Set(newPaths);
-    const allServices = await store.listAll();
-    const affectedConsumers: Array<{ service: string; missingPaths: string[] }> = [];
-    for (const svc of allServices) {
-      if (svc.serviceName === providerName) continue;
-      const consumer = await store.getLatest(svc.serviceName);
-      if (!consumer) continue;
-      const missing = consumer.paths.filter(p => !providerPathSet.has(p));
-      if (missing.length > 0) affectedConsumers.push({ service: svc.serviceName, missingPaths: missing });
-    }
+    const affectedConsumers = await findAffectedConsumers(store, providerName, newPaths);
 
     await fetchWithTimeout(BREAKING_CHANGE_WEBHOOK_URL, 10000, {
       method: 'POST',
@@ -218,6 +206,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_contract' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_contract', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'get_contract', agent: agentId, service: service_name, version });
       try {
         const entry = version ? await store.getByVersion(service_name, version) : await store.getLatest(service_name);
         if (!entry) {
@@ -257,6 +246,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'list_contracts' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'list_contracts', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'list_contracts', agent: agentId });
       try {
         const all = await store.listAll();
         return {
@@ -292,6 +282,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'generate_contract_tests' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'generate_contract_tests', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'generate_contract_tests', agent: agentId, service: service_name, consumer: consumer_name });
       try {
         const entry = version ? await store.getByVersion(service_name, version) : await store.getLatest(service_name);
         if (!entry) {
@@ -337,6 +328,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'validate_compatibility' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'validate_compatibility', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'validate_compatibility', agent: agentId, service: provider_name, consumer: consumer_name });
       try {
         const providerEntry = await store.getLatest(provider_name);
         const consumerEntry = await store.getLatest(consumer_name);
@@ -418,6 +410,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_compatibility_report' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_compatibility_report', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'get_compatibility_report', agent: agentId, service: service_name });
       try {
         const providerEntry = await store.getLatest(service_name);
         if (!providerEntry) return { content: [{ type: 'text' as const, text: `Provider "${service_name}" has no registered contract.` }] };
@@ -473,6 +466,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'fetch_service_contract' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'fetch_service_contract', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'fetch_service_contract', agent: agentId, service: service_name });
       try {
         let baseUrl: string;
         try {
@@ -537,6 +531,7 @@ function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'auto_discover_contracts' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'auto_discover_contracts', agent: agentId });
       let outcome = 'success';
+      auditLog({ action: 'auto_discover_contracts', agent: agentId, namespace, mode: DISCOVERY_MODE });
       try {
         type DiscoveryResult = { serviceName: string; status: 'discovered' | 'no_spec' | 'error'; version?: string; title?: string; paths?: string[]; error?: string };
         const tryPaths = ['/openapi.json', '/openapi.yaml'];
@@ -605,6 +600,172 @@ function createServer(agentId: string = 'unknown') {
       } finally {
         end();
         toolCalls.inc({ server: SERVER_NAME, tool: 'auto_discover_contracts', outcome });
+      }
+    },
+  );
+
+  // ── can_i_deploy ──────────────────────────────────────────────────────────
+
+  server.tool(
+    'can_i_deploy',
+    'Check whether deploying a specific provider version is safe: verifies it still satisfies every ' +
+    'currently registered consumer\'s paths, and reports any breaking changes versus the provider\'s ' +
+    'current latest version. Use this as a deploy-time gate, analogous to Pactflow\'s can-i-deploy.',
+    {
+      service_name: z.string().describe('Provider service name'),
+      version: z.string().describe('The version about to be deployed'),
+    },
+    async ({ service_name, version }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'can_i_deploy' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'can_i_deploy', agent: agentId });
+      let outcome = 'success';
+      auditLog({ action: 'can_i_deploy', agent: agentId, service: service_name, version });
+      try {
+        const target = await store.getByVersion(service_name, version);
+        if (!target) {
+          return { content: [{ type: 'text' as const, text: `Version ${version} of "${service_name}" is not registered. Register it with register_contract before checking can_i_deploy.` }] };
+        }
+        const summary = (await store.listAll()).find(s => s.serviceName === service_name);
+        const idx = summary?.versions.indexOf(version) ?? -1;
+        const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
+        const previousEntry = previousVersion ? await store.getByVersion(service_name, previousVersion) : undefined;
+        const targetPaths = new Set(target.paths);
+        const all = (await store.listAll()).filter(s => s.serviceName !== service_name);
+        const blockingConsumers = (await Promise.all(all.map(async s => {
+          const consumerEntry = await store.getLatest(s.serviceName);
+          if (!consumerEntry) return null;
+          const missing = consumerEntry.paths.filter(p => !targetPaths.has(p));
+          return missing.length > 0 ? { consumer: s.serviceName, consumerVersion: consumerEntry.version, missingPaths: missing } : null;
+        }))).filter((r): r is { consumer: string; consumerVersion: string; missingPaths: string[] } => r !== null);
+
+        const breakingChanges = previousEntry
+          ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(target.specJson)).breaking
+          : [];
+
+        const safe = blockingConsumers.length === 0 && breakingChanges.length === 0;
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              safe,
+              service: service_name,
+              version,
+              previousVersion: previousVersion ?? null,
+              blockingConsumers,
+              breakingChanges,
+              verdict: safe
+                ? `✓ SAFE TO DEPLOY — ${service_name}@${version} satisfies all registered consumers with no breaking changes`
+                : `✗ NOT SAFE TO DEPLOY — ${blockingConsumers.length} consumer(s) blocked, ${breakingChanges.length} breaking change(s) vs current version`,
+            }, null, 2),
+          }],
+        };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
+      } finally {
+        end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'can_i_deploy', outcome });
+      }
+    },
+  );
+
+  // ── get_stale_contracts ──────────────────────────────────────────────────
+
+  server.tool(
+    'get_stale_contracts',
+    'List registered services whose contract has not been updated in a while. Helps keep pacts up to date.',
+    { days: z.number().optional().describe('Staleness threshold in days (default: STALE_THRESHOLD_DAYS env var or 30)') },
+    async ({ days }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_stale_contracts' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_stale_contracts', agent: agentId });
+      let outcome = 'success';
+      const threshold = days ?? parseInt(process.env.STALE_THRESHOLD_DAYS ?? '30', 10);
+      auditLog({ action: 'get_stale_contracts', agent: agentId, days: threshold });
+      try {
+        const all = await store.listAll();
+        const now = Date.now();
+        const stale = all
+          .map(s => ({ ...s, ageDays: s.registeredAt ? Math.floor((now - new Date(s.registeredAt).getTime()) / 86400000) : null }))
+          .filter(s => s.ageDays !== null && s.ageDays >= threshold);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              thresholdDays: threshold,
+              staleCount: stale.length,
+              services: stale,
+            }, null, 2),
+          }],
+        };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
+      } finally {
+        end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'get_stale_contracts', outcome });
+      }
+    },
+  );
+
+  // ── get_audit_log ─────────────────────────────────────────────────────────
+
+  server.tool(
+    'get_audit_log',
+    'Query recent contract-mcp-server tool usage / audit events. Useful for measuring adoption and usage patterns.',
+    {
+      service: z.string().optional().describe('Filter by service name'),
+      action: z.string().optional().describe('Filter by action/tool name'),
+      agent: z.string().optional().describe('Filter by calling agent id'),
+      limit: z.number().optional().describe('Max events to return (default 100)'),
+    },
+    async ({ service, action, agent, limit }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_audit_log' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_audit_log', agent: agentId });
+      let outcome = 'success';
+      try {
+        const events = getAuditLog({ service, action, agent, limit });
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ count: events.length, events }, null, 2) }] };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
+      } finally {
+        end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'get_audit_log', outcome });
+      }
+    },
+  );
+
+  // ── generate_migration_guide ─────────────────────────────────────────────
+
+  server.tool(
+    'generate_migration_guide',
+    'Generate a markdown migration guide describing breaking changes between two versions of a service ' +
+    'and which currently-registered consumers are affected.',
+    {
+      service_name: z.string().describe('Provider service name'),
+      from_version: z.string().describe('The older/baseline version'),
+      to_version: z.string().describe('The newer version'),
+    },
+    async ({ service_name, from_version, to_version }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'generate_migration_guide' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'generate_migration_guide', agent: agentId });
+      let outcome = 'success';
+      auditLog({ action: 'generate_migration_guide', agent: agentId, service: service_name, from_version, to_version });
+      try {
+        const fromEntry = await store.getByVersion(service_name, from_version);
+        const toEntry = await store.getByVersion(service_name, to_version);
+        if (!fromEntry) return { content: [{ type: 'text' as const, text: `Version ${from_version} of "${service_name}" not found.` }] };
+        if (!toEntry) return { content: [{ type: 'text' as const, text: `Version ${to_version} of "${service_name}" not found.` }] };
+        const { breaking } = detectBreakingChanges(parseSpec(fromEntry.specJson), parseSpec(toEntry.specJson));
+        const affectedConsumers = await findAffectedConsumers(store, service_name, toEntry.paths);
+        const guide = generateMigrationGuide(service_name, from_version, to_version, breaking, affectedConsumers);
+        return { content: [{ type: 'text' as const, text: guide }] };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
+      } finally {
+        end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'generate_migration_guide', outcome });
       }
     },
   );

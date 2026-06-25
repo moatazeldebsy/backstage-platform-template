@@ -367,6 +367,126 @@ describe('REST API', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  // ── GET /api/can-i-deploy/:service/:version ─────────────────────────────
+
+  describe('GET /api/can-i-deploy/:service/:version', () => {
+    it('returns 404 when the target version is not registered', async () => {
+      const res = await request(app).get('/api/can-i-deploy/hello-service/9.9.9');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 200 safe:true when no consumers are blocked and no breaking changes vs current', async () => {
+      await request(app)
+        .post('/api/contracts/hello-service/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V1);
+      const res = await request(app).get('/api/can-i-deploy/hello-service/1.0.0');
+      expect(res.status).toBe(200);
+      expect(res.body.safe).toBe(true);
+      expect(res.body.blockingConsumers).toEqual([]);
+    });
+
+    it('returns 409 safe:false when a registered consumer needs a path the target version dropped', async () => {
+      const consumerSpec = JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Consumer', version: '1.0.0' },
+        paths: { '/health': { get: { responses: { '200': { description: 'OK' } } } } },
+      });
+      await request(app)
+        .post('/api/contracts/hello-service/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V1);
+      await request(app)
+        .post('/api/contracts/hello-service/2.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V2); // dropped /health
+      await request(app)
+        .post('/api/contracts/consumer/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(consumerSpec);
+      const res = await request(app).get('/api/can-i-deploy/hello-service/2.0.0');
+      expect(res.status).toBe(409);
+      expect(res.body.safe).toBe(false);
+      expect(res.body.blockingConsumers.length).toBeGreaterThan(0);
+      expect(res.body.breakingChanges.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ── GET /api/stale-contracts ────────────────────────────────────────────
+
+  describe('GET /api/stale-contracts', () => {
+    it('returns empty when no contracts are stale', async () => {
+      await request(app)
+        .post('/api/contracts/hello-service/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V1);
+      const res = await request(app).get('/api/stale-contracts?days=30');
+      expect(res.status).toBe(200);
+      expect(res.body.staleCount).toBe(0);
+    });
+
+    it('flags a contract as stale when threshold is 0 days', async () => {
+      await request(app)
+        .post('/api/contracts/hello-service/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V1);
+      const res = await request(app).get('/api/stale-contracts?days=0');
+      expect(res.status).toBe(200);
+      expect(res.body.staleCount).toBe(1);
+      expect(res.body.services[0].serviceName).toBe('hello-service');
+    });
+  });
+
+  // ── GET /api/audit ───────────────────────────────────────────────────────
+
+  describe('GET /api/audit', () => {
+    it('returns an empty list when no events have been recorded for the filter', async () => {
+      const res = await request(app).get('/api/audit?service=never-called-service');
+      expect(res.status).toBe(200);
+      expect(res.body.events).toEqual([]);
+    });
+  });
+
+  // ── POST /api/migration-guide ────────────────────────────────────────────
+
+  describe('POST /api/migration-guide', () => {
+    it('returns 404 when from_version is not registered', async () => {
+      const res = await request(app)
+        .post('/api/migration-guide')
+        .set('Content-Type', 'application/json')
+        .send({ service_name: 'hello-service', from_version: '0.0.1', to_version: '1.0.0' });
+      expect(res.status).toBe(404);
+    });
+
+    it('returns markdown describing breaking changes and affected consumers', async () => {
+      const consumerSpec = JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Consumer', version: '1.0.0' },
+        paths: { '/health': { get: { responses: { '200': { description: 'OK' } } } } },
+      });
+      await request(app)
+        .post('/api/contracts/hello-service/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V1);
+      await request(app)
+        .post('/api/contracts/hello-service/2.0.0')
+        .set('Content-Type', 'application/json')
+        .send(SPEC_V2);
+      await request(app)
+        .post('/api/contracts/consumer/1.0.0')
+        .set('Content-Type', 'application/json')
+        .send(consumerSpec);
+      const res = await request(app)
+        .post('/api/migration-guide')
+        .set('Content-Type', 'application/json')
+        .send({ service_name: 'hello-service', from_version: '1.0.0', to_version: '2.0.0' });
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/markdown');
+      expect(res.text).toContain('Migration Guide');
+      expect(res.text).toContain('consumer');
+    });
+  });
 });
 
 // ── Store error paths (500 responses) ────────────────────────────────────────

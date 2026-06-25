@@ -75,7 +75,7 @@ function schemaToExample(schema: OpenAPISchema | undefined, depth = 0): unknown 
 
 // Returns a Pact MatchersV3 expression as a code string for embedding in generated test files.
 function schemaToMatcherCode(schema: OpenAPISchema | undefined, depth = 0): string {
-  if (!schema || depth > 3) return 'like(null)';
+  if (!schema || depth > 2) return 'like(null)';
   if (schema.example !== undefined) return `like(${JSON.stringify(schema.example)})`;
   if (schema.enum && schema.enum.length > 0) return `like(${JSON.stringify(schema.enum[0])})`;
 
@@ -357,4 +357,64 @@ export function detectBreakingChanges(
       ? `No breaking changes. ${nonBreaking.length} additive change(s).`
       : `${breaking.length} breaking change(s) detected.`,
   };
+}
+
+// ── Migration guide generation ─────────────────────────────────────────────
+
+export interface AffectedConsumer {
+  service: string;
+  missingPaths: string[];
+}
+
+export function generateMigrationGuide(
+  serviceName: string,
+  fromVersion: string,
+  toVersion: string,
+  breaking: BreakingChange[],
+  affectedConsumers: AffectedConsumer[],
+): string {
+  const lines: string[] = [];
+  lines.push(`# Migration Guide: ${serviceName} ${fromVersion} → ${toVersion}`);
+  lines.push('');
+
+  if (breaking.length === 0) {
+    lines.push('No breaking changes were detected between these versions. No migration steps are required.');
+    return lines.join('\n');
+  }
+
+  lines.push(`This update introduces **${breaking.length} breaking change(s)**. Consumers depending on the affected paths must update before upgrading.`);
+  lines.push('');
+  lines.push('## Breaking Changes');
+  lines.push('');
+  for (const change of breaking) {
+    const location = change.method ? `${change.method} ${change.path}` : change.path;
+    lines.push(`- **${change.type}** — \`${location}\`: ${change.detail}`);
+  }
+  lines.push('');
+
+  if (affectedConsumers.length > 0) {
+    lines.push('## Affected Consumers');
+    lines.push('');
+    for (const consumer of affectedConsumers) {
+      lines.push(`### ${consumer.service}`);
+      lines.push('');
+      lines.push(`Currently depends on path(s) no longer satisfied by ${serviceName}@${toVersion}:`);
+      for (const path of consumer.missingPaths) {
+        lines.push(`- \`${path}\``);
+      }
+      lines.push('');
+    }
+  } else {
+    lines.push('No currently registered consumers were found to be affected, but any unregistered or external callers of the removed/changed paths should be reviewed.');
+    lines.push('');
+  }
+
+  lines.push('## Checklist');
+  lines.push('');
+  lines.push('- [ ] Update consumer code to stop using removed paths/methods, or supply newly required parameters');
+  lines.push('- [ ] Regenerate consumer-driven contract tests with `generate_contract_tests`');
+  lines.push('- [ ] Re-run `validate_compatibility` against the new provider version before merging');
+  lines.push('- [ ] Coordinate a deploy order with affected consumer teams');
+
+  return lines.join('\n');
 }

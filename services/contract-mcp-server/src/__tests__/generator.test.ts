@@ -5,6 +5,7 @@ import {
   generatePactTestCode,
   extractSchemaContext,
   detectBreakingChanges,
+  generateMigrationGuide,
   type OpenAPISpec,
 } from '../generator.js';
 
@@ -487,5 +488,37 @@ describe('schemaToMatcherCode — format coverage', () => {
     const code = generatePactTestCode('consumer', 'provider', spec);
     expect(code).toContain('integer(5)');
     expect(code).toContain('decimal(0.5)');
+  });
+});
+
+// ── generateMigrationGuide ───────────────────────────────────────────────────
+
+describe('generateMigrationGuide', () => {
+  it('reports no migration steps required when there are no breaking changes', () => {
+    const guide = generateMigrationGuide('hello-service', '1.0.0', '1.1.0', [], []);
+    expect(guide).toContain('Migration Guide: hello-service 1.0.0 → 1.1.0');
+    expect(guide).toContain('No breaking changes were detected');
+  });
+
+  it('lists breaking changes and affected consumers with their missing paths', () => {
+    const guide = generateMigrationGuide(
+      'hello-service', '1.0.0', '2.0.0',
+      [{ type: 'path_removed', path: '/health', detail: 'Path /health was removed' }],
+      [{ service: 'consumer-a', missingPaths: ['/health'] }],
+    );
+    expect(guide).toContain('1 breaking change(s)');
+    expect(guide).toContain('path_removed');
+    expect(guide).toContain('/health');
+    expect(guide).toContain('### consumer-a');
+    expect(guide).toContain('Checklist');
+  });
+
+  it('notes when no registered consumers are affected despite breaking changes', () => {
+    const guide = generateMigrationGuide(
+      'hello-service', '1.0.0', '2.0.0',
+      [{ type: 'method_removed', path: '/widgets', method: 'DELETE', detail: 'DELETE /widgets was removed' }],
+      [],
+    );
+    expect(guide).toContain('No currently registered consumers were found to be affected');
   });
 });

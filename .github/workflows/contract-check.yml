@@ -156,10 +156,33 @@ jobs:
               body: comment,
             });
 
+      - name: Generate migration guide
+        if: env.BREAKING_DETECTED == 'true'
+        run: |
+          curl -sf -X POST "$CONTRACT_SERVER/api/migration-guide" \
+            -H "Content-Type: application/json" \
+            -d "{\"service_name\":\"$SERVICE_NAME\",\"from_version\":\"$PREV_VERSION\",\"to_version\":\"$NEW_VERSION\"}" \
+            -o migration-guide.md \
+            || echo "Warning: migration guide generation failed (non-blocking)"
+
+      - name: Post migration guide as PR comment
+        if: env.BREAKING_DETECTED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let guide = '_Migration guide unavailable — see workflow logs._';
+            try { guide = fs.readFileSync('migration-guide.md', 'utf8'); } catch {}
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🚧 Migration Guide\n\n${guide}`,
+            });
+
       - name: Fail if breaking changes detected
         if: env.BREAKING_DETECTED == 'true'
         run: |
           echo "❌ Breaking changes detected in $SERVICE_NAME."
-          echo "Consumer teams must be notified before merging."
-          echo "Call generate_migration_guide on the contract server to generate a migration guide."
+          echo "Consumer teams must be notified before merging — see the migration guide posted above."
           exit 1

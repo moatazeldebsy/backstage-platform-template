@@ -1,6 +1,7 @@
 import express from 'express';
 import { type ContractStore } from './store.js';
-import { parseSpec, detectBreakingChanges } from './generator.js';
+import { parseSpec, detectBreakingChanges, generateMigrationGuide, type AffectedConsumer } from './generator.js';
+import { getAuditLog } from './audit.js';
 
 // ── Service registry helpers ──────────────────────────────────────────────
 // Exported so unit tests can cover them without starting a server.
@@ -31,6 +32,20 @@ export function resolveServiceBaseUrl(
     return url.replace(/\/$/, '');
   }
   return `http://${serviceName}.${namespace}.svc.cluster.local:${port}`;
+}
+
+export async function findAffectedConsumers(store: ContractStore, providerName: string, newPaths: string[]): Promise<AffectedConsumer[]> {
+  const providerPathSet = new Set(newPaths);
+  const allServices = await store.listAll();
+  const affectedConsumers: AffectedConsumer[] = [];
+  for (const svc of allServices) {
+    if (svc.serviceName === providerName) continue;
+    const consumer = await store.getLatest(svc.serviceName);
+    if (!consumer) continue;
+    const missing = consumer.paths.filter(p => !providerPathSet.has(p));
+    if (missing.length > 0) affectedConsumers.push({ service: svc.serviceName, missingPaths: missing });
+  }
+  return affectedConsumers;
 }
 
 // ── App factory ───────────────────────────────────────────────────────────
@@ -122,6 +137,79 @@ export function createApp(
       if (!toEntry)   { res.status(404).json({ error: `Version ${to_version} of "${service_name}" not found` }); return; }
       const result = detectBreakingChanges(parseSpec(fromEntry.specJson), parseSpec(toEntry.specJson));
       res.status(result.breaking.length > 0 ? 422 : 200).json({ service: service_name, from_version, to_version, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // GET /api/can-i-deploy/:service/:version — deploy-time compatibility gate
+  app.get('/api/can-i-deploy/:service/:version', async (req, res) => {
+    try {
+      const { service, version } = req.params;
+      const target = await store.getByVersion(service, version);
+      if (!target) { res.status(404).json({ error: `Version ${version} of "${service}" not registered` }); return; }
+      const summary = (await store.listAll()).find(s => s.serviceName === service);
+      const idx = summary?.versions.indexOf(version) ?? -1;
+      const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
+      const previousEntry = previousVersion ? await store.getByVersion(service, previousVersion) : undefined;
+      const targetPaths = new Set(target.paths);
+      const all = (await store.listAll()).filter(s => s.serviceName !== service);
+      const blockingConsumers = (await Promise.all(all.map(async s => {
+        const consumerEntry = await store.getLatest(s.serviceName);
+        if (!consumerEntry) return null;
+        const missing = consumerEntry.paths.filter(p => !targetPaths.has(p));
+        return missing.length > 0 ? { consumer: s.serviceName, consumerVersion: consumerEntry.version, missingPaths: missing } : null;
+      }))).filter((r): r is { consumer: string; consumerVersion: string; missingPaths: string[] } => r !== null);
+      const breakingChanges = previousEntry
+        ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(target.specJson)).breaking
+        : [];
+      const safe = blockingConsumers.length === 0 && breakingChanges.length === 0;
+      res.status(safe ? 200 : 409).json({ safe, service, version, previousVersion: previousVersion ?? null, blockingConsumers, breakingChanges });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // GET /api/stale-contracts?days= — contracts not updated within the threshold
+  app.get('/api/stale-contracts', async (req, res) => {
+    try {
+      const days = typeof req.query['days'] === 'string' ? parseInt(req.query['days'], 10) : parseInt(process.env.STALE_THRESHOLD_DAYS ?? '30', 10);
+      const all = await store.listAll();
+      const now = Date.now();
+      const stale = all
+        .map(s => ({ ...s, ageDays: s.registeredAt ? Math.floor((now - new Date(s.registeredAt).getTime()) / 86400000) : null }))
+        .filter(s => s.ageDays !== null && s.ageDays >= days);
+      res.json({ thresholdDays: days, staleCount: stale.length, services: stale });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // GET /api/audit?service=&action=&agent=&limit= — query usage/audit events
+  app.get('/api/audit', (req, res) => {
+    const { service, action, agent } = req.query;
+    const limit = typeof req.query['limit'] === 'string' ? parseInt(req.query['limit'], 10) : undefined;
+    const events = getAuditLog({
+      service: typeof service === 'string' ? service : undefined,
+      action: typeof action === 'string' ? action : undefined,
+      agent: typeof agent === 'string' ? agent : undefined,
+      limit,
+    });
+    res.json({ count: events.length, events });
+  });
+
+  // POST /api/migration-guide — { service_name, from_version, to_version }
+  app.post('/api/migration-guide', express.json(), async (req, res) => {
+    try {
+      const { service_name, from_version, to_version } = req.body as { service_name: string; from_version: string; to_version: string };
+      const fromEntry = await store.getByVersion(service_name, from_version);
+      const toEntry = await store.getByVersion(service_name, to_version);
+      if (!fromEntry) { res.status(404).json({ error: `Version ${from_version} of "${service_name}" not found` }); return; }
+      if (!toEntry) { res.status(404).json({ error: `Version ${to_version} of "${service_name}" not found` }); return; }
+      const { breaking } = detectBreakingChanges(parseSpec(fromEntry.specJson), parseSpec(toEntry.specJson));
+      const affectedConsumers = await findAffectedConsumers(store, service_name, toEntry.paths);
+      const guide = generateMigrationGuide(service_name, from_version, to_version, breaking, affectedConsumers);
+      res.set('Content-Type', 'text/markdown').send(guide);
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }

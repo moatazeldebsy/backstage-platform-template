@@ -48,3 +48,26 @@ jobs:
             -H 'Content-Type: application/json' \
             -d "{\"method\":\"tools/call\",\"params\":{\"name\":\"register_contract\",\"arguments\":{\"service_name\":\"${CONSUMER_NAME}\",\"version\":\"${SHORT_SHA}\",\"openapi_spec\":${SPEC}}}}" \
             || echo "Warning: contract registration failed (non-blocking)"
+
+  deploy-gate:
+    name: Deployment Gate (can-i-deploy)
+    runs-on: ubuntu-latest
+    needs: contract
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Check can-i-deploy before rolling out
+        run: |
+          if [ -z "${CONTRACT_MCP_SERVER_URL}" ]; then
+            echo "CONTRACT_MCP_SERVER_URL not set — skipping deploy gate"
+            exit 0
+          fi
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            "${CONTRACT_MCP_SERVER_URL}/api/can-i-deploy/${PROVIDER_NAME}/${SHORT_SHA}")
+          cat response.json
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ can-i-deploy reports it is NOT safe to deploy ${PROVIDER_NAME}@${SHORT_SHA}"
+            exit 1
+          fi
+          echo "✅ Safe to deploy ${PROVIDER_NAME}@${SHORT_SHA}"
+      # Wire your actual deployment step after this gate (e.g. kubectl apply, ArgoCD sync, helm upgrade).

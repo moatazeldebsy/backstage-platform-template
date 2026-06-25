@@ -17,7 +17,7 @@ This is a self-describing, MCP-powered contract test suite for the `${{ values.c
 
 - **`contract/openapi.yaml`** — OpenAPI 3.x spec describing the subset of the provider API this consumer depends on. This is the "consumer contract" — it gets registered with the IDP contract registry so AI agents can check compatibility.
 - **`tests/${{ values.name }}.pact.spec.ts`** — Pact V3 consumer tests that run against a mock server derived from the contract.
-- **`.github/workflows/contract.yml`** — CI workflow that runs tests, registers the contract spec, and optionally publishes to a Pact broker.
+- **`.github/workflows/contract.yml`** — CI workflow that runs tests, registers the contract spec, optionally publishes to a Pact broker, and gates deployment with a `can-i-deploy` check.
 
 ## Running tests locally
 
@@ -41,6 +41,9 @@ Use the **contract-assistant** agent in the IDP (Backstage → AI Assistant, or 
 - Check compatibility: *"Is ${{ values.consumerName }} compatible with the latest ${{ values.providerName }} spec?"*
 - Detect breaking changes: *"Are there breaking changes between ${{ values.providerName }} v1.0.0 and v2.0.0?"*
 - Get the full platform compatibility report: *"Show the compatibility report for ${{ values.providerName }}"*
+- Check if a deploy is safe: *"Can I deploy ${{ values.providerName }} v2.0.0?"*
+- Get a migration guide for a breaking change: *"Generate a migration guide for ${{ values.providerName }} v1.0.0 to v2.0.0"*
+- Find stale contracts: *"Which services haven't updated their contract in 30 days?"*
 
 ## Registering the contract manually
 
