@@ -4,7 +4,7 @@ replicaCount: 1
 
 image:
   repository: localhost:5003/contract-mcp-server
-  tag: "0.1.0"
+  tag: "local"
   pullPolicy: Always
 
 service:

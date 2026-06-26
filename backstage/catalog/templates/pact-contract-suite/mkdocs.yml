@@ -1,6 +1,7 @@
 site_name: Pact Contract Test Suite
 site_description: >-
-  Scaffold a Pact consumer-driven contract test suite with PactFlow broker publishing
+  Scaffold a Pact consumer-driven contract test suite with PactFlow broker
+  publishing
 docs_dir: docs
 nav:
   - Overview: index.md
