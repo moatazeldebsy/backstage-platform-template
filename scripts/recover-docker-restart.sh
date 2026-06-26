@@ -65,12 +65,18 @@ if ! docker info &>/dev/null; then
   err "Docker is not running. Start Docker Desktop first."
 fi
 
-for node in "${CLUSTER_NAME}-control-plane" "${CLUSTER_NAME}-worker" "${CLUSTER_NAME}-worker2"; do
-  if ! docker inspect "$node" &>/dev/null; then
-    err "Kind node container '$node' not found. Run ./scripts/bootstrap-local.sh to create the cluster."
-  fi
+if ! docker inspect "${CLUSTER_NAME}-control-plane" &>/dev/null; then
+  err "Kind node container '${CLUSTER_NAME}-control-plane' not found. Run ./scripts/bootstrap-local.sh to create the cluster."
+fi
+
+# Discover all existing worker nodes for this cluster (worker, worker2, …)
+WORKER_NODES=()
+for node in $(docker ps --format '{{.Names}}' | grep "^${CLUSTER_NAME}-worker" | sort); do
+  WORKER_NODES+=("$node")
 done
-log "Docker is running and Kind containers exist"
+ALL_NODES=("${CLUSTER_NAME}-control-plane" "${WORKER_NODES[@]}")
+NODE_COUNT=${#ALL_NODES[@]}
+log "Docker is running — found ${NODE_COUNT} Kind node(s): ${ALL_NODES[*]}"
 
 # ── Step 1: Resolve current container IPs ────────────────────────────────────
 step "Step 1 — Detect current container IPs"
@@ -80,8 +86,8 @@ get_container_ip() {
 }
 
 CP_IP=$(get_container_ip "${CLUSTER_NAME}-control-plane")
-W1_IP=$(get_container_ip "${CLUSTER_NAME}-worker")
-W2_IP=$(get_container_ip "${CLUSTER_NAME}-worker2")
+W1_IP=$(get_container_ip "${CLUSTER_NAME}-worker" 2>/dev/null || echo "n/a")
+W2_IP=$(docker inspect "${CLUSTER_NAME}-worker2" &>/dev/null && get_container_ip "${CLUSTER_NAME}-worker2" || echo "n/a")
 
 log "control-plane: $CP_IP   worker: $W1_IP   worker2: $W2_IP"
 
@@ -104,8 +110,8 @@ else
   log "kubelet.conf already correct ($CURRENT_SERVER)"
 fi
 
-# Ensure all nodes are Ready before proceeding
-for node_name in "${CLUSTER_NAME}-control-plane" "${CLUSTER_NAME}-worker" "${CLUSTER_NAME}-worker2"; do
+# Ensure all discovered nodes are Ready before proceeding
+for node_name in "${ALL_NODES[@]}"; do
   wait_for_node_ready "$node_name" 60
 done
 
@@ -122,7 +128,7 @@ log "Waiting for kindnet pods to be ready..."
 elapsed=0
 until kubectl get pods -n kube-system -l app=kindnet --no-headers 2>/dev/null \
     | grep -v "Running" | grep -qv "^$" || \
-    [[ $(kubectl get pods -n kube-system -l app=kindnet --no-headers 2>/dev/null | grep -c "Running" || echo 0) -eq 3 ]]; do
+    [[ $(kubectl get pods -n kube-system -l app=kindnet --no-headers 2>/dev/null | grep -c "Running" || echo 0) -eq $NODE_COUNT ]]; do
   sleep 3; elapsed=$((elapsed+3))
   [[ $elapsed -ge 60 ]] && { warn "kindnet pods not all running after 60s"; break; }
 done
@@ -133,13 +139,24 @@ step "Step 4 — Restart kube-proxy (iptables rules)"
 
 run kubectl rollout restart daemonset -n kube-system kube-proxy
 elapsed=0
-until [[ $(kubectl get pods -n kube-system -l k8s-app=kube-proxy --no-headers 2>/dev/null | grep -c "Running" || echo 0) -eq 3 ]]; do
+until [[ $(kubectl get pods -n kube-system -l k8s-app=kube-proxy --no-headers 2>/dev/null | grep -c "Running" || echo 0) -eq $NODE_COUNT ]]; do
   sleep 3; elapsed=$((elapsed+3))
   [[ $elapsed -ge 60 ]] && { warn "kube-proxy pods not all running after 60s"; break; }
 done
 
 # ── Step 5: Restart ingress-nginx controller ──────────────────────────────────
 step "Step 5 — Restart ingress-nginx (clear stale veth/iptables)"
+
+# A stuck deployment rollout leaves two ReplicaSets both at desired=1. The new
+# RS can't schedule because the old one holds hostPorts 80/443, so roll back
+# to the last known-good revision before deleting the pod.
+STALE_RS=$(kubectl get replicasets -n ingress-nginx --no-headers 2>/dev/null | \
+  awk '$2 == "1" && $4 == "0" {print $1}' | head -1 || true)
+if [[ -n "$STALE_RS" ]]; then
+  log "Stuck rollout detected ($STALE_RS) — rolling back ingress-nginx"
+  run kubectl rollout undo deployment -n ingress-nginx ingress-nginx-controller
+  sleep 5
+fi
 
 # Delete the existing pod directly — the deployment uses hostPorts 80/443 so a
 # rolling update cannot schedule the new pod until the old one is gone.
@@ -222,8 +239,39 @@ if [[ "$SKIP_BACKSTAGE" == "false" ]]; then
   step "Step 8 — Restart Backstage (Docker Compose)"
   COMPOSE_FILE="${ROOT_DIR}/local/backstage/docker-compose.yml"
   if [[ -f "$COMPOSE_FILE" ]]; then
-    run docker compose -f "$COMPOSE_FILE" restart
-    log "Backstage restarted"
+    # ArgoCD session tokens expire after 24h — refresh before restarting so the
+    # Backstage ArgoCD proxy widget works immediately after recovery.
+    LOCAL_ENV="${ROOT_DIR}/local/backstage/.env"
+    ARGOCD_PASS=$(kubectl get secret -n argocd argocd-initial-admin-secret \
+      -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)
+    if [[ -n "$ARGOCD_PASS" ]]; then
+      NEW_ARGOCD_TOKEN=$(curl -sk https://argocd.idp.local/api/v1/session \
+        -H "Content-Type: application/json" \
+        -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASS}\"}" \
+        2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null || true)
+      if [[ -n "$NEW_ARGOCD_TOKEN" ]]; then
+        if grep -q "^ARGOCD_AUTH_TOKEN=" "$LOCAL_ENV" 2>/dev/null; then
+          sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${NEW_ARGOCD_TOKEN}|" "$LOCAL_ENV" && rm -f "${LOCAL_ENV}.bak"
+        else
+          echo "ARGOCD_AUTH_TOKEN=${NEW_ARGOCD_TOKEN}" >> "$LOCAL_ENV"
+        fi
+        log "ArgoCD token refreshed in $LOCAL_ENV"
+      else
+        warn "Could not refresh ArgoCD token — proxy widget may fail until token is renewed"
+      fi
+    fi
+
+    # Use 'up -d' not 'restart' — restart keeps the frozen env vars from container
+    # creation and ignores any changes to the .env file (including the refreshed
+    # ARGOCD_AUTH_TOKEN written above).
+    run docker compose -f "$COMPOSE_FILE" up -d backstage
+    log "Waiting for Backstage to become healthy..."
+    elapsed=0
+    until [[ "$(docker inspect backstage-backstage-1 --format '{{.State.Health.Status}}' 2>/dev/null)" == "healthy" ]]; do
+      sleep 5; elapsed=$((elapsed+5))
+      [[ $elapsed -ge 120 ]] && { warn "Backstage not healthy after 120s — continuing anyway"; break; }
+    done
+    log "Backstage is healthy"
   else
     warn "Docker Compose file not found: $COMPOSE_FILE"
   fi

@@ -3095,6 +3095,7 @@ function ArgocdPage() {
   const [syncing, setSyncing] = useState<string | null>(null);
 
   const loadApps = () => {
+    setLoading(true);
     fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: any) => {
@@ -3175,7 +3176,7 @@ function ArgocdPage() {
             <Paper>
               <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
                 <Typography variant="h6" style={{ flex: 1 }}>Applications</Typography>
-                <Button variant="outlined" size="small" onClick={loadApps}>↺ Refresh</Button>
+                <Button variant="outlined" size="small" onClick={loadApps} disabled={loading}>↺ Refresh</Button>
                 <Box ml={1}>
                   <Button
                     variant="contained"
