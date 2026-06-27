@@ -2943,25 +2943,27 @@ function SloPage() {
 
     Promise.all([
       pq('sloth_slo_info'),
-      pq('slo:slo_error_ratio:ratio_rate5m'),
-    ]).then(([infoRes, ratioRes]) => {
+      pq('slo:period_error_budget_remaining:ratio'),
+    ]).then(([infoRes, budgetRes]) => {
       const infos: any[] = infoRes?.data?.result ?? [];
-      const ratios: any[] = ratioRes?.data?.result ?? [];
+      const budgets: any[] = budgetRes?.data?.result ?? [];
 
       if (infos.length === 0) { setIsDemo(true); setLoading(false); return; }
 
-      const ratioMap: Record<string, number> = {};
-      ratios.forEach((r: any) => {
-        const key = `${r.metric?.sloth_service}__${r.metric?.sloth_id}`;
-        ratioMap[key] = parseFloat(r.value?.[1] ?? 'NaN');
+      // keyed by sloth_id which is present on both info and budget metrics
+      const budgetMap: Record<string, number> = {};
+      budgets.forEach((r: any) => {
+        const id = r.metric?.sloth_id ?? '';
+        if (id) budgetMap[id] = parseFloat(r.value?.[1] ?? 'NaN');
       });
 
       const rows = infos.map((r: any) => {
         const service   = r.metric?.sloth_service ?? '—';
         const id        = r.metric?.sloth_id ?? '';
-        const objective = parseFloat(r.metric?.objective ?? '99');
-        const errorRatio = ratioMap[`${service}__${id}`] ?? null;
-        return { service, id, label: id.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), objective, errorRatio };
+        const objective = parseFloat(r.metric?.sloth_objective ?? '99');
+        // slo:period_error_budget_remaining:ratio is already the budget remaining ratio (1.0 = 100%)
+        const errorRatio = id in budgetMap ? budgetMap[id] : null;
+        return { service, id, label: id.replace(new RegExp(`^${service}-`), '').replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), objective, errorRatio };
       }).sort((a, b) => a.service.localeCompare(b.service));
 
       setSlos(rows);
@@ -2978,10 +2980,10 @@ function SloPage() {
 
   const displaySlos = isDemo ? DEMO_SLOS : slos;
 
-  const budgetPct = (objective: number, errorRatio: number | null) => {
+  // errorRatio here holds slo:period_error_budget_remaining:ratio (0–1 scale, may go negative)
+  const budgetPct = (_objective: number, errorRatio: number | null) => {
     if (errorRatio === null) return null;
-    const errorBudget = 1 - objective / 100;
-    return errorBudget > 0 ? Math.max(0, (1 - errorRatio / errorBudget)) * 100 : null;
+    return Math.max(0, errorRatio * 100);
   };
 
   return (
