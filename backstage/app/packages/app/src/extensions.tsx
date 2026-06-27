@@ -4567,16 +4567,21 @@ function GlobalSearchPage() {
         const items: SearchResult[] = (data?.results ?? []).map((r: any) => {
           const doc  = r.document ?? {};
           const kind = doc.kind ?? 'Component';
+          const loc  = typeof doc.location === 'string' ? doc.location : '';
+          const name = typeof doc.name === 'string' ? doc.name
+            : (typeof doc.title === 'string' ? doc.title : (loc.split('/').filter(Boolean).pop() ?? '—'));
+          const description = typeof doc.text === 'string' ? doc.text.slice(0, 100)
+            : (typeof doc.description === 'string' ? doc.description : '');
           return {
             kind,
-            name:        doc.name ?? doc.title ?? '—',
-            description: doc.text?.slice(0, 100) ?? doc.description ?? '',
-            owner:       doc.owner ?? '—',
-            lifecycle:   doc.lifecycle,
-            type:        doc.type,
-            href:        kind === 'TechDocs'
-              ? `/docs/default/component/${doc.name}`
-              : `/catalog/default/${kind.toLowerCase()}/${doc.name}`,
+            name,
+            description,
+            owner:     typeof doc.owner === 'string' ? doc.owner : '—',
+            lifecycle: typeof doc.lifecycle === 'string' ? doc.lifecycle : undefined,
+            type:      typeof doc.type === 'string' ? doc.type : undefined,
+            href:      loc || (kind === 'TechDocs'
+              ? `/docs/default/component/${name}`
+              : `/catalog/default/${kind.toLowerCase()}/${name}`),
           };
         });
         setResults(items);
