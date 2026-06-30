@@ -127,8 +127,7 @@ spec:
         contractMcpServerUrl:
           title: Contract MCP Server URL
           type: string
-          description: URL of the IDP contract registry for AI-assisted checks (leave blank to skip)
-          default: 'http://contract-mcp-server.idp.local'
+          description: URL of the IDP contract registry for AI-assisted checks (e.g. https://contract-api.idp.yourcompany.com)
 
 
     - title: Integrations

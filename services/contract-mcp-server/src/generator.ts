@@ -307,7 +307,7 @@ describe('${consumerName} → ${providerName} contract', () => {${interactions.j
 }
 
 export interface BreakingChange {
-  type: 'path_removed' | 'method_removed' | 'required_param_added';
+  type: 'path_removed' | 'method_removed' | 'required_param_added' | 'response_property_removed';
   path: string;
   method?: string;
   detail: string;
@@ -339,6 +339,29 @@ export function detectBreakingChanges(
       for (const param of toRequired) {
         if (!fromRequired.includes(param)) {
           breaking.push({ type: 'required_param_added', path, method: method.toUpperCase(), detail: `Required parameter '${param}' added to ${method.toUpperCase()} ${path}` });
+        }
+      }
+
+      // Check response schema — removed properties are breaking for consumers
+      for (const statusCode of ['200', '201']) {
+        const fromSchema = fromOp.responses?.[statusCode]?.content?.['application/json']?.schema;
+        const toSchema = toOp.responses?.[statusCode]?.content?.['application/json']?.schema;
+        if (!fromSchema) continue;
+        // Unwrap array items
+        const fromProps = fromSchema.type === 'array' ? fromSchema.items?.properties : fromSchema.properties;
+        const toProps = toSchema?.type === 'array' ? toSchema.items?.properties : toSchema?.properties;
+        if (!fromProps) continue;
+        const fromRequiredFields = fromSchema.required ?? (fromSchema.type === 'array' ? (fromSchema.items?.required ?? []) : []);
+        for (const prop of Object.keys(fromProps)) {
+          const wasRequired = fromRequiredFields.includes(prop);
+          if (toProps && !(prop in toProps)) {
+            breaking.push({
+              type: 'response_property_removed',
+              path,
+              method: method.toUpperCase(),
+              detail: `${wasRequired ? 'Required' : 'Optional'} response property '${prop}' removed from ${statusCode} ${method.toUpperCase()} ${path}`,
+            });
+          }
         }
       }
     }

@@ -38,13 +38,16 @@ jobs:
             echo "CONTRACT_MCP_SERVER_URL not set — skipping registration"
             exit 0
           fi
-          SPEC=$(cat contract/openapi.yaml | jq -Rs .)
           SHORT_SHA=$(git rev-parse --short HEAD)
-          curl -sf -X POST "${CONTRACT_MCP_SERVER_URL}/mcp" \
-            -H 'Content-Type: application/json' \
-            -d "{\"method\":\"tools/call\",\"params\":{\"name\":\"register_contract\",\"arguments\":{\"service_name\":\"${CONSUMER_NAME}\",\"version\":\"${SHORT_SHA}\",\"openapi_spec\":${SPEC}}}}" \
-            && echo "Contract registered for ${CONSUMER_NAME}@${SHORT_SHA}" \
-            || echo "Warning: contract registration failed (non-blocking)"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "${CONTRACT_MCP_SERVER_URL}/api/contracts/${CONSUMER_NAME}/${SHORT_SHA}" \
+            -H "Content-Type: application/json" \
+            --data-binary "@contract/openapi.yaml")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Contract registered for ${CONSUMER_NAME}@${SHORT_SHA}"
+          else
+            echo "Warning: contract registration failed (HTTP $HTTP_STATUS) — non-blocking"
+          fi
 
       - name: Publish pacts to broker
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

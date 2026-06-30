@@ -837,6 +837,29 @@ The provider must be registered before generating tests. Call `fetch_service_con
 
 ---
 
+**`can-i-deploy` returns 404**  
+The service is not registered in the contract registry. Register it first: run `fetch_service_contract` (AI Assistant: *"Register the contract for `<service>`"*) or POST directly to `/api/contracts/<service>/<version>`.
+
+**Breaking changes not detected between versions**  
+Both registered versions must have different content. If you registered the same spec twice under different version strings, the diff will be empty. Always register the new (changed) spec before calling `detect_breaking_changes`.
+
+**ArgoCD PreSync hook fails immediately with "fromVersion not set"**  
+The PreSync hook requires `contractCheck.fromVersion` and `contractCheck.toVersion` to be passed via Helm values in your CI pipeline. Add `--set contractCheck.fromVersion=<old-version> --set contractCheck.toVersion=<new-version>` to your `helm upgrade` command.
+
+**Audit log is empty after a pod restart**  
+The audit log is stored in-memory (circular buffer, 500 events). It is lost when the pod restarts. For a persistent audit trail, switch to `STORAGE_TYPE=postgres` — the audit events will then survive restarts.
+
+**Template not visible in Backstage Create page**  
+The contract templates may be commented out in `backstage/catalog/all-templates.yaml`. Uncomment the `contract-testing-suite` and `enable-contract-testing` entries, then restart Backstage (`docker compose restart backstage` for local, or sync the ArgoCD app in-cluster).
+
+**`contract-assistant` not responding in AI Assistant**  
+The KAgent agent may not be deployed. Check: `kubectl get agents -n kagent contract-assistant`. If it's missing, run `scripts/bootstrap-ai.sh`. If it exists but shows `READY=False`, restart the controller: `kubectl rollout restart deployment/kagent-controller -n kagent`.
+
+**`auto_discover_contracts` returns 0 services**  
+In local/Docker mode, set `DISCOVERY_MODE=http` and `SERVICES_REGISTRY=payments-api=http://payments-api:8000,hello-service=http://hello-service:8080`. The default `kubernetes` mode requires in-cluster API access. In standalone Docker Compose, use the `http` mode.
+
+---
+
 ## Common Pitfalls
 
 - **Don't call `/mcp` directly for scripts** — the REST API at `/api` is easier to use from `curl` / CI pipelines. `/mcp` is for MCP-native clients (Claude Desktop, KAgent).

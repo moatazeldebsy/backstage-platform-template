@@ -12,7 +12,9 @@ For the why and the gate definitions, see [shift-left.md](shift-left.md). This p
 - [ ] Open these tabs in order: Backstage → `/create`, Backstage scorecard tab on a sample service, Grafana scorecard dashboard, ArgoCD UI, a terminal in a throwaway service repo
 - [ ] `docker ps` — Backstage + Postgres healthy
 - [ ] Backstage built from a freshly-built image (see [local-setup.md](local-setup.md) — run `docker compose -f local/backstage/docker-compose.yml up -d backstage` if you just rebuilt)
-- [ ] Have a throwaway service repo at the ready (a previously-scaffolded `demo-svc`) — for the "break it" beats
+- [ ] Have a throwaway service repo at the ready (a previously-scaffolded `demo-svc`) — for Beat 1 & 2 (scaffold + Trivy)
+- [ ] **Beat 3 (contract testing):** `payments-api` is already deployed and registered — confirm: `curl http://contract-mcp-server.idp.local/api/contracts` returns `payments-api v1.0.0`
+- [ ] Have a branch ready with `currency` removed from `Account` in `services/payments-api/src/main.py` — use this for the "break it" step instead of doing it live if you're nervous
 - [ ] Mute Slack
 
 ---
@@ -51,15 +53,35 @@ For the why and the gate definitions, see [shift-left.md](shift-left.md). This p
 
 This is the showstopper. Don't skip it.
 
+**Pre-registered:** `payments-api` contract is already in the registry (`GET /api/contracts` → confirm live). Use it as the provider for this beat.
+
 | Step | Action | What the audience sees |
 |---|---|---|
-| 1 | In Backstage `/create`, run **`enable-contract-testing`** against `demo-svc` | Scaffolder deploys contract-mcp-server (if not up), auto-registers the OpenAPI spec |
-| 2 | Show the new ArgoCD app — point at the `contract-check` PreSync hook in the manifest | Hook job defined |
-| 3 | In `demo-svc`, delete a field from a response schema in the OpenAPI spec → push → merge → ArgoCD syncs | Sync starts |
-| 4 | ArgoCD UI: the `contract-check` PreSync job runs first | **FAILED** — sync rejected. Show the job logs: "Breaking change: removed field `X` from `GET /widgets`" |
-| 5 | Revert the change → push → ArgoCD retries | PreSync passes, deploy proceeds |
+| 1 | Open AI Assistant (`/ai-assistant`) → select **contract-assistant** → type: *"List all registered contracts"* | `payments-api v1.0.0` with 6 paths listed |
+| 2 | Ask: *"Can I deploy payments-api v1.0.0?"* | `safe: true` — no consumers are blocked |
+| 3 | In `services/payments-api/src/main.py`, remove `currency` from the `Account` response model → push as a PR branch | GitHub Actions runs `contract-check.yml` |
+| 4 | Show the PR — a bot comment appears: *"Breaking change detected: removed field `currency` from `GET /api/accounts/{account_id}`"* | Diff summary + migration guide link in PR comment |
+| 5 | Ask AI Assistant: *"Can I deploy payments-api v1.1.0?"* | `safe: false` — blocked, with reason |
+| 6 | Revert the field → merge → ArgoCD PreSync hook passes | Deploy proceeds; ask *"Can I deploy payments-api v1.0.0?"* → `safe: true` again |
 
 **The line:** *"The contract is registered automatically. The breaking change is detected automatically. The deploy is blocked automatically. Nobody wrote a Pact file."*
+
+> **If short on time (2 min version):** Skip steps 3-4. Just show steps 1-2 (list contracts + can-i-deploy safe), then jump to step 5 using a pre-broken branch you prepared earlier. Show the blocked result. Revert live or switch to the fixed branch.
+
+> **Recovery:** If AI Assistant is slow, use `curl http://contract-mcp-server.idp.local/api/can-i-deploy/payments-api/1.0.0` in terminal — same result, just less visual.
+
+---
+
+### Beat 3b — Audit trail and stale contracts (optional, 2 min)
+
+Add this if you have time or the audience asks "how do we know what happened?":
+
+| Step | Action | What the audience sees |
+|---|---|---|
+| 1 | AI Assistant: *"Show me the audit log for the last 10 actions"* | Timestamped list: `register_contract`, `can_i_deploy`, `detect_breaking_changes` with agent ID and service name |
+| 2 | AI Assistant: *"Are there any stale contracts?"* | List of services not updated in 30+ days (or empty if everything is fresh) |
+
+**The line:** *"Every tool call is logged. You know who asked, what they asked, and when. The audit log is queryable by service, action, or agent."*
 
 ---
 

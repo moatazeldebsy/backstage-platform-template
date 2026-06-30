@@ -127,7 +127,7 @@ spec:
           providerName: ${{ parameters.providerName }}
           providerBaseUrl: 'http://localhost:8080'
           pactBrokerUrl: 'https://moatazeldebsy.pactflow.io'
-          contractMcpServerUrl: 'http://contract-mcp-server.idp.local'
+          contractMcpServerUrl: ''
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
