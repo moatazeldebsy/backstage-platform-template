@@ -1,0 +1,46 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/moatazeldebsy/jvm-demo
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podLabels:
+  team: "backend-team"
+  cost-center: eng-platform
+  environment: dev
+
+metrics:
+  enabled: true
+  path: /actuator/prometheus
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: dev
+  - name: ENVIRONMENT
+    value: dev

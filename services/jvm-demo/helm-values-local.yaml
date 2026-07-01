@@ -1,0 +1,56 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/jvm-demo
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: jvm-demo.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+podLabels:
+  team: "backend-team"
+  cost-center: eng-platform
+  environment: local
+
+metrics:
+  enabled: true
+  path: /actuator/prometheus
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: local
+  - name: ENVIRONMENT
+    value: local
+
+labels:
+  backstage.io/kubernetes-id: jvm-demo
+
+contractCheck:
+  enabled: true
+  mcpServerUrl: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
+  checkBreaking: true
