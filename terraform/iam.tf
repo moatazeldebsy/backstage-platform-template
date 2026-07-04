@@ -239,6 +239,49 @@ resource "aws_iam_role_policy" "db_init" {
   })
 }
 
+# Contract MCP Server IRSA — allows the contract-mcp-server SA to read/write
+# the DynamoDB contract registry table provisioned via the Crossplane
+# DynamoTable claim (services/contract-mcp-server/claims/contract-registry.yaml).
+module "contract_mcp_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-contract-mcp-server"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["services-dev:contract-mcp-server"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "contract_mcp_server" {
+  name = "contract-mcp-server-dynamodb"
+  role = module.contract_mcp_irsa.iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/contract-registry"
+      }
+    ]
+  })
+}
+
+output "contract_mcp_server_role_arn" {
+  description = "IAM role ARN for the contract-mcp-server ServiceAccount (IRSA) — DynamoDB contract registry access"
+  value       = module.contract_mcp_irsa.iam_role_arn
+}
+
 # DORA Exporter IRSA — allows the CronJob SA to publish to CloudWatch IDP/DORA namespace
 module "dora_exporter_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"

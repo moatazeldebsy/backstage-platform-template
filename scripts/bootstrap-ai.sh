@@ -725,9 +725,12 @@ else
     check "mcp-backstage-token secret created in services-dev"
   fi
 
-  # contract-mcp-server intentionally excluded — hidden from end users.
-  # To re-enable, add `contract-mcp-server` back to the list below.
-  for SVC in idp-mcp-server qa-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server; do
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    CONTRACT_MCP_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw contract_mcp_server_role_arn 2>/dev/null || echo "")
+    [[ -n "$CONTRACT_MCP_ROLE_ARN" ]] || warn "Could not read contract_mcp_server_role_arn from Terraform outputs — contract-mcp-server will lack DynamoDB access."
+  fi
+
+  for SVC in idp-mcp-server qa-mcp-server contract-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
@@ -742,7 +745,7 @@ else
           "${REPO_ROOT}/services/${SVC}/"
         docker push "${REGISTRY}/${SVC}:0.1.0"
         docker push "${REGISTRY}/${SVC}:latest"
-        sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g" \
+        sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g; s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
           "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
           | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
               --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
