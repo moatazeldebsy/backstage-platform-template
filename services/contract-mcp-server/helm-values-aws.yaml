@@ -1,6 +1,13 @@
 # Helm overrides for contract-mcp-server — AWS dev environment
-# ECR_REGISTRY_PLACEHOLDER is substituted by bootstrap-ai.sh --aws
+# ECR_REGISTRY_PLACEHOLDER and CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER are
+# substituted by bootstrap-ai.sh --aws (role ARN comes from
+# `terraform output -raw contract_mcp_server_role_arn`).
 fullnameOverride: contract-mcp-server
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER
 
 replicaCount: 1
 
@@ -64,6 +71,12 @@ env:
     value: "3003"
   - name: K8S_API
     value: "https://kubernetes.default.svc"
+  - name: STORAGE_TYPE
+    value: "dynamodb"
+  - name: DYNAMO_TABLE
+    value: "contract-registry"
+  - name: AWS_REGION
+    value: "eu-central-1"
 
 securityContext:
   allowPrivilegeEscalation: false

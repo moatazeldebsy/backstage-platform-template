@@ -1,0 +1,18 @@
+# Crossplane claim — provisions the DynamoDB table backing contract-mcp-server's
+# persistent store on AWS (STORAGE_TYPE=dynamodb in helm-values-aws.yaml).
+# Picked up automatically by the `idp-services` ApplicationSet (see
+# aws/argocd/crossplane.yaml) — no extra ArgoCD wiring needed.
+apiVersion: idp.platform/v1alpha1
+kind: DynamoTable
+metadata:
+  name: contract-registry
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: contract-mcp-server
+spec:
+  parameters:
+    tableName: contract-registry
+    hashKey: service_name
+    rangeKey: version
+    owner: platform-team
+    region: eu-central-1
