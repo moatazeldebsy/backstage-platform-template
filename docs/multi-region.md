@@ -178,6 +178,36 @@ Teams that need multi-region support should:
 
 ---
 
+## Go-Live Readiness Checklist
+
+The architecture and scaffolding above are built; actually cutting over to multi-region for a
+production workload with real (patient) data is a separate, deliberate decision — not something to
+flip on as a side effect of a platform update. Use this checklist before running
+`./scripts/bootstrap-multiregion.sh` against a production account:
+
+- [ ] **Data residency sign-off** — Legal has confirmed the cross-region replication path (eu-central-1
+      → us-east-1) is covered by a valid transfer mechanism for whatever data this deploys with — this is
+      not automatically true just because the infrastructure exists.
+- [ ] **Cost approval** — a second full region (EKS, Aurora Global writer/reader, cross-region ECR
+      replication, Transit Gateway, Global Accelerator) is a material recurring cost increase; get
+      sign-off before enabling, not after the first bill.
+- [ ] **DR tier assigned per service** — every service that will run multi-region has an explicit
+      Gold/Silver/Bronze tier assignment (see the table above), not just an inherited default. A
+      service handling booking writes should be Gold; a batch reporting job probably shouldn't be.
+- [ ] **Failover runbook rehearsed** — the region failover procedure has been run at least once against
+      a non-production environment, by someone other than whoever wrote it, so a real incident isn't
+      the first time it's executed.
+- [ ] **Alerting wired to the standby region** — confirm Thanos/Grafana actually alerts on standby-region
+      health (not just primary), otherwise a degraded standby fails silently until the moment you need it.
+- [ ] **Rollback path confirmed** — know how to disable multi-region (fail back to single-region) if
+      something goes wrong during cutover, before you need to do it under pressure.
+
+This checklist is intentionally a gate, not a script — running `bootstrap-multiregion.sh` is a
+one-way door for a live production account and should be triggered explicitly by whoever owns that
+decision, not automated.
+
+---
+
 ## See Also
 
 - [crossplane.md](crossplane.md) — full XRD reference including V2 extensions

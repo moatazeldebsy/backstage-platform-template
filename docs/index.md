@@ -27,6 +27,8 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage
 - [DORA & FinOps](dora-finops.md) — DORA entity tab (Elite/High/Medium/Low badges) + FinOps cost overview with team dimension in Backstage
 - [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC, per-team secret isolation, production hardening
+- [Flaky-Test Quarantine](flaky-test-quarantine.md) — How flaky tests get detected (exporter) and acted on (auto quarantine PRs)
+- [Test-Impact Analysis](test-impact-analysis.md) — Selective test execution on PRs via pytest-testmon (python-service golden path)
 
 ### Operations
 - [Improvements Summary](IMPROVEMENTS_SUMMARY.md) — Critical fixes, AI/ML enhancements, cost savings analysis (read first after your first AWS deployment)

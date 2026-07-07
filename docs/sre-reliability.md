@@ -266,9 +266,11 @@ Or via ingress: `http://argo-rollouts.idp.local` (requires `bootstrap-ai.sh`).
 dev (auto)  →  staging (PR)  →  prod (manual approval)
 ```
 
-- **dev**: Every merge to `main` auto-deploys to the `services-dev` namespace via ArgoCD.
-- **staging**: A CI job (`promote-to-staging`) opens a PR that updates `helm-values-staging.yaml` with the new image SHA. Merging the PR triggers ArgoCD sync to `services-staging`.
-- **prod**: Promotion to production follows the same PR pattern for `helm-values-aws.yaml` in the `services` namespace.
+- **dev**: Every merge to `main` auto-deploys to the `services-dev` namespace via ArgoCD (`idp-services` ApplicationSet).
+- **staging**: A CI job (`promote-to-staging`) opens a PR that updates `helm-values-staging.yaml` with the new image SHA. Merging the PR triggers ArgoCD sync to `services-staging` (`idp-services-staging` ApplicationSet).
+- **prod**: Once the staging deploy passes its smoke test (`smoke-test-staging`), the `promote-to-production` job opens a PR that updates `helm-values-prod.yaml`. A human must merge it — there is no auto-merge to production. Merging triggers ArgoCD sync to `services-prod` (`idp-services-prod` ApplicationSet).
+
+Both `idp-services-staging` and `idp-services-prod` use a `files` generator (not `directories`) in `aws/argocd/app-of-apps.yaml` — an Application is only created once the corresponding `helm-values-<env>.yaml` actually exists for a service, so services that haven't been promoted yet don't produce broken/OutOfSync Applications. The prod ApplicationSet also disables `selfHeal` so an incident rollback via `argocd app rollback` isn't immediately reverted by auto-sync.
 
 ### How `promote-to-staging` works
 

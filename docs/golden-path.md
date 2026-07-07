@@ -49,6 +49,9 @@ Open the Backstage portal and click **Create** → select one of:
 |----------|----------|-------------|
 | Node.js Service | Express | 3000 |
 | Python FastAPI Service | FastAPI + uvicorn | 8000 |
+| Go Service | Go | 8080 |
+| Ruby Sinatra Service | Ruby / Sinatra | 4567 |
+| JVM (Java/Spring Boot) Service | Java 21 / Spring Boot / Gradle | 8080 |
 
 Fill in name, description, owner, and GitHub repo. Click **Create**.
 
