@@ -2188,10 +2188,11 @@
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>dev (auto)  →  staging (PR)  →  prod (manual approval)
 </code></pre></div></td></tr></table></div>
 <ul>
-<li><strong>dev</strong>: Every merge to <code>main</code> auto-deploys to the <code>services-dev</code> namespace via ArgoCD.</li>
-<li><strong>staging</strong>: A CI job (<code>promote-to-staging</code>) opens a PR that updates <code>helm-values-staging.yaml</code> with the new image SHA. Merging the PR triggers ArgoCD sync to <code>services-staging</code>.</li>
-<li><strong>prod</strong>: Promotion to production follows the same PR pattern for <code>helm-values-aws.yaml</code> in the <code>services</code> namespace.</li>
+<li><strong>dev</strong>: Every merge to <code>main</code> auto-deploys to the <code>services-dev</code> namespace via ArgoCD (<code>idp-services</code> ApplicationSet).</li>
+<li><strong>staging</strong>: A CI job (<code>promote-to-staging</code>) opens a PR that updates <code>helm-values-staging.yaml</code> with the new image SHA. Merging the PR triggers ArgoCD sync to <code>services-staging</code> (<code>idp-services-staging</code> ApplicationSet).</li>
+<li><strong>prod</strong>: Once the staging deploy passes its smoke test (<code>smoke-test-staging</code>), the <code>promote-to-production</code> job opens a PR that updates <code>helm-values-prod.yaml</code>. A human must merge it — there is no auto-merge to production. Merging triggers ArgoCD sync to <code>services-prod</code> (<code>idp-services-prod</code> ApplicationSet).</li>
 </ul>
+<p>Both <code>idp-services-staging</code> and <code>idp-services-prod</code> use a <code>files</code> generator (not <code>directories</code>) in <code>aws/argocd/app-of-apps.yaml</code> — an Application is only created once the corresponding <code>helm-values-&lt;env&gt;.yaml</code> actually exists for a service, so services that haven't been promoted yet don't produce broken/OutOfSync Applications. The prod ApplicationSet also disables <code>selfHeal</code> so an incident rollback via <code>argocd app rollback</code> isn't immediately reverted by auto-sync.</p>
 <h3 id="how-promote-to-staging-works">How <code>promote-to-staging</code> works<a class="headerlink" href="#how-promote-to-staging-works" title="Permanent link">&para;</a></h3>
 <p>The CI job runs a smoke test after the dev deploy completes. If the smoke test passes, it:</p>
 <ol>

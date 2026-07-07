@@ -3104,6 +3104,21 @@ Ensure <code>Accept: application/json, text/event-stream</code> is set. Without 
 <p><strong><code>generate_contract_tests</code> returns "provider not found"</strong><br />
 The provider must be registered before generating tests. Call <code>fetch_service_contract</code> or <code>register_contract</code> for the provider first, then generate.</p>
 <hr />
+<p><strong><code>can-i-deploy</code> returns 404</strong><br />
+The service is not registered in the contract registry. Register it first: run <code>fetch_service_contract</code> (AI Assistant: <em>"Register the contract for <code>&lt;service&gt;</code>"</em>) or POST directly to <code>/api/contracts/&lt;service&gt;/&lt;version&gt;</code>.</p>
+<p><strong>Breaking changes not detected between versions</strong><br />
+Both registered versions must have different content. If you registered the same spec twice under different version strings, the diff will be empty. Always register the new (changed) spec before calling <code>detect_breaking_changes</code>.</p>
+<p><strong>ArgoCD PreSync hook fails immediately with "fromVersion not set"</strong><br />
+The PreSync hook requires <code>contractCheck.fromVersion</code> and <code>contractCheck.toVersion</code> to be passed via Helm values in your CI pipeline. Add <code>--set contractCheck.fromVersion=&lt;old-version&gt; --set contractCheck.toVersion=&lt;new-version&gt;</code> to your <code>helm upgrade</code> command.</p>
+<p><strong>Audit log is empty after a pod restart</strong><br />
+The audit log is stored in-memory (circular buffer, 500 events). It is lost when the pod restarts. For a persistent audit trail, switch to <code>STORAGE_TYPE=postgres</code> — the audit events will then survive restarts.</p>
+<p><strong>Template not visible in Backstage Create page</strong><br />
+The contract templates may be commented out in <code>backstage/catalog/all-templates.yaml</code>. Uncomment the <code>contract-testing-suite</code> and <code>enable-contract-testing</code> entries, then restart Backstage (<code>docker compose restart backstage</code> for local, or sync the ArgoCD app in-cluster).</p>
+<p><strong><code>contract-assistant</code> not responding in AI Assistant</strong><br />
+The KAgent agent may not be deployed. Check: <code>kubectl get agents -n kagent contract-assistant</code>. If it's missing, run <code>scripts/bootstrap-ai.sh</code>. If it exists but shows <code>READY=False</code>, restart the controller: <code>kubectl rollout restart deployment/kagent-controller -n kagent</code>.</p>
+<p><strong><code>auto_discover_contracts</code> returns 0 services</strong><br />
+In local/Docker mode, set <code>DISCOVERY_MODE=http</code> and <code>SERVICES_REGISTRY=payments-api=http://payments-api:8000,hello-service=http://hello-service:8080</code>. The default <code>kubernetes</code> mode requires in-cluster API access. In standalone Docker Compose, use the <code>http</code> mode.</p>
+<hr />
 <h2 id="common-pitfalls">Common Pitfalls<a class="headerlink" href="#common-pitfalls" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Don't call <code>/mcp</code> directly for scripts</strong> — the REST API at <code>/api</code> is easier to use from <code>curl</code> / CI pipelines. <code>/mcp</code> is for MCP-native clients (Claude Desktop, KAgent).</li>
