@@ -1,0 +1,30 @@
+# Opt-in local-loop quality gates. Run `pre-commit install` once after cloning.
+# Mirrors the PR-time `quality` job in .github/workflows/ci.yml so feedback
+# arrives before pushing instead of 2-5 min in CI.
+#
+# Install: pip install pre-commit && pre-commit install
+# Run on all files: pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.0
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: checkstyle
+        name: checkstyle
+        entry: gradle checkstyleMain checkstyleTest --no-daemon
+        language: system
+        types: [java]
+        pass_filenames: false

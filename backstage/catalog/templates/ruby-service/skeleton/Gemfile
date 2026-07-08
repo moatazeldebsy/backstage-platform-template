@@ -1,0 +1,17 @@
+source "https://rubygems.org"
+
+ruby ">= 3.2"
+
+gem "sinatra", "~> 4.1"
+gem "puma", "~> 6.4"
+gem "prometheus-client", "~> 4.2"
+gem "rackup", "~> 2.1"
+
+group :development, :test do
+  gem "rspec", "~> 3.13"
+  gem "rspec_junit_formatter", "~> 0.6"
+  gem "rack-test", "~> 2.1"
+  gem "simplecov", "~> 0.22", require: false
+  gem "rubocop", "~> 1.65", require: false
+  gem "bundler-audit", "~> 0.9", require: false
+end

@@ -79,3 +79,120 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+---
+# ArgoCD ApplicationSet — STAGING environment (primary cluster, eu-central-1).
+#
+# Uses a `files` generator (not `directories`) so an Application is only created
+# once a service has actually been promoted to staging — i.e. once
+# `services/<name>/helm-values-staging.yaml` exists. This avoids ArgoCD trying to
+# sync a values file that doesn't exist yet for services still dev-only.
+# The file is created by the `promote-to-staging` job in
+# .github/workflows/build-and-deploy.yml the first time a service is promoted.
+#
+# Apply: kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: idp-services-staging
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        revision: HEAD
+        files:
+          - path: "services/*/helm-values-staging.yaml"
+  template:
+    metadata:
+      name: "{{path[1]}}-staging"
+      labels:
+        environment: staging
+        service: "{{path[1]}}"
+        region: eu-central-1
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+          targetRevision: HEAD
+          path: helm/service-template
+          helm:
+            parameters:
+              - name: backstage.kubernetesId
+                value: "{{path[1]}}"
+              - name: global.region
+                value: eu-central-1
+            valueFiles:
+              - $values/services/{{path[1]}}/helm-values-staging.yaml
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: services-staging
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+---
+# ArgoCD ApplicationSet — PRODUCTION environment (primary cluster, eu-central-1).
+#
+# Same file-existence gating as staging: only services with
+# `services/<name>/helm-values-prod.yaml` get a production Application. That file
+# is created by the `promote-to-production` job in
+# .github/workflows/build-and-deploy.yml, which only runs after a staging smoke
+# test passes and requires a human to merge the promotion PR — see
+# docs/sre-reliability.md#multi-environment-gitops-promotion.
+#
+# Apply: kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: idp-services-prod
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        revision: HEAD
+        files:
+          - path: "services/*/helm-values-prod.yaml"
+  template:
+    metadata:
+      name: "{{path[1]}}-prod"
+      labels:
+        environment: prod
+        service: "{{path[1]}}"
+        region: eu-central-1
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+          targetRevision: HEAD
+          path: helm/service-template
+          helm:
+            parameters:
+              - name: backstage.kubernetesId
+                value: "{{path[1]}}"
+              - name: global.region
+                value: eu-central-1
+            valueFiles:
+              - $values/services/{{path[1]}}/helm-values-prod.yaml
+        - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: services-prod
+      syncPolicy:
+        automated:
+          prune: true
+          # No selfHeal in prod: an out-of-band manual rollback (e.g. `argocd app rollback`
+          # during an incident) should not be immediately reverted by ArgoCD auto-sync.
+          # Re-sync explicitly once the fix is committed.
+          selfHeal: false
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -97,9 +97,32 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest httpx pytest-cov
+        run: pip install -r requirements.txt pytest httpx pytest-cov pytest-testmon pyyaml
 
-      - name: Run tests with coverage (70% threshold)
+      # Test-impact analysis: on PRs, pytest-testmon runs only the tests whose
+      # coverage overlaps the changed lines — not the full suite. This is what
+      # keeps CI fast as the suite grows toward thousands of tests; a full run
+      # with the 70% coverage gate still runs on every push to main, so nothing
+      # merges without the complete suite passing. See docs/test-impact-analysis.md.
+      - name: Restore testmon cache
+        if: github.event_name == 'pull_request'
+        uses: actions/cache@v4
+        with:
+          path: .testmondata
+          key: testmon-${{ github.base_ref }}-${{ github.run_id }}
+          restore-keys: |
+            testmon-${{ github.base_ref }}-
+            testmon-
+
+      - name: Run impacted tests only (PR — pytest-testmon)
+        if: github.event_name == 'pull_request'
+        run: |
+          pytest -v --testmon --junit-xml=junit.xml; status=$?
+          # status 5 = no impacted tests selected; accept it (e.g. docs-only PR)
+          [ "$status" -eq 0 ] || [ "$status" -eq 5 ]
+
+      - name: Run full suite with coverage (70% threshold) — push to main
+        if: github.event_name != 'pull_request'
         run: |
           pytest -v \
             --cov=src \

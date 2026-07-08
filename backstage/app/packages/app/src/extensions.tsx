@@ -48,10 +48,18 @@ import AddCommentIcon from '@material-ui/icons/AddComment';
 import SendIcon from '@material-ui/icons/Send';
 import SearchIcon from '@material-ui/icons/Search';
 import Chip from '@material-ui/core/Chip';
+import Divider from '@material-ui/core/Divider';
+import Drawer from '@material-ui/core/Drawer';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import Link from '@material-ui/core/Link';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemText from '@material-ui/core/ListItemText';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import CloseIcon from '@material-ui/icons/Close';
+import DeleteIcon from '@material-ui/icons/Delete';
+import HistoryIcon from '@material-ui/icons/History';
 
 // ── FinOps / Cost Overview page ───────────────────────────────────────────────
 // Queries OpenCost via the Backstage proxy (/api/proxy/opencost).
@@ -311,6 +319,14 @@ interface ChatMessage {
   text: string;
 }
 
+interface SavedConversation {
+  id: string;
+  title: string;
+  timestamp: number;
+  messages: ChatMessage[];
+  contextId: string | null;
+}
+
 function AiAssistantPage() {
   const fetchApi = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
@@ -323,17 +339,23 @@ function AiAssistantPage() {
   // contextId persists the KAgent session across turns so the agent keeps history
   const contextIdRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<SavedConversation[]>([]);
 
-  // Load user identity once, then restore their stored session from localStorage
+  // Load user identity once, then restore their stored session and history from localStorage
   useEffect(() => {
     identityApi.getBackstageIdentity().then(identity => {
       const ref = identity.userEntityRef;
       setUserRef(ref);
       const storedContextId = localStorage.getItem(`ai-chat-ctx:${ref}`);
       const storedMessages = localStorage.getItem(`ai-chat-msgs:${ref}`);
+      const storedHistory = localStorage.getItem(`ai-chat-history:${ref}`);
       if (storedContextId) contextIdRef.current = storedContextId;
       if (storedMessages) {
         try { setMessages(JSON.parse(storedMessages)); } catch { /* ignore */ }
+      }
+      if (storedHistory) {
+        try { setChatHistory(JSON.parse(storedHistory)); } catch { /* ignore */ }
       }
     });
   }, [identityApi]);
@@ -534,6 +556,21 @@ function AiAssistantPage() {
 
   const newChat = () => {
     if (loading) return;
+    if (messages.length > 0 && userRef) {
+      const title = messages.find(m => m.role === 'user')?.text.slice(0, 60) ?? 'Untitled';
+      const entry: SavedConversation = {
+        id: uuidv4(),
+        title,
+        timestamp: Date.now(),
+        messages: [...messages],
+        contextId: contextIdRef.current,
+      };
+      setChatHistory(prev => {
+        const updated = [entry, ...prev].slice(0, 50);
+        localStorage.setItem(`ai-chat-history:${userRef}`, JSON.stringify(updated));
+        return updated;
+      });
+    }
     setMessages([]);
     setInput('');
     setStatusText('');
@@ -544,13 +581,45 @@ function AiAssistantPage() {
     }
   };
 
+  const restoreConversation = (entry: SavedConversation) => {
+    if (loading) return;
+    setMessages(entry.messages);
+    contextIdRef.current = entry.contextId;
+    if (userRef) {
+      localStorage.setItem(`ai-chat-msgs:${userRef}`, JSON.stringify(entry.messages));
+      if (entry.contextId) localStorage.setItem(`ai-chat-ctx:${userRef}`, entry.contextId);
+    }
+    setHistoryOpen(false);
+  };
+
+  const deleteHistoryItem = (id: string) => {
+    setChatHistory(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      if (userRef) localStorage.setItem(`ai-chat-history:${userRef}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
     <Page themeId="tool">
       <Header title="AI Assistant" subtitle="Powered by KAgent · platform-assistant" />
       <Content>
         <Box display="flex" flexDirection="column" height="calc(100vh - 180px)">
           {/* Toolbar */}
-          <Box display="flex" justifyContent="flex-end" mb={1}>
+          <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1} style={{ gap: 8 }}>
+            <Tooltip title="Browse past conversations">
+              <span>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<HistoryIcon />}
+                  onClick={() => setHistoryOpen(true)}
+                  disabled={loading}
+                >
+                  History
+                </Button>
+              </span>
+            </Tooltip>
             <Tooltip title="Start a new conversation">
               <span>
                 <Button
@@ -692,6 +761,53 @@ function AiAssistantPage() {
             />
           </Box>
         </Box>
+
+        {/* Chat history drawer — scoped to the logged-in user */}
+        <Drawer anchor="right" open={historyOpen} onClose={() => setHistoryOpen(false)}>
+          <Box width={340} display="flex" flexDirection="column" height="100%">
+            <Box display="flex" alignItems="center" justifyContent="space-between" px={2} py={1.5}>
+              <Typography variant="h6">Chat History</Typography>
+              <IconButton size="small" onClick={() => setHistoryOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
+            <Divider />
+            {chatHistory.length === 0 ? (
+              <Box p={2}>
+                <Typography variant="body2" color="textSecondary">
+                  No saved conversations yet. Click <strong>New Chat</strong> to save the current conversation and start a fresh one.
+                </Typography>
+              </Box>
+            ) : (
+              <List style={{ overflow: 'auto', flex: 1, paddingTop: 0 }}>
+                {chatHistory.map(entry => (
+                  <ListItem
+                    key={entry.id}
+                    button
+                    onClick={() => restoreConversation(entry)}
+                    style={{ alignItems: 'flex-start', paddingRight: 40 }}
+                  >
+                    <ListItemText
+                      primary={entry.title}
+                      secondary={new Date(entry.timestamp).toLocaleString()}
+                      primaryTypographyProps={{ variant: 'body2', noWrap: true, title: entry.title }}
+                      secondaryTypographyProps={{ variant: 'caption' }}
+                    />
+                    <Tooltip title="Delete">
+                      <IconButton
+                        size="small"
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}
+                        onClick={e => { e.stopPropagation(); deleteHistoryItem(entry.id); }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+        </Drawer>
       </Content>
     </Page>
   );

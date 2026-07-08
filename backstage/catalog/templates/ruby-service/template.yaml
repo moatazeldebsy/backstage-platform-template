@@ -1,0 +1,198 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: ruby-service
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  title: Ruby Sinatra Service
+  description: Scaffold a Ruby Sinatra service with CI/CD and Helm deployment — the golden path for services extracted from the Ruby monolith
+  tags:
+    - ruby
+    - sinatra
+    - golden-path
+    - local
+    - aws
+    - v1
+    - blessed
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service Details
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Service Name
+          type: string
+          description: Unique service name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Infrastructure
+      properties:
+        port:
+          title: Container Port
+          type: integer
+          default: 4567
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Team cost center code for OpenCost attribution (e.g. eng-platform, eng-product)"
+          default: eng-platform
+        pagerdutyServiceId:
+          title: PagerDuty Service ID
+          type: string
+          description: "Optional. Find this in PagerDuty under Services → your service → ID. Example: P1ABC23"
+          ui:help: "Leave blank if not using PagerDuty."
+        jiraProjectKey:
+          title: Jira Project Key
+          type: string
+          description: "Optional. Your Jira project key (e.g. PLAT, ENG). Enables the Jira tab in Backstage."
+          ui:help: "Leave blank if not using Jira."
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub. If you get a 'name already exists' error, choose a different name."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+    - title: Deployment Target
+      properties:
+        deployTarget:
+          title: Where will this service run?
+          type: string
+          default: local
+          enum: [local, aws]
+          enumNames: ['Local (Kind / Rancher Desktop)', 'AWS (EKS)']
+          ui:widget: radio
+        awsRoleArn:
+          title: AWS IAM Role ARN for CI/CD (AWS only)
+          type: string
+          description: "OIDC role ARN used by GitHub Actions to push images to ECR. Example: arn:aws:iam::123456789012:role/idp-mvp-github-actions"
+          ui:help: "Leave blank for local deployments."
+
+  steps:
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          port: ${{ parameters.port }}
+          costCenter: ${{ parameters.costCenter }}
+          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
+          jiraProjectKey: ${{ parameters.jiraProjectKey }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - ruby
+          - sinatra
+          - idp-service
+
+    - id: set-repo-secrets
+      name: Configure CI/CD Secrets
+      action: idp:repo:set-secrets
+      input:
+        repoUrl: ${{ steps.publish.output.remoteUrl }}
+        secrets:
+          AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    - id: register-api
+      name: Register API in Catalog
+      action: catalog:register
+      continueOnError: true
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/api-info.yaml'
+
+    - id: fetch-platform-values
+      name: Prepare Platform GitOps Values
+      action: fetch:template
+      input:
+        url: ./platform-values
+        targetPath: ./platform-values
+        values:
+          name: ${{ parameters.name }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          port: ${{ parameters.port }}
+          owner: ${{ parameters.owner }}
+          costCenter: ${{ parameters.costCenter }}
+
+    - id: platform-pr
+      name: Open Platform GitOps PR
+      action: publish:github:pull-request
+      continueOnError: true
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        title: "feat: onboard ${{ parameters.name }} to GitOps"
+        branchName: feat/onboard-${{ parameters.name }}
+        description: |
+          Adds `services/${{ parameters.name }}/` to the platform repo.
+
+          ArgoCD ApplicationSet will auto-discover and deploy this service
+          to `services-dev` namespace once merged.
+        sourcePath: ./platform-values
+        targetPath: services/${{ parameters.name }}
+
+    - id: seed-image
+      name: Seed placeholder image in local registry
+      if: ${{ parameters.deployTarget === 'local' }}
+      action: idp:seed-image
+      input:
+        serviceName: ${{ parameters.name }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+      - title: Open API
+        icon: code
+        entityRef: ${{ steps.register-api.output.entityRef }}
+      - title: Open Platform GitOps PR
+        url: ${{ steps['platform-pr'].output.remoteUrl }}

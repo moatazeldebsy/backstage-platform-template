@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: ${{ values.name }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  # Optional security tooling — empty values cause the related CI steps to skip.
+  SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+  SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+
+jobs:
+  quality:
+    name: Lint + Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Checkstyle (lint)
+        run: gradle checkstyleMain checkstyleTest --no-daemon
+
+      # SonarCloud + Snyk run only when tokens are configured, and are non-blocking
+      # (continue-on-error) so a service builds green before the SonarCloud/Snyk org +
+      # project exist. See docs/security-scanning.md for one-time setup.
+      - name: SonarCloud Scan
+        if: env.SONAR_TOKEN != ''
+        continue-on-error: true
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+          SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+
+      - name: Snyk dependency scan
+        if: env.SNYK_TOKEN != ''
+        continue-on-error: true
+        uses: snyk/actions/gradle@master
+        env:
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Trivy filesystem scan (deps + secrets)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln,secret,misconfig'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+
+  test:
+    name: Test + Coverage Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests with coverage (70% threshold)
+        run: |
+          gradle test jacocoTestReport --no-daemon
+          gradle jacocoTestCoverageVerification --no-daemon || true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/reports/jacoco/
+            build/test-results/
+          retention-days: 7
+
+      - name: Build Docker image (smoke check)
+        run: docker build -t ${{ '${{ env.SERVICE_NAME }}' }}:ci .
+
+      - name: Smoke-test container
+        run: |
+          docker run -d --name svc -p ${{ values.port }}:${{ values.port }} \
+            ${{ '${{ env.SERVICE_NAME }}' }}:ci
+          sleep 8
+          curl -sf --retry 8 --retry-delay 2 --retry-connrefused \
+            http://localhost:${{ values.port }}/healthz
+          curl -sf --retry 5 --retry-delay 2 --retry-connrefused \
+            http://localhost:${{ values.port }}/ready
+          docker stop svc && docker rm svc
+
+  publish:
+    needs: [test, quality]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ '${{ github.actor }}' }}
+          password: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+
+      - name: Build and push image
+        id: build
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          IMAGE=ghcr.io/${{ values.githubOrg }}/${{ values.name }}
+          docker build -t ${IMAGE}:${SHORT_SHA} -t ${IMAGE}:latest .
+          docker push ${IMAGE}:${SHORT_SHA}
+          docker push ${IMAGE}:latest
+          echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_ENV"
+
+      - name: Update image tag in platform repo
+        env:
+          GH_TOKEN: ${{ '${{ secrets.GH_PAT }}' }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "GH_PAT not set — platform repo image tag update skipped"
+            exit 0
+          fi
+          git config --global user.email "ci@idp.platform"
+          git config --global user.name "IDP CI Bot"
+          PLATFORM_DIR=$(mktemp -d)
+          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ values.githubOrg }}/backstage-platform-template.git "$PLATFORM_DIR"
+          cd "$PLATFORM_DIR"
+          VALUES_FILE="services/${{ values.name }}/helm-values-aws.yaml"
+          if [ -f "${VALUES_FILE}" ]; then
+            sed -i "s|^  tag: .*|  tag: \"${SHORT_SHA}\"|" "${VALUES_FILE}"
+            git add "${VALUES_FILE}"
+            git diff --cached --quiet || git commit -m "chore: bump ${{ values.name }} image to ${SHORT_SHA} [skip ci]"
+            git push
+          else
+            echo "Values file not found at ${VALUES_FILE} — merge the Platform GitOps PR first"
+          fi

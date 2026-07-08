@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: flaky-test-quarantine-sync
+  namespace: monitoring
+  labels:
+    app: flaky-test-quarantine-sync
+    team: platform-team
+spec:
+  # Deliberately daily, not every 30 minutes like the exporter — this job opens
+  # PRs against service repos, and a 30-minute cadence would spam reviewers.
+  schedule: "0 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: flaky-test-quarantine-sync
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: quarantine-sync
+              image: python:3.12-slim
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  pip install requests pyyaml --quiet && python /app/quarantine.py
+              env:
+                - name: BACKSTAGE_URL
+                  value: "http://backstage.default.svc.cluster.local:3000"
+                - name: BACKSTAGE_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-catalog-exporter-token
+                      key: token
+                      optional: true
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: flaky-test-exporter-github-token
+                      key: token
+                - name: WINDOW_SIZE
+                  value: "10"
+              volumeMounts:
+                - name: exporter-script
+                  mountPath: /app
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 384Mi
+          volumes:
+            - name: exporter-script
+              configMap:
+                name: flaky-test-exporter-script
+# Reuses the same flaky-test-exporter-script ConfigMap as cronjob.yaml — it must
+# contain BOTH exporter.py and quarantine.py, since quarantine.py imports
+# classification logic (collect(), ServiceFlakiness) from exporter.py:
+#   kubectl create configmap flaky-test-exporter-script \
+#     --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+#     --from-file=quarantine.py=observability/flaky-test-exporter/quarantine.py \
+#     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+# Same GITHUB_TOKEN as the exporter — needs `repo` scope (already required) to
+# create branches, commit files, and open PRs, not just read Actions artifacts.

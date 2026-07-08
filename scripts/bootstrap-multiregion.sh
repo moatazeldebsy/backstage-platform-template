@@ -274,7 +274,7 @@ if [[ "$SKIP_OBS" != "true" ]]; then
   kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml   --context hub
   kubectl apply -f kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml  --context hub
 
-  tmp_obs=$(mktemp /tmp/prometheus-stack-values.XXXXXX.yaml)
+  tmp_obs=$(mktemp /tmp/prometheus-stack-values.XXXXXX)
   sed \
     -e "s|YOUR_AWS_REGION|${PRIMARY_REGION}|g" \
     -e "s|GRAFANA_IRSA_ROLE_ARN|${GRAFANA_ROLE_ARN}|g" \

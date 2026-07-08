@@ -1423,9 +1423,11 @@ if ! $SKIP_OBS; then
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
     kubectl create configmap flaky-test-exporter-script \
       --from-file=exporter.py="${ROOT_DIR}/observability/flaky-test-exporter/exporter.py" \
+      --from-file=quarantine.py="${ROOT_DIR}/observability/flaky-test-exporter/quarantine.py" \
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
     kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/cronjob.yaml"
-    log "  Flaky-Test Exporter deployed."
+    kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/quarantine-cronjob.yaml"
+    log "  Flaky-Test Exporter + Quarantine Sync deployed."
   ) || warn "Step 11a (Flaky-Test Exporter) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 else
   log "Step 11a: Skipping Flaky-Test Exporter (--skip-obs)."

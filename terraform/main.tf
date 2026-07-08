@@ -31,7 +31,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket               = "idp-mvp-terraform-state-YOUR_AWS_ACCOUNT_ID"
+    bucket               = "idp-mvp-terraform-state-967825954374"
     key                  = "terraform.tfstate"
     workspace_key_prefix = "platform"  # state path: platform/<workspace>/terraform.tfstate
     region               = "us-east-1" # state bucket always in us-east-1

@@ -62,9 +62,11 @@ spec:
               configMap:
                 name: flaky-test-exporter-script
 # The flaky-test-exporter-script ConfigMap is created separately from the
-# real exporter.py source (see scripts/bootstrap-local.sh / bootstrap.sh):
+# real exporter.py + quarantine.py source (see scripts/bootstrap-local.sh / bootstrap.sh):
 #   kubectl create configmap flaky-test-exporter-script \
 #     --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+#     --from-file=quarantine.py=observability/flaky-test-exporter/quarantine.py \
 #     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 # Do NOT define it here — applying this file would overwrite the real script
-# with a placeholder.
+# with a placeholder. See also quarantine-cronjob.yaml, which mounts the same
+# ConfigMap to run quarantine.py on a daily schedule.

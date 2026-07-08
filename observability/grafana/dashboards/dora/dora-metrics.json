@@ -11,7 +11,7 @@
   "annotations": {
     "list": []
   },
-  "description": "DORA (DevOps Research and Assessment) metrics \u2014 deployment frequency, lead time, change failure rate, and mean time to restore. Data source: Prometheus Pushgateway (dora-exporter CronJob).",
+  "description": "DORA (DevOps Research and Assessment) metrics \u2014 deployment frequency, lead time, change failure rate, and mean time to restore. Data source: Prometheus Pushgateway (dora-exporter CronJob). Use the Team/Service variables above to drill down to a single team's services (team\u2192service join via idp_scorecard_check_passed{service,team}, since dora_* metrics themselves only carry a service label).",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -395,7 +395,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (service) (dora_deploy_frequency_per_day{service!=\"all-services\"})",
+          "expr": "max by (service) (dora_deploy_frequency_per_day{service!=\"all-services\", service=~\"$service\"})",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -492,7 +492,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (service) (dora_lead_time_minutes{service!=\"all-services\"})",
+          "expr": "max by (service) (dora_lead_time_minutes{service!=\"all-services\", service=~\"$service\"})",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -601,7 +601,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (service) (dora_change_failure_rate_percent{service!=\"all-services\"})",
+          "expr": "max by (service) (dora_change_failure_rate_percent{service!=\"all-services\", service=~\"$service\"})",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -698,7 +698,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (service) (dora_mttr_minutes{service!=\"all-services\"})",
+          "expr": "max by (service) (dora_mttr_minutes{service!=\"all-services\", service=~\"$service\"})",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -948,7 +948,52 @@
     "devops"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "team",
+        "type": "query",
+        "label": "Team",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(idp_scorecard_check_passed, team)",
+          "refId": "team-variable"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "service",
+        "type": "query",
+        "label": "Service",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(idp_scorecard_check_passed{team=~\"$team\"}, service)",
+          "refId": "service-variable"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      }
+    ]
   },
   "time": {
     "from": "now-7d",
@@ -958,5 +1003,5 @@
   "timezone": "browser",
   "title": "DORA Metrics",
   "uid": "dora-metrics-idp",
-  "version": 2
+  "version": 3
 }

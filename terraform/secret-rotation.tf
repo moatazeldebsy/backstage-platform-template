@@ -18,23 +18,10 @@
 # - Updates the secret only if valid
 # - Notifies the team of rotation
 
-resource "aws_secretsmanager_secret" "kagent_apikey" {
-  name                    = "${var.cluster_name}/kagent"
-  description             = "KAgent API keys and configuration"
-  recovery_window_in_days = 7
-
-  tags = {
-    Name = "${var.cluster_name}-kagent-secrets"
-  }
-}
-
-# Secret version with placeholder (replace with actual key)
-resource "aws_secretsmanager_secret_version" "kagent_apikey" {
-  secret_id = aws_secretsmanager_secret.kagent_apikey.id
-  secret_string = jsonencode({
-    ANTHROPIC_API_KEY = var.anthropic_api_key != "" ? var.anthropic_api_key : "REPLACE_ME"
-  })
-}
+# NOTE: the KAgent secret itself (idp-mvp/kagent) is managed by
+# aws_secretsmanager_secret.kagent in secrets.tf — do not redeclare it here,
+# AWS Secrets Manager names must be unique and a second resource targeting the
+# same name will fail with ResourceExistsException.
 
 # ── GitHub Token Rotation ─────────────────────────────────────────────────────
 # GitHub tokens should be rotated monthly
@@ -75,7 +62,7 @@ resource "aws_cloudwatch_metric_alarm" "secret_rotation_failure" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    SecretId = aws_secretsmanager_secret.kagent_apikey.id
+    SecretId = aws_secretsmanager_secret.kagent.id
   }
 
   # SNS notification

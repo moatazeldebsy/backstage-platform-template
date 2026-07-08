@@ -28,17 +28,17 @@ WARN=0
 # Helper functions
 check_pass() {
     echo -e "${GREEN}✅${NC} $1"
-    ((PASS++))
+    PASS=$((PASS + 1))
 }
 
 check_fail() {
     echo -e "${RED}❌${NC} $1"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 }
 
 check_warn() {
     echo -e "${YELLOW}⚠️ ${NC} $1 (optional)"
-    ((WARN++))
+    WARN=$((WARN + 1))
 }
 
 echo "┌─────────────────────────────────────────────────────────┐"
@@ -278,7 +278,13 @@ echo "└───────────────────────�
 tools=("aws" "terraform" "kubectl" "helm" "docker" "jq")
 for tool in "${tools[@]}"; do
     if command -v "$tool" &>/dev/null; then
-        version=$($tool --version 2>&1 | head -1)
+        if [[ "$tool" == "kubectl" ]]; then
+            version=$(kubectl version --client 2>&1 | head -1)
+        elif [[ "$tool" == "helm" ]]; then
+            version=$(helm version --short 2>&1 | head -1)
+        else
+            version=$("$tool" --version 2>&1 | head -1)
+        fi
         check_pass "$tool: $version"
     else
         check_fail "$tool: not installed"

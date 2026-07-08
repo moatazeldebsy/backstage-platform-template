@@ -14,6 +14,8 @@ spec:
     - ./templates/nodejs-service/template.yaml
     - ./templates/python-service/template.yaml
     - ./templates/go-service/template.yaml
+    - ./templates/ruby-service/template.yaml
+    - ./templates/jvm-service/template.yaml
     - ./templates/react-frontend/template.yaml
     # ── Blessed: Platform self-service ───────────────────────────────────────
     - ./templates/team-namespace/template.yaml

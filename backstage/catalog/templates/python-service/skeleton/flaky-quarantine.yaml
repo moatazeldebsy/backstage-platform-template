@@ -1,0 +1,6 @@
+# Auto-synced by the platform's flaky-test-quarantine-sync CronJob — see
+# docs/flaky-test-quarantine.md. Entries here are skipped (not deleted) by
+# tests/conftest.py so quarantined tests still run and report status, but
+# can't fail the build. Don't edit this by hand except to remove a fixed test;
+# the sync job will re-add anything still genuinely flaky.
+quarantined: []

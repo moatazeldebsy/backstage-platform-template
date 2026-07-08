@@ -404,11 +404,17 @@ else
   # --force-conflicts: Helm v4 uses server-side apply; the kubectl patches below
   # take field ownership on first install, so subsequent helm upgrades would
   # fail with "conflict with kubectl-patch" without this flag.
+  # The chart's default top-level `registry: cr.kagent.dev` (inherited by
+  # controller/ui/agent images whose own image.registry is empty) points at a
+  # registry that doesn't actually host these images — the real images live at
+  # ghcr.io (same host the OCI chart itself was just pulled from). Without this
+  # override, kagent-controller and kagent-ui sit in ImagePullBackOff forever.
   helm upgrade --install kagent \
     oci://ghcr.io/kagent-dev/kagent/helm/kagent \
     --version "${KAGENT_CHART_VERSION}" \
     --namespace kagent \
     --values "${KAGENT_VALUES}" \
+    --set registry=ghcr.io \
     --force-conflicts
   # Don't --wait here: built-in Agent CRDs (argo-rollouts, cilium, etc.) take
   # longer than helm's wait window to reach Ready. Poll the controller pod only.

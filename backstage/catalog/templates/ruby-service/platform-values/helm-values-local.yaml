@@ -1,0 +1,55 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/${{ values.name }}
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: ${{ values.port }}
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: ${{ values.name }}.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "${{ values.port }}"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"
+  cost-center: ${{ values.costCenter }}
+  environment: local
+
+metrics:
+  enabled: true
+
+env:
+  - name: RACK_ENV
+    value: development
+  - name: ENVIRONMENT
+    value: local
+
+labels:
+  backstage.io/kubernetes-id: ${{ values.name }}
+
+contractCheck:
+  enabled: true
+  mcpServerUrl: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
+  checkBreaking: true

@@ -16,6 +16,11 @@ module "eks" {
   # Enable selectively for production: ["api", "audit", "authenticator"]
   cluster_enabled_log_types = []
 
+  # We manage the log group ourselves (aws_cloudwatch_log_group.eks_cluster below) to
+  # control retention/tags — without this, the module creates its own with different
+  # settings and the two fight over the same log group name on every apply.
+  create_cloudwatch_log_group = false
+
   cluster_addons = {
     coredns    = { most_recent = true }
     kube-proxy = { most_recent = true }
