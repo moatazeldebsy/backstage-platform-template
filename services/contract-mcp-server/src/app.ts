@@ -1,6 +1,6 @@
 import express from 'express';
 import { type ContractStore } from './store.js';
-import { parseSpec, detectBreakingChanges, generateMigrationGuide, type AffectedConsumer } from './generator.js';
+import { parseSpec, detectBreakingChanges, generateMigrationGuide, type AffectedConsumer, type BreakingChange } from './generator.js';
 import { getAuditLog } from './audit.js';
 
 // ── Service registry helpers ──────────────────────────────────────────────
@@ -34,8 +34,20 @@ export function resolveServiceBaseUrl(
   return `http://${serviceName}.${namespace}.svc.cluster.local:${port}`;
 }
 
-export async function findAffectedConsumers(store: ContractStore, providerName: string, newPaths: string[]): Promise<AffectedConsumer[]> {
+// A consumer is affected either because a path it depends on disappeared
+// entirely (missingPaths), or because a path+method it depends on is still
+// present but changed in an incompatible way (affectedOperations) — e.g. a
+// required response field it relies on was removed or renamed. The latter
+// can't be seen from path lists alone, so it's cross-referenced against the
+// already-computed breaking-changes list for this exact provider transition.
+export async function findAffectedConsumers(
+  store: ContractStore,
+  providerName: string,
+  newPaths: string[],
+  breaking: BreakingChange[] = [],
+): Promise<AffectedConsumer[]> {
   const providerPathSet = new Set(newPaths);
+  const breakingOps = new Set(breaking.map(b => `${(b.method ?? '').toUpperCase()} ${b.path}`));
   const allServices = await store.listAll();
   const affectedConsumers: AffectedConsumer[] = [];
   for (const svc of allServices) {
@@ -43,7 +55,17 @@ export async function findAffectedConsumers(store: ContractStore, providerName: 
     const consumer = await store.getLatest(svc.serviceName);
     if (!consumer) continue;
     const missing = consumer.paths.filter(p => !providerPathSet.has(p));
-    if (missing.length > 0) affectedConsumers.push({ service: svc.serviceName, missingPaths: missing });
+    const consumerSpec = parseSpec(consumer.specJson);
+    const affectedOperations: string[] = [];
+    for (const [path, methods] of Object.entries(consumerSpec.paths ?? {})) {
+      for (const method of Object.keys(methods)) {
+        const key = `${method.toUpperCase()} ${path}`;
+        if (breakingOps.has(key)) affectedOperations.push(key);
+      }
+    }
+    if (missing.length > 0 || affectedOperations.length > 0) {
+      affectedConsumers.push({ service: svc.serviceName, missingPaths: missing, affectedOperations });
+    }
   }
   return affectedConsumers;
 }
@@ -152,17 +174,14 @@ export function createApp(
       const idx = summary?.versions.indexOf(version) ?? -1;
       const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
       const previousEntry = previousVersion ? await store.getByVersion(service, previousVersion) : undefined;
-      const targetPaths = new Set(target.paths);
-      const all = (await store.listAll()).filter(s => s.serviceName !== service);
-      const blockingConsumers = (await Promise.all(all.map(async s => {
-        const consumerEntry = await store.getLatest(s.serviceName);
-        if (!consumerEntry) return null;
-        const missing = consumerEntry.paths.filter(p => !targetPaths.has(p));
-        return missing.length > 0 ? { consumer: s.serviceName, consumerVersion: consumerEntry.version, missingPaths: missing } : null;
-      }))).filter((r): r is { consumer: string; consumerVersion: string; missingPaths: string[] } => r !== null);
       const breakingChanges = previousEntry
         ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(target.specJson)).breaking
         : [];
+      const affected = await findAffectedConsumers(store, service, target.paths, breakingChanges);
+      const blockingConsumers = await Promise.all(affected.map(async a => {
+        const consumerEntry = await store.getLatest(a.service);
+        return { consumer: a.service, consumerVersion: consumerEntry!.version, missingPaths: a.missingPaths, affectedOperations: a.affectedOperations ?? [] };
+      }));
       const safe = blockingConsumers.length === 0 && breakingChanges.length === 0;
       res.status(safe ? 200 : 409).json({ safe, service, version, previousVersion: previousVersion ?? null, blockingConsumers, breakingChanges });
     } catch (err) {
@@ -207,7 +226,7 @@ export function createApp(
       if (!fromEntry) { res.status(404).json({ error: `Version ${from_version} of "${service_name}" not found` }); return; }
       if (!toEntry) { res.status(404).json({ error: `Version ${to_version} of "${service_name}" not found` }); return; }
       const { breaking } = detectBreakingChanges(parseSpec(fromEntry.specJson), parseSpec(toEntry.specJson));
-      const affectedConsumers = await findAffectedConsumers(store, service_name, toEntry.paths);
+      const affectedConsumers = await findAffectedConsumers(store, service_name, toEntry.paths, breaking);
       const guide = generateMigrationGuide(service_name, from_version, to_version, breaking, affectedConsumers);
       res.set('Content-Type', 'text/markdown').send(guide);
     } catch (err) {

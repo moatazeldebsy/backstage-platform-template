@@ -387,6 +387,7 @@ export function detectBreakingChanges(
 export interface AffectedConsumer {
   service: string;
   missingPaths: string[];
+  affectedOperations?: string[];
 }
 
 export function generateMigrationGuide(
@@ -421,11 +422,20 @@ export function generateMigrationGuide(
     for (const consumer of affectedConsumers) {
       lines.push(`### ${consumer.service}`);
       lines.push('');
-      lines.push(`Currently depends on path(s) no longer satisfied by ${serviceName}@${toVersion}:`);
-      for (const path of consumer.missingPaths) {
-        lines.push(`- \`${path}\``);
+      if (consumer.missingPaths.length > 0) {
+        lines.push(`Currently depends on path(s) no longer satisfied by ${serviceName}@${toVersion}:`);
+        for (const path of consumer.missingPaths) {
+          lines.push(`- \`${path}\``);
+        }
+        lines.push('');
       }
-      lines.push('');
+      if (consumer.affectedOperations && consumer.affectedOperations.length > 0) {
+        lines.push(`Depends on operation(s) with breaking changes in ${serviceName}@${toVersion}:`);
+        for (const op of consumer.affectedOperations) {
+          lines.push(`- \`${op}\``);
+        }
+        lines.push('');
+      }
     }
   } else {
     lines.push('No currently registered consumers were found to be affected, but any unregistered or external callers of the removed/changed paths should be reviewed.');
