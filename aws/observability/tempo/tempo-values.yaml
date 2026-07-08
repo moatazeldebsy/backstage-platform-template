@@ -9,12 +9,25 @@
 #   - S3 bucket for Tempo traces (created by terraform/tempo.tf)
 #   - IRSA role for Tempo pods
 
+# Tempo's anonymous usage-report module tries to construct its own S3/minio
+# client separate from storage.trace.s3, and crashes on init ("failed to
+# create minio client: Endpoint: does not follow ip address or domain name
+# standards") since no custom endpoint is configured for plain AWS S3. Disable
+# the phone-home telemetry rather than working around its internal client.
+reportingEnabled: false
+
 storage:
   trace:
     backend: s3
     s3:
       bucket: "idp-mvp-tempo-traces"   # replaced by bootstrap.sh
       region: "us-east-1"              # replaced by bootstrap.sh
+      # Tempo's S3 backend uses the minio-go SDK, which requires an explicit,
+      # non-empty endpoint even for real AWS S3 (unlike the AWS SDK, it won't
+      # infer one from the region) — without this every module that touches
+      # trace storage fails at startup with "failed to create minio client:
+      # Endpoint: does not follow ip address or domain name standards".
+      endpoint: "s3.us-east-1.amazonaws.com"
     wal:
       path: /var/tempo/wal
 

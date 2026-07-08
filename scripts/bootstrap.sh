@@ -217,6 +217,27 @@ fi
 
 # ── Phase 4: Observability ────────────────────────────────────────────────────
 log "Phase 4: Installing observability stack (kube-prometheus-stack)..."
+
+# The EBS CSI driver addon provisions volumes but doesn't create any StorageClass
+# objects itself. aws/observability/prometheus-stack-values.yaml (and mlflow.yaml
+# in bootstrap-ai.sh) both request storageClassName: gp3 — without this, the
+# Prometheus StatefulSet never comes up (ReconciliationFailed: storage class "gp3"
+# does not exist) and everything after it in this script hangs waiting on --wait.
+kubectl apply -f - <<'EOF'
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+EOF
+
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
 helm repo update
 
@@ -225,27 +246,45 @@ GRAFANA_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw grafana_role_arn 2>/d
 
 # Create Grafana dashboard ConfigMaps before installing the chart so that
 # Grafana picks them up on first boot rather than requiring a pod restart.
+# --from-file on a directory only picks up files directly inside it, not
+# subdirectories — every dashboard JSON here lives one level deeper
+# (dashboards/idp/*.json), so pointing at the parent dir silently produced an
+# empty ConfigMap and the IDP Services dashboard never actually loaded.
 kubectl create configmap grafana-dashboards-idp \
-  --from-file=observability/grafana/dashboards/ \
+  --from-file=observability/grafana/dashboards/idp/ \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-finops-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml
+kubectl apply -f kubernetes/monitoring/grafana-ai-dashboard-configmap.yaml
 
 # Substitute region and Grafana IRSA ARN placeholders in the values file
-tmp_obs_values=$(mktemp /tmp/prometheus-stack-values-aws.XXXXXX.yaml)
+tmp_obs_values=$(mktemp /tmp/prometheus-stack-values-aws.XXXXXX)
 sed \
   -e "s|YOUR_AWS_REGION|${AWS_REGION}|g" \
   -e "s|GRAFANA_IRSA_ROLE_ARN|${GRAFANA_ROLE_ARN}|g" \
   aws/observability/prometheus-stack-values.yaml > "${tmp_obs_values}"
 
+# The Thanos sidecar block in prometheus-stack-values.yaml is V2 multi-region only
+# (it's shared with bootstrap-multiregion.sh) — its objectStorageConfig secret is
+# only ever created by terraform/global/thanos-config.tf, which this single-region
+# script never runs. Disable it here so single-region Prometheus doesn't wait
+# forever on a secret that will never exist in this deployment mode.
+
+# grafana.sidecar.datasources.defaultDatasourceEnabled=false in the shared values
+# file assumes aws/observability/grafana-multi-region-datasources.yaml replaces
+# the chart's auto-provisioned Prometheus datasource — but that file is only ever
+# applied by bootstrap-multiregion.sh. Without it, single-region Grafana ends up
+# with zero datasources. Re-enable the chart default here.
 helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
+  --set prometheus.prometheusSpec.thanos=null \
+  --set grafana.sidecar.datasources.defaultDatasourceEnabled=true \
   --wait --timeout 10m
 rm -f "${tmp_obs_values}"
 
@@ -341,38 +380,51 @@ fi # --skip-policies
 log "Phase 3.9: Installing Kyverno..."
 helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
 helm repo update kyverno
+# Chart 3.2.7's default cleanup-job image is bitnami/kubectl:1.28.5, which 404s —
+# Bitnami's 2025 image-policy change moved older versioned tags to the
+# bitnamilegacy/* org (docker.io/bitnami/kubectl now only carries `latest` and
+# digest tags). Do NOT override with registry.k8s.io/kubectl instead: that image
+# has no shell (Kyverno's job templates invoke /bin/bash directly) and runs as
+# root, which the CronJob-based cleanup jobs' runAsNonRoot requirement rejects.
+# bitnamilegacy/kubectl keeps the same non-root default and has a real shell.
 helm upgrade --install kyverno kyverno/kyverno \
   --namespace kyverno \
   --create-namespace \
   --version 3.2.7 \
   --set replicaCount=2 \
+  --set cleanupJobs.admissionReports.image.registry=docker.io \
+  --set cleanupJobs.admissionReports.image.repository=bitnamilegacy/kubectl \
+  --set cleanupJobs.admissionReports.image.tag=1.28.5 \
+  --set cleanupJobs.clusterAdmissionReports.image.registry=docker.io \
+  --set cleanupJobs.clusterAdmissionReports.image.repository=bitnamilegacy/kubectl \
+  --set cleanupJobs.clusterAdmissionReports.image.tag=1.28.5 \
+  --set cleanupJobs.ephemeralReports.image.registry=docker.io \
+  --set cleanupJobs.ephemeralReports.image.repository=bitnamilegacy/kubectl \
+  --set cleanupJobs.ephemeralReports.image.tag=1.28.5 \
+  --set cleanupJobs.clusterEphemeralReports.image.registry=docker.io \
+  --set cleanupJobs.clusterEphemeralReports.image.repository=bitnamilegacy/kubectl \
+  --set cleanupJobs.clusterEphemeralReports.image.tag=1.28.5 \
+  --set policyReportsCleanup.image.registry=docker.io \
+  --set policyReportsCleanup.image.repository=bitnamilegacy/kubectl \
+  --set policyReportsCleanup.image.tag=1.28.5 \
+  --set webhooksCleanup.image.registry=docker.io \
+  --set webhooksCleanup.image.repository=bitnamilegacy/kubectl \
+  --set webhooksCleanup.image.tag=1.28.5 \
   --set resources.requests.cpu=100m \
   --set resources.requests.memory=256Mi \
-  --set cleanupJobs.admissionReports.image.registry=registry.k8s.io \
-  --set cleanupJobs.admissionReports.image.repository=kubectl \
-  --set cleanupJobs.admissionReports.image.tag=v1.28.5 \
-  --set cleanupJobs.clusterAdmissionReports.image.registry=registry.k8s.io \
-  --set cleanupJobs.clusterAdmissionReports.image.repository=kubectl \
-  --set cleanupJobs.clusterAdmissionReports.image.tag=v1.28.5 \
-  --set cleanupJobs.ephemeralReports.image.registry=registry.k8s.io \
-  --set cleanupJobs.ephemeralReports.image.repository=kubectl \
-  --set cleanupJobs.ephemeralReports.image.tag=v1.28.5 \
-  --set cleanupJobs.clusterEphemeralReports.image.registry=registry.k8s.io \
-  --set cleanupJobs.clusterEphemeralReports.image.repository=kubectl \
-  --set cleanupJobs.clusterEphemeralReports.image.tag=v1.28.5 \
-  --set policyReportsCleanup.image.registry=registry.k8s.io \
-  --set policyReportsCleanup.image.repository=kubectl \
-  --set policyReportsCleanup.image.tag=v1.28.5 \
-  --set webhooksCleanup.image.registry=registry.k8s.io \
-  --set webhooksCleanup.image.repository=kubectl \
-  --set webhooksCleanup.image.tag=v1.28.5 \
   --wait --timeout 5m
 
 kubectl wait deployment kyverno-admission-controller \
   -n kyverno --for=condition=Available --timeout=120s
 
 kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml
-kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml
+# crossplane-team-label-policy.yaml validates against Crossplane CRD kinds (e.g.
+# S3Bucket) that don't exist yet — Crossplane itself isn't bootstrapped until
+# Phase 4.6a, and even then ArgoCD syncs its CRDs asynchronously. Don't let a
+# not-yet-registered CRD kill the whole script; this policy can be (re-)applied
+# any time after Crossplane's CRDs exist.
+kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml || \
+  log "  WARNING: crossplane-team-label-policy not applied yet (Crossplane CRDs not registered). Re-apply after Phase 4.6a: kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml"
 log "  Phase 3.9 complete: Kyverno + team policies installed."
 
 # ── Phase 4.4-pre: Argo Rollouts (progressive delivery) ─────────────────────
@@ -395,24 +447,37 @@ log "Phase 4.4-pre-b: Installing Loki + Promtail (log aggregation)..."
 helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
 helm repo update grafana
 
+LOKI_BUCKET=$(cd "${TF_DIR}" && terraform output -raw loki_chunks_bucket_name 2>/dev/null || echo "")
+LOKI_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw loki_role_arn 2>/dev/null || echo "")
+[[ -n "$LOKI_BUCKET" ]] || log "  WARNING: loki_chunks_bucket_name not found in Terraform outputs — Loki will fail to start."
+
 helm upgrade --install loki grafana/loki \
   --namespace monitoring \
   --values "${ROOT_DIR}/aws/observability/loki/loki-values.yaml" \
+  --set "loki.storage.bucketNames.chunks=${LOKI_BUCKET}" \
+  --set "loki.storage.bucketNames.ruler=${LOKI_BUCKET}" \
   --set "loki.storage.s3.region=${AWS_REGION}" \
+  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${LOKI_ROLE_ARN}" \
   --wait --timeout 8m || log "WARNING: Loki install had issues — check aws/observability/loki/loki-values.yaml (requires S3 bucket)"
 
 helm upgrade --install promtail grafana/promtail \
   --namespace monitoring \
   --values "${ROOT_DIR}/aws/observability/loki/promtail-values.yaml" \
-  --wait --timeout 3m
+  --wait --timeout 3m || log "WARNING: Promtail install had issues — non-fatal, log shipping just won't be active yet."
 log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
 
 # ── Phase 4.4-pre-c: Grafana Tempo (distributed tracing) ─────────────────────
 log "Phase 4.4-pre-c: Installing Grafana Tempo (distributed tracing)..."
+TEMPO_BUCKET=$(cd "${TF_DIR}" && terraform output -raw tempo_traces_bucket_name 2>/dev/null || echo "")
+TEMPO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw tempo_role_arn 2>/dev/null || echo "")
+[[ -n "$TEMPO_BUCKET" ]] || log "  WARNING: tempo_traces_bucket_name not found in Terraform outputs — Tempo will fail to start."
+
 helm upgrade --install tempo grafana/tempo-distributed \
   --namespace monitoring \
   --values "${ROOT_DIR}/aws/observability/tempo/tempo-values.yaml" \
+  --set "storage.trace.s3.bucket=${TEMPO_BUCKET}" \
   --set "storage.trace.s3.region=${AWS_REGION}" \
+  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${TEMPO_ROLE_ARN}" \
   --wait --timeout 8m || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
 log "  Tempo installed. Traces available in Grafana → Explore → Tempo datasource."
 
@@ -448,9 +513,12 @@ kubectl create secret generic flaky-test-exporter-github-token \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 kubectl create configmap flaky-test-exporter-script \
   --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+  --from-file=quarantine.py=observability/flaky-test-exporter/quarantine.py \
   -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f observability/flaky-test-exporter/cronjob.yaml
+kubectl apply -f observability/flaky-test-exporter/quarantine-cronjob.yaml
 log "  Flaky-Test Exporter deployed (scans GitHub Actions artifacts every 30m)."
+log "  Flaky-Test Quarantine Sync deployed (opens quarantine PRs daily at 06:00)."
 
 # ── Phase 4.4a: ServiceMonitor — Prometheus scraping for services namespaces ──
 log "Phase 4.4a: Applying ServiceMonitor for services namespaces..."
@@ -479,6 +547,16 @@ helm upgrade --install argocd argo/argo-cd \
   --timeout 5m
 
 log "  ArgoCD installed."
+
+# argocd-helm-values.yaml sets server.ingress.hosts: [] intending "match any
+# hostname via ALB DNS", but the argo-cd chart still renders a default
+# "argocd.example.com" host rule on the Ingress even with an empty hosts list —
+# ALB only routes requests whose Host header matches a rule, so hitting the
+# raw ALB hostname 404s until that placeholder host is removed.
+kubectl patch ingress argocd-server -n argocd --type=json \
+  -p='[{"op": "remove", "path": "/spec/rules/0/host"}]' 2>/dev/null \
+  || log "  WARNING: could not remove ArgoCD ingress placeholder host — check manually if the ALB URL 404s."
+
 ARGOCD_ADMIN_PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath='{.data.password}' | base64 --decode)
 log "  ArgoCD admin password: ${ARGOCD_ADMIN_PASSWORD}"
@@ -498,13 +576,25 @@ if [[ -n "$CROSSPLANE_ROLE_ARN" ]]; then
   if [[ "$CROSSPLANE_ROLE_ARN" != arn:aws:iam::* ]]; then
     err "crossplane_aws_role_arn doesn't look like an IAM role ARN: '${CROSSPLANE_ROLE_ARN}'"
   fi
-  log "  Substituting Crossplane IRSA role ARN into deployment-runtime-config..."
-  sed "s|IRSA_ROLE_ARN|${CROSSPLANE_ROLE_ARN}|g" \
-    aws/crossplane/providers/deployment-runtime-config.yaml \
-    | kubectl apply -f -
   log "  Applying Crossplane stack (core + providers + compositions) via ArgoCD..."
   kubectl apply -f aws/argocd/crossplane.yaml
   log "  Crossplane Applications registered. Check: kubectl get providers.pkg.crossplane.io"
+  # deployment-runtime-config.yaml uses the DeploymentRuntimeConfig CRD, which
+  # only exists once ArgoCD has synced Crossplane core (just triggered above,
+  # asynchronously) — wait for it rather than applying blind, and don't let a
+  # slow ArgoCD sync kill the rest of bootstrap; this substitution can be
+  # re-run any time once Crossplane is up.
+  log "  Waiting for Crossplane's DeploymentRuntimeConfig CRD (ArgoCD sync in progress)..."
+  if kubectl wait --for=condition=established --timeout=180s \
+      crd/deploymentruntimeconfigs.pkg.crossplane.io 2>/dev/null; then
+    log "  Substituting Crossplane IRSA role ARN into deployment-runtime-config..."
+    sed "s|IRSA_ROLE_ARN|${CROSSPLANE_ROLE_ARN}|g" \
+      aws/crossplane/providers/deployment-runtime-config.yaml \
+      | kubectl apply -f -
+  else
+    log "  WARNING: DeploymentRuntimeConfig CRD not ready yet — Crossplane core is still syncing via ArgoCD."
+    log "           Re-run once ready: sed \"s|IRSA_ROLE_ARN|${CROSSPLANE_ROLE_ARN}|g\" aws/crossplane/providers/deployment-runtime-config.yaml | kubectl apply -f -"
+  fi
 else
   log "  WARNING: crossplane_aws_role_arn not found in TF state — skipping Crossplane bootstrap."
   log "           Run 'terraform apply' first, then re-run this phase."

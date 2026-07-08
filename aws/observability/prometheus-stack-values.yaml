@@ -171,6 +171,11 @@ grafana:
           type: file
           options:
             path: /var/lib/grafana/dashboards/sre
+        - name: ai
+          folder: AI Platform
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/ai
 
   # ConfigMap names must match what bootstrap.sh creates via kubectl create configmap.
   # Each key must match the provider name above.
@@ -180,6 +185,7 @@ grafana:
     qa: grafana-qa-dashboard
     finops: grafana-dashboards-finops
     sre: grafana-dashboards-sre
+    ai: grafana-dashboards-ai
 
   # Lenient probes — Grafana can be slow to start when loading dashboard ConfigMaps.
   readinessProbe:
