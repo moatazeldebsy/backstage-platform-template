@@ -82,7 +82,7 @@ env:
   - name: DYNAMO_TABLE
     value: "contract-registry"
   - name: AWS_REGION
-    value: "eu-central-1"
+    value: "us-east-1"
 
 securityContext:
   allowPrivilegeEscalation: false

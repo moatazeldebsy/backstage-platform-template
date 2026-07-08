@@ -204,7 +204,13 @@ resource "aws_iam_role_policy" "crossplane_dynamodb" {
           "dynamodb:UpdateContinuousBackups",
           "dynamodb:DescribeTimeToLive",
         ]
-        Resource = "arn:aws:dynamodb:*:*:table/idp-*"
+        # "idp-*" covers the platform's own conventionally-named tables;
+        # "contract-registry" is contract-mcp-server's DynamoTable claim,
+        # which doesn't follow that prefix.
+        Resource = [
+          "arn:aws:dynamodb:*:*:table/idp-*",
+          "arn:aws:dynamodb:*:*:table/contract-registry",
+        ]
       },
       {
         Sid      = "DynamoList"

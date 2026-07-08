@@ -75,6 +75,18 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
+  # The real IRSA role ARN is account-specific and substituted live by
+  # bootstrap.sh (`terraform output crossplane_aws_role_arn`) — it's never
+  # committed to git, so the committed manifest keeps the IRSA_ROLE_ARN
+  # placeholder. Without this, selfHeal reverts the live-patched annotation
+  # back to the placeholder every reconcile, breaking every AWS provider's
+  # credentials.
+  ignoreDifferences:
+    - group: pkg.crossplane.io
+      kind: DeploymentRuntimeConfig
+      name: provider-aws-irsa
+      jsonPointers:
+        - /spec/serviceAccountTemplate/metadata/annotations
   syncPolicy:
     automated:
       prune: true

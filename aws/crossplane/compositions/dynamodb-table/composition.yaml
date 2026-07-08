@@ -29,9 +29,9 @@ spec:
                 deletionPolicy: Orphan
                 forProvider:
                   pointInTimeRecovery:
-                    - enabled: true
+                    enabled: true
                   serverSideEncryption:
-                    - enabled: true
+                    enabled: true
                   tags:
                     "idp:provisioner": crossplane
                     "idp:resource": dynamodb-table
@@ -40,8 +40,6 @@ spec:
             patches:
               - fromFieldPath: spec.parameters.tableName
                 toFieldPath: metadata.name
-              - fromFieldPath: spec.parameters.tableName
-                toFieldPath: spec.forProvider.name
               - fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
               - fromFieldPath: spec.parameters.billingMode
@@ -51,7 +49,7 @@ spec:
               - fromFieldPath: spec.parameters.rangeKey
                 toFieldPath: spec.forProvider.rangeKey
               - fromFieldPath: spec.parameters.pointInTimeRecovery
-                toFieldPath: spec.forProvider.pointInTimeRecovery[0].enabled
+                toFieldPath: spec.forProvider.pointInTimeRecovery.enabled
               - fromFieldPath: spec.parameters.owner
                 toFieldPath: spec.forProvider.tags["idp:owner"]
               - fromFieldPath: spec.parameters.costCenter
