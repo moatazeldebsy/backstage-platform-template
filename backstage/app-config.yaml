@@ -129,6 +129,14 @@ catalog:
       rules:
         - allow: [Template]
     - type: file
+      target: /catalog/templates/ruby-service/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/jvm-service/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
       target: /catalog/templates/terraform-module/template.yaml
       rules:
         - allow: [Template]
@@ -264,17 +272,14 @@ catalog:
       target: /catalog/templates/testcontainers-suite/template.yaml
       rules:
         - allow: [Template]
-    # Contract-testing templates intentionally disabled (hidden from end users).
-    # To re-enable, uncomment the two blocks below and re-deploy the contract
-    # KAgent agent (see scripts/bootstrap-ai.sh).
-    # - type: file
-    #   target: /catalog/templates/contract-testing-suite/template.yaml
-    #   rules:
-    #     - allow: [Template]
-    # - type: file
-    #   target: /catalog/templates/enable-contract-testing/template.yaml
-    #   rules:
-    #     - allow: [Template]
+    - type: file
+      target: /catalog/templates/contract-testing-suite/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /catalog/templates/enable-contract-testing/template.yaml
+      rules:
+        - allow: [Template]
     - type: file
       target: /catalog/templates/unit-test-suite/template.yaml
       rules:
@@ -366,11 +371,10 @@ catalog:
       target: /catalog/services/idp-assistant/catalog-info.yaml
       rules:
         - allow: [Component]
-    # contract-mcp-server component intentionally hidden from the catalog.
-    # - type: file
-    #   target: /catalog/services/contract-mcp-server/catalog-info.yaml
-    #   rules:
-    #     - allow: [Component]
+    - type: file
+      target: /catalog/services/contract-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
     # ── AI / ML / MCP Platform ───────────────────────────────────────────────
     - type: file
       target: /catalog/templates/ai-agent-kagent/template.yaml

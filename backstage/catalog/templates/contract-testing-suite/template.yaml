@@ -217,11 +217,9 @@ spec:
 
           **What's included:**
           - `contract/openapi.yaml` — consumer's expected API contract (register with contract-mcp-server)
-          - `tests/${{ parameters.name }}.pact.spec.ts` — Pact consumer tests
-          - `.github/workflows/${{ parameters.name }}-contract.yml` — CI workflow with MCP registration
-          - `catalog-info.yaml` — Backstage entity registration
+          - `.github/workflows/contract.yml` — CI workflow that registers the contract on push to main and gates deploys with can-i-deploy
 
-          After merging, register the catalog entry via **Backstage → Catalog → Register existing component**.
+          Edit `contract/openapi.yaml` to describe the endpoints `${{ parameters.consumerName }}` depends on from `${{ parameters.providerName }}`, then merge.
 
           > Scaffolded via the IDP Contract Testing Platform
         sourcePath: .

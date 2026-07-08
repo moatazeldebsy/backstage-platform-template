@@ -99,6 +99,19 @@ spec:
           description: "OIDC role ARN used by GitHub Actions to push images to ECR. Example: arn:aws:iam::123456789012:role/idp-mvp-github-actions"
           ui:help: "Leave blank for local deployments."
 
+    - title: Contract Testing
+      properties:
+        contractServerUrl:
+          title: Contract MCP Server URL
+          type: string
+          description: "Optional. URL of the IDP contract registry for AI-assisted compatibility checks (e.g. https://contract-api.idp.yourcompany.com). Sets the CONTRACT_SERVER_URL repo variable read by contract-check.yml."
+          ui:help: "Leave blank to skip contract registration in CI."
+        contractToken:
+          title: Contract MCP Server Token
+          type: string
+          description: "Optional. Auth token for the contract registry, if required."
+          ui:help: "Leave blank if the contract server doesn't require auth."
+
   steps:
     - id: fetch-template
       name: Fetch Template
@@ -135,6 +148,15 @@ spec:
         repoUrl: ${{ steps.publish.output.remoteUrl }}
         secrets:
           AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
+          CONTRACT_TOKEN: ${{ parameters.contractToken }}
+
+    - id: set-repo-variables
+      name: Configure CI/CD Variables
+      action: idp:repo:set-variables
+      input:
+        repoUrl: ${{ steps.publish.output.remoteUrl }}
+        variables:
+          CONTRACT_SERVER_URL: ${{ parameters.contractServerUrl }}
 
     - id: register
       name: Register in Catalog

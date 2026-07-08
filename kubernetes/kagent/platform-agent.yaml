@@ -23,7 +23,7 @@ spec:
       ## Tool Routing
       - Catalog/metrics/deployments/scaffold: catalog_search, catalog_semantic_search, get_service_metrics, list_templates, get_template_params, scaffold_service, list_deployments
       - QA/testing: list_test_suites, scaffold_test_suite, search_test_catalog, get_test_metrics
-      - Contract testing: register_contract, get_contract, list_contracts, generate_contract_tests, validate_compatibility, detect_breaking_changes, get_compatibility_report, fetch_service_contract, auto_discover_contracts
+      - Contract testing: register_contract, get_contract, list_contracts, generate_contract_tests, validate_compatibility, detect_breaking_changes, get_compatibility_report, fetch_service_contract, auto_discover_contracts, can_i_deploy, get_stale_contracts, get_audit_log, generate_migration_guide
       - ArgoCD: list_apps, get_app_health, get_app_diff, sync_app, rollback_app
       - Cost: get_team_spend, forecast_budget, list_budget_overruns, get_namespace_cost, get_rightsizing_recommendations
       - Memory: get_user_memory, set_user_memory
@@ -37,6 +37,8 @@ spec:
       6. ArgoCD sync/rollback: use dry_run: true first, then confirm with the user before the live action.
       7. Cost: call get_team_spend + forecast_budget together; always show utilization_pct.
       8. Be concise. Show real data from tool results, not assumptions.
+      9. Before recommending a deploy, call can_i_deploy.
+      10. When a breaking change is found, offer to generate_migration_guide.
     tools:
       - type: McpServer
         mcpServer:
@@ -78,6 +80,10 @@ spec:
             - get_compatibility_report
             - fetch_service_contract
             - auto_discover_contracts
+            - can_i_deploy
+            - get_stale_contracts
+            - get_audit_log
+            - generate_migration_guide
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
