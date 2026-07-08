@@ -71,7 +71,10 @@ jobs:
       - name: Detect breaking changes
         if: env.SKIP_CONTRACT_CHECK != 'true' && env.PREV_VERSION != ''
         run: |
-          RESULT=$(curl -sf -X POST \
+          # The contract server responds 422 (not 200) when breaking changes
+          # are found, so -f can't be used here — it would abort before the
+          # JSON body (which we need to parse either way) is ever read.
+          RESULT=$(curl -s -X POST \
             "$CONTRACT_SERVER/api/breaking-changes" \
             -H "Content-Type: application/json" \
             -d "{\"service_name\":\"$SERVICE_NAME\",\"from_version\":\"$PREV_VERSION\",\"to_version\":\"$NEW_VERSION\"}")

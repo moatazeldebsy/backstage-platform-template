@@ -5,7 +5,7 @@ on:
     paths:
       - 'openapi.yaml'
       - 'openapi.json'
-      - 'src/**'
+      - 'app.rb'
 
 jobs:
   contract-check:
