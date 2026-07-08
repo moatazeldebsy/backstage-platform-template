@@ -14,10 +14,10 @@ data:
     app:
       title: IDP Developer Portal
       packages: all
-      extensions:
-        - page:catalog:
-            config:
-              path: /
+      # The custom platform-home page extension (packages/app/src/extensions.tsx)
+      # owns path: / — do NOT also point page:catalog at / here, the two
+      # conflict and whichever wins leaves the other's nav item dead-ending on
+      # the same page. Catalog keeps its own default path (/catalog).
 
     organization:
       name: My Organization
@@ -125,9 +125,6 @@ data:
       # Patched by bootstrap.sh after ALB is provisioned
       baseUrl: http://BACKSTAGE_ALB_URL
       extensions:
-        - page:catalog:
-            config:
-              path: /
         - page:kubernetes:
             disabled: true
 

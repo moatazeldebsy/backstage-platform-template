@@ -6,10 +6,10 @@ app:
   packages: all
 
   extensions:
-    # Catalog is the home page
-    - page:catalog:
-        config:
-          path: /
+    # The custom platform-home page extension (packages/app/src/extensions.tsx)
+    # owns path: / — do NOT also point page:catalog at / here, the two
+    # conflict and whichever wins leaves the other's nav item dead-ending on
+    # the same page. Catalog keeps its own default path (/catalog).
 
     # AI feature flags — set disabled: true in an env-specific config to hide
     # the AI Assistant and AI Search pages and their sidebar nav items.

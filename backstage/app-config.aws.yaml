@@ -4,9 +4,6 @@
 app:
   baseUrl: http://BACKSTAGE_ALB_URL
   extensions:
-    - page:catalog:
-        config:
-          path: /
     - page:kubernetes:
         disabled: true
 
