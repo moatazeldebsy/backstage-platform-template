@@ -23,6 +23,16 @@ data:
       name: My Organization
 
     backend:
+      # Backstage's UrlReader only fetches from hosts it recognizes as either
+      # a configured integration (integrations.github below is keyed to
+      # github.com, which does NOT cover raw.githubusercontent.com — a
+      # different hostname) or an explicit reading.allow entry. Without this,
+      # techRadar.url below 502s with "Unable to retrieve data from provided
+      # URL" and the Tech Radar page silently falls back to the plugin's
+      # built-in sample data (Lorem Ipsum descriptions, generic entries).
+      reading:
+        allow:
+          - host: raw.githubusercontent.com
       csp:
         connect-src: ["'self'", 'http:', 'https:']
         upgrade-insecure-requests: false
