@@ -334,9 +334,18 @@ function createServer(agentId: string = 'unknown') {
         const consumerEntry = await store.getLatest(consumer_name);
         if (!providerEntry) return { content: [{ type: 'text' as const, text: `Provider "${provider_name}" has no registered contract.` }] };
         if (!consumerEntry) return { content: [{ type: 'text' as const, text: `Consumer "${consumer_name}" has no registered contract. Register its expected API paths.` }] };
-        const providerPaths = new Set(providerEntry.paths);
-        const missingPaths = consumerEntry.paths.filter(p => !providerPaths.has(p));
-        const compatible = missingPaths.length === 0;
+        const summary = (await store.listAll()).find(s => s.serviceName === provider_name);
+        const idx = summary?.versions.indexOf(providerEntry.version) ?? -1;
+        const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
+        const previousEntry = previousVersion ? await store.getByVersion(provider_name, previousVersion) : undefined;
+        const breakingChanges = previousEntry
+          ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(providerEntry.specJson)).breaking
+          : [];
+        const affected = await findAffectedConsumers(store, provider_name, providerEntry.paths, breakingChanges);
+        const consumerAffected = affected.find(a => a.service === consumer_name);
+        const missingPaths = consumerAffected?.missingPaths ?? [];
+        const affectedOperations = consumerAffected?.affectedOperations ?? [];
+        const compatible = missingPaths.length === 0 && affectedOperations.length === 0;
         return {
           content: [{
             type: 'text' as const,
@@ -345,9 +354,10 @@ function createServer(agentId: string = 'unknown') {
               provider: { name: provider_name, version: providerEntry.version, pathCount: providerEntry.paths.length },
               consumer: { name: consumer_name, version: consumerEntry.version, pathCount: consumerEntry.paths.length },
               missingPaths,
+              affectedOperations,
               verdict: compatible
                 ? `✓ COMPATIBLE — ${provider_name} satisfies all ${consumerEntry.paths.length} paths expected by ${consumer_name}`
-                : `✗ INCOMPATIBLE — ${provider_name} is missing ${missingPaths.length} path(s) expected by ${consumer_name}`,
+                : `✗ INCOMPATIBLE — ${provider_name} is missing ${missingPaths.length} path(s) and/or has breaking changes on ${affectedOperations.length} operation(s) expected by ${consumer_name}`,
             }, null, 2),
           }],
         };
@@ -414,16 +424,34 @@ function createServer(agentId: string = 'unknown') {
       try {
         const providerEntry = await store.getLatest(service_name);
         if (!providerEntry) return { content: [{ type: 'text' as const, text: `Provider "${service_name}" has no registered contract.` }] };
-        const providerPaths = new Set(providerEntry.paths);
+        const summary = (await store.listAll()).find(s => s.serviceName === service_name);
+        const idx = summary?.versions.indexOf(providerEntry.version) ?? -1;
+        const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
+        const previousEntry = previousVersion ? await store.getByVersion(service_name, previousVersion) : undefined;
+        // Path existence alone misses field-level breaks (e.g. a required
+        // response property renamed on a path that still exists), so cross-
+        // reference each consumer against the breaking-changes list too —
+        // same logic as the can-i-deploy gate.
+        const breakingChanges = previousEntry
+          ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(providerEntry.specJson)).breaking
+          : [];
+        const affected = await findAffectedConsumers(store, service_name, providerEntry.paths, breakingChanges);
+        const affectedByService = new Map(affected.map(a => [a.service, a]));
         const all = (await store.listAll()).filter(s => s.serviceName !== service_name);
         const report = await Promise.all(all.map(async s => {
           const consumerEntry = await store.getLatest(s.serviceName);
           if (!consumerEntry) return { consumer: s.serviceName, compatible: null, detail: 'No contract registered' };
-          const missing = consumerEntry.paths.filter(p => !providerPaths.has(p));
+          const a = affectedByService.get(s.serviceName);
+          const missing = a?.missingPaths ?? [];
+          const affectedOperations = a?.affectedOperations ?? [];
+          const compatible = missing.length === 0 && affectedOperations.length === 0;
+          const detailParts = [];
+          if (missing.length > 0) detailParts.push(`Missing: ${missing.join(', ')}`);
+          if (affectedOperations.length > 0) detailParts.push(`Breaking change on: ${affectedOperations.join(', ')}`);
           return {
             consumer: s.serviceName, consumerVersion: consumerEntry.version,
-            compatible: missing.length === 0, missingPaths: missing,
-            detail: missing.length === 0 ? 'Compatible' : `Missing: ${missing.join(', ')}`,
+            compatible, missingPaths: missing, affectedOperations,
+            detail: compatible ? 'Compatible' : detailParts.join('; '),
           };
         }));
         return {
