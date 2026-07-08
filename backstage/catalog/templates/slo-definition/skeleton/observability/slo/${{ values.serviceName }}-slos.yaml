@@ -14,6 +14,10 @@ metadata:
   labels:
     app: ${{ values.serviceName }}
     team: ${{ values.team }}
+    # Prometheus Operator's Prometheus object only picks up PrometheusRules
+    # matching ruleSelector.matchLabels (release: prometheus) — without this,
+    # sloth's generated rules are applied but silently never evaluated.
+    release: prometheus
 spec:
   service: ${{ values.serviceName }}
   labels:
