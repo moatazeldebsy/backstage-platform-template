@@ -809,6 +809,26 @@ kubectl rollout restart deployment/contract-mcp-server -n services-dev
 
 ---
 
+## Trade-offs, Risks & Governance
+
+"AI-driven testing" covers two genuinely different code paths here, and the risk profile of each is different. Knowing which one you're relying on for a given decision matters.
+
+**Deterministic path (no LLM in the loop).** `generate_contract_tests`, `detect_breaking_changes`, and `validate_compatibility` are plain schema diffing over the registered OpenAPI documents (see `generator.ts` / `store.ts`) — same input, same output, every time. This is the part that's safe to gate CI on: `contract-check.yml` and the ArgoCD PreSync hook call these tools directly over HTTP, never through a model. There's no hallucination risk here because there's no model in this path.
+
+**Conversational path (LLM in the loop).** Asking `contract-assistant` *"Can I deploy payments-api 2.0.0-pr-4?"* goes through an LLM that calls `can_i_deploy` and then paraphrases the result. The tool call and its JSON result are deterministic; the sentence wrapped around it is not. Don't treat the chat answer as the source of truth — treat the underlying tool result (visible in the audit log, and in the raw CI check output) as the source of truth, and the chat answer as a convenience layer on top of it.
+
+**Failure modes to plan for:**
+- **Misreading a "safe" answer.** If a consumer's contract is stale or was never registered, `can_i_deploy` has nothing to check against and returns safe-by-omission, not safe-by-verification. Treat "no registered consumers" as "unknown," not "clear." (`get_stale_contracts` exists precisely to surface this before it bites you.)
+- **Non-determinism at the chat layer.** Two people asking the same question in different phrasing can get answers with different emphasis or wording, even though the underlying tool call is identical. For anything gating a merge or a deploy, the CI check / `can_i_deploy` tool result is authoritative — the chat transcript is not audit evidence.
+- **Incomplete or malformed specs.** `generate_contract_tests` degrades gracefully on missing schema fields (falls back to `like(null)` matchers), which means a sparse OpenAPI doc silently produces a weak test rather than an error. Weak tests pass more often than they should.
+
+**Governance today:**
+- **Audit trail.** Every register / breaking-change-detected / compatibility-check event is logged and queryable via `get_audit_log` — this is the mechanism for "who registered what, when," and it's what you'd pull for a post-incident review.
+- **Write authorization.** Setting `API_KEY` requires `X-Api-Key` on all write operations (`register_contract`, etc.), so anyone can *read* contracts but only holders of the key can register or overwrite one. In the current demo/POC deployment this is unset — fine for a conference cluster, not fine for production, where it should be scoped per-CI-pipeline via distinct keys or replaced with the `AWS_ROLE_ARN` OIDC path already wired into `contract-check.yml`.
+- **What's not governed yet.** There's no approval workflow for overwriting an existing registered version (last write wins), and no role distinction between "can register a contract" and "can override a breaking-change block." For a platform beyond POC scope, both would need to move from "technically possible" to "explicitly designed."
+
+---
+
 ## Troubleshooting
 
 **`fetch_service_contract` returns "No OpenAPI spec found"**  
