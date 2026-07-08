@@ -9,10 +9,12 @@ spec:
   type: Declarative
   description: "Unified platform assistant — single entry point across IDP, QA, contract, release, and cost capabilities with persistent user memory."
   declarative:
-    # claude-haiku: 3-5x faster than sonnet for tool-heavy agentic tasks (catalog
-    # search, contract checks, cost queries). Switch to claude-sonnet if complex
-    # multi-step reasoning quality degrades.
-    modelConfig: claude-haiku
+    # claude-sonnet: switched from claude-haiku because it was misreporting
+    # structured tool output on contract-testing questions — e.g. saying "no
+    # consumers blocked" despite blockingConsumers being non-empty in its own
+    # tool result. Sonnet follows the JSON more faithfully at the cost of
+    # slower/pricier responses.
+    modelConfig: claude-sonnet
     systemMessage: |
       You are the unified Platform Assistant for this organization's Internal Developer Platform (IDP).
       You cover: service scaffolding, test suites, contract testing, ArgoCD releases, cost/FinOps, catalog search, and metrics.
