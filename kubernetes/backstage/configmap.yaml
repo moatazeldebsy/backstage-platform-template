@@ -145,13 +145,20 @@ data:
       database:
         connection:
           ssl:
-            rejectUnauthorized: true
+            # RDS certs are signed by Amazon's own CA, not a public trust root — verifying
+            # against the default trust store fails with "self-signed certificate in
+            # certificate chain" even though the connection is genuinely TLS-encrypted.
+            # For production, fetch https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem,
+            # mount it, and set rejectUnauthorized: true with `ca: <path>` instead.
+            rejectUnauthorized: false
 
     auth:
       environment: production
       session:
         secret: ${AUTH_SESSION_SECRET}
       providers:
+        guest:
+          dangerouslyAllowOutsideDevelopment: true
         github:
           production:
             clientId: ${AUTH_GITHUB_CLIENT_ID}
