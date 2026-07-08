@@ -100,11 +100,26 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: BACKSTAGE_CATALOG_TOKEN
+            - name: ARGOCD_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: ARGOCD_AUTH_TOKEN
+                  optional: true
+            - name: GRAFANA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: GRAFANA_TOKEN
+                  optional: true
             - name: VOYAGE_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: backstage-secrets
                   key: VOYAGE_API_KEY
+                  # Not provisioned by terraform/secrets.tf — Voyage AI embeddings are an
+                  # optional feature (semantic search), not required for Backstage to start.
+                  optional: true
             - name: AUTH_SESSION_SECRET
               valueFrom:
                 secretKeyRef:

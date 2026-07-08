@@ -180,15 +180,18 @@ data:
         /grafana/api:
           target: http://prometheus-grafana.monitoring.svc.cluster.local:80
           changeOrigin: true
+          headers:
+            Authorization: Bearer ${GRAFANA_TOKEN}
         /prometheus:
           target: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
           changeOrigin: true
           pathRewrite:
             '^/api/proxy/prometheus': ''
-        /argocd/api:
+        /argocd:
           target: http://argocd-server.argocd.svc.cluster.local:80
           changeOrigin: true
-          allowedHeaders: ['Authorization']
+          headers:
+            Authorization: Bearer ${ARGOCD_AUTH_TOKEN}
         /kagent:
           target: http://kagent-ui.kagent.svc.cluster.local:8080
           changeOrigin: true

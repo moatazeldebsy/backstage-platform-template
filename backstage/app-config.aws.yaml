@@ -59,15 +59,18 @@ proxy:
     /grafana/api:
       target: http://prometheus-grafana.monitoring.svc.cluster.local:80
       changeOrigin: true
+      headers:
+        Authorization: Bearer ${GRAFANA_TOKEN}
     /prometheus:
       target: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/prometheus': ''
-    /argocd/api:
+    /argocd:
       target: http://argocd-server.argocd.svc.cluster.local:80
       changeOrigin: true
-      allowedHeaders: ['Authorization']
+      headers:
+        Authorization: Bearer ${ARGOCD_AUTH_TOKEN}
     /kagent:
       target: http://kagent-ui.kagent.svc.cluster.local:8080
       changeOrigin: true
@@ -304,12 +307,14 @@ kubernetes:
   clusterLocatorMethods:
     - type: config
       clusters:
-        - name: eks-eu-central-1
-          url: ${K8S_EU_CENTRAL_1_URL}
+        # Single-region dev deployment — the only cluster is this one. No CA
+        # bundle is provisioned for it, so we skip TLS verification rather than
+        # requiring a caData value that nothing populates.
+        - name: eks-us-east-1
+          url: ${K8S_CLUSTER_URL}
           authProvider: serviceAccount
-          serviceAccountToken: ${K8S_EU_CENTRAL_1_TOKEN}
-          skipTLSVerify: false
-          caData: ${K8S_EU_CENTRAL_1_CA_DATA}
+          serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
+          skipTLSVerify: true
           customResources:
             - group: argoproj.io
               apiVersion: v1alpha1
@@ -320,18 +325,9 @@ kubernetes:
             - group: idp.platform
               apiVersion: v1alpha1
               plural: dynamotables
-
-        - name: eks-us-east-1
-          url: ${K8S_US_EAST_1_URL}
-          authProvider: serviceAccount
-          serviceAccountToken: ${K8S_US_EAST_1_TOKEN}
-          skipTLSVerify: false
-          caData: ${K8S_US_EAST_1_CA_DATA}
-          dashboardApp: standard
-          customResources:
-            - group: argoproj.io
+            - group: kagent.dev
               apiVersion: v1alpha1
-              plural: rollouts
+              plural: agents
 
 permission:
   enabled: true
