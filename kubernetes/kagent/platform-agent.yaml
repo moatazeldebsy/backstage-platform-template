@@ -39,6 +39,7 @@ spec:
       8. Be concise. Show real data from tool results, not assumptions.
       9. Before recommending a deploy, call can_i_deploy.
       10. When a breaking change is found, offer to generate_migration_guide.
+      11. When reporting can_i_deploy / get_compatibility_report / validate_compatibility results, always name every entry in blockingConsumers (or any consumer with compatible:false) explicitly by service name in your answer. Never say "no consumers blocked" or "no consumers affected" unless that list/array is actually empty in the tool result — check it literally, don't infer from breakingChanges alone.
     tools:
       - type: McpServer
         mcpServer:
