@@ -53,7 +53,17 @@ jobs:
         env:
           CONTRACT_TOKEN: ${{ '${{ secrets.CONTRACT_TOKEN }}' }}
         run: |
-          NEW_VERSION="pr-${PR_NUMBER}-${GIT_SHA}"
+          # Candidate version = the spec's own semver plus the PR number, e.g.
+          # "1.1.0-pr-2". The PR number makes this unique per PR regardless of
+          # whether info.version was bumped, so two PRs can never collide —
+          # but bumping it is still expected practice, it just reads naturally
+          # ("can I deploy payments-api version 1.1.0-pr-2") instead of a SHA.
+          SERVICE_VERSION=$(yq -r '.info.version' "$SPEC_PATH")
+          if [ -z "$SERVICE_VERSION" ] || [ "$SERVICE_VERSION" = "null" ]; then
+            echo "Could not read .info.version from $SPEC_PATH — falling back to git SHA"
+            SERVICE_VERSION="0.0.0-${GIT_SHA}"
+          fi
+          NEW_VERSION="${SERVICE_VERSION}-pr-${PR_NUMBER}"
           echo "NEW_VERSION=${NEW_VERSION}" >> "$GITHUB_ENV"
 
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
