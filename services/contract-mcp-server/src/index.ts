@@ -98,7 +98,7 @@ async function fireBreakingChangeWebhook(
     const { breaking } = detectBreakingChanges(parseSpec(previousSpecJson), parseSpec(newSpecJson));
     if (breaking.length === 0) return;
 
-    const affectedConsumers = await findAffectedConsumers(store, providerName, newPaths);
+    const affectedConsumers = await findAffectedConsumers(store, providerName, newPaths, breaking);
 
     await fetchWithTimeout(BREAKING_CHANGE_WEBHOOK_URL, 10000, {
       method: 'POST',
@@ -785,7 +785,7 @@ function createServer(agentId: string = 'unknown') {
         if (!fromEntry) return { content: [{ type: 'text' as const, text: `Version ${from_version} of "${service_name}" not found.` }] };
         if (!toEntry) return { content: [{ type: 'text' as const, text: `Version ${to_version} of "${service_name}" not found.` }] };
         const { breaking } = detectBreakingChanges(parseSpec(fromEntry.specJson), parseSpec(toEntry.specJson));
-        const affectedConsumers = await findAffectedConsumers(store, service_name, toEntry.paths);
+        const affectedConsumers = await findAffectedConsumers(store, service_name, toEntry.paths, breaking);
         const guide = generateMigrationGuide(service_name, from_version, to_version, breaking, affectedConsumers);
         return { content: [{ type: 'text' as const, text: guide }] };
       } catch (err) {
