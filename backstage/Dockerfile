@@ -95,6 +95,15 @@ RUN --mount=type=cache,target=/root/.yarn/berry/cache \
 COPY --from=builder /app/packages/backend/dist/bundle.tar.gz ./bundle.tar.gz
 RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
 
+# 4b. The backend's schema collector reads packages/app/config.d.ts at startup
+# (via the "app" package's configSchema field) to determine which custom
+# config keys — like externalLinks — are safe to expose to the frontend.
+# The skeleton/bundle tarballs above only carry package.json + compiled dist/
+# output, not this source-only declaration file, so without this the backend
+# crashes on boot: "Invalid schema in packages/app/config.d.ts, missing Config
+# export" (really: file not found).
+COPY --from=builder /app/packages/app/config.d.ts ./packages/app/config.d.ts
+
 # 5. Copy configuration file (from build context parent directory)
 COPY ../app-config.yaml ./app-config.yaml
 
