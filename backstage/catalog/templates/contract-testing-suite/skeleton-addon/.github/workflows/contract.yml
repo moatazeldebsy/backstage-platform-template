@@ -48,6 +48,8 @@ jobs:
     needs: contract
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
+      - uses: actions/checkout@v4
+
       - name: Check can-i-deploy before rolling out
         run: |
           if [ -z "${CONTRACT_MCP_SERVER_URL}" ]; then

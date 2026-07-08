@@ -1,7 +1,7 @@
 openapi: "3.0.3"
 info:
   title: "${{ values.consumerName }} → ${{ values.providerName }} Consumer Contract"
-  description: Consumer-driven contract: endpoints ${{ values.consumerName }} depends on from ${{ values.providerName }}.
+  description: "Consumer-driven contract: endpoints ${{ values.consumerName }} depends on from ${{ values.providerName }}."
   version: "1.0.0"
 servers:
   - url: ${{ values.providerBaseUrl }}
