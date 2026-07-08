@@ -34,13 +34,19 @@ function instrument(method, endpoint, handler) {
   };
 }
 
-app.get('/healthz', instrument('GET', '/healthz', (req, res) => {
-  res.json({ status: 'ok' });
-}));
+app.get(
+  '/healthz',
+  instrument('GET', '/healthz', (req, res) => {
+    res.json({ status: 'ok' });
+  }),
+);
 
-app.get('/ready', instrument('GET', '/ready', (req, res) => {
-  res.json({ status: 'ready' });
-}));
+app.get(
+  '/ready',
+  instrument('GET', '/ready', (req, res) => {
+    res.json({ status: 'ready' });
+  }),
+);
 
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
@@ -53,13 +59,18 @@ app.get('/openapi.json', (req, res) => {
   res.json(spec);
 });
 
-app.get('/', instrument('GET', '/', (req, res) => {
-  console.log(JSON.stringify({ msg: 'root called' }));
-  res.json({ service: '${{ values.name }}', status: 'running' });
-}));
+app.get(
+  '/',
+  instrument('GET', '/', (req, res) => {
+    console.log(JSON.stringify({ msg: 'root called' }));
+    res.json({ service: '${{ values.name }}', status: 'running' });
+  }),
+);
 
 app.listen(PORT, () => {
-  console.log(JSON.stringify({ msg: `${{ values.name }} listening on port ${PORT}` }));
+  console.log(
+    JSON.stringify({ msg: `${{ values.name }} listening on port ${PORT}` }),
+  );
 });
 
 module.exports = app;

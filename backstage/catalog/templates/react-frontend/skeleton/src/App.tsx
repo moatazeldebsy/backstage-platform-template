@@ -4,7 +4,7 @@ function App() {
       <h1>${{ values.name }}</h1>
       <p>${{ values.description }}</p>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;
