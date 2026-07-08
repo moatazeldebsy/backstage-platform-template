@@ -18,6 +18,12 @@ prometheus:
   ingress:
     enabled: true
     ingressClassName: alb
+    # The chart defaults this ingress's pathType to ImplementationSpecific, which
+    # the AWS ALB controller renders as an exact-match-only listener rule (only "/"
+    # matches — every other path, like /query or /graph, 404s at the ALB itself,
+    # before the request ever reaches Prometheus). Prefix matches Grafana's own
+    # ingress default and makes the ALB rule a proper wildcard.
+    pathType: Prefix
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
@@ -49,10 +55,7 @@ prometheus:
     # aws/observability/thanos/thanos-sidecar-patch.yaml (populated from
     # Secrets Manager by terraform/global/thanos-config.tf).
     thanos:
-      image:
-        registry: quay.io
-        repository: thanos/thanos
-        tag: v0.36.1
+      image: quay.io/thanos/thanos:v0.36.1
       objectStorageConfig:
         existingSecret:
           name: thanos-objstore-config
@@ -73,6 +76,9 @@ alertmanager:
   ingress:
     enabled: true
     ingressClassName: alb
+    # See the comment on prometheus.ingress.pathType above — same ALB
+    # exact-match-only bug applies here by chart default.
+    pathType: Prefix
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
