@@ -15,4 +15,4 @@ spec:
     hashKey: service_name
     rangeKey: version
     owner: platform-team
-    region: eu-central-1
+    region: us-east-1

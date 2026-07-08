@@ -11,6 +11,12 @@ serviceAccount:
 
 replicaCount: 1
 
+# The chart defaults autoscaling.enabled: true with minReplicas: 2, which
+# overrides replicaCount above via the HPA — for this single-node-group dev
+# deployment, one replica is plenty and avoids doubling pod-density pressure.
+autoscaling:
+  enabled: false
+
 image:
   repository: ECR_REGISTRY_PLACEHOLDER/contract-mcp-server
   tag: "0.1.0"
@@ -97,3 +103,6 @@ backstage:
 
 podLabels:
   backstage.io/kubernetes-id: contract-mcp-server
+  team: platform-team
+  cost-center: CC-1000
+  environment: dev

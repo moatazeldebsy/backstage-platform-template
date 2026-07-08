@@ -1,6 +1,8 @@
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
   name: provider-aws-sqs
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-sqs:v1.18.0

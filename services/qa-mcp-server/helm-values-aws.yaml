@@ -86,3 +86,6 @@ backstage:
 
 podLabels:
   backstage.io/kubernetes-id: qa-mcp-server
+  team: qa-team
+  cost-center: CC-2000
+  environment: dev

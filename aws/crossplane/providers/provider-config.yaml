@@ -5,6 +5,13 @@ apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
+  annotations:
+    # ProviderConfig's CRD is supplied by the provider-aws-* packages
+    # themselves — applying it in the same sync wave as the Provider objects
+    # races against package installation and fails with "could not find
+    # aws.upbound.io/ProviderConfig CRD". Wave 1 waits for wave 0 (Providers)
+    # to be Healthy first.
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   credentials:
     source: IRSA

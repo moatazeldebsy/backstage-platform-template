@@ -88,3 +88,6 @@ backstage:
 
 podLabels:
   backstage.io/kubernetes-id: idp-mcp-server
+  team: platform-team
+  cost-center: CC-1000
+  environment: dev

@@ -36,3 +36,8 @@ env:
     value: debug
   - name: ENVIRONMENT
     value: dev
+
+podLabels:
+  team: platform-team
+  cost-center: CC-1000
+  environment: dev
