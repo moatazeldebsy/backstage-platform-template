@@ -140,10 +140,19 @@ export function createApp(
       const consumerEntry = await store.getLatest(consumer);
       if (!providerEntry) { res.status(404).json({ error: `Provider "${provider}" not registered` }); return; }
       if (!consumerEntry) { res.status(404).json({ error: `Consumer "${consumer}" not registered` }); return; }
-      const providerPaths = new Set(providerEntry.paths);
-      const missingPaths  = consumerEntry.paths.filter(p => !providerPaths.has(p));
-      const compatible    = missingPaths.length === 0;
-      res.status(compatible ? 200 : 409).json({ compatible, provider, consumer, missingPaths });
+      const summary = (await store.listAll()).find(s => s.serviceName === provider);
+      const idx = summary?.versions.indexOf(providerEntry.version) ?? -1;
+      const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
+      const previousEntry = previousVersion ? await store.getByVersion(provider, previousVersion) : undefined;
+      const breakingChanges = previousEntry
+        ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(providerEntry.specJson)).breaking
+        : [];
+      const affected = await findAffectedConsumers(store, provider, providerEntry.paths, breakingChanges);
+      const consumerAffected = affected.find(a => a.service === consumer);
+      const missingPaths = consumerAffected?.missingPaths ?? [];
+      const affectedOperations = consumerAffected?.affectedOperations ?? [];
+      const compatible = missingPaths.length === 0 && affectedOperations.length === 0;
+      res.status(compatible ? 200 : 409).json({ compatible, provider, consumer, missingPaths, affectedOperations });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }

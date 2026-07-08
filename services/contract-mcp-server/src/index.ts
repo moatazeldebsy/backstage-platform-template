@@ -657,18 +657,18 @@ function createServer(agentId: string = 'unknown') {
         const idx = summary?.versions.indexOf(version) ?? -1;
         const previousVersion = idx > 0 ? summary!.versions[idx - 1] : undefined;
         const previousEntry = previousVersion ? await store.getByVersion(service_name, previousVersion) : undefined;
-        const targetPaths = new Set(target.paths);
-        const all = (await store.listAll()).filter(s => s.serviceName !== service_name);
-        const blockingConsumers = (await Promise.all(all.map(async s => {
-          const consumerEntry = await store.getLatest(s.serviceName);
-          if (!consumerEntry) return null;
-          const missing = consumerEntry.paths.filter(p => !targetPaths.has(p));
-          return missing.length > 0 ? { consumer: s.serviceName, consumerVersion: consumerEntry.version, missingPaths: missing } : null;
-        }))).filter((r): r is { consumer: string; consumerVersion: string; missingPaths: string[] } => r !== null);
 
         const breakingChanges = previousEntry
           ? detectBreakingChanges(parseSpec(previousEntry.specJson), parseSpec(target.specJson)).breaking
           : [];
+        // Path existence alone misses field-level breaks (a path can still
+        // exist while its response schema changes incompatibly), so cross-
+        // reference each consumer against the breaking-changes list too.
+        const affected = await findAffectedConsumers(store, service_name, target.paths, breakingChanges);
+        const blockingConsumers = await Promise.all(affected.map(async a => {
+          const consumerEntry = await store.getLatest(a.service);
+          return { consumer: a.service, consumerVersion: consumerEntry!.version, missingPaths: a.missingPaths, affectedOperations: a.affectedOperations ?? [] };
+        }));
 
         const safe = blockingConsumers.length === 0 && breakingChanges.length === 0;
         return {
