@@ -3,7 +3,7 @@ source "https://rubygems.org"
 ruby ">= 3.2"
 
 gem "sinatra", "~> 4.1"
-gem "puma", "~> 6.4"
+gem "puma", "~> 7.2", ">= 7.2.1"
 gem "prometheus-client", "~> 4.2"
 gem "rackup", "~> 2.1"
 
