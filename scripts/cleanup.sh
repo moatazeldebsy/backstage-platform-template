@@ -3,13 +3,17 @@
 # Usage: ./scripts/cleanup.sh [--region us-east-1] [--cluster-name idp-mvp] [--force]
 #
 # Destruction order matters:
-#   1. ALBs (K8s-managed, block VPC deletion)
+#   1. ALBs (K8s-managed, block VPC deletion) + stale ALB-controller security groups
 #   2. Backstage RDS deletion-protection off
-#   3. Crossplane-orphaned resources (idp:provisioner=crossplane tag)
-#   4. Empty ECR repos + Terraform-managed S3 buckets (block terraform destroy)
-#   5. terraform destroy (EKS, VPC, IAM, RDS-backstage, ECR, etc.)
-#   6. CloudWatch log groups (EKS leaves these behind)
-#   7. Verify
+#   3. Scaffolded services: ArgoCD Applications + Crossplane Claims (must go
+#      before Phase 4, or Crossplane recreates what Phase 4 deletes)
+#   4. Crossplane-orphaned resources (idp:provisioner=crossplane tag)
+#   5. Empty ECR repos + Terraform-managed S3 buckets (block terraform destroy)
+#   6. terraform destroy (EKS, VPC, IAM, RDS-backstage, ECR, etc.) — retries
+#      on BucketNotEmpty (services refill buckets before this runs) and on
+#      SG DependencyViolation (ENIs release asynchronously)
+#   7. CloudWatch log groups (EKS leaves these behind)
+#   8. Verify
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -75,6 +79,48 @@ print(json.dumps({'Objects':objs,'Quiet':True}) if objs else '')
   log "    Deleted $total versioned objects from s3://${bucket}"
 }
 
+# Delete k8s-managed security groups left behind by the AWS Load Balancer
+# Controller. These are created out-of-band (not tracked by Terraform) and
+# block VPC deletion with DependencyViolation until the ENIs that reference
+# them are released — which happens asynchronously after ALB deletion, so
+# this must retry rather than fire once.
+_cleanup_stale_k8s_security_groups() {
+  local vpc_id
+  vpc_id=$(aws ec2 describe-vpcs --region "${AWS_REGION}" \
+    --filters "Name=tag:Name,Values=${CLUSTER_NAME}-vpc" \
+    --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
+  if [[ -z "$vpc_id" || "$vpc_id" == "None" ]]; then
+    log "    VPC not found by name tag — skipping stale SG cleanup"
+    return 0
+  fi
+
+  local attempt
+  for attempt in $(seq 1 8); do
+    local sgs
+    sgs=$(aws ec2 describe-security-groups --region "${AWS_REGION}" \
+      --filters "Name=vpc-id,Values=${vpc_id}" \
+      --query "SecurityGroups[?starts_with(GroupName,'k8s-')].GroupId" \
+      --output text 2>/dev/null || echo "")
+    sgs=$(echo "$sgs" | tr '\t' '\n' | grep -v '^$' || true)
+    [[ -z "$sgs" ]] && { log "    No stale k8s-* security groups remain"; return 0; }
+
+    local remaining=0
+    while IFS= read -r sg; do
+      [[ -z "$sg" ]] && continue
+      if aws ec2 delete-security-group --group-id "$sg" --region "${AWS_REGION}" 2>/dev/null; then
+        log "    Deleted stale SG: $sg"
+      else
+        remaining=$((remaining + 1))
+      fi
+    done <<< "$sgs"
+
+    [[ $remaining -eq 0 ]] && return 0
+    log "    $remaining stale SG(s) still have dependencies (ENIs releasing) — retrying in 15s (attempt ${attempt}/8)"
+    sleep 15
+  done
+  warn "    Some stale k8s-* security groups could not be deleted after retries — terraform destroy retry loop will try again"
+}
+
 # ── Phase 1: Delete Load Balancers created by Kubernetes services ─────────────
 log "Phase 1: Cleaning up Load Balancers..."
 
@@ -122,28 +168,21 @@ else
 fi
 
 if [[ $ALB_COUNT -gt 0 || $CLASSIC_COUNT -gt 0 ]]; then
-  log "  Waiting 20s for ENIs to be released after LB deletion..."
-  sleep 20
+  log "  Waiting for ALBs/ELBs to fully delete so their SGs/ENIs release..."
+  for i in $(seq 1 18); do
+    remaining=$(aws elbv2 describe-load-balancers --region "${AWS_REGION}" \
+      --query "length(LoadBalancers[?contains(LoadBalancerName, 'k8s-')])" \
+      --output text 2>/dev/null || echo 0)
+    [[ "$remaining" == "0" ]] && break
+    sleep 10
+  done
 fi
 
 # Stale k8s-managed security groups — EKS does not always clean these up on
-# cluster delete, and they block VPC deletion with DependencyViolation.
+# cluster delete, and they block VPC deletion with DependencyViolation. This
+# retries internally since ENI detachment lags behind ALB deletion.
 log "  Cleaning up stale k8s-managed security groups..."
-VPC_ID=$(aws ec2 describe-vpcs --region "${AWS_REGION}" \
-  --filters "Name=tag:Name,Values=${CLUSTER_NAME}-vpc" \
-  --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
-if [[ -n "$VPC_ID" && "$VPC_ID" != "None" ]]; then
-  aws ec2 describe-security-groups --region "${AWS_REGION}" \
-    --filters "Name=vpc-id,Values=${VPC_ID}" \
-    --query "SecurityGroups[?starts_with(GroupName,'k8s-')].GroupId" \
-    --output text | tr '\t' '\n' | while read -r sg; do
-    [[ -z "$sg" ]] && continue
-    log "    Deleting stale SG: $sg"
-    aws ec2 delete-security-group --group-id "$sg" --region "${AWS_REGION}" 2>/dev/null || true
-  done
-else
-  log "  VPC not found by name tag — skipping stale SG cleanup"
-fi
+_cleanup_stale_k8s_security_groups
 
 # ── Phase 2: Disable RDS deletion protection (Backstage DB) ──────────────────
 log "Phase 2: Disabling RDS deletion protection..."
@@ -165,11 +204,22 @@ else
   log "  RDS instance not found (already deleted?)"
 fi
 
-# ── Phase 3: Crossplane-orphaned resources ────────────────────────────────────
+# ── Phase 3: Clean up scaffolded services ────────────────────────────────────
+# Must run while EKS is still up so ArgoCD can cascade-delete K8s resources
+# (including Crossplane Claims), and so kubectl/helm can reach the cluster.
+# This runs BEFORE the Crossplane orphan cleanup below: if the raw AWS
+# resources were deleted first while a service's Claim (and thus Crossplane's
+# controller reconciliation) still existed, Crossplane would just recreate
+# them to match the still-live Claim's desired state.
+log "Phase 3: Cleaning up scaffolded services from ArgoCD, Helm, and git repo..."
+_cleanup_scaffolded_services "dev"
+
+# ── Phase 4: Crossplane-orphaned resources ───────────────────────────────────
 # Resources tagged idp:provisioner=crossplane were provisioned by Crossplane
 # Claims and are not tracked by Terraform state. deletionPolicy:Orphan means
-# they survive Claim deletion, so they must be removed explicitly here.
-log "Phase 3: Cleaning up Crossplane-provisioned resources (idp:provisioner=crossplane)..."
+# they survive Claim deletion, so they must be removed explicitly here. Runs
+# after Phase 3 so the Claims (and their controllers) are already gone.
+log "Phase 4: Cleaning up Crossplane-provisioned resources (idp:provisioner=crossplane)..."
 
 _crossplane_arns() {
   local resource_type="$1"
@@ -181,8 +231,8 @@ _crossplane_arns() {
     --output text 2>/dev/null || true
 }
 
-# ── 3a: S3 buckets ───────────────────────────────────────────────────────────
-log "  3a: Crossplane S3 buckets..."
+# ── 4a: S3 buckets ───────────────────────────────────────────────────────────
+log "  4a: Crossplane S3 buckets..."
 while IFS= read -r bucket_arn; do
   [[ -z "$bucket_arn" || "$bucket_arn" == "None" ]] && continue
   bucket_name="${bucket_arn##*:::}"
@@ -192,8 +242,8 @@ while IFS= read -r bucket_arn; do
   log "    Deleted: ${bucket_name}"
 done < <(_crossplane_arns "s3" | tr '\t' '\n')
 
-# ── 3b: RDS instances ────────────────────────────────────────────────────────
-log "  3b: Crossplane RDS instances..."
+# ── 4b: RDS instances ────────────────────────────────────────────────────────
+log "  4b: Crossplane RDS instances..."
 CROSSPLANE_RDS_IDS=()
 while IFS= read -r rds_arn; do
   [[ -z "$rds_arn" || "$rds_arn" == "None" ]] && continue
@@ -214,8 +264,8 @@ while IFS= read -r rds_arn; do
   log "    Deletion initiated: ${db_id} (takes 5-10 min in background)"
 done < <(_crossplane_arns "rds:db" | tr '\t' '\n')
 
-# ── 3c: DynamoDB tables ──────────────────────────────────────────────────────
-log "  3c: Crossplane DynamoDB tables..."
+# ── 4c: DynamoDB tables ──────────────────────────────────────────────────────
+log "  4c: Crossplane DynamoDB tables..."
 while IFS= read -r dynamo_arn; do
   [[ -z "$dynamo_arn" || "$dynamo_arn" == "None" ]] && continue
   table_name="${dynamo_arn##*/}"
@@ -226,8 +276,8 @@ while IFS= read -r dynamo_arn; do
   log "    Deleted: ${table_name}"
 done < <(_crossplane_arns "dynamodb:table" | tr '\t' '\n')
 
-# ── 3d: SQS queues ───────────────────────────────────────────────────────────
-log "  3d: Crossplane SQS queues..."
+# ── 4d: SQS queues ───────────────────────────────────────────────────────────
+log "  4d: Crossplane SQS queues..."
 while IFS= read -r sqs_arn; do
   [[ -z "$sqs_arn" || "$sqs_arn" == "None" ]] && continue
   # ARN format: arn:aws:sqs:<region>:<account>:<queue-name>
@@ -244,14 +294,14 @@ done < <(_crossplane_arns "sqs" | tr '\t' '\n')
 # Note: MSK Kafka topics are Kafka-native (not AWS resources) and are destroyed
 # automatically when the MSK cluster is deleted by terraform destroy below.
 
-log "  Phase 3 complete."
+log "  Phase 4 complete."
 
-# ── Phase 4: Empty Terraform-managed S3 buckets + ECR repos ──────────────────
+# ── Phase 5: Empty Terraform-managed S3 buckets + ECR repos ──────────────────
 # terraform destroy fails if S3 buckets have objects or ECR repos have images.
-log "Phase 4: Emptying S3 buckets and ECR repos before Terraform destroy..."
+log "Phase 5: Emptying S3 buckets and ECR repos before Terraform destroy..."
 
-# ── 4a: S3 buckets owned by Terraform (TechDocs, MLflow artifacts) ───────────
-log "  4a: Emptying Terraform-managed S3 buckets..."
+# ── 5a: S3 buckets owned by Terraform (TechDocs, MLflow artifacts) ───────────
+log "  5a: Emptying Terraform-managed S3 buckets..."
 TF_BUCKETS=$(aws s3 ls 2>/dev/null \
   | awk '{print $3}' \
   | grep -E "^${CLUSTER_NAME}-" || true)
@@ -267,10 +317,10 @@ while IFS= read -r bucket; do
   _empty_versioned_bucket "${bucket}"
 done <<< "$TF_BUCKETS"
 
-# ── 4b: ECR repositories ─────────────────────────────────────────────────────
+# ── 5b: ECR repositories ─────────────────────────────────────────────────────
 # Match both flat names (idp-mvp-foo) and nested paths (idp-mvp/foo) since
 # bootstrap-ai.sh creates repos under ${CLUSTER_NAME}/<service> path.
-log "  4b: Deleting ECR repositories..."
+log "  5b: Deleting ECR repositories..."
 ECR_REPOS=$(aws ecr describe-repositories \
   --region "${AWS_REGION}" \
   --query "repositories[?contains(repositoryName, '${CLUSTER_NAME}')].repositoryName" \
@@ -288,44 +338,80 @@ while IFS= read -r repo; do
     --force 2>/dev/null && log "    Deleted: ${repo}" || log "    Already gone: ${repo}"
 done <<< "$ECR_REPOS"
 
-log "  Phase 4 complete."
+log "  Phase 5 complete."
 
-# ── Phase 4.5: Clean up scaffolded services ──────────────────────────────────
-# Must run while EKS is still up so ArgoCD can cascade-delete K8s resources,
-# and so kubectl/helm can reach the cluster. Runs before terraform destroy.
-log "Phase 4.5: Cleaning up scaffolded services from ArgoCD, Helm, and git repo..."
-_cleanup_scaffolded_services "dev"
-
-# ── Phase 5: Terraform destroy ────────────────────────────────────────────────
-log "Phase 5: Running terraform destroy..."
+# ── Phase 6: Terraform destroy ────────────────────────────────────────────────
+log "Phase 6: Running terraform destroy..."
 
 cd "$TF_DIR"
 
-# Force unlock if there's a stale lock
+# Always reinitialize — a stale .terraform/ backend cache (from a previous
+# run with different backend config) makes `terraform destroy` fail with
+# "Backend initialization required" before it even plans anything.
+log "  Reinitializing Terraform backend..."
+terraform init -reconfigure -input=false >/dev/null
+
+# Force unlock if there's a stale lock. The lock table also holds "<key>-md5"
+# digest entries (used for state consistency checks, not real locks) —
+# force-unlocking one of those errors with "Expected a single argument:
+# LOCK_ID", so they must be filtered out. Flags must precede the LOCK_ID
+# argument for force-unlock.
 log "  Checking for stale Terraform state lock..."
 LOCK_ID=$(aws dynamodb scan \
   --table-name "${CLUSTER_NAME}-terraform-locks" \
   --region "${AWS_REGION}" \
   --projection-expression "LockID" \
-  --query "Items[0].LockID.S" \
+  --query "Items[?!ends_with(LockID.S, '-md5')].LockID.S | [0]" \
   --output text 2>/dev/null || echo "")
 
 if [[ -n "$LOCK_ID" && "$LOCK_ID" != "None" ]]; then
   log "  Force unlocking stale lock: $LOCK_ID"
-  terraform force-unlock "$LOCK_ID" -force || true
+  terraform force-unlock -force "$LOCK_ID" || true
 fi
 
-terraform destroy \
-  -var "aws_region=${AWS_REGION}" \
-  -var "cluster_name=${CLUSTER_NAME}" \
-  -auto-approve
+# terraform destroy is retried because two failure modes are expected and
+# self-healing, not fatal:
+#   - BucketNotEmpty: services (e.g. Loki) keep writing to S3 buckets between
+#     Phase 4's empty pass and the point terraform actually deletes the
+#     bucket, which can be many minutes later.
+#   - DependencyViolation / security group errors: ALB-controller-created SGs
+#     that Phase 1 couldn't fully clear yet (ENIs release asynchronously).
+# terraform destroy is idempotent to rerun against a partially-destroyed state.
+TF_DESTROY_LOG=$(mktemp)
+MAX_ATTEMPTS=3
+for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+  log "  terraform destroy attempt ${attempt}/${MAX_ATTEMPTS}..."
+  if terraform destroy \
+    -var "aws_region=${AWS_REGION}" \
+    -var "cluster_name=${CLUSTER_NAME}" \
+    -auto-approve 2>&1 | tee "$TF_DESTROY_LOG"; then
+    log "Phase 6 complete: Terraform resources destroyed"
+    break
+  fi
 
-log "Phase 5 complete: Terraform resources destroyed"
+  [[ $attempt -eq $MAX_ATTEMPTS ]] && err "terraform destroy failed after ${MAX_ATTEMPTS} attempts — see output above"
 
-# ── Phase 6: CloudWatch log groups ───────────────────────────────────────────
+  if grep -q "BucketNotEmpty" "$TF_DESTROY_LOG"; then
+    log "  Bucket refilled since Phase 4 — re-emptying before retry..."
+    while IFS= read -r bucket; do
+      [[ -z "$bucket" ]] && continue
+      log "    Re-emptying s3://${bucket}"
+      _empty_versioned_bucket "${bucket}"
+    done < <(grep -oE "deleting S3 Bucket \(${CLUSTER_NAME}-[a-z0-9-]+\)" "$TF_DESTROY_LOG" \
+      | sed -E 's/.*\((.*)\)/\1/' | sort -u)
+  elif grep -qi "DependencyViolation\|has a dependent object\|security group" "$TF_DESTROY_LOG"; then
+    log "  Dependency violation detected — re-running stale security group cleanup..."
+    _cleanup_stale_k8s_security_groups
+  else
+    err "terraform destroy failed with an unhandled error — see output above"
+  fi
+done
+rm -f "$TF_DESTROY_LOG"
+
+# ── Phase 7: CloudWatch log groups ───────────────────────────────────────────
 # EKS creates /aws/eks/<cluster>/cluster and /aws/containerinsights/<cluster>/*
 # log groups that persist after the cluster is deleted and accumulate cost.
-log "Phase 6: Deleting CloudWatch log groups..."
+log "Phase 7: Deleting CloudWatch log groups..."
 
 LOG_PREFIXES=(
   "/aws/eks/${CLUSTER_NAME}"
@@ -347,10 +433,10 @@ for prefix in "${LOG_PREFIXES[@]}"; do
   done <<< "$LOG_GROUPS"
 done
 
-log "  Phase 6 complete."
+log "  Phase 7 complete."
 
-# ── Phase 7: Verify cleanup ───────────────────────────────────────────────────
-log "Phase 7: Verifying cleanup..."
+# ── Phase 8: Verify cleanup ───────────────────────────────────────────────────
+log "Phase 8: Verifying cleanup..."
 
 EKS_CLUSTERS=$(aws eks list-clusters --region "${AWS_REGION}" \
   --query "clusters[?contains(@, '${CLUSTER_NAME}')]" --output text | wc -w)
