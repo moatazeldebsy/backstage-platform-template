@@ -4,6 +4,9 @@ metadata:
   name: python-service
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: beginner
+    idp.io/topic: golden-path
+    idp.io/tutorial-type: template
   title: Python FastAPI Service
   description: Scaffold a Python FastAPI service with CI/CD and Helm deployment
   tags:

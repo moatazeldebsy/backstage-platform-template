@@ -18,6 +18,11 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(scaffoldCmd)
 	rootCmd.AddCommand(aiCmd)
+	rootCmd.AddCommand(doctorCmd)
+	rootCmd.AddCommand(contextCmd)
+	rootCmd.AddCommand(learnCmd)
+	rootCmd.AddCommand(tipCmd)
+	rootCmd.AddCommand(mcpCmd)
 }
 
 func main() {

@@ -18,6 +18,7 @@ import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
 import { idpDeployModelServerModule } from './modules/idpDeployModelServer';
 import { idpSetupContractTestingModule } from './modules/idpSetupContractTesting';
 import { ragSearchPlugin } from './modules/idpRagSearch';
+import { learningCenterPlugin } from './modules/idpLearningCenter';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
 
 
@@ -40,6 +41,7 @@ backend.add(idpDeployMcpServerModule);
 backend.add(idpDeployModelServerModule);
 backend.add(idpSetupContractTestingModule);
 backend.add(ragSearchPlugin);
+backend.add(learningCenterPlugin);
 
 // techdocs plugin
 backend.add(import('@backstage/plugin-techdocs-backend'));

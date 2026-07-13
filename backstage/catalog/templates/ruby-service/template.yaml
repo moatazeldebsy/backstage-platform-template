@@ -4,6 +4,9 @@ metadata:
   name: ruby-service
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: beginner
+    idp.io/topic: golden-path
+    idp.io/tutorial-type: template
   title: Ruby Sinatra Service
   description: Scaffold a Ruby Sinatra service with CI/CD and Helm deployment — the golden path for services extracted from the Ruby monolith
   tags:

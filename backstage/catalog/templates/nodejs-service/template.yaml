@@ -2,6 +2,10 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: nodejs-service
+  annotations:
+    idp.io/experience-level: beginner
+    idp.io/topic: golden-path
+    idp.io/tutorial-type: template
   title: Node.js Service
   description: Scaffold a Node.js/Express service with CI/CD and Helm deployment
   tags:

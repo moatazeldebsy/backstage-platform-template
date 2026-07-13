@@ -4,6 +4,9 @@ metadata:
   name: zap-dast-suite
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: advanced
+    idp.io/topic: security
+    idp.io/tutorial-type: template
   title: OWASP ZAP DAST Security Scan
   description: Scaffold an OWASP ZAP dynamic application security test suite with baseline and full-scan modes
   tags:

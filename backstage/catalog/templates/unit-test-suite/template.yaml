@@ -4,6 +4,9 @@ metadata:
   name: unit-test-suite
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: beginner
+    idp.io/topic: testing
+    idp.io/tutorial-type: template
   title: Unit Test Suite (brownfield)
   description: Add a standardized unit-test scaffold + coverage gate (70%) + JUnit output to an existing service repo. Language-aware (Go, Node/TS, Python).
   tags:

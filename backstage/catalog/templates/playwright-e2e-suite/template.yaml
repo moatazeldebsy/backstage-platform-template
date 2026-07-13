@@ -4,6 +4,9 @@ metadata:
   name: playwright-e2e-suite
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: intermediate
+    idp.io/topic: testing
+    idp.io/tutorial-type: template
   title: Playwright E2E Test Suite
   description: Scaffold a Playwright TypeScript E2E test suite targeting an existing service
   tags:

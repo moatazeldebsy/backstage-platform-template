@@ -4,6 +4,9 @@ metadata:
   name: chaos-mesh-suite
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: advanced
+    idp.io/topic: testing
+    idp.io/tutorial-type: template
   title: Chaos Engineering Suite (Chaos Mesh)
   description: Scaffold Chaos Mesh experiment definitions for resilience testing — pod failure, network latency, and stress scenarios
   tags:

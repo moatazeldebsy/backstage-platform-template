@@ -4,6 +4,9 @@ metadata:
   name: jvm-service
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: beginner
+    idp.io/topic: golden-path
+    idp.io/tutorial-type: template
   title: JVM (Java/Spring Boot) Service
   description: Scaffold a Java Spring Boot service with Gradle, CI/CD, and Helm deployment — the golden path for JVM microservices owned by autonomous teams
   tags:

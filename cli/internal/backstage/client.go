@@ -28,6 +28,30 @@ func NewClient(baseURL, token string) *Client {
 	}
 }
 
+// GetEntity fetches a single catalog entity by kind/namespace/name.
+func (c *Client) GetEntity(ctx context.Context, kind, namespace, name string) (map[string]any, error) {
+	url := fmt.Sprintf("%s/api/catalog/entities/by-name/%s/%s/%s", c.base, kind, namespace, name)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("catalog API: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("catalog API returned %d: %s", resp.StatusCode, b)
+	}
+	var entity map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&entity); err != nil {
+		return nil, fmt.Errorf("parsing entity response: %w", err)
+	}
+	return entity, nil
+}
+
 // Healthy returns true if Backstage responds to its healthcheck endpoint.
 func (c *Client) Healthy(ctx context.Context) bool {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+"/healthcheck", nil)

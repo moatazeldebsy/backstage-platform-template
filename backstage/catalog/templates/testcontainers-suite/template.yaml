@@ -4,6 +4,9 @@ metadata:
   name: testcontainers-suite
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: intermediate
+    idp.io/topic: testing
+    idp.io/tutorial-type: template
   title: Testcontainers Integration Test Suite
   description: Scaffold a Testcontainers integration test suite that spins up real dependencies (DB, cache, queues) in CI
   tags:

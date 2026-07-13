@@ -4,6 +4,9 @@ metadata:
   name: react-frontend
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: beginner
+    idp.io/topic: golden-path
+    idp.io/tutorial-type: template
   title: React Frontend
   description: Scaffold a React + Vite + TypeScript frontend with CI/CD and Helm deployment
   tags:

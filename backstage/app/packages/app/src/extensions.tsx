@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef } from '@backstage/frontend-plugin-api';
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
-import { useEntity } from '@backstage/plugin-catalog-react';
+import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
+import { CATALOG_FILTER_EXISTS } from '@backstage/catalog-client';
 import type { Entity } from '@backstage/catalog-model';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
@@ -44,6 +45,7 @@ import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import SmartToyIcon from '@material-ui/icons/EmojiObjects';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import ChatIcon from '@material-ui/icons/Chat';
+import SchoolIcon from '@material-ui/icons/School';
 import AddCommentIcon from '@material-ui/icons/AddComment';
 import SendIcon from '@material-ui/icons/Send';
 import SearchIcon from '@material-ui/icons/Search';
@@ -3888,6 +3890,7 @@ function OnboardingPage() {
                   { href: '/',           emoji: '📊', label: 'Dashboard',    desc: 'Platform-wide DORA metrics and status' },
                   { href: '/ai-assistant', emoji: '🤖', label: 'AI Assistant', desc: 'Ask the IDP assistant anything' },
                   { href: '/scorecard',  emoji: '🏆', label: 'Scorecard',    desc: 'Quality tiers across all services' },
+                  { href: '/learning-center', emoji: '🎓', label: 'Learning Center', desc: 'Tutorials by experience level, track your progress' },
                 ].map(({ href, emoji, label, desc }) => (
                   <a key={label} href={href}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', textDecoration: 'none', color: 'inherit',
@@ -3928,6 +3931,229 @@ const onboardingPage = PageBlueprint.make({
 const onboardingNavItem = NavItemBlueprint.make({
   name: 'onboarding',
   params: { title: 'Onboarding', icon: EmojiPeopleIcon as any, routeRef: onboardingRouteRef },
+});
+
+// ── Learning Center ────────────────────────────────────────────────────────────
+// Faceted browser over golden-path templates (idp.io/experience-level annotation,
+// fetched live from the catalog) and curated conceptual docs (static list below —
+// docs/*.md pages aren't separate catalog entities, they're all TechDocs for the
+// single System:internal-developer-platform entity). Progress is tracked per-user
+// via the learning-center backend plugin (its own Postgres DB — see
+// packages/backend/src/modules/idpLearningCenter.ts), not localStorage.
+
+type LearningLevel = 'beginner' | 'intermediate' | 'advanced';
+
+interface LearningItem {
+  id: string; // stable key sent to the progress API — entityRef-shaped for templates
+  title: string;
+  description: string;
+  level: LearningLevel;
+  topic: string;
+  type: 'template' | 'doc';
+  href: string;
+}
+
+const LEARNING_LEVELS: LearningLevel[] = ['beginner', 'intermediate', 'advanced'];
+
+const LEARNING_DOCS: LearningItem[] = [
+  { id: 'doc:getting-started', title: 'Getting Started', description: 'Personalise the repo and boot your first local cluster.', level: 'beginner', topic: 'golden-path', type: 'doc', href: '/docs/default/system/internal-developer-platform/getting-started' },
+  { id: 'doc:golden-path', title: 'Golden Path Overview', description: 'The full test pyramid and which template covers each layer.', level: 'beginner', topic: 'golden-path', type: 'doc', href: '/docs/default/system/internal-developer-platform/golden-path' },
+  { id: 'doc:contract-testing', title: 'Contract Testing', description: 'MCP-driven contract discovery, auto-registration, and breaking-change detection.', level: 'intermediate', topic: 'testing', type: 'doc', href: '/docs/default/system/internal-developer-platform/contract-testing' },
+  { id: 'doc:dora-finops', title: 'DORA Metrics & FinOps', description: 'How DORA metrics and team cost budgets are wired into Backstage.', level: 'intermediate', topic: 'observability', type: 'doc', href: '/docs/default/system/internal-developer-platform/dora-finops' },
+  { id: 'doc:mobile-platform', title: 'Mobile Platform', description: 'Appium, Flutter, code signing, and app-store deploy templates.', level: 'intermediate', topic: 'mobile', type: 'doc', href: '/docs/default/system/internal-developer-platform/mobile-platform' },
+  { id: 'doc:crossplane-vs-terraform', title: 'Crossplane vs Terraform', description: 'When to use a Terraform PR vs a Crossplane claim for AWS infra.', level: 'advanced', topic: 'infra', type: 'doc', href: '/docs/default/system/internal-developer-platform/crossplane-vs-terraform' },
+  { id: 'doc:multi-region', title: 'Multi-Region', description: 'Aurora Global, DynamoDB Global Tables, S3 multi-region access points.', level: 'advanced', topic: 'infra', type: 'doc', href: '/docs/default/system/internal-developer-platform/multi-region' },
+  { id: 'doc:ai-assistant', title: 'AI Assistant Architecture', description: 'How the native chat UI talks to KAgent and MCP servers.', level: 'advanced', topic: 'ai', type: 'doc', href: '/docs/default/system/internal-developer-platform/ai-assistant' },
+];
+
+function learningLevelColor(level: LearningLevel): string {
+  return level === 'beginner' ? '#4caf50' : level === 'intermediate' ? '#ff9800' : '#f44336';
+}
+
+function LearningCenterPage() {
+  const catalogApi = useApi(catalogApiRef);
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+
+  const [templateItems, setTemplateItems] = useState<LearningItem[]>([]);
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [topicFilter, setTopicFilter] = useState<string[]>([]);
+  const [levelFilter, setLevelFilter] = useState<LearningLevel[]>([]);
+  const [typeFilter, setTypeFilter] = useState<Array<'template' | 'doc'>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [entitiesResp, progressResp] = await Promise.all([
+        catalogApi.getEntities({
+          filter: { kind: 'Template', 'metadata.annotations.idp.io/tutorial-type': CATALOG_FILTER_EXISTS },
+        }),
+        fetchApi.fetch(`${base}/api/learning-center/progress`)
+          .then(r => (r.ok ? r.json() : { completed: [] }))
+          .catch(() => ({ completed: [] })),
+      ]);
+      if (cancelled) return;
+      const items: LearningItem[] = entitiesResp.items.map(e => {
+        const a = (e.metadata.annotations ?? {}) as Record<string, string>;
+        const name = e.metadata.name;
+        return {
+          id: `template:default/${name}`,
+          title: e.metadata.title ?? name,
+          description: e.metadata.description ?? '',
+          level: (a['idp.io/experience-level'] as LearningLevel) ?? 'beginner',
+          topic: a['idp.io/topic'] ?? 'golden-path',
+          type: 'template',
+          href: `/catalog/default/template/${name}`,
+        };
+      });
+      setTemplateItems(items);
+      setCompleted(new Set(progressResp.completed ?? []));
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [catalogApi, fetchApi, base]);
+
+  const allItems = useMemo(() => [...templateItems, ...LEARNING_DOCS], [templateItems]);
+  const topics = useMemo(() => Array.from(new Set(allItems.map(i => i.topic))).sort(), [allItems]);
+
+  const filtered = allItems.filter(i =>
+    (topicFilter.length === 0 || topicFilter.includes(i.topic)) &&
+    (levelFilter.length === 0 || levelFilter.includes(i.level)) &&
+    (typeFilter.length === 0 || typeFilter.includes(i.type)),
+  );
+
+  const toggleFilter = <T,>(arr: T[], val: T, set: (v: T[]) => void) => {
+    set(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]);
+  };
+
+  const toggleCompleted = async (item: LearningItem) => {
+    const wasDone = completed.has(item.id);
+    const optimistic = new Set(completed);
+    if (wasDone) optimistic.delete(item.id); else optimistic.add(item.id);
+    setCompleted(optimistic);
+    try {
+      const resp = await fetchApi.fetch(`${base}/api/learning-center/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityRef: item.id, completed: !wasDone }),
+      });
+      if (resp.ok) {
+        const body = await resp.json();
+        setCompleted(new Set(body.completed ?? []));
+      }
+    } catch {
+      // keep the optimistic toggle — a background refresh will reconcile
+    }
+  };
+
+  const total = allItems.length;
+  const doneCount = allItems.filter(i => completed.has(i.id)).length;
+  const pct = total > 0 ? (doneCount / total) * 100 : 0;
+  const tier = pct >= 100 ? '🥇' : pct >= 50 ? '🥈' : pct >= 25 ? '🥉' : null;
+
+  if (loading) {
+    return (
+      <Page themeId="tool">
+        <Header title="Learning Center" subtitle="Tutorials and golden-path templates by experience level" />
+        <Content><Progress /></Content>
+      </Page>
+    );
+  }
+
+  return (
+    <Page themeId="tool">
+      <Header title="Learning Center" subtitle="Tutorials and golden-path templates by experience level" />
+      <Content>
+        <Paper style={{ padding: '16px 20px', marginBottom: 20 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" style={{ marginBottom: 8 }}>
+            <Typography variant="h6">{tier ? `${tier} ` : ''}{doneCount} of {total} completed</Typography>
+            <Typography variant="caption" color="textSecondary">{pct.toFixed(0)}%</Typography>
+          </Box>
+          <LinearProgress variant="determinate" value={pct} style={{ height: 8, borderRadius: 4 }} />
+        </Paper>
+
+        <Box display="flex" style={{ gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <Paper style={{ flex: '1 1 240px', maxWidth: 280, padding: '16px 20px' }}>
+            <Typography variant="subtitle2" style={{ marginBottom: 12 }}>Filter Your Search</Typography>
+
+            <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>EXPERIENCE</Typography>
+            <Box display="flex" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {LEARNING_LEVELS.map(level => (
+                <Chip key={level} label={level} size="small" clickable
+                  onClick={() => toggleFilter(levelFilter, level, setLevelFilter)}
+                  style={{
+                    background: levelFilter.includes(level) ? learningLevelColor(level) : '#eee',
+                    color: levelFilter.includes(level) ? '#fff' : '#555',
+                    fontWeight: 600, textTransform: 'capitalize',
+                  }} />
+              ))}
+            </Box>
+
+            <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>TYPE</Typography>
+            <Box display="flex" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {(['template', 'doc'] as const).map(t => (
+                <Chip key={t} label={t === 'template' ? 'Template' : 'Doc'} size="small" clickable
+                  onClick={() => toggleFilter(typeFilter, t, setTypeFilter)}
+                  style={{ background: typeFilter.includes(t) ? '#1976d2' : '#eee', color: typeFilter.includes(t) ? '#fff' : '#555', fontWeight: 600 }} />
+              ))}
+            </Box>
+
+            <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>TOPIC</Typography>
+            <Box display="flex" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {topics.map(topic => (
+                <Chip key={topic} label={topic} size="small" clickable
+                  onClick={() => toggleFilter(topicFilter, topic, setTopicFilter)}
+                  style={{ background: topicFilter.includes(topic) ? '#607d8b' : '#eee', color: topicFilter.includes(topic) ? '#fff' : '#555', fontWeight: 600 }} />
+              ))}
+            </Box>
+
+            {(topicFilter.length > 0 || levelFilter.length > 0 || typeFilter.length > 0) && (
+              <Button size="small" style={{ marginTop: 12 }} onClick={() => { setTopicFilter([]); setLevelFilter([]); setTypeFilter([]); }}>
+                Clear all filters
+              </Button>
+            )}
+          </Paper>
+
+          <Box style={{ flex: '3 1 500px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filtered.length === 0 && (
+              <Paper style={{ padding: 20 }}><Typography color="textSecondary">No tutorials match these filters.</Typography></Paper>
+            )}
+            {filtered.map(item => {
+              const done = completed.has(item.id);
+              return (
+                <Paper key={item.id} style={{ padding: '16px 20px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  <IconButton size="small" onClick={() => toggleCompleted(item)} style={{ marginTop: -4 }}>
+                    <CheckCircleIcon style={{ color: done ? '#4caf50' : '#ccc' }} />
+                  </IconButton>
+                  <Box flex={1}>
+                    <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                      <Typography variant="body1" style={{ fontWeight: 600 }}>{item.title}</Typography>
+                      <Chip size="small" label={item.level} style={{ background: learningLevelColor(item.level), color: '#fff', fontWeight: 600, fontSize: 10, textTransform: 'capitalize' }} />
+                      <Chip size="small" label={item.type === 'template' ? 'Template' : 'Doc'} variant="outlined" style={{ fontSize: 10 }} />
+                    </Box>
+                    <Typography variant="body2" color="textSecondary" style={{ marginBottom: 8 }}>{item.description}</Typography>
+                    <Link href={item.href}>{item.type === 'template' ? 'View template →' : 'Read doc →'}</Link>
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Box>
+        </Box>
+      </Content>
+    </Page>
+  );
+}
+
+const learningCenterRouteRef = createRouteRef({ id: 'learning-center' });
+const learningCenterPage = PageBlueprint.make({
+  name: 'learning-center',
+  params: { path: '/learning-center', routeRef: learningCenterRouteRef, loader: async () => <LearningCenterPage /> },
+});
+const learningCenterNavItem = NavItemBlueprint.make({
+  name: 'learning-center',
+  params: { title: 'Learning Center', icon: SchoolIcon as any, routeRef: learningCenterRouteRef },
 });
 
 // ── Cost Calculator ────────────────────────────────────────────────────────────
@@ -5487,6 +5713,8 @@ export const customPagesPlugin = createFrontendPlugin({
     // apiExplorerNavItem — removed: built-in apiDocsPlugin already adds "APIs" nav item
     onboardingPage,
     onboardingNavItem,
+    learningCenterPage,
+    learningCenterNavItem,
     calculatorPage,
     calculatorNavItem,
     settingsPage,

@@ -37,6 +37,45 @@ func TestSetHeaders(t *testing.T) {
 	})
 }
 
+func TestGetEntity(t *testing.T) {
+	t.Run("returns decoded entity for 200 response", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/api/catalog/entities/by-name/component/default/hello-service" {
+				t.Errorf("unexpected path: %s", r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"metadata":{"name":"hello-service","description":"a test"}}`)) //nolint:errcheck
+		}))
+		defer srv.Close()
+
+		c := NewClient(srv.URL, "")
+		entity, err := c.GetEntity(t.Context(), "component", "default", "hello-service")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		metadata, ok := entity["metadata"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected metadata map, got %#v", entity["metadata"])
+		}
+		if metadata["name"] != "hello-service" {
+			t.Errorf("got name %v, want hello-service", metadata["name"])
+		}
+	})
+
+	t.Run("returns error for 404 response", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("not found")) //nolint:errcheck
+		}))
+		defer srv.Close()
+
+		c := NewClient(srv.URL, "")
+		if _, err := c.GetEntity(t.Context(), "component", "default", "missing"); err == nil {
+			t.Error("expected error for 404 response")
+		}
+	})
+}
+
 func TestHealthy(t *testing.T) {
 	t.Run("returns true for 200 response", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

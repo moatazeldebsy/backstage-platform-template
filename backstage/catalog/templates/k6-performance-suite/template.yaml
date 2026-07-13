@@ -4,6 +4,9 @@ metadata:
   name: k6-performance-suite
   annotations:
     backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: advanced
+    idp.io/topic: testing
+    idp.io/tutorial-type: template
   title: k6 Performance Test Suite
   description: Scaffold a k6 JavaScript performance test suite with smoke, load, and stress scenarios
   tags:
