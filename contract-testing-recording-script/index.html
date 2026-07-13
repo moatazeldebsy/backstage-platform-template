@@ -1,0 +1,1557 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>Contract Testing Demo — Recording Script - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#contract-testing-demo-recording-script" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Contract Testing Demo — Recording Script
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../mobile-platform/" class="md-tabs__link">
+        
+  
+    
+  
+  Mobile Platform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../docker-recovery/" class="md-tabs__link">
+        
+  
+    
+  
+  Docker Recovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../dora-finops/" class="md-tabs__link">
+        
+  
+    
+  
+  DORA & FinOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
+          
+  
+  Shift-Left Quality
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security-scanning/" class="md-tabs__link">
+        
+  
+    
+  
+  Security Scanning (SonarCloud + Snyk)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../sre-reliability/" class="md-tabs__link">
+        
+  
+    
+  
+  SRE & Reliability
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Docker Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora-finops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DORA & FinOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_15">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    For Leadership
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security Scanning (SonarCloud + Snyk)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sre-reliability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SRE & Reliability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        
+          
+          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_22">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost Budget Exceeded
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    KAgent Guardrails
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/contract-testing-recording-script.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="contract-testing-demo-recording-script">Contract Testing Demo — Recording Script<a class="headerlink" href="#contract-testing-demo-recording-script" title="Permanent link">&para;</a></h1>
+<p>Everything below already happened live on the cluster this session. Nothing needs to be
+re-run — just open these pages in order and narrate over them.</p>
+<h2 id="quick-reference-all-urls">Quick reference — all URLs<a class="headerlink" href="#quick-reference-all-urls" title="Permanent link">&para;</a></h2>
+<p><strong>Backstage</strong> (base: <code>http://k8s-backstag-backstag-876d690111-e499f49b17353866.elb.us-east-1.amazonaws.com</code>)
+- Create page: <code>/create</code>
+- <code>payments-api</code> catalog entry: <code>/catalog/default/component/payments-api</code>
+- <code>frontend-app</code> catalog entry: <code>/catalog/default/component/frontend-app</code>
+- AI Assistant: <code>/ai-assistant</code>
+- KAgent dashboard: <code>/kagent</code></p>
+<p><strong>GitHub</strong>
+- <code>payments-api</code> repo: <a href="https://github.com/moatazeldebsy/payments-api">https://github.com/moatazeldebsy/payments-api</a>
+  - PR #1 (add accounts endpoint, merged): <a href="https://github.com/moatazeldebsy/payments-api/pull/1">https://github.com/moatazeldebsy/payments-api/pull/1</a>
+  - PR #3 (semver versioning + bump to 1.1.0, merged): <a href="https://github.com/moatazeldebsy/payments-api/pull/3">https://github.com/moatazeldebsy/payments-api/pull/3</a>
+  - PR #4 (breaking rename to 2.0.0, <strong>open/blocked</strong>): <a href="https://github.com/moatazeldebsy/payments-api/pull/4">https://github.com/moatazeldebsy/payments-api/pull/4</a>
+- <code>frontend-app</code> repo: <a href="https://github.com/moatazeldebsy/frontend-app">https://github.com/moatazeldebsy/frontend-app</a>
+  - PR #1 (add contract test suite, merged): <a href="https://github.com/moatazeldebsy/frontend-app/pull/1">https://github.com/moatazeldebsy/frontend-app/pull/1</a></p>
+<p><strong>Grafana</strong>
+- AI Platform Observability dashboard: <a href="http://k8s-monitori-promethe-8211311fd3-219291665.us-east-1.elb.amazonaws.com/d/ai-platform/ai-platform-observability?orgId=1&amp;from=now-24h&amp;to=now&amp;timezone=browser&amp;refresh=30s">http://k8s-monitori-promethe-8211311fd3-219291665.us-east-1.elb.amazonaws.com/d/ai-platform/ai-platform-observability?orgId=1&amp;from=now-24h&amp;to=now&amp;timezone=browser&amp;refresh=30s</a></p>
+<h2 id="step-1-scaffold-the-provider-backstage">Step 1 — Scaffold the provider (Backstage)<a class="headerlink" href="#step-1-scaffold-the-provider-backstage" title="Permanent link">&para;</a></h2>
+<p>Open Backstage → <strong>Create</strong> (<code>/create</code>) → show the <strong>Node.js Service</strong> template card
+(proves it's a real golden-path template, not hand-rolled).
+- Then jump to the <strong>Catalog</strong> entry for <code>payments-api</code>
+  (<code>/catalog/default/component/payments-api</code>) to show it's registered.</p>
+<h2 id="step-2-register-the-provider-spec-github">Step 2 — Register the provider spec (GitHub)<a class="headerlink" href="#step-2-register-the-provider-spec-github" title="Permanent link">&para;</a></h2>
+<p>Open <strong><a href="https://github.com/moatazeldebsy/payments-api/pull/1">payments-api PR #1</a></strong>
+("add /api/accounts/{account_id} endpoint") — merged.
+- Show the diff (adds the <code>currency</code> field).
+- Scroll to the bot comment: <em>"No previous version registered — first-time contract
+  registration."</em></p>
+<p><em>(Skip PR #2 — it was an abandoned first pass before switching to semver versioning;
+don't show it. Also skip PR #3 unless you want to explain the version-naming switch —
+it's not essential to the core narrative.)</em></p>
+<h2 id="step-3-scaffold-the-consumer-backstage">Step 3 — Scaffold the consumer (Backstage)<a class="headerlink" href="#step-3-scaffold-the-consumer-backstage" title="Permanent link">&para;</a></h2>
+<p>Same as step 1 but for <strong>React Frontend</strong> → <code>frontend-app</code> in the Catalog
+(<code>/catalog/default/component/frontend-app</code>).</p>
+<h2 id="step-4-add-contract-testing-to-the-consumer-github">Step 4 — Add contract testing to the consumer (GitHub)<a class="headerlink" href="#step-4-add-contract-testing-to-the-consumer-github" title="Permanent link">&para;</a></h2>
+<p>Open <strong><a href="https://github.com/moatazeldebsy/frontend-app/pull/1">frontend-app PR #1</a></strong>
+("add payments-api-consumer contract test suite") — merged.
+- Show the PR description listing what was added: <code>contract/openapi.yaml</code> +
+  <code>.github/workflows/contract.yml</code>.
+- Show the actual files in the repo at that commit (flat layout, not nested).</p>
+<h2 id="step-5-register-the-consumer-contract-github">Step 5 — Register the consumer contract (GitHub)<a class="headerlink" href="#step-5-register-the-consumer-contract-github" title="Permanent link">&para;</a></h2>
+<p>Open <code>frontend-app</code>'s commit history on <code>main</code>
+(<a href="https://github.com/moatazeldebsy/frontend-app/commits/main">https://github.com/moatazeldebsy/frontend-app/commits/main</a>) — find the commit
+<em>"feat: declare dependency on /api/accounts/{account_id} currency field"</em>.
+- Open the <strong>Actions</strong> tab (<a href="https://github.com/moatazeldebsy/frontend-app/actions">https://github.com/moatazeldebsy/frontend-app/actions</a>) →
+  the <code>Contract Tests</code> workflow run for that commit → show the green "Register Consumer
+  Contract" job and its log line <code>Contract registered for frontend-app@&lt;sha&gt;</code>.</p>
+<h2 id="step-6-break-the-provider-github">Step 6 — Break the provider (GitHub)<a class="headerlink" href="#step-6-break-the-provider-github" title="Permanent link">&para;</a></h2>
+<p>Open <strong><a href="https://github.com/moatazeldebsy/payments-api/pull/4">payments-api PR #4</a></strong>
+("rename currency to currencyCode, bump to 2.0.0 (breaking)") — <strong>still open, still
+failing</strong>. This is the money shot.
+- Show the failing <code>Contract Check</code> status check.
+- Scroll to the two bot comments:
+  - ❌ breaking change detected (<code>response_property_removed</code>, field <code>currency</code>)
+  - 🚧 the generated migration guide naming <code>frontend-app</code> as an affected consumer.
+- Point out the merge is blocked by CI (only <code>Contract validation</code> is red — <code>Lint</code> and
+  <code>Test + Coverage Gate</code> both pass, so it's clear the block is specifically about the
+  contract, not incidental CI flakiness).</p>
+<h2 id="step-7-ask-the-ai-assistant-backstage">Step 7 — Ask the AI Assistant (Backstage)<a class="headerlink" href="#step-7-ask-the-ai-assistant-backstage" title="Permanent link">&para;</a></h2>
+<p>Open Backstage → <strong>AI Assistant</strong> (<code>/ai-assistant</code>). Ask, in order (use these exact
+strings — they're the real registered version identifiers, not placeholders):</p>
+<ol>
+<li><code>Can I deploy payments-api version 1.1.0-pr-3?</code> → ✅ safe</li>
+<li><code>Can I deploy payments-api version 2.0.0-pr-4?</code> → ❌ not safe, <code>currency</code> removed</li>
+<li><code>Which consumers are blocked if I deploy payments-api version 2.0.0-pr-4?</code> → <code>frontend-app</code></li>
+<li><code>Generate a migration guide for payments-api going from 1.1.0-pr-3 to 2.0.0-pr-4</code></li>
+</ol>
+<p>Good optional add-ons if you want a longer cut:
+- <code>Show me the compatibility report for payments-api</code>
+- <code>Show me the recent audit log for contract-mcp-server</code></p>
+<h2 id="bonus-show-the-machinery-kagent-dashboard">Bonus — show the machinery (kagent dashboard)<a class="headerlink" href="#bonus-show-the-machinery-kagent-dashboard" title="Permanent link">&para;</a></h2>
+<p>Open Backstage → <strong>KAgent</strong> (<code>/kagent</code>). This hits the real Kubernetes API for the
+<code>Agent</code> custom resources, so it should show <code>platform-assistant</code> live with its real tool
+count and (if Prometheus has data) call metrics — good for "this isn't a black box,
+here's the actual agent config and its tool calls" framing.</p>
+<blockquote>
+<p>Caveat: this page silently falls back to canned demo numbers if the K8s API call fails
+for any reason (e.g. proxy hiccup). If the agent list looks suspiciously static/round,
+refresh once before recording that segment to make sure you're on the live path, not
+the fallback.</p>
+</blockquote>
+<h2 id="bonus-show-real-metrics-grafana">Bonus — show real metrics (Grafana)<a class="headerlink" href="#bonus-show-real-metrics-grafana" title="Permanent link">&para;</a></h2>
+<p>Open the <strong><a href="http://k8s-monitori-promethe-8211311fd3-219291665.us-east-1.elb.amazonaws.com/d/ai-platform/ai-platform-observability?orgId=1&amp;from=now-24h&amp;to=now&amp;timezone=browser&amp;refresh=30s">AI Platform Observability dashboard</a></strong>
+(pre-set to the last 24h, auto-refreshing every 30s — covers this whole session's demo
+traffic). Good for grounding the AI Assistant answers in real numbers: MCP tool call
+volume, per-agent/per-tool breakdowns, and latency — reinforces that <code>can_i_deploy</code>,
+<code>get_compatibility_report</code>, etc. are real backend calls, not scripted responses.</p>
+<blockquote>
+<p>This requires a Grafana login (redirects to <code>/login</code> if the session isn't already
+authenticated in your browser) — log in before you start recording this segment so the
+dashboard loads directly instead of showing the login screen on camera.</p>
+</blockquote>
+<h2 id="closing-summary-to-say-after-the-demo">Closing — summary to say after the demo<a class="headerlink" href="#closing-summary-to-say-after-the-demo" title="Permanent link">&para;</a></h2>
+<p>Everything you just watched maps to the talk's learning objectives — say this explicitly,
+don't assume the audience connects the dots on their own:</p>
+<ul>
+<li><strong>MCP as the context layer.</strong> Every service exposes its live contract over MCP
+  (<code>fetch_service_contract</code>, <code>auto_discover_contracts</code>) — that's what let <code>payments-api</code>
+  register itself with zero manual Pact-suite authoring (Step 2).</li>
+<li><strong>Traditional contract testing's failure mode, shown live.</strong> PR #4 is exactly the
+  incompatibility that static specs and hand-maintained suites miss until production —
+  here it's caught and blocked before merge (Step 6).</li>
+<li><strong>Self-describing → self-testing, automatically.</strong> <code>generate_contract_tests</code> turned
+  <code>frontend-app</code>'s dependency on the <code>currency</code> field into real Pact tests with schema
+  matchers, not boilerplate status-code checks (Step &#8536;).</li>
+<li><strong>CI/CD integration.</strong> The block on PR #4 is a real failing GitHub status check, not a
+  chat answer — <code>Contract validation</code> is red while <code>Lint</code> and <code>Test + Coverage Gate</code> stay
+  green, isolating the cause (Step 6).</li>
+<li><strong>Breaking changes reduced, concretely.</strong> <code>can_i_deploy</code>, the named blocked consumer,
+  and the generated migration guide (Step 7) are the reduce-breaking-changes story end to
+  end — detect → name the blast radius → hand the consumer a fix path.</li>
+</ul>
+<p><strong>Then name the two code paths and their risk profile — this is the trade-offs/governance
+ask from the abstract, and it's the part that's easy to skip if you're rushing:</strong></p>
+<ul>
+<li>The CI gate (<code>contract-check.yml</code>, the ArgoCD hooks) calls <code>detect_breaking_changes</code> /
+  <code>validate_compatibility</code> directly over HTTP. Pure schema diffing, no model in the loop,
+  deterministic — that's what's safe to gate a merge on.</li>
+<li>The AI Assistant chat in Step 7 goes through an LLM that calls the same tools and then
+  paraphrases the JSON result. Useful for exploration, but the tool result (and the audit
+  log) is the source of truth — not the sentence the assistant wrote around it.</li>
+<li>Governance today is an audit log (<code>get_audit_log</code> — who registered what, when) plus an
+  optional <code>API_KEY</code> gate on writes. What's <em>not</em> there yet: an approval workflow for
+  overwriting a registered contract, and role separation between "can register a contract"
+  and "can override a breaking-change block." Naming that gap out loud is more credible
+  than pretending it's solved.</li>
+</ul>
+<p>Close on: <em>"The AI layer makes this conversational and discoverable — but the thing you'd
+actually want to gate a production deploy on is the deterministic tool call underneath it,
+not the chat transcript. That distinction is the governance model."</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../search/main.js"></script>
+      
+    
+  </body>
+</html>

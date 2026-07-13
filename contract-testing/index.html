@@ -1214,6 +1214,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#trade-offs-risks-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Trade-offs, Risks &amp; Governance
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       Troubleshooting
@@ -3084,6 +3093,19 @@ docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </
 docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/contract-mcp-server:0.1.0
 kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/contract-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev
 </code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="trade-offs-risks-governance">Trade-offs, Risks &amp; Governance<a class="headerlink" href="#trade-offs-risks-governance" title="Permanent link">&para;</a></h2>
+<p>"AI-driven testing" covers two genuinely different code paths here, and the risk profile of each is different. Knowing which one you're relying on for a given decision matters.</p>
+<p><strong>Deterministic path (no LLM in the loop).</strong> <code>generate_contract_tests</code>, <code>detect_breaking_changes</code>, and <code>validate_compatibility</code> are plain schema diffing over the registered OpenAPI documents (see <code>generator.ts</code> / <code>store.ts</code>) — same input, same output, every time. This is the part that's safe to gate CI on: <code>contract-check.yml</code> and the ArgoCD PreSync hook call these tools directly over HTTP, never through a model. There's no hallucination risk here because there's no model in this path.</p>
+<p><strong>Conversational path (LLM in the loop).</strong> Asking <code>contract-assistant</code> <em>"Can I deploy payments-api 2.0.0-pr-4?"</em> goes through an LLM that calls <code>can_i_deploy</code> and then paraphrases the result. The tool call and its JSON result are deterministic; the sentence wrapped around it is not. Don't treat the chat answer as the source of truth — treat the underlying tool result (visible in the audit log, and in the raw CI check output) as the source of truth, and the chat answer as a convenience layer on top of it.</p>
+<p><strong>Failure modes to plan for:</strong>
+- <strong>Misreading a "safe" answer.</strong> If a consumer's contract is stale or was never registered, <code>can_i_deploy</code> has nothing to check against and returns safe-by-omission, not safe-by-verification. Treat "no registered consumers" as "unknown," not "clear." (<code>get_stale_contracts</code> exists precisely to surface this before it bites you.)
+- <strong>Non-determinism at the chat layer.</strong> Two people asking the same question in different phrasing can get answers with different emphasis or wording, even though the underlying tool call is identical. For anything gating a merge or a deploy, the CI check / <code>can_i_deploy</code> tool result is authoritative — the chat transcript is not audit evidence.
+- <strong>Incomplete or malformed specs.</strong> <code>generate_contract_tests</code> degrades gracefully on missing schema fields (falls back to <code>like(null)</code> matchers), which means a sparse OpenAPI doc silently produces a weak test rather than an error. Weak tests pass more often than they should.</p>
+<p><strong>Governance today:</strong>
+- <strong>Audit trail.</strong> Every register / breaking-change-detected / compatibility-check event is logged and queryable via <code>get_audit_log</code> — this is the mechanism for "who registered what, when," and it's what you'd pull for a post-incident review.
+- <strong>Write authorization.</strong> Setting <code>API_KEY</code> requires <code>X-Api-Key</code> on all write operations (<code>register_contract</code>, etc.), so anyone can <em>read</em> contracts but only holders of the key can register or overwrite one. In the current demo/POC deployment this is unset — fine for a conference cluster, not fine for production, where it should be scoped per-CI-pipeline via distinct keys or replaced with the <code>AWS_ROLE_ARN</code> OIDC path already wired into <code>contract-check.yml</code>.
+- <strong>What's not governed yet.</strong> There's no approval workflow for overwriting an existing registered version (last write wins), and no role distinction between "can register a contract" and "can override a breaking-change block." For a platform beyond POC scope, both would need to move from "technically possible" to "explicitly designed."</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <p><strong><code>fetch_service_contract</code> returns "No OpenAPI spec found"</strong><br />
