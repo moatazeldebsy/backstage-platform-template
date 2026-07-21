@@ -212,4 +212,4 @@ decision, not automated.
 
 - [crossplane.md](crossplane.md) — full XRD reference including V2 extensions
 - [docs/runbooks/dr-region-failover.md](runbooks/dr-region-failover.md) — step-by-step region failover procedure
-- [roadmap.md](roadmap.md) — Phase 9 multi-region item
+- [GitHub Project](https://github.com/users/moatazeldebsy/projects/5) — multi-region tracked under the Phase 9 "Advanced Platform" milestone

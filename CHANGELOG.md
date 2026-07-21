@@ -8,6 +8,10 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Removed `docs/roadmap.md`. The [GitHub Project board](https://github.com/users/moatazeldebsy/projects/5) is now the single source of truth for roadmap status — the static doc and the board had drifted out of sync in both directions and could no longer be trusted together. README and docs cross-references updated to point at the Project instead.
+
 ---
 
 ## [0.5.0] — 2026-06-16

@@ -37,5 +37,5 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [Runbooks](runbooks/index.md) — Operational procedures and on-call guides
 
 ### Reference
-- [Roadmap](roadmap.md) — Upcoming features and milestones
+- [Roadmap](https://github.com/users/moatazeldebsy/projects/5) — Upcoming features and milestones, tracked as GitHub Project issues
 - [Architecture](architecture.md) — System design and data flow

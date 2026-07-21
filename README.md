@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
+[![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 [![GitHub stars](https://img.shields.io/github/stars/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
 
@@ -415,23 +416,9 @@ helm upgrade --install my-svc ./helm/service-template \
 
 ---
 
-## Implementation Phases
+## Roadmap
 
-| Phase | What | Status |
-|---|---|---|
-| 1 | EKS + VPC + ECR + IAM (Terraform) | ✅ |
-| 2 | GitHub Actions CI (test + smoke-check) | ✅ |
-| 3 | Helm service template + conventions | ✅ |
-| 4 | Backstage + software templates + README generation | ✅ |
-| 5 | CloudWatch + Grafana observability | ✅ |
-| 6 | hello-service end-to-end example | ✅ |
-| 7 | `idp:deploy-local` custom Backstage action | ✅ |
-| 8 | "Deploy to Kind" standalone Backstage template | ✅ |
-| 9 | GitHub Actions CD (ECR push → EKS Helm deploy) | ✅ |
-| 10 | Prometheus ServiceMonitor for app metrics scraping | ✅ |
-| 11 | EKS access entry for GitHub Actions IAM role | ✅ |
-| 12 | AI/ML platform — KAgent + MLflow + 3 MCP servers + AI templates | ✅ |
-| v2 | Multi-region active-passive (eu-central-1 + us-east-1) — Aurora Global DB, DynamoDB Global Tables, Route53 failover, Global Accelerator, Thanos multi-cluster metrics | ✅ |
+Shipped work and what's next are tracked on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** — it's the single source of truth for status (Todo / In Progress / Done), replacing the old static roadmap doc. Highlights already shipped: EKS + VPC + ECR + IAM via Terraform, CI/CD to EKS, the Backstage golden-path platform, AI/ML stack (KAgent + MLflow + MCP servers), SRE reliability programme (SLOs, Loki/Tempo, PagerDuty, Argo Rollouts), and the opt-in V2 multi-region architecture. Open items include multi-team production hardening (TLS, HA, per-team isolation) and the Amazon Bedrock AI integration — see the board for the full, current list.
 
 ---
 

@@ -81,7 +81,7 @@ This is the path for a pilot team. Plan ~3 working days end-to-end; ~half a day 
 ### Day 4 onward — Operate
 
 9. **Set a weekly review cadence**: 15 min looking at the team's panel in the IDP scorecard Grafana board. Any check that flipped from passing → failing is a regression and gets triaged.
-10. **Add a flaky-test quarantine policy**: when CI flakes the same test twice in a week, the test is auto-quarantined and a Jira ticket created. (Flaky-test exporter is on the roadmap — see [docs/roadmap.md](roadmap.md).)
+10. **Add a flaky-test quarantine policy**: when CI flakes the same test twice in a week, the test is auto-quarantined and a Jira ticket created. (Flaky-test exporter is on the roadmap — see the [GitHub Project](https://github.com/users/moatazeldebsy/projects/5).)
 
 ## Test pyramid — recommendations per service type
 
@@ -241,7 +241,7 @@ These are the success-measure-3 numbers ("Improve CI feedback speed, test reliab
 
 ## Out of scope (yet)
 
-Tracking these in `docs/roadmap.md`:
+Tracking these in the [GitHub Project](https://github.com/users/moatazeldebsy/projects/5):
 
 - **Mutation testing in tier model** — once teams have stabilised at Gold.
 - **PR-time test impact analysis** — only run perf/e2e on changes to relevant paths.

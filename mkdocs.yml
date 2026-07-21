@@ -39,7 +39,6 @@ nav:
   - Security: security.md
   - Security Scanning (SonarCloud + Snyk): security-scanning.md
   - Demo Runbook: demo-runbook.md
-  - Roadmap: roadmap.md
   - Readiness Checklist: readiness-checklist.md
   - SRE & Reliability: sre-reliability.md
   - Runbooks:
