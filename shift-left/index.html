@@ -449,23 +449,6 @@
   
   
     <li class="md-tabs__item">
-      <a href="../roadmap/" class="md-tabs__link">
-        
-  
-    
-  
-  Roadmap
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
       <a href="../readiness-checklist/" class="md-tabs__link">
         
   
@@ -1317,26 +1300,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../roadmap/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Roadmap
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../readiness-checklist/" class="md-nav__link">
         
   
@@ -1389,10 +1352,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1403,8 +1366,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_21">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1779,7 +1742,7 @@
 <h3 id="day-4-onward-operate">Day 4 onward — Operate<a class="headerlink" href="#day-4-onward-operate" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>Set a weekly review cadence</strong>: 15 min looking at the team's panel in the IDP scorecard Grafana board. Any check that flipped from passing → failing is a regression and gets triaged.</li>
-<li><strong>Add a flaky-test quarantine policy</strong>: when CI flakes the same test twice in a week, the test is auto-quarantined and a Jira ticket created. (Flaky-test exporter is on the roadmap — see <a href="../roadmap/">docs/roadmap.md</a>.)</li>
+<li><strong>Add a flaky-test quarantine policy</strong>: when CI flakes the same test twice in a week, the test is auto-quarantined and a Jira ticket created. (Flaky-test exporter is on the roadmap — see the <a href="https://github.com/users/moatazeldebsy/projects/5">GitHub Project</a>.)</li>
 </ol>
 <h2 id="test-pyramid-recommendations-per-service-type">Test pyramid — recommendations per service type<a class="headerlink" href="#test-pyramid-recommendations-per-service-type" title="Permanent link">&para;</a></h2>
 <p>The platform doesn't <em>enforce</em> a pyramid shape, but here's the recommended starting mix.</p>
@@ -2150,7 +2113,7 @@
 <p><strong>Can I disable a gate for my service?</strong> Locally: yes, remove the relevant step from your CI. Centrally enforced gates (OPA, ArgoCD PreSync) are not opt-out — they apply at cluster boundaries. If a gate is genuinely wrong for your service, raise an issue against the platform repo; we'd rather change the gate than make exceptions.</p>
 <p><strong>What about mutation testing?</strong> The <code>mutation-testing-suite</code> template exists (Stryker). It's currently opt-in and not part of any tier — mutation scores are noisy and slow. It's a Gold+ aspiration; recommend adding it after a service is stably at Gold.</p>
 <h2 id="out-of-scope-yet">Out of scope (yet)<a class="headerlink" href="#out-of-scope-yet" title="Permanent link">&para;</a></h2>
-<p>Tracking these in <code>docs/roadmap.md</code>:</p>
+<p>Tracking these in the <a href="https://github.com/users/moatazeldebsy/projects/5">GitHub Project</a>:</p>
 <ul>
 <li><strong>Mutation testing in tier model</strong> — once teams have stabilised at Gold.</li>
 <li><strong>PR-time test impact analysis</strong> — only run perf/e2e on changes to relevant paths.</li>
