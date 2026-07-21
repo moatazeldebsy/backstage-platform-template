@@ -789,6 +789,7 @@ done
 kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
 kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
 kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
+kubectl apply -f "$(dirname "$0")/../kubernetes/network-policies/default-deny.yaml"
 
 # ── Step 4: nginx ingress controller ─────────────────────────────────────────
 log "Step 4: Installing nginx ingress controller..."

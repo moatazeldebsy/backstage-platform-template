@@ -17,6 +17,7 @@ import { idpRunTrainingJobModule } from './modules/idpRunTrainingJob';
 import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
 import { idpDeployModelServerModule } from './modules/idpDeployModelServer';
 import { idpSetupContractTestingModule } from './modules/idpSetupContractTesting';
+import { idpCreateNamespaceModule } from './modules/idpCreateNamespace';
 import { ragSearchPlugin } from './modules/idpRagSearch';
 import { learningCenterPlugin } from './modules/idpLearningCenter';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
@@ -40,6 +41,7 @@ backend.add(idpRunTrainingJobModule);
 backend.add(idpDeployMcpServerModule);
 backend.add(idpDeployModelServerModule);
 backend.add(idpSetupContractTestingModule);
+backend.add(idpCreateNamespaceModule);
 backend.add(ragSearchPlugin);
 backend.add(learningCenterPlugin);
 

@@ -19,6 +19,7 @@ spec:
     - ./templates/react-frontend/template.yaml
     # ── Blessed: Platform self-service ───────────────────────────────────────
     - ./templates/team-namespace/template.yaml
+    - ./templates/create-namespace/template.yaml
     - ./templates/add-secret/template.yaml
     - ./templates/decommission-service/template.yaml
     # ── Advanced: Infrastructure & cloud resources ────────────────────────────

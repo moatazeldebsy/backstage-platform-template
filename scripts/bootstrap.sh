@@ -68,6 +68,7 @@ cd "$ROOT_DIR"
 kubectl apply -f kubernetes/namespaces/namespaces.yaml
 kubectl apply -f kubernetes/namespaces/services-quota.yaml
 kubectl apply -f kubernetes/rbac/github-actions.yaml
+kubectl apply -f kubernetes/network-policies/default-deny.yaml
 
 # ── Phase 3.5: Annotate backstage ServiceAccount with IRSA role ARN ──────────
 log "Phase 3.5: Setting up Backstage ServiceAccount with IRSA..."

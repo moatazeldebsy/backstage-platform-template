@@ -149,6 +149,7 @@ kubectl apply -f kubernetes/namespaces/namespaces.yaml       --context hub
 kubectl apply -f kubernetes/namespaces/services-quota.yaml   --context hub
 kubectl apply -f kubernetes/rbac/github-actions.yaml         --context hub
 kubectl apply -f kubernetes/rbac/cluster-roles.yaml          --context hub
+kubectl apply -f kubernetes/network-policies/default-deny.yaml --context hub
 
 # ── Phase 2.2: Backstage IRSA ────────────────────────────────────────────────
 log "Phase 2.2: Backstage ServiceAccount IRSA..."
@@ -580,6 +581,7 @@ else
   # Namespaces + RBAC
   kubectl apply -f kubernetes/namespaces/namespaces.yaml     --context standby
   kubectl apply -f kubernetes/rbac/cluster-roles.yaml        --context standby
+  kubectl apply -f kubernetes/network-policies/default-deny.yaml --context standby
 
   log "Standby cluster provisioned."
 fi

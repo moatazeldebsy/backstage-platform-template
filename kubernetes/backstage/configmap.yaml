@@ -306,6 +306,10 @@ data:
           rules:
             - allow: [Template]
         - type: url
+          target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/create-namespace/template.yaml
+          rules:
+            - allow: [Template]
+        - type: url
           target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/templates/add-secret/template.yaml
           rules:
             - allow: [Template]

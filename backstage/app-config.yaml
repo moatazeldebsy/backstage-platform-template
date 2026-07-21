@@ -145,6 +145,10 @@ catalog:
       rules:
         - allow: [Template]
     - type: file
+      target: /catalog/templates/create-namespace/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
       target: /catalog/templates/add-secret/template.yaml
       rules:
         - allow: [Template]

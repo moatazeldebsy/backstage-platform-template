@@ -1,0 +1,70 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-namespace
+  title: Create Namespace (self-service, instant)
+  description: >-
+    Instantly create a Kubernetes namespace with Pod Security Standards, a
+    tiered ResourceQuota, and a default-deny NetworkPolicy — applied directly
+    to the cluster, no PR/GitOps round-trip. For full team onboarding (RBAC,
+    ArgoCD project, catalog Group entity) use the "Provision Team Namespace"
+    template instead.
+  tags:
+    - platform
+    - kubernetes
+    - self-service
+    - local
+    - v1
+spec:
+  owner: platform-team
+  type: infrastructure
+
+  parameters:
+    - title: Namespace
+      required:
+        - name
+      properties:
+        name:
+          title: Namespace name
+          type: string
+          description: Lowercase, alphanumeric + hyphens (e.g. scratch-payments)
+          pattern: '^[a-z][a-z0-9-]{1,61}[a-z0-9]$'
+          ui:autofocus: true
+        tier:
+          title: Sizing tier
+          type: string
+          default: small
+          enum:
+            - small
+            - medium
+            - large
+          enumNames:
+            - 'Small  — 4 CPU · 8Gi · 30 pods'
+            - 'Medium — 16 CPU · 32Gi · 100 pods'
+            - 'Large  — no hard quota (LimitRange defaults only)'
+        networkPolicy:
+          title: Apply default-deny NetworkPolicy
+          type: boolean
+          default: true
+
+  steps:
+    - id: create-namespace
+      name: Create namespace on the cluster
+      action: idp:create-namespace
+      input:
+        name: ${{ parameters.name }}
+        tier: ${{ parameters.tier }}
+        networkPolicy: ${{ parameters.networkPolicy }}
+
+  output:
+    text:
+      - title: Namespace ready
+        content: |
+          Namespace `${{ steps['create-namespace'].output.namespace }}` has been created on the cluster with:
+          - Pod Security Standards: `restricted`
+          - ResourceQuota tier: `${{ parameters.tier }}`
+          - Default-deny NetworkPolicy: `${{ parameters.networkPolicy }}`
+
+          ```bash
+          kubectl get namespace ${{ steps['create-namespace'].output.namespace }} -o yaml
+          ```
