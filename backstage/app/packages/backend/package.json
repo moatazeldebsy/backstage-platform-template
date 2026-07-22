@@ -16,6 +16,7 @@
     "build-image": "docker build ../.. -f Dockerfile --tag backstage"
   },
   "dependencies": {
+    "@aws-sdk/client-ecr": "^3.637.0",
     "@aws-sdk/client-secrets-manager": "^3.637.0",
     "@backstage-community/plugin-adr-backend": "^0.20.0",
     "@backstage-community/plugin-announcements-backend": "^0.23.0",

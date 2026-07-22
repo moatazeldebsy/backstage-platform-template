@@ -129,8 +129,8 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: aws-secrets-manager
-    kind: SecretStore
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
   target:
     name: ${serviceName}-secrets
     creationPolicy: Merge

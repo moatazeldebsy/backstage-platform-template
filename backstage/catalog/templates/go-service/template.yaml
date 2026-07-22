@@ -103,6 +103,17 @@ spec:
           type: string
           description: "OIDC role ARN used by GitHub Actions to push images to ECR. Example: arn:aws:iam::123456789012:role/idp-mvp-github-actions"
           ui:help: "Leave blank for local deployments."
+        clusterName:
+          title: Cluster Name (AWS only)
+          type: string
+          default: idp-mvp
+          description: "Matches the ECR repo naming used by CI: <clusterName>/<serviceName>"
+          ui:help: "Leave as default unless your cluster was named differently during setup."
+        awsRegion:
+          title: AWS Region (AWS only)
+          type: string
+          default: us-east-1
+          ui:help: "Leave blank for local deployments."
 
   steps:
     - id: fetch-template
@@ -132,6 +143,16 @@ spec:
         topics:
           - go
           - idp-service
+
+    - id: provision-ecr
+      name: Provision ECR Repository
+      if: ${{ parameters.deployTarget === 'aws' }}
+      action: idp:provision-ecr
+      continueOnError: true
+      input:
+        serviceName: ${{ parameters.name }}
+        clusterName: ${{ parameters.clusterName }}
+        awsRegion: ${{ parameters.awsRegion }}
 
     - id: set-repo-secrets
       name: Configure CI/CD Secrets

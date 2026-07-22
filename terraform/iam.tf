@@ -161,6 +161,33 @@ resource "aws_iam_role_policy" "backstage" {
         ]
       },
       {
+        # idp:provision-secret scaffolder action (add-secret template) — writes
+        # per-service secrets under idp-mvp/*, matching the naming convention
+        # used by every other idp-mvp/<component>[/...] secret in this file.
+        Sid    = "ScaffolderProvisionSecret"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:TagResource"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:idp-mvp/*"
+      },
+      {
+        # idp:provision-ecr scaffolder action — creates a per-service repo on request,
+        # ahead of the "Ensure ECR repository exists" fallback in build-and-deploy.yml.
+        Sid    = "ScaffolderProvisionEcr"
+        Effect = "Allow"
+        Action = [
+          "ecr:CreateRepository",
+          "ecr:DescribeRepositories",
+          "ecr:PutLifecyclePolicy",
+          "ecr:PutImageScanningConfiguration",
+          "ecr:TagResource"
+        ]
+        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.cluster_name}/*"
+      },
+      {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
