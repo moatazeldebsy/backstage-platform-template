@@ -6,14 +6,14 @@ on:
     paths:
       - 'backstage/app/**'
       - 'cli/**'
-      - 'services/hello-service/**'
+      - 'services/**'
       - '.github/workflows/codeql.yml'
   pull_request:
     branches: [main]
     paths:
       - 'backstage/app/**'
       - 'cli/**'
-      - 'services/hello-service/**'
+      - 'services/**'
       - '.github/workflows/codeql.yml'
   schedule:
     # Weekly scan catches newly-published CodeQL query packs even without a code change.
