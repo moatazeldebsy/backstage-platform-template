@@ -60,6 +60,33 @@ module "eks" {
         CloudWatchAgentServerPolicy  = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
       }
     }
+
+    # Memory-optimised node group for Prometheus/MLflow/other memory-heavy workloads.
+    # Scales to zero by default — costs nothing unless a pod actually tolerates the
+    # taint and opts in via nodeSelector: {role: memory-optimized}.
+    memory_optimized = {
+      instance_types = var.memory_optimized_instance_types
+      min_size       = 0
+      max_size       = 3
+      desired_size   = 0
+
+      labels = {
+        role = "memory-optimized"
+      }
+
+      taints = [
+        {
+          key    = "idp/memory-optimized"
+          value  = "true"
+          effect = "NO_SCHEDULE"
+        }
+      ]
+
+      iam_role_additional_policies = {
+        AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        CloudWatchAgentServerPolicy  = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+      }
+    }
   }
 
   # Grant cluster admin to the Terraform caller

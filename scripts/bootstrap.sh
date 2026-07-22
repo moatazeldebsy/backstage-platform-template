@@ -15,6 +15,7 @@ SKIP_GITOPS="${SKIP_GITOPS:-false}"
 SKIP_POLICIES="${SKIP_POLICIES:-false}"
 SKIP_DORA="${SKIP_DORA:-false}"
 SKIP_AI="${SKIP_AI:-false}"
+SKIP_VELERO="${SKIP_VELERO:-false}"
 
 log()  { echo "[$(date +%T)] INFO  $*"; }
 err()  { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
@@ -29,6 +30,7 @@ while [[ $# -gt 0 ]]; do
     --skip-policies) SKIP_POLICIES=true; shift ;;
     --skip-dora)     SKIP_DORA=true; shift ;;
     --skip-ai)       SKIP_AI=true; shift ;;
+    --skip-velero)   SKIP_VELERO=true; shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -880,6 +882,87 @@ if [[ "$SKIP_AI" != "true" ]]; then
   )
 else
   log "Phase 6a: Skipping Argo Workflows (--skip-ai flag)"
+fi
+
+# ── Phase 6b: Velero cluster backup ───────────────────────────────────────────
+# Protects PVCs (Grafana/Prometheus/MLflow data), ArgoCD state, and cluster config
+# via daily backups to the S3 bucket + IRSA role provisioned in terraform/s3.tf
+# and terraform/iam.tf. To test a restore: `velero backup get` to find a backup
+# name, then `velero restore create --from-backup <name>`.
+if [[ "$SKIP_VELERO" != "true" ]]; then
+  log "Phase 6b: Installing Velero for cluster backup..."
+  VELERO_BUCKET=$(cd "${TF_DIR}" && terraform output -raw velero_backups_bucket_name 2>/dev/null || echo "")
+  VELERO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw velero_role_arn 2>/dev/null || echo "")
+
+  if [[ -z "$VELERO_BUCKET" || -z "$VELERO_ROLE_ARN" ]]; then
+    log "  WARNING: Velero terraform outputs missing — skipping Velero install."
+  else
+    helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts 2>/dev/null || true
+    helm repo update vmware-tanzu
+
+    kubectl create namespace velero --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create serviceaccount velero -n velero --dry-run=client -o yaml | kubectl apply -f -
+    kubectl annotate serviceaccount velero -n velero \
+      "eks.amazonaws.com/role-arn=${VELERO_ROLE_ARN}" --overwrite
+
+    tmp_velero_values=$(mktemp /tmp/velero-values.XXXXXX)
+    cat > "${tmp_velero_values}" <<EOF
+serviceAccount:
+  server:
+    create: false
+    name: velero
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.10.0
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: ${VELERO_BUCKET}
+      config:
+        region: ${AWS_REGION}
+  volumeSnapshotLocation:
+    - name: default
+      provider: aws
+      config:
+        region: ${AWS_REGION}
+snapshotsEnabled: true
+deployNodeAgent: true
+EOF
+
+    helm upgrade --install velero vmware-tanzu/velero \
+      --namespace velero \
+      --values "${tmp_velero_values}" \
+      --wait --timeout 5m
+    rm -f "${tmp_velero_values}"
+
+    # Daily backup schedule — 30-day TTL matches var.rds_backup_retention_days.
+    kubectl apply -f - <<'EOF'
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-cluster-backup
+  namespace: velero
+spec:
+  schedule: "0 3 * * *"
+  template:
+    ttl: 720h0m0s
+    includedNamespaces:
+      - backstage
+      - argocd
+      - monitoring
+      - ml-platform
+      - kagent
+    snapshotVolumes: true
+EOF
+
+    log "Velero installed — daily backups scheduled at 03:00 UTC (30-day retention)."
+  fi
+else
+  log "Phase 6b: Skipping Velero (--skip-velero flag)"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

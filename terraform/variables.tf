@@ -63,6 +63,12 @@ variable "node_instance_types" {
   default     = ["t3.medium"]
 }
 
+variable "memory_optimized_instance_types" {
+  description = "EC2 instance types for the memory-optimised node group (Prometheus, MLflow, and other memory-heavy workloads that opt in via the role=memory-optimized nodeSelector + toleration). Scales to zero by default — no cost unless something actually schedules onto it."
+  type        = list(string)
+  default     = ["r5.large"]
+}
+
 variable "node_group_min_size" {
   description = "Minimum number of nodes (0 allows scale-to-zero via cost optimizer)"
   type        = number
@@ -97,6 +103,12 @@ variable "rds_multi_az" {
   description = "Enable Multi-AZ standby for RDS (recommended for Medium/Large tiers)"
   type        = bool
   default     = false
+}
+
+variable "rds_backup_retention_days" {
+  description = "Number of days to retain automated RDS backups"
+  type        = number
+  default     = 30
 }
 
 variable "rds_allocated_storage" {

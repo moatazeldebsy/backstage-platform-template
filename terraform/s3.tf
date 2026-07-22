@@ -130,3 +130,69 @@ output "mlflow_artifacts_bucket_name" {
   description = "S3 bucket name for MLflow artifact storage"
   value       = aws_s3_bucket.mlflow_artifacts.id
 }
+
+# ── Velero cluster backup storage ───────────────────────────────────────────────────
+resource "aws_s3_bucket" "velero_backups" {
+  bucket = "idp-mvp-velero-${data.aws_caller_identity.current.account_id}"
+
+  tags = {
+    Name = "idp-mvp-velero-backups"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "velero_backups" {
+  bucket = aws_s3_bucket.velero_backups.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "velero_backups" {
+  bucket = aws_s3_bucket.velero_backups.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "velero_backups" {
+  bucket = aws_s3_bucket.velero_backups.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Backups are the whole point of this bucket — expire old ones rather than
+# growing unbounded, but don't let normal lifecycle churn delete a backup
+# before Velero's own --default-backup-ttl (720h / 30 days) would.
+resource "aws_s3_bucket_lifecycle_configuration" "velero_backups" {
+  bucket = aws_s3_bucket.velero_backups.id
+
+  rule {
+    id     = "expire-old-backups"
+    status = "Enabled"
+    filter {}
+
+    expiration {
+      days = 90
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+output "velero_backups_bucket_name" {
+  description = "S3 bucket name for Velero cluster backups"
+  value       = aws_s3_bucket.velero_backups.id
+}

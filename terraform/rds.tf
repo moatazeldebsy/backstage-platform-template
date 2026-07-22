@@ -53,7 +53,7 @@ resource "aws_db_instance" "backstage" {
   multi_az          = var.rds_multi_az
   allocated_storage = var.rds_allocated_storage
 
-  backup_retention_period   = var.rds_multi_az ? 7 : 1
+  backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-backstage-final"
