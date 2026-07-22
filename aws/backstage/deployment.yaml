@@ -16,8 +16,8 @@ spec:
       serviceAccountName: backstage
       containers:
         - name: backstage
-          image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:latest
-          imagePullPolicy: Always
+          image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:BACKSTAGE_IMAGE_TAG
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 7007
           command: ["node", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
@@ -70,6 +70,11 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: K8S_CLUSTER_URL
+            - name: K8S_CLUSTER_CA_DATA
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: K8S_CLUSTER_CA_DATA
             - name: K8S_SERVICE_ACCOUNT_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -144,6 +149,9 @@ spec:
             - name: prod-config
               mountPath: /config/app-config.aws.yaml
               subPath: app-config.aws.yaml
+            - name: rds-ca-bundle
+              mountPath: /config/rds-ca-bundle.pem
+              subPath: global-bundle.pem
           resources:
             requests:
               cpu: 200m
@@ -170,6 +178,9 @@ spec:
         - name: prod-config
           configMap:
             name: backstage-config
+        - name: rds-ca-bundle
+          configMap:
+            name: rds-ca-bundle
 ---
 apiVersion: v1
 kind: Service

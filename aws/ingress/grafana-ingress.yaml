@@ -5,6 +5,12 @@
 # This file is kept as a reference for the ingress spec. To customise (e.g. add a real
 # hostname after Route53 is configured), edit the grafana.ingress section in
 # observability/prometheus-stack-values-aws.yaml and run:
+#
+# TLS: when terraform's var.domain_name is set, terraform/acm.tf provisions an ACM
+# cert and bootstrap.sh wires alb.ingress.kubernetes.io/certificate-arn (+ HTTPS
+# listener + ssl-redirect) into the real Helm-managed ingress automatically. ALB
+# terminates TLS from the ACM cert ARN, not a Kubernetes TLS Secret, so there's no
+# spec.tls block here even once HTTPS is enabled.
 #   helm upgrade prometheus prometheus-community/kube-prometheus-stack \
 #     --namespace monitoring --values observability/prometheus-stack-values-aws.yaml
 #

@@ -21,20 +21,17 @@ backend:
   database:
     connection:
       ssl:
-        # RDS certs are signed by Amazon's own CA, not a public trust root — verifying
-        # against the default trust store fails with "self-signed certificate in
-        # certificate chain" even though the connection is genuinely TLS-encrypted.
-        # For production, fetch https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem,
-        # mount it, and set rejectUnauthorized: true with `ca: <path>` instead.
-        rejectUnauthorized: false
+        # RDS certs are signed by Amazon's own CA, not a public trust root. bootstrap.sh
+        # downloads https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem and
+        # mounts it into the rds-ca-bundle ConfigMap at the path below (see deployment.yaml).
+        rejectUnauthorized: true
+        ca: /config/rds-ca-bundle.pem
 
 auth:
   environment: production
   session:
     secret: ${AUTH_SESSION_SECRET}
   providers:
-    guest:
-      dangerouslyAllowOutsideDevelopment: true
     github:
       production:
         clientId: ${AUTH_GITHUB_CLIENT_ID}
@@ -304,14 +301,15 @@ kubernetes:
   clusterLocatorMethods:
     - type: config
       clusters:
-        # Single-region dev deployment — the only cluster is this one. No CA
-        # bundle is provisioned for it, so we skip TLS verification rather than
-        # requiring a caData value that nothing populates.
+        # caData comes from terraform/secrets.tf (K8S_CLUSTER_CA_DATA, sourced from
+        # module.eks.cluster_certificate_authority_data) — verifies the EKS API server
+        # cert instead of skipping TLS validation.
         - name: eks-us-east-1
           url: ${K8S_CLUSTER_URL}
           authProvider: serviceAccount
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}
-          skipTLSVerify: true
+          skipTLSVerify: false
+          caData: ${K8S_CLUSTER_CA_DATA}
           customResources:
             - group: argoproj.io
               apiVersion: v1alpha1

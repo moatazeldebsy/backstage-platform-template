@@ -35,8 +35,8 @@ jobs:
       services: ${{ steps.filter.outputs.changes }}
       staging_promoted: ${{ steps.staging-filter.outputs.staging_promoted }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: filter
         with:
           filters: |
@@ -47,7 +47,7 @@ jobs:
       # staging promotion PR (i.e. it touched helm-values-staging.yaml). Used to gate
       # smoke-test-staging / promote-to-production so they only run on that trigger,
       # not on every ordinary source-code push.
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: staging-filter
         with:
           filters: |
@@ -66,7 +66,7 @@ jobs:
       run:
         working-directory: services/${{ matrix.service }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Detect runtime
         id: runtime
@@ -76,19 +76,19 @@ jobs:
           elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then echo "runtime=python" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         if: steps.runtime.outputs.runtime == 'go'
         with:
           go-version-file: services/${{ matrix.service }}/go.mod
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: steps.runtime.outputs.runtime == 'node'
         with:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: services/${{ matrix.service }}/package-lock.json
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         if: steps.runtime.outputs.runtime == 'python'
         with:
           python-version: '3.12'
@@ -122,7 +122,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Check AWS_ROLE_ARN secret
         id: guard
@@ -139,7 +139,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -147,11 +147,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Set up Docker Buildx
         if: steps.guard.outputs.has_aws == 'true'
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Ensure ECR repository exists
         if: steps.guard.outputs.has_aws == 'true'
@@ -167,7 +167,7 @@ jobs:
       - name: Docker metadata
         id: meta
         if: steps.guard.outputs.has_aws == 'true'
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
           tags: |
@@ -177,7 +177,7 @@ jobs:
       - name: Build and push
         if: steps.guard.outputs.has_aws == 'true'
         id: build-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: services/${{ matrix.service }}
           push: true
@@ -191,7 +191,7 @@ jobs:
         id: trivy
         if: steps.guard.outputs.has_aws == 'true'
         continue-on-error: true  # upload SARIF even when findings cause exit-code 1
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
           format: sarif
@@ -202,14 +202,14 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: steps.guard.outputs.has_aws == 'true' && !cancelled() && hashFiles('trivy-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         with:
           sarif_file: trivy-results.sarif
 
       # ── Cosign keyless image signing ──────────────────────────────────────
       - name: Install Cosign
         if: steps.guard.outputs.has_aws == 'true'
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
       - name: Sign image with Cosign (keyless via OIDC)
         if: steps.guard.outputs.has_aws == 'true'
@@ -235,7 +235,7 @@ jobs:
       id-token: write
       contents: write   # needed to push the image tag commit
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           token: ${{ secrets.IDP_PLATFORM_TOKEN }}   # push back to repo
           fetch-depth: 0
@@ -254,7 +254,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -262,7 +262,7 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Update image tag in helm-values-aws.yaml
         if: steps.guard.outputs.has_aws == 'true'
@@ -290,7 +290,7 @@ jobs:
       - name: Notify Slack on success
         if: success()
         continue-on-error: true   # non-blocking until SLACK_BOT_TOKEN is configured
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@0d95c9a7becc1e6e297d76df9bc735c44f4cbcbc # v3
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -301,7 +301,7 @@ jobs:
       - name: Notify Slack on failure
         if: failure()
         continue-on-error: true   # non-blocking until SLACK_BOT_TOKEN is configured
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@0d95c9a7becc1e6e297d76df9bc735c44f4cbcbc # v3
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -323,7 +323,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Check AWS_ROLE_ARN secret
         id: guard
@@ -338,7 +338,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -392,7 +392,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           token: ${{ secrets.IDP_PLATFORM_TOKEN }}
           fetch-depth: 0
@@ -410,7 +410,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -418,7 +418,7 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Create staging promotion PR
         if: steps.guard.outputs.has_aws == 'true'
@@ -483,7 +483,7 @@ jobs:
           SERVICE: ${{ matrix.service }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}/pulls
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@0d95c9a7becc1e6e297d76df9bc735c44f4cbcbc # v3
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -505,7 +505,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Check AWS_ROLE_ARN secret
         id: guard
@@ -520,7 +520,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -575,7 +575,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           token: ${{ secrets.IDP_PLATFORM_TOKEN }}
           fetch-depth: 0
@@ -593,7 +593,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -601,7 +601,7 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Create production promotion PR
         if: steps.guard.outputs.has_aws == 'true'
@@ -670,7 +670,7 @@ jobs:
           SERVICE: ${{ matrix.service }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}/pulls
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@0d95c9a7becc1e6e297d76df9bc735c44f4cbcbc # v3
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -696,7 +696,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Check AWS_ROLE_ARN secret
         id: guard
@@ -711,7 +711,7 @@ jobs:
 
       - name: Configure AWS credentials (OIDC)
         if: steps.guard.outputs.has_aws == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -742,7 +742,7 @@ jobs:
 
       - name: Post cost context PR comment
         if: steps.guard.outputs.has_aws == 'true' && steps.cost.outputs.found == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           SERVICE: ${{ matrix.service }}
           TOTAL_7D: ${{ steps.cost.outputs.total_7d }}

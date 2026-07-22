@@ -268,6 +268,22 @@ sed \
   -e "s|GRAFANA_IRSA_ROLE_ARN|${GRAFANA_ROLE_ARN}|g" \
   aws/observability/prometheus-stack-values.yaml > "${tmp_obs_values}"
 
+# TLS on the Grafana/Prometheus/Alertmanager ALB ingresses (#141) — opt-in: only
+# wired up when var.domain_name was set, since it needs the ACM cert terraform/acm.tf
+# provisions from that domain's Route 53 zone. ALB terminates TLS from an ACM cert
+# ARN (not a k8s TLS Secret), so ingresses without a domain stay HTTP-only exactly
+# as before rather than risk an invalid empty certificate-arn breaking the ALB.
+ACM_CERT_ARN=$(cd "${TF_DIR}" && terraform output -raw monitoring_acm_certificate_arn 2>/dev/null || echo "")
+if [[ -n "${ACM_CERT_ARN}" ]]; then
+  log "  Wiring ACM cert into monitoring ALB ingresses: ${ACM_CERT_ARN}"
+  sed -i.bak \
+    "s|alb.ingress.kubernetes.io/backend-protocol: HTTP|alb.ingress.kubernetes.io/backend-protocol: HTTP\n      alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}\n      alb.ingress.kubernetes.io/listen-ports: '[{\"HTTP\":80},{\"HTTPS\":443}]'\n      alb.ingress.kubernetes.io/ssl-redirect: \"443\"|g" \
+    "${tmp_obs_values}"
+  rm -f "${tmp_obs_values}.bak"
+else
+  log "  No domain_name configured — monitoring ALB ingresses stay HTTP-only."
+fi
+
 # The Thanos sidecar block in prometheus-stack-values.yaml is V2 multi-region only
 # (it's shared with bootstrap-multiregion.sh) — its objectStorageConfig secret is
 # only ever created by terraform/global/thanos-config.tf, which this single-region
@@ -695,18 +711,21 @@ log "hello-service seed image pushed — ArgoCD will deploy to dev namespace."
 # ── Phase 5.5: Build + push Backstage image ───────────────────────────────────
 # The Backstage Dockerfile is multi-stage and runs yarn install + yarn build:backend
 # inside the builder stage. No host-side yarn build is needed.
+# Tagged with the git SHA (not :latest) so the deployment manifest pins an immutable
+# image — required by the repo's own OPA deny-latest-tag policy.
 log "Phase 5.5: Building and pushing Backstage image..."
 BACKSTAGE_IMAGE="${ECR_REGISTRY}/${CLUSTER_NAME}/backstage"
+BACKSTAGE_IMAGE_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo 'bootstrap')"
 
 docker build \
   --platform linux/amd64 \
   --provenance=false \
   -f backstage/Dockerfile \
-  -t "${BACKSTAGE_IMAGE}:latest" \
+  -t "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}" \
   backstage/app/
 
-docker push "${BACKSTAGE_IMAGE}:latest"
-log "Backstage image pushed to ECR."
+docker push "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
+log "Backstage image pushed to ECR: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
 
 # ── Phase 5.6: Deploy Backstage ───────────────────────────────────────────────
 log "Phase 5.6: Deploying Backstage..."
@@ -727,10 +746,21 @@ for i in $(seq 1 12); do
   sleep 5
 done
 
+# Fetch the RDS combined CA bundle so Postgres connections can verify the server
+# cert (rejectUnauthorized: true in app-config.aws.yaml) instead of skipping validation.
+log "  Fetching RDS CA bundle..."
+RDS_CA_BUNDLE="$(mktemp)"
+curl -sSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o "${RDS_CA_BUNDLE}"
+kubectl create configmap rds-ca-bundle -n backstage \
+  --from-file=global-bundle.pem="${RDS_CA_BUNDLE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+rm -f "${RDS_CA_BUNDLE}"
+
 # Apply configmaps (base-config + production overrides) and deployment.
-# Substitute the real ECR image into the deployment manifest before applying.
+# Substitute the real ECR image (pinned to the SHA tag just pushed) into the
+# deployment manifest before applying.
 kubectl apply -f kubernetes/backstage/configmap.yaml
-sed "s|image: .*backstage:latest|image: ${BACKSTAGE_IMAGE}:latest|g" \
+sed "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}|g" \
   aws/backstage/deployment.yaml | kubectl apply -f -
 
 # Wait for Backstage LB to get a hostname (up to 6 min)

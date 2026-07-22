@@ -6,6 +6,11 @@
 # prometheus.ingress section in observability/prometheus-stack-values-aws.yaml.
 #
 # hosts: [] — matches any hostname; use ALB DNS directly until Route53 is configured.
+#
+# TLS: when terraform's var.domain_name is set, terraform/acm.tf provisions an ACM
+# cert and bootstrap.sh wires alb.ingress.kubernetes.io/certificate-arn (+ HTTPS
+# listener + ssl-redirect) into the real Helm-managed ingress automatically. ALB
+# terminates TLS from the ACM cert ARN, not a Kubernetes TLS Secret.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

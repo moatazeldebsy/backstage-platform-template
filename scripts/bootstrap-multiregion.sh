@@ -131,6 +131,7 @@ DORA_ROLE_ARN=$(terraform output -raw dora_exporter_role_arn          2>/dev/nul
 GRAFANA_ROLE_ARN=$(terraform output -raw grafana_role_arn             2>/dev/null || echo "")
 ARGO_ROLE_ARN=$(terraform output -raw argo_workflows_role_arn         2>/dev/null || echo "")
 DB_INIT_ROLE_ARN=$(terraform output -raw db_init_role_arn             2>/dev/null || echo "")
+ACM_CERT_ARN=$(terraform output -raw monitoring_acm_certificate_arn   2>/dev/null || echo "")
 cd "$ROOT_DIR"
 
 log "Primary cluster: ${PRIMARY_CLUSTER} (${PRIMARY_REGION})"
@@ -280,6 +281,16 @@ if [[ "$SKIP_OBS" != "true" ]]; then
     -e "s|YOUR_AWS_REGION|${PRIMARY_REGION}|g" \
     -e "s|GRAFANA_IRSA_ROLE_ARN|${GRAFANA_ROLE_ARN}|g" \
     aws/observability/prometheus-stack-values.yaml > "$tmp_obs"
+
+  # TLS on the Grafana/Prometheus/Alertmanager ALB ingresses (#141) — same opt-in
+  # mechanism as bootstrap.sh: only wired up when var.domain_name produced an ACM cert.
+  if [[ -n "${ACM_CERT_ARN}" ]]; then
+    log "  Wiring ACM cert into monitoring ALB ingresses: ${ACM_CERT_ARN}"
+    sed -i.bak \
+      "s|alb.ingress.kubernetes.io/backend-protocol: HTTP|alb.ingress.kubernetes.io/backend-protocol: HTTP\n      alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}\n      alb.ingress.kubernetes.io/listen-ports: '[{\"HTTP\":80},{\"HTTPS\":443}]'\n      alb.ingress.kubernetes.io/ssl-redirect: \"443\"|g" \
+      "$tmp_obs"
+    rm -f "$tmp_obs.bak"
+  fi
 
   helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
     --namespace monitoring \
@@ -475,8 +486,16 @@ for i in $(seq 1 12); do
   sleep 5
 done
 
+log "Fetching RDS CA bundle..."
+RDS_CA_BUNDLE="$(mktemp)"
+curl -sSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o "${RDS_CA_BUNDLE}"
+kubectl create configmap rds-ca-bundle -n backstage --context hub \
+  --from-file=global-bundle.pem="${RDS_CA_BUNDLE}" \
+  --dry-run=client -o yaml | kubectl apply -f - --context hub
+rm -f "${RDS_CA_BUNDLE}"
+
 kubectl apply -f kubernetes/backstage/configmap.yaml --context hub
-sed "s|image: .*backstage:latest|image: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}|g" \
+sed "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}|g" \
   aws/backstage/deployment.yaml | kubectl apply -f - --context hub
 
 BACKSTAGE_URL=""

@@ -29,6 +29,7 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     AUTH_GITHUB_CLIENT_SECRET = "REPLACE_ME"
     AUTH_SESSION_SECRET       = random_password.backstage_session.result
     K8S_CLUSTER_URL           = module.eks.cluster_endpoint
+    K8S_CLUSTER_CA_DATA       = module.eks.cluster_certificate_authority_data
     K8S_SERVICE_ACCOUNT_TOKEN = "REPLACE_ME"
     TECHDOCS_S3_BUCKET_NAME   = aws_s3_bucket.techdocs.id
     AWS_REGION                = var.aws_region
