@@ -343,6 +343,11 @@ export function createServer(agentId = 'unknown', userRef = '') {
 
   const MEMORY_NS = 'kagent';
   const memoryKey = userRef ? sanitizeUserId(userRef) : `agent-${sanitizeUserId(agentId)}`;
+  // sanitizeUserId already strips everything but [a-z0-9-]; this re-check is
+  // the hard gate against path-injection into the K8s API URL below.
+  if (!/^[a-z0-9-]{1,70}$/.test(memoryKey)) {
+    throw new Error('Invalid memoryKey derived from user/agent identifiers');
+  }
 
   server.tool(
     'get_user_memory',
@@ -356,7 +361,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
         const token = K8S_TOKEN || cachedSaToken;
         const headers: Record<string, string> = { Accept: 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetchWithTimeout(`${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps/${cmName}`, { headers });
+        const res = await fetchWithTimeout(`${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps/${encodeURIComponent(cmName)}`, { headers });
         if (res.status === 404) return { content: [{ type: 'text' as const, text: JSON.stringify({ preferences: {} }) }] };
         if (!res.ok) throw new Error(`K8s configmap GET returned ${res.status}`);
         const cm = await res.json() as { data?: Record<string, string> };
@@ -382,7 +387,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
         const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const getRes = await fetchWithTimeout(`${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps/${cmName}`, { headers });
+        const getRes = await fetchWithTimeout(`${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps/${encodeURIComponent(cmName)}`, { headers });
         let preferences: Record<string, unknown> = {};
         let exists = false;
         if (getRes.ok) {
@@ -396,7 +401,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
 
         const cmBody = { apiVersion: 'v1', kind: 'ConfigMap', metadata: { name: cmName, namespace: MEMORY_NS, labels: { 'app.kubernetes.io/managed-by': 'idp-mcp-server' } }, data: { preferences: JSON.stringify(preferences) } };
         const method = exists ? 'PUT' : 'POST';
-        const url = exists ? `${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps/${cmName}` : `${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps`;
+        const url = exists ? `${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps/${encodeURIComponent(cmName)}` : `${K8S_API}/api/v1/namespaces/${MEMORY_NS}/configmaps`;
         const putRes = await fetchWithTimeout(url, { method, headers, body: JSON.stringify(cmBody) });
         if (!putRes.ok) throw new Error(`K8s configmap ${method} returned ${putRes.status}`);
 

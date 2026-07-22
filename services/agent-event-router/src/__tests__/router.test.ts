@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import request from 'supertest';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   verifyGitHubSignature,
   verifyBearerToken,
@@ -11,6 +12,12 @@ import {
 } from '../router';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+// Mirrors the production webhookLimiter in router.ts so these standalone
+// test apps match the rate-limited shape of the real routes.
+function testRateLimiter() {
+  return rateLimit({ windowMs: 60_000, max: 1000, standardHeaders: true, legacyHeaders: false });
+}
 
 function makeSignedRequest(
   app: express.Application,
@@ -44,6 +51,7 @@ describe('verifyGitHubSignature', () => {
   it('returns false and sends 503 when secret is not configured', () => {
     const app = express();
     app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+    app.use(testRateLimiter());
     app.post('/test', (req, res) => {
       const result = verifyGitHubSignature(req, res, '');
       if (result) res.json({ ok: true });
@@ -61,6 +69,7 @@ describe('verifyGitHubSignature', () => {
   it('returns false and sends 401 when signature is wrong', () => {
     const app = express();
     app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+    app.use(testRateLimiter());
     app.post('/test', (req, res) => {
       const result = verifyGitHubSignature(req, res, 'my-secret');
       if (result) res.json({ ok: true });
@@ -84,6 +93,7 @@ describe('verifyGitHubSignature', () => {
 
     const app = express();
     app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+    app.use(testRateLimiter());
     app.post('/test', (req, res) => {
       const result = verifyGitHubSignature(req, res, secret);
       if (result) res.json({ ok: true });
@@ -111,6 +121,7 @@ describe('verifyBearerToken', () => {
   it('returns true (passes) when no token configured', () => {
     const app = express();
     app.use(express.json());
+    app.use(testRateLimiter());
     app.post('/test', (req, res) => {
       const result = verifyBearerToken(req, res, '');
       res.json({ passed: result });
@@ -128,6 +139,7 @@ describe('verifyBearerToken', () => {
   it('returns false and sends 401 when token is wrong', () => {
     const app = express();
     app.use(express.json());
+    app.use(testRateLimiter());
     app.post('/test', (req, res) => {
       const result = verifyBearerToken(req, res, 'correct-token');
       if (result) res.json({ passed: true });
@@ -146,6 +158,7 @@ describe('verifyBearerToken', () => {
   it('returns true when correct Bearer token provided', () => {
     const app = express();
     app.use(express.json());
+    app.use(testRateLimiter());
     app.post('/test', (req, res) => {
       const result = verifyBearerToken(req, res, 'my-token');
       res.json({ passed: result });
