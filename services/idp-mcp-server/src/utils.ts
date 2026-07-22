@@ -69,12 +69,19 @@ export function normalizeRepoUrl(
 //   "template:default/nodejs-service"
 //   "default/nodejs-service"
 //   "nodejs-service"
+// namespace/name are validated against Backstage's entity-name charset so
+// they can't inject extra path segments (e.g. "../") into the catalog API URL.
+
+const ENTITY_NAME_SEGMENT = /^[a-zA-Z0-9][a-zA-Z0-9:_.-]{0,62}$/;
 
 export function parseTemplateRef(templateRef: string): { namespace: string; name: string } {
   const withoutPrefix = templateRef.replace(/^template:/, '');
   const slashIdx = withoutPrefix.indexOf('/');
   const namespace = slashIdx !== -1 ? withoutPrefix.slice(0, slashIdx) : 'default';
   const name      = slashIdx !== -1 ? withoutPrefix.slice(slashIdx + 1) : withoutPrefix;
+  if (!ENTITY_NAME_SEGMENT.test(namespace) || !ENTITY_NAME_SEGMENT.test(name)) {
+    throw new Error(`Invalid template_ref "${templateRef}": namespace and name must match ${ENTITY_NAME_SEGMENT}`);
+  }
   return { namespace, name };
 }
 

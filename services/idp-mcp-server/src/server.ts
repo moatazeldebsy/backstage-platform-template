@@ -324,7 +324,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
         const cached = templateParamsCache.get(template_ref);
         if (cached) return { content: [{ type: 'text' as const, text: JSON.stringify(cached, null, 2) }] };
         const { namespace, name } = parseTemplateRef(template_ref);
-        const entity = await fetchCatalog(`/api/catalog/entities/by-name/Template/${namespace}/${name}`) as {
+        const entity = await fetchCatalog(`/api/catalog/entities/by-name/Template/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`) as {
           metadata: { name: string; title?: string; description?: string };
           spec?: { parameters?: Array<{ title?: string; required?: string[]; properties?: Record<string, unknown> }> };
         };

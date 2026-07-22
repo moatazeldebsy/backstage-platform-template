@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import type { Counter } from 'prom-client';
 
@@ -173,6 +174,16 @@ export function createApp(opts: AppOptions = {}): express.Application {
 
   app.get('/healthz', (_req: Request, res: Response) => { res.json({ status: 'ok' }); });
   app.get('/ready', (_req: Request, res: Response) => { res.json({ status: 'ready' }); });
+
+  // Each webhook fans out to a KAgent A2A call — rate-limit to blunt
+  // denial-of-service from a flood of inbound webhook deliveries.
+  const webhookLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/webhook', webhookLimiter);
 
   app.post('/webhook/github', async (req: Request, res: Response) => {
     if (!verifyGitHubSignature(req, res, githubSecret)) return;

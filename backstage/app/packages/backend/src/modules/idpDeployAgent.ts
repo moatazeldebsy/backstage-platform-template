@@ -50,7 +50,7 @@ metadata:
     backstage.io/kubernetes-id: ${name}
 spec:
   type: Declarative
-  description: "${description.replace(/"/g, '\\"')}"
+  description: "${description.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
   declarative:
     modelConfig: ${modelConfig}
     systemMessage: |

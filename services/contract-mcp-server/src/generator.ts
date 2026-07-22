@@ -271,7 +271,7 @@ export function generatePactTestCode(consumerName: string, providerName: string,
       }
 
       interactions.push(`
-  it('${desc.replace(/'/g, "\\'")}', async () => {
+  it('${desc.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', async () => {
     await provider
       .given('${providerName} is available')
       .uponReceiving('a request to ${method.toUpperCase()} ${path}')
