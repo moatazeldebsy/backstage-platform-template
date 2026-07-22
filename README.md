@@ -330,6 +330,16 @@ idp scaffold test-suite --help
 
 Token is resolved automatically from `local/backstage/.env` → `backstage/app-config.local.yaml`. Override with `--token` or `BACKSTAGE_TOKEN` env var.
 
+### Developer experience (DX) commands
+
+```bash
+idp doctor                                     # check local tool versions + cluster health (--tools-only / --project-only / --fix)
+idp context inject --service hello-service     # write live catalog annotations into CLAUDE.md (or --target cursor); --dry-run to preview
+idp learn --type component --name hello-service # curated TechDocs/SLO/Scorecard next steps for a catalog entity
+idp tip                                        # print a platform onboarding tip
+idp mcp status                                 # check reachability of all platform MCP servers
+```
+
 ## The Golden Path
 
 ```
