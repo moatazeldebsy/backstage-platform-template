@@ -19,7 +19,7 @@ One-click setup for self-describing, self-testing APIs on the IDP. Run this temp
 
 ## Prerequisites
 
-- **Service exposes `/openapi.json`**: The provider must serve its OpenAPI spec at `GET /openapi.json` (or `/openapi.yaml`). FastAPI and most modern frameworks do this automatically. See the [Self-Describing APIs Guide](../../../../docs/self-describing-apis.md) for Go, Node.js, and Python examples.
+- **Service exposes `/openapi.json`**: The provider must serve its OpenAPI spec at `GET /openapi.json` (or `/openapi.yaml`). FastAPI and most modern frameworks do this automatically. See [Making a Service Self-Describing](../../../../docs/contract-testing.md#making-a-service-self-describing) for Go, Node.js, and Python examples.
 - **Service deployed in Kubernetes**: The template fetches the spec from the running pod. Local-only services won't work.
 - **Backstage scaffolder write access**: Needs GitHub write access to create/update the service repo.
 - **`contract-mcp-server` reachable**: Confirm at `http://contract-mcp-server.idp.local/healthz`. If it returns a non-200, run `scripts/bootstrap-ai.sh` first.
@@ -81,5 +81,4 @@ This template is the recommended starting point for live demos:
 ## Further Reading
 
 - [Contract Testing Guide](../../../../docs/contract-testing.md) — full architecture, 13 MCP tools, CI flows, and storage backends
-- [Contract Testing Demo Setup](../../../../docs/contract-testing-demo-setup.md) — reproducible setup for conference demos
 - [Contract Testing Suite template](../../contract-testing-suite/docs/index.md) — scaffold the consumer test project

@@ -93,5 +93,5 @@ The generated `.github/workflows/contract.yml` runs these stages on every push:
 ## Further Reading
 
 - [Contract Testing Guide](../../../../docs/contract-testing.md) — full architecture, MCP tools, CI flows, and REST API reference
-- [Self-Describing APIs Guide](../../../../docs/self-describing-apis.md) — how to make services expose their own contracts
+- [Making a Service Self-Describing](../../../../docs/contract-testing.md#making-a-service-self-describing) — Go, Node.js, and Python examples
 - [Enable Contract Testing template](../../enable-contract-testing/docs/index.md) — one-click onboarding for providers
