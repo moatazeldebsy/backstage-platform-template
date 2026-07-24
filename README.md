@@ -8,12 +8,10 @@
 [![CI](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
-[![GitHub stars](https://img.shields.io/github/stars/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/moatazeldebsy/backstage-platform-template?style=flat)](https://github.com/moatazeldebsy/backstage-platform-template/network/members)
 
 A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
-> **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders for your org. If you skip this step, ArgoCD will generate no apps because its ApplicationSet still has the unresolved `moatazeldebsy` placeholder.
+> **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
 ![Platform Architecture](docs/assets/platform-architecture.jpg)
 
@@ -59,26 +57,23 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 # 1. Click "Use this template" on GitHub, then clone your new repo
 git clone https://github.com/YOUR_ORG/backstage-platform-template.git && cd backstage-platform-template
 
-# 2. Personalise placeholders AND bootstrap the platform (guided, interactive)
+# 2. Run the one script you need — it does everything else for you
 ./scripts/setup.sh
-# → choose "local" or "aws" when prompted for environment
-# → fill in GITHUB_TOKEN and OAuth credentials when prompted
-# → when asked "Start Backstage now?", answer Y
 ```
 
-`setup.sh` walks you through placeholder substitution (GitHub org, AWS account, region, cluster name), bootstraps the cluster, and starts Backstage — all in one flow. For AWS, first copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and set `github_org`, `aws_region`, `cluster_name`.
+`setup.sh` is the only command you run by hand. It replaces placeholders, asks **local or AWS**, then triggers the rest automatically:
 
-Day-2 (cluster already personalised, just re-bootstrapping):
+| # | Runs | Automatic? |
+|---|---|---|
+| 1 | `setup.sh` — personalises placeholders, asks local or AWS | You run this |
+| 2a (local) | `bootstrap-local.sh` — Kind cluster + platform (~15–20 min) | Auto, by `setup.sh` |
+| 2b (local) | `bootstrap-local.sh --start-backstage` — builds + starts Backstage (~2 min) | Auto, if you answer **Y** to "Start Backstage now?" |
+| 2 (AWS) | `bootstrap.sh` — Terraform → EKS → full platform **including AI/ML** (~45–60 min) | Auto, by `setup.sh` |
+| 3 (local, optional) | `bootstrap-ai.sh` — adds KAgent + MLflow + MCP servers | **Manual** — AWS already gets this in step 2, local doesn't |
 
-```bash
-./scripts/bootstrap-local.sh                     # local: cluster + platform (~15–20 min)
-./scripts/bootstrap-local.sh --start-backstage    # local: Backstage only (~2 min)
-./scripts/bootstrap.sh                            # AWS: full bootstrap (~45–60 min)
-./scripts/validate-deployment.sh                  # AWS: 50+ post-deploy health checks
-./scripts/cleanup.sh --cluster-name idp-mvp       # AWS: safe teardown
-```
+For AWS, first copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and set `github_org`, `aws_region`, `cluster_name`.
 
-After local bootstrap, Backstage is at `http://backstage.idp.local` and hello-service at `http://hello-service.idp.local`. Full walkthroughs: [Local Setup](docs/local-setup.md) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md) (pre-flight checklist, known issues, troubleshooting). Full command list: [Scripts Reference](docs/scripts-reference.md).
+After local bootstrap, Backstage is at `http://backstage.idp.local` and hello-service at `http://hello-service.idp.local`. Day-2 commands (re-running any step standalone), full walkthroughs, and the AI/ML step: [Scripts Reference](docs/scripts-reference.md) · [Local Setup](docs/local-setup.md) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
 
 ### Local access URLs
 
@@ -116,11 +111,9 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 
 ![AWS Architecture](docs/assets/aws-architecture.jpg)
 
-Seven layers: GitHub/ArgoCD → AWS Account boundary → ALB edge → VPC/EKS (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers) → Data & Registry (ECR, RDS, S3, DynamoDB, MSK, SQS) → Platform Services (Secrets Manager, IAM, CloudWatch) → IaC (Terraform foundation + Crossplane per-service). See [docs/architecture.md](docs/architecture.md).
+Full layer-by-layer breakdown: [docs/architecture.md](docs/architecture.md).
 
 ## How It Works — Interaction Flows
-
-Three channels reach the platform control plane (GitHub Actions CI, ArgoCD GitOps, Helm golden-path chart, Crossplane Claims):
 
 ![Interaction Flows](docs/assets/interaction-flows.jpg)
 
@@ -177,15 +170,11 @@ Backstage → scaffold repo → push code
 
 Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local` → Create) or the `idp` CLI above. Deploy to Kind via Backstage's `idp:deploy-local` action, or `helm upgrade --install my-svc ./helm/service-template ...`. Full walkthrough — template catalog, deploy steps, troubleshooting: [docs/golden-path.md](docs/golden-path.md).
 
-> **Troubleshooting — `ImagePullBackOff`:** the image hasn't been pushed to the local registry yet. Build + push it, then Sync in ArgoCD. See [docs/runbooks/image-pull-backoff.md](docs/runbooks/image-pull-backoff.md).
->
-> **Backstage Kubernetes tab shows "unknown" for CPU/memory:** metrics-server isn't running (auto-installed by `bootstrap-local.sh`; if set up manually, apply the [upstream manifest](https://github.com/kubernetes-sigs/metrics-server) with `--kubelet-insecure-tls`).
-
 ---
 
 ## Roadmap
 
-Shipped work and what's next are tracked on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** — the single source of truth for status. Highlights already shipped: EKS + VPC + ECR + IAM via Terraform, CI/CD to EKS, the Backstage golden-path platform, the AI/ML stack, the SRE reliability programme, and the opt-in V2 multi-region architecture. Open items include multi-team production hardening and Amazon Bedrock integration — see the board for the full list.
+Shipped work and what's next are tracked on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** — the single source of truth for status. Open items include multi-team production hardening and Amazon Bedrock integration.
 
 ---
 
@@ -196,8 +185,8 @@ Shipped work and what's next are tracked on the **[GitHub Project board](https:/
 | `/kubernetes` standalone page crashes | By design — disabled in local config. Use the Kubernetes tab on any catalog entity instead |
 | `Cost Overview` shows "OpenCost returned 500" | Wait for the OpenCost pod: `kubectl get pods -n opencost` |
 | Catalog empty on first load | Fixed: `dangerouslyDisableDefaultAuthPolicy: true` prevents a 401 flash before sign-in |
-| `ImagePullBackOff` after scaffold | See [docs/runbooks/image-pull-backoff.md](docs/runbooks/image-pull-backoff.md) |
-| Backstage K8s tab shows "unknown" for CPU/memory | See metrics-server note above |
+| `ImagePullBackOff` after scaffold | Image hasn't been pushed to the local registry yet. See [docs/runbooks/image-pull-backoff.md](docs/runbooks/image-pull-backoff.md) |
+| Backstage K8s tab shows "unknown" for CPU/memory | metrics-server not running (auto-installed by `bootstrap-local.sh`) |
 
 ---
 
