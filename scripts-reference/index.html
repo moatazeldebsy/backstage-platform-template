@@ -1823,11 +1823,11 @@
 </tr>
 <tr>
 <td><code>bootstrap-ai.sh</code></td>
-<td>Add AI/ML stack on top of a running cluster. Flags: <code>--skip-mlflow</code>, <code>--skip-mcp</code>, <code>--skip-kagent</code>, <code>--aws</code>, <code>--destroy</code></td>
+<td>Add AI/ML stack on top of a running cluster. <strong>Local only</strong> — on AWS, <code>bootstrap.sh</code> already runs this for you. Flags: <code>--skip-mlflow</code>, <code>--skip-mcp</code>, <code>--skip-kagent</code>, <code>--aws</code>, <code>--destroy</code></td>
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>AWS bootstrap: Terraform → EKS → all platform components (~45–60 min)</td>
+<td>AWS bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~45–60 min). Pass <code>--skip-ai</code> to opt out</td>
 </tr>
 <tr>
 <td><code>validate-deployment.sh</code></td>
@@ -1865,7 +1865,7 @@
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components, and pushes <code>hello-service</code> to ECR. ~45–60 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
+<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — <strong>including the AI/ML stack</strong> (Phase 6 runs <code>bootstrap-ai.sh --aws</code> internally, unless <code>--skip-ai</code> is passed) — and pushes <code>hello-service</code> to ECR. ~45–60 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
 <td><code>setup.sh</code> → AWS path, or standalone</td>
 </tr>
 <tr>
@@ -1895,8 +1895,8 @@
 </tr>
 <tr>
 <td><code>bootstrap-ai.sh</code></td>
-<td>Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires <code>ANTHROPIC_API_KEY</code> in <code>local/.env</code>. Options: <code>--skip-mlflow</code>, <code>--skip-kagent</code>, <code>--skip-mcp</code>. Optional: set <code>VOYAGE_API_KEY</code> in <code>local/backstage/.env</code> to enable semantic search at <code>/ai-search</code>. Use <code>--aws</code> flag for AWS deployment.</td>
-<td>After <code>bootstrap-local.sh</code> or <code>bootstrap.sh</code></td>
+<td>Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires <code>ANTHROPIC_API_KEY</code> in <code>local/.env</code>. Options: <code>--skip-mlflow</code>, <code>--skip-kagent</code>, <code>--skip-mcp</code>. Optional: set <code>VOYAGE_API_KEY</code> in <code>local/backstage/.env</code> to enable semantic search at <code>/ai-search</code>.</td>
+<td><strong>Local:</strong> manual, run after <code>bootstrap-local.sh</code> if you want AI/ML. <strong>AWS:</strong> already run for you by <code>bootstrap.sh</code> — only run standalone (<code>--aws</code>) to retry a failed AI phase</td>
 </tr>
 <tr>
 <td><code>recover-docker-restart.sh</code></td>
