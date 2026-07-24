@@ -22,6 +22,7 @@ Operational procedures for the Internal Developer Platform. Each runbook maps to
 | `McpToolErrorRateHigh` | Warning | `ai-ops` | [KAgent Guardrails](kagent-guardrails.md) |
 | `SLOErrorBudgetFastBurn` | Critical | `slo` | [Deployment Rollback](deployment-rollback.md) |
 | `SLOErrorBudgetSlowBurn` | Warning | `slo` | [Deployment Rollback](deployment-rollback.md) |
+| Regional outage (multi-region V2 only) | Critical | `dr` | [DR Region Failover](dr-region-failover.md) |
 | Crossplane claim rejected by Kyverno | Warning | `platform` | [TROUBLESHOOTING.md § Crossplane claim rejected](../TROUBLESHOOTING.md#symptom-crossplane-claim-rejected----owner-is-required) |
 | `ExternalSecret` error — SecretStore not found | Warning | `platform` | [TROUBLESHOOTING.md § ExternalSecret error](../TROUBLESHOOTING.md#symptom-externalsecret-error----secretstore-not-found-team-name-secrets) |
 | `team=unknown` on DORA metrics | Info | `dora` | [TROUBLESHOOTING.md § team=unknown](../TROUBLESHOOTING.md#symptom-teamunknown-on-dora-prometheus-metrics) |
