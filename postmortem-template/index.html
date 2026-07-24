@@ -11,22 +11,20 @@
       
       
       
-        <link rel="prev" href="../kind-node-ip-mismatch/">
+        <link rel="prev" href="../runbooks/dr-region-failover/">
       
       
-        <link rel="next" href="../kagent-guardrails/">
       
-      
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
     
     
       
-        <title>Cost Budget Exceeded - Internal Developer Platform</title>
+        <title>Post-Mortem Template - Internal Developer Platform</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
       
       
 
@@ -45,7 +43,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#runbook-teambudgetwarning-teambudgetexceeded" class="md-skip">
+        <a href="#post-mortem-template" class="md-skip">
           Skip to content
         </a>
       
@@ -78,7 +76,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -98,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cost Budget Exceeded
+              Post-Mortem Template
             
           </span>
         </div>
@@ -140,7 +138,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href=".." class="md-tabs__link">
         
   
     
@@ -157,7 +155,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../getting-started/" class="md-tabs__link">
+      <a href="../getting-started/" class="md-tabs__link">
         
   
     
@@ -174,7 +172,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../architecture/" class="md-tabs__link">
+      <a href="../architecture/" class="md-tabs__link">
         
   
     
@@ -191,7 +189,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../multi-region/" class="md-tabs__link">
+      <a href="../multi-region/" class="md-tabs__link">
         
   
     
@@ -208,7 +206,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../golden-path/" class="md-tabs__link">
+      <a href="../golden-path/" class="md-tabs__link">
         
   
     
@@ -225,7 +223,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../mobile-platform/" class="md-tabs__link">
+      <a href="../mobile-platform/" class="md-tabs__link">
         
   
     
@@ -242,7 +240,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../local-setup/" class="md-tabs__link">
+      <a href="../local-setup/" class="md-tabs__link">
         
   
     
@@ -261,7 +259,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
+        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
           
   
   AWS Deployment
@@ -277,7 +275,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../TROUBLESHOOTING/" class="md-tabs__link">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
         
   
     
@@ -294,7 +292,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../docker-recovery/" class="md-tabs__link">
+      <a href="../docker-recovery/" class="md-tabs__link">
         
   
     
@@ -311,7 +309,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../cli-reference/" class="md-tabs__link">
+      <a href="../cli-reference/" class="md-tabs__link">
         
   
     
@@ -328,7 +326,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../scripts-reference/" class="md-tabs__link">
+      <a href="../scripts-reference/" class="md-tabs__link">
         
   
     
@@ -345,7 +343,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../ai-assistant/" class="md-tabs__link">
+      <a href="../ai-assistant/" class="md-tabs__link">
         
   
     
@@ -362,7 +360,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../dora-finops/" class="md-tabs__link">
+      <a href="../dora-finops/" class="md-tabs__link">
         
   
     
@@ -379,7 +377,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../contract-testing/" class="md-tabs__link">
+      <a href="../contract-testing/" class="md-tabs__link">
         
   
     
@@ -396,7 +394,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../crossplane/" class="md-tabs__link">
+      <a href="../crossplane/" class="md-tabs__link">
         
   
     
@@ -413,7 +411,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../crossplane-vs-terraform/" class="md-tabs__link">
+      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
         
   
     
@@ -430,7 +428,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../team-management/" class="md-tabs__link">
+      <a href="../team-management/" class="md-tabs__link">
         
   
     
@@ -447,7 +445,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../github-app-setup/" class="md-tabs__link">
+      <a href="../github-app-setup/" class="md-tabs__link">
         
   
     
@@ -464,7 +462,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../scaling-runbook/" class="md-tabs__link">
+      <a href="../scaling-runbook/" class="md-tabs__link">
         
   
     
@@ -483,7 +481,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../shift-left-leadership/" class="md-tabs__link">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
           
   
   Shift-Left Quality
@@ -499,7 +497,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../security/" class="md-tabs__link">
+      <a href="../security/" class="md-tabs__link">
         
   
     
@@ -516,7 +514,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../security-scanning/" class="md-tabs__link">
+      <a href="../security-scanning/" class="md-tabs__link">
         
   
     
@@ -533,7 +531,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../demo-runbook/" class="md-tabs__link">
+      <a href="../demo-runbook/" class="md-tabs__link">
         
   
     
@@ -550,7 +548,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../readiness-checklist/" class="md-tabs__link">
+      <a href="../readiness-checklist/" class="md-tabs__link">
         
   
     
@@ -567,7 +565,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../sre-reliability/" class="md-tabs__link">
+      <a href="../sre-reliability/" class="md-tabs__link">
         
   
     
@@ -582,13 +580,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -602,9 +598,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../../postmortem-template/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -640,7 +638,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -670,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -690,7 +688,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
+      <a href="../getting-started/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -710,7 +708,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -730,7 +728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../multi-region/" class="md-nav__link">
+      <a href="../multi-region/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -750,7 +748,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../golden-path/" class="md-nav__link">
+      <a href="../golden-path/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -770,7 +768,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mobile-platform/" class="md-nav__link">
+      <a href="../mobile-platform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -790,7 +788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../local-setup/" class="md-nav__link">
+      <a href="../local-setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -850,7 +848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
+      <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -871,7 +869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DEPLOYMENT_GUIDE/" class="md-nav__link">
+      <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -899,7 +897,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../TROUBLESHOOTING/" class="md-nav__link">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -919,7 +917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../docker-recovery/" class="md-nav__link">
+      <a href="../docker-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -939,7 +937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli-reference/" class="md-nav__link">
+      <a href="../cli-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -959,7 +957,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../scripts-reference/" class="md-nav__link">
+      <a href="../scripts-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -979,7 +977,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ai-assistant/" class="md-nav__link">
+      <a href="../ai-assistant/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -999,7 +997,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dora-finops/" class="md-nav__link">
+      <a href="../dora-finops/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1019,7 +1017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../contract-testing/" class="md-nav__link">
+      <a href="../contract-testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1039,7 +1037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../crossplane/" class="md-nav__link">
+      <a href="../crossplane/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1059,7 +1057,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../crossplane-vs-terraform/" class="md-nav__link">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1079,7 +1077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../team-management/" class="md-nav__link">
+      <a href="../team-management/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1099,7 +1097,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../github-app-setup/" class="md-nav__link">
+      <a href="../github-app-setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1119,7 +1117,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../scaling-runbook/" class="md-nav__link">
+      <a href="../scaling-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1179,7 +1177,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shift-left-leadership/" class="md-nav__link">
+      <a href="../shift-left-leadership/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1200,7 +1198,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shift-left/" class="md-nav__link">
+      <a href="../shift-left/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1221,7 +1219,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shift-left-pilot-kickoff/" class="md-nav__link">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1242,7 +1240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../shift-left-demo-cheatsheet/" class="md-nav__link">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1263,7 +1261,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flaky-test-quarantine/" class="md-nav__link">
+      <a href="../flaky-test-quarantine/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1284,7 +1282,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../test-impact-analysis/" class="md-nav__link">
+      <a href="../test-impact-analysis/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1312,7 +1310,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../security/" class="md-nav__link">
+      <a href="../security/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1332,7 +1330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../security-scanning/" class="md-nav__link">
+      <a href="../security-scanning/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1352,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../demo-runbook/" class="md-nav__link">
+      <a href="../demo-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1372,7 +1370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../readiness-checklist/" class="md-nav__link">
+      <a href="../readiness-checklist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1392,7 +1390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sre-reliability/" class="md-nav__link">
+      <a href="../sre-reliability/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1409,30 +1407,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_27" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_27" >
         
           
-          <label class="md-nav__link" for="__nav_27" id="__nav_27_label" tabindex="">
+          <label class="md-nav__link" for="__nav_27" id="__nav_27_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1443,7 +1436,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_27_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_27_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_27">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
@@ -1457,7 +1450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1478,7 +1471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment-rollback/" class="md-nav__link">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1499,7 +1492,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pod-crash-loop/" class="md-nav__link">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1520,7 +1513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-memory/" class="md-nav__link">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1541,7 +1534,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-cpu/" class="md-nav__link">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1562,7 +1555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../db-recovery/" class="md-nav__link">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1583,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../image-pull-backoff/" class="md-nav__link">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1604,7 +1597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kind-node-ip-mismatch/" class="md-nav__link">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1622,30 +1615,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Cost Budget Exceeded
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1654,62 +1627,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-happening" class="md-nav__link">
-    <span class="md-ellipsis">
-      What is happening
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#immediate-triage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Immediate triage
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#remediation-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Remediation steps
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-budgets-are-set" class="md-nav__link">
-    <span class="md-ellipsis">
-      How budgets are set
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1722,7 +1639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kagent-guardrails/" class="md-nav__link">
+      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1743,7 +1660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dr-region-failover/" class="md-nav__link">
+      <a href="../runbooks/dr-region-failover/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1768,10 +1685,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../postmortem-template/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Post-Mortem Template
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1780,6 +1717,134 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#incident-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Incident Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      Impact
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Timeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      Root Cause
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing-factors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing Factors
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Detection
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remediation-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Remediation Actions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-went-well" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Went Well
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lessons-learned" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lessons Learned
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1799,7 +1864,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/cost-budget-exceeded.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/postmortem-template.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1807,64 +1872,246 @@
   
 
 
-<h1 id="runbook-teambudgetwarning-teambudgetexceeded">Runbook: TeamBudgetWarning / TeamBudgetExceeded<a class="headerlink" href="#runbook-teambudgetwarning-teambudgetexceeded" title="Permanent link">&para;</a></h1>
-<p><strong>Alert:</strong> <code>TeamBudgetWarning</code> (&gt;80 % budget consumed) or <code>TeamBudgetExceeded</code> (&gt;100 %)<br />
-<strong>Severity:</strong> Warning / Critical<br />
-<strong>Category:</strong> finops</p>
-<h2 id="what-is-happening">What is happening<a class="headerlink" href="#what-is-happening" title="Permanent link">&para;</a></h2>
-<p>The <code>tech-insights-exporter</code> CronJob queries the OpenCost API every 15 minutes and pushes
-<code>idp_team_actual_cost_usd_monthly{team}</code> to Pushgateway. This alert fires when that value
-exceeds the configured threshold in <code>idp_team_budget_usd_monthly{team}</code>.</p>
-<h2 id="immediate-triage">Immediate triage<a class="headerlink" href="#immediate-triage" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Which teams are over budget?</span>
-kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-operator<span class="w"> </span>-c<span class="w"> </span>prometheus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>curl<span class="w"> </span>-s<span class="w"> </span>localhost:9090/api/v1/query<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">&#39;query=idp_team_budget_utilization_ratio &gt; 0.8&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.data.result&#39;</span>
-
-<span class="c1"># What&#39;s running in the team&#39;s namespace?</span>
-kubectl<span class="w"> </span>top<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>--sort-by<span class="o">=</span>memory
-kubectl<span class="w"> </span>top<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w">     </span>--sort-by<span class="o">=</span>memory
-
-<span class="c1"># Check OpenCost breakdown for the team</span>
-open<span class="w"> </span>http://opencost.idp.local
-</code></pre></div></td></tr></table></div>
-<h2 id="remediation-steps">Remediation steps<a class="headerlink" href="#remediation-steps" title="Permanent link">&para;</a></h2>
-<ol>
-<li><strong>Identify the biggest spenders</strong> — sort OpenCost by namespace → drill into workload.</li>
-<li><strong>Scale down non-critical workloads</strong> — reduce replicas or apply a HPA max ceiling:
-   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>deployment<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>--replicas<span class="o">=</span><span class="m">1</span>
-</code></pre></div></td></tr></table></div></li>
-<li><strong>Right-size resource requests</strong> — over-provisioned requests inflate cost allocation:
-   <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">set</span><span class="w"> </span>resources<span class="w"> </span>deployment/&lt;name&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--requests<span class="o">=</span><span class="nv">cpu</span><span class="o">=</span>100m,memory<span class="o">=</span>128Mi<span class="w"> </span>--limits<span class="o">=</span><span class="nv">cpu</span><span class="o">=</span>500m,memory<span class="o">=</span>512Mi
-</code></pre></div></td></tr></table></div></li>
-<li><strong>Update the team budget</strong> — if the current budget is too low, raise it:<ul>
-<li>Edit <code>idp.io/cost-budget-monthly-usd</code> annotation on the Group entity in
-   <code>backstage/catalog/catalog-info.yaml</code>.</li>
-<li>Update the matching entry in <code>kubernetes/finops/team-budgets-configmap.yaml</code>.</li>
-<li>The new value will take effect on the next exporter run (≤15 minutes).</li>
+<h1 id="post-mortem-template">Post-Mortem Template<a class="headerlink" href="#post-mortem-template" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Instructions:</strong> Complete this document within 48 hours of resolving a P1 or P2 incident. Keep it blameless — focus on systems, processes, and conditions, not individuals. Share in <code>#incidents</code> once drafted and schedule a review within 5 business days.</p>
+</blockquote>
+<hr />
+<h2 id="incident-summary">Incident Summary<a class="headerlink" href="#incident-summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Incident ID</strong></td>
+<td>INC-YYYY-NNN</td>
+</tr>
+<tr>
+<td><strong>Severity</strong></td>
+<td>P1 / P2 / P3</td>
+</tr>
+<tr>
+<td><strong>Service(s) affected</strong></td>
+<td>e.g. hello-service, backstage</td>
+</tr>
+<tr>
+<td><strong>Start time</strong></td>
+<td>YYYY-MM-DD HH:MM UTC</td>
+</tr>
+<tr>
+<td><strong>End time</strong></td>
+<td>YYYY-MM-DD HH:MM UTC</td>
+</tr>
+<tr>
+<td><strong>Total duration</strong></td>
+<td>X hours Y minutes</td>
+</tr>
+<tr>
+<td><strong>Incident commander</strong></td>
+<td>@handle</td>
+</tr>
+<tr>
+<td><strong>Scribe</strong></td>
+<td>@handle</td>
+</tr>
+<tr>
+<td><strong>Reviewers</strong></td>
+<td>@handle, @handle</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="impact">Impact<a class="headerlink" href="#impact" title="Permanent link">&para;</a></h2>
+<p><em>Describe the user-visible impact. Be specific: what was broken, for how many users, in which regions.</em></p>
+<ul>
+<li><strong>Affected users / requests:</strong> e.g. 100% of EU-WEST-1 users, ~3,000 req/min dropped</li>
+<li><strong>Error rate peak:</strong> e.g. 42% HTTP 5xx</li>
+<li><strong>Data loss / corruption:</strong> Yes / No (if yes, describe scope)</li>
+<li><strong>SLO breach:</strong> Yes / No — error budget consumed: X minutes of 43 min/month</li>
 </ul>
-</li>
+<hr />
+<h2 id="timeline">Timeline<a class="headerlink" href="#timeline" title="Permanent link">&para;</a></h2>
+<p><em>List events in UTC chronological order. Include both detection and action events.</em></p>
+<table>
+<thead>
+<tr>
+<th>Time (UTC)</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HH:MM</td>
+<td>Alert fired: <code>HighHTTP5xxRate</code> in <code>#platform-alerts</code></td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>On-call acknowledged alert</td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>Incident thread opened in <code>#incidents</code></td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>Root cause identified</td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>Mitigation applied (e.g. helm rollback)</td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>Error rate returned to normal</td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>Incident resolved, monitoring for 30 min</td>
+</tr>
+<tr>
+<td>HH:MM</td>
+<td>All-clear declared</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="root-cause">Root Cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h2>
+<p><em>One clear paragraph. What was the technical root cause? Avoid "human error" as a root cause — describe the condition that made the error possible.</em></p>
+<p>Example: <em>A Helm values change removed the readiness probe path override, causing all pods to report Ready immediately after container start before the application had initialized its database connection pool. Kubernetes routed traffic to these pods, which returned 503 for all requests until they warmed up (~90 seconds). Because <code>minReadySeconds</code> was not set on this service's overlay, there was no protection against premature traffic reception.</em></p>
+<hr />
+<h2 id="contributing-factors">Contributing Factors<a class="headerlink" href="#contributing-factors" title="Permanent link">&para;</a></h2>
+<p><em>List 3–5 factors that allowed this incident to happen or made it harder to detect / recover.</em></p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No staging environment to catch the config change before production</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Alert threshold (5%) was too high to catch early degradation</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Runbook did not cover readiness probe misconfiguration</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> On-call engineer was unfamiliar with the affected service</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No automated rollback on error-rate spike</li>
+</ul>
+<hr />
+<h2 id="detection">Detection<a class="headerlink" href="#detection" title="Permanent link">&para;</a></h2>
+<p><em>How was the incident detected? Was it faster or slower than expected?</em></p>
+<ul>
+<li><strong>Detected by:</strong> Prometheus alert / customer report / synthetic monitor / manual observation</li>
+<li><strong>Time to detect (TTD):</strong> X minutes from first impact</li>
+<li><strong>Was TTD acceptable?</strong> Yes / No — if no, why?</li>
+</ul>
+<hr />
+<h2 id="response">Response<a class="headerlink" href="#response" title="Permanent link">&para;</a></h2>
+<p><em>What happened during response? Was the runbook useful? What slowed things down?</em></p>
+<ul>
+<li><strong>Runbook used:</strong> [link]</li>
+<li><strong>Runbook accuracy:</strong> Accurate / Partially accurate / Missing steps</li>
+<li><strong>Time to mitigate (TTM):</strong> X minutes from detection</li>
+<li><strong>What worked well:</strong></li>
+<li><strong>What slowed response:</strong></li>
+</ul>
+<hr />
+<h2 id="remediation-actions">Remediation Actions<a class="headerlink" href="#remediation-actions" title="Permanent link">&para;</a></h2>
+<p><em>Concrete tasks with owners and due dates. These become Jira tickets or GitHub Issues.</em></p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Owner</th>
+<th>Due Date</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Add <code>minReadySeconds: 30</code> to service Helm values overlay</td>
+<td>@handle</td>
+<td>YYYY-MM-DD</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Update runbook to include readiness probe verification step</td>
+<td>@handle</td>
+<td>YYYY-MM-DD</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Lower <code>HighHTTP5xxRate</code> alert threshold from 5% to 1%</td>
+<td>@handle</td>
+<td>YYYY-MM-DD</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Add staging smoke test for Helm values changes</td>
+<td>@handle</td>
+<td>YYYY-MM-DD</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Add automated rollback AnalysisTemplate to Argo Rollouts</td>
+<td>@handle</td>
+<td>YYYY-MM-DD</td>
+<td>P3</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="what-went-well">What Went Well<a class="headerlink" href="#what-went-well" title="Permanent link">&para;</a></h2>
+<p><em>List things that worked: fast detection, clear runbook, good team communication, etc.</em></p>
+<ul>
+<li>Alert fired promptly (&lt; 2 min from impact)</li>
+<li>On-call responded within SLO (&lt; 30 min)</li>
+<li><code>helm rollback</code> was fast and effective</li>
+</ul>
+<hr />
+<h2 id="lessons-learned">Lessons Learned<a class="headerlink" href="#lessons-learned" title="Permanent link">&para;</a></h2>
+<p><em>What systemic improvements does this incident suggest beyond the immediate action items?</em></p>
+<ol>
+<li></li>
+<li></li>
+<li></li>
 </ol>
-<h2 id="how-budgets-are-set">How budgets are set<a class="headerlink" href="#how-budgets-are-set" title="Permanent link">&para;</a></h2>
-<p>Budgets live in two authoritative locations (keep in sync):
-- <strong>Backstage catalog</strong> — <code>idp.io/cost-budget-monthly-usd</code> annotation on each <code>Group</code> entity
-  in <code>backstage/catalog/catalog-info.yaml</code> and <code>backstage/catalog/qa-catalog.yaml</code>.
-- <strong>Kubernetes ConfigMap</strong> — <code>kubernetes/finops/team-budgets-configmap.yaml</code>
-  (<code>data.budgets.json</code>) read by the exporter via <code>TEAM_BUDGETS_JSON</code> env var.</p>
-<p>Defaults (USD/month): platform-team $2000, ml-team $1500, backend-team $600,
-data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $200.</p>
+<hr />
+<h2 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Time to detect (TTD)</td>
+<td>X min</td>
+</tr>
+<tr>
+<td>Time to mitigate (TTM)</td>
+<td>X min</td>
+</tr>
+<tr>
+<td>Time to resolve (TTR / MTTR)</td>
+<td>X min</td>
+</tr>
+<tr>
+<td>Error budget consumed</td>
+<td>X min of Y min/month</td>
+</tr>
+<tr>
+<td>Customers impacted</td>
+<td>X</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Incident Slack thread: [link]</li>
+<li>Prometheus alert: [link]</li>
+<li>ArgoCD deployment history: [link]</li>
+<li>Relevant PR / commit: [link]</li>
+<li>Runbook used: [link]</li>
+</ul>
 
 
 
@@ -1894,7 +2141,7 @@ data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $2
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../kind-node-ip-mismatch/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Kind Node IP Mismatch">
+          <a href="../runbooks/dr-region-failover/" class="md-footer__link md-footer__link--prev" aria-label="Previous: DR Region Failover">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1904,27 +2151,11 @@ data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $2
                 Previous
               </span>
               <div class="md-ellipsis">
-                Kind Node IP Mismatch
+                DR Region Failover
               </div>
             </div>
           </a>
         
-        
-          
-          <a href="../kagent-guardrails/" class="md-footer__link md-footer__link--next" aria-label="Next: KAgent Guardrails">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                KAgent Guardrails
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-            </div>
-          </a>
         
       </nav>
     
@@ -1951,12 +2182,12 @@ data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $2
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
-        <script src="../../search/main.js"></script>
+        <script src="../search/main.js"></script>
       
     
   </body>
