@@ -109,7 +109,7 @@ Three channels reach the platform control plane (GitHub Actions CI, ArgoCD GitOp
 
 | Channel | Who | Entry point |
 |---------|-----|-------------|
-| **1 — CLI** | Developer | `idp scaffold service` / `idp template list` → Scaffolder Engine → GitHub repo |
+| **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
 | **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 21 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs |
 

@@ -14,6 +14,7 @@ import githubActionsPlugin from '@backstage-community/plugin-github-actions/alph
 import announcementsPlugin from '@backstage-community/plugin-announcements/alpha';
 import adrPlugin from '@backstage-community/plugin-adr/alpha';
 import techRadarPlugin from '@backstage-community/plugin-tech-radar/alpha';
+import catalogGraphPlugin from '@backstage/plugin-catalog-graph/alpha';
 
 import { SignInPage } from '@backstage/core-components';
 import { githubAuthApiRef } from '@backstage/core-plugin-api';
@@ -54,6 +55,7 @@ export default createApp({
   features: [
     customPagesPlugin,
     catalogPlugin,
+    catalogGraphPlugin,
     scaffolderPlugin,
     searchPlugin,
     userSettingsPlugin,

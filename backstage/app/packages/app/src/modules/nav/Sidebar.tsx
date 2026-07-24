@@ -21,6 +21,12 @@ export const SidebarContent = NavContentBlueprint.make({
       ));
 
       nav.take('page:search');
+      // The standalone /catalog-graph page only renders when given a root
+      // entity (normally reached via the "Relations" card on an entity's own
+      // Overview tab), so it's a permanently blank page as a top-level nav
+      // link. Consume it here without rendering so it's excluded from
+      // nav.rest() below.
+      nav.take('page:catalog-graph');
 
       return (
         <Sidebar>
