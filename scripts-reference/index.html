@@ -1005,6 +1005,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setupsh-vs-bootstrap-localsh-why-two-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      setup.sh vs bootstrap-local.sh — why two scripts?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-reference" class="md-nav__link">
     <span class="md-ellipsis">
       Quick reference
@@ -1804,6 +1822,47 @@
 
 <h1 id="scripts-reference">Scripts Reference<a class="headerlink" href="#scripts-reference" title="Permanent link">&para;</a></h1>
 <p>Full reference for every script under <code>scripts/</code>, grouped by when you'd run it. For the <code>idp</code> CLI (scaffolding services and test suites), see <a href="../cli-reference/">CLI Reference</a>.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<p>Before running anything in <code>scripts/</code>, install the tools for the path you're taking:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Required tools</th>
+<th>Verify</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Local (Kind)</strong></td>
+<td><code>git</code>, <code>docker</code>, <code>kind</code> ≥ 0.27, <code>kubectl</code>, <code>helm</code> ≥ 3.14</td>
+<td><code>kind version &amp;&amp; kubectl version --client &amp;&amp; helm version &amp;&amp; docker info</code></td>
+</tr>
+<tr>
+<td><strong>AWS (single or multi-region)</strong></td>
+<td>Everything above, plus <code>aws</code> CLI (configured — <code>aws sts get-caller-identity</code> must succeed), <code>terraform</code> ≥ 1.5, <code>jq</code></td>
+<td><code>aws sts get-caller-identity &amp;&amp; terraform version &amp;&amp; jq --version</code></td>
+</tr>
+<tr>
+<td><strong>Multi-region only</strong></td>
+<td>Everything above, plus <code>argocd</code> CLI</td>
+<td><code>argocd version --client</code></td>
+</tr>
+<tr>
+<td>Optional, auto-installed if missing</td>
+<td><code>go</code> ≥ 1.26 (builds the <code>idp</code> CLI), Node.js 24 LTS (Backstage)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><code>setup.sh</code> and <code>bootstrap-local.sh</code>/<code>bootstrap.sh</code> each run their own pre-flight check and will tell you exactly what's missing before doing anything destructive — but installing these upfront avoids a mid-run abort. Full local walkthrough: <a href="../local-setup/#prerequisites">Local Setup</a>. Full AWS walkthrough: <a href="../DEPLOYMENT_GUIDE/#required-tools">AWS Deployment Guide</a>.</p>
+<h2 id="setupsh-vs-bootstrap-localsh-why-two-scripts"><code>setup.sh</code> vs <code>bootstrap-local.sh</code> — why two scripts?<a class="headerlink" href="#setupsh-vs-bootstrap-localsh-why-two-scripts" title="Permanent link">&para;</a></h2>
+<p>They solve different problems and are <strong>not interchangeable</strong>:</p>
+<ul>
+<li><strong><code>setup.sh</code></strong> — a <strong>one-time</strong> personalization pass + dispatcher. It replaces <code>YOUR_GITHUB_ORG</code> / <code>YOUR_CLUSTER_NAME</code> / etc. placeholders across the whole repo with your real values, creates <code>.env</code> files, builds the <code>idp</code> CLI, then asks <em>local / aws / multi / skip</em> and hands off to the right bootstrap script.</li>
+<li><strong><code>bootstrap-local.sh</code></strong> — the actual <strong>Kind/Rancher platform installer</strong>. It creates the cluster, installs ingress/ArgoCD/observability/OPA, builds and pushes <code>hello-service</code>, and wires up Backstage. It's fully standalone and is what you go back to for <strong>day-2</strong> operations (<code>--destroy</code>, <code>--start-backstage</code>, <code>--install-argocd</code>, <code>--print-urls</code>, recreating the cluster).</li>
+</ul>
+<p>They must run <strong>in that order</strong> on a fresh clone: bootstrapping before personalizing would point ArgoCD's ApplicationSet, catalog entries, and ingress hostnames at unresolved placeholders instead of your org/cluster name. In practice you only run <code>setup.sh</code> once — it invokes <code>bootstrap-local.sh</code> for you automatically. Every later invocation (recreate the cluster, add a flag, retry a failed step) goes straight to <code>bootstrap-local.sh</code> (or <code>bootstrap.sh</code>/<code>bootstrap-multiregion.sh</code> on AWS) without touching <code>setup.sh</code> again.</p>
 <h2 id="quick-reference">Quick reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1815,7 +1874,7 @@
 <tbody>
 <tr>
 <td><code>setup.sh</code></td>
-<td><strong>Start here.</strong> Guided interactive setup — replaces placeholders, creates <code>.env</code> files, then bootstraps local or AWS</td>
+<td><strong>Start here (once).</strong> Guided interactive setup — replaces placeholders, creates <code>.env</code> files, then bootstraps local or AWS</td>
 </tr>
 <tr>
 <td><code>bootstrap-local.sh</code></td>
@@ -1827,7 +1886,15 @@
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>AWS bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~45–60 min). Pass <code>--skip-ai</code> to opt out</td>
+<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~45–60 min). Pass <code>--skip-ai</code> to opt out</td>
+</tr>
+<tr>
+<td><code>bootstrap-multiregion.sh</code></td>
+<td>AWS multi-region (V2) bootstrap: active-standby eu-central-1 + us-east-1 (~30–50 min). See <a href="../multi-region/">Multi-Region</a></td>
+</tr>
+<tr>
+<td><code>verify-secrets.sh</code></td>
+<td>Pre-flight: checks all required secrets/API keys are set before an AWS deployment. Run before <code>bootstrap.sh</code></td>
 </tr>
 <tr>
 <td><code>validate-deployment.sh</code></td>
@@ -1840,6 +1907,10 @@
 <tr>
 <td><code>recover-docker-restart.sh</code></td>
 <td>Patch Kind after Docker Desktop restarts — fixes IPs, restarts ingress, smoke-tests all URLs</td>
+</tr>
+<tr>
+<td><code>register-argocd-cluster.sh</code></td>
+<td>Multi-region only: registers a spoke EKS cluster's credentials with the hub ArgoCD via Secrets Manager</td>
 </tr>
 </tbody>
 </table>
@@ -1864,9 +1935,24 @@
 <td><code>setup.sh</code> → local path, or standalone</td>
 </tr>
 <tr>
+<td><code>verify-secrets.sh</code></td>
+<td>Checks <code>GITHUB_TOKEN</code>, AWS credentials, and other required secrets are set and valid before an AWS deployment. Exits non-zero with the missing item if anything is wrong.</td>
+<td>Before <code>bootstrap.sh</code> (manual, or see <a href="../PRE_DEPLOYMENT_CHECKLIST/">PRE_DEPLOYMENT_CHECKLIST.md</a>)</td>
+</tr>
+<tr>
 <td><code>bootstrap.sh</code></td>
 <td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — <strong>including the AI/ML stack</strong> (Phase 6 runs <code>bootstrap-ai.sh --aws</code> internally, unless <code>--skip-ai</code> is passed) — and pushes <code>hello-service</code> to ECR. ~45–60 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
 <td><code>setup.sh</code> → AWS path, or standalone</td>
+</tr>
+<tr>
+<td><code>bootstrap-multiregion.sh</code></td>
+<td>Provisions the V2 active-standby topology: <code>terraform/global</code> (KMS, Route53, TGW, Aurora Global, CloudFront) → primary EKS (full stack) → standby EKS (minimal stack) → post-wiring (IRSA, cluster registration, failover RBAC). ~30–50 min. Flags: <code>--skip-global</code>, <code>--skip-standby</code>, <code>--skip-obs</code>, <code>--skip-ai</code>. See <a href="../multi-region/">Multi-Region</a>.</td>
+<td><code>setup.sh</code> → multi path, or standalone</td>
+</tr>
+<tr>
+<td><code>register-argocd-cluster.sh</code></td>
+<td>Creates an <code>argocd-manager</code> service account on a target EKS cluster and writes its token to Secrets Manager, so the hub ArgoCD can manage it as a spoke. <code>--cluster &lt;name&gt; --region &lt;region&gt;</code>.</td>
+<td><code>bootstrap-multiregion.sh</code> (auto, for both primary + standby), or standalone to re-register after credential rotation</td>
 </tr>
 <tr>
 <td><code>validate-deployment.sh</code></td>
