@@ -238,7 +238,7 @@ git commit -m "chore: decommission <name>"
 
 Environment teardown uses `cleanup.sh` which automates steps 2 for all
 `idp:provisioner=crossplane`-tagged resources. See the
-[Deployment Guide](./DEPLOYMENT_GUIDE.md#cleanup--destroy) for details.
+[Deployment Guide](./DEPLOYMENT_GUIDE.md#cleanup-destroy) for details.
 
 ## Local development
 

@@ -23,8 +23,8 @@ Operational procedures for the Internal Developer Platform. Each runbook maps to
 | `SLOErrorBudgetFastBurn` | Critical | `slo` | [Deployment Rollback](deployment-rollback.md) |
 | `SLOErrorBudgetSlowBurn` | Warning | `slo` | [Deployment Rollback](deployment-rollback.md) |
 | Regional outage (multi-region V2 only) | Critical | `dr` | [DR Region Failover](dr-region-failover.md) |
-| Crossplane claim rejected by Kyverno | Warning | `platform` | [TROUBLESHOOTING.md § Crossplane claim rejected](../TROUBLESHOOTING.md#symptom-crossplane-claim-rejected----owner-is-required) |
-| `ExternalSecret` error — SecretStore not found | Warning | `platform` | [TROUBLESHOOTING.md § ExternalSecret error](../TROUBLESHOOTING.md#symptom-externalsecret-error----secretstore-not-found-team-name-secrets) |
+| Crossplane claim rejected by Kyverno | Warning | `platform` | [TROUBLESHOOTING.md § Crossplane claim rejected](../TROUBLESHOOTING.md#symptom-crossplane-claim-rejected-owner-is-required) |
+| `ExternalSecret` error — SecretStore not found | Warning | `platform` | [TROUBLESHOOTING.md § ExternalSecret error](../TROUBLESHOOTING.md#symptom-externalsecret-error-secretstore-not-found-team-secrets) |
 | `team=unknown` on DORA metrics | Info | `dora` | [TROUBLESHOOTING.md § team=unknown](../TROUBLESHOOTING.md#symptom-teamunknown-on-dora-prometheus-metrics) |
 
 ## Local Dev Issues
@@ -48,4 +48,4 @@ These are not alert-driven but are common when running the platform locally with
 2. Open an incident thread in `#incidents` with: service name, start time, symptoms
 3. Follow the relevant runbook
 4. Post resolution summary + timeline to the incident thread
-5. File a post-mortem within 48 hours for P1/P2 incidents — use the [post-mortem template](../templates/postmortem.md)
+5. File a post-mortem within 48 hours for P1/P2 incidents — use the [post-mortem template](../postmortem-template.md)

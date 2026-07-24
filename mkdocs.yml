@@ -63,3 +63,4 @@ nav:
     - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
     - KAgent Guardrails: runbooks/kagent-guardrails.md
     - DR Region Failover: runbooks/dr-region-failover.md
+  - Post-Mortem Template: postmortem-template.md
