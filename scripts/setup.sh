@@ -355,16 +355,6 @@ for i in "${!MANIFEST_NAMES[@]}"; do
   export "$name"
 done
 
-# Derived: YOUR_ORG (legacy alias) → PACTFLOW_ORG if set, else GITHUB_ORG.
-# Existing files may still reference YOUR_ORG; the dedicated YOUR_PACTFLOW_ORG
-# placeholder is preferred for new files.
-legacy_org="${PACTFLOW_ORG:-$GITHUB_ORG}"
-MANIFEST_NAMES+=("ORG_LEGACY")
-MANIFEST_PLACEHOLDERS+=("YOUR_ORG")
-MANIFEST_DEFAULTS+=("")
-MANIFEST_LITERALS+=("")
-VALUES+=("$legacy_org")
-
 # Derived: Backstage OAuth callback URL (display-only, not a placeholder).
 BACKSTAGE_URL="${BACKSTAGE_URL:-http://localhost:3000}"
 BACKSTAGE_CALLBACK_URL="${BACKSTAGE_URL}/api/auth/github/handler/frame"
@@ -374,7 +364,6 @@ BACKSTAGE_CALLBACK_URL="${BACKSTAGE_URL}/api/auth/github/handler/frame"
 echo ""
 echo -e "${YELLOW}Will replace:${RESET}"
 for i in "${!MANIFEST_NAMES[@]}"; do
-  [[ "${MANIFEST_NAMES[$i]}" == "ORG_LEGACY" ]] && continue
   printf "  %-22s → %s\n" "${MANIFEST_PLACEHOLDERS[$i]}" "${VALUES[$i]}"
 done
 echo "  (plus the \${{ YOUR_* }} Jinja form and any hardcoded fallbacks listed in the manifest)"
@@ -395,97 +384,12 @@ read -rp "Proceed with personalisation? [y/N] " CONFIRM
 
 log "Applying substitutions..."
 
-# Build the file list. xargs cannot call shell functions, so we use a
-# while-read loop in _replace_all instead.
-TARGETS=$(LC_ALL=C find \
-  "${ROOT_DIR}/aws" \
-  "${ROOT_DIR}/backstage/catalog" \
-  "${ROOT_DIR}/backstage/app" \
-  "${ROOT_DIR}/backstage/app-config.yaml" \
-  "${ROOT_DIR}/backstage/app-config.local.yaml" \
-  "${ROOT_DIR}/backstage/app-config.aws.yaml" \
-  "${ROOT_DIR}/kubernetes" \
-  "${ROOT_DIR}/local" \
-  "${ROOT_DIR}/observability" \
-  "${ROOT_DIR}/services" \
-  "${ROOT_DIR}/terraform" \
-  "${ROOT_DIR}/docs" \
-  "${ROOT_DIR}/test-suites" \
-  "${ROOT_DIR}/.github/workflows" \
-  "${ROOT_DIR}/.github/CODEOWNERS" \
-  "${ROOT_DIR}/.github/pull_request_template.md" \
-  "${ROOT_DIR}/CONTRIBUTING.md" \
-  "${ROOT_DIR}/CHANGELOG.md" \
-  "${ROOT_DIR}/README.md" \
-  "${ROOT_DIR}/mkdocs.yml" \
-  -type f \
-  ! -path '*/node_modules/*' \
-  ! -path '*/.yarn/cache/*' \
-  ! -path '*/dist/*' \
-  ! -path '*/.terraform/*' \
-  ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
-  ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' ! -name '*.eot' \
-  ! -name '*.gz' ! -name '*.zip' ! -name '*.tar' \
-  2>/dev/null) || true
-
-# Build a single bundled sed program (all -e expressions) and a grep pre-filter
-# so that:
-#   • each file is touched at most once by sed (one subprocess, not 30)
-#   • files that contain NONE of the search strings are skipped entirely
-# On a 700+ file TARGETS list this drops runtime from minutes to seconds.
-SED_ARGS=()
-NEEDLES=()
-for i in "${!MANIFEST_NAMES[@]}"; do
-  ph="${MANIFEST_PLACEHOLDERS[$i]}"
-  v="${VALUES[$i]}"
-  lit="${MANIFEST_LITERALS[$i]}"
-
-  # Skip if user took no value (placeholder unchanged) — nothing to substitute
-  [[ "$v" == "$ph" ]] && continue
-
-  # Use | as sed delimiter (none of our values normally contain it).
-  # Escape any literal | in the replacement just in case.
-  v_esc="${v//|/\\|}"
-
-  SED_ARGS+=(-e "s|${ph}|${v_esc}|g")
-  SED_ARGS+=(-e "s|\${{ ${ph} }}|${v_esc}|g")
-  NEEDLES+=("$ph")
-
-  if [[ -n "$lit" && "$v" != "$lit" ]]; then
-    # Escape regex metacharacters in the literal so we match it verbatim.
-    lit_esc="$(printf '%s' "$lit" | sed 's|[][\\.^$*+?(){}/|]|\\&|g')"
-    SED_ARGS+=(-e "s|${lit_esc}|${v_esc}|g")
-    NEEDLES+=("$lit")
-  fi
-done
-
-# Build a single ERE that matches ANY of the needles for the pre-filter pass.
-NEEDLE_RE="$(IFS='|'; echo "${NEEDLES[*]}")"
-
-_replace_all() {
-  # Legacy single-pair entry point — still used for the YOUR_ORG legacy alias
-  # appended after the manifest loop below.
-  local pattern="$1" replacement="$2"
-  while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    LC_ALL=C grep -qE "$pattern" "$f" 2>/dev/null || continue
-    _sed "s|${pattern}|${replacement}|g" "$f" 2>/dev/null || true
-  done <<< "$TARGETS"
-}
-
-# Bundled pass: one sed invocation per matching file, with ALL substitutions.
-if [[ ${#SED_ARGS[@]} -gt 0 ]]; then
-  scanned=0
-  touched=0
-  while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    scanned=$((scanned + 1))
-    LC_ALL=C grep -qE "$NEEDLE_RE" "$f" 2>/dev/null || continue
-    _sed "${SED_ARGS[@]}" "$f" 2>/dev/null || true
-    touched=$((touched + 1))
-  done <<< "$TARGETS"
-  log "Substituted in ${touched} of ${scanned} files (skipped $((scanned - touched)) with no match)."
-fi
+# Shared with bootstrap-local.sh's day-2 personalisation reruns — see
+# scripts/lib.sh. Reads resolved values from the MANIFEST_NAMES-exported shell
+# variables set in the prompt loop above, and sets TARGETS (the full candidate
+# file list) for the _verify_no_remaining check below.
+run_personalization_pass
+TARGETS="$PERSONALIZATION_TARGETS"
 
 # Warn if any YOUR_* placeholders remain. Excludes:
 #   - .env.example files (intentional fill-in markers)
@@ -523,7 +427,6 @@ _write_idp_config() {
     echo "# Generated by scripts/setup.sh — single source of truth for personalisation."
     echo "# Re-run setup.sh to regenerate. Read by scripts/bootstrap-local.sh and friends."
     for i in "${!MANIFEST_NAMES[@]}"; do
-      [[ "${MANIFEST_NAMES[$i]}" == "ORG_LEGACY" ]] && continue
       local v="${VALUES[$i]}"
       # Escape backslash, dollar, backtick, and double-quote so `source` reads
       # the value verbatim regardless of shell metacharacters.

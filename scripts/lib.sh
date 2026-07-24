@@ -277,6 +277,133 @@ _cleanup_scaffolded_services() {
   log "  Scaffolded service cleanup complete."
 }
 
+# Shared placeholder-substitution engine, used by both setup.sh (first-time,
+# interactive) and bootstrap-local.sh (day-2 standalone reruns). Previously each
+# script carried its own copy of this logic with hand-maintained target-dir and
+# exclusion lists that had drifted apart — a placeholder fixed in one script
+# could still be missed by the other. Consolidating here keeps them identical.
+#
+# Reads resolved values via `${!name}` from already-exported MANIFEST_NAMES
+# variables — setup.sh exports them from user prompts, bootstrap-local.sh
+# exports them via load_idp_config() sourcing .idp-config.env. Requires
+# load_placeholder_manifest to have been called first.
+#
+# On return, sets:
+#   PERSONALIZATION_TARGETS — full candidate file list (newline-separated),
+#                              for callers that need to run their own
+#                              post-substitution checks (e.g. setup.sh's
+#                              _verify_no_remaining).
+run_personalization_pass() {
+  # Union of every directory/file either script previously scanned.
+  PERSONALIZATION_TARGETS=$(LC_ALL=C find \
+    "${ROOT_DIR}/aws" \
+    "${ROOT_DIR}/backstage/catalog" \
+    "${ROOT_DIR}/backstage/app" \
+    "${ROOT_DIR}/backstage/app-config.yaml" \
+    "${ROOT_DIR}/backstage/app-config.local.yaml" \
+    "${ROOT_DIR}/backstage/app-config.aws.yaml" \
+    "${ROOT_DIR}/kubernetes" \
+    "${ROOT_DIR}/local" \
+    "${ROOT_DIR}/observability" \
+    "${ROOT_DIR}/services" \
+    "${ROOT_DIR}/terraform" \
+    "${ROOT_DIR}/docs" \
+    "${ROOT_DIR}/test-suites" \
+    "${ROOT_DIR}/.github/workflows" \
+    "${ROOT_DIR}/.github/CODEOWNERS" \
+    "${ROOT_DIR}/.github/pull_request_template.md" \
+    "${ROOT_DIR}/CONTRIBUTING.md" \
+    "${ROOT_DIR}/CHANGELOG.md" \
+    "${ROOT_DIR}/README.md" \
+    "${ROOT_DIR}/mkdocs.yml" \
+    \( -type d \( \
+        -name node_modules -o \
+        -name .yarn -o \
+        -name dist -o \
+        -name dist-types -o \
+        -name .next -o \
+        -name build -o \
+        -name coverage -o \
+        -name .terraform \
+      \) -prune \) -o \
+    \( -type f \
+      ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
+      ! -name '*.gif' ! -name '*.svg' \
+      ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' ! -name '*.eot' \
+      ! -name 'yarn.lock' ! -name 'package-lock.json' ! -name 'pnpm-lock.yaml' \
+      ! -name 'go.sum' \
+      ! -name '*.tsbuildinfo' ! -name '*.gz' ! -name '*.tgz' ! -name '*.zip' ! -name '*.tar' \
+      -print \) \
+    2>/dev/null) || true
+
+  # Build sed -e args + grep needles from the manifest, reading resolved
+  # values from already-exported shell variables named after MANIFEST_NAMES.
+  local sed_args=() grep_patterns=()
+  local i name placeholder literal value
+  for i in "${!MANIFEST_NAMES[@]}"; do
+    name="${MANIFEST_NAMES[$i]}"
+    placeholder="${MANIFEST_PLACEHOLDERS[$i]}"
+    literal="${MANIFEST_LITERALS[$i]}"
+    value="${!name:-}"
+    [[ -z "$value" || "$value" == "$placeholder" ]] && continue
+    # Use | as sed delimiter so values containing / (e.g. DOCS_REPO_URL = https://...)
+    # don't break the s/// expression.
+    sed_args+=(-e "s|${placeholder}|${value}|g")
+    sed_args+=(-e "s|\${{ ${placeholder} }}|${value}|g")
+    grep_patterns+=("${placeholder}")
+    if [[ -n "$literal" && "$value" != "$literal" ]]; then
+      sed_args+=(-e "s|${literal}|${value}|g")
+      grep_patterns+=("${literal}")
+    fi
+  done
+
+  # Legacy YOUR_ORG alias — PACTFLOW_ORG if set, else GITHUB_ORG.
+  local legacy_org=""
+  if [[ -n "${PACTFLOW_ORG:-}" && "$PACTFLOW_ORG" != "YOUR_PACTFLOW_ORG" ]]; then
+    legacy_org="$PACTFLOW_ORG"
+  elif [[ -n "${GITHUB_ORG:-}" && "$GITHUB_ORG" != "YOUR_GITHUB_ORG" ]]; then
+    legacy_org="$GITHUB_ORG"
+  fi
+  if [[ -n "$legacy_org" && "$legacy_org" != "YOUR_ORG" ]]; then
+    sed_args+=(-e "s|YOUR_ORG|${legacy_org}|g")
+    grep_patterns+=("YOUR_ORG")
+  fi
+
+  if [[ ${#sed_args[@]} -eq 0 ]]; then
+    log "Personalisation: no resolved values — nothing to apply."
+    return
+  fi
+
+  local grep_e_args=()
+  for p in "${grep_patterns[@]}"; do
+    grep_e_args+=(-e "$p")
+  done
+
+  # Pre-filter: only files containing at least one placeholder/literal token.
+  local matching
+  matching=$(printf '%s\n' "$PERSONALIZATION_TARGETS" \
+    | grep -v '^$' \
+    | tr '\n' '\0' \
+    | xargs -0 grep -l -F "${grep_e_args[@]}" 2>/dev/null || true)
+
+  if [[ -z "$matching" ]]; then
+    log "Personalisation: no remaining placeholders (GITHUB_ORG=${GITHUB_ORG:-}) — skipping."
+    return
+  fi
+
+  local count=0
+  local scanned
+  scanned=$(printf '%s\n' "$PERSONALIZATION_TARGETS" | grep -c . || true)
+  log "Applying personalisation from manifest (GITHUB_ORG=${GITHUB_ORG:-})"
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    _sed "${sed_args[@]}" "$f" 2>/dev/null || true
+    count=$((count + 1))
+  done <<< "$matching"
+
+  log "Substituted in ${count} of ${scanned} files (skipped $((scanned - count)) with no match)."
+}
+
 _preflight_check_local() {
   local missing=()
   local required_cmds=(kubectl helm docker)

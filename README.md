@@ -53,25 +53,36 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 
 ## Quick Start
 
+### Prerequisites
+
+| Path | Install first |
+|---|---|
+| **Local (Kind)** | `git`, `docker`, `kind` ≥ 0.27, `kubectl`, `helm` ≥ 3.14 — `brew install kind kubectl helm docker` on macOS |
+| **AWS** | Everything above, plus `aws` CLI (run `aws configure`), `terraform` ≥ 1.5, `jq` |
+
+`go` and Node.js are only needed if you want to build the `idp` CLI / run Backstage outside Docker — `setup.sh` builds the CLI for you automatically if Go is present, and skips it with a warning otherwise. Full checklists: [Local Setup](docs/local-setup.md#prerequisites) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md#required-tools).
+
 ```bash
 # 1. Click "Use this template" on GitHub, then clone your new repo
-git clone https://github.com/YOUR_ORG/backstage-platform-template.git && cd backstage-platform-template
+git clone https://github.com/moatazeldebsy/backstage-platform-template.git && cd backstage-platform-template
 
 # 2. Run the one script you need — it does everything else for you
 ./scripts/setup.sh
 ```
 
-`setup.sh` is the only command you run by hand. It replaces placeholders, asks **local or AWS**, then triggers the rest automatically:
+`setup.sh` is the only command you run by hand on a fresh clone. It's a **one-time personalization + dispatcher**: it replaces placeholders across the repo with your GitHub org/cluster name, creates `.env` files, then asks **local or AWS** and triggers the real installer for you automatically — bootstrapping has to happen *after* personalization, otherwise ArgoCD and the catalog would still point at unresolved placeholders.
 
 | # | Runs | Automatic? |
 |---|---|---|
 | 1 | `setup.sh` — personalises placeholders, asks local or AWS | You run this |
-| 2a (local) | `bootstrap-local.sh` — Kind cluster + platform (~15–20 min) | Auto, by `setup.sh` |
+| 2a (local) | `bootstrap-local.sh` — the actual Kind cluster + platform installer (~15–20 min) | Auto, by `setup.sh` |
 | 2b (local) | `bootstrap-local.sh --start-backstage` — builds + starts Backstage (~2 min) | Auto, if you answer **Y** to "Start Backstage now?" |
 | 2 (AWS) | `bootstrap.sh` — Terraform → EKS → full platform **including AI/ML** (~45–60 min) | Auto, by `setup.sh` |
 | 3 (local, optional) | `bootstrap-ai.sh` — adds KAgent + MLflow + MCP servers | **Manual** — AWS already gets this in step 2, local doesn't |
 
-For AWS, first copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and set `github_org`, `aws_region`, `cluster_name`.
+`bootstrap-local.sh` (and `bootstrap.sh`/`bootstrap-multiregion.sh` on AWS) is also the script you run **standalone** for every day-2 operation afterwards — recreating the cluster, `--destroy`, `--start-backstage`, `--print-urls`, etc. You don't re-run `setup.sh` for those; see [Scripts Reference](docs/scripts-reference.md#setupsh-vs-bootstrap-localsh-why-two-scripts) for the full breakdown of what each script owns.
+
+For AWS, first copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and set `github_org`, `aws_region`, `cluster_name`, then run `./scripts/verify-secrets.sh` to confirm your credentials/secrets are in place before `bootstrap.sh`.
 
 After local bootstrap, Backstage is at `http://backstage.idp.local` and hello-service at `http://hello-service.idp.local`. Day-2 commands (re-running any step standalone), full walkthroughs, and the AI/ML step: [Scripts Reference](docs/scripts-reference.md) · [Local Setup](docs/local-setup.md) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
 
