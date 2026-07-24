@@ -204,6 +204,6 @@ flutter build ios --no-codesign   # CI uses Fastlane for signing
 
 ## Further Reading
 
-- [TechDocs: Mobile Developer Guide](../backstage/catalog/docs/mobile-developer-guide.md) — detailed per-platform setup and local toolchain
+- [Mobile Developer Guide](https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/docs/mobile-developer-guide.md) — detailed per-platform setup and local toolchain
 - [Security Scanning](security-scanning.md) — SonarCloud + Snyk integration for mobile repos
 - [Shift-Left Quality](shift-left.md) — scorecard model and quality gates

@@ -65,7 +65,7 @@ podDisruptionBudget:
 
 ## Blameless Postmortem Process
 
-The platform includes a blameless postmortem template at [`docs/templates/postmortem.md`](templates/postmortem.md).
+The platform includes a blameless postmortem template at [`docs/postmortem-template.md`](postmortem-template.md).
 
 ### Process
 

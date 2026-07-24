@@ -80,7 +80,7 @@ func runAI(_ *cobra.Command, args []string) error {
 		ID: 1,
 	})
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: time.Duration(aiTimeout) * time.Second}
 	a2aURL := aiKagentURL + "/a2a/kagent/platform-assistant"
 	resp, err := client.Post(a2aURL, "application/json", bytes.NewReader(payload))
 	if err != nil {

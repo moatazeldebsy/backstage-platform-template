@@ -374,7 +374,7 @@ helm upgrade --install qa-mcp-server helm/service-template \
 
 ## Phase 4 — AWS setup (`bootstrap.sh`)
 
-> For a comprehensive list of issues that were present in earlier versions and are now patched, see [docs/DEPLOYMENT_GUIDE.md — Known Issues & Fixes](DEPLOYMENT_GUIDE.md#known-issues--fixes). This section covers issues that can still occur on a fresh deployment.
+> For a comprehensive list of issues that were present in earlier versions and are now patched, see [docs/DEPLOYMENT_GUIDE.md — Known Issues & Fixes](DEPLOYMENT_GUIDE.md#known-issues-fixes). This section covers issues that can still occur on a fresh deployment.
 
 ### Pre-flight: always run `verify-secrets.sh` first
 

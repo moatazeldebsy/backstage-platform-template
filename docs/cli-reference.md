@@ -83,7 +83,7 @@ services/<name>/
 
 ### `idp scaffold test-suite`
 
-Scaffold a QA/testing suite. Supports 13 test types.
+Scaffold a QA/testing suite. Supports 18 test types.
 
 **Common flags:**
 
@@ -119,6 +119,8 @@ Scaffold a QA/testing suite. Supports 13 test types.
 | `unit` | Brownfield unit-test scaffold (Go / Node / Python) with coverage gate | Backstage API only |
 | `component` | Service-as-black-box tests with WireMock-stubbed deps | Backstage API only |
 | `iac` | Terraform IaC checks (tflint + Checkov + optional Terratest) | Backstage API only |
+| `flutter-integration` | Flutter integration test suite | Backstage API only |
+| `deepeval` | LLM output evaluation (DeepEval) | Backstage API only |
 
 **Examples:**
 
@@ -187,6 +189,18 @@ idp completion powershell
 ### `idp version` / `idp --version`
 
 Print the CLI version. Binaries built with `make cli-build` embed the git tag/sha automatically (e.g. `v0.1.0-42-gabcdef`).
+
+---
+
+### Developer experience (DX) commands
+
+| Command | Purpose |
+|---------|---------|
+| `idp doctor` | Check local tool versions + cluster health. Flags: `--tools-only`, `--project-only`, `--fix` |
+| `idp context inject --service <name>` | Write live catalog annotations into `CLAUDE.md` (or `--target cursor`). `--dry-run` to preview |
+| `idp learn --type component --name <name>` | Curated TechDocs / SLO / Scorecard next steps for a catalog entity |
+| `idp tip` | Print a platform onboarding tip |
+| `idp mcp status` | Check reachability of all platform MCP servers |
 
 ---
 

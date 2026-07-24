@@ -155,7 +155,7 @@ This script deletes orphaned load balancers first, then runs `terraform destroy`
 - Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
 - `hello-service` reference deployment
 
-**Cost:** ~$248/month for a development environment (4 nodes running continuously). See [IMPROVEMENTS_SUMMARY.md](IMPROVEMENTS_SUMMARY.md) for cost optimization strategies.
+**Cost:** ~$248/month for a development environment (4 nodes running continuously).
 
 ### 3. GitHub Actions secrets
 

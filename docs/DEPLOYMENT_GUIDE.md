@@ -10,11 +10,11 @@
 1. [Pre-Deployment Checklist](#pre-deployment-checklist)
 2. [Deployment Steps](#deployment-steps)
 3. [Post-Deployment Validation](#post-deployment-validation)
-4. [Known Issues & Fixes](#known-issues--fixes)
+4. [Known Issues & Fixes](#known-issues-fixes)
 5. [Troubleshooting](#troubleshooting)
 6. [Cost Optimization](#cost-optimization)
 7. [Production Hardening](#production-hardening)
-8. [Cleanup & Destroy](#cleanup--destroy)
+8. [Cleanup & Destroy](#cleanup-destroy)
 
 ---
 
@@ -325,7 +325,7 @@ backend:
 
 ## Troubleshooting
 
-> For a comprehensive fresh-setup troubleshooting guide covering all AWS phases (Terraform, EKS, Backstage, ArgoCD, Crossplane, Observability), see [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md#phase-4--aws-setup-bootstrapsh).
+> For a comprehensive fresh-setup troubleshooting guide covering all AWS phases (Terraform, EKS, Backstage, ArgoCD, Crossplane, Observability), see [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md#phase-4-aws-setup-bootstrapsh).
 
 ### Backstage pod not starting
 

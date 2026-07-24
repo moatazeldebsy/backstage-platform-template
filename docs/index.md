@@ -12,10 +12,13 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 
 ### Core Concepts
 - [Golden Path](golden-path.md) — Conventions every service must follow
+- [Multi-Region (V2)](multi-region.md) — Active-standby AWS across eu-central-1 + us-east-1, opt-in
 - [Mobile Platform](mobile-platform.md) — 7 mobile golden-path templates (Android, iOS, Flutter, SDK, code signing, app store, device farm)
 - [Crossplane](crossplane.md) — Self-serve per-service AWS resources via in-cluster Claims
 - [Crossplane vs Terraform](crossplane-vs-terraform.md) — Which tool owns what, and why
 - [Shift-Left Quality](shift-left.md) — How the platform embeds testing at scaffold, PR, deploy, and runtime
+- [CLI Reference](cli-reference.md) — `idp` CLI commands, flags, and all 18 test-suite types
+- [Scripts Reference](scripts-reference.md) — Every `scripts/*.sh` script, grouped by day-0/1/2
 
 ### Team Management
 - [Team Management](team-management.md) — Onboard a team: namespace, SecretStore, ArgoCD ApplicationSet, Grafana folder, DORA metrics
@@ -31,7 +34,6 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [Test-Impact Analysis](test-impact-analysis.md) — Selective test execution on PRs via pytest-testmon (python-service golden path)
 
 ### Operations
-- [Improvements Summary](IMPROVEMENTS_SUMMARY.md) — Critical fixes, AI/ML enhancements, cost savings analysis (read first after your first AWS deployment)
 - [Production Readiness](readiness-checklist.md) — Pre-production checklist
 - [Docker Recovery](docker-recovery.md) — Recover Kind cluster after Docker Desktop restarts
 - [Runbooks](runbooks/index.md) — Operational procedures and on-call guides

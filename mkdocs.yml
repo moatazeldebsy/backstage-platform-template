@@ -20,22 +20,32 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Architecture: architecture.md
+  - Multi-Region: multi-region.md
   - Golden Path: golden-path.md
   - Mobile Platform: mobile-platform.md
   - Local Setup: local-setup.md
+  - AWS Deployment:
+    - Pre-Deployment Checklist: PRE_DEPLOYMENT_CHECKLIST.md
+    - Deployment Guide: DEPLOYMENT_GUIDE.md
   - Troubleshooting: TROUBLESHOOTING.md
   - Docker Recovery: docker-recovery.md
   - CLI Reference: cli-reference.md
+  - Scripts Reference: scripts-reference.md
   - AI Assistant: ai-assistant.md
   - DORA & FinOps: dora-finops.md
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
   - Crossplane vs Terraform: crossplane-vs-terraform.md
+  - Team Management: team-management.md
+  - GitHub App Setup: github-app-setup.md
+  - Scaling Runbook: scaling-runbook.md
   - Shift-Left Quality:
     - For Leadership: shift-left-leadership.md
     - Programme Overview: shift-left.md
     - Pilot Kickoff: shift-left-pilot-kickoff.md
     - Demo Cheatsheet: shift-left-demo-cheatsheet.md
+    - Flaky-Test Quarantine: flaky-test-quarantine.md
+    - Test-Impact Analysis: test-impact-analysis.md
   - Security: security.md
   - Security Scanning (SonarCloud + Snyk): security-scanning.md
   - Demo Runbook: demo-runbook.md
@@ -52,3 +62,5 @@ nav:
     - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
     - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
     - KAgent Guardrails: runbooks/kagent-guardrails.md
+    - DR Region Failover: runbooks/dr-region-failover.md
+  - Post-Mortem Template: postmortem-template.md
