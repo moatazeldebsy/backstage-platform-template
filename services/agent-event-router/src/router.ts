@@ -86,25 +86,159 @@ export async function routeGitHub(
   counter?.inc({ source: 'github', event_type: event, agent: 'none', outcome: 'ignored' });
 }
 
+// ── Incident record automation ─────────────────────────────────────────────
+//
+// Critical alerts already page via PagerDuty (see observability/alertmanager);
+// this layer additionally opens a tracked GitHub issue on firing and closes
+// the loop with a resolution comment when the alert clears, so incidents have
+// a record beyond the page itself. Seeded fields mirror docs/postmortem-template.md;
+// the rest of that template is filled in by a human during the 48h follow-up.
+
+export interface OpenIncident {
+  issueNumber: number;
+  alertname: string;
+  startsAt: string;
+}
+
+export interface GitHubIncidentConfig {
+  token: string;
+  repo: string; // "owner/repo"
+  fetchImpl?: typeof fetch; // injectable for tests
+}
+
+function githubHeaders(token: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+  };
+}
+
+function incidentId(startsAt: string): string {
+  const compact = startsAt.replace(/[^0-9]/g, '').slice(0, 14) || Date.now().toString();
+  return `INC-${compact}`;
+}
+
+export async function createIncidentIssue(
+  alert: Record<string, unknown>,
+  config: GitHubIncidentConfig,
+): Promise<number | null> {
+  const labels = (alert.labels as Record<string, string>) ?? {};
+  const annotations = (alert.annotations as Record<string, string>) ?? {};
+  const name = labels.alertname ?? 'unknown';
+  const severity = labels.severity ?? 'unknown';
+  const namespace = labels.namespace ?? labels.instance ?? 'unknown';
+  const service = labels.service ?? namespace;
+  const startsAt = (alert.startsAt as string) ?? new Date().toISOString();
+  const id = incidentId(startsAt);
+
+  const body = [
+    '## Incident Summary',
+    '',
+    '| Field | Value |',
+    '|-------|-------|',
+    `| **Incident ID** | ${id} |`,
+    `| **Severity** | ${severity} |`,
+    `| **Service(s) affected** | ${service} |`,
+    `| **Start time** | ${startsAt} |`,
+    `| **Alert** | \`${name}\` |`,
+    '',
+    annotations.summary ? `**Summary:** ${annotations.summary}` : '',
+    annotations.description ? `**Details:** ${annotations.description}` : '',
+    annotations.runbook_url ? `**Runbook:** ${annotations.runbook_url}` : '',
+    '',
+    'This issue was auto-created by `agent-event-router` when the alert started firing — ' +
+      'it tracks the incident record. Complete the full write-up in ' +
+      '`docs/postmortem-template.md` within 48 hours of resolution.',
+  ].filter(line => line !== '').join('\n');
+
+  const fetchImpl = config.fetchImpl ?? fetch;
+  const res = await fetchImpl(`https://api.github.com/repos/${config.repo}/issues`, {
+    method: 'POST',
+    headers: githubHeaders(config.token),
+    body: JSON.stringify({
+      title: `[INCIDENT] ${name} — ${service} (${id})`,
+      body,
+      labels: ['incident', 'incident:open', `severity:${severity}`],
+    }),
+  });
+
+  if (!res.ok) {
+    console.error(`[event-router] failed to create incident issue: HTTP ${res.status}`);
+    return null;
+  }
+  const json = (await res.json()) as { number: number };
+  return json.number;
+}
+
+export async function resolveIncidentIssue(
+  record: OpenIncident,
+  alert: Record<string, unknown>,
+  config: GitHubIncidentConfig,
+): Promise<void> {
+  const endsAt = (alert.endsAt as string) ?? new Date().toISOString();
+  const durationMs = Date.parse(endsAt) - Date.parse(record.startsAt);
+  const durationMin = Number.isFinite(durationMs) ? Math.max(0, Math.round(durationMs / 60000)) : null;
+  const fetchImpl = config.fetchImpl ?? fetch;
+
+  await fetchImpl(`https://api.github.com/repos/${config.repo}/issues/${record.issueNumber}/comments`, {
+    method: 'POST',
+    headers: githubHeaders(config.token),
+    body: JSON.stringify({
+      body: `Alert \`${record.alertname}\` resolved at ${endsAt}` +
+        (durationMin !== null ? ` (${durationMin} min after it started firing).` : '.') +
+        ' Complete the postmortem within 48 hours using `docs/postmortem-template.md`.',
+    }),
+  });
+
+  await fetchImpl(`https://api.github.com/repos/${config.repo}/issues/${record.issueNumber}/labels`, {
+    method: 'POST',
+    headers: githubHeaders(config.token),
+    body: JSON.stringify({ labels: ['incident:needs-postmortem'] }),
+  });
+
+  await fetchImpl(
+    `https://api.github.com/repos/${config.repo}/issues/${record.issueNumber}/labels/incident%3Aopen`,
+    { method: 'DELETE', headers: githubHeaders(config.token) },
+  );
+}
+
+// ── routeAlertManager ───────────────────────────────────────────────────────
+
 export async function routeAlertManager(
   payload: Record<string, unknown>,
   postFn: PostFn,
   counter?: EventCounter,
+  github?: GitHubIncidentConfig,
+  openIncidents?: Map<string, OpenIncident>,
 ): Promise<void> {
   const alerts = (payload.alerts as Record<string, unknown>[]) ?? [];
-  const firing = alerts.filter(a => a.status === 'firing');
 
-  if (firing.length === 0) {
-    counter?.inc({ source: 'alertmanager', event_type: 'resolved', agent: 'none', outcome: 'ignored' });
-    return;
-  }
-
-  for (const alert of firing) {
+  for (const alert of alerts) {
     const labels = (alert.labels as Record<string, string>) ?? {};
     const annotations = (alert.annotations as Record<string, string>) ?? {};
+    const status = (alert.status as string) ?? 'firing';
     const name = labels.alertname ?? 'unknown';
     const severity = labels.severity ?? 'unknown';
     const namespace = labels.namespace ?? labels.instance ?? 'unknown';
+    const fingerprint = (alert.fingerprint as string) ?? `${name}:${namespace}`;
+
+    if (status === 'resolved') {
+      const record = openIncidents?.get(fingerprint);
+      if (github && openIncidents && record) {
+        openIncidents.delete(fingerprint);
+        try {
+          await resolveIncidentIssue(record, alert, github);
+          counter?.inc({ source: 'alertmanager', event_type: 'incident_resolved', agent: 'github', outcome: 'routed' });
+        } catch (err) {
+          console.error('[event-router] failed to resolve incident issue:', err);
+        }
+      } else {
+        counter?.inc({ source: 'alertmanager', event_type: 'resolved', agent: 'none', outcome: 'ignored' });
+      }
+      continue;
+    }
+
     const summary = annotations.summary ?? '';
     const description = annotations.description ?? '';
 
@@ -123,6 +257,22 @@ export async function routeAlertManager(
 
     await postFn(targetAgent, msg);
     counter?.inc({ source: 'alertmanager', event_type: 'firing', agent: targetAgent, outcome: 'routed' });
+
+    if (github && openIncidents && severity === 'critical' && !openIncidents.has(fingerprint)) {
+      try {
+        const issueNumber = await createIncidentIssue(alert, github);
+        if (issueNumber) {
+          openIncidents.set(fingerprint, {
+            issueNumber,
+            alertname: name,
+            startsAt: (alert.startsAt as string) ?? new Date().toISOString(),
+          });
+          counter?.inc({ source: 'alertmanager', event_type: 'incident_created', agent: 'github', outcome: 'routed' });
+        }
+      } catch (err) {
+        console.error('[event-router] failed to create incident issue:', err);
+      }
+    }
   }
 }
 
@@ -157,13 +307,15 @@ export interface AppOptions {
   webhookToken?: string;
   postFn?: PostFn;
   counter?: EventCounter;
+  github?: GitHubIncidentConfig;
 }
 
 export function createApp(opts: AppOptions = {}): express.Application {
-  const { githubSecret, webhookToken, postFn, counter } = opts;
+  const { githubSecret, webhookToken, postFn, counter, github } = opts;
 
   const defaultPostFn: PostFn = async () => {};
   const effectivePostFn = postFn ?? defaultPostFn;
+  const openIncidents = new Map<string, OpenIncident>();
 
   const app = express();
 
@@ -197,7 +349,7 @@ export function createApp(opts: AppOptions = {}): express.Application {
   app.post('/webhook/alertmanager', async (req: Request, res: Response) => {
     if (!verifyBearerToken(req, res, webhookToken)) return;
     res.json({ status: 'accepted' });
-    try { await routeAlertManager(req.body, effectivePostFn, counter); } catch (err) {
+    try { await routeAlertManager(req.body, effectivePostFn, counter, github, openIncidents); } catch (err) {
       console.error('[event-router] alertmanager routing error:', err);
     }
   });

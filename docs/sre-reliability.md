@@ -77,6 +77,19 @@ The platform includes a blameless postmortem template at [`docs/postmortem-templ
 
 **Key principle:** The template explicitly focuses on *what happened* and *what we change*, not *who was at fault*.
 
+### Incident Record Automation
+
+`agent-event-router` (`services/agent-event-router`) auto-creates a tracked GitHub issue
+the moment a **Critical**-severity alert fires — seeded with the Incident ID, severity,
+affected service, and start time (mirroring the summary table in
+`docs/postmortem-template.md`). When the alert resolves, it posts a comment with the
+resolution time and duration, swaps the `incident:open` label for
+`incident:needs-postmortem`, and leaves the issue open for the 48-hour postmortem
+process above. This requires `GITHUB_TOKEN` and `INCIDENT_REPO` to be set on the
+service (see `services/agent-event-router/helm-values-local.yaml`); without them, the
+existing AI-triage routing to `idp-assistant`/`cost-agent` still works, but no issue is
+created.
+
 ---
 
 ## OPA Cost-Tag Enforcement

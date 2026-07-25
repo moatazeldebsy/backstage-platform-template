@@ -113,11 +113,12 @@ spec:
             - href: '{{ .CommonAnnotations.runbook_url }}'
               text: Runbook
 
-    # Agent event router — forwards firing alerts to the AI triage agent via A2A
+    # Agent event router — forwards firing alerts to the AI triage agent via A2A,
+    # and resolved alerts so it can close out any incident issue it auto-created.
     - name: agent-event-router
       webhookConfigs:
         - url: 'http://agent-event-router.services-dev.svc.cluster.local:3004/webhook/alertmanager'
-          sendResolved: false
+          sendResolved: true
           httpConfig:
             authorization:
               type: Bearer

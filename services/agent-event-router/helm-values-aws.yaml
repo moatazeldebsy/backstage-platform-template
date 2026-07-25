@@ -65,6 +65,17 @@ env:
       secretKeyRef:
         name: agent-event-router-secrets
         key: webhook-token
+  # GITHUB_TOKEN — used to open/close incident-tracking issues on critical alerts.
+  # Without it, incident-issue automation is silently disabled (AI triage still works).
+  - name: GITHUB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: agent-event-router-secrets
+        key: github-token
+        optional: true
+  # INCIDENT_REPO — owner/repo where auto-created incident issues are filed.
+  - name: INCIDENT_REPO
+    value: "moatazeldebsy/backstage-platform-template"
 
 securityContext:
   allowPrivilegeEscalation: false

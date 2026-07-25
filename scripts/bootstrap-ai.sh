@@ -336,20 +336,25 @@ else
   warn "  Get token: argocd account generate-token --account admin (or kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
 fi
 
-# agent-event-router secrets (GITHUB_WEBHOOK_SECRET + WEBHOOK_TOKEN)
+# agent-event-router secrets (GITHUB_WEBHOOK_SECRET + WEBHOOK_TOKEN + GITHUB_TOKEN)
 _ghws="${GITHUB_WEBHOOK_SECRET:-}"
 _wt="${WEBHOOK_TOKEN:-}"
-if [[ -n "$_ghws" || -n "$_wt" ]]; then
+_ghtok="${GITHUB_TOKEN:-}"
+if [[ -n "$_ghws" || -n "$_wt" || -n "$_ghtok" ]]; then
   info "Creating agent-event-router-secrets in services-dev..."
   kubectl create secret generic agent-event-router-secrets \
     --namespace services-dev \
     --from-literal=github-webhook-secret="${_ghws:-placeholder-set-in-github-webhook}" \
     --from-literal=webhook-token="${_wt:-placeholder-set-webhook-token}" \
+    --from-literal=github-token="${_ghtok:-placeholder-set-github-token}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret agent-event-router-secrets ready"
 else
   warn "GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN not set — agent-event-router will start but /webhook/github will return 503."
   warn "  Add GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN to local/.env, then re-run bootstrap-ai.sh."
+fi
+if [[ -z "$_ghtok" ]]; then
+  warn "GITHUB_TOKEN not set — agent-event-router will start but automatic incident-issue creation on critical alerts is disabled."
 fi
 
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────

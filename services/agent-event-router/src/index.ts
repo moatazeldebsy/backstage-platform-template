@@ -8,12 +8,17 @@ const KAGENT_A2A_URL = process.env.KAGENT_A2A_URL ?? 'http://kagent-ui.kagent.sv
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET ?? '';
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN ?? '';
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '5000', 10);
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? '';
+const INCIDENT_REPO = process.env.INCIDENT_REPO ?? '';
 
 if (!GITHUB_WEBHOOK_SECRET) {
   console.warn('[event-router] WARNING: GITHUB_WEBHOOK_SECRET not set — /webhook/github will return 503');
 }
 if (!WEBHOOK_TOKEN) {
   console.warn('[event-router] WARNING: WEBHOOK_TOKEN not set — alertmanager/argocd endpoints are unauthenticated (acceptable for in-cluster only)');
+}
+if (!GITHUB_TOKEN || !INCIDENT_REPO) {
+  console.warn('[event-router] GITHUB_TOKEN/INCIDENT_REPO not set — automatic incident-issue creation on critical alerts is disabled');
 }
 
 collectDefaultMetrics();
@@ -70,6 +75,7 @@ const app = createApp({
   webhookToken: WEBHOOK_TOKEN,
   postFn: postToAgent,
   counter: eventsTotal,
+  github: GITHUB_TOKEN && INCIDENT_REPO ? { token: GITHUB_TOKEN, repo: INCIDENT_REPO } : undefined,
 });
 
 app.get('/metrics', async (_req: Request, res: Response) => {

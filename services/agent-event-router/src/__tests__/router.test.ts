@@ -9,6 +9,10 @@ import {
   routeAlertManager,
   routeArgoCD,
   createApp,
+  createIncidentIssue,
+  resolveIncidentIssue,
+  type GitHubIncidentConfig,
+  type OpenIncident,
 } from '../router';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -378,6 +382,194 @@ describe('routeAlertManager', () => {
     expect(postFn).toHaveBeenCalledTimes(2);
     expect(postFn.mock.calls[0][0]).toBe('idp-assistant');
     expect(postFn.mock.calls[1][0]).toBe('idp-assistant');
+  });
+});
+
+// ── incident record automation ──────────────────────────────────────────────
+
+function mockFetch(responses: Array<{ ok: boolean; status?: number; json?: unknown }>) {
+  let call = 0;
+  return jest.fn(async (_url: string, _init?: RequestInit) => {
+    const r = responses[Math.min(call, responses.length - 1)];
+    call += 1;
+    return {
+      ok: r.ok,
+      status: r.status ?? (r.ok ? 200 : 500),
+      json: async () => r.json ?? {},
+    } as unknown as Response;
+  });
+}
+
+describe('createIncidentIssue', () => {
+  it('POSTs to the GitHub issues endpoint and returns the issue number', async () => {
+    const fetchImpl = mockFetch([{ ok: true, json: { number: 42 } }]);
+    const config: GitHubIncidentConfig = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+
+    const alert = {
+      status: 'firing',
+      startsAt: '2026-07-25T10:00:00Z',
+      labels: { alertname: 'PodCrashLooping', severity: 'critical', namespace: 'production' },
+      annotations: { summary: 'Pod is crash looping', runbook_url: 'https://runbooks/x' },
+    };
+
+    const issueNumber = await createIncidentIssue(alert, config);
+
+    expect(issueNumber).toBe(42);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe('https://api.github.com/repos/org/repo/issues');
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.title).toContain('PodCrashLooping');
+    expect(body.title).toContain('production');
+    expect(body.labels).toEqual(expect.arrayContaining(['incident', 'incident:open', 'severity:critical']));
+    expect(body.body).toContain('Pod is crash looping');
+    expect(body.body).toContain('docs/postmortem-template.md');
+  });
+
+  it('returns null when the GitHub API call fails', async () => {
+    const fetchImpl = mockFetch([{ ok: false, status: 403 }]);
+    const config: GitHubIncidentConfig = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+
+    const issueNumber = await createIncidentIssue(
+      { status: 'firing', labels: { alertname: 'X', severity: 'critical' }, annotations: {} },
+      config,
+    );
+
+    expect(issueNumber).toBeNull();
+  });
+});
+
+describe('resolveIncidentIssue', () => {
+  it('posts a resolution comment and swaps the incident:open label', async () => {
+    const fetchImpl = mockFetch([{ ok: true }, { ok: true }, { ok: true }]);
+    const config: GitHubIncidentConfig = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+    const record: OpenIncident = { issueNumber: 7, alertname: 'PodCrashLooping', startsAt: '2026-07-25T10:00:00Z' };
+
+    await resolveIncidentIssue(record, { endsAt: '2026-07-25T10:30:00Z' }, config);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    const [commentUrl, commentInit] = fetchImpl.mock.calls[0];
+    expect(commentUrl).toBe('https://api.github.com/repos/org/repo/issues/7/comments');
+    const commentBody = JSON.parse((commentInit as RequestInit).body as string);
+    expect(commentBody.body).toContain('30 min');
+
+    const [labelUrl] = fetchImpl.mock.calls[1];
+    expect(labelUrl).toBe('https://api.github.com/repos/org/repo/issues/7/labels');
+
+    const [deleteUrl, deleteInit] = fetchImpl.mock.calls[2];
+    expect(deleteUrl).toBe('https://api.github.com/repos/org/repo/issues/7/labels/incident%3Aopen');
+    expect((deleteInit as RequestInit).method).toBe('DELETE');
+  });
+});
+
+describe('routeAlertManager incident tracking', () => {
+  let postFn: jest.Mock;
+  let github: GitHubIncidentConfig;
+  let fetchImpl: jest.Mock;
+  let openIncidents: Map<string, OpenIncident>;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    postFn = jest.fn().mockResolvedValue(undefined);
+    fetchImpl = mockFetch([{ ok: true, json: { number: 99 } }]);
+    github = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+    openIncidents = new Map();
+  });
+
+  it('creates an incident issue for a firing critical alert', async () => {
+    const payload = {
+      alerts: [
+        {
+          status: 'firing',
+          fingerprint: 'fp1',
+          startsAt: '2026-07-25T10:00:00Z',
+          labels: { alertname: 'DiskFull', severity: 'critical', namespace: 'production' },
+          annotations: {},
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn, undefined, github, openIncidents);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(openIncidents.get('fp1')).toEqual({ issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
+  });
+
+  it('does not create a second issue for a repeat firing notification (same fingerprint)', async () => {
+    openIncidents.set('fp1', { issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
+    const payload = {
+      alerts: [
+        {
+          status: 'firing',
+          fingerprint: 'fp1',
+          labels: { alertname: 'DiskFull', severity: 'critical', namespace: 'production' },
+          annotations: {},
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn, undefined, github, openIncidents);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('does not open an incident for a non-critical (warning) alert', async () => {
+    const payload = {
+      alerts: [
+        {
+          status: 'firing',
+          fingerprint: 'fp2',
+          labels: { alertname: 'HighCPU', severity: 'warning', namespace: 'production' },
+          annotations: {},
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn, undefined, github, openIncidents);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(openIncidents.size).toBe(0);
+  });
+
+  it('resolves a tracked incident and removes it from the open map', async () => {
+    openIncidents.set('fp1', { issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
+    fetchImpl = mockFetch([{ ok: true }, { ok: true }, { ok: true }]);
+    github = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+
+    const payload = {
+      alerts: [
+        {
+          status: 'resolved',
+          fingerprint: 'fp1',
+          endsAt: '2026-07-25T10:15:00Z',
+          labels: { alertname: 'DiskFull', severity: 'critical', namespace: 'production' },
+          annotations: {},
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn, undefined, github, openIncidents);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(openIncidents.has('fp1')).toBe(false);
+    expect(postFn).not.toHaveBeenCalled();
+  });
+
+  it('does nothing incident-related when no github config is provided (existing behavior preserved)', async () => {
+    const payload = {
+      alerts: [
+        {
+          status: 'firing',
+          fingerprint: 'fp3',
+          labels: { alertname: 'DiskFull', severity: 'critical', namespace: 'production' },
+          annotations: {},
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn);
+
+    expect(postFn).toHaveBeenCalledTimes(1);
   });
 });
 
