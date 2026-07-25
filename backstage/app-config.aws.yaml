@@ -84,6 +84,13 @@ proxy:
       changeOrigin: true
       headers:
         Authorization: token ${SNYK_TOKEN}
+    /github-code-scanning:
+      target: https://api.github.com
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${GITHUB_TOKEN}
+        Accept: application/vnd.github+json
     /pagerduty:
       target: https://api.pagerduty.com
       allowedMethods: ['GET', 'POST']

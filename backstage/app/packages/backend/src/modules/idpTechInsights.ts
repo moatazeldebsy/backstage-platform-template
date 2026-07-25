@@ -22,6 +22,7 @@ const QUALITY_GATES = [
   'rag-eval',               // RAG system has retrieval quality evaluation
   'sonar-scanning',         // CI runs SonarCloud quality gate
   'snyk-scanning',          // CI runs Snyk SCA scan
+  'trivy-scanning',         // CI runs Trivy image scan (results surfaced in the Trivy entity tab)
   // Mobile-specific quality gates
   'mobile-test-coverage',   // Mobile app has unit/widget test coverage gate in CI
   'mobile-crash-reporting', // Mobile app has crash reporting (Firebase Crashlytics / Sentry)
@@ -116,6 +117,10 @@ const entityFactRetriever: FactRetriever = {
     'has-snyk-scanning': {
       type: 'boolean',
       description: 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)',
+    },
+    'has-trivy-scanning': {
+      type: 'boolean',
+      description: 'Service image is scanned by Trivy (idp.io/quality-gates contains "trivy-scanning" OR github.com/project-slug annotation present)',
     },
     // — Mobile app scorecard (Bronze/Silver/Gold for spec.type === "mobile") —
     'has-mobile-test-coverage': {
@@ -216,6 +221,9 @@ const entityFactRetriever: FactRetriever = {
       const hasSnykScanning =
         declaredGates.has('snyk-scanning') ||
         Boolean(annotations['snyk.io/org-slug']);
+      const hasTrivyScanning =
+        declaredGates.has('trivy-scanning') ||
+        Boolean(annotations['github.com/project-slug']);
 
       // Mobile scorecard facts (only meaningful for spec.type === 'mobile', but
       // computed for all Components so the scorecard UI can render consistently)
@@ -297,6 +305,7 @@ const entityFactRetriever: FactRetriever = {
           'has-ai-observability':  hasAiObservability,
           'has-sonar-scanning':          hasSonarScanning,
           'has-snyk-scanning':           hasSnykScanning,
+          'has-trivy-scanning':          hasTrivyScanning,
           'has-mobile-test-coverage':    hasMobileTestCoverage,
           'has-mobile-crash-reporting':  hasMobileCrashReporting,
           'has-mobile-ui-tests':         hasMobileUiTests,

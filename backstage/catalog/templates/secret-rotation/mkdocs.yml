@@ -1,0 +1,9 @@
+site_name: Secret with Rotation Reminder
+site_description: >-
+  Provision a secret in AWS Secrets Manager and schedule a recurring GitHub
+  issue reminder to rotate it
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

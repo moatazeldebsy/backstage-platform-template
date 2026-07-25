@@ -22,6 +22,8 @@ spec:
     - ./templates/create-namespace/template.yaml
     - ./templates/add-secret/template.yaml
     - ./templates/decommission-service/template.yaml
+    # ── Advanced: Security ────────────────────────────────────────────────────
+    - ./templates/secret-rotation/template.yaml
     # ── Advanced: Infrastructure & cloud resources ────────────────────────────
     - ./templates/terraform-module/template.yaml
     - ./templates/rds-database/template.yaml

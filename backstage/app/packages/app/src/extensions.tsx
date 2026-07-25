@@ -1034,7 +1034,8 @@ type CheckKey =
   | 'has-eval-suite'
   | 'has-ai-observability'
   | 'has-sonar-scanning'
-  | 'has-snyk-scanning';
+  | 'has-snyk-scanning'
+  | 'has-trivy-scanning';
 
 interface CheckDef {
   id: CheckKey;
@@ -1060,6 +1061,7 @@ const CHECKS: CheckDef[] = [
   { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id and tag the entity with "ai" to enable Grafana dashboards.' },
   { id: 'has-sonar-scanning',    group: 'Security',      label: 'SonarCloud quality gate',   remediation: 'Run the enable-security-scanning scaffolder, or add a sonarcloud.io/project-key annotation.' },
   { id: 'has-snyk-scanning',     group: 'Security',      label: 'Snyk SCA scan',             remediation: 'Run the enable-security-scanning scaffolder, or add a snyk.io/org-slug annotation.' },
+  { id: 'has-trivy-scanning',    group: 'Security',      label: 'Trivy image scan',          remediation: 'See the Trivy tab — requires a github.com/project-slug annotation and CI to have run at least once.' },
 ];
 
 type TierName = 'none' | 'bronze' | 'silver' | 'gold';
@@ -1128,6 +1130,7 @@ function computeScorecard(entity: Entity): ScorecardResult {
     'has-ai-observability':  isAiEntity && hasKubernetesId,
     'has-sonar-scanning':    gates.has('sonar-scanning') || Boolean(annotations['sonarcloud.io/project-key']),
     'has-snyk-scanning':     gates.has('snyk-scanning') || Boolean(annotations['snyk.io/org-slug']),
+    'has-trivy-scanning':    gates.has('trivy-scanning') || Boolean(annotations['github.com/project-slug']),
   };
 
   const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
@@ -1452,6 +1455,131 @@ const securityEntityContent = EntityContentBlueprint.make({
     title: 'Security',
     filter: 'kind:component',
     loader: async () => <SecurityEntityContent />,
+  },
+});
+
+// ── Trivy tab ───────────────────────────────────────────────────────────────
+// CI (.github/workflows/build-and-deploy.yml) already scans built images with
+// Trivy and uploads the SARIF to GitHub's code-scanning API. This tab reads
+// that data back via the /api/proxy/github-code-scanning proxy — no extra CI
+// step or annotation is needed beyond the github.com/project-slug that's
+// already present on scaffolded components.
+
+interface TrivySeverityCounts {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
+}
+
+function TrivyCard({ repoSlug }: { repoSlug: string }) {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const [counts, setCounts]   = useState<TrivySeverityCounts | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    const baseUrl = configApi.getString('backend.baseUrl');
+    const url = `${baseUrl}/api/proxy/github-code-scanning/repos/${repoSlug}/code-scanning/alerts?tool_name=Trivy&state=open&per_page=100`;
+
+    fetchApi.fetch(url)
+      .then(async res => {
+        if (!res.ok) throw new Error(`GitHub code scanning: ${res.status}`);
+        const alerts: any[] = await res.json();
+        const result: TrivySeverityCounts = { critical: 0, high: 0, medium: 0, low: 0, total: 0 };
+        for (const alert of alerts) {
+          const level = alert?.rule?.security_severity_level ?? alert?.rule?.severity ?? 'low';
+          if (level === 'critical') result.critical += 1;
+          else if (level === 'high') result.high += 1;
+          else if (level === 'medium') result.medium += 1;
+          else result.low += 1;
+          result.total += 1;
+        }
+        setCounts(result);
+        setLoading(false);
+      })
+      .catch((err: Error) => { setError(err.message); setLoading(false); });
+  }, [fetchApi, configApi, repoSlug]);
+
+  const alertsUrl = `https://github.com/${repoSlug}/security/code-scanning?query=tool%3ATrivy`;
+  const gateColor = !counts ? '#9e9e9e'
+    : counts.critical > 0 ? '#f44336'
+    : counts.high > 0 ? '#ff9800'
+    : '#4caf50';
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        Trivy — <code>{repoSlug}</code>
+      </Typography>
+      <Paper style={{ padding: 16 }}>
+        {loading && <Progress />}
+        {!loading && error && (
+          <Typography variant="body2" color="textSecondary">
+            Unable to load Trivy scan results: <strong>{error}</strong>. Verify
+            <code> GITHUB_TOKEN</code> has code-scanning read access and the image build
+            workflow has run at least once.
+            <Box mt={1}><Link href={alertsUrl} target="_blank" rel="noopener">Open code scanning alerts ↗</Link></Box>
+          </Typography>
+        )}
+        {!loading && !error && counts && (
+          <Box>
+            <Box display="flex" alignItems="center" style={{ gap: 12, marginBottom: 12 }}>
+              <Chip
+                label={`${counts.total} open ${counts.total === 1 ? 'finding' : 'findings'}`}
+                style={{ backgroundColor: gateColor, color: 'white' }}
+              />
+              <Link href={alertsUrl} target="_blank" rel="noopener">Open in GitHub ↗</Link>
+            </Box>
+            <TableContainer>
+              <MuiTable size="small">
+                <TableBody>
+                  <TableRow><TableCell>Critical</TableCell><TableCell>{counts.critical}</TableCell></TableRow>
+                  <TableRow><TableCell>High</TableCell><TableCell>{counts.high}</TableCell></TableRow>
+                  <TableRow><TableCell>Medium</TableCell><TableCell>{counts.medium}</TableCell></TableRow>
+                  <TableRow><TableCell>Low</TableCell><TableCell>{counts.low}</TableCell></TableRow>
+                </TableBody>
+              </MuiTable>
+            </TableContainer>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function TrivyEntityContent() {
+  const { entity } = useEntity();
+  const annotations = entity.metadata.annotations ?? {};
+  const repoSlug = annotations['github.com/project-slug'];
+
+  return (
+    <Content>
+      {!repoSlug && (
+        <Box mb={3}>
+          <Paper style={{ padding: 24, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>Trivy scanning not available</Typography>
+            <Typography variant="body2" color="textSecondary">
+              This entity has no <code>github.com/project-slug</code> annotation, so
+              image scan results can't be looked up.
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+      {repoSlug && <TrivyCard repoSlug={repoSlug} />}
+    </Content>
+  );
+}
+
+const trivyEntityContent = EntityContentBlueprint.make({
+  name: 'trivy-scanning',
+  params: {
+    path: '/trivy',
+    title: 'Trivy',
+    filter: 'kind:component',
+    loader: async () => <TrivyEntityContent />,
   },
 });
 
@@ -5742,6 +5870,7 @@ export const customPagesPlugin = createFrontendPlugin({
     doraEntityContent,
     scorecardEntityContent,
     securityEntityContent,
+    trivyEntityContent,
     pagerDutyEntityContent,
     grafanaEntityContent,
     jiraEntityContent,

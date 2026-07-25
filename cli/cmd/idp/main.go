@@ -23,6 +23,10 @@ func init() {
 	rootCmd.AddCommand(learnCmd)
 	rootCmd.AddCommand(tipCmd)
 	rootCmd.AddCommand(mcpCmd)
+	rootCmd.AddCommand(deployCmd)
+	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(logsCmd)
+	rootCmd.AddCommand(runnerCmd)
 }
 
 func main() {
