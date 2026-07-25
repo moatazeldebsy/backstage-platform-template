@@ -1549,6 +1549,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#incident-record-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Incident Record Automation
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2325,6 +2334,17 @@
 <li>Action items are tracked as GitHub Issues with the <code>postmortem</code> label.</li>
 </ol>
 <p><strong>Key principle:</strong> The template explicitly focuses on <em>what happened</em> and <em>what we change</em>, not <em>who was at fault</em>.</p>
+<h3 id="incident-record-automation">Incident Record Automation<a class="headerlink" href="#incident-record-automation" title="Permanent link">&para;</a></h3>
+<p><code>agent-event-router</code> (<code>services/agent-event-router</code>) auto-creates a tracked GitHub issue
+the moment a <strong>Critical</strong>-severity alert fires — seeded with the Incident ID, severity,
+affected service, and start time (mirroring the summary table in
+<code>docs/postmortem-template.md</code>). When the alert resolves, it posts a comment with the
+resolution time and duration, swaps the <code>incident:open</code> label for
+<code>incident:needs-postmortem</code>, and leaves the issue open for the 48-hour postmortem
+process above. This requires <code>GITHUB_TOKEN</code> and <code>INCIDENT_REPO</code> to be set on the
+service (see <code>services/agent-event-router/helm-values-local.yaml</code>); without them, the
+existing AI-triage routing to <code>idp-assistant</code>/<code>cost-agent</code> still works, but no issue is
+created.</p>
 <hr />
 <h2 id="opa-cost-tag-enforcement">OPA Cost-Tag Enforcement<a class="headerlink" href="#opa-cost-tag-enforcement" title="Permanent link">&para;</a></h2>
 <p>The <code>require-cost-tags</code> OPA/Gatekeeper policy (<code>kubernetes/policies/require-cost-tags.yaml</code>) was upgraded from <code>warn</code> mode to <strong><code>deny</code> mode</strong> in Sprint 1. This means:</p>
