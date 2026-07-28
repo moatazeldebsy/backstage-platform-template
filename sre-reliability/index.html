@@ -1657,6 +1657,66 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#datadog-infra-observability-apm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Datadog Infra Observability &amp; APM
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Datadog Infra Observability & APM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coexistence-with-prometheusgrafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      Coexistence with Prometheus/Grafana
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apm-traces-from-the-backstage-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      APM traces from the Backstage backend
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catalog-ui-and-per-service-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      Catalog UI and per-service opt-in
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment tracking
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pagerduty-escalation" class="md-nav__link">
     <span class="md-ellipsis">
       PagerDuty Escalation
@@ -2483,6 +2543,82 @@ created.</p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>http://grafana.idp.local/explore
 </code></pre></div></td></tr></table></div>
 <p>Select the <strong>Tempo</strong> datasource and search by service name, trace ID, or span attributes.</p>
+<hr />
+<h2 id="datadog-infra-observability-apm">Datadog Infra Observability &amp; APM<a class="headerlink" href="#datadog-infra-observability-apm" title="Permanent link">&para;</a></h2>
+<h3 id="coexistence-with-prometheusgrafana">Coexistence with Prometheus/Grafana<a class="headerlink" href="#coexistence-with-prometheusgrafana" title="Permanent link">&para;</a></h3>
+<p>Datadog and Prometheus/Grafana deliberately own different telemetry domains — this is not a
+migration off Prometheus:</p>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App-level <code>/metrics</code>, ServiceMonitors, SLO burn-rate alerting</td>
+<td>Prometheus + Grafana + Sloth (see <a href="#slos-and-error-budgets">SLOs and Error Budgets</a>)</td>
+</tr>
+<tr>
+<td>Cluster/node/pod infra metrics, container logs, APM traces</td>
+<td>Datadog Agent</td>
+</tr>
+</tbody>
+</table>
+<p>The Datadog Agent does <strong>not</strong> scrape the Prometheus/OpenMetrics endpoints services already expose
+(<code>datadog.prometheusScrape.enabled: false</code> in <code>aws/observability/datadog/datadog-agent-values.yaml</code>).
+This avoids double cardinality billing in Datadog and keeps alert ownership unambiguous — an
+app-level SLO burn-rate alert always comes from Alertmanager, an infra/host alert always comes
+from Datadog.</p>
+<h3 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>aws/observability/datadog/datadog-external-secret.yaml</code> — syncs <code>idp-mvp/datadog</code> (Datadog
+  API/App keys) from AWS Secrets Manager into the <code>datadog-secrets</code> K8s Secret via a dedicated
+  IRSA-authenticated ServiceAccount (<code>datadog-eso-sa</code>), same least-privilege pattern as
+  <code>aws/kagent/external-secret.yaml</code>.</li>
+<li><code>aws/observability/datadog/datadog-agent-values.yaml</code> — Helm values for the official
+  <code>datadog/datadog</code> chart: Cluster Agent + node DaemonSet, log collection, APM trace intake on
+  port 8126. Installed directly via <code>helm upgrade --install</code> in <code>bootstrap.sh</code> (Phase 4.4-pre-d),
+  same mechanism as Loki/Tempo above it — not an ArgoCD Application (that pattern is reserved for
+  add-ons like Argo Rollouts/Thanos that aren't wired into <code>bootstrap.sh</code>).</li>
+<li>Primary cluster (eu-central-1) only today — the standby cluster intentionally runs no full
+  observability stack (see <code>bootstrap-multiregion.sh</code>'s "no Backstage, no full observability —
+  this cluster is a warm standby" design). The standby Backstage deployment still sets dd-trace
+  env vars (<code>DD_ENV=standby</code>); they're inert until an Agent is deployed there.</li>
+<li>Site: <code>datadoghq.eu</code> for all Datadog integrations (Agent, Backstage <code>/datadog</code> proxy, dd-trace,
+  scaffolder default) — matches the existing <code>datadog-synthetic-suite</code> template.</li>
+</ul>
+<h3 id="apm-traces-from-the-backstage-backend">APM traces from the Backstage backend<a class="headerlink" href="#apm-traces-from-the-backstage-backend" title="Permanent link">&para;</a></h3>
+<p>The Backstage backend itself is instrumented with <code>dd-trace</code> (<code>NODE_OPTIONS=--require dd-trace/init</code>,
+see <code>aws/backstage/deployment.yaml</code>), reporting to the Agent DaemonSet on the node via
+<code>DD_AGENT_HOST=status.hostIP:8126</code>. This is the simplest end-to-end check that the Agent is
+reachable — look for a <code>backstage</code> service under Datadog APM → Services.</p>
+<h3 id="catalog-ui-and-per-service-opt-in">Catalog UI and per-service opt-in<a class="headerlink" href="#catalog-ui-and-per-service-opt-in" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Service entity pages show a Datadog card (dashboard link, monitor status, SLO status) when the
+  catalog entity has <code>datadoghq.com/dashboard-url</code>, <code>datadoghq.com/monitor-tag</code>, or
+  <code>datadoghq.com/slo-id</code> annotations. The card calls Datadog through the Backstage backend's
+  <code>/datadog</code> proxy — API/App keys never reach the browser.</li>
+<li>Existing services can opt into dd-trace APM + these annotations via the
+  <strong>Enable Datadog APM &amp; Monitoring</strong> scaffolder template
+  (<code>backstage/catalog/templates/enable-datadog-apm/</code>).</li>
+</ul>
+<h3 id="deployment-tracking">Deployment tracking<a class="headerlink" href="#deployment-tracking" title="Permanent link">&para;</a></h3>
+<p><code>.github/workflows/build-and-deploy.yml</code> sends a Datadog deployment marker (<code>datadog-ci deployment
+mark</code>) after each successful smoke test — one in <code>smoke-test-dev</code> (env <code>dev</code>) and one in
+<code>smoke-test-staging</code> (env <code>staging</code>), tagged with the service name and image tag. This annotates
+Datadog dashboards/APM traces with exactly when a revision went live, so an incident (a latency
+spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
+<ul>
+<li>Requires the <code>DD_API_KEY</code> repository secret on the platform repo (see
+  <a href="../getting-started/#3-github-actions-secrets">docs/getting-started.md</a>); the step no-ops if it's
+  unset, and is <code>continue-on-error: true</code> regardless — deployment tracking is observability, not a
+  release gate.</li>
+<li>No production marker today: production promotion only opens a PR
+  (<code>promote-to-production</code>) — the workflow has no job that confirms the merge actually deployed
+  (no <code>smoke-test-production</code> exists, unlike dev/staging). Add one if you want a prod-env marker.</li>
+</ul>
 <hr />
 <h2 id="pagerduty-escalation">PagerDuty Escalation<a class="headerlink" href="#pagerduty-escalation" title="Permanent link">&para;</a></h2>
 <h3 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>

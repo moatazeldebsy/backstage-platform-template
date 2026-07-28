@@ -974,6 +974,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#5-datadog-apiapp-keys-optional-required-for-the-datadog-agent-dd-trace-apm-and-the-datadog-catalog-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Datadog API/App Keys (optional — required for the Datadog Agent, dd-trace APM, and the Datadog catalog tab)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2043,6 +2052,22 @@ aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<s
 </code></pre></div></td></tr></table></div>
 <p><strong>Status:</strong> ☐ Optional</p>
 <hr />
+<h4 id="5-datadog-apiapp-keys-optional-required-for-the-datadog-agent-dd-trace-apm-and-the-datadog-catalog-tab">5. Datadog API/App Keys (optional — required for the Datadog Agent, dd-trace APM, and the Datadog catalog tab)<a class="headerlink" href="#5-datadog-apiapp-keys-optional-required-for-the-datadog-agent-dd-trace-apm-and-the-datadog-catalog-tab" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Cluster-wide infra observability + APM (see
+<a href="../sre-reliability/#datadog-infra-observability--apm">docs/sre-reliability.md</a>)</p>
+<p><strong>Get it:</strong> <a href="https://app.datadoghq.eu/organization-settings/api-keys">https://app.datadoghq.eu/organization-settings/api-keys</a> (API key) and
+<a href="https://app.datadoghq.eu/organization-settings/application-keys">https://app.datadoghq.eu/organization-settings/application-keys</a> (App key)</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in terraform/terraform.tfvars before running terraform apply</span>
+<span class="nv">datadog_api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR_DD_API_KEY&quot;</span>
+<span class="nv">datadog_app_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR_DD_APP_KEY&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Populates both <code>idp-mvp/datadog</code> (Datadog Agent) and <code>idp-mvp/backstage</code> (Backstage <code>/datadog</code>
+proxy + dd-trace) Secrets Manager secrets — <code>scripts/bootstrap.sh</code> installs the Agent
+automatically once these are set.</p>
+<p><strong>Status:</strong> ☐ Optional / ☐ Set if using Datadog</p>
+<hr />
 <h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
@@ -2066,7 +2091,8 @@ aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<s
 <span class="normal">20</span>
 <span class="normal">21</span>
 <span class="normal">22</span>
-<span class="normal">23</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
+<span class="normal">23</span>
+<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
   [ ] aws sts get-caller-identity   → works, shows correct account
   [ ] terraform -version            → ≥ 1.5
   [ ] kubectl version               → installed
@@ -2086,6 +2112,7 @@ Credentials:
   [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
   [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
   [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
+  [ ] datadog_api_key / datadog_app_key set in terraform.tfvars (if using Datadog)
 
 Verification:
   [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!

@@ -2289,6 +2289,22 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 </tr>
 </tbody>
 </table>
+<p>Add this to the <strong>platform repo</strong> to enable Datadog deployment markers in <code>build-and-deploy.yml</code>
+(optional — the pipeline runs fine without it, just skips the marker step):</p>
+<table>
+<thead>
+<tr>
+<th>Secret</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DD_API_KEY</code></td>
+<td>Datadog API key — <a href="https://app.datadoghq.eu/organization-settings/api-keys">https://app.datadoghq.eu/organization-settings/api-keys</a></td>
+</tr>
+</tbody>
+</table>
 <h3 id="4-team-namespace-setup">4. Team namespace setup<a class="headerlink" href="#4-team-namespace-setup" title="Permanent link">&para;</a></h3>
 <p>After the platform is bootstrapped, onboard teams using the <strong>Provision Team Namespace</strong> scaffold template (tagged <code>blessed</code>). Each team gets:
 - An isolated <code>team-&lt;name&gt;</code> namespace with quota, LimitRange, NetworkPolicy
