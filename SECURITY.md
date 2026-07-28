@@ -56,6 +56,15 @@ This template ships with these security controls enabled by default:
 | Image signing | Cosign signing after ECR push (Phase 5 roadmap item) |
 | Secrets management | AWS Secrets Manager + External Secrets Operator; no secrets in Git |
 
+## Known Accepted Risks
+
+| Dependency | Alerts | Reason | Re-evaluate when |
+|---|---|---|---|
+| `react-router` / `react-router-dom` (`backstage/app`) | GHSA-wrjc-x8rr-h8h6, GHSA-337j-9hxr-rhxg, and the unpatched react-router-dom open-redirect advisory | Fix requires react-router **v7**, but the latest published `@backstage/frontend-defaults` and `@backstage/core-app-api` (as of 2026-07) still hard-pin `react-router-dom: ^6.30.2` as a peer dependency — Backstage hasn't shipped v7 support. Bumping independently breaks the frontend. | Backstage's frontend packages drop the react-router v6 peer dependency pin. |
+
+Dismissed on GitHub (Dependabot alerts #230, #233, #234, #235, #236) with reason
+`tolerable_risk` — see each alert's dismissal comment for the same rationale.
+
 ## Scope
 
 This policy covers the platform template itself. Services scaffolded from the
