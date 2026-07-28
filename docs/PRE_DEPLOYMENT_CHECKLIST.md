@@ -126,6 +126,28 @@ aws secretsmanager create-secret \
 
 ---
 
+#### 5. Datadog API/App Keys (optional — required for the Datadog Agent, dd-trace APM, and the Datadog catalog tab)
+
+**Why:** Cluster-wide infra observability + APM (see
+[docs/sre-reliability.md](sre-reliability.md#datadog-infra-observability--apm))
+
+**Get it:** https://app.datadoghq.eu/organization-settings/api-keys (API key) and
+https://app.datadoghq.eu/organization-settings/application-keys (App key)
+
+```bash
+# Set in terraform/terraform.tfvars before running terraform apply
+datadog_api_key = "YOUR_DD_API_KEY"
+datadog_app_key = "YOUR_DD_APP_KEY"
+```
+
+Populates both `idp-mvp/datadog` (Datadog Agent) and `idp-mvp/backstage` (Backstage `/datadog`
+proxy + dd-trace) Secrets Manager secrets — `scripts/bootstrap.sh` installs the Agent
+automatically once these are set.
+
+**Status:** ☐ Optional / ☐ Set if using Datadog
+
+---
+
 ## Pre-Deployment Checklist
 
 ```
@@ -149,6 +171,7 @@ Credentials:
   [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
   [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
   [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
+  [ ] datadog_api_key / datadog_app_key set in terraform.tfvars (if using Datadog)
 
 Verification:
   [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!

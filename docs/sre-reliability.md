@@ -204,6 +204,77 @@ Select the **Tempo** datasource and search by service name, trace ID, or span at
 
 ---
 
+## Datadog Infra Observability & APM
+
+### Coexistence with Prometheus/Grafana
+
+Datadog and Prometheus/Grafana deliberately own different telemetry domains — this is not a
+migration off Prometheus:
+
+| Domain | Owner |
+|---|---|
+| App-level `/metrics`, ServiceMonitors, SLO burn-rate alerting | Prometheus + Grafana + Sloth (see [SLOs and Error Budgets](#slos-and-error-budgets)) |
+| Cluster/node/pod infra metrics, container logs, APM traces | Datadog Agent |
+
+The Datadog Agent does **not** scrape the Prometheus/OpenMetrics endpoints services already expose
+(`datadog.prometheusScrape.enabled: false` in `aws/observability/datadog/datadog-agent-values.yaml`).
+This avoids double cardinality billing in Datadog and keeps alert ownership unambiguous — an
+app-level SLO burn-rate alert always comes from Alertmanager, an infra/host alert always comes
+from Datadog.
+
+### Deployment
+
+- `aws/observability/datadog/datadog-external-secret.yaml` — syncs `idp-mvp/datadog` (Datadog
+  API/App keys) from AWS Secrets Manager into the `datadog-secrets` K8s Secret via a dedicated
+  IRSA-authenticated ServiceAccount (`datadog-eso-sa`), same least-privilege pattern as
+  `aws/kagent/external-secret.yaml`.
+- `aws/observability/datadog/datadog-agent-values.yaml` — Helm values for the official
+  `datadog/datadog` chart: Cluster Agent + node DaemonSet, log collection, APM trace intake on
+  port 8126. Installed directly via `helm upgrade --install` in `bootstrap.sh` (Phase 4.4-pre-d),
+  same mechanism as Loki/Tempo above it — not an ArgoCD Application (that pattern is reserved for
+  add-ons like Argo Rollouts/Thanos that aren't wired into `bootstrap.sh`).
+- Primary cluster (eu-central-1) only today — the standby cluster intentionally runs no full
+  observability stack (see `bootstrap-multiregion.sh`'s "no Backstage, no full observability —
+  this cluster is a warm standby" design). The standby Backstage deployment still sets dd-trace
+  env vars (`DD_ENV=standby`); they're inert until an Agent is deployed there.
+- Site: `datadoghq.eu` for all Datadog integrations (Agent, Backstage `/datadog` proxy, dd-trace,
+  scaffolder default) — matches the existing `datadog-synthetic-suite` template.
+
+### APM traces from the Backstage backend
+
+The Backstage backend itself is instrumented with `dd-trace` (`NODE_OPTIONS=--require dd-trace/init`,
+see `aws/backstage/deployment.yaml`), reporting to the Agent DaemonSet on the node via
+`DD_AGENT_HOST=status.hostIP:8126`. This is the simplest end-to-end check that the Agent is
+reachable — look for a `backstage` service under Datadog APM → Services.
+
+### Catalog UI and per-service opt-in
+
+- Service entity pages show a Datadog card (dashboard link, monitor status, SLO status) when the
+  catalog entity has `datadoghq.com/dashboard-url`, `datadoghq.com/monitor-tag`, or
+  `datadoghq.com/slo-id` annotations. The card calls Datadog through the Backstage backend's
+  `/datadog` proxy — API/App keys never reach the browser.
+- Existing services can opt into dd-trace APM + these annotations via the
+  **Enable Datadog APM & Monitoring** scaffolder template
+  (`backstage/catalog/templates/enable-datadog-apm/`).
+
+### Deployment tracking
+
+`.github/workflows/build-and-deploy.yml` sends a Datadog deployment marker (`datadog-ci deployment
+mark`) after each successful smoke test — one in `smoke-test-dev` (env `dev`) and one in
+`smoke-test-staging` (env `staging`), tagged with the service name and image tag. This annotates
+Datadog dashboards/APM traces with exactly when a revision went live, so an incident (a latency
+spike, an error-rate jump) can be correlated with "which deploy caused it."
+
+- Requires the `DD_API_KEY` repository secret on the platform repo (see
+  [docs/getting-started.md](getting-started.md#3-github-actions-secrets)); the step no-ops if it's
+  unset, and is `continue-on-error: true` regardless — deployment tracking is observability, not a
+  release gate.
+- No production marker today: production promotion only opens a PR
+  (`promote-to-production`) — the workflow has no job that confirms the merge actually deployed
+  (no `smoke-test-production` exists, unlike dev/staging). Add one if you want a prod-env marker.
+
+---
+
 ## PagerDuty Escalation
 
 ### Configuration

@@ -1,0 +1,8 @@
+site_name: Enable Datadog APM & Monitoring
+site_description: >-
+  >
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

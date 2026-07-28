@@ -85,3 +85,4 @@ spec:
     # ── Advanced: SRE — progressive delivery & SLOs ──────────────────────────
     - ./templates/canary-deployment/template.yaml
     - ./templates/slo-definition/template.yaml
+    - ./templates/enable-datadog-apm/template.yaml

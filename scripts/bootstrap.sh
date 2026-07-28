@@ -500,6 +500,38 @@ helm upgrade --install tempo grafana/tempo-distributed \
   --wait --timeout 8m || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
 log "  Tempo installed. Traces available in Grafana → Explore → Tempo datasource."
 
+# ── Phase 4.4-pre-d: Datadog Agent (infra + APM observability) ──────────────
+# Independent of Prometheus/Grafana/Loki/Tempo above — see docs/sre-reliability.md
+# "Datadog Infra Observability & APM" for why the two collection domains are kept
+# separate. Requires datadog_api_key/datadog_app_key to be set in terraform.tfvars.
+log "Phase 4.4-pre-d: Installing Datadog Agent (infra + APM observability)..."
+kubectl create namespace datadog --dry-run=client -o yaml | kubectl apply -f -
+
+DATADOG_ESO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw datadog_eso_role_arn 2>/dev/null || echo "")
+if [[ -n "$DATADOG_ESO_ROLE_ARN" ]]; then
+  sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+    "${ROOT_DIR}/aws/observability/datadog/datadog-external-secret.yaml" | kubectl apply -f -
+  kubectl annotate serviceaccount datadog-eso-sa -n datadog \
+    "eks.amazonaws.com/role-arn=${DATADOG_ESO_ROLE_ARN}" \
+    --overwrite
+
+  helm repo add datadog https://helm.datadoghq.com 2>/dev/null || true
+  helm repo update datadog
+
+  helm upgrade --install datadog datadog/datadog \
+    --namespace datadog \
+    --values "${ROOT_DIR}/aws/observability/datadog/datadog-agent-values.yaml" \
+    --wait --timeout 5m || log "WARNING: Datadog Agent install had issues — check that datadog-secrets synced (kubectl get externalsecret -n datadog) and aws/observability/datadog/datadog-agent-values.yaml"
+  log "  Datadog Agent installed. Infra metrics/logs available in Datadog → Infrastructure; APM traces (including the Backstage backend) under Datadog → APM → Services."
+else
+  log "  WARNING: datadog_eso_role_arn not found in Terraform outputs — skipping Datadog Agent install."
+  log "           Set datadog_api_key/datadog_app_key in terraform.tfvars, run 'terraform apply' in ${TF_DIR}, then re-run this phase manually:"
+  log "             kubectl create namespace datadog --dry-run=client -o yaml | kubectl apply -f -"
+  log "             sed \"s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g\" aws/observability/datadog/datadog-external-secret.yaml | kubectl apply -f -"
+  log "             kubectl annotate serviceaccount datadog-eso-sa -n datadog eks.amazonaws.com/role-arn=\$(cd terraform && terraform output -raw datadog_eso_role_arn) --overwrite"
+  log "             helm upgrade --install datadog datadog/datadog --namespace datadog --values aws/observability/datadog/datadog-agent-values.yaml"
+fi
+
 # ── Phase 4.4: Tech Insights Exporter ────────────────────────────────────────
 log "Phase 4.4: Deploying Tech Insights Exporter CronJob..."
 kubectl create configmap tech-insights-exporter-script \

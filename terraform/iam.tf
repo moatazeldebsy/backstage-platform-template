@@ -475,6 +475,46 @@ output "kagent_eso_role_arn" {
   value       = module.kagent_eso_irsa.iam_role_arn
 }
 
+# Datadog ESO IRSA — allows External Secrets Operator in the datadog namespace to
+# read the Datadog API/App keys from Secrets Manager (idp-mvp/datadog).
+module "datadog_eso_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-datadog-eso"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["datadog:datadog-eso-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "datadog_eso" {
+  name = "datadog-eso-secrets-read"
+  role = module.datadog_eso_irsa.iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = aws_secretsmanager_secret.datadog.arn
+      }
+    ]
+  })
+}
+
+output "datadog_eso_role_arn" {
+  description = "IAM role ARN for the Datadog ESO ServiceAccount (IRSA) — reads idp-mvp/datadog from Secrets Manager"
+  value       = module.datadog_eso_irsa.iam_role_arn
+}
+
 # Velero IRSA — allows the Velero controller to write cluster backups (K8s object
 # manifests) to S3 and take/restore EBS volume snapshots via the AWS plugin.
 module "velero_irsa" {

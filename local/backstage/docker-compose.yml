@@ -63,6 +63,9 @@ services:
       GRAFANA_TOKEN: ${GRAFANA_TOKEN:-}
       # ArgoCD session token (JWT, not the admin password) — referenced by the /argocd proxy.
       ARGOCD_AUTH_TOKEN: ${ARGOCD_AUTH_TOKEN:-}
+      # Datadog API/App keys — referenced by the /datadog proxy (Datadog tab).
+      DD_API_KEY: ${DD_API_KEY:-}
+      DD_APP_KEY: ${DD_APP_KEY:-}
     ports:
       - "3000:3000"   # Backstage backend (Node.js) listens on port 3000
     healthcheck:

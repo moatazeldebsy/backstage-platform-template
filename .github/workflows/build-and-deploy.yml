@@ -377,6 +377,34 @@ jobs:
             exit 1
           fi
 
+      - name: Check DD_API_KEY secret
+        id: dd-guard
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+        run: |
+          if [ -z "$DD_API_KEY" ]; then
+            echo "has_datadog=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_datadog=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Datadog deployment marker (dev)
+        # Deployment Tracking — annotates Datadog dashboards/APM with the exact
+        # moment this revision went live in dev, so incidents can be correlated
+        # with "which deploy caused it." Non-blocking: observability, not a gate.
+        # Docs: https://docs.datadoghq.com/deployment_tracking/
+        if: steps.guard.outputs.has_aws == 'true' && steps.dd-guard.outputs.has_datadog == 'true'
+        continue-on-error: true
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_SITE: datadoghq.eu
+        run: |
+          npx --yes @datadog/datadog-ci@2.18.0 deployment mark \
+            --env dev \
+            --service "${{ matrix.service }}" \
+            --revision "${{ needs.build-and-push.outputs.image_tag }}" \
+            --no-fail || echo "::warning::Datadog deployment marker failed — non-blocking. Verify DD_API_KEY and current datadog-ci CLI syntax (https://docs.datadoghq.com/deployment_tracking/)."
+
   # ─── Promote to staging (open PR) ──────────────────────────────────────────
   # Opens a PR updating helm-values-staging.yaml with the new image tag.
   # A human reviews and merges; ArgoCD deploys to the staging namespace.
@@ -558,6 +586,30 @@ jobs:
             echo "::error::Smoke test failed — /healthz returned ${HTTP_STATUS} in staging"
             exit 1
           fi
+
+      - name: Check DD_API_KEY secret
+        id: dd-guard
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+        run: |
+          if [ -z "$DD_API_KEY" ]; then
+            echo "has_datadog=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_datadog=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Datadog deployment marker (staging)
+        if: steps.guard.outputs.has_aws == 'true' && steps.dd-guard.outputs.has_datadog == 'true'
+        continue-on-error: true
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_SITE: datadoghq.eu
+        run: |
+          npx --yes @datadog/datadog-ci@2.18.0 deployment mark \
+            --env staging \
+            --service "${{ matrix.service }}" \
+            --revision "${{ needs.build-and-push.outputs.image_tag }}" \
+            --no-fail || echo "::warning::Datadog deployment marker failed — non-blocking. Verify DD_API_KEY and current datadog-ci CLI syntax (https://docs.datadoghq.com/deployment_tracking/)."
 
   # ─── Promote to production (open PR) ───────────────────────────────────────
   # Mirrors promote-to-staging: opens a PR updating helm-values-prod.yaml. A human

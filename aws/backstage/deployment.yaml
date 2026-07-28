@@ -142,6 +142,34 @@ spec:
               value: require
             - name: NODE_ENV
               value: production
+            - name: NODE_OPTIONS
+              value: "--require dd-trace/init"
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_SITE
+              value: datadoghq.eu
+            - name: DD_ENV
+              value: production
+            - name: DD_SERVICE
+              value: backstage
+            - name: DD_VERSION
+              value: "BACKSTAGE_IMAGE_TAG"
+            - name: DD_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: DD_API_KEY
+                  optional: true
+            - name: DD_APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: DD_APP_KEY
+                  optional: true
           volumeMounts:
             - name: base-config
               mountPath: /config/app-config.yaml

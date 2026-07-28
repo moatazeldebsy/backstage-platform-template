@@ -6,6 +6,11 @@
  * Happy hacking!
  */
 
+// dd-trace APM instrumentation is initialized via NODE_OPTIONS=--require dd-trace/init
+// at the container level (see aws/backstage/deployment.yaml), not in-process here —
+// this ensures tracing starts before any other module loads regardless of import order.
+// Do not add an in-code `import 'dd-trace/init'`, it would double-initialize the tracer.
+
 import { createBackend } from '@backstage/backend-defaults';
 import { idpLocalDeployModule } from './modules/idpLocalDeploy';
 import { idpProvisionSecretModule } from './modules/idpProvisionSecret';

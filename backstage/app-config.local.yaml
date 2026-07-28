@@ -72,6 +72,27 @@ integrations:
     - host: github.com
       token: ${GITHUB_TOKEN:-local-dev-no-github}
 
+# Templates are registered per-environment (not in the shared app-config.yaml) to
+# avoid double-registering every template once via app-config.yaml and once via
+# app-config.aws.yaml. Locally: the same consolidated all-templates.yaml used on AWS
+# (there via `type: url`, here via `type: file` since local reads the container
+# filesystem directly) — its relative targets resolve against its own location.
+# Adding a template = one line in backstage/catalog/all-templates.yaml.
+#
+# deploy-to-kind is intentionally NOT in all-templates.yaml (that file is shared
+# with AWS, and "deploy to a local Kind cluster" makes no sense there) — registered
+# here instead, local-only.
+catalog:
+  locations:
+    - type: file
+      target: /catalog/all-templates.yaml
+      rules:
+        - allow: [Template, Location]
+    - type: file
+      target: /catalog/templates/deploy-to-kind/template.yaml
+      rules:
+        - allow: [Template]
+
 # Browser-facing "open in new tab" links for the custom ArgoCD/Grafana/KAgent
 # pages — distinct from the `proxy:` targets below, which are server-side and
 # already differ per environment. These are read by the frontend via
@@ -132,6 +153,13 @@ proxy:
       changeOrigin: true
       headers:
         Authorization: token ${SNYK_TOKEN}
+    /datadog:
+      target: https://api.datadoghq.eu
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        DD-API-KEY: ${DD_API_KEY}
+        DD-APPLICATION-KEY: ${DD_APP_KEY}
     /github-code-scanning:
       target: https://api.github.com
       allowedMethods: ['GET']

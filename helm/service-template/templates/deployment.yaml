@@ -27,6 +27,11 @@ spec:
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- if .Values.datadog.enabled }}
+        tags.datadoghq.com/env: {{ .Values.datadog.env | default "production" | quote }}
+        tags.datadoghq.com/service: {{ .Values.datadog.service | default (include "service-template.fullname" .) | quote }}
+        tags.datadoghq.com/version: {{ .Values.datadog.version | default .Values.image.tag | default .Chart.AppVersion | quote }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "service-template.serviceAccountName" . }}
       securityContext:
@@ -51,9 +56,25 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.env }}
+          {{- if or .Values.env .Values.datadog.enabled }}
           env:
+            {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.datadog.enabled }}
+            - name: DD_ENV
+              value: {{ .Values.datadog.env | default "production" | quote }}
+            - name: DD_SERVICE
+              value: {{ .Values.datadog.service | default (include "service-template.fullname" .) | quote }}
+            - name: DD_VERSION
+              value: {{ .Values.datadog.version | default .Values.image.tag | default .Chart.AppVersion | quote }}
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            {{- end }}
           {{- end }}
           {{- with .Values.envFrom }}
           envFrom:

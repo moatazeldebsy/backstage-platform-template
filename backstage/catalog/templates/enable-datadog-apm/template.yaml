@@ -1,0 +1,206 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: enable-datadog-apm
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: advanced
+    idp.io/topic: observability
+    idp.io/tutorial-type: template
+  title: Enable Datadog APM & Monitoring
+  description: >
+    Opens a PR against an existing service repository with instructions and env-var wiring for
+    Datadog APM (dd-trace) instrumentation, unified service tagging, and the Backstage catalog
+    annotations needed for the Datadog tab. The Datadog Agent and API/App keys are already
+    provisioned platform-wide — no new secrets are needed per service.
+  tags:
+    - datadog
+    - apm
+    - observability
+    - monitoring
+    - platform
+    - local
+    - aws
+    - v1
+    - advanced
+spec:
+  owner: platform-team
+  type: platform-capability
+
+  parameters:
+    - title: Target Service
+      required:
+        - targetRepoUrl
+        - owner
+        - language
+      properties:
+        targetService:
+          title: Target Service (in Backstage catalog)
+          type: string
+          description: The service you want to enable Datadog APM & monitoring for
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+              - kind: Component
+                spec.type: website
+        targetRepoUrl:
+          title: Target Service Repository
+          type: string
+          description: GitHub repo to open the PR against
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        language:
+          title: Language / Runtime
+          type: string
+          description: Determines which dd-trace instrumentation instructions are added
+          enum:
+            - nodejs
+            - python
+            - go
+            - jvm
+            - ruby
+          enumNames:
+            - Node.js
+            - Python
+            - Go
+            - JVM (Java/Kotlin)
+            - Ruby
+
+    - title: Datadog Configuration
+      required:
+        - datadogSite
+      properties:
+        datadogSite:
+          title: Datadog Site
+          type: string
+          description: Your Datadog site region
+          default: datadoghq.eu
+          enum:
+            - datadoghq.com
+            - datadoghq.eu
+            - us3.datadoghq.com
+            - us5.datadoghq.com
+            - ap1.datadoghq.com
+        ddEnv:
+          title: Environment tag (DD_ENV)
+          type: string
+          default: production
+        dashboardUrl:
+          title: Datadog Dashboard URL (optional)
+          type: string
+          description: 'Leave blank if you have not created a dashboard yet — add it to catalog-info.yaml later'
+          default: ''
+
+  steps:
+    - id: fetch-common
+      name: Generate common Datadog files
+      action: fetch:template
+      input:
+        url: ./skeleton-addon/common
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+          language: ${{ parameters.language }}
+          datadogSite: ${{ parameters.datadogSite }}
+          ddEnv: ${{ parameters.ddEnv }}
+          dashboardUrl: ${{ parameters.dashboardUrl }}
+
+    - id: fetch-lang-nodejs
+      name: Generate Node.js instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'nodejs' }}
+      input:
+        url: ./skeleton-addon/lang-nodejs
+
+    - id: fetch-lang-python
+      name: Generate Python instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'python' }}
+      input:
+        url: ./skeleton-addon/lang-python
+
+    - id: fetch-lang-go
+      name: Generate Go instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'go' }}
+      input:
+        url: ./skeleton-addon/lang-go
+
+    - id: fetch-lang-jvm
+      name: Generate JVM instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'jvm' }}
+      input:
+        url: ./skeleton-addon/lang-jvm
+
+    - id: fetch-lang-ruby
+      name: Generate Ruby instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'ruby' }}
+      input:
+        url: ./skeleton-addon/lang-ruby
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'feat(observability): enable Datadog APM & monitoring'
+        branchName: feat/enable-datadog-apm
+        description: |
+          ## Enable Datadog APM & Monitoring
+
+          Adds Datadog setup docs for this repository, scoped to **${{ parameters.language }}**:
+
+          | File | Purpose |
+          |---|---|
+          | `datadog/README.md` | Unified service tagging env vars + catalog annotations to add |
+          | `datadog/${{ parameters.language }}-instrumentation.md` | dd-trace setup steps for ${{ parameters.language }} |
+
+          **No new secrets are needed** — the Datadog Agent and API/App keys are already
+          provisioned platform-wide (see `docs/sre-reliability.md` → "Datadog Infra Observability
+          & APM" in the platform repo).
+
+          **After merging:**
+          1. Follow `datadog/${{ parameters.language }}-instrumentation.md` to add dd-trace to
+             this service.
+          2. Add the `datadoghq.com/*` annotations from `datadog/README.md` to this repo's
+             `catalog-info.yaml`.
+          3. Redeploy — traces should appear in Datadog APM under service
+             `${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}`.
+
+          > Scaffolded via the IDP Platform
+        sourcePath: .
+
+  output:
+    text:
+      - title: Next Steps
+        content: |
+          ## Pull Request Opened
+
+          Datadog setup docs have been added to your service.
+
+          1. **Merge the PR.**
+          2. **Follow `datadog/${{ parameters.language }}-instrumentation.md`** to add dd-trace
+             to the service.
+          3. **Add the `datadoghq.com/*` annotations** from `datadog/README.md` to this repo's
+             `catalog-info.yaml` so the Datadog tab lights up on the entity page.
+          4. **Redeploy** — check Datadog APM → Services for
+             `${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}`.
+    links:
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
+      - title: Datadog Observability Docs
+        url: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/sre-reliability.md

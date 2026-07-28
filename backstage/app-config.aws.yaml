@@ -84,6 +84,13 @@ proxy:
       changeOrigin: true
       headers:
         Authorization: token ${SNYK_TOKEN}
+    /datadog:
+      target: https://api.datadoghq.eu
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        DD-API-KEY: ${DD_API_KEY}
+        DD-APPLICATION-KEY: ${DD_APP_KEY}
     /github-code-scanning:
       target: https://api.github.com
       allowedMethods: ['GET']
@@ -178,88 +185,12 @@ catalog:
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/all-templates.yaml
       rules:
         - allow: [Template, Location]
-    # ── Platform entities ─────────────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/catalog-info.yaml
-      rules:
-        - allow: [System]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/catalog-info.yaml
-      rules:
-        - allow: [Component, System, User, Group]
-    # Team Group entities auto-created by the team-namespace scaffold template
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/groups
-      rules:
-        - allow: [Group]
-    # Domain + System entities — one file per business domain
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/platform.yaml
-      rules:
-        - allow: [Domain, System]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/engineering.yaml
-      rules:
-        - allow: [Domain, System]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/mobile.yaml
-      rules:
-        - allow: [Domain, System]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/ai-ml.yaml
-      rules:
-        - allow: [Domain, System]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/domains/quality.yaml
-      rules:
-        - allow: [Domain, System]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/apis/hello-service-api.yaml
-      rules:
-        - allow: [API]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/services/hello-service/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/services/idp-assistant/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/services/contract-mcp-server/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    # ── Mobile Platform catalog ───────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/mobile-catalog.yaml
-      rules:
-        - allow: [Component]
-    # ── QA Platform catalog ───────────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/qa-catalog.yaml
-      rules:
-        - allow: [Component, Group, User, Resource]
-    # ── AI / ML Platform ──────────────────────────────────────────────────────
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/resources/ai-platform.yaml
-      rules:
-        - allow: [Resource, Component]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/idp-mcp-server/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/idp-mcp-server/api.yaml
-      rules:
-        - allow: [API]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/qa-mcp-server/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: url
-      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/test-suites/test-deepeval/catalog-info.yaml
-      rules:
-        - allow: [Component]
+    # Platform entities (catalog-info.yaml, groups, domains, mobile/qa catalogs,
+    # services, resources, ML experiments) are NOT re-registered here — they're
+    # already registered via app-config.yaml's `type: file` locations, which are
+    # merged into this config on AWS too (see aws/backstage/deployment.yaml's two
+    # --config flags). Re-registering them here via `type: url` would double-register
+    # every one of them. See backstage/app-config.yaml.
 
   providers:
     github:

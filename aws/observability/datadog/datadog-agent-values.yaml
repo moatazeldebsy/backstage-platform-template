@@ -1,0 +1,47 @@
+# Datadog Agent — cluster-wide infra observability (nodes, pods, containers, logs) + APM trace intake.
+#
+# Scope boundary (deliberate): this Agent handles infra-level telemetry and APM traces only.
+# It does NOT scrape the Prometheus/OpenMetrics `/metrics` endpoints that services already expose
+# for ServiceMonitors (helm/service-template/templates/servicemonitor.yaml) — Prometheus + Grafana
+# remain the source of truth for app-level metrics and Sloth SLO burn-rate alerting
+# (see observability/prometheus/, observability/grafana/, docs/sre-reliability.md).
+# Keeping the two collection domains separate avoids double cardinality billing in Datadog
+# and avoids ambiguity over which system owns which alert.
+#
+# Credentials come from the datadog-secrets K8s Secret, synced by
+# aws/observability/datadog/datadog-external-secret.yaml from AWS Secrets Manager (idp-mvp/datadog).
+
+datadog:
+  site: datadoghq.eu
+  apiKeyExistingSecret: datadog-secrets
+  appKeyExistingSecret: datadog-secrets
+
+  logs:
+    enabled: true
+    containerCollectAll: true
+
+  apm:
+    portEnabled: true
+    hostPortConfig:
+      enabled: true
+      hostPort: 8126
+
+  kubeStateMetricsCore:
+    enabled: true
+
+  # Deliberately left disabled — see scope-boundary note above.
+  prometheusScrape:
+    enabled: false
+
+  # Unified service tagging defaults; per-service overrides come from pod labels/annotations
+  # set by the enable-datadog-apm scaffolder template (backstage/catalog/templates/enable-datadog-apm/).
+  env: production
+
+clusterAgent:
+  enabled: true
+  replicas: 2
+  metricsProvider:
+    enabled: false # no HPA-on-Datadog-metrics use case today
+
+agents:
+  useHostNetwork: false

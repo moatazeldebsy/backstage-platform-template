@@ -39,7 +39,7 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
-| **Software templates** | 51 templates: 7 blessed golden-path (Node.js, Python, Go, React, Team namespace, Add-secret, Decommission) + 44 advanced (infra, QA, mobile, AI/ML, multi-region). Adding one is a single line in `backstage/catalog/all-templates.yaml` |
+| **Software templates** | 60 templates: 10 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, Team namespace, Create namespace, Add-secret, Decommission) + 50 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
@@ -47,6 +47,7 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + IDP/QA/Contract MCP servers + Model Serving API + AI scorecard + RAG search over TechDocs. See [docs/ai-assistant.md](docs/ai-assistant.md) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
+| **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
 | **Infrastructure** | Terraform for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3) + Crossplane for per-service resources (S3, RDS, MSK, DynamoDB, SQS) via ArgoCD-reconciled Claims. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) |
 | **Multi-region V2** | Active-standby eu-central-1 + us-east-1, opt-in. See [docs/multi-region.md](docs/multi-region.md) |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
@@ -116,7 +117,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | IaC (per-service) | — | Crossplane (S3, RDS, MSK, DynamoDB, SQS) — Claims in Git, reconciled by ArgoCD |
 | Deployment | Helm (`helm/service-template`) | Helm (`helm/service-template`) |
 | Developer portal | Backstage (Docker Compose) | Backstage (EKS) |
-| Observability | Prometheus + Grafana | CloudWatch + Grafana |
+| Observability | Prometheus + Grafana | CloudWatch + Grafana + Datadog Agent (infra/APM) |
 
 ### AWS Architecture
 
@@ -131,7 +132,7 @@ Full layer-by-layer breakdown: [docs/architecture.md](docs/architecture.md).
 | Channel | Who | Entry point |
 |---------|-----|-------------|
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
-| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 51 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 60 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
 
 ## Project Structure

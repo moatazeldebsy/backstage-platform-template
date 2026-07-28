@@ -175,6 +175,13 @@ Add these to the **platform repo** to enable the auto-merge workflow (recommende
 | `APP_ID` | Numeric GitHub App ID (see [docs/github-app-setup.md](github-app-setup.md)) |
 | `APP_PRIVATE_KEY` | PEM contents of the App's private key |
 
+Add this to the **platform repo** to enable Datadog deployment markers in `build-and-deploy.yml`
+(optional — the pipeline runs fine without it, just skips the marker step):
+
+| Secret | Value |
+|--------|-------|
+| `DD_API_KEY` | Datadog API key — https://app.datadoghq.eu/organization-settings/api-keys |
+
 ### 4. Team namespace setup
 
 After the platform is bootstrapped, onboard teams using the **Provision Team Namespace** scaffold template (tagged `blessed`). Each team gets:

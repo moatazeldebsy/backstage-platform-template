@@ -1458,6 +1458,190 @@ const securityEntityContent = EntityContentBlueprint.make({
   },
 });
 
+// ── Datadog tab ─────────────────────────────────────────────────────────────
+// Reads the datadoghq.com/dashboard-url, datadoghq.com/monitor-tag, and
+// datadoghq.com/slo-id annotations from the entity and fetches live monitor +
+// SLO status via the /api/proxy/datadog proxy (see app-config.aws.yaml) —
+// the DD_API_KEY/DD_APP_KEY never reach the browser. Empty state when no
+// annotations are present (e.g. before running enable-datadog-apm).
+
+interface DatadogMonitor {
+  id: number;
+  name: string;
+  overall_state: string;
+}
+
+interface DatadogSlo {
+  name: string;
+  target_threshold?: number;
+  status?: number;
+}
+
+function DatadogMonitorsCard({ monitorTag, site }: { monitorTag: string; site: string }) {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const [monitors, setMonitors] = useState<DatadogMonitor[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const baseUrl = configApi.getString('backend.baseUrl');
+    const url = `${baseUrl}/api/proxy/datadog/api/v1/monitor?monitor_tags=${encodeURIComponent(monitorTag)}`;
+    fetchApi
+      .fetch(url)
+      .then(async res => {
+        if (!res.ok) throw new Error(`Datadog monitors: ${res.status}`);
+        setMonitors(await res.json());
+        setLoading(false);
+      })
+      .catch((err: Error) => { setError(err.message); setLoading(false); });
+  }, [fetchApi, configApi, monitorTag]);
+
+  const monitorsUrl = `https://${site}/monitors/manage?q=${encodeURIComponent(monitorTag)}`;
+  const stateColor = (state: string) =>
+    state === 'OK' ? '#4caf50' : state === 'Alert' ? '#f44336' : state === 'Warn' ? '#ff9800' : '#9e9e9e';
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        Datadog Monitors — <code>{monitorTag}</code>
+      </Typography>
+      <Paper style={{ padding: 16 }}>
+        {loading && <Progress />}
+        {!loading && error && (
+          <Typography variant="body2" color="textSecondary">
+            Unable to load Datadog monitors: <strong>{error}</strong>. Verify
+            <code> DD_API_KEY</code>/<code>DD_APP_KEY</code> are set.
+            <Box mt={1}><Link href={monitorsUrl} target="_blank" rel="noopener">Open in Datadog ↗</Link></Box>
+          </Typography>
+        )}
+        {!loading && !error && monitors && (
+          <Box>
+            {monitors.length === 0 && (
+              <Typography variant="body2" color="textSecondary">No monitors found for this tag.</Typography>
+            )}
+            {monitors.length > 0 && (
+              <Box display="flex" flexWrap="wrap" style={{ gap: 8, marginBottom: 12 }}>
+                {monitors.map(m => (
+                  <Chip
+                    key={m.id}
+                    label={`${m.name}: ${m.overall_state}`}
+                    style={{ backgroundColor: stateColor(m.overall_state), color: 'white' }}
+                  />
+                ))}
+              </Box>
+            )}
+            <Link href={monitorsUrl} target="_blank" rel="noopener">Open in Datadog ↗</Link>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function DatadogSloCard({ sloId, site }: { sloId: string; site: string }) {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const [slo, setSlo] = useState<DatadogSlo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const baseUrl = configApi.getString('backend.baseUrl');
+    const url = `${baseUrl}/api/proxy/datadog/api/v1/slo/${encodeURIComponent(sloId)}`;
+    fetchApi
+      .fetch(url)
+      .then(async res => {
+        if (!res.ok) throw new Error(`Datadog SLO: ${res.status}`);
+        const json = await res.json();
+        const data = json?.data;
+        setSlo({
+          name: data?.name,
+          target_threshold: data?.thresholds?.[0]?.target,
+        });
+        setLoading(false);
+      })
+      .catch((err: Error) => { setError(err.message); setLoading(false); });
+  }, [fetchApi, configApi, sloId]);
+
+  const sloUrl = `https://${site}/slo?slo_id=${encodeURIComponent(sloId)}`;
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>Datadog SLO</Typography>
+      <Paper style={{ padding: 16 }}>
+        {loading && <Progress />}
+        {!loading && error && (
+          <Typography variant="body2" color="textSecondary">
+            Unable to load Datadog SLO: <strong>{error}</strong>.
+            <Box mt={1}><Link href={sloUrl} target="_blank" rel="noopener">Open in Datadog ↗</Link></Box>
+          </Typography>
+        )}
+        {!loading && !error && slo && (
+          <Box>
+            <Typography variant="body2">
+              <strong>{slo.name}</strong>
+              {slo.target_threshold !== undefined && ` — target ${slo.target_threshold}%`}
+            </Typography>
+            <Box mt={1}><Link href={sloUrl} target="_blank" rel="noopener">Open in Datadog ↗</Link></Box>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function DatadogEntityContent() {
+  const { entity } = useEntity();
+  const annotations = entity.metadata.annotations ?? {};
+  const dashboardUrl = annotations['datadoghq.com/dashboard-url'];
+  const monitorTag = annotations['datadoghq.com/monitor-tag'];
+  const sloId = annotations['datadoghq.com/slo-id'];
+  const site = annotations['datadoghq.com/site'] || 'app.datadoghq.eu';
+
+  const configured = Boolean(dashboardUrl || monitorTag || sloId);
+
+  return (
+    <Content>
+      {!configured && (
+        <Box mb={3}>
+          <Paper style={{ padding: 24, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>Datadog not configured</Typography>
+            <Typography variant="body2" color="textSecondary">
+              This service does not have Datadog annotations yet. Run the
+              <strong> Enable Datadog APM & Monitoring</strong> scaffolder template
+              (Catalog → Create → search "datadog") to open a PR that wires up
+              APM tracing, dashboards, and monitors for this service.
+            </Typography>
+            <Box mt={2}>
+              <Link href="/create" target="_self">Open scaffolder ↗</Link>
+            </Box>
+          </Paper>
+        </Box>
+      )}
+      {dashboardUrl && (
+        <Box mb={3}>
+          <Paper style={{ padding: 16 }}>
+            <Link href={dashboardUrl} target="_blank" rel="noopener">Open Datadog Dashboard ↗</Link>
+          </Paper>
+        </Box>
+      )}
+      {monitorTag && <DatadogMonitorsCard monitorTag={monitorTag} site={site} />}
+      {sloId && <DatadogSloCard sloId={sloId} site={site} />}
+    </Content>
+  );
+}
+
+const datadogEntityContent = EntityContentBlueprint.make({
+  name: 'datadog',
+  params: {
+    path: '/datadog',
+    title: 'Datadog',
+    filter: 'kind:component',
+    loader: async () => <DatadogEntityContent />,
+  },
+});
+
 // ── Trivy tab ───────────────────────────────────────────────────────────────
 // CI (.github/workflows/build-and-deploy.yml) already scans built images with
 // Trivy and uploads the SARIF to GitHub's code-scanning API. This tab reads
@@ -5870,6 +6054,7 @@ export const customPagesPlugin = createFrontendPlugin({
     doraEntityContent,
     scorecardEntityContent,
     securityEntityContent,
+    datadogEntityContent,
     trivyEntityContent,
     pagerDutyEntityContent,
     grafanaEntityContent,

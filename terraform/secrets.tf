@@ -34,6 +34,11 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     TECHDOCS_S3_BUCKET_NAME   = aws_s3_bucket.techdocs.id
     AWS_REGION                = var.aws_region
     BACKSTAGE_CATALOG_TOKEN   = "REPLACE_ME"
+    # Datadog — used by the Backstage backend's /datadog proxy (app-config.aws.yaml)
+    # and by dd-trace APM instrumentation. Same keys also live in idp-mvp/datadog
+    # for the cluster-wide Datadog Agent (see aws_secretsmanager_secret.datadog below).
+    DD_API_KEY = var.datadog_api_key
+    DD_APP_KEY = var.datadog_app_key
     # V2: Aurora Global endpoints — POSTGRES_HOST_READER is used by standby Backstage.
     # After Aurora Global failover, us-east-1 cluster endpoint becomes the writer.
     # bootstrap.sh (or the post-failover runbook) updates POSTGRES_HOST to the new writer.
@@ -122,6 +127,34 @@ resource "aws_secretsmanager_secret_version" "kagent" {
 output "kagent_secret_arn" {
   description = "ARN of the KAgent Secrets Manager secret (idp-mvp/kagent)"
   value       = aws_secretsmanager_secret.kagent.arn
+}
+
+# ── Datadog (cluster-wide Agent) secret ───────────────────────────────────────
+resource "aws_secretsmanager_secret" "datadog" {
+  name                    = "idp-mvp/datadog"
+  description             = "Datadog API/App keys for the cluster-wide Datadog Agent"
+  recovery_window_in_days = 0
+
+  dynamic "replica" {
+    for_each = var.is_primary_region ? [var.secondary_region] : []
+    content {
+      region = replica.value
+    }
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "datadog" {
+  secret_id = aws_secretsmanager_secret.datadog.id
+
+  secret_string = jsonencode({
+    DD_API_KEY = var.datadog_api_key
+    DD_APP_KEY = var.datadog_app_key
+  })
+}
+
+output "datadog_secret_arn" {
+  description = "ARN of the Datadog Secrets Manager secret (idp-mvp/datadog)"
+  value       = aws_secretsmanager_secret.datadog.arn
 }
 
 # ── ArgoCD cluster registration secrets ───────────────────────────────────────

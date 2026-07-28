@@ -187,6 +187,16 @@ metrics:
   interval: 30s
   scrapeTimeout: 10s
 
+# Datadog APM / unified service tagging — opt-in per service via the enable-datadog-apm
+# scaffolder template (backstage/catalog/templates/enable-datadog-apm/). Independent of
+# the Prometheus `metrics` block above — see docs/sre-reliability.md "Datadog Infra
+# Observability & APM" for why the two collection domains are kept separate.
+datadog:
+  enabled: false
+  env: ""
+  service: ""
+  version: ""
+
 # Additional sidecar containers injected into the Pod alongside the main container.
 # Useful for metrics exporters, log shippers, etc.
 # Each entry is a full Kubernetes container spec.

@@ -180,3 +180,18 @@ variable "anthropic_api_key" {
   sensitive   = true
   default     = "REPLACE_ME"
 }
+
+# ── Datadog variables ──────────────────────────────────────────────────────────
+variable "datadog_api_key" {
+  description = "Datadog API key. Stored in Secrets Manager (idp-mvp/datadog and idp-mvp/backstage)."
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
+
+variable "datadog_app_key" {
+  description = "Datadog Application key. Stored in Secrets Manager (idp-mvp/datadog and idp-mvp/backstage)."
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
