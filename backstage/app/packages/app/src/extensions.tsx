@@ -13,6 +13,7 @@ import {
 } from '@backstage/core-components';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import CancelIcon from '@material-ui/icons/Cancel';
+import GavelIcon from '@material-ui/icons/Gavel';
 import EmojiEventsIcon from '@material-ui/icons/EmojiEvents';
 import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -1008,6 +1009,197 @@ const aiAssistantNavItem = NavItemBlueprint.make({
     title: 'AI Assistant',
     icon: ChatIcon as any,
     routeRef: aiAssistantRouteRef,
+  },
+});
+
+// ── Agent Approvals page (ADP Phase 4 HiTL gate) ──────────────────────────────
+// Lists pending/decided approvals from approval-service and lets a human
+// approve or deny them. See docs/agentic-platform.md Phase 4. Proxied via
+// /api/proxy/approval-service (app-config.local.yaml / app-config.aws.yaml) —
+// shows a connection error if approval-service hasn't been deployed
+// (`bootstrap-ai.sh --adp`), same pattern as other opt-in proxied pages here.
+
+interface Approval {
+  id: string;
+  action: string;
+  agent: string;
+  target: string;
+  context: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'denied';
+  requested_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+}
+
+function ApprovalsPage() {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const identityApi = useApi(identityApiRef);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deciding, setDeciding] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+  const [decidedBy, setDecidedBy] = useState('');
+
+  const base = configApi.getString('backend.baseUrl');
+  const proxyBase = `${base}/api/proxy/approval-service`;
+
+  const loadApprovals = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const qs = filter === 'pending' ? '?status=pending' : '';
+      const resp = await fetchApi.fetch(`${proxyBase}/approvals${qs}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} — is approval-service deployed? (bootstrap-ai.sh --adp)`);
+      const data = await resp.json() as { approvals: Approval[] };
+      setApprovals(data.approvals);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    identityApi.getProfileInfo().then(p => setDecidedBy(p.displayName ?? p.email ?? 'unknown')).catch(() => {});
+    loadApprovals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  const decide = async (id: string, decision: 'approved' | 'denied') => {
+    setDeciding(id);
+    try {
+      const resp = await fetchApi.fetch(`${proxyBase}/approvals/${id}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, decided_by: decidedBy }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({})) as any;
+        throw new Error(body.error ?? `HTTP ${resp.status}`);
+      }
+      await loadApprovals();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeciding(null);
+    }
+  };
+
+  const statusColors: Record<string, 'default' | 'primary' | 'secondary'> = {
+    pending: 'primary',
+    approved: 'secondary',
+    denied: 'default',
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header title="Agent Approvals" subtitle="Human-in-the-loop gate for agent-initiated mutating actions" />
+      <Content>
+        <Box mb={2} display="flex" alignItems="center" style={{ gap: 8 }}>
+          <Button
+            variant={filter === 'pending' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setFilter('pending')}
+          >
+            Pending only
+          </Button>
+          <Button
+            variant={filter === 'all' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setFilter('all')}
+          >
+            All (last 100)
+          </Button>
+          <Tooltip title="Refresh">
+            <span>
+              <IconButton size="small" onClick={loadApprovals} disabled={loading}>
+                <GavelIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+
+        {loading && <LinearProgress style={{ marginBottom: 12 }} />}
+
+        {error && (
+          <Box mb={2}><Typography color="error" variant="body2">{error}</Typography></Box>
+        )}
+
+        {!loading && !error && approvals.length === 0 && (
+          <Typography variant="body2" color="textSecondary">
+            No {filter === 'pending' ? 'pending' : ''} approvals.
+          </Typography>
+        )}
+
+        {approvals.map(a => (
+          <Paper key={a.id} elevation={1} style={{ padding: '12px 16px', marginBottom: 10 }}>
+            <Box display="flex" alignItems="center" mb={1} style={{ gap: 8 }}>
+              <Chip label={a.status} size="small" color={statusColors[a.status] ?? 'default'} />
+              <Typography variant="subtitle2">
+                {a.agent} → <code>{a.action}</code> on <code>{a.target}</code>
+              </Typography>
+              <Typography variant="caption" color="textSecondary" style={{ marginLeft: 'auto' }}>
+                requested {new Date(a.requested_at).toLocaleString()}
+              </Typography>
+            </Box>
+            {Object.keys(a.context ?? {}).length > 0 && (
+              <Typography variant="body2" color="textSecondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>
+                {JSON.stringify(a.context)}
+              </Typography>
+            )}
+            {a.status === 'pending' ? (
+              <Box display="flex" style={{ gap: 8 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<CheckCircleIcon />}
+                  disabled={deciding === a.id}
+                  onClick={() => decide(a.id, 'approved')}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<CancelIcon />}
+                  disabled={deciding === a.id}
+                  onClick={() => decide(a.id, 'denied')}
+                >
+                  Deny
+                </Button>
+              </Box>
+            ) : (
+              <Typography variant="caption" color="textSecondary">
+                {a.status} by {a.decided_by} at {a.decided_at ? new Date(a.decided_at).toLocaleString() : '—'}
+              </Typography>
+            )}
+          </Paper>
+        ))}
+      </Content>
+    </Page>
+  );
+}
+
+const approvalsRouteRef = createRouteRef();
+
+const approvalsPage = PageBlueprint.make({
+  name: 'approvals',
+  params: {
+    path: '/approvals',
+    routeRef: approvalsRouteRef,
+    loader: async () => <ApprovalsPage />,
+  },
+});
+
+const approvalsNavItem = NavItemBlueprint.make({
+  name: 'approvals',
+  params: {
+    title: 'Agent Approvals',
+    icon: GavelIcon as any,
+    routeRef: approvalsRouteRef,
   },
 });
 
@@ -6048,6 +6240,8 @@ export const customPagesPlugin = createFrontendPlugin({
     aiAssistantNavItem,
     semanticSearchPage,
     semanticSearchNavItem,
+    approvalsPage,
+    approvalsNavItem,
     copilotPage,
     copilotNavItem,
     // Entity tabs

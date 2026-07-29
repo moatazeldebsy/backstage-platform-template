@@ -14,6 +14,9 @@ export const PROMETHEUS_URL         = process.env.PROMETHEUS_URL         ?? 'htt
 export const K8S_API                = process.env.K8S_API                ?? 'https://kubernetes.default.svc';
 export const K8S_TOKEN              = process.env.K8S_TOKEN              ?? '';
 export const HTTP_TIMEOUT_MS        = parseInt(process.env.HTTP_TIMEOUT_MS ?? '8000', 10);
+// ADP Phase 4 — HiTL approval gate (docs/agentic-platform.md). Unset by default;
+// check_policy/request_approval/get_approval_status degrade to no-ops until deployed.
+export const APPROVAL_SERVICE_URL   = process.env.APPROVAL_SERVICE_URL   ?? '';
 
 // ── Module-scoped caches (survive across per-request McpServer instances) ─
 
@@ -434,6 +437,88 @@ export function createServer(agentId = 'unknown', userRef = '') {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ query, total: results.length, results }) }] };
       } catch (err) { outcome = 'error'; throw err; }
       finally { end(); toolCalls.inc({ server: SERVER_NAME, tool: 'catalog_semantic_search', outcome }); }
+    },
+  );
+
+  // ── ADP Phase 4 — HiTL approval gate (docs/agentic-platform.md) ──────────
+  // These three tools proxy to approval-service. Bind them to any agent whose
+  // other tools include a mutating action gated behind APPROVAL_SERVICE_URL
+  // (sync_app, rollback_app, approve_pr today).
+
+  server.tool(
+    'check_policy',
+    'Check whether an action on a target requires human approval before it can proceed for real (non-dry-run).',
+    {
+      action: z.string().describe('Tool/action name, e.g. "sync_app", "rollback_app", "approve_pr"'),
+      target: z.string().describe('The thing being acted on, e.g. an ArgoCD app name, or "org/repo#42" for a PR'),
+    },
+    async ({ action, target }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'check_policy' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'check_policy', agent: agentId });
+      let outcome = 'success';
+      try {
+        if (!APPROVAL_SERVICE_URL) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ requires_approval: false, reason: 'Approval service not deployed — Phase 4 not enabled.' }) }] };
+        }
+        const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/policy/check`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, target }),
+        });
+        if (!res.ok) throw new Error(`approval-service error ${res.status}: ${await res.text()}`);
+        return { content: [{ type: 'text' as const, text: await res.text() }] };
+      } catch (err) { outcome = 'error'; throw err; }
+      finally { end(); toolCalls.inc({ server: SERVER_NAME, tool: 'check_policy', outcome }); }
+    },
+  );
+
+  server.tool(
+    'request_approval',
+    'Request human approval for a mutating action. Returns immediately with a pending (or auto-approved, if policy allows) approval_id — a human must then decide it in the Backstage approval UI before you retry the original tool call with approval_id set.',
+    {
+      action: z.string().describe('Tool/action name, e.g. "sync_app", "rollback_app", "approve_pr"'),
+      target: z.string().describe('The thing being acted on, e.g. an ArgoCD app name, or "org/repo#42" for a PR'),
+      context: z.record(z.string(), z.unknown()).optional().describe('Extra context to show the human approver (e.g. why you want to do this)'),
+    },
+    async ({ action, target, context }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'request_approval' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'request_approval', agent: agentId });
+      let outcome = 'success';
+      try {
+        if (!APPROVAL_SERVICE_URL) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Approval service not deployed — Phase 4 not enabled.' }) }] };
+        }
+        const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/approvals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, agent: agentId, target, context: context ?? {} }),
+        });
+        if (!res.ok) throw new Error(`approval-service error ${res.status}: ${await res.text()}`);
+        return { content: [{ type: 'text' as const, text: await res.text() }] };
+      } catch (err) { outcome = 'error'; throw err; }
+      finally { end(); toolCalls.inc({ server: SERVER_NAME, tool: 'request_approval', outcome }); }
+    },
+  );
+
+  server.tool(
+    'get_approval_status',
+    'Check the current status of a previously requested approval (pending, approved, or denied).',
+    {
+      approval_id: z.string().describe('The approval_id returned by request_approval'),
+    },
+    async ({ approval_id }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_approval_status' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_approval_status', agent: agentId });
+      let outcome = 'success';
+      try {
+        if (!APPROVAL_SERVICE_URL) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Approval service not deployed — Phase 4 not enabled.' }) }] };
+        }
+        const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/approvals/${encodeURIComponent(approval_id)}`);
+        if (!res.ok) throw new Error(`approval-service error ${res.status}: ${await res.text()}`);
+        return { content: [{ type: 'text' as const, text: await res.text() }] };
+      } catch (err) { outcome = 'error'; throw err; }
+      finally { end(); toolCalls.inc({ server: SERVER_NAME, tool: 'get_approval_status', outcome }); }
     },
   );
 

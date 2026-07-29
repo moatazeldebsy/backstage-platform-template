@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: approval-service-policy
+  namespace: services-dev
+  labels:
+    app.kubernetes.io/managed-by: approval-service
+data:
+  policy.json: |
+    [
+      {
+        "action": "sync_app",
+        "targetPattern": "prod-*",
+        "requiresApproval": true,
+        "reason": "ArgoCD sync on a production-tagged app always requires human approval."
+      },
+      {
+        "action": "sync_app",
+        "targetPattern": "*",
+        "requiresApproval": false,
+        "reason": "Sync on non-production apps is low-risk and reversible via another sync — auto-approve."
+      },
+      {
+        "action": "rollback_app",
+        "targetPattern": "*",
+        "requiresApproval": true,
+        "reason": "Rollback always requires approval — it reverts a live deployment regardless of environment."
+      },
+      {
+        "action": "approve_pr",
+        "targetPattern": "*",
+        "requiresApproval": true,
+        "reason": "Approving a PR is a merge-enabling action — always require human sign-off."
+      },
+      {
+        "action": "request_changes",
+        "targetPattern": "*",
+        "requiresApproval": false,
+        "reason": "Requesting changes blocks merge rather than enabling it — safe to auto-approve."
+      }
+    ]

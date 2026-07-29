@@ -6,6 +6,10 @@ import { Counter, Histogram } from 'prom-client';
 const ARGOCD_URL = process.env.ARGOCD_URL ?? 'http://argocd-server.argocd.svc.cluster.local';
 const ARGOCD_TOKEN = process.env.ARGOCD_TOKEN ?? '';
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '15000', 10);
+// Set once the ADP Phase 4 approval-service is deployed (see docs/agentic-platform.md).
+// Unset by default so this gate is opt-in — bases not running Phase 4 behave exactly
+// as before (real sync/rollback proceeds without an approval_id).
+const APPROVAL_SERVICE_URL = process.env.APPROVAL_SERVICE_URL ?? '';
 export const SERVER_NAME = 'argocd-mcp-server';
 
 export const toolCalls = new Counter({
@@ -26,6 +30,33 @@ export const agentToolCalls = new Counter({
 
 export function auditLog(event: Record<string, unknown>): void {
   console.log('[AUDIT] ' + JSON.stringify({ ts: new Date().toISOString(), server: SERVER_NAME, ...event }));
+}
+
+// Enforces the ADP Phase 4 HiTL gate at the tool-server layer — not just a
+// system-prompt convention. If APPROVAL_SERVICE_URL isn't configured, this is a
+// no-op (Phase 4 not deployed). Otherwise a real, non-dry-run call MUST carry an
+// approval_id whose recorded status is "approved" for this exact action/target.
+async function requireApproval(action: string, target: string, approvalId?: string): Promise<void> {
+  if (!APPROVAL_SERVICE_URL) return;
+  if (!approvalId) {
+    throw new Error(`Approval required for ${action} on "${target}". Call request_approval first (idp-mcp-server), then retry with approval_id.`);
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(`${APPROVAL_SERVICE_URL}/approvals/${encodeURIComponent(approvalId)}`, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`Could not verify approval ${approvalId}: HTTP ${res.status}`);
+  const approval = await res.json() as { status: string; action: string; target: string };
+  if (approval.action !== action || approval.target !== target) {
+    throw new Error(`Approval ${approvalId} was requested for a different action/target — refusing to reuse it.`);
+  }
+  if (approval.status !== 'approved') {
+    throw new Error(`Approval ${approvalId} is not approved (status: ${approval.status}). Wait for a human to decide it, or call get_approval_status.`);
+  }
 }
 
 export async function argoFetch(path: string, init: RequestInit = {}) {
@@ -195,12 +226,13 @@ export function createServer(agentId: string = 'unknown') {
       revision: z.string().optional().describe('Git revision to sync to (defaults to HEAD of configured branch)'),
       prune: z.boolean().optional().describe('Remove resources not in Git (default false — safer)'),
       dry_run: z.boolean().optional().describe('If true, simulate the sync without applying changes'),
+      approval_id: z.string().optional().describe('Required for a real (non-dry-run) sync once the HiTL approval gate is deployed — obtain via request_approval'),
     },
-    async ({ app_name, revision, prune = false, dry_run = false }) => {
+    async ({ app_name, revision, prune = false, dry_run = false, approval_id }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'sync_app' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'sync_app', agent: agentId });
       let outcome = 'success';
-      auditLog({ action: 'sync_app_requested', agent: agentId, app: app_name, revision, prune, dry_run });
+      auditLog({ action: 'sync_app_requested', agent: agentId, app: app_name, revision, prune, dry_run, approval_id });
       try {
         if (dry_run) {
           return {
@@ -210,6 +242,7 @@ export function createServer(agentId: string = 'unknown') {
             }],
           };
         }
+        await requireApproval('sync_app', app_name, approval_id);
         const body: Record<string, unknown> = { prune };
         if (revision) body.revision = revision;
         const res = await argoFetch(`/api/v1/applications/${encodeURIComponent(app_name)}/sync`, {
@@ -246,12 +279,13 @@ export function createServer(agentId: string = 'unknown') {
       app_name: z.string().describe('ArgoCD application name'),
       revision_id: z.number().int().describe('History revision ID to rollback to (from get_app_health history)'),
       dry_run: z.boolean().optional().describe('If true, show what would be rolled back without doing it'),
+      approval_id: z.string().optional().describe('Required for a real (non-dry-run) rollback once the HiTL approval gate is deployed — obtain via request_approval'),
     },
-    async ({ app_name, revision_id, dry_run = false }) => {
+    async ({ app_name, revision_id, dry_run = false, approval_id }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'rollback_app' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'rollback_app', agent: agentId });
       let outcome = 'success';
-      auditLog({ action: 'rollback_app_requested', agent: agentId, app: app_name, revision_id, dry_run });
+      auditLog({ action: 'rollback_app_requested', agent: agentId, app: app_name, revision_id, dry_run, approval_id });
       try {
         if (dry_run) {
           return {
@@ -261,6 +295,7 @@ export function createServer(agentId: string = 'unknown') {
             }],
           };
         }
+        await requireApproval('rollback_app', app_name, approval_id);
         const res = await argoFetch(`/api/v1/applications/${encodeURIComponent(app_name)}/rollback`, {
           method: 'POST',
           body: JSON.stringify({ id: revision_id }),

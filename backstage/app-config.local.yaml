@@ -139,6 +139,15 @@ proxy:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']
       changeOrigin: true
+    # ADP Phase 4 HiTL approval gate (docs/agentic-platform.md) — only reachable
+    # once bootstrap-ai.sh --adp has deployed approval-service; otherwise the
+    # Approvals page shows a connection error, same as other opt-in proxies here.
+    /approval-service:
+      target: http://approval-service.idp.local
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/approval-service': ''
     # External SaaS — same endpoints in local and AWS. Empty token = 401 from upstream,
     # which the Security entity tab renders gracefully as "Unable to load…".
     /sonarcloud:
