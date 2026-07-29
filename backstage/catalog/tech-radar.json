@@ -441,8 +441,13 @@
       "key": "langgraph",
       "title": "LangGraph",
       "quadrant": "tools",
-      "description": "Graph-based AI agent framework \u2014 golden path template for agentic services.",
+      "description": "Graph-based AI agent framework \u2014 under evaluation for a future golden path template; no scaffolder template exists yet (see docs/agentic-platform.md).",
       "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-07-29"
+        },
         {
           "moved": 1,
           "ringId": "trial",
@@ -843,8 +848,13 @@
       "key": "agentic-ai",
       "title": "Agentic AI Services",
       "quadrant": "techniques",
-      "description": "LangGraph + FastAPI pattern for deploying AI agents on the platform golden path.",
+      "description": "LangGraph + FastAPI pattern for deploying AI agents — under evaluation; the built agentic layer today is the Agentic Development Platform (KAgent + MCP servers, see docs/agentic-platform.md), not this LangGraph pattern.",
       "timeline": [
+        {
+          "moved": 0,
+          "ringId": "assess",
+          "date": "2026-07-29"
+        },
         {
           "moved": 1,
           "ringId": "trial",

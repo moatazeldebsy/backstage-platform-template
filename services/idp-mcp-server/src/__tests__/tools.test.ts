@@ -499,3 +499,35 @@ describe('list_deployments — missing readyReplicas defaults to 0', () => {
     expect(parsed[0].ready_replicas).toBe(0);
   });
 });
+
+// ── ADP Phase 4 approval tools (APPROVAL_SERVICE_URL unset in this test env) ──
+
+describe('check_policy (Phase 4 not deployed)', () => {
+  it('reports requires_approval: false without calling any service', async () => {
+    const client = await buildClient();
+    const result = await client.callTool({ name: 'check_policy', arguments: { action: 'sync_app', target: 'my-app' } });
+    const data = parseResult(result as Parameters<typeof parseResult>[0]) as { requires_approval: boolean };
+    expect(data.requires_approval).toBe(false);
+    expect(fetchMock()).not.toHaveBeenCalled();
+  });
+});
+
+describe('request_approval (Phase 4 not deployed)', () => {
+  it('returns an error payload without calling any service', async () => {
+    const client = await buildClient();
+    const result = await client.callTool({ name: 'request_approval', arguments: { action: 'sync_app', target: 'my-app' } });
+    const data = parseResult(result as Parameters<typeof parseResult>[0]) as { error: string };
+    expect(data.error).toContain('not deployed');
+    expect(fetchMock()).not.toHaveBeenCalled();
+  });
+});
+
+describe('get_approval_status (Phase 4 not deployed)', () => {
+  it('returns an error payload without calling any service', async () => {
+    const client = await buildClient();
+    const result = await client.callTool({ name: 'get_approval_status', arguments: { approval_id: 'abc-1' } });
+    const data = parseResult(result as Parameters<typeof parseResult>[0]) as { error: string };
+    expect(data.error).toContain('not deployed');
+    expect(fetchMock()).not.toHaveBeenCalled();
+  });
+});

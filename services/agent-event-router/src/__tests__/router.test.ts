@@ -297,7 +297,28 @@ describe('routeAlertManager', () => {
     expect(postFn).not.toHaveBeenCalled();
   });
 
-  it('routes firing non-budget alert to idp-assistant', async () => {
+  it('routes firing non-budget, non-critical alert to idp-assistant', async () => {
+    const payload = {
+      alerts: [
+        {
+          status: 'firing',
+          labels: { alertname: 'PodCrashLooping', severity: 'warning', namespace: 'production' },
+          annotations: { summary: 'Pod is crash looping', description: 'Check logs' },
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn);
+
+    expect(postFn).toHaveBeenCalledTimes(1);
+    const [agent, msg] = postFn.mock.calls[0];
+    expect(agent).toBe('idp-assistant');
+    expect(msg).toContain('PodCrashLooping');
+    expect(msg).toContain('warning');
+    expect(msg).toContain('production');
+  });
+
+  it('routes firing non-budget critical alert to incident-agent', async () => {
     const payload = {
       alerts: [
         {
@@ -312,7 +333,7 @@ describe('routeAlertManager', () => {
 
     expect(postFn).toHaveBeenCalledTimes(1);
     const [agent, msg] = postFn.mock.calls[0];
-    expect(agent).toBe('idp-assistant');
+    expect(agent).toBe('incident-agent');
     expect(msg).toContain('PodCrashLooping');
     expect(msg).toContain('critical');
     expect(msg).toContain('production');
@@ -381,7 +402,30 @@ describe('routeAlertManager', () => {
 
     expect(postFn).toHaveBeenCalledTimes(2);
     expect(postFn.mock.calls[0][0]).toBe('idp-assistant');
-    expect(postFn.mock.calls[1][0]).toBe('idp-assistant');
+    expect(postFn.mock.calls[1][0]).toBe('incident-agent');
+  });
+
+  it('includes the tracked issue number in the incident-agent message when one was created', async () => {
+    const fetchImpl = mockFetch([{ ok: true, status: 201, json: { number: 77 } }]);
+    const github: GitHubIncidentConfig = { token: 't', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+    const openIncidents = new Map<string, OpenIncident>();
+    const payload = {
+      alerts: [
+        {
+          status: 'firing',
+          labels: { alertname: 'DiskFull', severity: 'critical', namespace: 'production' },
+          annotations: {},
+          fingerprint: 'fp-issue-ref',
+        },
+      ],
+    };
+
+    await routeAlertManager(payload, postFn, undefined, github, openIncidents);
+
+    expect(postFn).toHaveBeenCalledTimes(1);
+    const [agent, msg] = postFn.mock.calls[0];
+    expect(agent).toBe('incident-agent');
+    expect(msg).toContain('incident issue #77');
   });
 });
 

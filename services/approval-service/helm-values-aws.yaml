@@ -1,0 +1,105 @@
+fullnameOverride: approval-service
+
+replicaCount: 2
+
+image:
+  repository: ECR_REGISTRY_PLACEHOLDER/approval-service
+  tag: "0.1.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3009
+  targetPort: 3009
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: approval-service.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  - name: PORT
+    value: "3009"
+  # Reuses Backstage's own Aurora/RDS Postgres instance — credentials are copied
+  # from the backstage-secrets secret (namespace: backstage) into
+  # approval-service-db (namespace: services-dev) by bootstrap-ai.sh --adp, since
+  # Kubernetes secrets can't be referenced cross-namespace directly.
+  - name: POSTGRES_HOST
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-db
+        key: POSTGRES_HOST
+  - name: POSTGRES_PORT
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-db
+        key: POSTGRES_PORT
+  - name: POSTGRES_USER
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-db
+        key: POSTGRES_USER
+  - name: POSTGRES_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-db
+        key: POSTGRES_PASSWORD
+  - name: POSTGRES_DB
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-db
+        key: POSTGRES_DB
+  - name: POSTGRES_SSL
+    value: "true"
+  - name: POLICY_FILE
+    value: "/etc/approval-service/policy.json"
+
+extraVolumes:
+  - name: policy
+    configMap:
+      name: approval-service-policy
+extraVolumeMounts:
+  - name: policy
+    mountPath: /etc/approval-service
+    readOnly: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70

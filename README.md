@@ -19,6 +19,8 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 
 > **Multi-region (V2)** is on `main` and opt-in: active-standby AWS across eu-central-1 (primary) + us-east-1 (standby), via `./scripts/bootstrap-multiregion.sh`. Single-region setups are unaffected. See [docs/multi-region.md](docs/multi-region.md).
 
+> **Agentic Development Platform (ADP)** is on `main` and opt-in: extends the AI/ML stack into a first-class agent layer for both dev workflow (scaffold/code/test/review) and ops (cost/incidents/security), with a human-in-the-loop approval gate for any mutating action. Enable with `./scripts/bootstrap-ai.sh --adp`. See [docs/agentic-platform.md](docs/agentic-platform.md).
+
 ## Compatibility
 
 | Component | Tested version |
@@ -45,11 +47,12 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
-| **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + IDP/QA/Contract MCP servers + Model Serving API + AI scorecard + RAG search over TechDocs. See [docs/ai-assistant.md](docs/ai-assistant.md) |
+| **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 6 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD) + Model Serving API + AI scorecard + RAG search over TechDocs. See [docs/ai-assistant.md](docs/ai-assistant.md) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
 | **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
 | **Infrastructure** | Terraform for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3) + Crossplane for per-service resources (S3, RDS, MSK, DynamoDB, SQS) via ArgoCD-reconciled Claims. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) |
 | **Multi-region V2** | Active-standby eu-central-1 + us-east-1, opt-in. See [docs/multi-region.md](docs/multi-region.md) |
+| **Agentic Development Platform (ADP)** | Opt-in agent layer on top of the AI/ML platform — dev-workflow agents (scaffold/code/test/review) and ops agents (cost/incidents/security), gated by a human-in-the-loop approval layer. `./scripts/bootstrap-ai.sh --adp`. See [docs/agentic-platform.md](docs/agentic-platform.md) |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
 ## Quick Start
@@ -215,6 +218,7 @@ Shipped work and what's next are tracked on the **[GitHub Project board](https:/
 | [Multi-Region (V2)](docs/multi-region.md) | Active-standby AWS across eu-central-1 + us-east-1 |
 | [Team Management](docs/team-management.md) | Onboard a new team: namespace, SecretStore, ArgoCD, Grafana |
 | [AI Assistant](docs/ai-assistant.md) | KAgent + MCP server setup and usage |
+| [Agentic Development Platform (ADP)](docs/agentic-platform.md) | Agent-driven dev workflow + ops, HiTL approval gate, opt-in phases |
 | [DORA + FinOps](docs/dora-finops.md) | DORA entity tab, SLOs, cost budgets |
 | [Contract Testing](docs/contract-testing.md) | MCP-driven contract gates |
 | [Mobile Platform](docs/mobile-platform.md) | Android / iOS / Flutter templates |

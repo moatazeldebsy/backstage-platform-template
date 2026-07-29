@@ -70,6 +70,13 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+    # ADP Phase 4 HiTL approval gate (docs/agentic-platform.md) — only reachable
+    # once bootstrap-ai.sh --adp has deployed approval-service.
+    /approval-service:
+      target: http://approval-service.services-dev.svc.cluster.local:3009
+      changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/approval-service': ''
     # External SaaS — same endpoints in local and AWS. Tokens are loaded via
     # External Secrets from AWS Secrets Manager (see aws/external-secrets/backstage.yaml).
     /sonarcloud:

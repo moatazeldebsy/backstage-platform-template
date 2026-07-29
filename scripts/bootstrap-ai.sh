@@ -11,6 +11,8 @@
 #   --skip-mlflow      Skip MLflow tracking server
 #   --skip-kagent      Skip KAgent CRDs and Helm install
 #   --skip-mcp         Skip IDP/QA/Contract MCP Server build and deploy
+#   --adp              Also deploy Agentic Development Platform (ADP) components
+#                       (see docs/agentic-platform.md) on top of the base AI/ML stack
 #   --destroy          Remove AI/ML components only (keeps core platform running)
 
 set -euo pipefail
@@ -21,6 +23,7 @@ CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 SKIP_MLFLOW=false
 SKIP_KAGENT=false
 SKIP_MCP=false
+ADP=false
 DESTROY=false
 
 while [[ $# -gt 0 ]]; do
@@ -31,6 +34,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mlflow)  SKIP_MLFLOW=true; shift ;;
     --skip-kagent)  SKIP_KAGENT=true; shift ;;
     --skip-mcp)     SKIP_MCP=true; shift ;;
+    --adp)          ADP=true; shift ;;
     --destroy)      DESTROY=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
@@ -88,6 +92,20 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"   2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"        2>/dev/null || true
+  # ADP components (docs/agentic-platform.md) — torn down unconditionally so a
+  # destroy always fully cleans up regardless of which --adp phases were applied.
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/incident-agent.yaml"      2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/incident-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/security-agent.yaml"      2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/security-toolserver.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/security-mcp-server-rbac.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/onboarding-agent.yaml"    2>/dev/null || true
+  helm uninstall incident-mcp-server --namespace services-dev 2>/dev/null || true
+  helm uninstall security-mcp-server --namespace services-dev 2>/dev/null || true
+  helm uninstall approval-service    --namespace services-dev 2>/dev/null || true
+  kubectl delete secret incident-mcp-server-secrets -n services-dev 2>/dev/null || true
+  kubectl delete secret approval-service-db          -n services-dev 2>/dev/null || true
+  kubectl delete configmap approval-service-policy   -n services-dev 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"         2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-haiku.yaml"   2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"  2>/dev/null || true
@@ -357,6 +375,20 @@ if [[ -z "$_ghtok" ]]; then
   warn "GITHUB_TOKEN not set — agent-event-router will start but automatic incident-issue creation on critical alerts is disabled."
 fi
 
+# incident-mcp-server secrets (ADP Phase 3 — send_notification's Slack webhook)
+if $ADP; then
+  if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+    info "Creating incident-mcp-server-secrets in services-dev..."
+    kubectl create secret generic incident-mcp-server-secrets \
+      --namespace services-dev \
+      --from-literal=slack-webhook-url="${SLACK_WEBHOOK_URL}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    check "Secret incident-mcp-server-secrets ready"
+  else
+    warn "SLACK_WEBHOOK_URL not set — incident-agent's send_notification tool will return sent:false. Add SLACK_WEBHOOK_URL to local/.env to enable it."
+  fi
+fi
+
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────
 
 if [[ "$SKIP_MLFLOW" == "true" ]]; then
@@ -512,6 +544,21 @@ else
   # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
   kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
+
+  if $ADP; then
+    info "Applying Agentic Development Platform (ADP) components (docs/agentic-platform.md)..."
+    # Populated incrementally as ADP phases land — see docs/agentic-platform.md
+    # for what each phase adds. Manifests referenced here are applied only if
+    # present, so bootstrap-ai.sh --adp is always safe to run against whatever
+    # ADP phases have shipped so far.
+    for _adp_manifest in incident-toolserver.yaml incident-agent.yaml \
+                         security-mcp-server-rbac.yaml security-toolserver.yaml security-agent.yaml \
+                         onboarding-agent.yaml; do
+      if [[ -f "${REPO_ROOT}/kubernetes/kagent/${_adp_manifest}" ]]; then
+        kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/${_adp_manifest}"
+      fi
+    done
+  fi
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     # Apply ServiceMonitor for Prometheus scraping of MCP servers
@@ -741,7 +788,43 @@ else
     [[ -n "$CONTRACT_MCP_ROLE_ARN" ]] || warn "Could not read contract_mcp_server_role_arn from Terraform outputs — contract-mcp-server will lack DynamoDB access."
   fi
 
-  for SVC in idp-mcp-server qa-mcp-server contract-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server; do
+  MCP_SERVICES=(idp-mcp-server qa-mcp-server contract-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server)
+  if $ADP; then
+    # ADP MCP servers land incrementally (see docs/agentic-platform.md) — only
+    # build ones whose source directory actually exists yet.
+    for _adp_svc in incident-mcp-server security-mcp-server approval-service; do
+      [[ -d "${REPO_ROOT}/services/${_adp_svc}" ]] && MCP_SERVICES+=("${_adp_svc}")
+    done
+
+    # Phase 4 HiTL approval gate prerequisites (docs/agentic-platform.md)
+    if [[ -d "${REPO_ROOT}/services/approval-service" ]]; then
+      info "Applying approval-service policy ConfigMap..."
+      kubectl create namespace services-dev --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+      kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/policies/configmap.yaml"
+      check "ConfigMap approval-service-policy ready"
+
+      if [[ "$DEPLOY_MODE" == "aws" ]]; then
+        # approval-service reuses Backstage's own Aurora/RDS Postgres — copy the
+        # connection secret across namespaces since K8s secrets are namespace-scoped.
+        if kubectl get secret backstage-secrets -n backstage &>/dev/null; then
+          info "Copying backstage-secrets (namespace: backstage) → approval-service-db (namespace: services-dev)..."
+          kubectl create secret generic approval-service-db \
+            --namespace services-dev \
+            --from-literal=POSTGRES_HOST="$(kubectl get secret backstage-secrets -n backstage -o jsonpath='{.data.POSTGRES_HOST}' | base64 -d)" \
+            --from-literal=POSTGRES_PORT="$(kubectl get secret backstage-secrets -n backstage -o jsonpath='{.data.POSTGRES_PORT}' | base64 -d)" \
+            --from-literal=POSTGRES_USER="$(kubectl get secret backstage-secrets -n backstage -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)" \
+            --from-literal=POSTGRES_PASSWORD="$(kubectl get secret backstage-secrets -n backstage -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)" \
+            --from-literal=POSTGRES_DB="$(kubectl get secret backstage-secrets -n backstage -o jsonpath='{.data.POSTGRES_DB}' | base64 -d)" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          check "Secret approval-service-db ready"
+        else
+          warn "backstage-secrets not found in namespace 'backstage' — approval-service will fail to start until it's created. Run bootstrap.sh first."
+        fi
+      fi
+    fi
+  fi
+
+  for SVC in "${MCP_SERVICES[@]}"; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
@@ -785,6 +868,21 @@ else
       fi
     ) || warn "${SVC} build/deploy failed — check: kubectl get po -n services-dev"
   done
+
+  # Wire the HiTL approval gate into the tool servers whose mutating tools it
+  # gates (argocd-mcp-server, github-mcp-server) and idp-mcp-server (which
+  # exposes check_policy/request_approval/get_approval_status). Patched via
+  # kubectl set env rather than baked into the default helm-values, so plain
+  # `bootstrap-ai.sh` (no --adp) leaves these tools ungated exactly as before.
+  if $ADP && [[ -d "${REPO_ROOT}/services/approval-service" ]] && kubectl get deployment approval-service -n services-dev &>/dev/null; then
+    APPROVAL_URL="http://approval-service.services-dev.svc.cluster.local:3009"
+    for _svc in idp-mcp-server argocd-mcp-server github-mcp-server; do
+      if kubectl get deployment "$_svc" -n services-dev &>/dev/null; then
+        kubectl set env deployment/"$_svc" -n services-dev APPROVAL_SERVICE_URL="$APPROVAL_URL" >/dev/null
+      fi
+    done
+    check "APPROVAL_SERVICE_URL wired into idp/argocd/github-mcp-server"
+  fi
 fi
 
 # ── 7. KAgent UI port-forward (background) ───────────────────────────────────
