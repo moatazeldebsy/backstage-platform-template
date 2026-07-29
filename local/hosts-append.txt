@@ -26,3 +26,7 @@
 127.0.0.1  github-mcp-server.idp.local
 127.0.0.1  argocd-mcp-server.idp.local
 127.0.0.1  cost-mcp-server.idp.local
+# Agentic Development Platform (ADP) — bootstrap-ai.sh --adp
+127.0.0.1  incident-mcp-server.idp.local
+127.0.0.1  security-mcp-server.idp.local
+127.0.0.1  approval-service.idp.local
