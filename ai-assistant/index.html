@@ -14,7 +14,7 @@
         <link rel="prev" href="../scripts-reference/">
       
       
-        <link rel="next" href="../dora-finops/">
+        <link rel="next" href="../agentic-platform/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -353,6 +353,23 @@
     
   
   AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../agentic-platform/" class="md-tabs__link">
+        
+  
+    
+  
+  Agentic Development Platform
 
       </a>
     </li>
@@ -1164,6 +1181,33 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#argocd-mcp-server-port-3006" class="md-nav__link">
+    <span class="md-ellipsis">
+      argocd-mcp-server (port 3006)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cost-mcp-server-port-3007" class="md-nav__link">
+    <span class="md-ellipsis">
+      cost-mcp-server (port 3007)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incident-mcp-server-port-3008" class="md-nav__link">
+    <span class="md-ellipsis">
+      incident-mcp-server (port 3008)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1409,13 +1453,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#whats-next-sprint-4" class="md-nav__link">
+  <a href="#whats-next" class="md-nav__link">
     <span class="md-ellipsis">
-      What's next (Sprint 4+)
+      What's next
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="What's next (Sprint 4+)">
+    <nav class="md-nav" aria-label="What's next">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1532,6 +1576,26 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agentic Development Platform
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1695,10 +1759,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1709,8 +1773,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_21">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_22">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1968,10 +2032,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_27" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
         
           
-          <label class="md-nav__link" for="__nav_27" id="__nav_27_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1982,8 +2046,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_27_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_27">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_28">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2274,7 +2338,9 @@
 <p>The AI Assistant is a chat interface embedded in the Backstage portal backed by
 <a href="https://kagent.dev">KAgent</a> AI agents (Claude) with live access to the service
 catalog, Prometheus metrics, Kubernetes deployments, Backstage scaffolder, test
-suites, contract testing, GitHub PRs, and persistent user memory.</p>
+suites, contract testing, GitHub PRs, cost/budget data, ArgoCD application state,
+and persistent user memory. This is the foundation the
+<a href="../agentic-platform/">Agentic Development Platform (ADP)</a> epic builds on.</p>
 <hr />
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <p>The AI Assistant is a <strong>native React chat component</strong> embedded directly in the Backstage frontend. It is not an iframe.</p>
@@ -2310,7 +2376,11 @@ suites, contract testing, GitHub PRs, and persistent user memory.</p>
 <span class="normal">30</span>
 <span class="normal">31</span>
 <span class="normal">32</span>
-<span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code>┌──────────────────────────────────────────────────────────────────┐
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code>┌──────────────────────────────────────────────────────────────────┐
 │  Backstage (Docker Compose / EKS pod)                            │
 │                                                                  │
 │  extensions.tsx — AiAssistantPage                                │
@@ -2330,19 +2400,23 @@ suites, contract testing, GitHub PRs, and persistent user memory.</p>
 │    idp-assistant       — platform / scaffolding (claude-haiku)   │
 │    qa-assistant        — test suites + PR review (claude-sonnet) │
 │    contract-assistant  — API contracts (claude-sonnet)           │
-└────────────┬──────────────┬──────────────┬────────────┬──────────┘
-             │ MCP/HTTP     │              │            │
-             ▼              ▼              ▼            ▼
-    ┌──────────────┐ ┌──────────┐ ┌──────────────┐ ┌──────────────┐
-    │ idp-mcp      │ │ qa-mcp   │ │ contract-mcp │ │ github-mcp   │
-    │ :3001        │ │ :3002    │ │ :3003        │ │ :3005        │
-    │ 9 tools      │ │ 4 tools  │ │ 9 tools      │ │ 3 tools      │
-    └──────────────┘ └──────────┘ └──────────────┘ └──────────────┘
+│    cost-agent          — cost/budget analysis (claude-sonnet)    │
+│    release-agent       — ArgoCD sync/rollback (claude-sonnet)    │
+│    incident-agent      — alert triage (claude-sonnet)            │
+└──────┬──────────┬──────────────┬────────────┬───────┬───────┬───────┬────┘
+       │ MCP/HTTP │              │            │       │       │       │
+       ▼          ▼              ▼            ▼       ▼       ▼       ▼
+ ┌──────────┐┌──────────┐┌──────────────┐┌──────────┐┌────────┐┌──────────┐┌───────────┐
+ │ idp-mcp  ││ qa-mcp   ││ contract-mcp ││ github-mcp││cost-mcp││argocd-mcp││incident-mcp│
+ │ :3001    ││ :3002    ││ :3003        ││ :3005     ││ :3007  ││ :3006    ││ :3008      │
+ │ 9 tools  ││ 4 tools  ││ 9 tools      ││ 5 tools   ││5 tools ││5 tools   ││5 tools     │
+ └──────────┘└──────────┘└──────────────┘└──────────┘└────────┘└──────────┘└───────────┘
 
 Event Bus (agent-event-router :3004)
   ← GitHub webhooks (PR open/update → qa-assistant)
-  ← AlertManager webhooks (firing alerts → idp-assistant)
-  ← ArgoCD webhooks (OutOfSync/Degraded → idp-assistant)
+  ← AlertManager webhooks (budget alerts → cost-agent; critical non-budget alerts → incident-agent
+                            (+ opens/resolves a GitHub incident issue); other firing alerts → idp-assistant)
+  ← ArgoCD webhooks (OutOfSync/Degraded → release-agent)
 </code></pre></div></td></tr></table></div>
 <h3 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -2537,10 +2611,47 @@ responding, so defaults are pre-filled without asking.</p>
 <td>claude-sonnet</td>
 <td>API contracts</td>
 </tr>
+<tr>
+<td><code>cost-agent</code></td>
+<td><code>kubernetes/kagent/cost-agent.yaml</code></td>
+<td>claude-sonnet</td>
+<td>Cost/budget analysis via <code>cost-mcp-server</code> + <code>catalog_search</code></td>
+</tr>
+<tr>
+<td><code>release-agent</code></td>
+<td><code>kubernetes/kagent/release-agent.yaml</code></td>
+<td>claude-sonnet</td>
+<td>ArgoCD sync/rollback via <code>argocd-mcp-server</code> + <code>list_deployments</code></td>
+</tr>
+<tr>
+<td><code>incident-agent</code></td>
+<td><code>kubernetes/kagent/incident-agent.yaml</code></td>
+<td>claude-sonnet</td>
+<td>Alert triage via <code>incident-mcp-server</code> + <code>get_service_metrics</code>/<code>list_deployments</code></td>
+</tr>
+<tr>
+<td><code>security-agent</code></td>
+<td><code>kubernetes/kagent/security-agent.yaml</code></td>
+<td>claude-sonnet</td>
+<td>Read-only: vulnerable deps, secret rotation, policy violations via <code>security-mcp-server</code></td>
+</tr>
+<tr>
+<td><code>onboarding-agent</code></td>
+<td><code>kubernetes/kagent/onboarding-agent.yaml</code></td>
+<td>claude-haiku</td>
+<td>Template/catalog/docs discovery — reuses <code>idp-mcp-server</code>, no new MCP server</td>
+</tr>
 </tbody>
 </table>
 <p>Specialist agents are still available at <code>/a2a/kagent/&lt;name&gt;</code> but <code>platform-assistant</code>
 is the recommended entry point for all developer interactions.</p>
+<p><code>cost-agent</code> and <code>release-agent</code> are also <strong>proactive</strong> — the event router (§5) invokes
+them directly on budget alerts and ArgoCD degraded-state webhooks, without a human
+starting the conversation. <code>release-agent</code>'s system prompt requires <code>dry_run: true</code> on
+<code>sync_app</code>/<code>rollback_app</code> before any real action, and an explicit user confirmation
+("go ahead" / "proceed" / "confirm") before dropping dry-run — the only HiTL-style
+convention in the platform today (see <a href="../agentic-platform/">agentic-platform.md</a> Phase 4
+for the plan to formalize this into a real approval gate).</p>
 <h4 id="modelconfigs">ModelConfigs<a class="headerlink" href="#modelconfigs" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -2711,14 +2822,143 @@ account. See <code>kubernetes/kagent/idp-mcp-server-rbac.yaml</code>.</p>
 <td>PR head SHA → <code>GET /repos/{repo}/commits/{sha}/check-runs</code></td>
 <td>Returns all check-run results</td>
 </tr>
+<tr>
+<td><code>approve_pr</code></td>
+<td><code>POST /repos/{repo}/pulls/{pr}/reviews</code> (<code>event: APPROVE</code>)</td>
+<td>Defaults to <code>dry_run: true</code> — no HiTL approval gate exists yet (Phase 4)</td>
+</tr>
+<tr>
+<td><code>request_changes</code></td>
+<td><code>POST /repos/{repo}/pulls/{pr}/reviews</code> (<code>event: REQUEST_CHANGES</code>)</td>
+<td>Defaults to <code>dry_run: true</code>; <code>body</code> required</td>
+</tr>
 </tbody>
 </table>
 <p><strong>Secret:</strong> <code>github-mcp-server-token</code> in <code>services-dev</code> namespace, key <code>token</code>.
 Optional locally (warns on startup if missing), required in AWS.</p>
 <p><strong>Used by:</strong> <code>qa-assistant</code> for automated PR review; <code>platform-assistant</code> for cross-domain queries.</p>
+<h4 id="argocd-mcp-server-port-3006"><code>argocd-mcp-server</code> (port 3006)<a class="headerlink" href="#argocd-mcp-server-port-3006" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>services/argocd-mcp-server/src/server.ts</code> (tools), <code>services/argocd-mcp-server/src/index.ts</code> (entrypoint)</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>ArgoCD API call</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list_apps</code></td>
+<td><code>GET /api/v1/applications</code></td>
+<td>Lists all ArgoCD-managed apps</td>
+</tr>
+<tr>
+<td><code>get_app_health</code></td>
+<td><code>GET /api/v1/applications/{name}</code></td>
+<td>Returns sync + health status</td>
+</tr>
+<tr>
+<td><code>get_app_diff</code></td>
+<td><code>GET /api/v1/applications/{name}/managed-resources</code></td>
+<td>Live vs. desired state diff</td>
+</tr>
+<tr>
+<td><code>sync_app</code></td>
+<td><code>POST /api/v1/applications/{name}/sync</code></td>
+<td>Supports <code>dry_run: true</code> (default); <code>[AUDIT]</code> log on real sync</td>
+</tr>
+<tr>
+<td><code>rollback_app</code></td>
+<td><code>POST /api/v1/applications/{name}/rollback</code></td>
+<td>Supports <code>dry_run: true</code> (default); <code>[AUDIT]</code> log on real rollback</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Secret:</strong> <code>argocd-mcp-server-token</code> in <code>services-dev</code> namespace. Optional locally (warns and 401s on tool calls if missing), required in AWS.</p>
+<p><strong>Used by:</strong> <code>release-agent</code>, proactively triggered on ArgoCD <code>OutOfSync</code>/<code>Degraded</code> webhooks.</p>
+<h4 id="cost-mcp-server-port-3007"><code>cost-mcp-server</code> (port 3007)<a class="headerlink" href="#cost-mcp-server-port-3007" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>services/cost-mcp-server/src/server.ts</code> (tools), <code>services/cost-mcp-server/src/index.ts</code> (entrypoint)</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Upstream</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_namespace_cost</code></td>
+<td>OpenCost <code>/model/allocation</code></td>
+<td>Per-namespace cost breakdown</td>
+</tr>
+<tr>
+<td><code>get_team_spend</code></td>
+<td>Prometheus <code>idp_team_actual_cost_usd_monthly</code></td>
+<td>Requires tech-insights-exporter</td>
+</tr>
+<tr>
+<td><code>list_budget_overruns</code></td>
+<td>Prometheus <code>idp_team_*</code> metrics</td>
+<td>Teams over their configured budget</td>
+</tr>
+<tr>
+<td><code>get_rightsizing_recommendations</code></td>
+<td>OpenCost <code>/model/allocation</code></td>
+<td>Suggests requests/limits adjustments</td>
+</tr>
+<tr>
+<td><code>forecast_budget</code></td>
+<td>Prometheus (current burn rate)</td>
+<td>End-of-month spend projection</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Used by:</strong> <code>cost-agent</code>, proactively triggered on <code>TeamBudgetWarning</code>/<code>TeamBudgetExceeded</code>/<code>TeamBudgetOverrun</code> AlertManager alerts.</p>
+<h4 id="incident-mcp-server-port-3008"><code>incident-mcp-server</code> (port 3008)<a class="headerlink" href="#incident-mcp-server-port-3008" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>services/incident-mcp-server/src/server.ts</code> (tools), <code>services/incident-mcp-server/src/index.ts</code> (entrypoint)</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Upstream</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_open_incidents</code></td>
+<td>GitHub issues search, <code>labels=incident:open</code></td>
+<td>Reads back what <code>agent-event-router</code>'s <code>createIncidentIssue</code> writes</td>
+</tr>
+<tr>
+<td><code>get_alert_history</code></td>
+<td>Prometheus <code>ALERTS</code> metric, <code>query_range</code></td>
+<td>Summarizes firing periods over a configurable window (default 24h, max 168h)</td>
+</tr>
+<tr>
+<td><code>get_runbook</code></td>
+<td>GitHub contents API, <code>docs/runbooks/{name}.md</code></td>
+<td>Falls back to listing available runbooks if the name doesn't match</td>
+</tr>
+<tr>
+<td><code>post_incident_update</code></td>
+<td><code>POST /repos/{repo}/issues/{issue}/comments</code></td>
+<td><code>[AUDIT]</code> logged</td>
+</tr>
+<tr>
+<td><code>send_notification</code></td>
+<td>Slack incoming webhook</td>
+<td>No-op (<code>sent: false</code>) if <code>SLACK_WEBHOOK_URL</code> is unset</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Secrets:</strong> reuses <code>github-mcp-server-token</code> for <code>GITHUB_TOKEN</code>; <code>incident-mcp-server-secrets</code> (key <code>slack-webhook-url</code>) for <code>SLACK_WEBHOOK_URL</code>, created by <code>bootstrap-ai.sh --adp</code> when <code>SLACK_WEBHOOK_URL</code> is set in <code>local/.env</code>.</p>
+<p><strong>Used by:</strong> <code>incident-agent</code>, proactively triggered on critical non-budget AlertManager alerts.</p>
 <hr />
 <h3 id="5-event-bus-agent-event-router">5. Event Bus — <code>agent-event-router</code><a class="headerlink" href="#5-event-bus-agent-event-router" title="Permanent link">&para;</a></h3>
-<p><strong>File:</strong> <code>services/agent-event-router/src/index.ts</code></p>
+<p><strong>File:</strong> <code>services/agent-event-router/src/index.ts</code> (Express app + webhook auth), <code>services/agent-event-router/src/router.ts</code> (routing logic)</p>
 <p>A small Express service (port 3004) that receives webhooks from GitHub, AlertManager,
 and ArgoCD and fans out to agents via A2A. This is what makes agents <strong>proactive</strong> —
 they respond to platform events without a human initiating the conversation.</p>
@@ -2746,15 +2986,33 @@ they respond to platform events without a human initiating the conversation.</p>
 </tr>
 <tr>
 <td>AlertManager</td>
-<td><code>firing</code> alert (critical/warning)</td>
+<td><code>firing</code> alert, name/labels match budget (<code>TeamBudgetWarning</code>/<code>TeamBudgetExceeded</code>/<code>TeamBudgetOverrun</code> or containing "budget")</td>
+<td><code>cost-agent</code></td>
+<td>Call <code>get_team_spend</code> + <code>forecast_budget</code> + <code>get_rightsizing_recommendations</code> for the team</td>
+</tr>
+<tr>
+<td>AlertManager</td>
+<td><code>firing</code> alert, non-budget, <code>severity: critical</code></td>
+<td><code>incident-agent</code></td>
+<td>A GitHub incident issue is created first (via <code>createIncidentIssue</code>, tracked in-memory by alert fingerprint); the agent message references its issue number. Call <code>get_alert_history</code> + <code>get_runbook</code>, cross-reference deployments/metrics, post findings via <code>post_incident_update</code></td>
+</tr>
+<tr>
+<td>AlertManager</td>
+<td><code>firing</code> alert, non-budget, any other severity</td>
 <td><code>idp-assistant</code></td>
 <td>Diagnose + suggest remediation</td>
 </tr>
 <tr>
+<td>AlertManager</td>
+<td><code>resolved</code> status for a tracked fingerprint</td>
+<td><em>(none — closes the GitHub issue via <code>resolveIncidentIssue</code>)</em></td>
+<td>Closes the incident issue opened above</td>
+</tr>
+<tr>
 <td>ArgoCD</td>
 <td>App <code>OutOfSync</code> or <code>Degraded</code></td>
-<td><code>idp-assistant</code></td>
-<td>Check sync status</td>
+<td><code>release-agent</code></td>
+<td>Call <code>get_app_health</code> + <code>get_app_diff</code>, then propose sync or rollback (dry-run first)</td>
 </tr>
 </tbody>
 </table>
@@ -2831,7 +3089,12 @@ processing so you can see what the agent is doing.</p>
 <hr />
 <h2 id="guardrails-audit-log">Guardrails &amp; Audit Log<a class="headerlink" href="#guardrails-audit-log" title="Permanent link">&para;</a></h2>
 <h3 id="structured-audit-log">Structured audit log<a class="headerlink" href="#structured-audit-log" title="Permanent link">&para;</a></h3>
-<p>Every tool call on the <code>idp-mcp-server</code> and <code>contract-mcp-server</code> emits a structured <code>[AUDIT]</code> JSON line to stdout:</p>
+<p>Every tool call on <code>idp-mcp-server</code>, <code>contract-mcp-server</code>, <code>argocd-mcp-server</code>,
+<code>github-mcp-server</code>, and <code>incident-mcp-server</code> emits a structured <code>[AUDIT]</code> JSON line
+to stdout for mutating actions (<code>scaffold_service</code>, <code>register_contract</code>,
+<code>sync_app</code>/<code>rollback_app</code>, <code>add_pr_comment</code>, <code>approve_pr</code>/<code>request_changes</code>,
+<code>post_incident_update</code>, <code>send_notification</code>). <code>cost-mcp-server</code> has no audit log — all
+five of its tools are read-only.</p>
 <div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">[</span><span class="err">AUDIT</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="s2">&quot;2026-06-09T12:00:00Z&quot;</span><span class="p">,</span><span class="nt">&quot;server&quot;</span><span class="p">:</span><span class="s2">&quot;idp-mcp-server&quot;</span><span class="p">,</span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="s2">&quot;scaffold_service_requested&quot;</span><span class="p">,</span><span class="nt">&quot;agent&quot;</span><span class="p">:</span><span class="s2">&quot;platform-assistant&quot;</span><span class="p">,</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="s2">&quot;demo-svc&quot;</span><span class="p">,</span><span class="nt">&quot;template&quot;</span><span class="p">:</span><span class="s2">&quot;python-service&quot;</span><span class="p">,</span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="kc">false</span><span class="p">}</span>
 </code></pre></div></td></tr></table></div>
 <table>
@@ -2864,6 +3127,13 @@ processing so you can see what the agent is doing.</p>
 </tr>
 </tbody>
 </table>
+<p><strong>ADP Phase 4 (HiTL approval gate):</strong> <code>approval-service</code> (docs/agentic-platform.md)
+emits its own <code>[AUDIT]</code> lines with <code>event: "approval_requested"</code>, <code>"approval_auto_approved"</code>,
+and <code>"approval_decided"</code>, each carrying <code>approval_id</code>, <code>action</code>, <code>agent</code>, <code>target</code>, and —
+once decided — <code>decision</code>/<code>decided_by</code>. This is the audit trail for every approval a
+human made (or that Policy-as-Prompt auto-approved) — cross-reference the <code>approval_id</code>
+that appears in the gated tool's own <code>[AUDIT]</code> entries (<code>sync_app_requested</code>, etc.) once
+those tools pass one through.</p>
 <h3 id="querying-audit-logs-in-loki">Querying audit logs in Loki<a class="headerlink" href="#querying-audit-logs-in-loki" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -3118,37 +3388,11 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <span class="nb">cd</span><span class="w"> </span>services/github-mcp-server<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/github-mcp-server:0.1.0<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/github-mcp-server:0.1.0
 kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/github-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev
 </code></pre></div></td></tr></table></div>
-<h2 id="whats-next-sprint-4">What's next (Sprint 4+)<a class="headerlink" href="#whats-next-sprint-4" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Sprint</th>
-<th>Features</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Sprint 4</td>
-<td><code>argocd-mcp-server</code> + <code>release-agent</code> + <code>cost-mcp-server</code> + <code>cost-agent</code></td>
-</tr>
-<tr>
-<td>Sprint 5</td>
-<td><code>incident-mcp-server</code> + <code>incident-agent</code> + <code>notification-mcp-server</code></td>
-</tr>
-<tr>
-<td>Sprint 6</td>
-<td>RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig</td>
-</tr>
-<tr>
-<td>Sprint 7</td>
-<td><code>security-mcp-server</code> + <code>security-agent</code> + <code>onboarding-agent</code></td>
-</tr>
-<tr>
-<td>Sprint 8</td>
-<td>HiTL approval workflow + Policy-as-Prompt</td>
-</tr>
-</tbody>
-</table>
+<h2 id="whats-next">What's next<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
+<p>Sprints 1-4 above are delivered and documented in this file. The remaining roadmap
+(incident/security agents, RAG expansion, HiTL approval + Policy-as-Prompt) has been
+reorganized into the <strong>Agentic Development Platform (ADP)</strong> epic — see
+<a href="../agentic-platform/">agentic-platform.md</a> for the phased plan and current status.</p>
 <h3 id="scaffold-task-stuck-in-processing">Scaffold task stuck in "processing"<a class="headerlink" href="#scaffold-task-stuck-in-processing" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -3201,19 +3445,40 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <hr />
 <h2 id="ai-search-semantic-rag">AI Search (Semantic / RAG)<a class="headerlink" href="#ai-search-semantic-rag" title="Permanent link">&para;</a></h2>
 <p>The <code>/ai-search</code> page in Backstage provides semantic search over the service catalog
-using <a href="https://www.voyageai.com">Voyage AI</a> embeddings stored in pgvector.</p>
+<strong>and rendered TechDocs content</strong> (runbooks, architecture docs, this file) using
+<a href="https://www.voyageai.com">Voyage AI</a> embeddings stored in pgvector.</p>
 <h3 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>Browser → Backstage frontend (AiSearchPage)
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code>Browser → Backstage frontend (AiSearchPage)
             ↓  GET /api/rag-search/search?q=&lt;query&gt;
           Backstage backend (idpRagSearch plugin)
             ↓  Voyage AI API (voyage-3-lite, 512-dim)
             ↓  PostgreSQL + pgvector (HNSW cosine similarity)
             → top-10 results with similarity score
+
+Indexing (every 30 min, or POST /api/rag-search/index):
+  1. Catalog entities — GET {catalogBase}/entities (description, tags, owner)
+  2. External sources — ragSearch.externalSources config (optional, off by default)
+  3. TechDocs pages — for every entity with a backstage.io/techdocs-ref annotation,
+     fetch {techdocsBase}/static/docs/&lt;namespace&gt;/&lt;kind&gt;/&lt;name&gt;/search/search_index.json
+     (the same per-entity search index the TechDocs UI&#39;s own search box reads) and
+     index each page&#39;s rendered text. This goes through the techdocs-backend, so it
+     works the same whether the publisher is local filesystem (Kind) or S3 (AWS) —
+     it does NOT read markdown source files directly.
 </code></pre></div></td></tr></table></div>
 <h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
 <p>Add your Voyage AI API key to <code>local/backstage/.env</code>:</p>
@@ -3251,12 +3516,12 @@ Postgres instance.</p>
 <tr>
 <td><code>/api/rag-search/search?q=&lt;query&gt;</code></td>
 <td>GET</td>
-<td>Returns top-10 semantically similar catalog entities</td>
+<td>Returns top-10 semantically similar results (catalog entities + TechDocs pages)</td>
 </tr>
 <tr>
 <td><code>/api/rag-search/index</code></td>
 <td>POST</td>
-<td>Triggers a manual re-index of the catalog</td>
+<td>Triggers a manual re-index of catalog entities + TechDocs pages</td>
 </tr>
 <tr>
 <td><code>/api/rag-search/status</code></td>
@@ -3265,8 +3530,11 @@ Postgres instance.</p>
 </tr>
 </tbody>
 </table>
-<p>The plugin auto-indexes the full catalog every 30 minutes (configurable via
-<code>ragSearch.indexIntervalMinutes</code> in <code>app-config.yaml</code>).</p>
+<p>The plugin auto-indexes the catalog and TechDocs every 30 minutes (configurable via
+<code>ragSearch.indexIntervalMinutes</code> in <code>app-config.yaml</code>). A page only gets indexed once its
+TechDocs site has been built at least once (visit the entity's Docs tab, or wait for the
+scheduled TechDocs build) — the indexer reads the already-built <code>search_index.json</code>, it
+does not trigger a TechDocs build itself.</p>
 <h3 id="configuration-app-configyaml">Configuration (<code>app-config.yaml</code>)<a class="headerlink" href="#configuration-app-configyaml" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -3342,13 +3610,13 @@ restart Backstage (<code>./scripts/bootstrap-local.sh --start-backstage</code>).
         
         
           
-          <a href="../dora-finops/" class="md-footer__link md-footer__link--next" aria-label="Next: DORA &amp; FinOps">
+          <a href="../agentic-platform/" class="md-footer__link md-footer__link--next" aria-label="Next: Agentic Development Platform">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                DORA & FinOps
+                Agentic Development Platform
               </div>
             </div>
             <div class="md-footer__button md-icon">

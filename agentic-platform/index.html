@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../local-setup/">
+        <link rel="prev" href="../ai-assistant/">
       
       
-        <link rel="next" href="../DEPLOYMENT_GUIDE/">
+        <link rel="next" href="../dora-finops/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Pre-Deployment Checklist - Internal Developer Platform</title>
+        <title>Agentic Development Platform - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pre-deployment-checklist-aws-setup" class="md-skip">
+        <a href="#agentic-development-platform-adp" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pre-Deployment Checklist
+              Agentic Development Platform
             
           </span>
         </div>
@@ -257,13 +257,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
           
   
   AWS Deployment
@@ -362,9 +360,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../agentic-platform/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -824,30 +824,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -858,7 +853,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             AWS Deployment
@@ -869,30 +864,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Pre-Deployment Checklist
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -901,179 +876,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      Quick Start
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-need-before-deploying" class="md-nav__link">
-    <span class="md-ellipsis">
-      What You Need Before Deploying
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What You Need Before Deploying">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#auto-generated-no-action-required" class="md-nav__link">
-    <span class="md-ellipsis">
-      Auto-generated — No Action Required
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#required-you-must-set-these" class="md-nav__link">
-    <span class="md-ellipsis">
-      Required — You Must Set These
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Required — You Must Set These">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-github_token" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. GITHUB_TOKEN
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-github-oauth-app-for-backstage-github-login" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. GitHub OAuth App (for Backstage GitHub login)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-anthropic_api_key-optional-required-for-ai-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. ANTHROPIC_API_KEY (optional — required for AI features)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-slack-webhook-optional-for-cost-alerts" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Slack Webhook (optional — for cost alerts)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-datadog-apiapp-keys-optional-required-for-the-datadog-agent-dd-trace-apm-and-the-datadog-catalog-tab" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Datadog API/App Keys (optional — required for the Datadog Agent, dd-trace APM, and the Datadog catalog tab)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-deployment-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pre-Deployment Checklist
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-errors-before-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      Common Errors Before Deployment
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Common Errors Before Deployment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#verify-secretssh-fails-on-github_token" class="md-nav__link">
-    <span class="md-ellipsis">
-      verify-secrets.sh fails on GITHUB_TOKEN
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-oauth-login-fails-after-deploy" class="md-nav__link">
-    <span class="md-ellipsis">
-      GitHub OAuth login fails after deploy
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#kagent-invalid_x-api-key" class="md-nav__link">
-    <span class="md-ellipsis">
-      KAgent "invalid_x-api-key"
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deployment-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      Deployment Order
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1211,10 +1013,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../agentic-platform/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Agentic Development Platform
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1223,6 +1045,140 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-in-the-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      What's in the Branch
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What's in the Branch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-branding-epic-scaffolding" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 — Branding &amp; Epic Scaffolding
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-documentation-consolidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — Documentation Consolidation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-dev-workflow-agents-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — Dev Workflow Agents Hardening
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-ops-agents-wave-1-rag-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — Ops Agents Wave 1 + RAG Fix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-hitl-approval-layer-policy-as-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 — HiTL Approval Layer &amp; Policy-as-Prompt
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-security-onboarding-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 5 — Security &amp; Onboarding Agents
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-6-golden-path-promotion-tech-radar-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 6 — Golden Path Promotion &amp; Tech Radar Cleanup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#opting-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      Opting In
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1953,7 +1909,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/PRE_DEPLOYMENT_CHECKLIST.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/agentic-platform.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1961,151 +1917,24 @@
   
 
 
-<h1 id="pre-deployment-checklist-aws-setup">Pre-Deployment Checklist — AWS Setup<a class="headerlink" href="#pre-deployment-checklist-aws-setup" title="Permanent link">&para;</a></h1>
-<p><strong>Last Updated:</strong> 2026-05-24</p>
-<hr />
-<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Set credentials (see below)</span>
-<span class="c1"># 2. Verify everything is in place</span>
-./scripts/verify-secrets.sh
-<span class="c1"># Expected: ✅ All critical checks passed!</span>
-
-<span class="c1"># 3. Deploy</span>
-./scripts/setup.sh
-./scripts/bootstrap.sh
-</code></pre></div></td></tr></table></div>
-<hr />
-<h2 id="what-you-need-before-deploying">What You Need Before Deploying<a class="headerlink" href="#what-you-need-before-deploying" title="Permanent link">&para;</a></h2>
-<h3 id="auto-generated-no-action-required">Auto-generated — No Action Required<a class="headerlink" href="#auto-generated-no-action-required" title="Permanent link">&para;</a></h3>
-<p>These are created automatically during bootstrap:</p>
-<table>
-<thead>
-<tr>
-<th>Credential</th>
-<th>How it's created</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTH_SESSION_SECRET</code></td>
-<td>Terraform generates a 64-char random value</td>
-</tr>
-<tr>
-<td><code>BACKSTAGE_CATALOG_TOKEN</code></td>
-<td>bootstrap.sh generates and injects into Secrets Manager</td>
-</tr>
-<tr>
-<td><code>K8S_SERVICE_ACCOUNT_TOKEN</code></td>
-<td>bootstrap.sh reads from cluster, injects into Secrets Manager</td>
-</tr>
-<tr>
-<td><code>POSTGRES_HOST/PORT/USER/PASSWORD</code></td>
-<td>Terraform creates RDS and stores credentials</td>
-</tr>
-</tbody>
-</table>
-<h3 id="required-you-must-set-these">Required — You Must Set These<a class="headerlink" href="#required-you-must-set-these" title="Permanent link">&para;</a></h3>
-<hr />
-<h4 id="1-github_token">1. GITHUB_TOKEN<a class="headerlink" href="#1-github_token" title="Permanent link">&para;</a></h4>
-<p><strong>Why:</strong> Backstage catalog refresh, ArgoCD repo sync, DORA metrics</p>
-<p><strong>Scopes needed:</strong> <code>repo</code>, <code>read:org</code>, <code>gist</code></p>
-<p><strong>Get it:</strong> <a href="https://github.com/settings/tokens">https://github.com/settings/tokens</a> → Generate new token (classic)</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/.env</span>
-<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;GITHUB_TOKEN=ghp_YOUR_TOKEN&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>local/.env
-</code></pre></div></td></tr></table></div>
-<p>Also update Secrets Manager after bootstrap:
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># bootstrap.sh does this automatically if GITHUB_TOKEN is in local/.env</span>
-<span class="c1"># To update manually:</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
-<span class="s2">import sys,json,os; d=json.load(sys.stdin); d[&#39;GITHUB_TOKEN&#39;]=os.environ[&#39;GITHUB_TOKEN&#39;]; print(json.dumps(d))</span>
-<span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--secret-string<span class="w"> </span>file:///dev/stdin
-</code></pre></div></td></tr></table></div></p>
-<p><strong>Status:</strong> ☐ Set in <code>local/.env</code></p>
-<hr />
-<h4 id="2-github-oauth-app-for-backstage-github-login">2. GitHub OAuth App (for Backstage GitHub login)<a class="headerlink" href="#2-github-oauth-app-for-backstage-github-login" title="Permanent link">&para;</a></h4>
-<p><strong>Why:</strong> Enables GitHub sign-in in Backstage</p>
-<p><strong>Get it:</strong>
-1. <a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → New OAuth App
-2. Fill in:
-   - <strong>Application name:</strong> <code>Backstage IDP</code>
-   - <strong>Homepage URL:</strong> <code>http://localhost:3000</code> (update after deploy)
-   - <strong>Callback URL:</strong> <code>http://YOUR_BACKSTAGE_ALB_URL/api/auth/github/handler/frame</code><br />
-<em>(Use a placeholder — update after bootstrap prints the real ALB URL)</em>
-3. Copy <code>Client ID</code> and generate <code>Client Secret</code></p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/backstage/.env</span>
-<span class="nv">AUTH_GITHUB_CLIENT_ID</span><span class="o">=</span>your-client-id
-<span class="nv">AUTH_GITHUB_CLIENT_SECRET</span><span class="o">=</span>your-client-secret
-</code></pre></div></td></tr></table></div>
-<p><strong>After bootstrap:</strong> Update the OAuth app callback URL with the real ALB hostname.</p>
-<p><strong>Status:</strong> ☐ App created / ☐ Credentials set in <code>local/backstage/.env</code> / ☐ Callback URL updated post-deploy</p>
-<hr />
-<h4 id="3-anthropic_api_key-optional-required-for-ai-features">3. ANTHROPIC_API_KEY (optional — required for AI features)<a class="headerlink" href="#3-anthropic_api_key-optional-required-for-ai-features" title="Permanent link">&para;</a></h4>
-<p><strong>Why:</strong> Powers KAgent AI agents and the idp-assistant chatbot</p>
-<p><strong>Get it:</strong> <a href="https://console.anthropic.com/settings/keys">https://console.anthropic.com/settings/keys</a></p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/.env</span>
-<span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span>sk-ant-YOUR_KEY
-
-<span class="c1"># Also create in Secrets Manager (bootstrap.sh reads from local/.env)</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--name<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s2">&quot;{\&quot;ANTHROPIC_API_KEY\&quot;:\&quot;sk-ant-YOUR_KEY\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-</code></pre></div></td></tr></table></div>
-<p><strong>Status:</strong> ☐ Optional / ☐ Set if using AI features</p>
-<hr />
-<h4 id="4-slack-webhook-optional-for-cost-alerts">4. Slack Webhook (optional — for cost alerts)<a class="headerlink" href="#4-slack-webhook-optional-for-cost-alerts" title="Permanent link">&para;</a></h4>
-<p><strong>Why:</strong> Budget alert notifications</p>
-<p><strong>Get it:</strong> <a href="https://api.slack.com/apps">https://api.slack.com/apps</a> → Incoming Webhooks</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--name<span class="w"> </span>idp-mvp/slack-webhook<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s2">&quot;{\&quot;SLACK_WEBHOOK_URL\&quot;:\&quot;https://hooks.slack.com/services/YOUR/WEBHOOK\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-</code></pre></div></td></tr></table></div>
-<p><strong>Status:</strong> ☐ Optional</p>
-<hr />
-<h4 id="5-datadog-apiapp-keys-optional-required-for-the-datadog-agent-dd-trace-apm-and-the-datadog-catalog-tab">5. Datadog API/App Keys (optional — required for the Datadog Agent, dd-trace APM, and the Datadog catalog tab)<a class="headerlink" href="#5-datadog-apiapp-keys-optional-required-for-the-datadog-agent-dd-trace-apm-and-the-datadog-catalog-tab" title="Permanent link">&para;</a></h4>
-<p><strong>Why:</strong> Cluster-wide infra observability + APM (see
-<a href="../sre-reliability/#datadog-infra-observability--apm">docs/sre-reliability.md</a>)</p>
-<p><strong>Get it:</strong> <a href="https://app.datadoghq.eu/organization-settings/api-keys">https://app.datadoghq.eu/organization-settings/api-keys</a> (API key) and
-<a href="https://app.datadoghq.eu/organization-settings/application-keys">https://app.datadoghq.eu/organization-settings/application-keys</a> (App key)</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in terraform/terraform.tfvars before running terraform apply</span>
-<span class="nv">datadog_api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR_DD_API_KEY&quot;</span>
-<span class="nv">datadog_app_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR_DD_APP_KEY&quot;</span>
-</code></pre></div></td></tr></table></div>
-<p>Populates both <code>idp-mvp/datadog</code> (Datadog Agent) and <code>idp-mvp/backstage</code> (Backstage <code>/datadog</code>
-proxy + dd-trace) Secrets Manager secrets — <code>scripts/bootstrap.sh</code> installs the Agent
-automatically once these are set.</p>
-<p><strong>Status:</strong> ☐ Optional / ☐ Set if using Datadog</p>
-<hr />
-<h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
+<h1 id="agentic-development-platform-adp">Agentic Development Platform (ADP)<a class="headerlink" href="#agentic-development-platform-adp" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Available on <code>main</code></strong> — opt-in.</p>
+<p>ADP extends the existing AI/ML platform (KAgent + MCP servers, see <a href="../ai-assistant/">ai-assistant.md</a>)
+from a chat assistant into a first-class, agent-driven layer for both the developer workflow
+(scaffold/code/test/review) and platform operations (cost/incidents/scaling/security). Teams that
+don't opt in see no behavior change — every phase below is additive to the platform already deployed
+by <code>bootstrap-ai.sh</code>. To pull in ADP components, run <code>./scripts/bootstrap-ai.sh --adp</code> instead of the
+bare invocation.</p>
+</blockquote>
+<h2 id="why">Why<a class="headerlink" href="#why" title="Permanent link">&para;</a></h2>
+<p>The platform already has substantial agent infrastructure — six KAgent agents and MCP servers, an
+event bus reacting to GitHub/AlertManager/ArgoCD webhooks, RAG search, and an AI/ML scaffolder category
+— but it wasn't documented, branded, or architected as a coherent whole, and agents had no safe way to
+take real mutating action autonomously (no approval gate existed anywhere). ADP closes both gaps: it
+gives the existing capability a clear identity, and it adds the missing pieces — ops coverage for
+incidents/security, and a human-in-the-loop approval layer — needed to trust agents with real actions.</p>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -2126,113 +1955,230 @@ automatically once these are set.</p>
 <span class="normal">18</span>
 <span class="normal">19</span>
 <span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
-  [ ] aws sts get-caller-identity   → works, shows correct account
-  [ ] terraform -version            → ≥ 1.5
-  [ ] kubectl version               → installed
-  [ ] helm version                  → ≥ 3.x
-  [ ] docker info                   → running, buildx available
-  [ ] gh auth status                → authenticated
-  [ ] jq --version                  → installed
-  [ ] python3 --version             → installed
+<span class="normal">21</span></pre></div></td><td class="code"><div><pre><span></span><code>                        Backstage (chat UI, /ai-assistant, approval UI)
+                                    │  A2A protocol (JSON-RPC)
+                                    ▼
+                        ┌───────────────────────┐
+                        │  platform-assistant   │  (entry point, all tools)
+                        └───────────┬───────────┘
+                                    │
+        ┌───────────┬──────────────┼──────────────┬───────────────┬─────────────┐
+        ▼           ▼              ▼              ▼               ▼             ▼
+ idp-assistant  qa-assistant  contract-assistant  cost-agent  release-agent  incident-agent*
+        │           │              │              │               │             │
+        ▼           ▼              ▼              ▼               ▼             ▼
+  idp-mcp-server qa-mcp-server contract-mcp  cost-mcp-server argocd-mcp  incident-mcp*
+  (catalog, RAG)  github-mcp-server  -server                -server      -server
 
-AWS:
-  [ ] AWS region confirmed (default: us-east-1)
-  [ ] Sufficient EC2 quota: 4× t3.medium + 4× t3.large in your region
-  [ ] S3 Terraform state bucket created (setup.sh does this)
+  * new in ADP Phase 3                              ▲
+                                                      │
+                                    agent-event-router (GitHub / AlertManager / ArgoCD webhooks)
 
-Credentials:
-  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)
-  [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
-  [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
-  [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
-  [ ] datadog_api_key / datadog_app_key set in terraform.tfvars (if using Datadog)
-
-Verification:
-  [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!
+  All mutating tool calls (sync_app, rollback_app, approve_pr, ...) route through the
+  ADP Phase 4 approval gate before executing — see &quot;HiTL &amp; Policy-as-Prompt&quot; below.
 </code></pre></div></td></tr></table></div>
 <hr />
-<h2 id="common-errors-before-deployment">Common Errors Before Deployment<a class="headerlink" href="#common-errors-before-deployment" title="Permanent link">&para;</a></h2>
-<h3 id="verify-secretssh-fails-on-github_token"><code>verify-secrets.sh</code> fails on GITHUB_TOKEN<a class="headerlink" href="#verify-secretssh-fails-on-github_token" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check local/.env has the token</span>
-grep<span class="w"> </span><span class="s2">&quot;^GITHUB_TOKEN=&quot;</span><span class="w"> </span>local/.env
-<span class="c1"># Should print: GITHUB_TOKEN=ghp_...</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="github-oauth-login-fails-after-deploy">GitHub OAuth login fails after deploy<a class="headerlink" href="#github-oauth-login-fails-after-deploy" title="Permanent link">&para;</a></h3>
-<p>The OAuth callback URL must exactly match the Backstage ALB URL:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Get the real URL</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>backstage<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[0].hostname}&#39;</span>
-
-<span class="c1"># Update your GitHub OAuth app at:</span>
-<span class="c1"># https://github.com/settings/developers → your app → Edit</span>
-<span class="c1"># Callback URL: http://&lt;above-hostname&gt;/api/auth/github/handler/frame</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="kagent-invalid_x-api-key">KAgent "invalid_x-api-key"<a class="headerlink" href="#kagent-invalid_x-api-key" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1<span class="w"> </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-<span class="c1"># Verify ANTHROPIC_API_KEY value is correct (starts with sk-ant-)</span>
-
-<span class="c1"># Update if needed:</span>
-aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/kagent<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;ANTHROPIC_API_KEY&quot;:&quot;sk-ant-NEW_KEY&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
-</code></pre></div></td></tr></table></div>
+<h2 id="whats-in-the-branch">What's in the Branch<a class="headerlink" href="#whats-in-the-branch" title="Permanent link">&para;</a></h2>
+<h3 id="phase-0-branding-epic-scaffolding">Phase 0 — Branding &amp; Epic Scaffolding<a class="headerlink" href="#phase-0-branding-epic-scaffolding" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>This doc</td>
+<td><code>docs/agentic-platform.md</code></td>
+</tr>
+<tr>
+<td><code>--adp</code> bootstrap flag</td>
+<td><code>scripts/bootstrap-ai.sh</code></td>
+</tr>
+<tr>
+<td>README / docs index callouts</td>
+<td><code>README.md</code>, <code>docs/index.md</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-1-documentation-consolidation">Phase 1 — Documentation Consolidation<a class="headerlink" href="#phase-1-documentation-consolidation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Corrected architecture doc (adds cost-agent, release-agent, cost-mcp-server, argocd-mcp-server)</td>
+<td><code>docs/ai-assistant.md</code></td>
+</tr>
+<tr>
+<td>Event-bus routing documentation (budget alert → cost-agent, ArgoCD degraded → release-agent)</td>
+<td><code>docs/ai-assistant.md</code> § Event Bus</td>
+</tr>
+<tr>
+<td>Restored missing deployable scaffolding for <code>github-mcp-server</code>, <code>cost-mcp-server</code>, <code>argocd-mcp-server</code> (Dockerfile, package.json, index.ts, tsconfig.json, helm-values) — deleted by a prior cleanup commit (<code>5230b9c</code>), leaving the tool logic in <code>server.ts</code> orphaned with no way to build/deploy it. Also fixed a pre-existing bug in their restored <code>helm-values-aws.yaml</code> (hardcoded <code>ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com</code> instead of the <code>ECR_REGISTRY_PLACEHOLDER</code> token <code>bootstrap-ai.sh</code> substitutes)</td>
+<td><code>services/{github,cost,argocd}-mcp-server/</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-2-dev-workflow-agents-hardening">Phase 2 — Dev Workflow Agents Hardening<a class="headerlink" href="#phase-2-dev-workflow-agents-hardening" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>approve_pr</code> / <code>request_changes</code> tools</td>
+<td><code>services/github-mcp-server/src/index.ts</code></td>
+</tr>
+<tr>
+<td>Code-review rule set (shift-left + contract-testing checklists)</td>
+<td><code>kubernetes/kagent/qa-agent.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<p>Note: <code>approve_pr</code>/<code>request_changes</code> are dry-run/stubbed until Phase 4's approval gate lands — no
+auto-merge before then.</p>
+<h3 id="phase-3-ops-agents-wave-1-rag-fix">Phase 3 — Ops Agents Wave 1 + RAG Fix<a class="headerlink" href="#phase-3-ops-agents-wave-1-rag-fix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>incident-mcp-server</code> (get_open_incidents, get_alert_history, get_runbook, post_incident_update, send_notification)</td>
+<td><code>services/incident-mcp-server/</code></td>
+</tr>
+<tr>
+<td><code>incident-agent</code> + toolserver</td>
+<td><code>kubernetes/kagent/incident-agent.yaml</code>, <code>kubernetes/kagent/incident-toolserver.yaml</code></td>
+</tr>
+<tr>
+<td>AlertManager routing: critical non-budget alerts → incident-agent</td>
+<td><code>services/agent-event-router/src/router.ts</code></td>
+</tr>
+<tr>
+<td>RAG fix: index rendered TechDocs pages via the techdocs-backend's per-entity <code>search_index.json</code> (portable across local filesystem and S3 publishers), replacing a dead-end raw filesystem walk of <code>/catalog</code> (the Backstage catalog-definitions mount, not the docs mount)</td>
+<td><code>backstage/app/packages/backend/src/modules/idpRagSearch.ts</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-4-hitl-approval-layer-policy-as-prompt">Phase 4 — HiTL Approval Layer &amp; Policy-as-Prompt<a class="headerlink" href="#phase-4-hitl-approval-layer-policy-as-prompt" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>approval-service</code> — REST API, <code>agent_approvals</code> table on the existing Backstage Postgres (Aurora/RDS in AWS, docker-compose pgvector image locally, reached via <code>host.docker.internal</code> from Kind pods)</td>
+<td><code>services/approval-service/</code></td>
+</tr>
+<tr>
+<td>Policy-as-Prompt rules (e.g. "sync_app on <code>prod-*</code> requires approval; rollback_app always does")</td>
+<td><code>kubernetes/kagent/policies/configmap.yaml</code>, evaluated by <code>services/approval-service/src/policy.ts</code></td>
+</tr>
+<tr>
+<td><code>check_policy</code>/<code>request_approval</code>/<code>get_approval_status</code> tools (proxy to approval-service)</td>
+<td><code>services/idp-mcp-server/src/server.ts</code></td>
+</tr>
+<tr>
+<td>Tool-server-level enforcement — <code>sync_app</code>/<code>rollback_app</code>/<code>approve_pr</code> reject a real call without an <code>approval_id</code> whose recorded status is <code>approved</code>, once <code>APPROVAL_SERVICE_URL</code> is set (opt-in via <code>bootstrap-ai.sh --adp</code>)</td>
+<td><code>services/argocd-mcp-server/src/server.ts</code>, <code>services/github-mcp-server/src/server.ts</code></td>
+</tr>
+<tr>
+<td>System-prompt updates (request approval before a real mutating call, wait for the human decision)</td>
+<td><code>kubernetes/kagent/release-agent.yaml</code>, <code>kubernetes/kagent/qa-agent.yaml</code></td>
+</tr>
+<tr>
+<td>Approval UI (list pending/all, approve/deny) at <code>/approvals</code>, proxied via <code>/api/proxy/approval-service</code></td>
+<td><code>backstage/app/packages/app/src/extensions.tsx</code> (<code>ApprovalsPage</code>)</td>
+</tr>
+<tr>
+<td>Audit log: approval-service emits its own <code>[AUDIT]</code> lines (<code>approval_requested</code>/<code>approval_auto_approved</code>/<code>approval_decided</code>) with <code>approval_id</code>, <code>decision</code>, <code>decided_by</code>; gated tools' own <code>[AUDIT]</code> entries now carry <code>approval_id</code> too</td>
+<td><code>docs/ai-assistant.md</code> § Structured audit log</td>
+</tr>
+</tbody>
+</table>
+<p>This formalizes the dry-run-then-confirm convention already used by <code>release-agent.yaml</code> into a real,
+auditable gate enforced at the tool-server layer (not just a system-prompt convention) — this phase
+ships <strong>before</strong> Phase 5 so every new agent that follows is safe-by-construction. Note <code>request_changes</code>
+is policy-exempt (it blocks merge rather than enabling it) and <code>sync_app</code> only requires approval for
+<code>prod-*</code>-named apps by default — both configurable in the policy ConfigMap.</p>
+<h3 id="phase-5-security-onboarding-agents">Phase 5 — Security &amp; Onboarding Agents<a class="headerlink" href="#phase-5-security-onboarding-agents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>security-mcp-server</code> — <code>list_vulnerable_deps</code> (GitHub Dependabot alerts, not a live Snyk API query — Dependabot is what this repo's own security remediation actually uses), <code>get_secret_rotation_status</code> (reads the GitHub issues the <code>secret-rotation</code> scaffolder template's reminder workflow opens), <code>list_policy_violations</code> (Kyverno PolicyReport/ClusterPolicyReport via the K8s API)</td>
+<td><code>services/security-mcp-server/</code></td>
+</tr>
+<tr>
+<td>RBAC for reading cluster-wide PolicyReports</td>
+<td><code>kubernetes/kagent/security-mcp-server-rbac.yaml</code></td>
+</tr>
+<tr>
+<td><code>security-agent</code> — read-only, no remediation tools</td>
+<td><code>kubernetes/kagent/security-agent.yaml</code></td>
+</tr>
+<tr>
+<td><code>onboarding-agent</code> — reuses <code>idp-mcp-server</code>'s existing catalog/RAG tools, no new MCP server</td>
+<td><code>kubernetes/kagent/onboarding-agent.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<p>security-agent has no mutating tools, so it isn't gated by Phase 4 — it's read-only by design.</p>
+<h3 id="phase-6-golden-path-promotion-tech-radar-cleanup">Phase 6 — Golden Path Promotion &amp; Tech Radar Cleanup<a class="headerlink" href="#phase-6-golden-path-promotion-tech-radar-cleanup" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AI/ML top billing in README/docs (doc-level only — no retagging in <code>all-templates.yaml</code>)</td>
+<td><code>README.md</code>, <code>docs/index.md</code></td>
+</tr>
+<tr>
+<td><code>langgraph</code>/<code>agentic-ai</code> entries softened to "under evaluation" (not built this cycle)</td>
+<td><code>backstage/catalog/tech-radar.json</code></td>
+</tr>
+</tbody>
+</table>
 <hr />
-<h2 id="deployment-order">Deployment Order<a class="headerlink" href="#deployment-order" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Verify secrets</span>
-./scripts/verify-secrets.sh
-
-<span class="c1"># 2. Personalise (first time only — replaces moatazeldebsy placeholders)</span>
-./scripts/setup.sh
-
-<span class="c1"># 3. Deploy full stack (~45–60 min)</span>
-./scripts/bootstrap.sh
-
-<span class="c1"># 4. Update GitHub OAuth callback URL with the printed ALB hostname</span>
-
-<span class="c1"># 5. Run validation</span>
-./scripts/validate-deployment.sh
-
-<span class="c1"># 6. Optional: deploy AI/ML stack</span>
-./scripts/bootstrap-ai.sh
-</code></pre></div></td></tr></table></div>
-<p>See <code>docs/DEPLOYMENT_GUIDE.md</code> for full details, known issues, and troubleshooting.</p>
+<h2 id="opting-in">Opting In<a class="headerlink" href="#opting-in" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Pull <code>main</code> — ADP scripts and templates are included; nothing runs until you opt in.</li>
+<li>Run <code>./scripts/bootstrap-ai.sh --adp</code> (in addition to the base local/AWS bootstrap) to deploy the
+   ADP-phase agents/toolservers on top of the existing AI/ML stack.</li>
+<li>Existing AI/ML deployments without <code>--adp</code> are fully unaffected — <code>cost-agent</code>/<code>release-agent</code> and
+   the original four assistants keep working exactly as before.</li>
+</ol>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../ai-assistant/">ai-assistant.md</a> — full agent/MCP server reference (Sprint 1-3 delivered history)</li>
+<li><a href="../runbooks/kagent-guardrails/">runbooks/kagent-guardrails.md</a> — existing guardrails this epic extends</li>
+<li><a href="../multi-region/">multi-region.md</a> — the V2 epic this doc's structure mirrors</li>
+</ul>
 
 
 
@@ -2262,7 +2208,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../local-setup/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Local Setup">
+          <a href="../ai-assistant/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AI Assistant">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2272,20 +2218,20 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
                 Previous
               </span>
               <div class="md-ellipsis">
-                Local Setup
+                AI Assistant
               </div>
             </div>
           </a>
         
         
           
-          <a href="../DEPLOYMENT_GUIDE/" class="md-footer__link md-footer__link--next" aria-label="Next: Deployment Guide">
+          <a href="../dora-finops/" class="md-footer__link md-footer__link--next" aria-label="Next: DORA &amp; FinOps">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Deployment Guide
+                DORA & FinOps
               </div>
             </div>
             <div class="md-footer__button md-icon">
