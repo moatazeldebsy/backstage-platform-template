@@ -1,0 +1,25 @@
+# Grants the security-mcp-server service account (in services-dev namespace)
+# read-only, cluster-wide access to Kyverno's PolicyReport/ClusterPolicyReport
+# CRDs, needed by the list_policy_violations tool.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: security-mcp-server-policy-reports
+rules:
+  - apiGroups: ["wgpolicyk8s.io"]
+    resources: ["policyreports", "clusterpolicyreports"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: security-mcp-server-policy-reports
+subjects:
+  - kind: ServiceAccount
+    name: security-mcp-server
+    namespace: services-dev
+roleRef:
+  kind: ClusterRole
+  name: security-mcp-server-policy-reports
+  apiGroup: rbac.authorization.k8s.io
