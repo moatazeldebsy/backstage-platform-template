@@ -21,27 +21,41 @@ incidents/security, and a human-in-the-loop approval layer — needed to trust a
 ## Architecture
 
 ```
-                        Backstage (chat UI, /ai-assistant, approval UI)
-                                    │  A2A protocol (JSON-RPC)
-                                    ▼
-                        ┌───────────────────────┐
-                        │  platform-assistant   │  (entry point, all tools)
-                        └───────────┬───────────┘
-                                    │
-        ┌───────────┬──────────────┼──────────────┬───────────────┬─────────────┐
-        ▼           ▼              ▼              ▼               ▼             ▼
- idp-assistant  qa-assistant  contract-assistant  cost-agent  release-agent  incident-agent*
-        │           │              │              │               │             │
-        ▼           ▼              ▼              ▼               ▼             ▼
-  idp-mcp-server qa-mcp-server contract-mcp  cost-mcp-server argocd-mcp  incident-mcp*
-  (catalog, RAG)  github-mcp-server  -server                -server      -server
+Backstage — chat UI (/ai-assistant), semantic search (/ai-search), approval UI (/approvals)
+        │  A2A protocol (JSON-RPC)                 │  /api/proxy/approval-service (list/decide)
+        ▼                                          ▼
+┌──────────────────┐                    ┌────────────────────────────┐
+│ platform-assistant│ ← entry point,    │       approval-service*      │
+│ (all tools)        │   routes by intent│  Policy-as-Prompt (ConfigMap) │
+└────────┬───────────┘                   │  + agent_approvals (Postgres) │
+         │                               └───────────────┬────────────┘
+         │  A2A                                           ▲
+         ▼                                                 │ check_policy / request_approval /
+┌────────────────────────────────────────────────────┐    │ get_approval_status
+│ Specialist agents (also reachable directly)          │────┘
+│  idp-assistant · qa-assistant · contract-assistant   │
+│  cost-agent · release-agent · incident-agent*        │
+│  security-agent* · onboarding-agent*                 │
+└───────────────────────┬──────────────────────────────┘
+                         │ MCP/HTTP
+                         ▼
+  idp-mcp :3001   qa-mcp :3002   contract-mcp :3003   github-mcp :3005
+  cost-mcp :3007  argocd-mcp :3006   incident-mcp :3008*   security-mcp :3010*
 
-  * new in ADP Phase 3                              ▲
-                                                      │
-                                    agent-event-router (GitHub / AlertManager / ArgoCD webhooks)
+  Real (non-dry-run) sync_app / rollback_app / approve_pr calls are rejected by their MCP
+  server unless they carry an approval_id whose status is "approved" — enforced in code, not
+  just a system-prompt convention. No-op unless APPROVAL_SERVICE_URL is set (bootstrap-ai.sh
+  --adp); without --adp these tools behave exactly as before.
 
-  All mutating tool calls (sync_app, rollback_app, approve_pr, ...) route through the
-  ADP Phase 4 approval gate before executing — see "HiTL & Policy-as-Prompt" below.
+                              ▲
+                              │  budget alerts → cost-agent
+                              │  critical alerts → incident-agent* (+ tracked GitHub issue)
+                              │  ArgoCD OutOfSync/Degraded → release-agent
+                    agent-event-router :3004
+              (GitHub / AlertManager / ArgoCD webhooks)
+
+  * new in ADP — Phase 3: incident-agent, incident-mcp-server · Phase 4: approval-service ·
+    Phase 5: security-agent, security-mcp-server, onboarding-agent
 ```
 
 ---

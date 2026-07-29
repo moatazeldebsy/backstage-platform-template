@@ -184,7 +184,16 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   # Ensure ECR repos exist for all MCP server images (idempotent).
   # Repo names must match the Terraform convention: ${CLUSTER_NAME}/${repo}
   # so that the REGISTRY path (…/${CLUSTER_NAME}/${repo}) resolves correctly.
-  for _repo in idp-mcp-server qa-mcp-server contract-mcp-server; do
+  # None of these have a Terraform-managed ECR repo (unlike idp/qa/contract, which
+  # predate this loop) — without creating them here, docker push fails outright.
+  _ecr_repos=(idp-mcp-server qa-mcp-server contract-mcp-server agent-event-router \
+              github-mcp-server argocd-mcp-server cost-mcp-server)
+  if $ADP; then
+    for _adp_svc in incident-mcp-server security-mcp-server approval-service; do
+      [[ -d "${REPO_ROOT}/services/${_adp_svc}" ]] && _ecr_repos+=("${_adp_svc}")
+    done
+  fi
+  for _repo in "${_ecr_repos[@]}"; do
     _full_repo="${CLUSTER_NAME}/${_repo}"
     aws ecr describe-repositories --region "${AWS_REGION}" --repository-names "${_full_repo}" &>/dev/null || \
       aws ecr create-repository \
