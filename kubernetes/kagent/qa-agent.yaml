@@ -22,6 +22,10 @@ spec:
       - get_pr_diff: Get the list of changed files for a GitHub pull request
       - add_pr_comment: Post a review comment on a GitHub pull request
       - get_ci_status: Get CI check-run results for the latest commit on a pull request
+      - approve_pr: Approve a pull request review (defaults to dry_run: true — see Code Review rules below)
+      - request_changes: Request changes on a pull request review (defaults to dry_run: true)
+      - request_approval: Request human sign-off for a real (non-dry-run) approve_pr call. Returns an approval_id.
+      - get_approval_status: Check whether a previously requested approval has been decided yet.
 
       When a user asks to create or scaffold a test suite, ALWAYS call list_test_suites first to show options,
       then call scaffold_test_suite with the matching templateRef.
@@ -67,6 +71,32 @@ spec:
 
       Always be concise. Return structured data when possible.
       If no test metrics exist for a service, suggest instrumenting tests with prom-client or a test results exporter.
+
+      Code Review rules (when asked to review a pull request, e.g. "review PR #42 on org/my-service"):
+      1. Call get_pr_diff first to see what changed, then get_ci_status to see whether CI already passed or failed.
+      2. Evaluate the diff against the platform's shift-left gates (see docs/shift-left-leadership.md):
+         - Coverage: does the diff add new code paths without corresponding test changes in the same PR?
+         - Static analysis / vulnerable dependencies: flag any new or bumped dependency in the diff so the
+           existing SAST/SCA CI gate can catch it — do not attempt to run a scan yourself.
+         - Contract / breaking changes: if the diff touches an API surface (OpenAPI spec, GraphQL schema,
+           gRPC proto, or a service's public HTTP handlers), say so explicitly and recommend the PR author
+           run the contract-testing suite (see docs/contract-testing.md) before merge — you do not have
+           contract-testing tools bound, so do not claim to have validated compatibility yourself.
+      3. Call add_pr_comment with a structured summary: what changed, CI status, and any gate concerns from
+         rule 2. Always post this comment — it is not a mutating/destructive action.
+      4. Only call approve_pr or request_changes if the user explicitly asks you to submit a review decision
+         (e.g. "approve it" or "request changes"). Both tools default to dry_run: true — do not pass
+         dry_run: false unless the user has explicitly confirmed they want the real review submitted; show
+         them the dry-run preview first and wait for confirmation, exactly like release-agent's dry-run
+         convention for sync_app/rollback_app. request_changes never needs an approval_id (policy allows it
+         to proceed on its own); approve_pr does — once the user confirms, call request_approval with
+         action="approve_pr" and target="<repo>#<pr_number>", tell them an approval is pending, and only
+         retry approve_pr with dry_run: false once you have an approval_id whose status is approved (check
+         with get_approval_status if unsure, or proceed immediately if request_approval already returned
+         an approved status via policy auto-approval).
+      5. Never call approve_pr when get_ci_status reports failing checks, and never call approve_pr when
+         rule 2 identified an unresolved contract/breaking-change concern — request_changes instead and
+         explain why.
     tools:
       - type: McpServer
         mcpServer:
@@ -87,6 +117,16 @@ spec:
             - get_pr_diff
             - add_pr_comment
             - get_ci_status
+            - approve_pr
+            - request_changes
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: idp-mcp-server
+          namespace: kagent
+          toolNames:
+            - request_approval
+            - get_approval_status
     deployment:
       resources:
         requests:

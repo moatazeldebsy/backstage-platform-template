@@ -173,3 +173,88 @@ describe('get_ci_status', () => {
     expect(result.content[0]?.text).toContain('404');
   });
 });
+
+// ── approve_pr ─────────────────────────────────────────────────────────────────
+
+describe('approve_pr', () => {
+  it('defaults to dry_run and does not call the GitHub API', async () => {
+    const client = await buildClient();
+    const result = await client.callTool({
+      name: 'approve_pr',
+      arguments: { repo: 'org/my-service', pr_number: 42 },
+    });
+    const data = parseResult(result as { content: Array<{ type: string; text?: string }> }) as { dry_run: boolean; event: string };
+    expect(data.dry_run).toBe(true);
+    expect(data.event).toBe('APPROVE');
+    expect(fetchMock()).not.toHaveBeenCalled();
+  });
+
+  it('POSTs an APPROVE review when dry_run is false', async () => {
+    const mockReview = { id: 555, html_url: 'https://github.com/org/my-service/pull/42#pullrequestreview-555' };
+    fetchMock().mockResolvedValueOnce(makeResponse(mockReview));
+    const client = await buildClient();
+    const result = await client.callTool({
+      name: 'approve_pr',
+      arguments: { repo: 'org/my-service', pr_number: 42, dry_run: false },
+    });
+    const data = parseResult(result as { content: Array<{ type: string; text?: string }> }) as { review_id: number };
+    expect(data.review_id).toBe(555);
+    const calledUrl: string = fetchMock().mock.calls[0][0];
+    expect(calledUrl).toContain('/pulls/42/reviews');
+    const calledInit = fetchMock().mock.calls[0][1];
+    expect(JSON.parse(calledInit.body as string).event).toBe('APPROVE');
+  });
+
+  it('returns isError on GitHub API error', async () => {
+    fetchMock().mockResolvedValueOnce(makeResponse('Forbidden', 403));
+    const client = await buildClient();
+    const result = await client.callTool({
+      name: 'approve_pr',
+      arguments: { repo: 'org/my-service', pr_number: 42, dry_run: false },
+    }) as ErrorResult;
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('403');
+  });
+});
+
+// ── request_changes ──────────────────────────────────────────────────────────
+
+describe('request_changes', () => {
+  it('defaults to dry_run and does not call the GitHub API', async () => {
+    const client = await buildClient();
+    const result = await client.callTool({
+      name: 'request_changes',
+      arguments: { repo: 'org/my-service', pr_number: 42, body: 'Please add tests' },
+    });
+    const data = parseResult(result as { content: Array<{ type: string; text?: string }> }) as { dry_run: boolean; event: string };
+    expect(data.dry_run).toBe(true);
+    expect(data.event).toBe('REQUEST_CHANGES');
+    expect(fetchMock()).not.toHaveBeenCalled();
+  });
+
+  it('POSTs a REQUEST_CHANGES review when dry_run is false', async () => {
+    const mockReview = { id: 556, html_url: 'https://github.com/org/my-service/pull/42#pullrequestreview-556' };
+    fetchMock().mockResolvedValueOnce(makeResponse(mockReview));
+    const client = await buildClient();
+    const result = await client.callTool({
+      name: 'request_changes',
+      arguments: { repo: 'org/my-service', pr_number: 42, body: 'Please add tests', dry_run: false },
+    });
+    const data = parseResult(result as { content: Array<{ type: string; text?: string }> }) as { review_id: number };
+    expect(data.review_id).toBe(556);
+    const calledInit = fetchMock().mock.calls[0][1];
+    expect(JSON.parse(calledInit.body as string).event).toBe('REQUEST_CHANGES');
+    expect(JSON.parse(calledInit.body as string).body).toBe('Please add tests');
+  });
+
+  it('returns isError on GitHub API error', async () => {
+    fetchMock().mockResolvedValueOnce(makeResponse('Forbidden', 403));
+    const client = await buildClient();
+    const result = await client.callTool({
+      name: 'request_changes',
+      arguments: { repo: 'org/my-service', pr_number: 42, body: 'nope', dry_run: false },
+    }) as ErrorResult;
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('403');
+  });
+});
