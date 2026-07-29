@@ -38,6 +38,12 @@ spec:
                   exclude: true
                 - path: services/qa-mcp-server
                   exclude: true
+                - path: services/incident-mcp-server
+                  exclude: true
+                - path: services/security-mcp-server
+                  exclude: true
+                - path: services/approval-service
+                  exclude: true
           # Generator 2: one entry per environment
           - list:
               elements:
