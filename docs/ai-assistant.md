@@ -3,7 +3,9 @@
 The AI Assistant is a chat interface embedded in the Backstage portal backed by
 [KAgent](https://kagent.dev) AI agents (Claude) with live access to the service
 catalog, Prometheus metrics, Kubernetes deployments, Backstage scaffolder, test
-suites, contract testing, GitHub PRs, and persistent user memory.
+suites, contract testing, GitHub PRs, cost/budget data, ArgoCD application state,
+and persistent user memory. This is the foundation the
+[Agentic Development Platform (ADP)](agentic-platform.md) epic builds on.
 
 ---
 
@@ -32,19 +34,23 @@ The AI Assistant is a **native React chat component** embedded directly in the B
 │    idp-assistant       — platform / scaffolding (claude-haiku)   │
 │    qa-assistant        — test suites + PR review (claude-sonnet) │
 │    contract-assistant  — API contracts (claude-sonnet)           │
-└────────────┬──────────────┬──────────────┬────────────┬──────────┘
-             │ MCP/HTTP     │              │            │
-             ▼              ▼              ▼            ▼
-    ┌──────────────┐ ┌──────────┐ ┌──────────────┐ ┌──────────────┐
-    │ idp-mcp      │ │ qa-mcp   │ │ contract-mcp │ │ github-mcp   │
-    │ :3001        │ │ :3002    │ │ :3003        │ │ :3005        │
-    │ 9 tools      │ │ 4 tools  │ │ 9 tools      │ │ 3 tools      │
-    └──────────────┘ └──────────┘ └──────────────┘ └──────────────┘
+│    cost-agent          — cost/budget analysis (claude-sonnet)    │
+│    release-agent       — ArgoCD sync/rollback (claude-sonnet)    │
+│    incident-agent      — alert triage (claude-sonnet)            │
+└──────┬──────────┬──────────────┬────────────┬───────┬───────┬───────┬────┘
+       │ MCP/HTTP │              │            │       │       │       │
+       ▼          ▼              ▼            ▼       ▼       ▼       ▼
+ ┌──────────┐┌──────────┐┌──────────────┐┌──────────┐┌────────┐┌──────────┐┌───────────┐
+ │ idp-mcp  ││ qa-mcp   ││ contract-mcp ││ github-mcp││cost-mcp││argocd-mcp││incident-mcp│
+ │ :3001    ││ :3002    ││ :3003        ││ :3005     ││ :3007  ││ :3006    ││ :3008      │
+ │ 9 tools  ││ 4 tools  ││ 9 tools      ││ 5 tools   ││5 tools ││5 tools   ││5 tools     │
+ └──────────┘└──────────┘└──────────────┘└──────────┘└────────┘└──────────┘└───────────┘
 
 Event Bus (agent-event-router :3004)
   ← GitHub webhooks (PR open/update → qa-assistant)
-  ← AlertManager webhooks (firing alerts → idp-assistant)
-  ← ArgoCD webhooks (OutOfSync/Degraded → idp-assistant)
+  ← AlertManager webhooks (budget alerts → cost-agent; critical non-budget alerts → incident-agent
+                            (+ opens/resolves a GitHub incident issue); other firing alerts → idp-assistant)
+  ← ArgoCD webhooks (OutOfSync/Degraded → release-agent)
 ```
 
 ### CLI
@@ -174,9 +180,22 @@ responding, so defaults are pre-filled without asking.
 | `idp-assistant` | `kubernetes/kagent/idp-agent.yaml` | claude-haiku | Platform / scaffolding only |
 | `qa-assistant` | `kubernetes/kagent/qa-agent.yaml` | claude-sonnet | Test suites + GitHub PR review |
 | `contract-assistant` | `kubernetes/kagent/contract-agent.yaml` | claude-sonnet | API contracts |
+| `cost-agent` | `kubernetes/kagent/cost-agent.yaml` | claude-sonnet | Cost/budget analysis via `cost-mcp-server` + `catalog_search` |
+| `release-agent` | `kubernetes/kagent/release-agent.yaml` | claude-sonnet | ArgoCD sync/rollback via `argocd-mcp-server` + `list_deployments` |
+| `incident-agent` | `kubernetes/kagent/incident-agent.yaml` | claude-sonnet | Alert triage via `incident-mcp-server` + `get_service_metrics`/`list_deployments` |
+| `security-agent` | `kubernetes/kagent/security-agent.yaml` | claude-sonnet | Read-only: vulnerable deps, secret rotation, policy violations via `security-mcp-server` |
+| `onboarding-agent` | `kubernetes/kagent/onboarding-agent.yaml` | claude-haiku | Template/catalog/docs discovery — reuses `idp-mcp-server`, no new MCP server |
 
 Specialist agents are still available at `/a2a/kagent/<name>` but `platform-assistant`
 is the recommended entry point for all developer interactions.
+
+`cost-agent` and `release-agent` are also **proactive** — the event router (§5) invokes
+them directly on budget alerts and ArgoCD degraded-state webhooks, without a human
+starting the conversation. `release-agent`'s system prompt requires `dry_run: true` on
+`sync_app`/`rollback_app` before any real action, and an explicit user confirmation
+("go ahead" / "proceed" / "confirm") before dropping dry-run — the only HiTL-style
+convention in the platform today (see [agentic-platform.md](agentic-platform.md) Phase 4
+for the plan to formalize this into a real approval gate).
 
 #### ModelConfigs
 
@@ -243,17 +262,65 @@ account. See `kubernetes/kagent/idp-mcp-server-rbac.yaml`.
 | `get_pr_diff` | `GET /repos/{repo}/pulls/{pr}/files` | Returns changed files with additions/deletions |
 | `add_pr_comment` | `POST /repos/{repo}/issues/{pr}/comments` | Posts a markdown comment; emits `[AUDIT]` log |
 | `get_ci_status` | PR head SHA → `GET /repos/{repo}/commits/{sha}/check-runs` | Returns all check-run results |
+| `approve_pr` | `POST /repos/{repo}/pulls/{pr}/reviews` (`event: APPROVE`) | Defaults to `dry_run: true` — no HiTL approval gate exists yet (Phase 4) |
+| `request_changes` | `POST /repos/{repo}/pulls/{pr}/reviews` (`event: REQUEST_CHANGES`) | Defaults to `dry_run: true`; `body` required |
 
 **Secret:** `github-mcp-server-token` in `services-dev` namespace, key `token`.
 Optional locally (warns on startup if missing), required in AWS.
 
 **Used by:** `qa-assistant` for automated PR review; `platform-assistant` for cross-domain queries.
 
+#### `argocd-mcp-server` (port 3006)
+
+**File:** `services/argocd-mcp-server/src/server.ts` (tools), `services/argocd-mcp-server/src/index.ts` (entrypoint)
+
+| Tool | ArgoCD API call | Notes |
+|------|-----------------|-------|
+| `list_apps` | `GET /api/v1/applications` | Lists all ArgoCD-managed apps |
+| `get_app_health` | `GET /api/v1/applications/{name}` | Returns sync + health status |
+| `get_app_diff` | `GET /api/v1/applications/{name}/managed-resources` | Live vs. desired state diff |
+| `sync_app` | `POST /api/v1/applications/{name}/sync` | Supports `dry_run: true` (default); `[AUDIT]` log on real sync |
+| `rollback_app` | `POST /api/v1/applications/{name}/rollback` | Supports `dry_run: true` (default); `[AUDIT]` log on real rollback |
+
+**Secret:** `argocd-mcp-server-token` in `services-dev` namespace. Optional locally (warns and 401s on tool calls if missing), required in AWS.
+
+**Used by:** `release-agent`, proactively triggered on ArgoCD `OutOfSync`/`Degraded` webhooks.
+
+#### `cost-mcp-server` (port 3007)
+
+**File:** `services/cost-mcp-server/src/server.ts` (tools), `services/cost-mcp-server/src/index.ts` (entrypoint)
+
+| Tool | Upstream | Notes |
+|------|----------|-------|
+| `get_namespace_cost` | OpenCost `/model/allocation` | Per-namespace cost breakdown |
+| `get_team_spend` | Prometheus `idp_team_actual_cost_usd_monthly` | Requires tech-insights-exporter |
+| `list_budget_overruns` | Prometheus `idp_team_*` metrics | Teams over their configured budget |
+| `get_rightsizing_recommendations` | OpenCost `/model/allocation` | Suggests requests/limits adjustments |
+| `forecast_budget` | Prometheus (current burn rate) | End-of-month spend projection |
+
+**Used by:** `cost-agent`, proactively triggered on `TeamBudgetWarning`/`TeamBudgetExceeded`/`TeamBudgetOverrun` AlertManager alerts.
+
+#### `incident-mcp-server` (port 3008)
+
+**File:** `services/incident-mcp-server/src/server.ts` (tools), `services/incident-mcp-server/src/index.ts` (entrypoint)
+
+| Tool | Upstream | Notes |
+|------|----------|-------|
+| `get_open_incidents` | GitHub issues search, `labels=incident:open` | Reads back what `agent-event-router`'s `createIncidentIssue` writes |
+| `get_alert_history` | Prometheus `ALERTS` metric, `query_range` | Summarizes firing periods over a configurable window (default 24h, max 168h) |
+| `get_runbook` | GitHub contents API, `docs/runbooks/{name}.md` | Falls back to listing available runbooks if the name doesn't match |
+| `post_incident_update` | `POST /repos/{repo}/issues/{issue}/comments` | `[AUDIT]` logged |
+| `send_notification` | Slack incoming webhook | No-op (`sent: false`) if `SLACK_WEBHOOK_URL` is unset |
+
+**Secrets:** reuses `github-mcp-server-token` for `GITHUB_TOKEN`; `incident-mcp-server-secrets` (key `slack-webhook-url`) for `SLACK_WEBHOOK_URL`, created by `bootstrap-ai.sh --adp` when `SLACK_WEBHOOK_URL` is set in `local/.env`.
+
+**Used by:** `incident-agent`, proactively triggered on critical non-budget AlertManager alerts.
+
 ---
 
 ### 5. Event Bus — `agent-event-router`
 
-**File:** `services/agent-event-router/src/index.ts`
+**File:** `services/agent-event-router/src/index.ts` (Express app + webhook auth), `services/agent-event-router/src/router.ts` (routing logic)
 
 A small Express service (port 3004) that receives webhooks from GitHub, AlertManager,
 and ArgoCD and fans out to agents via A2A. This is what makes agents **proactive** —
@@ -263,8 +330,11 @@ they respond to platform events without a human initiating the conversation.
 |--------|---------|--------------|--------|
 | GitHub | `pull_request` opened/updated | `qa-assistant` | Review test coverage, post PR comment |
 | GitHub | `push` to main | `idp-assistant` | Notify of new deployment candidate |
-| AlertManager | `firing` alert (critical/warning) | `idp-assistant` | Diagnose + suggest remediation |
-| ArgoCD | App `OutOfSync` or `Degraded` | `idp-assistant` | Check sync status |
+| AlertManager | `firing` alert, name/labels match budget (`TeamBudgetWarning`/`TeamBudgetExceeded`/`TeamBudgetOverrun` or containing "budget") | `cost-agent` | Call `get_team_spend` + `forecast_budget` + `get_rightsizing_recommendations` for the team |
+| AlertManager | `firing` alert, non-budget, `severity: critical` | `incident-agent` | A GitHub incident issue is created first (via `createIncidentIssue`, tracked in-memory by alert fingerprint); the agent message references its issue number. Call `get_alert_history` + `get_runbook`, cross-reference deployments/metrics, post findings via `post_incident_update` |
+| AlertManager | `firing` alert, non-budget, any other severity | `idp-assistant` | Diagnose + suggest remediation |
+| AlertManager | `resolved` status for a tracked fingerprint | *(none — closes the GitHub issue via `resolveIncidentIssue`)* | Closes the incident issue opened above |
+| ArgoCD | App `OutOfSync` or `Degraded` | `release-agent` | Call `get_app_health` + `get_app_diff`, then propose sync or rollback (dry-run first) |
 
 **Security:**
 - GitHub webhooks: HMAC-SHA256 signature verified via `crypto.timingSafeEqual` with
@@ -334,7 +404,12 @@ The agent never breaks this into multiple turns or asks for confirmation.
 
 ### Structured audit log
 
-Every tool call on the `idp-mcp-server` and `contract-mcp-server` emits a structured `[AUDIT]` JSON line to stdout:
+Every tool call on `idp-mcp-server`, `contract-mcp-server`, `argocd-mcp-server`,
+`github-mcp-server`, and `incident-mcp-server` emits a structured `[AUDIT]` JSON line
+to stdout for mutating actions (`scaffold_service`, `register_contract`,
+`sync_app`/`rollback_app`, `add_pr_comment`, `approve_pr`/`request_changes`,
+`post_incident_update`, `send_notification`). `cost-mcp-server` has no audit log — all
+five of its tools are read-only.
 
 ```json
 [AUDIT] {"ts":"2026-06-09T12:00:00Z","server":"idp-mcp-server","action":"scaffold_service_requested","agent":"platform-assistant","service":"demo-svc","template":"python-service","dry_run":false}
@@ -347,6 +422,14 @@ Every tool call on the `idp-mcp-server` and `contract-mcp-server` emits a struct
 | `action` | Tool-specific action identifier (e.g. `scaffold_service_requested`, `register_contract_requested`) |
 | `agent` | Agent ID extracted from the `X-Agent-ID` header, falling back to `User-Agent` |
 | Tool-specific fields | e.g. `service`, `template`, `dry_run`, `provider`, `version` |
+
+**ADP Phase 4 (HiTL approval gate):** `approval-service` (docs/agentic-platform.md)
+emits its own `[AUDIT]` lines with `event: "approval_requested"`, `"approval_auto_approved"`,
+and `"approval_decided"`, each carrying `approval_id`, `action`, `agent`, `target`, and —
+once decided — `decision`/`decided_by`. This is the audit trail for every approval a
+human made (or that Policy-as-Prompt auto-approved) — cross-reference the `approval_id`
+that appears in the gated tool's own `[AUDIT]` entries (`sync_app_requested`, etc.) once
+those tools pass one through.
 
 ### Querying audit logs in Loki
 
@@ -578,15 +661,12 @@ cd services/github-mcp-server && docker build -t localhost:5003/github-mcp-serve
 kubectl rollout restart deployment/github-mcp-server -n services-dev
 ```
 
-## What's next (Sprint 4+)
+## What's next
 
-| Sprint | Features |
-|--------|---------|
-| Sprint 4 | `argocd-mcp-server` + `release-agent` + `cost-mcp-server` + `cost-agent` |
-| Sprint 5 | `incident-mcp-server` + `incident-agent` + `notification-mcp-server` |
-| Sprint 6 | RAG expansion (runbooks, ADRs) + hallucination detection + Ollama ModelConfig |
-| Sprint 7 | `security-mcp-server` + `security-agent` + `onboarding-agent` |
-| Sprint 8 | HiTL approval workflow + Policy-as-Prompt |
+Sprints 1-4 above are delivered and documented in this file. The remaining roadmap
+(incident/security agents, RAG expansion, HiTL approval + Policy-as-Prompt) has been
+reorganized into the **Agentic Development Platform (ADP)** epic — see
+[agentic-platform.md](agentic-platform.md) for the phased plan and current status.
 
 ### Scaffold task stuck in "processing"
 
@@ -650,7 +730,8 @@ kubectl rollout restart deployment/idp-mcp-server -n kagent
 ## AI Search (Semantic / RAG)
 
 The `/ai-search` page in Backstage provides semantic search over the service catalog
-using [Voyage AI](https://www.voyageai.com) embeddings stored in pgvector.
+**and rendered TechDocs content** (runbooks, architecture docs, this file) using
+[Voyage AI](https://www.voyageai.com) embeddings stored in pgvector.
 
 ### Architecture
 
@@ -661,6 +742,16 @@ Browser → Backstage frontend (AiSearchPage)
             ↓  Voyage AI API (voyage-3-lite, 512-dim)
             ↓  PostgreSQL + pgvector (HNSW cosine similarity)
             → top-10 results with similarity score
+
+Indexing (every 30 min, or POST /api/rag-search/index):
+  1. Catalog entities — GET {catalogBase}/entities (description, tags, owner)
+  2. External sources — ragSearch.externalSources config (optional, off by default)
+  3. TechDocs pages — for every entity with a backstage.io/techdocs-ref annotation,
+     fetch {techdocsBase}/static/docs/<namespace>/<kind>/<name>/search/search_index.json
+     (the same per-entity search index the TechDocs UI's own search box reads) and
+     index each page's rendered text. This goes through the techdocs-backend, so it
+     works the same whether the publisher is local filesystem (Kind) or S3 (AWS) —
+     it does NOT read markdown source files directly.
 ```
 
 ### Prerequisites
@@ -700,12 +791,15 @@ Registered in `backend/src/index.ts` as `ragSearchPlugin`. Exposes three endpoin
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/rag-search/search?q=<query>` | GET | Returns top-10 semantically similar catalog entities |
-| `/api/rag-search/index` | POST | Triggers a manual re-index of the catalog |
+| `/api/rag-search/search?q=<query>` | GET | Returns top-10 semantically similar results (catalog entities + TechDocs pages) |
+| `/api/rag-search/index` | POST | Triggers a manual re-index of catalog entities + TechDocs pages |
 | `/api/rag-search/status` | GET | Returns last-indexed timestamp and document count |
 
-The plugin auto-indexes the full catalog every 30 minutes (configurable via
-`ragSearch.indexIntervalMinutes` in `app-config.yaml`).
+The plugin auto-indexes the catalog and TechDocs every 30 minutes (configurable via
+`ragSearch.indexIntervalMinutes` in `app-config.yaml`). A page only gets indexed once its
+TechDocs site has been built at least once (visit the entity's Docs tab, or wait for the
+scheduled TechDocs build) — the indexer reads the already-built `search_index.json`, it
+does not trigger a TechDocs build itself.
 
 ### Configuration (`app-config.yaml`)
 

@@ -28,6 +28,7 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 ### Advanced Topics
 - [Contract Testing](contract-testing.md) — Self-describing, self-testing APIs with MCP
 - [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage
+- [Agentic Development Platform (ADP)](agentic-platform.md) — Agent-driven dev workflow + ops, HiTL approval gate, opt-in via `bootstrap-ai.sh --adp`
 - [DORA & FinOps](dora-finops.md) — DORA entity tab (Elite/High/Medium/Low badges) + FinOps cost overview with team dimension in Backstage
 - [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC, per-team secret isolation, production hardening
 - [Flaky-Test Quarantine](flaky-test-quarantine.md) — How flaky tests get detected (exporter) and acted on (auto quarantine PRs)

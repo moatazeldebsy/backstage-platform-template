@@ -32,6 +32,7 @@ nav:
   - CLI Reference: cli-reference.md
   - Scripts Reference: scripts-reference.md
   - AI Assistant: ai-assistant.md
+  - Agentic Development Platform: agentic-platform.md
   - DORA & FinOps: dora-finops.md
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
