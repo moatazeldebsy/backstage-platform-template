@@ -241,29 +241,18 @@ export async function routeAlertManager(
 
     const summary = annotations.summary ?? '';
     const description = annotations.description ?? '';
-
-    const isBudgetAlert = ['TeamBudgetWarning', 'TeamBudgetExceeded', 'TeamBudgetOverrun'].includes(name) || name.toLowerCase().includes('budget');
-    const targetAgent = isBudgetAlert ? 'cost-agent' : 'idp-assistant';
     const team = labels.team ?? '';
 
-    const msg = isBudgetAlert
-      ? `Budget alert firing: "${name}" for team "${team}" (severity: ${severity}). ` +
-        `${description ? `${description}. ` : ''}` +
-        `Call get_team_spend and forecast_budget for team "${team}", then get_rightsizing_recommendations for their namespace.`
-      : `Alert firing: "${name}" (severity: ${severity}) in namespace ${namespace}. ` +
-        `${summary ? `Summary: ${summary}. ` : ''}` +
-        `${description ? `Details: ${description}. ` : ''}` +
-        `Investigate by checking recent deployments, service metrics, and pod status.`;
-
-    await postFn(targetAgent, msg);
-    counter?.inc({ source: 'alertmanager', event_type: 'firing', agent: targetAgent, outcome: 'routed' });
-
+    // Critical alerts get a tracked GitHub issue *before* routing, so the target
+    // agent's message can reference the issue number directly.
+    let issueNumber: number | undefined;
     if (github && openIncidents && severity === 'critical' && !openIncidents.has(fingerprint)) {
       try {
-        const issueNumber = await createIncidentIssue(alert, github);
-        if (issueNumber) {
+        const created = await createIncidentIssue(alert, github);
+        if (created) {
+          issueNumber = created;
           openIncidents.set(fingerprint, {
-            issueNumber,
+            issueNumber: created,
             alertname: name,
             startsAt: (alert.startsAt as string) ?? new Date().toISOString(),
           });
@@ -273,6 +262,28 @@ export async function routeAlertManager(
         console.error('[event-router] failed to create incident issue:', err);
       }
     }
+
+    const isBudgetAlert = ['TeamBudgetWarning', 'TeamBudgetExceeded', 'TeamBudgetOverrun'].includes(name) || name.toLowerCase().includes('budget');
+    const targetAgent = isBudgetAlert ? 'cost-agent' : severity === 'critical' ? 'incident-agent' : 'idp-assistant';
+
+    const issueRef = issueNumber ? ` Tracked as incident issue #${issueNumber}.` : '';
+    const msg = isBudgetAlert
+      ? `Budget alert firing: "${name}" for team "${team}" (severity: ${severity}). ` +
+        `${description ? `${description}. ` : ''}` +
+        `Call get_team_spend and forecast_budget for team "${team}", then get_rightsizing_recommendations for their namespace.`
+      : targetAgent === 'incident-agent'
+      ? `Critical alert firing: "${name}" (severity: ${severity}) in namespace ${namespace}.${issueRef} ` +
+        `${summary ? `Summary: ${summary}. ` : ''}` +
+        `${description ? `Details: ${description}. ` : ''}` +
+        `Call get_alert_history for this alertname, get_runbook for a matching procedure, and cross-reference ` +
+        `recent deployments and service metrics. Post a diagnosis to the tracked issue if you reach one.`
+      : `Alert firing: "${name}" (severity: ${severity}) in namespace ${namespace}. ` +
+        `${summary ? `Summary: ${summary}. ` : ''}` +
+        `${description ? `Details: ${description}. ` : ''}` +
+        `Investigate by checking recent deployments, service metrics, and pod status.`;
+
+    await postFn(targetAgent, msg);
+    counter?.inc({ source: 'alertmanager', event_type: 'firing', agent: targetAgent, outcome: 'routed' });
   }
 }
 

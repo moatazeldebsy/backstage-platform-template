@@ -1,7 +1,5 @@
 import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api';
 import express, { Router } from 'express';
-import fs from 'fs';
-import path from 'path';
 
 const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
 const VOYAGE_MODEL = 'voyage-3-lite';
@@ -119,7 +117,7 @@ export const ragSearchPlugin = createBackendPlugin({
           }
         }
 
-        async function indexCatalog() {
+        async function fetchCatalogEntities(): Promise<any[]> {
           const catalogBase = await discovery.getBaseUrl('catalog');
           const { token } = await auth.getPluginRequestToken({
             onBehalfOf: await auth.getOwnServiceCredentials(),
@@ -130,9 +128,12 @@ export const ragSearchPlugin = createBackendPlugin({
           });
           if (!resp.ok) {
             logger.warn(`Catalog fetch failed: ${resp.status}`);
-            return;
+            return [];
           }
-          const entities: any[] = await resp.json();
+          return resp.json();
+        }
+
+        async function indexCatalog(entities: any[]) {
           const docs = entities.map((e: any) => {
             const ref = `${e.kind}:${e.metadata?.namespace ?? 'default'}/${e.metadata?.name}`;
             const desc = e.metadata?.description ?? '';
@@ -162,56 +163,65 @@ export const ragSearchPlugin = createBackendPlugin({
           if (docs.length) await upsertDocs(docs);
         }
 
-        async function indexMarkdownFiles() {
-          const docs: { id: string; title: string; kind: string; url: string; content: string }[] = [];
-          const catalogDir = '/catalog';
+        // Indexes rendered TechDocs content via the techdocs-backend's own
+        // search_index.json (the same file the in-app TechDocs search box reads),
+        // rather than walking markdown off the filesystem. That file is served
+        // through the techdocs plugin regardless of publisher backend (local
+        // filesystem in Kind, S3 in AWS — see app-config.aws.yaml), so this
+        // works identically in both environments unlike a direct file/S3 read.
+        async function indexTechDocs(entities: any[]) {
+          const techdocsBase = await discovery.getBaseUrl('techdocs');
+          const { token } = await auth.getPluginRequestToken({
+            onBehalfOf: await auth.getOwnServiceCredentials(),
+            targetPluginId: 'techdocs',
+          });
           const appBaseUrl = config.getString('app.baseUrl');
+          const docs: { id: string; title: string; kind: string; url: string; content: string }[] = [];
 
-          if (!fs.existsSync(catalogDir)) {
-            logger.debug('RAG: /catalog directory does not exist, skipping markdown indexing');
-            return;
-          }
+          const techdocsEntities = entities.filter(
+            (e: any) => e.metadata?.annotations?.['backstage.io/techdocs-ref'],
+          );
 
-          function walkDir(dir: string): void {
+          for (const e of techdocsEntities) {
+            const namespace = e.metadata?.namespace ?? 'default';
+            const kind = String(e.kind).toLowerCase();
+            const name = e.metadata?.name;
+            const entityPath = `${namespace}/${kind}/${name}`;
             try {
-              const entries = fs.readdirSync(dir, { withFileTypes: true });
-              for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory() && !entry.name.startsWith('.')) {
-                  walkDir(fullPath);
-                } else if (entry.isFile() && entry.name.endsWith('.md')) {
-                  try {
-                    const content = fs.readFileSync(fullPath, 'utf-8');
-                    const relPath = path.relative(catalogDir, fullPath);
-                    const title = entry.name.replace('.md', '');
-                    const url = `${appBaseUrl}/catalog/docs/${relPath}`;
-                    docs.push({
-                      id: `docs:${relPath}`,
-                      title,
-                      kind: 'Documentation',
-                      url,
-                      content: truncate(content),
-                    });
-                  } catch (err: any) {
-                    logger.debug(`RAG: failed to read ${fullPath}: ${err.message}`);
-                  }
-                }
+              const resp = await fetch(`${techdocsBase}/static/docs/${entityPath}/search/search_index.json`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!resp.ok) {
+                logger.debug(`RAG: no techdocs search index for ${entityPath} (${resp.status}) — not built yet or entity has no docs`);
+                continue;
+              }
+              const index = (await resp.json()) as { docs?: { title?: string; text?: string; location?: string }[] };
+              for (const page of index.docs ?? []) {
+                if (!page.text) continue;
+                const location = page.location ?? '';
+                docs.push({
+                  id: `techdocs:${entityPath}:${location}`,
+                  title: page.title || name,
+                  kind: 'Documentation',
+                  url: `${appBaseUrl}/docs/${entityPath}/${location}`,
+                  content: truncate(page.text),
+                });
               }
             } catch (err: any) {
-              logger.warn(`RAG: failed to walk ${dir}: ${err.message}`);
+              logger.debug(`RAG: failed to fetch techdocs index for ${entityPath}: ${err.message}`);
             }
           }
 
-          walkDir(catalogDir);
           if (docs.length) await upsertDocs(docs);
-          logger.info(`RAG: indexed ${docs.length} markdown files from /catalog`);
+          logger.info(`RAG: indexed ${docs.length} TechDocs pages across ${techdocsEntities.length} entities`);
         }
 
         async function runIndex() {
           logger.info('RAG: starting index run');
-          await indexCatalog();
+          const entities = await fetchCatalogEntities();
+          await indexCatalog(entities);
           await indexExternalSources();
-          await indexMarkdownFiles();
+          await indexTechDocs(entities);
           logger.info('RAG: index run complete');
         }
 
