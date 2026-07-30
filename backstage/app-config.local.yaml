@@ -82,8 +82,99 @@ integrations:
 # deploy-to-kind is intentionally NOT in all-templates.yaml (that file is shared
 # with AWS, and "deploy to a local Kind cluster" makes no sense there) — registered
 # here instead, local-only.
+#
+# IMPORTANT: Backstage's config loader merges objects but *replaces* arrays
+# wholesale when a later config layer redefines the same key — it does not
+# concatenate them. Since this file loads on top of app-config.yaml, a
+# `catalog.locations` list here completely replaces (not appends to) the
+# base list, silently dropping every Component/System/User/Group/API location
+# and leaving the catalog empty except for templates. So the full base list
+# is duplicated below alongside the two local-only template entries. Keep
+# this list in sync with app-config.yaml's `catalog.locations` (and see the
+# equivalent note in app-config.aws.yaml, which has the same requirement).
 catalog:
   locations:
+    # Platform entities: users, groups (system moved to root catalog-info.yaml)
+    - type: file
+      target: /catalog/catalog-info.yaml
+      rules:
+        - allow: [Component, System, User, Group]
+    # Auto-discover team Group entities created by the team-namespace scaffold template
+    - type: file
+      target: /catalog/groups/*.yaml
+      rules:
+        - allow: [Group]
+    # Domain entities — one file per business domain (platform, engineering, mobile, ai-ml, quality)
+    - type: file
+      target: /catalog/domains/*.yaml
+      rules:
+        - allow: [Domain, System]
+    # Mobile platform catalog
+    - type: file
+      target: /catalog/mobile-catalog.yaml
+      rules:
+        - allow: [Component]
+    # QA team, qa-engineer user, QA platform component, and QA Resource entities
+    - type: file
+      target: /catalog/qa-catalog.yaml
+      rules:
+        - allow: [User, Group, Component, Resource]
+    # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
+    - type: file
+      target: /catalog-info.yaml
+      rules:
+        - allow: [System]
+    # API definitions
+    - type: file
+      target: /catalog/apis/hello-service-api.yaml
+      rules:
+        - allow: [API]
+    # Registered services (co-located catalog-info uses dir:. for techdocs)
+    - type: file
+      target: /services/hello-service/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/services/idp-assistant/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/services/contract-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── AI / ML / MCP Platform ───────────────────────────────────────────────
+    - type: file
+      target: /catalog/resources/ai-platform.yaml
+      rules:
+        - allow: [Resource, Component]
+    - type: file
+      target: /catalog/resources/argo-workflows.yaml
+      rules:
+        - allow: [Resource]
+    - type: file
+      target: /services/idp-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /services/idp-mcp-server/api.yaml
+      rules:
+        - allow: [API]
+    # ── QA MCP Server ────────────────────────────────────────────────────────
+    - type: file
+      target: /services/qa-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── LLM Eval suite ───────────────────────────────────────────────────────
+    - type: file
+      target: /test-suites/test-deepeval/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── Scaffolded ML experiments (written at scaffold-time by idp:run-training-job) ──
+    - type: file
+      target: /catalog/ml-experiments/*/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    # ── Local-only template registrations (see note above) ─────────────────
     - type: file
       target: /catalog/all-templates.yaml
       rules:

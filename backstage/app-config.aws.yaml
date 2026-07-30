@@ -193,11 +193,82 @@ catalog:
       rules:
         - allow: [Template, Location]
     # Platform entities (catalog-info.yaml, groups, domains, mobile/qa catalogs,
-    # services, resources, ML experiments) are NOT re-registered here — they're
-    # already registered via app-config.yaml's `type: file` locations, which are
-    # merged into this config on AWS too (see aws/backstage/deployment.yaml's two
-    # --config flags). Re-registering them here via `type: url` would double-register
-    # every one of them. See backstage/app-config.yaml.
+    # services, resources, ML experiments): Backstage's config loader merges
+    # objects but *replaces* arrays wholesale when a later config layer
+    # redefines the same key — it does NOT concatenate them. Since this file
+    # is merged on top of app-config.yaml (aws/backstage/deployment.yaml's two
+    # --config flags), a `catalog.locations` list here completely replaces
+    # (not appends to) the base list unless every base entry is duplicated
+    # below too. Keep this list in sync with app-config.yaml's
+    # `catalog.locations` (same requirement noted in app-config.local.yaml).
+    - type: file
+      target: /catalog/catalog-info.yaml
+      rules:
+        - allow: [Component, System, User, Group]
+    - type: file
+      target: /catalog/groups/*.yaml
+      rules:
+        - allow: [Group]
+    - type: file
+      target: /catalog/domains/*.yaml
+      rules:
+        - allow: [Domain, System]
+    - type: file
+      target: /catalog/mobile-catalog.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/qa-catalog.yaml
+      rules:
+        - allow: [User, Group, Component, Resource]
+    - type: file
+      target: /catalog-info.yaml
+      rules:
+        - allow: [System]
+    - type: file
+      target: /catalog/apis/hello-service-api.yaml
+      rules:
+        - allow: [API]
+    - type: file
+      target: /services/hello-service/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/services/idp-assistant/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/services/contract-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/resources/ai-platform.yaml
+      rules:
+        - allow: [Resource, Component]
+    - type: file
+      target: /catalog/resources/argo-workflows.yaml
+      rules:
+        - allow: [Resource]
+    - type: file
+      target: /services/idp-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /services/idp-mcp-server/api.yaml
+      rules:
+        - allow: [API]
+    - type: file
+      target: /services/qa-mcp-server/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /test-suites/test-deepeval/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: /catalog/ml-experiments/*/catalog-info.yaml
+      rules:
+        - allow: [Component]
 
   providers:
     github:
