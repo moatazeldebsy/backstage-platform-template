@@ -875,7 +875,18 @@ else
         kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
         check "${SVC} deployed to services-dev"
       fi
-    ) || warn "${SVC} build/deploy failed — check: kubectl get po -n services-dev"
+    )
+    # NOTE: deliberately not `(...) || warn ...` — wrapping a `set -e` subshell
+    # directly in a `||`/`if` test disables `-e` for the *entire* subshell (a
+    # well-known bash pitfall: bash sees the subshell's exit status is already
+    # being checked by the caller, so it stops self-terminating on internal
+    # command failures). That silently swallowed real docker/helm/kubectl
+    # failures here before, letting `check "... deployed"` print a false
+    # success. Capturing $? as its own statement keeps `-e` active inside.
+    _svc_rc=$?
+    if [[ $_svc_rc -ne 0 ]]; then
+      warn "${SVC} build/deploy failed (exit ${_svc_rc}) — check: kubectl get po -n services-dev"
+    fi
   done
 
   # Wire the HiTL approval gate into the tool servers whose mutating tools it
