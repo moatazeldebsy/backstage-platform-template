@@ -86,6 +86,7 @@ services:
       - "idp-assistant.idp.local:host-gateway"
       - "idp-mcp-server.idp.local:host-gateway"
       - "contract-mcp-server.idp.local:host-gateway"
+      - "approval-service.idp.local:host-gateway"
     volumes:
       - ../../backstage/app-config.yaml:/app/app-config.yaml:ro
       - ../../backstage/app-config.local.yaml:/app/app-config.local.yaml:ro

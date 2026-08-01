@@ -88,3 +88,8 @@ securityContext:
 
 autoscaling:
   enabled: false
+
+podLabels:
+  team: platform-team
+  cost-center: CC-1000
+  environment: local
