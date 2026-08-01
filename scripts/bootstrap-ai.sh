@@ -181,6 +181,7 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws sts get-caller-identity &>/dev/null || die "AWS credentials not configured"
   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
   REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CLUSTER_NAME}"
+  tf_outputs_load "${REPO_ROOT}/terraform"
   # Ensure ECR repos exist for all MCP server images (idempotent).
   # Repo names must match the Terraform convention: ${CLUSTER_NAME}/${repo}
   # so that the REGISTRY path (…/${CLUSTER_NAME}/${repo}) resolves correctly.
@@ -209,22 +210,19 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws ecr get-login-password --region "${AWS_REGION}" | \
     docker login --username AWS --password-stdin \
       "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-  # Fetch ANTHROPIC_API_KEY and OPENAI_API_KEY from Secrets Manager (if not already in env)
-  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    ANTHROPIC_API_KEY=$(aws secretsmanager get-secret-value \
+  # Fetch ANTHROPIC_API_KEY and OPENAI_API_KEY from Secrets Manager (if not already
+  # in env) — one round trip, both keys parsed from the same JSON blob.
+  if [[ -z "${ANTHROPIC_API_KEY:-}" || -z "${OPENAI_API_KEY:-}" ]]; then
+    _kagent_secret_json=$(aws secretsmanager get-secret-value \
       --secret-id "idp-mvp/kagent" \
       --region "${AWS_REGION}" \
-      --query 'SecretString' --output text 2>/dev/null \
-      | python3 -c "import json,sys; print(json.load(sys.stdin).get('ANTHROPIC_API_KEY',''))" \
-      2>/dev/null || echo "")
-  fi
-  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-    OPENAI_API_KEY=$(aws secretsmanager get-secret-value \
-      --secret-id "idp-mvp/kagent" \
-      --region "${AWS_REGION}" \
-      --query 'SecretString' --output text 2>/dev/null \
-      | python3 -c "import json,sys; print(json.load(sys.stdin).get('OPENAI_API_KEY',''))" \
-      2>/dev/null || echo "")
+      --query 'SecretString' --output text 2>/dev/null || echo "{}")
+    if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+      ANTHROPIC_API_KEY=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('ANTHROPIC_API_KEY',''))" "$_kagent_secret_json" 2>/dev/null || echo "")
+    fi
+    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+      OPENAI_API_KEY=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('OPENAI_API_KEY',''))" "$_kagent_secret_json" 2>/dev/null || echo "")
+    fi
   fi
 else
   REGISTRY="localhost:5003"
@@ -247,6 +245,25 @@ else
     ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+  fi
+
+  # Authenticate the `argocd` CLI for the "is <svc>-local already an ArgoCD
+  # app?" check below (MCP server deploy loop). This is intentionally NOT
+  # ARGOCD_TOKEN (the user-configured token above, used only for the
+  # argocd-mcp-server's own runtime secret) — it's the admin session JWT
+  # bootstrap-local.sh's Step 8 mints fresh on every run and writes to
+  # local/backstage/.env. Without ARGOCD_SERVER/ARGOCD_AUTH_TOKEN set, every
+  # `argocd app get` call below fails with "server address unspecified" and
+  # is silently swallowed by `&>/dev/null`, so the script always concluded
+  # "app not found" and fell back to a direct `helm install` — even when
+  # ArgoCD already owned the resource, which then fails to adopt existing
+  # ArgoCD-managed objects (e.g. a PodDisruptionBudget missing Helm's
+  # meta.helm.sh/* ownership annotations).
+  _argocd_cli_token_file="${REPO_ROOT}/local/backstage/.env"
+  if [[ -f "$_argocd_cli_token_file" ]]; then
+    ARGOCD_SERVER="${ARGOCD_SERVER:-argocd.idp.local}"
+    ARGOCD_AUTH_TOKEN="${ARGOCD_AUTH_TOKEN:-$(grep '^ARGOCD_AUTH_TOKEN=' "$_argocd_cli_token_file" | cut -d= -f2- || true)}"
+    export ARGOCD_SERVER ARGOCD_AUTH_TOKEN
   fi
 fi
 
@@ -405,9 +422,9 @@ if [[ "$SKIP_MLFLOW" == "true" ]]; then
 else
   info "Deploying MLflow tracking server..."
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    MLFLOW_BUCKET=$(cd "${REPO_ROOT}/terraform" && terraform output -raw mlflow_artifacts_bucket_name 2>/dev/null || echo "")
+    MLFLOW_BUCKET=$(tf_output mlflow_artifacts_bucket_name)
     [[ -n "$MLFLOW_BUCKET" ]] || die "Could not read mlflow_artifacts_bucket_name from Terraform outputs. Run terraform apply first."
-    MLFLOW_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw mlflow_role_arn 2>/dev/null || echo "")
+    MLFLOW_ROLE_ARN=$(tf_output mlflow_role_arn)
     [[ -n "$MLFLOW_ROLE_ARN" ]] || die "Could not read mlflow_role_arn from Terraform outputs."
     sed "s|MLFLOW_ARTIFACTS_BUCKET_PLACEHOLDER|${MLFLOW_BUCKET}|g" \
       "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" | kubectl apply -f -
@@ -513,18 +530,22 @@ else
   # to initialize its DB schema. Without this wait, SSR calls from kagent-ui to
   # /agents/new and /prompts/new hit the API before it's ready → "This page couldn't load".
   info "Waiting for KAgent controller API to be ready..."
-  _ctrl_pod=""
+  # The controller image is distroless (no wget/curl/sh -c exec target), so we
+  # can't exec into the pod to hit its health endpoint. Port-forward the
+  # ClusterIP service instead and curl from the host, which has curl.
+  _ctrl_ready=false
+  kubectl -n kagent port-forward svc/kagent-controller 18083:8083 &>/dev/null &
+  _ctrl_pf_pid=$!
   for i in $(seq 1 40); do
-    _ctrl_pod=$(kubectl get pod -n kagent --no-headers 2>/dev/null | awk '/kagent-controller-/{print $1;exit}')
-    if [[ -n "$_ctrl_pod" ]]; then
-      if kubectl exec -n kagent "$_ctrl_pod" -- \
-          wget -qO- http://127.0.0.1:8083/healthz &>/dev/null 2>&1; then
-        break
-      fi
+    if curl -sf -o /dev/null http://127.0.0.1:18083/health 2>/dev/null; then
+      _ctrl_ready=true
+      break
     fi
     sleep 5
   done
-  [[ -n "$_ctrl_pod" ]] && check "KAgent controller API healthy" || \
+  kill "$_ctrl_pf_pid" &>/dev/null || true
+  wait "$_ctrl_pf_pid" 2>/dev/null || true
+  [[ "$_ctrl_ready" == "true" ]] && check "KAgent controller API healthy" || \
     warn "KAgent controller API health check timed out — UI pages may show errors on first load"
 
   # ── 5. KAgent resources ─────────────────────────────────────────────────────
@@ -577,7 +598,7 @@ else
 
   # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    KAGENT_ESO_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw kagent_eso_role_arn 2>/dev/null || echo "")
+    KAGENT_ESO_ROLE_ARN=$(tf_output kagent_eso_role_arn)
     [[ -n "$KAGENT_ESO_ROLE_ARN" ]] || die "Could not read kagent_eso_role_arn from Terraform outputs."
   fi
     sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
@@ -746,9 +767,21 @@ cleanup_stale_mcp_resources() {
   # Check if any of {ServiceAccount, Deployment, Service} exists with annotations
   # that don't match the expected Helm release (svc in services-dev). Helm cannot
   # adopt resources without matching ownership metadata, so we delete them all.
+  #
+  # ArgoCD-managed resources are exempt: ArgoCD renders the chart and applies it
+  # directly (it never runs `helm install`), so its resources never carry
+  # meta.helm.sh/* annotations in the first place. Without this exemption every
+  # ArgoCD-owned Deployment/Service/ServiceAccount here reads as "mismatched" and
+  # gets deleted on every single bootstrap run, only to be recreated later by
+  # ArgoCD's own reconciliation (or not, if it's slower than the caller's wait
+  # loop) — this was the real source of the "deployments.apps ... NotFound"
+  # flakiness, not a timing race.
   local needs_cleanup=false
   for kind in serviceaccount deployment service; do
     if kubectl get "$kind" "$svc" -n "$ns" &>/dev/null; then
+      local tracking_id
+      tracking_id=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null || true)
+      [[ -n "$tracking_id" ]] && continue
       local rel_name rel_ns
       rel_name=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)
       rel_ns=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' 2>/dev/null || true)
@@ -793,7 +826,7 @@ else
   fi
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    CONTRACT_MCP_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw contract_mcp_server_role_arn 2>/dev/null || echo "")
+    CONTRACT_MCP_ROLE_ARN=$(tf_output contract_mcp_server_role_arn)
     [[ -n "$CONTRACT_MCP_ROLE_ARN" ]] || warn "Could not read contract_mcp_server_role_arn from Terraform outputs — contract-mcp-server will lack DynamoDB access."
   fi
 
@@ -862,9 +895,31 @@ else
         docker push "${REGISTRY}/${SVC}:latest"
         # Try ArgoCD sync first; fall back to direct Helm install when the
         # ArgoCD application hasn't been registered yet (first-time install
-        # before app-of-apps-local.yaml is applied).
-        if argocd app get "${SVC}-local" --grpc-web &>/dev/null; then
-          argocd app sync "${SVC}-local" --grpc-web 2>/dev/null || true
+        # before app-of-apps-local.yaml is applied). --plaintext is required:
+        # the local ingress-nginx cert is self-signed and the CLI won't trust
+        # it over --grpc-web alone, which previously made every call here
+        # fail closed (see ARGOCD_SERVER/ARGOCD_AUTH_TOKEN setup above).
+        _argocd_get_err=""
+        if _argocd_get_err=$(argocd app get "${SVC}-local" --grpc-web --plaintext 2>&1 >/dev/null); then
+          argocd app sync "${SVC}-local" --grpc-web --plaintext 2>/dev/null || true
+          # `argocd app sync` can no-op or fail silently (see comment above on
+          # false negatives); the app's own Automated+selfHeal policy will
+          # still converge it independently. Either way the Deployment object
+          # may not exist the instant sync returns — poll for it so the
+          # `kubectl rollout status` below doesn't hit a race-y NotFound.
+          for _i in $(seq 1 18); do
+            kubectl get deployment "${SVC}" -n services-dev &>/dev/null && break
+            sleep 5
+          done
+        elif kubectl get deployment "${SVC}" -n services-dev \
+               -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null | grep -q .; then
+          # Defense in depth: `argocd app get` can false-negative (CLI auth
+          # hiccup, transient connectivity) even when the app genuinely
+          # exists. Don't blindly fight ArgoCD for ownership of resources it
+          # already tracks — that's what produced the original symptom here
+          # (a failed `helm install` unable to adopt an ArgoCD-owned
+          # PodDisruptionBudget missing meta.helm.sh/* annotations).
+          warn "${SVC}-local: 'argocd app get' failed (${_argocd_get_err:-no output}) but ${SVC}'s Deployment already carries an ArgoCD tracking-id — skipping direct Helm install to avoid an ownership conflict. Investigate: argocd app get ${SVC}-local --grpc-web --plaintext"
         else
           info "${SVC}-local ArgoCD app not found — deploying directly with Helm..."
           helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
