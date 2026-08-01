@@ -122,6 +122,167 @@ wait_kubectl_ready() {
   warn "kubectl API not ready after ${max}s — continuing, downstream steps may fail."
 }
 
+# Map a helm repo short-name to its chart index URL. Single source of truth so
+# each bootstrap script doesn't hand-maintain its own copy (they drifted before:
+# some scripts hardcoded `helm repo update` with no repo arg, refreshing every
+# repo the user has ever added, not just the ones this run needs).
+_helm_repo_url() {
+  case "$1" in
+    ingress-nginx)        echo "https://kubernetes.github.io/ingress-nginx" ;;
+    prometheus-community) echo "https://prometheus-community.github.io/helm-charts" ;;
+    opencost)             echo "https://opencost.github.io/opencost-helm-chart" ;;
+    argo)                 echo "https://argoproj.github.io/argo-helm" ;;
+    grafana)              echo "https://grafana.github.io/helm-charts" ;;
+    gatekeeper)           echo "https://open-policy-agent.github.io/gatekeeper/charts" ;;
+    kyverno)              echo "https://kyverno.github.io/kyverno/" ;;
+    external-secrets)     echo "https://charts.external-secrets.io" ;;
+    bitnami)              echo "https://charts.bitnami.com/bitnami" ;;
+    datadog)              echo "https://helm.datadoghq.com" ;;
+    vmware-tanzu)         echo "https://vmware-tanzu.github.io/helm-charts" ;;
+    *)                    echo "" ;;
+  esac
+}
+
+# Add (idempotent, local-only, no network) every repo this script needs, then
+# run exactly one `helm repo update` scoped to just those repos — replaces the
+# old pattern of calling `helm repo add`/`helm repo update` before every single
+# chart install, which re-fetched the same repo's index multiple times per run
+# and, in a few scripts, called a bare `helm repo update` that refreshes every
+# repo ever added on the machine, not just the ones this run touches.
+#   $@ = repo short-names (must be known to _helm_repo_url)
+ensure_helm_repos() {
+  local repo url
+  for repo in "$@"; do
+    url=$(_helm_repo_url "$repo")
+    if [[ -z "$url" ]]; then
+      warn "ensure_helm_repos: unknown repo '${repo}' — skipping"
+      continue
+    fi
+    helm repo add "$repo" "$url" 2>/dev/null || true
+  done
+  helm repo update "$@"
+}
+
+# Load every `terraform output` value for the current stack once, cached in
+# _TF_OUTPUTS_JSON for the life of the shell process. Replaces the pattern of
+# calling `terraform output -raw <name>` once per value, which re-parses the
+# whole state file and re-runs provider handshakes on every single call.
+#   $1 = terraform working dir (default: $TF_DIR, else "terraform")
+tf_outputs_load() {
+  local tf_dir="${1:-${TF_DIR:-terraform}}"
+  _TF_OUTPUTS_JSON=$(cd "$tf_dir" && terraform output -json 2>/dev/null)
+  [[ -z "${_TF_OUTPUTS_JSON:-}" ]] && _TF_OUTPUTS_JSON='{}'
+}
+
+# Read a single output value from the JSON loaded by tf_outputs_load. Returns
+# empty string (never errors) when the key is absent, matching the existing
+# `terraform output -raw X 2>/dev/null || echo ""` fallback callers already rely on.
+tf_output() {
+  local name="$1"
+  jq -r --arg n "$name" '.[$n].value // empty' <<<"${_TF_OUTPUTS_JSON:-{}}"
+}
+
+# Same as tf_output, but aborts the script (via err/exit 1) when the value is
+# missing — use for outputs the original `terraform output -raw <name>` call
+# (with no `2>/dev/null || echo ""` fallback) would have relied on `set -e` to
+# fail on. tf_output alone never errors, so callers that need fail-fast
+# behavior must use this instead of silently continuing with an empty value.
+tf_output_required() {
+  local name="$1" val
+  val=$(tf_output "$name")
+  [[ -n "$val" ]] || err "terraform output '${name}' is empty or missing — check terraform apply/workspace succeeded"
+  printf '%s' "$val"
+}
+
+# sha256 of a file, portable across macOS (no sha256sum by default, has shasum)
+# and Linux (has sha256sum, may lack shasum).
+_sha256() {
+  if command -v sha256sum &>/dev/null; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
+# Skip-if-unchanged check for a Helm release, so re-running a bootstrap script
+# against an already-healthy cluster doesn't pay for a full `helm upgrade
+# --install --wait` (which can look "stuck" for minutes with no output even
+# when it ultimately succeeds). Only ever skips when BOTH the chart
+# version+values fingerprint from the last successful install matches the
+# caller's current desired fingerprint AND Helm itself reports the release as
+# "deployed" — an edited values file, a version bump, or a release Helm
+# considers unhealthy always falls through to a real install. This mirrors
+# the plan's "skip rebuilding verifiably unchanged artifacts" rule, applied to
+# Helm releases instead of Docker images.
+#   $1 = release name   $2 = namespace   $3 = fingerprint file path
+#   $4 = desired fingerprint (caller computes, e.g. "<version>:<sha256 of values file>")
+helm_release_unchanged() {
+  local release="$1" ns="$2" fp_file="$3" desired="$4"
+  [[ -f "$fp_file" ]] || return 1
+  [[ "$(cat "$fp_file" 2>/dev/null)" == "$desired" ]] || return 1
+  # Plain-text `helm status` output (not -o json) so this has no jq dependency —
+  # jq isn't a required tool for local (Kind) bootstrap runs.
+  helm status "$release" -n "$ns" 2>/dev/null | grep -q '^STATUS: deployed'
+}
+
+# Record the fingerprint used by helm_release_unchanged after a successful
+# install — call only once the install/upgrade actually succeeded.
+#   $1 = fingerprint file path   $2 = fingerprint value
+helm_record_fingerprint() {
+  mkdir -p "$(dirname "$1")"
+  printf '%s' "$2" > "$1"
+}
+
+# Wait for a background job (started with `cmd >"$log" 2>&1 & pid=$!`), cat
+# its captured log, and return the job's own exit code. `set -euo pipefail`
+# does NOT propagate a backgrounded job's failure automatically, so every
+# parallel section must wait on each PID individually and check its exit
+# code — this is that check, done consistently everywhere instead of
+# hand-rolled per call site.
+#
+# Deliberately does NOT decide warn-vs-abort itself and must NOT be used to
+# short-circuit (e.g. `_bg_join .. || err ..`) inside a loop over several
+# jobs — that would exit before the remaining jobs are waited on, leaving
+# them running detached after the script exits. Callers that need "any
+# failure aborts the script" (matching a step that was fail-fast before
+# parallelizing) must call this for every job first, aggregate the results,
+# and only then call err() once, after every job has actually finished. See
+# the Steps 5b/5b-pre/5c/5d block in bootstrap-local.sh for the pattern.
+#   $1 = pid (empty is a no-op that returns 0 — lets callers unconditionally
+#        call this even for a step that was skipped and never backgrounded)
+#   $2 = log file path
+_bg_join() {
+  local pid="$1" log="$2" rc=0
+  [[ -z "$pid" ]] && return 0
+  wait "$pid" || rc=$?
+  cat "$log"
+  rm -f "$log"
+  return "$rc"
+}
+
+# Kyverno's admission-controller Deployment can report Available before its
+# self-managed webhook TLS cert has finished propagating — a request landing
+# in that window fails with "remote error: tls: internal error" and a 10s
+# webhook timeout even though the pod itself is healthy (observed: ArgoCD's
+# routine reconciliation of kubernetes/namespaces/namespaces.yaml hit this
+# right after a Kyverno reinstall). `kubectl wait --for=condition=Available`
+# only checks the Deployment, not the webhook path itself, so probe the
+# webhook directly with a harmless dry-run apply (still goes through
+# admission, creates nothing) before declaring Kyverno ready.
+#   $1 = optional max wait seconds (default 30)
+#   $2 = optional kubectl context name (for multi-cluster scripts)
+wait_kyverno_webhook_ready() {
+  local max="${1:-30}" ctx="${2:-}" elapsed=0
+  local -a ctx_args=()
+  [[ -n "$ctx" ]] && ctx_args=(--context "$ctx")
+  while (( elapsed < max )); do
+    kubectl create namespace kyverno-webhook-probe --dry-run=server -o yaml "${ctx_args[@]}" &>/dev/null && return 0
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  warn "Kyverno webhook not responding after ${max}s — later applies may hit transient TLS errors until it settles."
+}
+
 # Append entries from a hosts-style file to /etc/hosts.
 #   $1 = path to source file (lines like "127.0.0.1 hostname.idp.local")
 #   $2 = optional ERE filter — only lines matching this regex are processed

@@ -34,6 +34,9 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform"
 GLOBAL_TF_DIR="${ROOT_DIR}/terraform/global"
 
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/lib.sh"
+
 SKIP_GLOBAL="${SKIP_GLOBAL:-false}"
 SKIP_STANDBY="${SKIP_STANDBY:-false}"
 SKIP_OBS="${SKIP_OBS:-false}"
@@ -105,13 +108,12 @@ fi
 
 # Read global outputs (needed for Phase 4 wiring even if --skip-global)
 log "Reading global Terraform outputs..."
-cd "$GLOBAL_TF_DIR"
-FAILOVER_RUNNER_ROLE=$(terraform output -raw failover_runner_role_arn   2>/dev/null || echo "")
-AURORA_WRITER=$(terraform output -raw aurora_primary_writer_endpoint    2>/dev/null || echo "")
-AURORA_READER_PRIMARY=$(terraform output -raw aurora_primary_reader_endpoint  2>/dev/null || echo "")
-AURORA_READER_STANDBY=$(terraform output -raw aurora_replica_reader_endpoint  2>/dev/null || echo "")
-THANOS_BUCKET=$(terraform output -raw thanos_metrics_bucket_name        2>/dev/null || echo "")
-cd "$ROOT_DIR"
+tf_outputs_load "$GLOBAL_TF_DIR"
+FAILOVER_RUNNER_ROLE=$(tf_output failover_runner_role_arn)
+AURORA_WRITER=$(tf_output aurora_primary_writer_endpoint)
+AURORA_READER_PRIMARY=$(tf_output aurora_primary_reader_endpoint)
+AURORA_READER_STANDBY=$(tf_output aurora_replica_reader_endpoint)
+THANOS_BUCKET=$(tf_output thanos_metrics_bucket_name)
 
 # ── Phase 2: Primary EKS workspace ───────────────────────────────────────────
 step "Phase 2: Primary cluster — ${PRIMARY_REGION}"
@@ -122,16 +124,19 @@ terraform workspace new "$PRIMARY_REGION" 2>/dev/null || terraform workspace sel
 terraform apply -auto-approve \
   -var-file="tfvars/${PRIMARY_REGION}.tfvars"
 
-PRIMARY_CLUSTER=$(terraform output -raw cluster_name)
-BACKSTAGE_SECRET_ARN=$(terraform output -raw backstage_secret_arn)
-TECHDOCS_BUCKET=$(terraform output -raw techdocs_bucket_name)
-BACKSTAGE_ROLE_ARN=$(terraform output -raw backstage_role_arn)
-CROSSPLANE_ROLE_PRIMARY=$(terraform output -raw crossplane_aws_role_arn)
-DORA_ROLE_ARN=$(terraform output -raw dora_exporter_role_arn          2>/dev/null || echo "")
-GRAFANA_ROLE_ARN=$(terraform output -raw grafana_role_arn             2>/dev/null || echo "")
-ARGO_ROLE_ARN=$(terraform output -raw argo_workflows_role_arn         2>/dev/null || echo "")
-DB_INIT_ROLE_ARN=$(terraform output -raw db_init_role_arn             2>/dev/null || echo "")
-ACM_CERT_ARN=$(terraform output -raw monitoring_acm_certificate_arn   2>/dev/null || echo "")
+# Reload cached outputs — same dir as the global module read above, but a
+# different terraform workspace, so `terraform output` returns different values.
+tf_outputs_load "$TF_DIR"
+PRIMARY_CLUSTER=$(tf_output_required cluster_name)
+BACKSTAGE_SECRET_ARN=$(tf_output_required backstage_secret_arn)
+TECHDOCS_BUCKET=$(tf_output_required techdocs_bucket_name)
+BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
+CROSSPLANE_ROLE_PRIMARY=$(tf_output_required crossplane_aws_role_arn)
+DORA_ROLE_ARN=$(tf_output dora_exporter_role_arn)
+GRAFANA_ROLE_ARN=$(tf_output grafana_role_arn)
+ARGO_ROLE_ARN=$(tf_output argo_workflows_role_arn)
+DB_INIT_ROLE_ARN=$(tf_output db_init_role_arn)
+ACM_CERT_ARN=$(tf_output monitoring_acm_certificate_arn)
 cd "$ROOT_DIR"
 
 log "Primary cluster: ${PRIMARY_CLUSTER} (${PRIMARY_REGION})"
@@ -172,8 +177,7 @@ kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f 
 
 # ── Phase 2.3: External Secrets Operator ─────────────────────────────────────
 log "Phase 2.3: External Secrets Operator..."
-helm repo add external-secrets https://charts.external-secrets.io 2>/dev/null || true
-helm repo update external-secrets
+ensure_helm_repos external-secrets prometheus-community bitnami gatekeeper kyverno argo
 helm upgrade --install external-secrets external-secrets/external-secrets \
   --namespace external-secrets \
   --create-namespace \
@@ -265,8 +269,6 @@ fi
 # ── Phase 2.5: Observability (kube-prometheus-stack + Thanos) ────────────────
 if [[ "$SKIP_OBS" != "true" ]]; then
   log "Phase 2.5: Observability stack (Prometheus + Thanos)..."
-  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
-  helm repo update prometheus-community
 
   kubectl create configmap grafana-dashboards-idp \
     --from-file=observability/grafana/dashboards/ \
@@ -305,8 +307,6 @@ if [[ "$SKIP_OBS" != "true" ]]; then
   kubectl apply -f aws/observability/grafana-multi-region-datasources.yaml --context hub
 
   # Thanos — query, store-gateway, compactor (metrics cross-region aggregation)
-  helm repo add bitnami https://charts.bitnami.com/bitnami 2>/dev/null || true
-  helm repo update bitnami
   kubectl apply -f aws/observability/thanos/ --context hub 2>/dev/null || \
     log "  Thanos ArgoCD app applied — ArgoCD will install the chart."
 fi
@@ -314,8 +314,6 @@ fi
 # ── Phase 2.6: Policies (OPA/Gatekeeper + Kyverno) ───────────────────────────
 if [[ "$SKIP_POLICIES" != "true" ]]; then
   log "Phase 2.6: OPA/Gatekeeper + Kyverno policies..."
-  helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
-  helm repo update gatekeeper
   helm upgrade --install gatekeeper gatekeeper/gatekeeper \
     --namespace gatekeeper-system \
     --create-namespace \
@@ -348,8 +346,6 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
     -f kubernetes/policies/require-cost-tags.yaml \
     --context hub
 
-  helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
-  helm repo update kyverno
   helm upgrade --install kyverno kyverno/kyverno \
     --namespace kyverno \
     --create-namespace \
@@ -378,6 +374,7 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
 
   kubectl wait deployment kyverno-admission-controller \
     -n kyverno --for=condition=Available --timeout=120s --context hub
+  wait_kyverno_webhook_ready 30 hub
 
   kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml       --context hub
   kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml --context hub
@@ -386,8 +383,6 @@ fi
 # ── Phase 2.7: ArgoCD (primary) ───────────────────────────────────────────────
 if [[ "$SKIP_GITOPS" != "true" ]]; then
   log "Phase 2.7: ArgoCD (primary)..."
-  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-  helm repo update argo
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \
@@ -537,8 +532,9 @@ else
   terraform apply -auto-approve \
     -var-file="tfvars/${STANDBY_REGION}.tfvars"
 
-  STANDBY_CLUSTER=$(terraform output -raw cluster_name)
-  CROSSPLANE_ROLE_STANDBY=$(terraform output -raw crossplane_aws_role_arn)
+  tf_outputs_load "$TF_DIR"
+  STANDBY_CLUSTER=$(tf_output_required cluster_name)
+  CROSSPLANE_ROLE_STANDBY=$(tf_output_required crossplane_aws_role_arn)
   cd "$ROOT_DIR"
 
   log "Standby cluster: ${STANDBY_CLUSTER} (${STANDBY_REGION})"
@@ -562,9 +558,11 @@ else
   kubectl create serviceaccount external-secrets-sa -n external-secrets \
     --dry-run=client -o yaml | kubectl apply -f - --context standby
 
-  BACKSTAGE_ROLE_STANDBY=$(cd "$TF_DIR" && \
-    terraform workspace select "$STANDBY_REGION" &>/dev/null && \
-    terraform output -raw backstage_role_arn 2>/dev/null || echo "$BACKSTAGE_ROLE_ARN")
+  # tf_outputs_load "$TF_DIR" above already cached this standby workspace's
+  # outputs; fall back to the primary role ARN if this cluster has no
+  # backstage_role_arn output of its own (matches original fallback behavior).
+  BACKSTAGE_ROLE_STANDBY=$(tf_output backstage_role_arn)
+  [[ -n "$BACKSTAGE_ROLE_STANDBY" ]] || BACKSTAGE_ROLE_STANDBY="$BACKSTAGE_ROLE_ARN"
 
   kubectl annotate serviceaccount external-secrets-sa \
     -n external-secrets \
