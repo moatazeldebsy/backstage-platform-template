@@ -594,4 +594,26 @@ Install them and re-run, or run manually:
   if [[ -n "${free_gb:-}" ]] && (( free_gb < 10 )); then
     warn "Low free disk (${free_gb}G on /). Bootstrap needs ~10G headroom; consider freeing space before proceeding."
   fi
+
+  # CPU/memory allocated to the Docker daemon (on Docker Desktop this is the
+  # VM's allocation, not the host's total). The full local stack — ArgoCD,
+  # Kyverno, Gatekeeper, Prometheus/Grafana/Loki, kagent's ~15 agent pods,
+  # and every MCP server — regularly saturates 4 CPUs / 8GB under normal
+  # operation: control-plane components (kube-controller-manager,
+  # argocd-repo-server, kyverno-admission-controller) lose their leader-
+  # election lease or fail health probes under that contention and
+  # crashloop, which surfaces as unrelated-looking deploy failures far later
+  # in bootstrap (e.g. "deployments.apps ... NotFound", webhook "connection
+  # refused"). This is a warning, not a hard stop — it's degraded, not
+  # broken — but it's worth surfacing before 20 minutes of install rather
+  # than during a confusing failure at step 12.
+  local docker_ncpu docker_mem_bytes docker_mem_gb
+  docker_ncpu=$(docker info --format '{{.NCPU}}' 2>/dev/null || echo "")
+  docker_mem_bytes=$(docker info --format '{{.MemTotal}}' 2>/dev/null || echo "")
+  if [[ -n "$docker_ncpu" && -n "$docker_mem_bytes" ]]; then
+    docker_mem_gb=$(( docker_mem_bytes / 1024 / 1024 / 1024 ))
+    if (( docker_ncpu < 6 || docker_mem_gb < 12 )); then
+      warn "Docker has ${docker_ncpu} CPU(s) / ${docker_mem_gb}GiB allocated — the full local stack (ArgoCD, Kyverno, Gatekeeper, observability, kagent, all MCP servers) tends to saturate anything below ~6 CPUs / 12GiB, causing control-plane components to crashloop under load and deploys to fail with confusing errors well after this point. If you're on Docker Desktop: Settings → Resources → raise CPUs to 6+ and Memory to 12GiB+, then Apply & Restart. Continuing anyway..."
+    fi
+  fi
 }
