@@ -200,14 +200,15 @@ fi
 # ── --install-argocd fast path ────────────────────────────────────────────────
 if $INSTALL_ARGOCD; then
   log "Installing / repairing ArgoCD..."
-  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-  helm repo update argo
+  ensure_helm_repos argo
   helm upgrade --install argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \
     --version 9.5.13 \
     --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
     --wait --timeout 10m
+  helm_record_fingerprint "${ROOT_DIR}/.idp-cache/argocd.fingerprint" \
+    "9.5.13:$(_sha256 "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml")"
 
   ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
     -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
@@ -684,8 +685,7 @@ kubectl apply -f "$(dirname "$0")/../kubernetes/network-policies/default-deny.ya
 
 # ── Step 4: nginx ingress controller ─────────────────────────────────────────
 log "Step 4: Installing nginx ingress controller..."
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update ingress-nginx
+ensure_helm_repos ingress-nginx prometheus-community opencost argo grafana gatekeeper kyverno
 
 _INGRESS_EXTRA_ARGS=()
 if [[ "$PROVIDER" == "kind" ]]; then
@@ -750,8 +750,6 @@ fi
 # ── Step 5: Observability ─────────────────────────────────────────────────────
 if ! $SKIP_OBS; then
   log "Step 5: Installing Prometheus + Grafana (kube-prometheus-stack)..."
-  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-  helm repo update prometheus-community
 
   # Create Grafana dashboard ConfigMaps
   kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
@@ -823,81 +821,87 @@ else
   log "Step 5: Skipping observability (--skip-obs)."
 fi
 
-# ── Step 5b: OpenCost ────────────────────────────────────────────────────────
+# ── Steps 5b/5b-pre/5c/5d: independent Helm installs ──────────────────────────
+# OpenCost, Argo Rollouts, Loki+Promtail, and Tempo don't depend on each other
+# (different charts/namespaces/releases) — they only depend on Step 5's
+# kube-prometheus-stack already being up (OpenCost queries Prometheus
+# directly), which stays strictly sequential above this block. Run these four
+# as background jobs instead of one after another; each keeps its own --wait,
+# so this only removes the artificial serialization between them, not any
+# real readiness check. None of these were wrapped in a `|| warn ... continue`
+# fallback before, so a failure here still aborts the script (all four jobs
+# are waited on first, then aggregated into a single err() call), matching
+# the original fail-fast behavior.
 if ! $SKIP_OBS; then
-  log "Step 5b: Installing OpenCost (cluster cost visibility)..."
-  helm repo add opencost https://opencost.github.io/opencost-helm-chart 2>/dev/null || true
-  helm repo update opencost
+  log "Steps 5b/5b-pre/5c/5d: Installing OpenCost, Argo Rollouts, Loki+Promtail, Tempo in parallel..."
 
-  kubectl apply -f "${ROOT_DIR}/kubernetes/finops/opencost.yaml"
+  _s5b_log=$(mktemp); _s5bpre_log=$(mktemp); _s5c_log=$(mktemp); _s5d_log=$(mktemp)
 
-  helm upgrade --install opencost opencost/opencost \
-    --namespace opencost \
-    --set opencost.prometheus.internal.enabled=false \
-    --set opencost.prometheus.external.enabled=true \
-    --set "opencost.prometheus.external.url=http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090" \
-    --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
-    --wait --timeout 5m
+  (
+    set -e
+    kubectl apply -f "${ROOT_DIR}/kubernetes/finops/opencost.yaml"
+    helm upgrade --install opencost opencost/opencost \
+      --namespace opencost \
+      --set opencost.prometheus.internal.enabled=false \
+      --set opencost.prometheus.external.enabled=true \
+      --set "opencost.prometheus.external.url=http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090" \
+      --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
+      --wait --timeout 5m
+    log "  Step 5b: OpenCost installed. UI: http://opencost.idp.local"
+  ) > "$_s5b_log" 2>&1 &
+  _s5b_pid=$!
 
-  log "OpenCost installed. UI: http://opencost.idp.local"
+  (
+    set -e
+    kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+    helm upgrade --install argo-rollouts argo/argo-rollouts \
+      --namespace argo-rollouts \
+      --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
+      --wait --timeout 5m
+    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
+    log "  Step 5b-pre: Argo Rollouts installed. Dashboard: http://argo-rollouts.idp.local"
+    log "  Step 5b-pre: To opt a service into canary: set rollout.enabled: true in its helm-values-local.yaml"
+  ) > "$_s5bpre_log" 2>&1 &
+  _s5bpre_pid=$!
+
+  (
+    set -e
+    helm upgrade --install loki grafana/loki \
+      --namespace monitoring \
+      --values "${ROOT_DIR}/local/observability/loki/loki-values.yaml" \
+      --wait --timeout 5m
+    helm upgrade --install promtail grafana/promtail \
+      --namespace monitoring \
+      --values "${ROOT_DIR}/local/observability/loki/promtail-values.yaml" \
+      --wait --timeout 3m
+    log "  Step 5c: Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
+  ) > "$_s5c_log" 2>&1 &
+  _s5c_pid=$!
+
+  (
+    set -e
+    helm upgrade --install tempo grafana/tempo \
+      --namespace monitoring \
+      --values "${ROOT_DIR}/local/observability/tempo/tempo-values.yaml" \
+      --wait --timeout 5m
+    kubectl apply -f "${ROOT_DIR}/local/observability/tempo/tempo-ingress.yaml"
+    log "  Step 5d: Tempo installed. OTLP HTTP: http://tempo.idp.local/v1/traces | gRPC: tempo.monitoring.svc.cluster.local:4317"
+    log "  Step 5d: Traces available in Grafana → Explore → Tempo datasource."
+  ) > "$_s5d_log" 2>&1 &
+  _s5d_pid=$!
+
+  # Wait for all four before deciding whether to abort — matches this block's
+  # original fail-fast behavior (no failure here was ever swallowed), but
+  # without exiting mid-loop and leaving the other jobs running detached.
+  _s5_fail=0
+  _bg_join "$_s5b_pid"    "$_s5b_log"    || { warn "Step 5b (OpenCost) failed";        _s5_fail=1; }
+  _bg_join "$_s5bpre_pid" "$_s5bpre_log" || { warn "Step 5b-pre (Argo Rollouts) failed"; _s5_fail=1; }
+  _bg_join "$_s5c_pid"    "$_s5c_log"    || { warn "Step 5c (Loki + Promtail) failed";  _s5_fail=1; }
+  _bg_join "$_s5d_pid"    "$_s5d_log"    || { warn "Step 5d (Tempo) failed";            _s5_fail=1; }
+  (( _s5_fail == 0 )) || err "One or more of Steps 5b/5b-pre/5c/5d failed — see output above."
 else
   log "Step 5b: Skipping OpenCost (--skip-obs)."
-fi
-
-# ── Step 5b-pre: Argo Rollouts (progressive delivery) ───────────────────────
-if ! $SKIP_OBS; then
-  log "Step 5b-pre: Installing Argo Rollouts (canary deployments)..."
-  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-  helm repo update argo
-
-  kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
-
-  helm upgrade --install argo-rollouts argo/argo-rollouts \
-    --namespace argo-rollouts \
-    --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
-    --wait --timeout 5m
-
-  kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
-
-  log "  Argo Rollouts installed. Dashboard: http://argo-rollouts.idp.local"
-  log "  To opt a service into canary: set rollout.enabled: true in its helm-values-local.yaml"
-fi
-
-# ── Step 5c: Loki + Promtail (log aggregation) ───────────────────────────────
-if ! $SKIP_OBS; then
-  log "Step 5c: Installing Loki + Promtail (log aggregation)..."
-  helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
-  helm repo update grafana
-
-  helm upgrade --install loki grafana/loki \
-    --namespace monitoring \
-    --values "${ROOT_DIR}/local/observability/loki/loki-values.yaml" \
-    --wait --timeout 5m
-
-  helm upgrade --install promtail grafana/promtail \
-    --namespace monitoring \
-    --values "${ROOT_DIR}/local/observability/loki/promtail-values.yaml" \
-    --wait --timeout 3m
-
-  log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
-else
   log "Step 5c: Skipping Loki + Promtail (--skip-obs)."
-fi
-
-# ── Step 5d: Grafana Tempo (distributed tracing) ──────────────────────────────
-if ! $SKIP_OBS; then
-  log "Step 5d: Installing Grafana Tempo (distributed tracing)..."
-  helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
-
-  helm upgrade --install tempo grafana/tempo \
-    --namespace monitoring \
-    --values "${ROOT_DIR}/local/observability/tempo/tempo-values.yaml" \
-    --wait --timeout 5m
-
-  kubectl apply -f "${ROOT_DIR}/local/observability/tempo/tempo-ingress.yaml"
-  log "  Tempo installed. OTLP HTTP: http://tempo.idp.local/v1/traces | gRPC: tempo.monitoring.svc.cluster.local:4317"
-  log "  Traces available in Grafana → Explore → Tempo datasource."
-else
   log "Step 5d: Skipping Tempo (--skip-obs)."
 fi
 
@@ -979,21 +983,20 @@ done
 # ── Step 8: ArgoCD ────────────────────────────────────────────────────────────
 if ! $SKIP_GITOPS; then
   log "Step 8: Installing ArgoCD..."
-  (
-    set -e
-    helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-    helm repo update argo
 
-    helm upgrade --install argocd argo/argo-cd \
-      --namespace argocd \
-      --create-namespace \
-      --version 9.5.13 \
-      --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
-      --wait --timeout "$HELM_WAIT_MED"
+  _argocd_version="9.5.13"
+  _argocd_values="${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml"
+  _argocd_fp_file="${ROOT_DIR}/.idp-cache/argocd.fingerprint"
+  _argocd_fp="${_argocd_version}:$(_sha256 "$_argocd_values")"
 
+  # Shared post-install wiring (admin password → API token → GitHub repo
+  # creds). Used both on a real install and on the skip-if-unchanged fast
+  # path below, so a healthy re-run still refreshes the token/creds files
+  # without paying for a full `helm upgrade --install --wait`.
+  _wire_argocd_after_install() {
     ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
       -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "")
-    log "ArgoCD installed. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
+    log "ArgoCD ready. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
 
     if [[ -n "$ARGOCD_PASS" ]]; then
       # The Backstage proxy sends ARGOCD_AUTH_TOKEN as a Bearer token, which
@@ -1012,52 +1015,57 @@ if ! $SKIP_GITOPS; then
       log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
     fi
 
-    _register_argocd_github_creds() {
-      local _token _org
-      _token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-      _org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-      if [[ -n "$_token" && -n "$_org" && "$_org" != "YOUR_GITHUB_ORG" ]]; then
-        kubectl create secret generic argocd-github-creds \
-          -n argocd \
-          --from-literal=type=git \
-          --from-literal=url="https://github.com/${_org}" \
-          --from-literal=username="${_org}" \
-          --from-literal=password="${_token}" \
-          --dry-run=client -o yaml \
-          | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
-          | kubectl apply -f -
-        log "  ArgoCD GitHub credentials registered for https://github.com/${_org}"
-      else
-        warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
-      fi
-    }
-    _register_argocd_github_creds
-  ) || {
-    warn "Step 8 (ArgoCD) failed on first attempt — retrying with extended timeout..."
-    wait_kubectl_ready 60
-    helm upgrade --install argocd argo/argo-cd \
-      --namespace argocd \
-      --create-namespace \
-      --version 9.5.13 \
-      --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
-      --wait --timeout "$HELM_WAIT_LONG" \
-      || warn "Step 8 (ArgoCD) failed after retry — run: ./scripts/bootstrap-local.sh --install-argocd"
-    # Re-register GitHub credentials after the retry so private repos are accessible
-    # even when the first Helm attempt failed before credentials were written.
-    _retry_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-    _retry_org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
-    if [[ -n "$_retry_token" && -n "$_retry_org" && "$_retry_org" != "YOUR_GITHUB_ORG" ]]; then
+    local _token _org
+    _token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+    _org=$(grep -E '^GITHUB_ORG=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
+    if [[ -n "$_token" && -n "$_org" && "$_org" != "YOUR_GITHUB_ORG" ]]; then
       kubectl create secret generic argocd-github-creds \
         -n argocd \
         --from-literal=type=git \
-        --from-literal=url="https://github.com/${_retry_org}" \
-        --from-literal=username="${_retry_org}" \
-        --from-literal=password="${_retry_token}" \
+        --from-literal=url="https://github.com/${_org}" \
+        --from-literal=username="${_org}" \
+        --from-literal=password="${_token}" \
         --dry-run=client -o yaml \
         | kubectl label --local -f - "argocd.argoproj.io/secret-type=repo-creds" --dry-run=client -o yaml \
         | kubectl apply -f - 2>/dev/null || true
+      log "  ArgoCD GitHub credentials registered for https://github.com/${_org}"
+    else
+      warn "  GITHUB_TOKEN or GITHUB_ORG not set in local/.env — ArgoCD will not be able to read private repos."
     fi
   }
+
+  if helm_release_unchanged argocd argocd "$_argocd_fp_file" "$_argocd_fp"; then
+    log "  ArgoCD already installed (version ${_argocd_version}, values unchanged) and Helm reports it deployed — skipping reinstall."
+    log "  Run './scripts/bootstrap-local.sh --install-argocd' to force a reinstall."
+    _wire_argocd_after_install
+  else
+    (
+      set -e
+      helm upgrade --install argocd argo/argo-cd \
+        --namespace argocd \
+        --create-namespace \
+        --version "$_argocd_version" \
+        --values "$_argocd_values" \
+        --wait --timeout "$HELM_WAIT_MED"
+    ) && { _wire_argocd_after_install; helm_record_fingerprint "$_argocd_fp_file" "$_argocd_fp"; } || {
+      warn "Step 8 (ArgoCD) failed on first attempt — retrying with extended timeout..."
+      wait_kubectl_ready 60
+      if helm upgrade --install argocd argo/argo-cd \
+        --namespace argocd \
+        --create-namespace \
+        --version "$_argocd_version" \
+        --values "$_argocd_values" \
+        --wait --timeout "$HELM_WAIT_LONG"; then
+        helm_record_fingerprint "$_argocd_fp_file" "$_argocd_fp"
+      else
+        warn "Step 8 (ArgoCD) failed after retry — run: ./scripts/bootstrap-local.sh --install-argocd"
+      fi
+      # Re-wire even when the retry failed, in case an earlier partial install
+      # already left ArgoCD reachable but credentials/token unwritten.
+      _wire_argocd_after_install
+    }
+  fi
+  unset -f _wire_argocd_after_install
 else
   log "Step 8: Skipping ArgoCD (--skip-gitops)."
 fi
@@ -1067,8 +1075,6 @@ if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
   log "Step 8b: Installing Argo Workflows..."
   (
     set -e
-    helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-    helm repo update argo
 
     helm upgrade --install argo-workflows argo/argo-workflows \
       --namespace argo-workflows \
@@ -1084,13 +1090,20 @@ else
   log "Step 8b: Skipping Argo Workflows (use --install-argo-workflows to enable)."
 fi
 
-# ── Step 9: OPA/Gatekeeper ───────────────────────────────────────────────────
+# ── Steps 9/9b: OPA/Gatekeeper + Kyverno ─────────────────────────────────────
+# Two independent policy engines (different namespaces/CRDs, neither reads a
+# resource the other creates) — run them as background jobs instead of one
+# after another. Both already degrade via their own `|| warn ... Continuing`,
+# so this keeps that per-step behavior, just backgrounded. Critically, both
+# _bg_join calls below (which block until each job finishes, including each
+# one's own internal CRD/webhook-ready wait) still run before Step 10, so the
+# existing invariant — Gatekeeper's and Kyverno's webhooks must be Ready
+# before Steps 10–13 apply resources — is preserved exactly.
 if ! $SKIP_POLICIES; then
   log "Step 9: Installing OPA/Gatekeeper..."
+  _s9_log=$(mktemp)
   (
     set -e
-    helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
-    helm repo update gatekeeper
 
     helm upgrade --install gatekeeper gatekeeper/gatekeeper \
       --namespace gatekeeper-system \
@@ -1147,20 +1160,21 @@ if ! $SKIP_POLICIES; then
       -f "${ROOT_DIR}/kubernetes/policies/require-cost-tags.yaml"
 
     log "OPA/Gatekeeper installed."
-  ) || warn "Step 9 (OPA/Gatekeeper) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+  ) > "$_s9_log" 2>&1 &
+  _s9_pid=$!
 else
   log "Step 9: Skipping OPA/Gatekeeper (--skip-policies)."
+  _s9_pid=""
 fi
 
 # ── Step 9b: Kyverno + team policies ─────────────────────────────────────────
 # Kyverno handles admission policies that require JMESPath/CEL expressions not
 # supported by Gatekeeper (e.g., extracting team name from namespace prefix).
 if ! $SKIP_POLICIES; then
+  _s9b_log=$(mktemp)
   (
     set -e
     log "Step 9b: Installing Kyverno..."
-    helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
-    helm repo update kyverno
     helm upgrade --install kyverno kyverno/kyverno \
       --namespace kyverno \
       --create-namespace \
@@ -1191,15 +1205,27 @@ if ! $SKIP_POLICIES; then
     log "  Waiting for Kyverno webhook to be ready..."
     kubectl wait deployment kyverno-admission-controller \
       -n kyverno --for=condition=Available --timeout=120s
+    wait_kyverno_webhook_ready
 
     log "  Applying Kyverno team policies..."
     kubectl apply -f "${ROOT_DIR}/kubernetes/policies/kyverno/team-quota-policy.yaml"
-    kubectl apply -f "${ROOT_DIR}/kubernetes/policies/kyverno/crossplane-team-label-policy.yaml"
-    log "  Kyverno + team policies installed."
-  ) || warn "Step 9b (Kyverno) failed — Crossplane team tags and namespace quotas will not be auto-injected. Continuing..."
+    # crossplane-team-label-policy.yaml's rules match on Crossplane claim kinds
+    # (S3Bucket, RDSInstance, DynamoTable, SQSQueue, KafkaTopic). Local bootstrap
+    # never installs Crossplane, so those CRDs never exist here — applying this
+    # policy makes kyverno-admission-controller's policycache warm-up fail to
+    # resolve them at startup, which is fatal and crashloops the pod forever.
+    # AWS (bootstrap.sh) applies this after Crossplane CRDs are registered; local
+    # has no equivalent phase because it has nothing for the policy to act on.
+    log "  Skipping crossplane-team-label-policy.yaml (no Crossplane CRDs in local clusters)."
+  ) > "$_s9b_log" 2>&1 &
+  _s9b_pid=$!
 else
   log "Step 9b: Skipping Kyverno (--skip-policies)."
+  _s9b_pid=""
 fi
+
+_bg_join "$_s9_pid"  "$_s9_log"  || warn "Step 9 (OPA/Gatekeeper) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+_bg_join "$_s9b_pid" "$_s9b_log" || warn "Step 9b (Kyverno) failed — Crossplane team tags and namespace quotas will not be auto-injected. Continuing..."
 
 # ── Step 10: DORA Exporter (Pushgateway) ─────────────────────────────────────
 if ! $SKIP_DORA; then
@@ -1281,7 +1307,14 @@ else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
 fi
 
-# ── Step 11: Tech Insights Exporter ──────────────────────────────────────────
+# ── Steps 11/11a/11b/11c: independent CronJob/manifest applies ───────────────
+# None of these read state written by another (different ConfigMaps/CronJobs/
+# namespaces), so they run as background jobs and are joined below instead of
+# one after another. Progress output is captured per-job and printed once each
+# job finishes — see _bg_join in lib.sh.
+_step11_pid=""; _step11a_pid=""; _step11b_pid=""
+_step11_log=$(mktemp); _step11a_log=$(mktemp); _step11b_log=$(mktemp); _step11c_log=$(mktemp)
+
 if ! $SKIP_OBS; then
   (
     set -e
@@ -1292,7 +1325,8 @@ if ! $SKIP_OBS; then
     kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
     kubectl apply -f "${ROOT_DIR}/kubernetes/finops/team-budgets-configmap.yaml"
     log "  Tech Insights Exporter deployed + team budget ConfigMap applied."
-  ) || warn "Step 11 (Tech Insights) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+  ) > "$_step11_log" 2>&1 &
+  _step11_pid=$!
 else
   log "Step 11: Skipping Tech Insights Exporter (--skip-obs)."
 fi
@@ -1320,7 +1354,8 @@ if ! $SKIP_OBS; then
     kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/cronjob.yaml"
     kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/quarantine-cronjob.yaml"
     log "  Flaky-Test Exporter + Quarantine Sync deployed."
-  ) || warn "Step 11a (Flaky-Test Exporter) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+  ) > "$_step11a_log" 2>&1 &
+  _step11a_pid=$!
 else
   log "Step 11a: Skipping Flaky-Test Exporter (--skip-obs)."
 fi
@@ -1332,7 +1367,8 @@ if ! $SKIP_OBS; then
     log "Step 11b: Applying ServiceMonitor for services namespaces..."
     kubectl apply -f "${ROOT_DIR}/kubernetes/monitoring/servicemonitor.yaml"
     log "  ServiceMonitor applied — Prometheus will scrape services/services-dev."
-  ) || warn "Step 11b (ServiceMonitor) failed — run: kubectl apply -f kubernetes/monitoring/servicemonitor.yaml"
+  ) > "$_step11b_log" 2>&1 &
+  _step11b_pid=$!
 fi
 
 # ── Step 11c: Demo team namespace (awesome-team) ──────────────────────────────
@@ -1345,7 +1381,13 @@ fi
   kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/limit-range.yaml"
   kubectl apply -f "${ROOT_DIR}/kubernetes/teams/awesome-team/network-policy.yaml"
   log "  Team namespace team-awesome-team ready (RBAC, quotas, network policies)."
-) || warn "Step 11c (team namespace) failed — run: kubectl apply -f kubernetes/teams/awesome-team/ Continuing..."
+) > "$_step11c_log" 2>&1 &
+_step11c_pid=$!
+
+_bg_join "$_step11_pid"  "$_step11_log"  || warn "Step 11 (Tech Insights) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+_bg_join "$_step11a_pid" "$_step11a_log" || warn "Step 11a (Flaky-Test Exporter) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+_bg_join "$_step11b_pid" "$_step11b_log" || warn "Step 11b (ServiceMonitor) failed — run: kubectl apply -f kubernetes/monitoring/servicemonitor.yaml"
+_bg_join "$_step11c_pid" "$_step11c_log" || warn "Step 11c (team namespace) failed — run: kubectl apply -f kubernetes/teams/awesome-team/ Continuing..."
 
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
 log "Step 12: Wiring AlertManager..."
