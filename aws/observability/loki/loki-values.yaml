@@ -75,3 +75,24 @@ gateway:
   enabled: true
   ingress:
     enabled: false   # Loki is accessed internally via Grafana proxy only
+
+# The chart's chunksCache/resultsCache (memcached-backed) default to several
+# GB of memory requests each, sized for high-volume production Loki — right-size
+# for this platform's traffic instead of accepting the chart defaults, which
+# would otherwise reserve ~11Gi across the node group for caches alone.
+chunksCache:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+resultsCache:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
