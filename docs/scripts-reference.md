@@ -22,7 +22,11 @@ They solve different problems and are **not interchangeable**:
 - **`setup.sh`** — a **one-time** personalization pass + dispatcher. It replaces `moatazeldebsy` / `idp-mvp` / etc. placeholders across the whole repo with your real values, creates `.env` files, builds the `idp` CLI, then asks *local / aws / multi / skip* and hands off to the right bootstrap script.
 - **`bootstrap-local.sh`** — the actual **Kind/Rancher platform installer**. It creates the cluster, installs ingress/ArgoCD/observability/OPA, builds and pushes `hello-service`, and wires up Backstage. It's fully standalone and is what you go back to for **day-2** operations (`--destroy`, `--start-backstage`, `--install-argocd`, `--print-urls`, recreating the cluster).
 
-They must run **in that order** on a fresh clone: bootstrapping before personalizing would point ArgoCD's ApplicationSet, catalog entries, and ingress hostnames at unresolved placeholders instead of your org/cluster name. In practice you only run `setup.sh` once — it invokes `bootstrap-local.sh` for you automatically. Every later invocation (recreate the cluster, add a flag, retry a failed step) goes straight to `bootstrap-local.sh` (or `bootstrap.sh`/`bootstrap-multiregion.sh` on AWS) without touching `setup.sh` again.
+**On a fresh clone you run `setup.sh` and nothing else** — it invokes `bootstrap-local.sh` for you. Running both back to back is the common mistake: it just repeats a 15–20 minute install. If `setup.sh` ended with the "Local IDP platform is up" banner and the access URLs, the cluster is already up.
+
+The ordering exists because bootstrapping before personalizing would point ArgoCD's ApplicationSet, catalog entries, and ingress hostnames at unresolved placeholders instead of your org/cluster name — which is why `setup.sh` owns the dispatch rather than leaving it to you.
+
+Every later invocation (recreate the cluster, add a flag, retry a failed step) goes straight to `bootstrap-local.sh` (or `bootstrap.sh`/`bootstrap-multiregion.sh` on AWS) without touching `setup.sh` again.
 
 ## Quick reference
 
