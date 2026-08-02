@@ -54,47 +54,64 @@ They must run **in that order** on a fresh clone: bootstrapping before personali
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
-| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`, `--force-build`. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. See [Re-running bootstrap-ai.sh](#re-running-bootstrap-aish-caching-and-parallelism). | **Local:** manual, run after `bootstrap-local.sh` if you want AI/ML. **AWS:** already run for you by `bootstrap.sh` — only run standalone (`--aws`) to retry a failed AI phase |
+| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`, `--force-build`. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. See [Re-running the bootstrap scripts](#re-running-the-bootstrap-scripts--caching-and-parallelism). | **Local:** manual, run after `bootstrap-local.sh` if you want AI/ML. **AWS:** already run for you by `bootstrap.sh` — only run standalone (`--aws`) to retry a failed AI phase |
 | `recover-docker-restart.sh` | **Post-Docker-restart recovery.** Patches Kind cluster after Docker Desktop shuffles container IPs: fixes kubelet.conf, restarts kindnet/kube-proxy, replaces ingress-nginx pods, repairs Grafana PVC permissions, restarts Backstage Docker Compose, and smoke-tests all 9 service URLs. Flags: `--skip-backstage`, `--dry-run`. See [Docker Recovery](docker-recovery.md). | After Docker Desktop restarts unexpectedly |
 
-## Re-running `bootstrap-ai.sh` — caching and parallelism
+## Re-running the bootstrap scripts — caching and parallelism
 
-`bootstrap-ai.sh` is designed to be re-run. It skips work it can prove is
-unchanged, and overlaps the work that remains, so a re-run against a healthy
-cluster costs a fraction of a cold one.
+`bootstrap-local.sh`, `bootstrap.sh`, `bootstrap-ai.sh` and
+`bootstrap-multiregion.sh` are all designed to be re-run. They skip work they
+can prove is unchanged and overlap the work that remains, so a re-run against a
+healthy cluster costs a fraction of a cold one.
 
 **What gets skipped on a re-run**
 
 | Work | Skipped when |
 |---|---|
-| MCP server `docker build` + push (7 images, 10 with `--adp`) | The service's source hash matches the last successful build **and** the `:0.1.0` tag is still in the registry |
-| `kagent-crds` / `kagent` Helm installs | The pinned chart version and values file are unchanged **and** Helm reports the release `deployed` |
-| pgvector patch + `kagent-controller` restart | The live Deployment already runs `pgvector/pgvector:pg18` and `DATABASE_VECTOR_ENABLED=true` is already set, and every Agent reports `Ready=True` |
-| Per-service Helm upgrade (AWS mode) | Image and chart values are unchanged and Helm reports the release `deployed` |
+| Any Helm release (`helm_upgrade_cached`) | The chart reference, `--version`, every `--set`, and the *contents* of every `--values`/`-f` file are unchanged **and** Helm reports the release `deployed` |
+| Docker image builds (hello-service, Backstage, all MCP servers) | The service's source hash is unchanged **and** the tag is still in the registry/ECR |
+| KAgent pgvector patch + controller restart | The live Deployment already runs `pgvector/pgvector:pg18`, `DATABASE_VECTOR_ENABLED=true` is set, and every Agent reports `Ready=True` |
+| metrics-server install + TLS patch (local) | The pinned version is already the running image / the flag is already present |
 
-Fingerprints live in `.idp-cache/` (gitignored) — `image-<svc>.fingerprint`,
-`kagent.fingerprint`, `kagent-crds.fingerprint`, `mcp-<svc>.fingerprint`. Every
-skip is also gated on the live cluster/registry state, so deleting `.idp-cache/`
-only costs time, never correctness. A wiped registry or a reverted patch always
-forces the real work to run again.
+Fingerprints live in `.idp-cache/` (gitignored). Every skip is *also* gated on
+live cluster or registry state, so deleting `.idp-cache/` only costs time, never
+correctness — a wiped registry, a deleted ECR tag, or a release Helm no longer
+considers healthy always forces the real work to run again.
+
+Helm fingerprints are keyed by `--kube-context` where one is passed, so
+`bootstrap-multiregion.sh` installing the same release on both the hub and
+standby clusters caches them independently rather than letting one mask the
+other.
 
 **What runs in parallel**
 
-MCP images are built in the background from the start of the run, up to
-`IDP_BUILD_JOBS` at a time, and joined just before the deploy pass — so they
-overlap the KAgent install rather than following it. MLflow deploys in the
-background too. The deploy pass itself stays sequential.
+| Script | Overlapped work |
+|---|---|
+| `bootstrap-local.sh` | All image builds run in the background from just after the registry starts (Step 1) and are joined before Step 13, the first step that needs them. Step 10 (Pushgateway/DORA) joins the Step 11 exporter group. |
+| `bootstrap-ai.sh` | MCP server images build in the background, `IDP_BUILD_JOBS` at a time, overlapping the whole KAgent install. MLflow deploys in the background too. |
+| `bootstrap.sh` | Argo Workflows and Velero run alongside the AI/ML platform phase. Backstage / ArgoCD / Grafana load balancer hostnames are polled in one loop rather than two sequential ones. |
+| `bootstrap-multiregion.sh` | Gatekeeper and Kyverno install concurrently. |
 
 **Environment variables and flags**
 
 | Name | Default | Effect |
 |---|---|---|
-| `--force-build` | off | Rebuild and re-push every MCP image, and re-run the per-service Helm upgrades, ignoring fingerprints |
-| `IDP_BUILD_JOBS` | `4` | Max concurrent image builds. Lower it if Docker Desktop is provisioned with few CPUs or little RAM; raising it past your core count usually makes the batch slower |
-| `IDP_TIMING` | `1` | Per-step timings plus a slowest-first summary table on exit. Set to `0` to silence |
+| `IDP_FORCE` | `0` | Set to `1` to bypass every skip-if-unchanged check and reinstall/rebuild everything. Applies to all four scripts. |
+| `--force-build` | off | `bootstrap-ai.sh` only — same idea, scoped to MCP server images and their Helm releases. |
+| `IDP_BUILD_JOBS` | `4` | `bootstrap-ai.sh` only — max concurrent image builds. Lower it if Docker Desktop has few CPUs; raising it past your core count usually makes the batch slower. |
+| `IDP_TIMING` | `1` | Per-step timings plus a slowest-first summary table on exit. Set to `0` to silence. |
 
-The timing summary prints even when a run fails, so it's the fastest way to see
+The timing summary prints even when a run fails, so it is the fastest way to see
 which step is actually costing you time before trying to tune anything.
+
+**AWS image builds and Apple Silicon.** The AWS scripts build `linux/amd64`
+images, which run under QEMU emulation on an M-series Mac — the Backstage image
+(multi-stage, `yarn install` + `yarn build:backend` in the builder) is the single
+most expensive step in a cold AWS bootstrap. Builds go through `docker buildx`
+with a `--cache-from/--cache-to type=registry` layer cache stored in ECR beside
+the image, so a rebuild only re-emulates the stages that actually changed, and a
+build on another machine or in CI hits the same cache. Without buildx available
+the scripts fall back to plain `docker build` + `docker push`.
 
 ## Day-2 — Per-service operations
 
