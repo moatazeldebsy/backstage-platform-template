@@ -24,6 +24,87 @@ err()   { echo -e "[$(date +%T)] ${RED}ERROR${RESET} $*" >&2; exit 1; }
 step()  { echo -e "\n${BOLD}▶ $*${RESET}"; }
 check() { echo -e "[$(date +%T)] ${GREEN}✓${RESET} $*"; }
 
+# ── Step timing ──────────────────────────────────────────────────────────────
+# Per-step wall-clock timing so "the bootstrap is slow" can be answered with
+# data instead of a guess. Parallel arrays rather than an associative array:
+# lib.sh targets Bash 3.2 (macOS default), which has neither `declare -A` nor
+# `${EPOCHREALTIME}`.
+#
+# Usage:
+#   timer_start "KAgent"
+#   ...work...
+#   timer_end   "KAgent"
+# and once, near the top of a script:
+#   timer_enable_summary        # installs the EXIT trap
+#
+# Set IDP_TIMING=0 to silence both the per-step lines and the summary.
+_TIMER_LABELS=()
+_TIMER_SECONDS=()
+_TIMER_ACTIVE_LABEL=""
+_TIMER_ACTIVE_START=""
+_TIMER_RUN_START="$(date +%s)"
+
+timer_start() {
+  [[ "${IDP_TIMING:-1}" == "1" ]] || return 0
+  _TIMER_ACTIVE_LABEL="$1"
+  _TIMER_ACTIVE_START="$(date +%s)"
+}
+
+# Records elapsed time for $1 and prints it. Tolerates a missing/mismatched
+# timer_start (e.g. a step that exited early) instead of emitting a bogus
+# duration measured from some unrelated earlier step.
+timer_end() {
+  [[ "${IDP_TIMING:-1}" == "1" ]] || return 0
+  local label="$1" elapsed
+  if [[ -z "$_TIMER_ACTIVE_START" || "$_TIMER_ACTIVE_LABEL" != "$label" ]]; then
+    _TIMER_ACTIVE_LABEL=""; _TIMER_ACTIVE_START=""
+    return 0
+  fi
+  elapsed=$(( $(date +%s) - _TIMER_ACTIVE_START ))
+  _TIMER_LABELS+=("$label")
+  _TIMER_SECONDS+=("$elapsed")
+  _TIMER_ACTIVE_LABEL=""; _TIMER_ACTIVE_START=""
+  echo -e "[$(date +%T)] ${CYAN}⏱${RESET}  ${label}: $(_fmt_duration "$elapsed")"
+}
+
+_fmt_duration() {
+  local s="$1"
+  if (( s < 60 )); then printf '%ds' "$s"; else printf '%dm%02ds' $(( s / 60 )) $(( s % 60 )); fi
+}
+
+# Slowest-first table plus total wall time. Safe to call with no recorded
+# steps (prints nothing), so the EXIT trap is harmless on an early failure.
+timer_summary() {
+  [[ "${IDP_TIMING:-1}" == "1" ]] || return 0
+  (( ${#_TIMER_LABELS[@]} > 0 )) || return 0
+  local i total
+  total=$(( $(date +%s) - _TIMER_RUN_START ))
+  echo ""
+  echo -e "${BOLD}▶ Step timings (slowest first)${RESET}"
+  for (( i = 0; i < ${#_TIMER_LABELS[@]}; i++ )); do
+    printf '%s\t%s\n' "${_TIMER_SECONDS[$i]}" "${_TIMER_LABELS[$i]}"
+  done | sort -rn | while IFS=$'\t' read -r secs label; do
+    printf '  %-46s %s\n' "$label" "$(_fmt_duration "$secs")"
+  done
+  printf '  %-46s %s\n' "TOTAL (wall clock)" "$(_fmt_duration "$total")"
+  echo ""
+}
+
+# Print the summary on exit, including on failure — the timings for the steps
+# that DID complete are exactly what you want when a run dies partway through.
+# Chains onto any EXIT trap the caller already installed.
+timer_enable_summary() {
+  [[ "${IDP_TIMING:-1}" == "1" ]] || return 0
+  local existing
+  existing="$(trap -p EXIT | sed -n "s/^trap -- '\(.*\)' EXIT$/\1/p")"
+  if [[ -n "$existing" ]]; then
+    # shellcheck disable=SC2064
+    trap "${existing}; timer_summary" EXIT
+  else
+    trap 'timer_summary' EXIT
+  fi
+}
+
 _sed() {
   if sed --version 2>&1 | grep -q GNU; then
     sed -i "$@"
@@ -231,6 +312,71 @@ helm_release_unchanged() {
 helm_record_fingerprint() {
   mkdir -p "$(dirname "$1")"
   printf '%s' "$2" > "$1"
+}
+
+# Content hash of a source directory, used to decide whether a Docker image
+# needs rebuilding. Prefers `git ls-files -s` (already-computed blob SHAs — no
+# re-hashing of file contents, and it honours .gitignore so node_modules/dist
+# never enter the hash). Falls back to hashing file contents directly for an
+# untracked directory (e.g. a service scaffolded but not yet committed).
+#
+# NOTE: the git path hashes *committed/staged* blob SHAs, so an uncommitted
+# working-tree edit does not change the hash on its own. `git status
+# --porcelain` for the directory is folded in to cover exactly that case.
+#   $1 = directory path
+dir_content_hash() {
+  local dir="$1" top listing=""
+  if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
+    listing=$(
+      # Tracked files: index blob SHAs, no content re-hashing.
+      git -C "$top" ls-files -s -- "$dir" 2>/dev/null
+      # Modified, deleted, and untracked-but-not-ignored files: the blob SHAs
+      # above are stale (or absent) for these, so mix in live content. -z plus
+      # `read -d ''` keeps paths with spaces and renames intact.
+      git -C "$top" ls-files -m -d -o --exclude-standard -z -- "$dir" 2>/dev/null \
+        | while IFS= read -r -d '' rel; do
+            printf '%s ' "$rel"
+            [[ -f "$top/$rel" ]] && _sha256 "$top/$rel"
+            printf '\n'
+          done
+    )
+  fi
+  if [[ -n "$listing" ]]; then
+    printf '%s' "$listing" | _sha256_stdin
+  else
+    # Not a git work tree, or the whole directory is gitignored — hash contents
+    # directly. Without this an ignored dir would hash to a constant and every
+    # build would be skipped forever.
+    find "$dir" -type f \
+      ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
+      -print0 2>/dev/null | sort -z | xargs -0 shasum -a 256 2>/dev/null | _sha256_stdin
+  fi
+}
+
+# sha256 of stdin (companion to _sha256, which takes a file path).
+_sha256_stdin() {
+  if command -v sha256sum &>/dev/null; then
+    sha256sum | awk '{print $1}'
+  else
+    shasum -a 256 | awk '{print $1}'
+  fi
+}
+
+# Skip-if-unchanged check for a Docker image build, the image-level counterpart
+# to helm_release_unchanged. Skips only when BOTH the recorded fingerprint from
+# the last successful build+push matches the caller's current source hash AND
+# the tag still actually exists in the target registry — so a wiped local
+# registry (the normal state after `bootstrap-local.sh --destroy`) or a deleted
+# ECR tag always falls through to a real build instead of leaving the cluster
+# pointing at an image that isn't there.
+#   $1 = fingerprint file path
+#   $2 = desired fingerprint (e.g. output of dir_content_hash)
+#   $3 = command string that exits 0 iff the tag exists in the registry
+image_unchanged() {
+  local fp_file="$1" desired="$2" verify_cmd="$3"
+  [[ -f "$fp_file" ]] || return 1
+  [[ "$(cat "$fp_file" 2>/dev/null)" == "$desired" ]] || return 1
+  eval "$verify_cmd" &>/dev/null
 }
 
 # Wait for a background job (started with `cmd >"$log" 2>&1 & pid=$!`), cat

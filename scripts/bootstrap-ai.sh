@@ -25,6 +25,7 @@ SKIP_KAGENT=false
 SKIP_MCP=false
 ADP=false
 DESTROY=false
+FORCE_BUILD=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,6 +37,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mcp)     SKIP_MCP=true; shift ;;
     --adp)          ADP=true; shift ;;
     --destroy)      DESTROY=true; shift ;;
+    --force-build)  FORCE_BUILD=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
@@ -55,6 +57,20 @@ check() { echo "✓ $*"; }
 warn()  { echo "  [ai] WARNING: $*" >&2; }
 log()   { echo "  [ai] $*"; }
 die()   { echo "✗ ERROR: $*" >&2; exit 1; }
+
+# Per-step wall-clock timings, printed as a slowest-first table on exit
+# (including on failure). Set IDP_TIMING=0 to silence.
+timer_enable_summary
+
+# Where skip-if-unchanged fingerprints for Helm releases and Docker images are
+# recorded. Shared with bootstrap-local.sh, which uses the same directory for
+# its ArgoCD release fingerprint.
+CACHE_DIR="${REPO_ROOT}/.idp-cache"
+# Bounded parallelism for MCP server image builds. Deliberately not "all at
+# once": these are npm-install-heavy Node builds and Docker Desktop is often
+# provisioned with only a few CPUs (see bootstrap-local.sh's under-provisioned
+# Docker warning), where oversubscribing makes the whole batch slower.
+IDP_BUILD_JOBS="${IDP_BUILD_JOBS:-4}"
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
 
@@ -194,16 +210,29 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
       [[ -d "${REPO_ROOT}/services/${_adp_svc}" ]] && _ecr_repos+=("${_adp_svc}")
     done
   fi
+  # One describe call for the whole registry, filtered locally, instead of one
+  # describe round trip per repo (up to 10 serial API calls). Listing without
+  # --repository-names is deliberate: passing names for a repo that doesn't
+  # exist yet fails the *entire* call with RepositoryNotFoundException.
+  _existing_ecr=$(aws ecr describe-repositories --region "${AWS_REGION}" \
+    --query 'repositories[].repositoryName' --output text 2>/dev/null | tr '\t' '\n')
   for _repo in "${_ecr_repos[@]}"; do
     _full_repo="${CLUSTER_NAME}/${_repo}"
-    aws ecr describe-repositories --region "${AWS_REGION}" --repository-names "${_full_repo}" &>/dev/null || \
-      aws ecr create-repository \
+    if printf '%s\n' "$_existing_ecr" | grep -qx "${_full_repo}"; then
+      continue
+    fi
+    # Note: this used to be `describe || create && info`, which — because || and
+    # && are left-associative — printed "Created" on the already-exists path too.
+    if aws ecr create-repository \
         --repository-name "${_full_repo}" \
         --region "${AWS_REGION}" \
         --image-scanning-configuration scanOnPush=true \
         --image-tag-mutability MUTABLE \
-        --query 'repository.repositoryUri' --output text \
-      && info "Created ECR repository: ${_full_repo}"
+        --query 'repository.repositoryUri' --output text >/dev/null; then
+      info "Created ECR repository: ${_full_repo}"
+    else
+      warn "Could not create ECR repository ${_full_repo} — docker push for ${_repo} will fail."
+    fi
   done
 
   # Login to ECR once; subsequent docker push calls reuse the session
@@ -277,6 +306,7 @@ info "Starting AI platform bootstrap (Claude API, mode=${DEPLOY_MODE})..."
 echo ""
 
 # ── 1. Namespaces ─────────────────────────────────────────────────────────────
+timer_start "1. Namespaces"
 
 # Wait for any of our target namespaces to finish terminating before re-applying.
 # Uses the shared helper from lib.sh.
@@ -329,7 +359,10 @@ repair_stuck_helm_release() {
 repair_stuck_helm_release kagent-crds kagent
 repair_stuck_helm_release kagent      kagent
 
+timer_end "1. Namespaces"
+
 # ── 2. Anthropic API key secret ───────────────────────────────────────────────
+timer_start "2. Secrets"
 
 info "Creating kagent-anthropic secret in kagent namespace..."
 kubectl create secret generic kagent-anthropic \
@@ -415,7 +448,10 @@ if $ADP; then
   fi
 fi
 
+timer_end "2. Secrets"
+
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────
+timer_start "3. MLflow"
 
 if [[ "$SKIP_MLFLOW" == "true" ]]; then
   info "Skipping MLflow (--skip-mlflow)."
@@ -441,7 +477,10 @@ else
   fi
 fi
 
+timer_end "3. MLflow"
+
 # ── 4. KAgent ─────────────────────────────────────────────────────────────────
+timer_start "4. KAgent install + patches"
 
 if [[ "$SKIP_KAGENT" == "true" ]]; then
   info "Skipping KAgent (--skip-kagent)."
@@ -452,17 +491,32 @@ else
   # fixes this by returning {"error":false,"data":[]} before requests reach the controller.
   KAGENT_CHART_VERSION="0.9.4"
 
-  info "Installing KAgent via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
-  helm upgrade --install kagent-crds \
-    oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds \
-    --version "${KAGENT_CHART_VERSION}" \
-    --namespace kagent \
-    --create-namespace \
-    --wait \
-    --timeout 5m
-
   KAGENT_VALUES="${REPO_ROOT}/local/kagent/values.yaml"
   [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/aws/kagent/values.yaml"
+
+  # Skip-if-unchanged (lib.sh): a re-run against an already-healthy cluster
+  # shouldn't pay for two full `helm upgrade` cycles plus a 5m --wait when the
+  # pinned chart version and values file are byte-identical to the last
+  # successful install. Both fall through to a real install on any version bump,
+  # values edit, or release Helm no longer reports as deployed.
+  _crds_fp_file="${CACHE_DIR}/kagent-crds.fingerprint"
+  _crds_fp="${KAGENT_CHART_VERSION}"
+  _kagent_fp_file="${CACHE_DIR}/kagent.fingerprint"
+  _kagent_fp="${KAGENT_CHART_VERSION}:$(_sha256 "$KAGENT_VALUES")"
+
+  if helm_release_unchanged kagent-crds kagent "$_crds_fp_file" "$_crds_fp"; then
+    info "KAgent CRDs already at v${KAGENT_CHART_VERSION} — skipping reinstall."
+  else
+    info "Installing KAgent CRDs via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
+    helm upgrade --install kagent-crds \
+      oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds \
+      --version "${KAGENT_CHART_VERSION}" \
+      --namespace kagent \
+      --create-namespace \
+      --wait \
+      --timeout 5m
+    helm_record_fingerprint "$_crds_fp_file" "$_crds_fp"
+  fi
 
   # --force-conflicts: Helm v4 uses server-side apply; the kubectl patches below
   # take field ownership on first install, so subsequent helm upgrades would
@@ -472,15 +526,23 @@ else
   # registry that doesn't actually host these images — the real images live at
   # ghcr.io (same host the OCI chart itself was just pulled from). Without this
   # override, kagent-controller and kagent-ui sit in ImagePullBackOff forever.
-  helm upgrade --install kagent \
-    oci://ghcr.io/kagent-dev/kagent/helm/kagent \
-    --version "${KAGENT_CHART_VERSION}" \
-    --namespace kagent \
-    --values "${KAGENT_VALUES}" \
-    --set registry=ghcr.io \
-    --force-conflicts
+  if helm_release_unchanged kagent kagent "$_kagent_fp_file" "$_kagent_fp"; then
+    info "KAgent already installed (v${KAGENT_CHART_VERSION}, values unchanged) — skipping reinstall."
+  else
+    info "Installing KAgent via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
+    helm upgrade --install kagent \
+      oci://ghcr.io/kagent-dev/kagent/helm/kagent \
+      --version "${KAGENT_CHART_VERSION}" \
+      --namespace kagent \
+      --values "${KAGENT_VALUES}" \
+      --set registry=ghcr.io \
+      --force-conflicts
+    helm_record_fingerprint "$_kagent_fp_file" "$_kagent_fp"
+  fi
   # Don't --wait here: built-in Agent CRDs (argo-rollouts, cilium, etc.) take
   # longer than helm's wait window to reach Ready. Poll the controller pod only.
+  # Run this on the skip path too — cheap when the Deployment is already
+  # Available, and it still catches a pod knocked over since the last run.
   kubectl rollout status deployment/kagent-controller -n kagent --timeout=5m || \
     warn "kagent-controller not ready yet — pods are starting, will self-heal. Continuing..."
 
@@ -490,40 +552,55 @@ else
   # The KAgent helm chart (v0.9.2) does not propagate postgres.bundled.image or
   # postgres.vectorEnabled into the rendered Deployment/ConfigMap.  We patch
   # them directly so the `memory` table (vector(768) column) can be created.
-  info "Patching kagent-postgresql to pgvector image and enabling DATABASE_VECTOR_ENABLED..."
+  # Both patches are idempotent, but the rollouts they trigger are not free —
+  # applying them unconditionally costs a postgres rollout plus a full
+  # controller restart (two `rollout status --timeout=5m` waits) on every run.
+  # Read the live state instead and skip the whole block when it's already
+  # converged; any drift (fresh install, helm upgrade that reverted a field)
+  # still falls through to the real patch path.
+  _pg_image=$(kubectl get deployment kagent-postgresql -n kagent \
+    -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+  _vector_enabled=$(kubectl get configmap kagent-controller -n kagent \
+    -o jsonpath='{.data.DATABASE_VECTOR_ENABLED}' 2>/dev/null || echo "")
 
-  # Switch the bundled postgres to the pgvector-enabled image.
-  # --field-manager=helm: claim ownership as helm so the next helm upgrade can
-  # overwrite these fields without a server-side-apply conflict.
-  kubectl patch deployment kagent-postgresql -n kagent \
-    --field-manager=helm \
-    --type='json' \
-    --patch='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"pgvector/pgvector:pg18"},{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
-  kubectl rollout status deployment/kagent-postgresql -n kagent --timeout=5m || \
-    warn "kagent-postgresql rollout slow (cold pgvector image + probe ramp-up) — continuing; will retry connection below."
+  if [[ "$_pg_image" == "pgvector/pgvector:pg18" && "$_vector_enabled" == "true" ]]; then
+    check "pgvector image + DATABASE_VECTOR_ENABLED already applied — skipping patch and controller restart."
+  else
+    info "Patching kagent-postgresql to pgvector image and enabling DATABASE_VECTOR_ENABLED..."
 
-  # Enable vector support in the controller ConfigMap.
-  kubectl patch configmap kagent-controller -n kagent \
-    --field-manager=helm \
-    --patch='{"data":{"DATABASE_VECTOR_ENABLED":"true"}}'
+    # Switch the bundled postgres to the pgvector-enabled image.
+    # --field-manager=helm: claim ownership as helm so the next helm upgrade can
+    # overwrite these fields without a server-side-apply conflict.
+    kubectl patch deployment kagent-postgresql -n kagent \
+      --field-manager=helm \
+      --type='json' \
+      --patch='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"pgvector/pgvector:pg18"},{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
+    kubectl rollout status deployment/kagent-postgresql -n kagent --timeout=5m || \
+      warn "kagent-postgresql rollout slow (cold pgvector image + probe ramp-up) — continuing; will retry connection below."
 
-  # Wait for postgres to be accepting connections, then create the extension.
-  PG_POD=$(kubectl get pod -n kagent --no-headers | awk '/postgresql/{print $1;exit}')
-  for i in $(seq 1 20); do
-    if kubectl exec -n kagent "$PG_POD" -- psql -U kagent -d kagent -c "SELECT 1" &>/dev/null 2>&1; then
-      break
-    fi
-    sleep 3
-  done
-  kubectl exec -n kagent "$PG_POD" -- \
-    psql -U kagent -d kagent -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>&1 || true
+    # Enable vector support in the controller ConfigMap.
+    kubectl patch configmap kagent-controller -n kagent \
+      --field-manager=helm \
+      --patch='{"data":{"DATABASE_VECTOR_ENABLED":"true"}}'
 
-  # Restart the controller so it picks up DATABASE_VECTOR_ENABLED=true and
-  # runs the AutoMigrate that creates the memory table.
-  kubectl rollout restart deployment/kagent-controller -n kagent
-  kubectl rollout status  deployment/kagent-controller -n kagent --timeout=5m || \
-    warn "kagent-controller rollout slow — continuing; pod will become ready shortly."
-  check "pgvector extension enabled → memory table will be created on controller start"
+    # Wait for postgres to be accepting connections, then create the extension.
+    PG_POD=$(kubectl get pod -n kagent --no-headers | awk '/postgresql/{print $1;exit}')
+    for i in $(seq 1 20); do
+      if kubectl exec -n kagent "$PG_POD" -- psql -U kagent -d kagent -c "SELECT 1" &>/dev/null 2>&1; then
+        break
+      fi
+      sleep 3
+    done
+    kubectl exec -n kagent "$PG_POD" -- \
+      psql -U kagent -d kagent -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>&1 || true
+
+    # Restart the controller so it picks up DATABASE_VECTOR_ENABLED=true and
+    # runs the AutoMigrate that creates the memory table.
+    kubectl rollout restart deployment/kagent-controller -n kagent
+    kubectl rollout status  deployment/kagent-controller -n kagent --timeout=5m || \
+      warn "kagent-controller rollout slow — continuing; pod will become ready shortly."
+    check "pgvector extension enabled → memory table will be created on controller start"
+  fi
 
   # Wait for the controller HTTP API to be serving before applying resources.
   # rollout status only checks the pod readiness probe; the API needs extra seconds
@@ -548,32 +625,46 @@ else
   [[ "$_ctrl_ready" == "true" ]] && check "KAgent controller API healthy" || \
     warn "KAgent controller API health check timed out — UI pages may show errors on first load"
 
+  timer_end "4. KAgent install + patches"
+
   # ── 5. KAgent resources ─────────────────────────────────────────────────────
+  timer_start "5. KAgent resources"
 
   info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-haiku.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"
-  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"
-  fi
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-mcp-server-rbac.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/platform-agent.yaml"
-  # contract-mcp-server RemoteMCPServer registration is required: idp-agent and
-  # platform-agent both reference it as a tool source, so without it those
+  # One `kubectl apply` with repeated -f instead of ~16 separate invocations:
+  # these objects are independent (distinct ModelConfigs/RemoteMCPServers/
+  # Agents), so there is nothing to order between them, and a single call pays
+  # one process spawn and one client-side discovery round trip instead of 16.
+  # contract-toolserver is required, not optional: idp-agent and platform-agent
+  # both reference contract-mcp-server as a tool source, so without it those
   # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
+  _kagent_manifests=(
+    modelconfig.yaml
+    modelconfig-haiku.yaml
+    modelconfig-sonnet.yaml
+    modelconfig-opus.yaml
+    idp-mcp-server-rbac.yaml
+    toolserver.yaml
+    idp-agent.yaml
+    qa-toolserver.yaml
+    qa-agent.yaml
+    github-toolserver.yaml
+    argocd-toolserver.yaml
+    cost-toolserver.yaml
+    release-agent.yaml
+    cost-agent.yaml
+    platform-agent.yaml
+    contract-toolserver.yaml
+    contract-agent.yaml
+  )
+  # Conditional — the OpenAI ModelConfig is only functional with a key present.
+  [[ -n "${OPENAI_API_KEY:-}" ]] && _kagent_manifests+=(modelconfig-openai.yaml)
+
+  _kagent_apply_args=()
+  for _m in "${_kagent_manifests[@]}"; do
+    _kagent_apply_args+=(-f "${REPO_ROOT}/kubernetes/kagent/${_m}")
+  done
+  kubectl apply "${_kagent_apply_args[@]}"
 
   if $ADP; then
     info "Applying Agentic Development Platform (ADP) components (docs/agentic-platform.md)..."
@@ -752,7 +843,10 @@ else
   done
 fi
 
+timer_end "5. KAgent resources"
+
 # ── 6. IDP / QA MCP Servers ───────────────────────────────────────────────────
+timer_start "6. MCP servers"
 # Local: build images into the local registry; ArgoCD (services-dev namespace)
 #        manages the actual Kubernetes deployment via GitOps.
 # AWS:   build, push to ECR, and Helm-deploy directly (ArgoCD handles day-2).
@@ -866,33 +960,102 @@ else
     fi
   fi
 
+  # Does :0.1.0 for this service actually exist in the target registry? Used by
+  # image_unchanged so a wiped local registry (the normal state after
+  # `bootstrap-local.sh --destroy`) or a deleted ECR tag always forces a real
+  # rebuild, no matter what the recorded fingerprint says.
+  _mcp_tag_exists_cmd() {
+    local svc="$1"
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      printf 'aws ecr describe-images --region %q --repository-name %q --image-ids imageTag=0.1.0' \
+        "$AWS_REGION" "${CLUSTER_NAME}/${svc}"
+    else
+      printf 'curl -sf %q | grep -q %q' \
+        "http://${REGISTRY}/v2/${svc}/tags/list" '"0.1.0"'
+    fi
+  }
+
+  # Build + push one MCP server image, skipping both when the service source is
+  # byte-identical to the last successful build and the tag is still in the
+  # registry. This is what makes a no-change re-run cheap: previously every run
+  # rebuilt all 7-10 Node images from scratch.
+  _build_push_mcp_image() {
+    local svc="$1"
+    local fp_file="${CACHE_DIR}/image-${svc}.fingerprint"
+    local src_hash; src_hash=$(dir_content_hash "${REPO_ROOT}/services/${svc}")
+
+    if [[ "$FORCE_BUILD" != "true" ]] && \
+       image_unchanged "$fp_file" "$src_hash" "$(_mcp_tag_exists_cmd "$svc")"; then
+      info "${svc}: source unchanged and image present in registry — skipping build."
+      return 0
+    fi
+
+    info "Building ${svc}..."
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      # --platform linux/amd64 runs under emulation on an Apple-Silicon host,
+      # which is why the registry layer cache matters so much here: a repeat
+      # build reuses layers instead of re-emulating every npm install step.
+      # Falls back to plain `docker build` where buildx isn't available.
+      if docker buildx version &>/dev/null; then
+        docker buildx build \
+          --platform linux/amd64 --provenance=false \
+          --cache-from "type=registry,ref=${REGISTRY}/${svc}:buildcache" \
+          --cache-to "type=registry,ref=${REGISTRY}/${svc}:buildcache,mode=max,image-manifest=true" \
+          -t "${REGISTRY}/${svc}:0.1.0" \
+          -t "${REGISTRY}/${svc}:latest" \
+          --push \
+          "${REPO_ROOT}/services/${svc}/"
+      else
+        docker build \
+          --platform linux/amd64 --provenance=false \
+          -t "${REGISTRY}/${svc}:0.1.0" \
+          -t "${REGISTRY}/${svc}:latest" \
+          "${REPO_ROOT}/services/${svc}/"
+        docker push "${REGISTRY}/${svc}:0.1.0"
+        docker push "${REGISTRY}/${svc}:latest"
+      fi
+    else
+      docker build \
+        -t "${REGISTRY}/${svc}:0.1.0" \
+        -t "${REGISTRY}/${svc}:latest" \
+        "${REPO_ROOT}/services/${svc}/"
+      docker push "${REGISTRY}/${svc}:0.1.0"
+      docker push "${REGISTRY}/${svc}:latest"
+    fi
+
+    # Only record the fingerprint once build AND push both succeeded, so a
+    # failed push can never leave a fingerprint claiming the image is in the
+    # registry when it isn't.
+    helm_record_fingerprint "$fp_file" "$src_hash"
+  }
+
   for SVC in "${MCP_SERVICES[@]}"; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
-    info "Building ${SVC}..."
     (
       set -e
+      _build_push_mcp_image "$SVC"
       if [[ "$DEPLOY_MODE" == "aws" ]]; then
-        docker build \
-          --platform linux/amd64 --provenance=false \
-          -t "${REGISTRY}/${SVC}:0.1.0" \
-          -t "${REGISTRY}/${SVC}:latest" \
-          "${REPO_ROOT}/services/${SVC}/"
-        docker push "${REGISTRY}/${SVC}:0.1.0"
-        docker push "${REGISTRY}/${SVC}:latest"
-        sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g; s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
-          "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
-          | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
-              --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
+        # Skip the `helm upgrade --install --wait 3m` when neither the image nor
+        # the chart values changed and Helm still reports the release deployed.
+        # The rollout status check still runs on the skip path — it's ~instant
+        # for a healthy Deployment but still catches one that has fallen over.
+        _svc_fp_file="${CACHE_DIR}/mcp-${SVC}.fingerprint"
+        _svc_fp="$(dir_content_hash "${REPO_ROOT}/services/${SVC}"):$(_sha256 "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml")"
+        if [[ "$FORCE_BUILD" != "true" ]] && \
+           helm_release_unchanged "${SVC}" services-dev "$_svc_fp_file" "$_svc_fp"; then
+          info "${SVC}: image and chart values unchanged — skipping Helm upgrade."
+          kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
+        else
+          sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g; s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
+            "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
+            | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
+                --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
+          helm_record_fingerprint "$_svc_fp_file" "$_svc_fp"
+        fi
         check "${SVC} deployed → ALB"
       else
-        docker build \
-          -t "${REGISTRY}/${SVC}:0.1.0" \
-          -t "${REGISTRY}/${SVC}:latest" \
-          "${REPO_ROOT}/services/${SVC}/"
-        docker push "${REGISTRY}/${SVC}:0.1.0"
-        docker push "${REGISTRY}/${SVC}:latest"
         # Try ArgoCD sync first; fall back to direct Helm install when the
         # ArgoCD application hasn't been registered yet (first-time install
         # before app-of-apps-local.yaml is applied). --plaintext is required:
@@ -959,6 +1122,8 @@ else
     check "APPROVAL_SERVICE_URL wired into idp/argocd/github-mcp-server"
   fi
 fi
+
+timer_end "6. MCP servers"
 
 # ── 7. KAgent UI port-forward (background) ───────────────────────────────────
 # Provides direct access at http://localhost:8082 alongside the ingress hostname.
