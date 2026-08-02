@@ -88,9 +88,13 @@ Adding the AI/ML stack on AWS takes an additional **15–20 minutes**:
 
 See [docs/local-setup.md](local-setup.md) for the full local walkthrough including Backstage, the `idp:deploy-local` action, and Kind deployment.
 
-`./scripts/setup.sh` **must be run before** `bootstrap-local.sh`. It replaces `moatazeldebsy` and other placeholders across 542 targeted files (excluding node_modules). Without it, the ArgoCD ApplicationSet will have an unresolved placeholder and generate no apps.
+> **Run `setup.sh` — not both.** On a fresh clone you run `./scripts/setup.sh` and nothing else. When you answer **local**, it calls `bootstrap-local.sh` for you and then offers to start Backstage. Running `bootstrap-local.sh` yourself afterwards just repeats a 15–20 minute install for no benefit.
+>
+> `bootstrap-local.sh` is what you run **standalone later**, for day-2 work: recreating the cluster, `--destroy`, `--start-backstage`, `--print-urls`. You do not re-run `setup.sh` for those.
 
-> **Important:** `setup.sh` uses targeted file scanning and `while`-loop replacement (not `xargs`) to reliably update placeholders. If you previously ran an older version and ArgoCD shows no apps, check that `local/argocd/app-of-apps-local.yaml` contains your GitHub org (not `moatazeldebsy`), then re-run `setup.sh`.
+Personalisation has to happen before bootstrapping: `setup.sh` replaces `moatazeldebsy` and the other placeholders across the repo, and without it the ArgoCD ApplicationSet points at an unresolved placeholder and generates no apps.
+
+> **If ArgoCD shows no apps:** check that `local/argocd/app-of-apps-local.yaml` contains your GitHub org rather than `moatazeldebsy`, then re-run `setup.sh`.
 
 ## AWS Setup
 

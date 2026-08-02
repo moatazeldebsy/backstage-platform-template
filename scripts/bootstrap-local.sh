@@ -32,6 +32,11 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=scripts/lib.sh
 source "${ROOT_DIR}/scripts/lib.sh"
 
+# Per-step wall-clock timings, printed as a slowest-first table on exit
+# (including on failure). Set IDP_TIMING=0 to silence, IDP_FORCE=1 to bypass
+# every skip-if-unchanged check and reinstall/rebuild everything.
+timer_enable_summary
+
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 REGISTRY_NAME="registry"
 REGISTRY_PORT="5003"
@@ -595,7 +600,21 @@ fi
 
 log "Starting local IDP MVP bootstrap (cluster=$CLUSTER_NAME)"
 
+# ── Step 0: /etc/hosts ───────────────────────────────────────────────────────
+# Deliberately first. This is the only step that needs `sudo`, and it used to
+# run dead last — so a 35-minute install ended by silently blocking on a
+# password prompt long after the user had walked away (observed: 18 minutes of
+# a 36-minute run were spent waiting here, not working). The entries are static
+# 127.0.0.1 mappings that don't depend on anything the cluster does, so doing
+# them up front costs nothing and gets the prompt in front of you immediately.
+# Already-correct /etc/hosts needs no sudo at all and stays silent.
+timer_start "0. /etc/hosts"
+log "Step 0: Checking /etc/hosts entries (may prompt for your password)..."
+append_hosts_file "${ROOT_DIR}/local/hosts-append.txt"
+timer_end "0. /etc/hosts"
+
 # ── Step 1: Local container registry ─────────────────────────────────────────
+timer_start "1. Local registry"
 log "Step 1: Starting local container registry on port ${REGISTRY_PORT}..."
 
 if ! docker inspect "$REGISTRY_NAME" &>/dev/null; then
@@ -609,7 +628,115 @@ else
   log "Registry already running."
 fi
 
+timer_end "1. Local registry"
+
+# ── Step 6 (runs in the background, joined before Step 13) ──────────────────
+# Building and pushing images needs the local registry from Step 1 and nothing
+# else — not the cluster, not ingress, not observability. It used to run
+# sequentially between Step 5 and Step 8, with everything else waiting on it.
+# Now it overlaps Steps 2-12; Step 13 (the ApplicationSet sync that actually
+# deploys these images) joins it first.
+_build_local_images() {
+  # Previously this step also `helm upgrade --install`-ed hello-service into the
+  # 'services' namespace just to have Step 13 uninstall it again so ArgoCD could
+  # manage it in 'services-dev'. The throwaway install added ~30-60s and an
+  # extra failure surface (helm --wait timeouts on first-boot image pulls) for
+  # no real benefit — Step 13's ApplicationSet sync is the canonical deploy.
+  log "Step 6: Building and pushing hello-service image..."
+  IMAGE="localhost:${REGISTRY_PORT}/hello-service:local"
+  _HELLO_VERSION="local-$(git rev-parse --short HEAD 2>/dev/null || echo 'dev')"
+
+  # This used to rebuild and re-push on every single run regardless of whether
+  # anything changed. Fingerprint covers the service source *and* the VERSION
+  # build-arg (it's baked into the image, so a new commit must invalidate it),
+  # and image_unchanged also confirms the tag is still in the registry — a wiped
+  # registry after --destroy always forces a real build.
+  _hello_fp_file="${ROOT_DIR}/.idp-cache/image-hello-service.fingerprint"
+  _hello_fp="$(dir_content_hash "${ROOT_DIR}/services/hello-service"):${_HELLO_VERSION}"
+  if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$_hello_fp_file" "$_hello_fp" \
+       "curl -sf http://localhost:${REGISTRY_PORT}/v2/hello-service/tags/list | grep -q '\"local\"'"; then
+    log "  hello-service unchanged and image present in registry — skipping build."
+  else
+    docker build \
+      --build-arg VERSION="${_HELLO_VERSION}" \
+      -t "$IMAGE" \
+      "${ROOT_DIR}/services/hello-service"
+
+    docker push "$IMAGE"
+    helm_record_fingerprint "$_hello_fp_file" "$_hello_fp"
+  fi
+
+  # Pre-load the nginx-prometheus-exporter sidecar image into the local registry.
+  # Kind nodes pull from localhost:5003 to avoid Docker Hub rate limits and to
+  # work fully offline after the first bootstrap.
+  NGINX_EXPORTER_IMG="nginx/nginx-prometheus-exporter:1.3.0"
+  NGINX_EXPORTER_LOCAL="localhost:${REGISTRY_PORT}/nginx-prometheus-exporter:1.3.0"
+  if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/nginx-prometheus-exporter/tags/list" | grep -q '"1.3.0"'; then
+    log "Step 6b: Seeding nginx-prometheus-exporter into local registry..."
+    docker pull "${NGINX_EXPORTER_IMG}" --quiet
+    docker tag  "${NGINX_EXPORTER_IMG}" "${NGINX_EXPORTER_LOCAL}"
+    docker push "${NGINX_EXPORTER_LOCAL}"
+    log "  Pushed ${NGINX_EXPORTER_LOCAL}"
+  else
+    log "Step 6b: nginx-prometheus-exporter:1.3.0 already in registry — skipping."
+  fi
+
+  # Build and seed images for any scaffolded service in services/ that has a
+  # helm-values-local.yaml. hello-service is handled above; idp-mcp-server and
+  # qa-mcp-server are deployed by bootstrap-ai.sh — skip them here.
+  for svc_dir in "${ROOT_DIR}/services"/*/; do
+    svc=$(basename "$svc_dir")
+    [[ "$svc" == "hello-service" || "$svc" == "idp-mcp-server" || "$svc" == "qa-mcp-server" ]] && continue
+    [[ ! -f "${svc_dir}/helm-values-local.yaml" ]] && continue
+    img_repo=$(grep -E '^\s+repository:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}')
+    img_tag=$(grep -E '^\s+tag:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}' | tr -d '"')
+    [[ "$img_repo" != localhost:* ]] && continue
+    svc_name=$(basename "$img_repo")
+    if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/${svc_name}/tags/list" | grep -q "\"${img_tag}\""; then
+      if [[ -f "${svc_dir}/Dockerfile" ]]; then
+        log "Step 6d: Building ${svc_name} from services/${svc}/Dockerfile..."
+        docker build -t "${img_repo}:${img_tag}" "${svc_dir}" --quiet
+      else
+        log "Step 6d: Seeding ${img_repo}:${img_tag} stub (no Dockerfile found)..."
+        docker build -t "${img_repo}:${img_tag}" -f - . <<'DOCKERFILE'
+FROM python:3.13-slim
+EXPOSE 8080
+CMD ["python3", "-c", "import http.server, socketserver; socketserver.TCPServer(('',8080), http.server.SimpleHTTPRequestHandler).serve_forever()"]
+DOCKERFILE
+      fi
+      docker push "${img_repo}:${img_tag}"
+      log "  Pushed ${img_repo}:${img_tag}"
+    else
+      log "Step 6c: ${img_repo}:${img_tag} already in registry — skipping."
+    fi
+  done
+
+}
+
+# Kick off image builds now; joined before Step 13.
+_IMAGES_PID=""
+_IMAGES_LOG=""
+if [[ "${IDP_SKIP_IMAGE_BUILDS:-0}" != "1" ]]; then
+  _IMAGES_LOG=$(mktemp)
+  _build_local_images >"$_IMAGES_LOG" 2>&1 &
+  _IMAGES_PID=$!
+  log "Step 6: building images in the background (joined before Step 13)."
+fi
+
+# Don't orphan the background build if the run dies before Step 13 joins it.
+# Supersedes the EXIT trap from timer_enable_summary, so it re-invokes
+# timer_summary itself.
+_kill_image_builds() {
+  [[ -n "${_IMAGES_PID:-}" ]] || return 0
+  pkill -P "$_IMAGES_PID" 2>/dev/null || true
+  kill "$_IMAGES_PID" 2>/dev/null || true
+  rm -f "${_IMAGES_LOG:-}" 2>/dev/null || true
+}
+trap '_kill_image_builds; timer_summary' EXIT
+
+
 # ── Step 2: Kubernetes cluster ────────────────────────────────────────────────
+timer_start "2. Kind cluster"
 if [[ "$PROVIDER" == "kind" ]]; then
   log "Step 2: Creating Kind cluster '$CLUSTER_NAME'..."
 
@@ -671,7 +798,10 @@ EOF
   wait_kubectl_ready 90
 fi
 
+timer_end "2. Kind cluster"
+
 # ── Step 3: Namespaces ────────────────────────────────────────────────────────
+timer_start "3. Namespaces"
 log "Step 3: Creating platform namespaces..."
 # A previous failed run can leave these in Terminating; wait briefly so
 # kubectl apply doesn't race with finaliser cleanup.
@@ -683,7 +813,10 @@ kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
 kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
 kubectl apply -f "$(dirname "$0")/../kubernetes/network-policies/default-deny.yaml"
 
+timer_end "3. Namespaces"
+
 # ── Step 4: nginx ingress controller ─────────────────────────────────────────
+timer_start "4. Ingress + metrics-server"
 log "Step 4: Installing nginx ingress controller..."
 ensure_helm_repos ingress-nginx prometheus-community opencost argo grafana gatekeeper kyverno
 
@@ -699,7 +832,7 @@ if [[ "$PROVIDER" == "kind" ]]; then
   )
 fi
 
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+helm_upgrade_cached ingress-nginx ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --set controller.hostPort.enabled=true \
@@ -708,7 +841,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.resources.requests.memory=128Mi \
   --set controller.resources.limits.cpu=500m \
   --set controller.resources.limits.memory=256Mi \
-  "${_INGRESS_EXTRA_ARGS[@]}" \
+  ${_INGRESS_EXTRA_ARGS[@]+"${_INGRESS_EXTRA_ARGS[@]}"} \
   --wait --timeout 5m
 
 # ── Step 4c: Backstage K8s Service, Endpoints, and nginx Ingress ─────────────
@@ -739,15 +872,35 @@ if [[ "$PROVIDER" == "kind" ]]; then
   # Pinned to avoid pulling an untested release on first install.
   # Bump this when upgrading Kind/K8s: https://github.com/kubernetes-sigs/metrics-server/releases
   METRICS_SERVER_VERSION="v0.8.1"
-  kubectl apply -f "https://github.com/kubernetes-sigs/metrics-server/releases/download/${METRICS_SERVER_VERSION}/components.yaml"
-  # Kind uses self-signed kubelet certs — patch to skip TLS verification
-  kubectl patch deployment metrics-server -n kube-system --type=json \
-    -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+  # Skip the GitHub round trip when the pinned version is already running —
+  # this manifest was re-fetched over the network on every single run.
+  _ms_image=$(kubectl get deployment metrics-server -n kube-system \
+    -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+  if [[ "$_ms_image" == *":${METRICS_SERVER_VERSION}" ]]; then
+    log "  metrics-server ${METRICS_SERVER_VERSION} already installed — skipping."
+  else
+    kubectl apply -f "https://github.com/kubernetes-sigs/metrics-server/releases/download/${METRICS_SERVER_VERSION}/components.yaml"
+  fi
+  # Kind uses self-signed kubelet certs — patch to skip TLS verification.
+  # Guarded because this is a JSON-patch *append* ("path": ".../args/-"): running
+  # it unconditionally added a duplicate --kubelet-insecure-tls to the container
+  # args on every bootstrap, growing the arg list without bound.
+  if kubectl get deployment metrics-server -n kube-system \
+       -o jsonpath='{.spec.template.spec.containers[0].args}' 2>/dev/null \
+       | grep -q -- '--kubelet-insecure-tls'; then
+    log "  metrics-server already patched for insecure kubelet TLS — skipping patch."
+  else
+    kubectl patch deployment metrics-server -n kube-system --type=json \
+      -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+  fi
 else
   log "  Rancher Desktop k3s ships metrics-server pre-configured — skipping install."
 fi
 
+timer_end "4. Ingress + metrics-server"
+
 # ── Step 5: Observability ─────────────────────────────────────────────────────
+timer_start "5. Prometheus + Grafana"
 if ! $SKIP_OBS; then
   log "Step 5: Installing Prometheus + Grafana (kube-prometheus-stack)..."
 
@@ -762,7 +915,7 @@ if ! $SKIP_OBS; then
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-finops-dashboard-configmap.yaml"
   kubectl apply -f "$(dirname "$0")/../kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml"
 
-  helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+  helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
     --namespace monitoring \
     --values "$(dirname "$0")/../local/observability/prometheus-stack-values.yaml" \
     --wait --timeout 10m
@@ -821,7 +974,10 @@ else
   log "Step 5: Skipping observability (--skip-obs)."
 fi
 
+timer_end "5. Prometheus + Grafana"
+
 # ── Steps 5b/5b-pre/5c/5d: independent Helm installs ──────────────────────────
+timer_start "5b-5d. OpenCost/Rollouts/Loki/Tempo (parallel)"
 # OpenCost, Argo Rollouts, Loki+Promtail, and Tempo don't depend on each other
 # (different charts/namespaces/releases) — they only depend on Step 5's
 # kube-prometheus-stack already being up (OpenCost queries Prometheus
@@ -840,7 +996,7 @@ if ! $SKIP_OBS; then
   (
     set -e
     kubectl apply -f "${ROOT_DIR}/kubernetes/finops/opencost.yaml"
-    helm upgrade --install opencost opencost/opencost \
+    helm_upgrade_cached opencost opencost opencost/opencost \
       --namespace opencost \
       --set opencost.prometheus.internal.enabled=false \
       --set opencost.prometheus.external.enabled=true \
@@ -854,7 +1010,7 @@ if ! $SKIP_OBS; then
   (
     set -e
     kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
-    helm upgrade --install argo-rollouts argo/argo-rollouts \
+    helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
       --namespace argo-rollouts \
       --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
       --wait --timeout 5m
@@ -866,11 +1022,11 @@ if ! $SKIP_OBS; then
 
   (
     set -e
-    helm upgrade --install loki grafana/loki \
+    helm_upgrade_cached loki monitoring grafana/loki \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/loki/loki-values.yaml" \
       --wait --timeout 5m
-    helm upgrade --install promtail grafana/promtail \
+    helm_upgrade_cached promtail monitoring grafana/promtail \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/loki/promtail-values.yaml" \
       --wait --timeout 3m
@@ -880,7 +1036,7 @@ if ! $SKIP_OBS; then
 
   (
     set -e
-    helm upgrade --install tempo grafana/tempo \
+    helm_upgrade_cached tempo monitoring grafana/tempo \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/tempo/tempo-values.yaml" \
       --wait --timeout 5m
@@ -919,68 +1075,17 @@ if ! $SKIP_OBS; then
   fi
 fi
 
-# ── Step 6: Build + push hello-service image (deploy is owned by ArgoCD) ─────
-# Previously this step also `helm upgrade --install`-ed hello-service into the
-# 'services' namespace just to have Step 13 uninstall it again so ArgoCD could
-# manage it in 'services-dev'. The throwaway install added ~30-60s and an
-# extra failure surface (helm --wait timeouts on first-boot image pulls) for
-# no real benefit — Step 13's ApplicationSet sync is the canonical deploy.
-log "Step 6: Building and pushing hello-service image..."
-IMAGE="localhost:${REGISTRY_PORT}/hello-service:local"
+timer_end "5b-5d. OpenCost/Rollouts/Loki/Tempo (parallel)"
 
-docker build \
-  --build-arg VERSION="local-$(git rev-parse --short HEAD 2>/dev/null || echo 'dev')" \
-  -t "$IMAGE" \
-  "${ROOT_DIR}/services/hello-service"
+# ── Step 6: images ──────────────────────────────────────────────────────────
+# Moved: the image build/push work now runs in the background from just after
+# Step 1 (it needs only the registry, not the cluster) and is joined before
+# Step 13, which is the first step that actually needs the images. See
+# _build_local_images above.
 
-docker push "$IMAGE"
-
-# Pre-load the nginx-prometheus-exporter sidecar image into the local registry.
-# Kind nodes pull from localhost:5003 to avoid Docker Hub rate limits and to
-# work fully offline after the first bootstrap.
-NGINX_EXPORTER_IMG="nginx/nginx-prometheus-exporter:1.3.0"
-NGINX_EXPORTER_LOCAL="localhost:${REGISTRY_PORT}/nginx-prometheus-exporter:1.3.0"
-if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/nginx-prometheus-exporter/tags/list" | grep -q '"1.3.0"'; then
-  log "Step 6b: Seeding nginx-prometheus-exporter into local registry..."
-  docker pull "${NGINX_EXPORTER_IMG}" --quiet
-  docker tag  "${NGINX_EXPORTER_IMG}" "${NGINX_EXPORTER_LOCAL}"
-  docker push "${NGINX_EXPORTER_LOCAL}"
-  log "  Pushed ${NGINX_EXPORTER_LOCAL}"
-else
-  log "Step 6b: nginx-prometheus-exporter:1.3.0 already in registry — skipping."
-fi
-
-# Build and seed images for any scaffolded service in services/ that has a
-# helm-values-local.yaml. hello-service is handled above; idp-mcp-server and
-# qa-mcp-server are deployed by bootstrap-ai.sh — skip them here.
-for svc_dir in "${ROOT_DIR}/services"/*/; do
-  svc=$(basename "$svc_dir")
-  [[ "$svc" == "hello-service" || "$svc" == "idp-mcp-server" || "$svc" == "qa-mcp-server" ]] && continue
-  [[ ! -f "${svc_dir}/helm-values-local.yaml" ]] && continue
-  img_repo=$(grep -E '^\s+repository:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}')
-  img_tag=$(grep -E '^\s+tag:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}' | tr -d '"')
-  [[ "$img_repo" != localhost:* ]] && continue
-  svc_name=$(basename "$img_repo")
-  if ! curl -s "http://localhost:${REGISTRY_PORT}/v2/${svc_name}/tags/list" | grep -q "\"${img_tag}\""; then
-    if [[ -f "${svc_dir}/Dockerfile" ]]; then
-      log "Step 6d: Building ${svc_name} from services/${svc}/Dockerfile..."
-      docker build -t "${img_repo}:${img_tag}" "${svc_dir}" --quiet
-    else
-      log "Step 6d: Seeding ${img_repo}:${img_tag} stub (no Dockerfile found)..."
-      docker build -t "${img_repo}:${img_tag}" -f - . <<'DOCKERFILE'
-FROM python:3.13-slim
-EXPOSE 8080
-CMD ["python3", "-c", "import http.server, socketserver; socketserver.TCPServer(('',8080), http.server.SimpleHTTPRequestHandler).serve_forever()"]
-DOCKERFILE
-    fi
-    docker push "${img_repo}:${img_tag}"
-    log "  Pushed ${img_repo}:${img_tag}"
-  else
-    log "Step 6c: ${img_repo}:${img_tag} already in registry — skipping."
-  fi
-done
 
 # ── Step 8: ArgoCD ────────────────────────────────────────────────────────────
+timer_start "8. ArgoCD"
 if ! $SKIP_GITOPS; then
   log "Step 8: Installing ArgoCD..."
 
@@ -1076,7 +1181,7 @@ if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
   (
     set -e
 
-    helm upgrade --install argo-workflows argo/argo-workflows \
+    helm_upgrade_cached argo-workflows argo-workflows argo/argo-workflows \
       --namespace argo-workflows \
       --create-namespace \
       -f "${ROOT_DIR}/local/argo-workflows/values.yaml" \
@@ -1090,7 +1195,10 @@ else
   log "Step 8b: Skipping Argo Workflows (use --install-argo-workflows to enable)."
 fi
 
+timer_end "8. ArgoCD"
+
 # ── Steps 9/9b: OPA/Gatekeeper + Kyverno ─────────────────────────────────────
+timer_start "9. Gatekeeper + Kyverno (parallel)"
 # Two independent policy engines (different namespaces/CRDs, neither reads a
 # resource the other creates) — run them as background jobs instead of one
 # after another. Both already degrade via their own `|| warn ... Continuing`,
@@ -1105,7 +1213,7 @@ if ! $SKIP_POLICIES; then
   (
     set -e
 
-    helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+    helm_upgrade_cached gatekeeper gatekeeper-system gatekeeper/gatekeeper \
       --namespace gatekeeper-system \
       --create-namespace \
       --version 3.18.2 \
@@ -1175,10 +1283,11 @@ if ! $SKIP_POLICIES; then
   (
     set -e
     log "Step 9b: Installing Kyverno..."
-    helm upgrade --install kyverno kyverno/kyverno \
+    helm_upgrade_cached kyverno kyverno kyverno/kyverno \
       --namespace kyverno \
       --create-namespace \
       --version 3.2.7 \
+      --values "${ROOT_DIR}/local/policies/kyverno-values.yaml" \
       --set replicaCount=1 \
       --set resources.requests.cpu=100m \
       --set resources.requests.memory=256Mi \
@@ -1227,13 +1336,21 @@ fi
 _bg_join "$_s9_pid"  "$_s9_log"  || warn "Step 9 (OPA/Gatekeeper) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 _bg_join "$_s9b_pid" "$_s9b_log" || warn "Step 9b (Kyverno) failed — Crossplane team tags and namespace quotas will not be auto-injected. Continuing..."
 
+timer_end "9. Gatekeeper + Kyverno (parallel)"
+
 # ── Step 10: DORA Exporter (Pushgateway) ─────────────────────────────────────
+# Step 10 has no dependency on Steps 11/11a/11b/11c (different ConfigMaps,
+# CronJobs and namespaces), but used to run to completion before them anyway —
+# including a 5m helm --wait, two 60s rollout waits and a 30s ingress poll.
+# It now runs as one more background job in the same group, joined below.
+timer_start "10-11. Pushgateway/DORA + exporters (parallel)"
+_step10_pid=""; _step10_log=$(mktemp)
 if ! $SKIP_DORA; then
   (
     set -e
     if ! $SKIP_OBS; then
       log "Step 10: Installing Prometheus Pushgateway (separate release)..."
-      helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+      helm_upgrade_cached prometheus-pushgateway monitoring prometheus-community/prometheus-pushgateway \
         --namespace monitoring \
         --set resources.requests.cpu=10m \
         --set resources.requests.memory=32Mi \
@@ -1302,9 +1419,30 @@ if ! $SKIP_DORA; then
           warn "  Could not trigger immediate catalog job — will run on schedule."
       fi
     fi
-  ) || warn "Step 10 (Pushgateway/DORA) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
+  ) > "$_step10_log" 2>&1 &
+  _step10_pid=$!
 else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
+fi
+
+# ── Backstage catalog API token for the exporter CronJobs ────────────────────
+# app-config.local.yaml registers a static externalAccess token so in-cluster
+# jobs can read the catalog without a user session, and three CronJobs
+# (tech-insights-exporter, flaky-test-exporter and its quarantine job) read the
+# same value from this Secret. Nothing ever created it: their secretKeyRef is
+# `optional: true`, so the pods started with BACKSTAGE_TOKEN empty, sent no
+# Authorization header, and every run died on
+#   401 Client Error: Unauthorized for url: .../api/catalog/entities
+# Parse the token out of the config rather than hardcoding it, so the two
+# cannot drift; fall back to the shipped default if the parse ever fails.
+if ! $SKIP_OBS; then
+  _bs_catalog_token=$(awk '/externalAccess:/{f=1} f && /token:/{sub(/.*token:[[:space:]]*/,""); gsub(/"/,""); print; exit}' \
+    "${ROOT_DIR}/backstage/app-config.local.yaml" 2>/dev/null || true)
+  [[ -n "${_bs_catalog_token:-}" ]] || _bs_catalog_token="local-catalog-exporter-token"
+  kubectl create secret generic backstage-catalog-exporter-token \
+    --from-literal=token="${_bs_catalog_token}" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  log "  backstage-catalog-exporter-token secret ready (exporters can read the catalog API)."
 fi
 
 # ── Steps 11/11a/11b/11c: independent CronJob/manifest applies ───────────────
@@ -1384,12 +1522,16 @@ fi
 ) > "$_step11c_log" 2>&1 &
 _step11c_pid=$!
 
+_bg_join "$_step10_pid"  "$_step10_log"  || warn "Step 10 (Pushgateway/DORA) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 _bg_join "$_step11_pid"  "$_step11_log"  || warn "Step 11 (Tech Insights) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 _bg_join "$_step11a_pid" "$_step11a_log" || warn "Step 11a (Flaky-Test Exporter) failed — re-run ./scripts/bootstrap-local.sh to retry. Continuing..."
 _bg_join "$_step11b_pid" "$_step11b_log" || warn "Step 11b (ServiceMonitor) failed — run: kubectl apply -f kubernetes/monitoring/servicemonitor.yaml"
 _bg_join "$_step11c_pid" "$_step11c_log" || warn "Step 11c (team namespace) failed — run: kubectl apply -f kubernetes/teams/awesome-team/ Continuing..."
 
+timer_end "10-11. Pushgateway/DORA + exporters (parallel)"
+
 # ── Step 12: AlertManager Slack webhook ───────────────────────────────────────
+timer_start "12. AlertManager"
 log "Step 12: Wiring AlertManager..."
 if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
   SLACK_WEBHOOK_URL=$(grep -E '^SLACK_WEBHOOK_URL=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
@@ -1407,7 +1549,20 @@ else
   warn "SLACK_WEBHOOK_URL not set — skipping AlertManager Slack routing."
 fi
 
+timer_end "12. AlertManager"
+
+# ── Step 6 join: images must be in the registry before ArgoCD syncs ──────────
+# Started right after Step 1; by now it has had Steps 2-12 to finish, so on a
+# warm run this is instant. Joined here rather than earlier because Step 13's
+# ApplicationSet sync is the first thing that actually needs the images.
+timer_start "6. Images (join)"
+_bg_join "$_IMAGES_PID" "$_IMAGES_LOG" || \
+  warn "Step 6 (image build/push) failed — hello-service and scaffolded services may not start. See output above."
+_IMAGES_PID=""
+timer_end "6. Images (join)"
+
 # ── Step 13: ArgoCD ApplicationSet ───────────────────────────────────────────
+timer_start "13. ApplicationSet"
 if ! $SKIP_GITOPS; then
   (
     set -e
@@ -1433,9 +1588,7 @@ if ! $SKIP_GITOPS; then
   ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
 fi
 
-# ── Step 7: /etc/hosts ───────────────────────────────────────────────────────
-log "Step 7: Checking /etc/hosts entries..."
-append_hosts_file "${ROOT_DIR}/local/hosts-append.txt"
+timer_end "13. ApplicationSet"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 _print_url_banner

@@ -19,9 +19,16 @@ docker info     # Docker running
 
 ## Bootstrap (~10–15 min)
 
-> **First time?** Run `./scripts/setup.sh` from the repo root — it handles placeholder personalisation and then calls `bootstrap-local.sh` automatically (choose "local" when prompted).
+> **First time? Run `setup.sh` and nothing else.** From the repo root:
+> ```bash
+> ./scripts/setup.sh     # choose "local" when prompted
+> ```
+> It personalises the placeholders, then calls `bootstrap-local.sh` for you and
+> offers to start Backstage. **Don't also run `bootstrap-local.sh` yourself** —
+> that just repeats the whole 15–20 minute install.
 
-To run the bootstrap directly (e.g. day-2 cluster recreation):
+Run the command below **only** for day-2 work on an existing setup — recreating
+the cluster after `--destroy`, or re-running a step that failed:
 
 ```bash
 ./scripts/bootstrap-local.sh
