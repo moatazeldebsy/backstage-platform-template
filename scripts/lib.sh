@@ -314,6 +314,51 @@ helm_record_fingerprint() {
   printf '%s' "$2" > "$1"
 }
 
+# Drop-in replacement for `helm upgrade --install <release> <chart> [flags...]`
+# that skips the call entirely when nothing that affects the result has changed
+# and Helm still reports the release deployed.
+#
+#   helm_upgrade_cached <release> <namespace> <chart> [helm flags...]
+#
+# The fingerprint is derived from the full argument list — chart reference,
+# --version, every --set — plus the *contents* of every file passed to --values
+# or -f. So a values edit, a chart bump, or a changed --set all fall through to
+# a real install; only a byte-identical invocation against a healthy release is
+# skipped. `helm upgrade --install` is itself idempotent, but not free: each one
+# re-renders and diffs the chart and then blocks on `--wait` polling, which on a
+# cold cluster is minutes per release.
+#
+# Set IDP_FORCE=1 to bypass every skip (equivalent to the callers' --force-*
+# flags, and useful for a one-off "reinstall everything" run).
+helm_upgrade_cached() {
+  local release="$1" ns="$2"; shift 2
+  local fp_file="${IDP_CACHE_DIR:-${ROOT_DIR:-$(pwd)}/.idp-cache}/helm-${ns}-${release}.fingerprint"
+  local a prev="" desired
+  desired=$(
+    {
+      printf '%s\n%s\n' "$release" "$ns"
+      for a in "$@"; do
+        printf '%s\n' "$a"
+        # Hash values-file contents, not just the path — editing a values file
+        # must invalidate the cache.
+        if [[ "$prev" == "--values" || "$prev" == "-f" ]] && [[ -f "$a" ]]; then
+          _sha256 "$a"
+        fi
+        prev="$a"
+      done
+    } | _sha256_stdin
+  )
+
+  if [[ "${IDP_FORCE:-0}" != "1" ]] && \
+     helm_release_unchanged "$release" "$ns" "$fp_file" "$desired"; then
+    log "  ${release}: chart and values unchanged, release healthy — skipping helm upgrade."
+    return 0
+  fi
+
+  helm upgrade --install "$release" "$@" || return $?
+  helm_record_fingerprint "$fp_file" "$desired"
+}
+
 # Content hash of a source directory, used to decide whether a Docker image
 # needs rebuilding. Prefers `git ls-files -s` (already-computed blob SHAs — no
 # re-hashing of file contents, and it honours .gitignore so node_modules/dist
