@@ -2225,9 +2225,13 @@
 <hr />
 <h2 id="local-setup-no-aws-needed">Local Setup (no AWS needed)<a class="headerlink" href="#local-setup-no-aws-needed" title="Permanent link">&para;</a></h2>
 <p>See <a href="../local-setup/">docs/local-setup.md</a> for the full local walkthrough including Backstage, the <code>idp:deploy-local</code> action, and Kind deployment.</p>
-<p><code>./scripts/setup.sh</code> <strong>must be run before</strong> <code>bootstrap-local.sh</code>. It replaces <code>moatazeldebsy</code> and other placeholders across 542 targeted files (excluding node_modules). Without it, the ArgoCD ApplicationSet will have an unresolved placeholder and generate no apps.</p>
 <blockquote>
-<p><strong>Important:</strong> <code>setup.sh</code> uses targeted file scanning and <code>while</code>-loop replacement (not <code>xargs</code>) to reliably update placeholders. If you previously ran an older version and ArgoCD shows no apps, check that <code>local/argocd/app-of-apps-local.yaml</code> contains your GitHub org (not <code>moatazeldebsy</code>), then re-run <code>setup.sh</code>.</p>
+<p><strong>Run <code>setup.sh</code> — not both.</strong> On a fresh clone you run <code>./scripts/setup.sh</code> and nothing else. When you answer <strong>local</strong>, it calls <code>bootstrap-local.sh</code> for you and then offers to start Backstage. Running <code>bootstrap-local.sh</code> yourself afterwards just repeats a 15–20 minute install for no benefit.</p>
+<p><code>bootstrap-local.sh</code> is what you run <strong>standalone later</strong>, for day-2 work: recreating the cluster, <code>--destroy</code>, <code>--start-backstage</code>, <code>--print-urls</code>. You do not re-run <code>setup.sh</code> for those.</p>
+</blockquote>
+<p>Personalisation has to happen before bootstrapping: <code>setup.sh</code> replaces <code>moatazeldebsy</code> and the other placeholders across the repo, and without it the ArgoCD ApplicationSet points at an unresolved placeholder and generates no apps.</p>
+<blockquote>
+<p><strong>If ArgoCD shows no apps:</strong> check that <code>local/argocd/app-of-apps-local.yaml</code> contains your GitHub org rather than <code>moatazeldebsy</code>, then re-run <code>setup.sh</code>.</p>
 </blockquote>
 <h2 id="aws-setup">AWS Setup<a class="headerlink" href="#aws-setup" title="Permanent link">&para;</a></h2>
 <blockquote>

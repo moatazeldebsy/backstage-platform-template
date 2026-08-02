@@ -2100,9 +2100,15 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 </blockquote>
 <h2 id="bootstrap-1015-min">Bootstrap (~10–15 min)<a class="headerlink" href="#bootstrap-1015-min" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>First time?</strong> Run <code>./scripts/setup.sh</code> from the repo root — it handles placeholder personalisation and then calls <code>bootstrap-local.sh</code> automatically (choose "local" when prompted).</p>
+<p><strong>First time? Run <code>setup.sh</code> and nothing else.</strong> From the repo root:
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh<span class="w">     </span><span class="c1"># choose &quot;local&quot; when prompted</span>
+</code></pre></div></td></tr></table></div>
+It personalises the placeholders, then calls <code>bootstrap-local.sh</code> for you and
+offers to start Backstage. <strong>Don't also run <code>bootstrap-local.sh</code> yourself</strong> —
+that just repeats the whole 15–20 minute install.</p>
 </blockquote>
-<p>To run the bootstrap directly (e.g. day-2 cluster recreation):</p>
+<p>Run the command below <strong>only</strong> for day-2 work on an existing setup — recreating
+the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh
 </code></pre></div></td></tr></table></div>
 <p>What it does (in order):</p>
