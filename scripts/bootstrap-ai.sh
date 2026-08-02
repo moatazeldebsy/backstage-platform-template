@@ -67,10 +67,25 @@ timer_enable_summary
 # its ArgoCD release fingerprint.
 CACHE_DIR="${REPO_ROOT}/.idp-cache"
 # Bounded parallelism for MCP server image builds. Deliberately not "all at
-# once": these are npm-install-heavy Node builds and Docker Desktop is often
-# provisioned with only a few CPUs (see bootstrap-local.sh's under-provisioned
-# Docker warning), where oversubscribing makes the whole batch slower.
-IDP_BUILD_JOBS="${IDP_BUILD_JOBS:-4}"
+# once": these are npm-install-heavy Node builds, and on a local setup they run
+# on the *same* few CPUs as the Kind cluster they are being built for. A fixed
+# default of 4 was too aggressive on a 6-CPU VM — the builds competed with the
+# cluster for CPU, and on one --adp run that contention contributed to etcd
+# timing out and the API server becoming unreachable mid-deploy.
+#
+# So scale with what the container runtime actually has, leaving roughly two
+# thirds of it for the cluster: 6 CPUs -> 2 jobs, 12 -> 4 (the cap). An explicit
+# IDP_BUILD_JOBS always wins, and the probe failing is not fatal — fall back to 2.
+_default_build_jobs() {
+  local ncpu jobs
+  ncpu=$(docker info --format '{{.NCPU}}' 2>/dev/null || echo "")
+  [[ "$ncpu" =~ ^[0-9]+$ ]] || { echo 2; return; }
+  jobs=$(( ncpu / 3 ))
+  (( jobs < 1 )) && jobs=1
+  (( jobs > 4 )) && jobs=4
+  echo "$jobs"
+}
+IDP_BUILD_JOBS="${IDP_BUILD_JOBS:-$(_default_build_jobs)}"
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
 
