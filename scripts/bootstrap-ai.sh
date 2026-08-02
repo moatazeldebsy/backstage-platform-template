@@ -1022,7 +1022,6 @@ _MLFLOW_PID=""
 timer_end "5d. Join MLflow"
 
 # ── 6. IDP / QA MCP Servers ───────────────────────────────────────────────────
-timer_start "6. MCP servers"
 # Local: build images into the local registry; ArgoCD (services-dev namespace)
 #        manages the actual Kubernetes deployment via GitOps.
 # AWS:   build, push to ECR, and Helm-deploy directly (ArgoCD handles day-2).
@@ -1108,6 +1107,7 @@ else
     warn "One or more MCP image builds failed — see the build output above. Affected services will fail to deploy."
   _MCP_BUILD_PID=""
   timer_end "6a. Join MCP image builds"
+  timer_start "6b. Deploy MCP servers"
 
   if $ADP; then
     # Phase 4 HiTL approval gate prerequisites (docs/agentic-platform.md)
@@ -1284,7 +1284,7 @@ else
   fi
 fi
 
-timer_end "6. MCP servers"
+timer_end "6b. Deploy MCP servers"
 
 # ── 7. KAgent UI port-forward (background) ───────────────────────────────────
 # Provides direct access at http://localhost:8082 alongside the ingress hostname.
