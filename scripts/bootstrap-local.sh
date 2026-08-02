@@ -828,7 +828,7 @@ helm_upgrade_cached ingress-nginx ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.resources.requests.memory=128Mi \
   --set controller.resources.limits.cpu=500m \
   --set controller.resources.limits.memory=256Mi \
-  "${_INGRESS_EXTRA_ARGS[@]}" \
+  ${_INGRESS_EXTRA_ARGS[@]+"${_INGRESS_EXTRA_ARGS[@]}"} \
   --wait --timeout 5m
 
 # ── Step 4c: Backstage K8s Service, Endpoints, and nginx Ingress ─────────────
