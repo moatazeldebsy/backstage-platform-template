@@ -1287,6 +1287,7 @@ if ! $SKIP_POLICIES; then
       --namespace kyverno \
       --create-namespace \
       --version 3.2.7 \
+      --values "${ROOT_DIR}/local/policies/kyverno-values.yaml" \
       --set replicaCount=1 \
       --set resources.requests.cpu=100m \
       --set resources.requests.memory=256Mi \
