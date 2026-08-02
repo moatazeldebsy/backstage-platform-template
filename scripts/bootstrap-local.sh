@@ -1425,6 +1425,26 @@ else
   log "Step 10: Skipping DORA exporter (--skip-dora)."
 fi
 
+# ── Backstage catalog API token for the exporter CronJobs ────────────────────
+# app-config.local.yaml registers a static externalAccess token so in-cluster
+# jobs can read the catalog without a user session, and three CronJobs
+# (tech-insights-exporter, flaky-test-exporter and its quarantine job) read the
+# same value from this Secret. Nothing ever created it: their secretKeyRef is
+# `optional: true`, so the pods started with BACKSTAGE_TOKEN empty, sent no
+# Authorization header, and every run died on
+#   401 Client Error: Unauthorized for url: .../api/catalog/entities
+# Parse the token out of the config rather than hardcoding it, so the two
+# cannot drift; fall back to the shipped default if the parse ever fails.
+if ! $SKIP_OBS; then
+  _bs_catalog_token=$(awk '/externalAccess:/{f=1} f && /token:/{sub(/.*token:[[:space:]]*/,""); gsub(/"/,""); print; exit}' \
+    "${ROOT_DIR}/backstage/app-config.local.yaml" 2>/dev/null || true)
+  [[ -n "${_bs_catalog_token:-}" ]] || _bs_catalog_token="local-catalog-exporter-token"
+  kubectl create secret generic backstage-catalog-exporter-token \
+    --from-literal=token="${_bs_catalog_token}" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  log "  backstage-catalog-exporter-token secret ready (exporters can read the catalog API)."
+fi
+
 # ── Steps 11/11a/11b/11c: independent CronJob/manifest applies ───────────────
 # None of these read state written by another (different ConfigMaps/CronJobs/
 # namespaces), so they run as background jobs and are joined below instead of
