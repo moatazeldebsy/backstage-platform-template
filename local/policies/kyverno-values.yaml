@@ -1,0 +1,91 @@
+# Kyverno values for the local (Kind) cluster.
+#
+# Purpose: lenient health probes. Same rationale as the Grafana and Prometheus
+# probe changes in local/observability/prometheus-stack-values.yaml — on a
+# single-node Kind cluster running the full stack (ArgoCD, Gatekeeper, Kyverno,
+# Prometheus/Grafana/Loki/Tempo, ~24 KAgent agent pods and every MCP server),
+# CPU contention makes health endpoints slow to answer rather than genuinely
+# unhealthy. The chart's defaults are tuned for a real cluster and are far too
+# tight here:
+#
+#   startupProbe   failureThreshold 20 x periodSeconds 6  = 122s to come up
+#   livenessProbe  failureThreshold 2  x periodSeconds 30 = 60s grace,
+#                  timeoutSeconds 5
+#
+# Observed on a loaded 6-CPU Docker Desktop VM: the admission controller failed
+# its startup probe 18 times, then its liveness probe, and restarted repeatedly
+# with "context deadline exceeded" and "connection refused" — while exiting
+# cleanly (code 0) every time, i.e. killed by the probe, not crashing.
+#
+# That matters more for Kyverno than for most components: its webhook is
+# registered with failurePolicy=Fail, so while the admission controller is down
+# EVERY namespace apply in the cluster is rejected with
+# "failed calling webhook validate.kyverno.svc-fail: connection refused" —
+# including bootstrap-local.sh's own Step 3 on a re-run.
+#
+# The probes still fire on a genuinely dead process; they just allow a slow one
+# to finish starting.
+#
+# NOTE: this does not address the other failure mode seen alongside it — the
+# background and reports controllers have no probes at all, yet also restart,
+# exiting cleanly with leader-election shutdown messages. That is lease renewal
+# missing its deadline because the API server is slow under the same CPU
+# contention, and it is fixed by giving Docker more CPU, not by probe tuning.
+
+admissionController:
+  startupProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 60     # ~10m to start, vs 122s
+  livenessProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 10     # ~5m grace, vs 60s
+  readinessProbe:
+    httpGet:
+      path: /health/readiness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 15
+    failureThreshold: 20
+
+cleanupController:
+  startupProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 60
+  livenessProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 10
+  readinessProbe:
+    httpGet:
+      path: /health/readiness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 15
+    failureThreshold: 20

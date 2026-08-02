@@ -10,6 +10,14 @@ CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform"
 
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/lib.sh"
+
+# Per-phase wall-clock timings, printed as a slowest-first table on exit
+# (including on failure). IDP_TIMING=0 silences it; IDP_FORCE=1 bypasses every
+# skip-if-unchanged check and reinstalls/rebuilds everything.
+timer_enable_summary
+
 SKIP_OBS="${SKIP_OBS:-false}"
 SKIP_GITOPS="${SKIP_GITOPS:-false}"
 SKIP_POLICIES="${SKIP_POLICIES:-false}"
@@ -45,6 +53,7 @@ aws sts get-caller-identity &>/dev/null || err "AWS credentials not configured"
 log "Starting IDP MVP bootstrap (cluster=$CLUSTER_NAME, region=$AWS_REGION)"
 
 # ── Phase 1: Terraform — EKS + ECR + IAM + RDS + S3 + Secrets Manager ────────
+timer_start "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 log "Phase 1: Provisioning infrastructure with Terraform..."
 
 cd "$TF_DIR"
@@ -53,18 +62,25 @@ terraform apply -auto-approve \
   -var "aws_region=${AWS_REGION}" \
   -var "cluster_name=${CLUSTER_NAME}"
 
-BACKSTAGE_SECRET_ARN=$(terraform output -raw backstage_secret_arn)
-TECHDOCS_BUCKET=$(terraform output -raw techdocs_bucket_name)
-BACKSTAGE_ROLE_ARN=$(terraform output -raw backstage_role_arn)
+tf_outputs_load "$TF_DIR"
+BACKSTAGE_SECRET_ARN=$(tf_output_required backstage_secret_arn)
+TECHDOCS_BUCKET=$(tf_output_required techdocs_bucket_name)
+BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
 
 log "Terraform apply complete."
 
+timer_end "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
+
 # ── Phase 2: Configure kubectl ────────────────────────────────────────────────
+timer_start "2. kubectl config"
 log "Phase 2: Configuring kubectl..."
 aws eks update-kubeconfig --region "${AWS_REGION}" --name "${CLUSTER_NAME}"
 kubectl cluster-info
 
+timer_end "2. kubectl config"
+
 # ── Phase 3: Platform namespaces + RBAC ──────────────────────────────────────
+timer_start "3. Namespaces + RBAC"
 log "Phase 3: Creating namespaces and RBAC..."
 cd "$ROOT_DIR"
 kubectl apply -f kubernetes/namespaces/namespaces.yaml
@@ -81,7 +97,7 @@ kubectl annotate serviceaccount backstage \
   --overwrite
 
 # DB-init ServiceAccount (IRSA for Secrets Manager access)
-DB_INIT_ROLE_ARN=$(cd terraform && terraform output -raw db_init_role_arn)
+DB_INIT_ROLE_ARN=$(tf_output_required db_init_role_arn)
 kubectl apply -f aws/backstage/db-init-sa.yaml
 kubectl annotate serviceaccount db-init-sa \
   -n services \
@@ -89,14 +105,16 @@ kubectl annotate serviceaccount db-init-sa \
   --overwrite
 
 # DORA exporter ServiceAccount IRSA annotation (applied after ESO installs the CRD)
-DORA_ROLE_ARN=$(cd terraform && terraform output -raw dora_exporter_role_arn)
+DORA_ROLE_ARN=$(tf_output_required dora_exporter_role_arn)
 kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
 
+timer_end "3. Namespaces + RBAC"
+
 # ── Phase 3.6: Install External Secrets Operator ─────────────────────────────
+timer_start "3.6 External Secrets + secret store"
 log "Phase 3.6: Installing External Secrets Operator..."
-helm repo add external-secrets https://charts.external-secrets.io 2>/dev/null || true
-helm repo update
-helm upgrade --install external-secrets external-secrets/external-secrets \
+ensure_helm_repos external-secrets prometheus-community opencost gatekeeper kyverno argo grafana datadog vmware-tanzu
+helm_upgrade_cached external-secrets external-secrets external-secrets/external-secrets \
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true \
@@ -151,7 +169,10 @@ if [[ "$SKIP_DORA" != "true" ]]; then
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
 fi
 
+timer_end "3.6 External Secrets + secret store"
+
 # ── Phase 3.7: Populate Secrets Manager with runtime secrets ─────────────────
+timer_start "3.7 Populate Secrets Manager"
 log "Phase 3.7: Updating Secrets Manager with runtime credentials..."
 
 # Get the K8s service account token for Backstage → K8s integration
@@ -179,7 +200,7 @@ else
   BACKSTAGE_CATALOG_TOKEN=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
   AUTH_SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
 
-  UPDATED_SECRET=$(echo "$CURRENT_SECRET" | python3 -c "
+  UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" python3 -c "
 import json, sys, os
 s = json.load(sys.stdin)
 s['GITHUB_TOKEN'] = os.environ['GITHUB_TOKEN']
@@ -210,7 +231,7 @@ if team_map:
 s['BACKSTAGE_CATALOG_TOKEN'] = os.environ['BACKSTAGE_CATALOG_TOKEN']
 s['AUTH_SESSION_SECRET'] = os.environ['AUTH_SESSION_SECRET']
 print(json.dumps(s))
-" K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET")
+")
 
   aws secretsmanager update-secret \
     --secret-id "$BACKSTAGE_SECRET_ARN" \
@@ -218,7 +239,10 @@ print(json.dumps(s))
   log "  Secrets Manager updated with GITHUB_TOKEN + GitHub OAuth + Grafana credentials."
 fi
 
+timer_end "3.7 Populate Secrets Manager"
+
 # ── Phase 4: Observability ────────────────────────────────────────────────────
+timer_start "4. Prometheus + Grafana"
 log "Phase 4: Installing observability stack (kube-prometheus-stack)..."
 
 # The EBS CSI driver addon provisions volumes but doesn't create any StorageClass
@@ -241,11 +265,8 @@ volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 EOF
 
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
-helm repo update
-
 # Grafana IRSA role ARN (injected into the Helm values via --set)
-GRAFANA_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw grafana_role_arn 2>/dev/null || echo "")
+GRAFANA_ROLE_ARN=$(tf_output grafana_role_arn)
 
 # Create Grafana dashboard ConfigMaps before installing the chart so that
 # Grafana picks them up on first boot rather than requiring a pod restart.
@@ -275,7 +296,7 @@ sed \
 # provisions from that domain's Route 53 zone. ALB terminates TLS from an ACM cert
 # ARN (not a k8s TLS Secret), so ingresses without a domain stay HTTP-only exactly
 # as before rather than risk an invalid empty certificate-arn breaking the ALB.
-ACM_CERT_ARN=$(cd "${TF_DIR}" && terraform output -raw monitoring_acm_certificate_arn 2>/dev/null || echo "")
+ACM_CERT_ARN=$(tf_output monitoring_acm_certificate_arn)
 if [[ -n "${ACM_CERT_ARN}" ]]; then
   log "  Wiring ACM cert into monitoring ALB ingresses: ${ACM_CERT_ARN}"
   sed -i.bak \
@@ -297,7 +318,7 @@ fi
 # the chart's auto-provisioned Prometheus datasource — but that file is only ever
 # applied by bootstrap-multiregion.sh. Without it, single-region Grafana ends up
 # with zero datasources. Re-enable the chart default here.
-helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
@@ -310,9 +331,12 @@ rm -f "${tmp_obs_values}"
 kubectl apply -f observability/alertmanager/prometheus-rules.yaml
 log "  PrometheusRules applied (SLO burn-rate, DORA anomalies, team budgets, KAgent guardrails)."
 
+timer_end "4. Prometheus + Grafana"
+
 # ── Phase 4a: Prometheus Pushgateway ─────────────────────────────────────────
+timer_start "4a. Pushgateway"
 log "Phase 4a: Installing Prometheus Pushgateway..."
-helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+helm_upgrade_cached prometheus-pushgateway monitoring prometheus-community/prometheus-pushgateway \
   --namespace monitoring \
   --set serviceMonitor.enabled=true \
   --set "serviceMonitor.additionalLabels.release=prometheus" \
@@ -331,14 +355,15 @@ PUSHGATEWAY_INTERNAL="http://prometheus-pushgateway.monitoring.svc.cluster.local
 PUSHGATEWAY_URL="${PUSHGATEWAY_INTERNAL}" bash scripts/seed-qa-metrics.sh \
   || log "  WARNING: QA metrics seed failed — run scripts/seed-qa-metrics.sh manually after deploy."
 
+timer_end "4a. Pushgateway"
+
 # ── Phase 4b: OpenCost ────────────────────────────────────────────────────────
+timer_start "4b. OpenCost"
 log "Phase 4b: Installing OpenCost (cluster cost visibility)..."
-helm repo add opencost https://opencost.github.io/opencost-helm-chart 2>/dev/null || true
-helm repo update
 
 kubectl apply -f kubernetes/finops/opencost.yaml
 
-helm upgrade --install opencost opencost/opencost \
+helm_upgrade_cached opencost opencost opencost/opencost \
   --namespace opencost \
   --set opencost.prometheus.internal.enabled=false \
   --set opencost.prometheus.external.enabled=true \
@@ -348,249 +373,326 @@ helm upgrade --install opencost opencost/opencost \
 
 log "OpenCost installed."
 
-# ── Phase 3.8: Install OPA/Gatekeeper + apply golden-path policies ───────────
+timer_end "4b. OpenCost"
+
+# ── Phase 3.8/3.9: OPA/Gatekeeper + Kyverno ──────────────────────────────────
+timer_start "3.8-3.9 Gatekeeper + Kyverno (parallel)"
+# Two independent policy engines (different namespaces/CRDs, neither reads a
+# resource the other creates) — run as background jobs and joined below
+# instead of one after another. Both _bg_join calls block until each job
+# (including its own internal CRD/webhook-ready wait) finishes, so downstream
+# phases still only start once both are fully up, matching today's ordering.
 if [[ "$SKIP_POLICIES" != "true" ]]; then
-log "Phase 3.8: Installing OPA/Gatekeeper policy engine..."
-helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
-helm repo update
-helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-  --namespace gatekeeper-system \
-  --create-namespace \
-  --set replicas=1 \
-  --set auditInterval=60 \
-  --set logLevel=WARNING \
-  --wait \
-  --timeout 5m
+  _p38_log=$(mktemp)
+  (
+    set -e
+    log "Phase 3.8: Installing OPA/Gatekeeper policy engine..."
+    helm_upgrade_cached gatekeeper gatekeeper-system gatekeeper/gatekeeper \
+      --namespace gatekeeper-system \
+      --create-namespace \
+      --set replicas=1 \
+      --set auditInterval=60 \
+      --set logLevel=WARNING \
+      --wait \
+      --timeout 5m
 
-log "  Applying golden-path ConstraintTemplates..."
-# Pass 1: apply full files — creates ConstraintTemplates (Constraint instances
-# fail because their CRDs don't exist yet; errors are expected and suppressed).
-kubectl apply \
-  -f kubernetes/policies/require-health-probes.yaml \
-  -f kubernetes/policies/require-resource-limits.yaml \
-  -f kubernetes/policies/require-labels.yaml \
-  -f kubernetes/policies/deny-latest-tag.yaml \
-  -f kubernetes/policies/require-cost-tags.yaml 2>/dev/null || true
+    log "  Applying golden-path ConstraintTemplates..."
+    # Pass 1: apply full files — creates ConstraintTemplates (Constraint instances
+    # fail because their CRDs don't exist yet; errors are expected and suppressed).
+    kubectl apply \
+      -f kubernetes/policies/require-health-probes.yaml \
+      -f kubernetes/policies/require-resource-limits.yaml \
+      -f kubernetes/policies/require-labels.yaml \
+      -f kubernetes/policies/deny-latest-tag.yaml \
+      -f kubernetes/policies/require-cost-tags.yaml 2>/dev/null || true
 
-# Wait for Gatekeeper to register the CRDs from the ConstraintTemplates
-log "  Waiting for ConstraintTemplate CRDs to become established..."
-kubectl wait crd \
-  requirehealthprobes.constraints.gatekeeper.sh \
-  requireresourcelimits.constraints.gatekeeper.sh \
-  requirelabels.constraints.gatekeeper.sh \
-  denylatestimgtag.constraints.gatekeeper.sh \
-  requirecosttags.constraints.gatekeeper.sh \
-  --for=condition=Established \
-  --timeout=120s
+    # Wait for Gatekeeper to register the CRDs from the ConstraintTemplates
+    log "  Waiting for ConstraintTemplate CRDs to become established..."
+    kubectl wait crd \
+      requirehealthprobes.constraints.gatekeeper.sh \
+      requireresourcelimits.constraints.gatekeeper.sh \
+      requirelabels.constraints.gatekeeper.sh \
+      denylatestimgtag.constraints.gatekeeper.sh \
+      requirecosttags.constraints.gatekeeper.sh \
+      --for=condition=Established \
+      --timeout=120s
 
-# Pass 2: CRDs now exist — apply again to create the Constraint instances.
-kubectl apply \
-  -f kubernetes/policies/require-health-probes.yaml \
-  -f kubernetes/policies/require-resource-limits.yaml \
-  -f kubernetes/policies/require-labels.yaml \
-  -f kubernetes/policies/deny-latest-tag.yaml \
-  -f kubernetes/policies/require-cost-tags.yaml
-log "  OPA/Gatekeeper policies applied (health-probes, resource-limits, labels, deny-latest-tag, cost-tags)."
+    # Pass 2: CRDs now exist — apply again to create the Constraint instances.
+    kubectl apply \
+      -f kubernetes/policies/require-health-probes.yaml \
+      -f kubernetes/policies/require-resource-limits.yaml \
+      -f kubernetes/policies/require-labels.yaml \
+      -f kubernetes/policies/deny-latest-tag.yaml \
+      -f kubernetes/policies/require-cost-tags.yaml
+    log "  OPA/Gatekeeper policies applied (health-probes, resource-limits, labels, deny-latest-tag, cost-tags)."
+  ) > "$_p38_log" 2>&1 &
+  _p38_pid=$!
+else
+  _p38_pid=""
 fi # --skip-policies
 
-# ── Phase 3.9: Kyverno + team policies ───────────────────────────────────────
 # Kyverno handles admission policies that require namespace-aware mutations
 # (e.g. auto-injecting idp:team tag on Crossplane claims from team-* namespaces).
-log "Phase 3.9: Installing Kyverno..."
-helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
-helm repo update kyverno
-# Chart 3.2.7's default cleanup-job image is bitnami/kubectl:1.28.5, which 404s —
-# Bitnami's 2025 image-policy change moved older versioned tags to the
-# bitnamilegacy/* org (docker.io/bitnami/kubectl now only carries `latest` and
-# digest tags). Do NOT override with registry.k8s.io/kubectl instead: that image
-# has no shell (Kyverno's job templates invoke /bin/bash directly) and runs as
-# root, which the CronJob-based cleanup jobs' runAsNonRoot requirement rejects.
-# bitnamilegacy/kubectl keeps the same non-root default and has a real shell.
-helm upgrade --install kyverno kyverno/kyverno \
-  --namespace kyverno \
-  --create-namespace \
-  --version 3.2.7 \
-  --set replicaCount=2 \
-  --set cleanupJobs.admissionReports.image.registry=docker.io \
-  --set cleanupJobs.admissionReports.image.repository=bitnamilegacy/kubectl \
-  --set cleanupJobs.admissionReports.image.tag=1.28.5 \
-  --set cleanupJobs.clusterAdmissionReports.image.registry=docker.io \
-  --set cleanupJobs.clusterAdmissionReports.image.repository=bitnamilegacy/kubectl \
-  --set cleanupJobs.clusterAdmissionReports.image.tag=1.28.5 \
-  --set cleanupJobs.ephemeralReports.image.registry=docker.io \
-  --set cleanupJobs.ephemeralReports.image.repository=bitnamilegacy/kubectl \
-  --set cleanupJobs.ephemeralReports.image.tag=1.28.5 \
-  --set cleanupJobs.clusterEphemeralReports.image.registry=docker.io \
-  --set cleanupJobs.clusterEphemeralReports.image.repository=bitnamilegacy/kubectl \
-  --set cleanupJobs.clusterEphemeralReports.image.tag=1.28.5 \
-  --set policyReportsCleanup.image.registry=docker.io \
-  --set policyReportsCleanup.image.repository=bitnamilegacy/kubectl \
-  --set policyReportsCleanup.image.tag=1.28.5 \
-  --set webhooksCleanup.image.registry=docker.io \
-  --set webhooksCleanup.image.repository=bitnamilegacy/kubectl \
-  --set webhooksCleanup.image.tag=1.28.5 \
-  --set resources.requests.cpu=100m \
-  --set resources.requests.memory=256Mi \
-  --wait --timeout 5m
+# Unlike Gatekeeper above, this phase is NOT gated by --skip-policies (matches
+# original behavior — always installs).
+_p39_log=$(mktemp)
+(
+  set -e
+  log "Phase 3.9: Installing Kyverno..."
+  # Chart 3.2.7's default cleanup-job image is bitnami/kubectl:1.28.5, which 404s —
+  # Bitnami's 2025 image-policy change moved older versioned tags to the
+  # bitnamilegacy/* org (docker.io/bitnami/kubectl now only carries `latest` and
+  # digest tags). Do NOT override with registry.k8s.io/kubectl instead: that image
+  # has no shell (Kyverno's job templates invoke /bin/bash directly) and runs as
+  # root, which the CronJob-based cleanup jobs' runAsNonRoot requirement rejects.
+  # bitnamilegacy/kubectl keeps the same non-root default and has a real shell.
+  helm_upgrade_cached kyverno kyverno kyverno/kyverno \
+    --namespace kyverno \
+    --create-namespace \
+    --version 3.2.7 \
+    --set replicaCount=2 \
+    --set cleanupJobs.admissionReports.image.registry=docker.io \
+    --set cleanupJobs.admissionReports.image.repository=bitnamilegacy/kubectl \
+    --set cleanupJobs.admissionReports.image.tag=1.28.5 \
+    --set cleanupJobs.clusterAdmissionReports.image.registry=docker.io \
+    --set cleanupJobs.clusterAdmissionReports.image.repository=bitnamilegacy/kubectl \
+    --set cleanupJobs.clusterAdmissionReports.image.tag=1.28.5 \
+    --set cleanupJobs.ephemeralReports.image.registry=docker.io \
+    --set cleanupJobs.ephemeralReports.image.repository=bitnamilegacy/kubectl \
+    --set cleanupJobs.ephemeralReports.image.tag=1.28.5 \
+    --set cleanupJobs.clusterEphemeralReports.image.registry=docker.io \
+    --set cleanupJobs.clusterEphemeralReports.image.repository=bitnamilegacy/kubectl \
+    --set cleanupJobs.clusterEphemeralReports.image.tag=1.28.5 \
+    --set policyReportsCleanup.image.registry=docker.io \
+    --set policyReportsCleanup.image.repository=bitnamilegacy/kubectl \
+    --set policyReportsCleanup.image.tag=1.28.5 \
+    --set webhooksCleanup.image.registry=docker.io \
+    --set webhooksCleanup.image.repository=bitnamilegacy/kubectl \
+    --set webhooksCleanup.image.tag=1.28.5 \
+    --set resources.requests.cpu=100m \
+    --set resources.requests.memory=256Mi \
+    --wait --timeout 5m
 
-kubectl wait deployment kyverno-admission-controller \
-  -n kyverno --for=condition=Available --timeout=120s
+  kubectl wait deployment kyverno-admission-controller \
+    -n kyverno --for=condition=Available --timeout=120s
+  wait_kyverno_webhook_ready
 
-kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml
-# crossplane-team-label-policy.yaml validates against Crossplane CRD kinds (e.g.
-# S3Bucket) that don't exist yet — Crossplane itself isn't bootstrapped until
-# Phase 4.6a, and even then ArgoCD syncs its CRDs asynchronously. Don't let a
-# not-yet-registered CRD kill the whole script; this policy can be (re-)applied
-# any time after Crossplane's CRDs exist.
-kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml || \
-  log "  WARNING: crossplane-team-label-policy not applied yet (Crossplane CRDs not registered). Re-apply after Phase 4.6a: kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml"
-log "  Phase 3.9 complete: Kyverno + team policies installed."
+  kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml
+  # crossplane-team-label-policy.yaml validates against Crossplane CRD kinds (e.g.
+  # S3Bucket) that don't exist yet — Crossplane itself isn't bootstrapped until
+  # Phase 4.6a, and even then ArgoCD syncs its CRDs asynchronously. Don't let a
+  # not-yet-registered CRD kill the whole script; this policy can be (re-)applied
+  # any time after Crossplane's CRDs exist.
+  kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml || \
+    log "  WARNING: crossplane-team-label-policy not applied yet (Crossplane CRDs not registered). Re-apply after Phase 4.6a: kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml"
+  log "  Phase 3.9 complete: Kyverno + team policies installed."
+) > "$_p39_log" 2>&1 &
+_p39_pid=$!
 
-# ── Phase 4.4-pre: Argo Rollouts (progressive delivery) ─────────────────────
-log "Phase 4.4-pre: Installing Argo Rollouts (canary deployments)..."
-helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-helm repo update argo
+_p389_fail=0
+_bg_join "$_p38_pid" "$_p38_log" || { warn "Phase 3.8 (OPA/Gatekeeper) failed"; _p389_fail=1; }
+_bg_join "$_p39_pid" "$_p39_log" || { warn "Phase 3.9 (Kyverno) failed"; _p389_fail=1; }
+(( _p389_fail == 0 )) || err "Phase 3.8/3.9 (policy engines) failed — see output above."
 
-kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+timer_end "3.8-3.9 Gatekeeper + Kyverno (parallel)"
 
-helm upgrade --install argo-rollouts argo/argo-rollouts \
-  --namespace argo-rollouts \
-  --values "${ROOT_DIR}/aws/argocd/argo-rollouts-values.yaml" \
-  --wait --timeout 5m
+# ── Phase 4.4-pre/b/c/d: Argo Rollouts, Loki+Promtail, Tempo, Datadog ────────
+timer_start "4.4x Rollouts/Loki/Tempo/Datadog (parallel)"
+# Four independent installs (different charts/namespaces) that only depend on
+# Phase 4's kube-prometheus-stack already being up, which ran well before this
+# point — run as background jobs and joined below instead of one after
+# another. Loki/Tempo/Datadog already tolerate their own helm failures via
+# `|| log "WARNING: ..."` (so they rarely propagate a failure at all); Argo
+# Rollouts didn't have that guard before, so all four are still waited on and
+# aggregated into a single err() call if any truly fails, matching the
+# original fail-fast behavior for Argo Rollouts without exiting mid-loop and
+# leaving the other jobs running detached.
+_p44pre_log=$(mktemp); _p44preb_log=$(mktemp); _p44prec_log=$(mktemp); _p44pred_log=$(mktemp)
 
-kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
-log "  Argo Rollouts installed. Services can opt into canary by setting rollout.enabled: true in their helm-values overlay."
+(
+  set -e
+  log "Phase 4.4-pre: Installing Argo Rollouts (canary deployments)..."
+  kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+  helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
+    --namespace argo-rollouts \
+    --values "${ROOT_DIR}/aws/argocd/argo-rollouts-values.yaml" \
+    --wait --timeout 5m
+  kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
+  log "  Argo Rollouts installed. Services can opt into canary by setting rollout.enabled: true in their helm-values overlay."
+) > "$_p44pre_log" 2>&1 &
+_p44pre_pid=$!
 
-# ── Phase 4.4-pre-b: Loki + Promtail (log aggregation) ───────────────────────
-log "Phase 4.4-pre-b: Installing Loki + Promtail (log aggregation)..."
-helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
-helm repo update grafana
+(
+  set -e
+  log "Phase 4.4-pre-b: Installing Loki + Promtail (log aggregation)..."
+  LOKI_BUCKET=$(tf_output loki_chunks_bucket_name)
+  LOKI_ROLE_ARN=$(tf_output loki_role_arn)
+  [[ -n "$LOKI_BUCKET" ]] || log "  WARNING: loki_chunks_bucket_name not found in Terraform outputs — Loki will fail to start."
 
-LOKI_BUCKET=$(cd "${TF_DIR}" && terraform output -raw loki_chunks_bucket_name 2>/dev/null || echo "")
-LOKI_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw loki_role_arn 2>/dev/null || echo "")
-[[ -n "$LOKI_BUCKET" ]] || log "  WARNING: loki_chunks_bucket_name not found in Terraform outputs — Loki will fail to start."
+  helm_upgrade_cached loki monitoring grafana/loki \
+    --namespace monitoring \
+    --values "${ROOT_DIR}/aws/observability/loki/loki-values.yaml" \
+    --set "loki.storage.bucketNames.chunks=${LOKI_BUCKET}" \
+    --set "loki.storage.bucketNames.ruler=${LOKI_BUCKET}" \
+    --set "loki.storage.s3.region=${AWS_REGION}" \
+    --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${LOKI_ROLE_ARN}" \
+    --wait --timeout 8m || log "WARNING: Loki install had issues — check aws/observability/loki/loki-values.yaml (requires S3 bucket)"
 
-helm upgrade --install loki grafana/loki \
-  --namespace monitoring \
-  --values "${ROOT_DIR}/aws/observability/loki/loki-values.yaml" \
-  --set "loki.storage.bucketNames.chunks=${LOKI_BUCKET}" \
-  --set "loki.storage.bucketNames.ruler=${LOKI_BUCKET}" \
-  --set "loki.storage.s3.region=${AWS_REGION}" \
-  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${LOKI_ROLE_ARN}" \
-  --wait --timeout 8m || log "WARNING: Loki install had issues — check aws/observability/loki/loki-values.yaml (requires S3 bucket)"
+  helm_upgrade_cached promtail monitoring grafana/promtail \
+    --namespace monitoring \
+    --values "${ROOT_DIR}/aws/observability/loki/promtail-values.yaml" \
+    --wait --timeout 3m || log "WARNING: Promtail install had issues — non-fatal, log shipping just won't be active yet."
+  log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
+) > "$_p44preb_log" 2>&1 &
+_p44preb_pid=$!
 
-helm upgrade --install promtail grafana/promtail \
-  --namespace monitoring \
-  --values "${ROOT_DIR}/aws/observability/loki/promtail-values.yaml" \
-  --wait --timeout 3m || log "WARNING: Promtail install had issues — non-fatal, log shipping just won't be active yet."
-log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
+(
+  set -e
+  log "Phase 4.4-pre-c: Installing Grafana Tempo (distributed tracing)..."
+  TEMPO_BUCKET=$(tf_output tempo_traces_bucket_name)
+  TEMPO_ROLE_ARN=$(tf_output tempo_role_arn)
+  [[ -n "$TEMPO_BUCKET" ]] || log "  WARNING: tempo_traces_bucket_name not found in Terraform outputs — Tempo will fail to start."
 
-# ── Phase 4.4-pre-c: Grafana Tempo (distributed tracing) ─────────────────────
-log "Phase 4.4-pre-c: Installing Grafana Tempo (distributed tracing)..."
-TEMPO_BUCKET=$(cd "${TF_DIR}" && terraform output -raw tempo_traces_bucket_name 2>/dev/null || echo "")
-TEMPO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw tempo_role_arn 2>/dev/null || echo "")
-[[ -n "$TEMPO_BUCKET" ]] || log "  WARNING: tempo_traces_bucket_name not found in Terraform outputs — Tempo will fail to start."
+  helm_upgrade_cached tempo monitoring grafana/tempo-distributed \
+    --namespace monitoring \
+    --values "${ROOT_DIR}/aws/observability/tempo/tempo-values.yaml" \
+    --set "storage.trace.s3.bucket=${TEMPO_BUCKET}" \
+    --set "storage.trace.s3.region=${AWS_REGION}" \
+    --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${TEMPO_ROLE_ARN}" \
+    --wait --timeout 8m || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
+  log "  Tempo installed. Traces available in Grafana → Explore → Tempo datasource."
+) > "$_p44prec_log" 2>&1 &
+_p44prec_pid=$!
 
-helm upgrade --install tempo grafana/tempo-distributed \
-  --namespace monitoring \
-  --values "${ROOT_DIR}/aws/observability/tempo/tempo-values.yaml" \
-  --set "storage.trace.s3.bucket=${TEMPO_BUCKET}" \
-  --set "storage.trace.s3.region=${AWS_REGION}" \
-  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${TEMPO_ROLE_ARN}" \
-  --wait --timeout 8m || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
-log "  Tempo installed. Traces available in Grafana → Explore → Tempo datasource."
+(
+  set -e
+  # Independent of Prometheus/Grafana/Loki/Tempo — see docs/sre-reliability.md
+  # "Datadog Infra Observability & APM" for why the two collection domains are kept
+  # separate. Requires datadog_api_key/datadog_app_key to be set in terraform.tfvars.
+  log "Phase 4.4-pre-d: Installing Datadog Agent (infra + APM observability)..."
+  kubectl create namespace datadog --dry-run=client -o yaml | kubectl apply -f -
 
-# ── Phase 4.4-pre-d: Datadog Agent (infra + APM observability) ──────────────
-# Independent of Prometheus/Grafana/Loki/Tempo above — see docs/sre-reliability.md
-# "Datadog Infra Observability & APM" for why the two collection domains are kept
-# separate. Requires datadog_api_key/datadog_app_key to be set in terraform.tfvars.
-log "Phase 4.4-pre-d: Installing Datadog Agent (infra + APM observability)..."
-kubectl create namespace datadog --dry-run=client -o yaml | kubectl apply -f -
+  DATADOG_ESO_ROLE_ARN=$(tf_output datadog_eso_role_arn)
+  if [[ -n "$DATADOG_ESO_ROLE_ARN" ]]; then
+    sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+      "${ROOT_DIR}/aws/observability/datadog/datadog-external-secret.yaml" | kubectl apply -f -
+    kubectl annotate serviceaccount datadog-eso-sa -n datadog \
+      "eks.amazonaws.com/role-arn=${DATADOG_ESO_ROLE_ARN}" \
+      --overwrite
 
-DATADOG_ESO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw datadog_eso_role_arn 2>/dev/null || echo "")
-if [[ -n "$DATADOG_ESO_ROLE_ARN" ]]; then
-  sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
-    "${ROOT_DIR}/aws/observability/datadog/datadog-external-secret.yaml" | kubectl apply -f -
-  kubectl annotate serviceaccount datadog-eso-sa -n datadog \
-    "eks.amazonaws.com/role-arn=${DATADOG_ESO_ROLE_ARN}" \
-    --overwrite
+    helm_upgrade_cached datadog datadog datadog/datadog \
+      --namespace datadog \
+      --values "${ROOT_DIR}/aws/observability/datadog/datadog-agent-values.yaml" \
+      --wait --timeout 5m || log "WARNING: Datadog Agent install had issues — check that datadog-secrets synced (kubectl get externalsecret -n datadog) and aws/observability/datadog/datadog-agent-values.yaml"
+    log "  Datadog Agent installed. Infra metrics/logs available in Datadog → Infrastructure; APM traces (including the Backstage backend) under Datadog → APM → Services."
+  else
+    log "  WARNING: datadog_eso_role_arn not found in Terraform outputs — skipping Datadog Agent install."
+    log "           Set datadog_api_key/datadog_app_key in terraform.tfvars, run 'terraform apply' in ${TF_DIR}, then re-run this phase manually:"
+    log "             kubectl create namespace datadog --dry-run=client -o yaml | kubectl apply -f -"
+    log "             sed \"s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g\" aws/observability/datadog/datadog-external-secret.yaml | kubectl apply -f -"
+    log "             kubectl annotate serviceaccount datadog-eso-sa -n datadog eks.amazonaws.com/role-arn=\$(tf_output datadog_eso_role_arn) --overwrite"
+    log "             helm upgrade --install datadog datadog/datadog --namespace datadog --values aws/observability/datadog/datadog-agent-values.yaml"
+  fi
+) > "$_p44pred_log" 2>&1 &
+_p44pred_pid=$!
 
-  helm repo add datadog https://helm.datadoghq.com 2>/dev/null || true
-  helm repo update datadog
+_p44pre_fail=0
+_bg_join "$_p44pre_pid"  "$_p44pre_log"  || { warn "Phase 4.4-pre (Argo Rollouts) failed"; _p44pre_fail=1; }
+_bg_join "$_p44preb_pid" "$_p44preb_log" || { warn "Phase 4.4-pre-b (Loki + Promtail) failed"; _p44pre_fail=1; }
+_bg_join "$_p44prec_pid" "$_p44prec_log" || { warn "Phase 4.4-pre-c (Tempo) failed"; _p44pre_fail=1; }
+_bg_join "$_p44pred_pid" "$_p44pred_log" || { warn "Phase 4.4-pre-d (Datadog) failed"; _p44pre_fail=1; }
+(( _p44pre_fail == 0 )) || err "Phase 4.4-pre/b/c/d (Argo Rollouts/Loki/Tempo/Datadog) failed — see output above."
 
-  helm upgrade --install datadog datadog/datadog \
-    --namespace datadog \
-    --values "${ROOT_DIR}/aws/observability/datadog/datadog-agent-values.yaml" \
-    --wait --timeout 5m || log "WARNING: Datadog Agent install had issues — check that datadog-secrets synced (kubectl get externalsecret -n datadog) and aws/observability/datadog/datadog-agent-values.yaml"
-  log "  Datadog Agent installed. Infra metrics/logs available in Datadog → Infrastructure; APM traces (including the Backstage backend) under Datadog → APM → Services."
-else
-  log "  WARNING: datadog_eso_role_arn not found in Terraform outputs — skipping Datadog Agent install."
-  log "           Set datadog_api_key/datadog_app_key in terraform.tfvars, run 'terraform apply' in ${TF_DIR}, then re-run this phase manually:"
-  log "             kubectl create namespace datadog --dry-run=client -o yaml | kubectl apply -f -"
-  log "             sed \"s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g\" aws/observability/datadog/datadog-external-secret.yaml | kubectl apply -f -"
-  log "             kubectl annotate serviceaccount datadog-eso-sa -n datadog eks.amazonaws.com/role-arn=\$(cd terraform && terraform output -raw datadog_eso_role_arn) --overwrite"
-  log "             helm upgrade --install datadog datadog/datadog --namespace datadog --values aws/observability/datadog/datadog-agent-values.yaml"
-fi
+timer_end "4.4x Rollouts/Loki/Tempo/Datadog (parallel)"
 
-# ── Phase 4.4: Tech Insights Exporter ────────────────────────────────────────
-log "Phase 4.4: Deploying Tech Insights Exporter CronJob..."
-kubectl create configmap tech-insights-exporter-script \
-  --from-file=exporter.py=observability/tech-insights-exporter/exporter.py \
-  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
-log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
+# ── Phase 4.4/4.4a2/4.4a/4.4b: independent CronJob/manifest applies ─────────
+timer_start "4.4 Exporters (parallel)"
+# None of these read state written by another, so they run as background jobs
+# and are joined below instead of one after another. All four are waited on
+# first, then aggregated into a single err() call if any failed — matching
+# this script's top-level `set -euo pipefail` semantics that background jobs
+# don't propagate automatically, without exiting mid-loop and leaving the
+# other jobs running detached.
+_p44_log=$(mktemp); _p44a2_log=$(mktemp); _p44a_log=$(mktemp); _p44b_log=$(mktemp)
 
-# Deploy team budget ConfigMap so the exporter can reference it and AlertManager
-# fires TeamBudgetWarning/TeamBudgetExceeded PrometheusRules correctly.
-kubectl apply -f kubernetes/finops/team-budgets-configmap.yaml
-log "  Team budget ConfigMap applied (monitoring/team-budgets)."
+(
+  set -e
+  log "Phase 4.4: Deploying Tech Insights Exporter CronJob..."
+  kubectl create configmap tech-insights-exporter-script \
+    --from-file=exporter.py=observability/tech-insights-exporter/exporter.py \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
+  log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
+  # Deploy team budget ConfigMap so the exporter can reference it and AlertManager
+  # fires TeamBudgetWarning/TeamBudgetExceeded PrometheusRules correctly.
+  kubectl apply -f kubernetes/finops/team-budgets-configmap.yaml
+  log "  Team budget ConfigMap applied (monitoring/team-budgets)."
+) > "$_p44_log" 2>&1 &
+_p44_pid=$!
 
-# ── Phase 4.4a2: Flaky-Test Exporter ─────────────────────────────────────────
-log "Phase 4.4a2: Deploying Flaky-Test Exporter CronJob..."
-GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
-if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
-  log "  GITHUB_TOKEN not in env — fetching from Secrets Manager (key: github-token in idp-mvp/backstage)..."
-  GH_TOKEN_FOR_FLAKE=$(aws secretsmanager get-secret-value \
-    --secret-id idp-mvp/backstage --query SecretString --output text 2>/dev/null \
-    | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('GITHUB_TOKEN',''))" \
-    2>/dev/null || echo "")
-fi
-if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
-  log "  WARNING: no GITHUB_TOKEN available — Flaky-Test Exporter will skip every tick until you set it."
-  GH_TOKEN_FOR_FLAKE="placeholder-set-via-secrets-manager"
-fi
-kubectl create secret generic flaky-test-exporter-github-token \
-  --from-literal=token="$GH_TOKEN_FOR_FLAKE" \
-  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-kubectl create configmap flaky-test-exporter-script \
-  --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
-  --from-file=quarantine.py=observability/flaky-test-exporter/quarantine.py \
-  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f observability/flaky-test-exporter/cronjob.yaml
-kubectl apply -f observability/flaky-test-exporter/quarantine-cronjob.yaml
-log "  Flaky-Test Exporter deployed (scans GitHub Actions artifacts every 30m)."
-log "  Flaky-Test Quarantine Sync deployed (opens quarantine PRs daily at 06:00)."
+(
+  set -e
+  log "Phase 4.4a2: Deploying Flaky-Test Exporter CronJob..."
+  GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
+  if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+    log "  GITHUB_TOKEN not in env — fetching from Secrets Manager (key: github-token in idp-mvp/backstage)..."
+    GH_TOKEN_FOR_FLAKE=$(aws secretsmanager get-secret-value \
+      --secret-id idp-mvp/backstage --query SecretString --output text 2>/dev/null \
+      | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('GITHUB_TOKEN',''))" \
+      2>/dev/null || echo "")
+  fi
+  if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+    log "  WARNING: no GITHUB_TOKEN available — Flaky-Test Exporter will skip every tick until you set it."
+    GH_TOKEN_FOR_FLAKE="placeholder-set-via-secrets-manager"
+  fi
+  kubectl create secret generic flaky-test-exporter-github-token \
+    --from-literal=token="$GH_TOKEN_FOR_FLAKE" \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create configmap flaky-test-exporter-script \
+    --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
+    --from-file=quarantine.py=observability/flaky-test-exporter/quarantine.py \
+    -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f observability/flaky-test-exporter/cronjob.yaml
+  kubectl apply -f observability/flaky-test-exporter/quarantine-cronjob.yaml
+  log "  Flaky-Test Exporter deployed (scans GitHub Actions artifacts every 30m)."
+  log "  Flaky-Test Quarantine Sync deployed (opens quarantine PRs daily at 06:00)."
+) > "$_p44a2_log" 2>&1 &
+_p44a2_pid=$!
 
-# ── Phase 4.4a: ServiceMonitor — Prometheus scraping for services namespaces ──
-log "Phase 4.4a: Applying ServiceMonitor for services namespaces..."
-kubectl apply -f kubernetes/monitoring/servicemonitor.yaml
-log "  ServiceMonitor applied — Prometheus will scrape services/services-dev."
+(
+  set -e
+  log "Phase 4.4a: Applying ServiceMonitor for services namespaces..."
+  kubectl apply -f kubernetes/monitoring/servicemonitor.yaml
+  log "  ServiceMonitor applied — Prometheus will scrape services/services-dev."
+) > "$_p44a_log" 2>&1 &
+_p44a_pid=$!
 
-# ── Phase 4.4b: Demo team namespace (awesome-team) ───────────────────────────
-log "Phase 4.4b: Applying demo team namespace (awesome-team)..."
-kubectl apply -f kubernetes/teams/awesome-team/namespace.yaml
-kubectl apply -f kubernetes/teams/awesome-team/rbac.yaml
-kubectl apply -f kubernetes/teams/awesome-team/resource-quota.yaml
-kubectl apply -f kubernetes/teams/awesome-team/limit-range.yaml
-kubectl apply -f kubernetes/teams/awesome-team/network-policy.yaml
-log "  Team namespace team-awesome-team ready (RBAC, quotas, network policies)."
+(
+  set -e
+  log "Phase 4.4b: Applying demo team namespace (awesome-team)..."
+  kubectl apply -f kubernetes/teams/awesome-team/namespace.yaml
+  kubectl apply -f kubernetes/teams/awesome-team/rbac.yaml
+  kubectl apply -f kubernetes/teams/awesome-team/resource-quota.yaml
+  kubectl apply -f kubernetes/teams/awesome-team/limit-range.yaml
+  kubectl apply -f kubernetes/teams/awesome-team/network-policy.yaml
+  log "  Team namespace team-awesome-team ready (RBAC, quotas, network policies)."
+) > "$_p44b_log" 2>&1 &
+_p44b_pid=$!
+
+_p44_fail=0
+_bg_join "$_p44_pid"   "$_p44_log"   || { warn "Phase 4.4 (Tech Insights Exporter) failed";  _p44_fail=1; }
+_bg_join "$_p44a2_pid" "$_p44a2_log" || { warn "Phase 4.4a2 (Flaky-Test Exporter) failed";    _p44_fail=1; }
+_bg_join "$_p44a_pid"  "$_p44a_log"  || { warn "Phase 4.4a (ServiceMonitor) failed";          _p44_fail=1; }
+_bg_join "$_p44b_pid"  "$_p44b_log"  || { warn "Phase 4.4b (demo team namespace) failed";     _p44_fail=1; }
+(( _p44_fail == 0 )) || err "One or more of Phase 4.4/4.4a2/4.4a/4.4b failed — see output above."
+
+timer_end "4.4 Exporters (parallel)"
 
 # ── Phase 4.5: Install ArgoCD ────────────────────────────────────────────────
+timer_start "4.5 ArgoCD"
 if [[ "$SKIP_GITOPS" != "true" ]]; then
 log "Phase 4.5: Installing ArgoCD..."
-helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-helm repo update
-helm upgrade --install argocd argo/argo-cd \
+helm_upgrade_cached argocd argocd argo/argo-cd \
   --namespace argocd \
   --create-namespace \
   --values aws/argocd/argocd-helm-values.yaml \
@@ -612,7 +714,10 @@ ARGOCD_ADMIN_PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd
   -o jsonpath='{.data.password}' | base64 --decode)
 log "  ArgoCD admin password: ${ARGOCD_ADMIN_PASSWORD}"
 
+timer_end "4.5 ArgoCD"
+
 # ── Phase 4.6: Apply the GitOps ApplicationSet ───────────────────────────────
+timer_start "4.6 ApplicationSet + Crossplane"
 log "Phase 4.6: Applying ArgoCD ApplicationSet (GitOps)..."
 kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
 log "  ApplicationSet applied — ArgoCD will sync services once image tags are set."
@@ -622,7 +727,7 @@ log "  ApplicationSet applied — ArgoCD will sync services once image tags are 
 # runtime config, then hand the stack to ArgoCD. ArgoCD owns reconciliation
 # from this point on; the substitution is a one-shot bootstrap step.
 log "Phase 4.6a: Bootstrapping Crossplane..."
-CROSSPLANE_ROLE_ARN=$(cd terraform && terraform output -raw crossplane_aws_role_arn 2>/dev/null || echo "")
+CROSSPLANE_ROLE_ARN=$(tf_output crossplane_aws_role_arn)
 if [[ -n "$CROSSPLANE_ROLE_ARN" ]]; then
   if [[ "$CROSSPLANE_ROLE_ARN" != arn:aws:iam::* ]]; then
     err "crossplane_aws_role_arn doesn't look like an IAM role ARN: '${CROSSPLANE_ROLE_ARN}'"
@@ -651,7 +756,10 @@ else
   log "           Run 'terraform apply' first, then re-run this phase."
 fi
 
+timer_end "4.6 ApplicationSet + Crossplane"
+
 # ── Phase 4.7: Create Backstage read-only API token for ArgoCD plugin ────────
+timer_start "4.7 Backstage/ArgoCD tokens"
 log "Phase 4.7: Generating ArgoCD API token for Backstage..."
 
 # Wait up to 5 minutes for ArgoCD ALB ingress to get a hostname
@@ -685,13 +793,13 @@ if [[ -n "$ARGOCD_URL" ]]; then
       CURRENT_SECRET=$(aws secretsmanager get-secret-value \
         --secret-id "$BACKSTAGE_SECRET_ARN" \
         --query SecretString --output text)
-      UPDATED_SECRET=$(echo "$CURRENT_SECRET" | python3 -c "
+      UPDATED_SECRET=$(echo "$CURRENT_SECRET" | ARGOCD_URL="$ARGOCD_URL" BACKSTAGE_ARGOCD_TOKEN="$BACKSTAGE_ARGOCD_TOKEN" python3 -c "
 import json, sys, os
 s = json.load(sys.stdin)
 s['ARGOCD_URL'] = 'https://' + os.environ['ARGOCD_URL']
 s['ARGOCD_AUTH_TOKEN'] = os.environ['BACKSTAGE_ARGOCD_TOKEN']
 print(json.dumps(s))
-" ARGOCD_URL="$ARGOCD_URL" BACKSTAGE_ARGOCD_TOKEN="$BACKSTAGE_ARGOCD_TOKEN")
+")
       aws secretsmanager update-secret \
         --secret-id "$BACKSTAGE_SECRET_ARN" \
         --secret-string "$UPDATED_SECRET"
@@ -701,7 +809,10 @@ print(json.dumps(s))
 fi
 fi # --skip-gitops
 
+timer_end "4.7 Backstage/ArgoCD tokens"
+
 # ── Phase 5: Build + push hello-service seed image ───────────────────────────
+timer_start "5. hello-service image"
 # CI (GitHub Actions) manages ongoing deployments via GitOps (update-image-tag job).
 # This phase seeds the initial image so ArgoCD has something to deploy on first run.
 log "Phase 5: Building and pushing hello-service seed image..."
@@ -713,16 +824,21 @@ IMAGE_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo 'bootstrap')"
 aws ecr get-login-password --region "${AWS_REGION}" | \
   docker login --username AWS --password-stdin "${ECR_REGISTRY}"
 
-docker build \
-  --platform linux/amd64 \
-  --provenance=false \
-  --build-arg VERSION="${IMAGE_TAG}" \
-  -t "${IMAGE_REPO}:${IMAGE_TAG}" \
-  -t "${IMAGE_REPO}:latest" \
-  services/hello-service
-
-docker push "${IMAGE_REPO}:${IMAGE_TAG}"
-docker push "${IMAGE_REPO}:latest"
+# Skip when the source and tag are unchanged and the tag is already in ECR.
+# The build itself now reuses an ECR-side layer cache — see
+# docker_build_push_amd64 in lib.sh for why that matters so much here.
+_hello_fp_file="${ROOT_DIR}/.idp-cache/aws-image-hello-service.fingerprint"
+_hello_fp="$(dir_content_hash "${ROOT_DIR}/services/hello-service"):${IMAGE_TAG}"
+if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$_hello_fp_file" "$_hello_fp" \
+     "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/hello-service --image-ids imageTag=${IMAGE_TAG}"; then
+  log "  hello-service unchanged and ${IMAGE_TAG} already in ECR — skipping build."
+else
+  docker_build_push_amd64 services/hello-service "${IMAGE_REPO}" \
+    --build-arg VERSION="${IMAGE_TAG}" \
+    -t "${IMAGE_REPO}:${IMAGE_TAG}" \
+    -t "${IMAGE_REPO}:latest"
+  helm_record_fingerprint "$_hello_fp_file" "$_hello_fp"
+fi
 
 # Write seed image tag into helm-values-aws.yaml so ArgoCD syncs immediately
 IMAGE_REPO_ESC="${IMAGE_REPO}" IMAGE_TAG_ESC="${IMAGE_TAG}" python3 - <<'PYEOF'
@@ -742,7 +858,10 @@ git diff --staged --quiet || \
 
 log "hello-service seed image pushed — ArgoCD will deploy to dev namespace."
 
+timer_end "5. hello-service image"
+
 # ── Phase 5.5: Build + push Backstage image ───────────────────────────────────
+timer_start "5.5 Backstage image"
 # The Backstage Dockerfile is multi-stage and runs yarn install + yarn build:backend
 # inside the builder stage. No host-side yarn build is needed.
 # Tagged with the git SHA (not :latest) so the deployment manifest pins an immutable
@@ -751,17 +870,28 @@ log "Phase 5.5: Building and pushing Backstage image..."
 BACKSTAGE_IMAGE="${ECR_REGISTRY}/${CLUSTER_NAME}/backstage"
 BACKSTAGE_IMAGE_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo 'bootstrap')"
 
-docker build \
-  --platform linux/amd64 \
-  --provenance=false \
-  -f backstage/Dockerfile \
-  -t "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}" \
-  backstage/app/
-
-docker push "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
+# This is the single most expensive build in the whole bootstrap: multi-stage,
+# runs yarn install + yarn build:backend inside the builder, and does it all
+# under amd64 emulation on an Apple-Silicon host. The ECR layer cache means a
+# rebuild after an unrelated change reuses the yarn-install layers instead of
+# re-running them emulated. Fingerprint covers the app source and the Dockerfile.
+_bs_fp_file="${ROOT_DIR}/.idp-cache/aws-image-backstage.fingerprint"
+_bs_fp="$(dir_content_hash "${ROOT_DIR}/backstage/app"):$(_sha256 "${ROOT_DIR}/backstage/Dockerfile"):${BACKSTAGE_IMAGE_TAG}"
+if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$_bs_fp_file" "$_bs_fp" \
+     "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/backstage --image-ids imageTag=${BACKSTAGE_IMAGE_TAG}"; then
+  log "  Backstage unchanged and ${BACKSTAGE_IMAGE_TAG} already in ECR — skipping build."
+else
+  docker_build_push_amd64 backstage/app/ "${BACKSTAGE_IMAGE}" \
+    -f backstage/Dockerfile \
+    -t "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
+  helm_record_fingerprint "$_bs_fp_file" "$_bs_fp"
+fi
 log "Backstage image pushed to ECR: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
 
+timer_end "5.5 Backstage image"
+
 # ── Phase 5.6: Deploy Backstage ───────────────────────────────────────────────
+timer_start "5.6 Deploy Backstage"
 log "Phase 5.6: Deploying Backstage..."
 
 # Apply External Secrets (creates backstage-secrets K8s Secret from Secrets Manager)
@@ -797,32 +927,34 @@ kubectl apply -f kubernetes/backstage/configmap.yaml
 sed "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}|g" \
   aws/backstage/deployment.yaml | kubectl apply -f -
 
-# Wait for Backstage LB to get a hostname (up to 6 min)
-log "  Waiting for Backstage LoadBalancer hostname..."
-for i in $(seq 1 36); do
-  BACKSTAGE_URL=$(kubectl get svc backstage -n backstage \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -n "$BACKSTAGE_URL" ]] && break
-  [[ $i -eq 36 ]] && { log "  LoadBalancer hostname not ready — skipping URL patch."; BACKSTAGE_URL="PENDING"; }
-  sleep 10
-done
-
-# ArgoCD and Grafana Ingresses are created earlier (Phase 4 / 4.5), so their
-# ALB hostnames are usually already assigned by now — but ALB provisioning is
-# async, so poll briefly rather than assuming. KAgent's ALB isn't up yet at
-# this point (Phase 6 runs after this) — its URL gets patched separately in
-# bootstrap-ai.sh once its own Ingress exists.
-log "  Looking up ArgoCD + Grafana LoadBalancer hostnames..."
+# Wait for the Backstage, ArgoCD and Grafana load balancers to be assigned
+# hostnames. These three provision concurrently in AWS and nothing here depends
+# on another, but they used to be polled in two back-to-back loops — 6 minutes
+# of Backstage polling and only then up to 4 more for ArgoCD/Grafana, so a slow
+# ALB could cost 10 minutes of pure waiting. One loop polls all three and stops
+# as soon as all are up, bounding the whole thing at 6 minutes.
+#
+# ArgoCD and Grafana Ingresses are created earlier (Phase 4 / 4.5) so they are
+# usually already assigned by the time we get here. KAgent's ALB isn't up yet
+# (Phase 6 runs after this) — its URL is patched separately in bootstrap-ai.sh.
+log "  Waiting for Backstage / ArgoCD / Grafana LoadBalancer hostnames..."
+BACKSTAGE_URL=""
 ARGOCD_URL=""
 GRAFANA_URL=""
-for i in $(seq 1 24); do
+for i in $(seq 1 36); do
+  [[ -z "$BACKSTAGE_URL" ]] && BACKSTAGE_URL=$(kubectl get svc backstage -n backstage \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -z "$ARGOCD_URL" ]] && ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(kubectl get ingress prometheus-grafana -n monitoring \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]] && break
+  [[ -n "$BACKSTAGE_URL" && -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]] && break
   sleep 10
 done
+if [[ -z "$BACKSTAGE_URL" ]]; then
+  log "  Backstage LoadBalancer hostname not ready — skipping URL patch."
+  BACKSTAGE_URL="PENDING"
+fi
 [[ -z "$ARGOCD_URL" ]] && log "  ArgoCD ALB hostname not ready — leaving externalLinks.argocd as a placeholder."
 [[ -z "$GRAFANA_URL" ]] && log "  Grafana ALB hostname not ready — leaving externalLinks.grafana as a placeholder."
 
@@ -839,7 +971,10 @@ fi
 kubectl rollout status deployment/backstage -n backstage --timeout=120s || \
   log "  WARNING: Backstage rollout did not complete in time — check pod logs."
 
+timer_end "5.6 Deploy Backstage"
+
 # ── Phase 5.7: Catalog exporter CronJob ──────────────────────────────────────
+timer_start "5.7 Catalog exporter"
 if [[ "$SKIP_DORA" != "true" ]]; then
   log "Phase 5.7: Deploying catalog exporter CronJob..."
   cd "$ROOT_DIR"
@@ -847,7 +982,10 @@ if [[ "$SKIP_DORA" != "true" ]]; then
   log "  Catalog exporter deployed."
 fi
 
+timer_end "5.7 Catalog exporter"
+
 # ── Phase 5.8: AlertManager routing (Slack + PagerDuty) ─────────────────────
+timer_start "5.8 AlertManager"
 log "Phase 5.8: Wiring AlertManager Slack webhook..."
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
   kubectl create secret generic alertmanager-slack-webhook \
@@ -870,75 +1008,82 @@ else
   log "  To enable: export PAGERDUTY_INTEGRATION_KEY=<key> and re-run."
 fi
 
-# ── Phase 6: AI/ML platform (KAgent + MLflow + MCP servers) ──────────────────
-if [[ "$SKIP_AI" != "true" ]]; then
-  log "Phase 6: Deploying AI/ML platform..."
-  cd "$ROOT_DIR"
-  bash scripts/bootstrap-ai.sh --aws --region "${AWS_REGION}" --cluster "${CLUSTER_NAME}"
-fi
+timer_end "5.8 AlertManager"
 
 # ── Phase 6a: Argo Workflows (optional, for ML pipeline orchestration) ──────────
-if [[ "$SKIP_AI" != "true" ]]; then
-  log "Phase 6a: Installing Argo Workflows for ML orchestration..."
-  (
-    set -e
-    helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-    helm repo update argo
+# Backgrounded: this phase shares nothing with Phase 6 (the AI/ML install),
+# which is by far the longest phase here. Launched before it and joined after.
+_P6A_PID=""
+_P6A_LOG=$(mktemp)
+(
+  set -e
+  if [[ "$SKIP_AI" != "true" ]]; then
+    log "Phase 6a: Installing Argo Workflows for ML orchestration..."
+    (
+      set -e
 
-    # Create S3 bucket for Argo artifacts if needed
-    ARGO_BUCKET="argo-workflows-artifacts-${CLUSTER_NAME}"
-    if ! aws s3 ls "s3://${ARGO_BUCKET}/" --region "${AWS_REGION}" &>/dev/null; then
-      log "Creating S3 bucket for Argo Workflows artifacts..."
-      aws s3 mb "s3://${ARGO_BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true
-    fi
+      # Create S3 bucket for Argo artifacts if needed
+      ARGO_BUCKET="argo-workflows-artifacts-${CLUSTER_NAME}"
+      if ! aws s3 ls "s3://${ARGO_BUCKET}/" --region "${AWS_REGION}" &>/dev/null; then
+        log "Creating S3 bucket for Argo Workflows artifacts..."
+        aws s3 mb "s3://${ARGO_BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true
+      fi
 
-    # Get the Argo Workflows IRSA role ARN from Terraform (if it exists)
-    ARGO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw argo_workflows_role_arn 2>/dev/null || echo "")
+      # Get the Argo Workflows IRSA role ARN from Terraform (if it exists)
+      ARGO_ROLE_ARN=$(tf_output argo_workflows_role_arn)
 
-    # Install Argo Workflows with AWS values
-    VALUES_FILE="${ROOT_DIR}/aws/argo-workflows/values.yaml"
-    sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; s|REGION_PLACEHOLDER|${AWS_REGION}|g; s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${ARGO_ROLE_ARN}|g; s|BACKSTAGE_ALB_URL_PLACEHOLDER|${BACKSTAGE_URL}|g" \
-      "$VALUES_FILE" > /tmp/argo-values-${CLUSTER_NAME}.yaml
+      # Install Argo Workflows with AWS values
+      VALUES_FILE="${ROOT_DIR}/aws/argo-workflows/values.yaml"
+      sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; s|REGION_PLACEHOLDER|${AWS_REGION}|g; s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${ARGO_ROLE_ARN}|g; s|BACKSTAGE_ALB_URL_PLACEHOLDER|${BACKSTAGE_URL}|g" \
+        "$VALUES_FILE" > /tmp/argo-values-${CLUSTER_NAME}.yaml
 
-    helm upgrade --install argo-workflows argo/argo-workflows \
-      --namespace argo-workflows \
-      --create-namespace \
-      -f /tmp/argo-values-${CLUSTER_NAME}.yaml \
-      --wait \
-      --timeout 300s || log "WARNING: Argo Workflows Helm install had issues (non-critical for platform operation)"
+      helm_upgrade_cached argo-workflows argo-workflows argo/argo-workflows \
+        --namespace argo-workflows \
+        --create-namespace \
+        -f /tmp/argo-values-${CLUSTER_NAME}.yaml \
+        --wait \
+        --timeout 300s || log "WARNING: Argo Workflows Helm install had issues (non-critical for platform operation)"
 
-    # Apply RBAC if ServiceAccount creation succeeded
-    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
+      # Apply RBAC if ServiceAccount creation succeeded
+      kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
 
-    log "Argo Workflows deployed — UI pending ALB provisioning"
-  )
-else
-  log "Phase 6a: Skipping Argo Workflows (--skip-ai flag)"
-fi
+      log "Argo Workflows deployed — UI pending ALB provisioning"
+    )
+  else
+    log "Phase 6a: Skipping Argo Workflows (--skip-ai flag)"
+  fi
+
+
+) >"$_P6A_LOG" 2>&1 &
+_P6A_PID=$!
 
 # ── Phase 6b: Velero cluster backup ───────────────────────────────────────────
-# Protects PVCs (Grafana/Prometheus/MLflow data), ArgoCD state, and cluster config
-# via daily backups to the S3 bucket + IRSA role provisioned in terraform/s3.tf
-# and terraform/iam.tf. To test a restore: `velero backup get` to find a backup
-# name, then `velero restore create --from-backup <name>`.
-if [[ "$SKIP_VELERO" != "true" ]]; then
-  log "Phase 6b: Installing Velero for cluster backup..."
-  VELERO_BUCKET=$(cd "${TF_DIR}" && terraform output -raw velero_backups_bucket_name 2>/dev/null || echo "")
-  VELERO_ROLE_ARN=$(cd "${TF_DIR}" && terraform output -raw velero_role_arn 2>/dev/null || echo "")
+# Backgrounded: this phase shares nothing with Phase 6 (the AI/ML install),
+# which is by far the longest phase here. Launched before it and joined after.
+_P6B_PID=""
+_P6B_LOG=$(mktemp)
+(
+  set -e
+  # Protects PVCs (Grafana/Prometheus/MLflow data), ArgoCD state, and cluster config
+  # via daily backups to the S3 bucket + IRSA role provisioned in terraform/s3.tf
+  # and terraform/iam.tf. To test a restore: `velero backup get` to find a backup
+  # name, then `velero restore create --from-backup <name>`.
+  if [[ "$SKIP_VELERO" != "true" ]]; then
+    log "Phase 6b: Installing Velero for cluster backup..."
+    VELERO_BUCKET=$(tf_output velero_backups_bucket_name)
+    VELERO_ROLE_ARN=$(tf_output velero_role_arn)
 
-  if [[ -z "$VELERO_BUCKET" || -z "$VELERO_ROLE_ARN" ]]; then
-    log "  WARNING: Velero terraform outputs missing — skipping Velero install."
-  else
-    helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts 2>/dev/null || true
-    helm repo update vmware-tanzu
+    if [[ -z "$VELERO_BUCKET" || -z "$VELERO_ROLE_ARN" ]]; then
+      log "  WARNING: Velero terraform outputs missing — skipping Velero install."
+    else
 
-    kubectl create namespace velero --dry-run=client -o yaml | kubectl apply -f -
-    kubectl create serviceaccount velero -n velero --dry-run=client -o yaml | kubectl apply -f -
-    kubectl annotate serviceaccount velero -n velero \
-      "eks.amazonaws.com/role-arn=${VELERO_ROLE_ARN}" --overwrite
+      kubectl create namespace velero --dry-run=client -o yaml | kubectl apply -f -
+      kubectl create serviceaccount velero -n velero --dry-run=client -o yaml | kubectl apply -f -
+      kubectl annotate serviceaccount velero -n velero \
+        "eks.amazonaws.com/role-arn=${VELERO_ROLE_ARN}" --overwrite
 
-    tmp_velero_values=$(mktemp /tmp/velero-values.XXXXXX)
-    cat > "${tmp_velero_values}" <<EOF
+      tmp_velero_values=$(mktemp /tmp/velero-values.XXXXXX)
+      cat > "${tmp_velero_values}" <<EOF
 serviceAccount:
   server:
     create: false
@@ -965,14 +1110,14 @@ snapshotsEnabled: true
 deployNodeAgent: true
 EOF
 
-    helm upgrade --install velero vmware-tanzu/velero \
-      --namespace velero \
-      --values "${tmp_velero_values}" \
-      --wait --timeout 5m
-    rm -f "${tmp_velero_values}"
+      helm_upgrade_cached velero velero vmware-tanzu/velero \
+        --namespace velero \
+        --values "${tmp_velero_values}" \
+        --wait --timeout 5m
+      rm -f "${tmp_velero_values}"
 
-    # Daily backup schedule — 30-day TTL matches var.rds_backup_retention_days.
-    kubectl apply -f - <<'EOF'
+      # Daily backup schedule — 30-day TTL matches var.rds_backup_retention_days.
+      kubectl apply -f - <<'EOF'
 apiVersion: velero.io/v1
 kind: Schedule
 metadata:
@@ -991,65 +1136,85 @@ spec:
     snapshotVolumes: true
 EOF
 
-    log "Velero installed — daily backups scheduled at 03:00 UTC (30-day retention)."
+      log "Velero installed — daily backups scheduled at 03:00 UTC (30-day retention)."
+    fi
+  else
+    log "Phase 6b: Skipping Velero (--skip-velero flag)"
   fi
-else
-  log "Phase 6b: Skipping Velero (--skip-velero flag)"
-fi
 
-# ── Done ──────────────────────────────────────────────────────────────────────
-_alb() {
-  # Usage: _alb <ingress-name> <namespace>
-  kubectl get ingress "$1" -n "$2" \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null \
-    | grep -v '^$' || echo "pending..."
-}
+  # ── Done ──────────────────────────────────────────────────────────────────────
+  _alb() {
+    # Usage: _alb <ingress-name> <namespace>
+    kubectl get ingress "$1" -n "$2" \
+      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null \
+      | grep -v '^$' || echo "pending..."
+  }
 
-log ""
-log "╔══════════════════════════════════════════════════════════════════════════════╗"
-log "║                     Bootstrap complete — AWS platform URLs                  ║"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-log "║  Cluster        $(kubectl config current-context)"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-log "║  DEVELOPER PORTAL"
-log "║    Backstage       http://${BACKSTAGE_URL:-PENDING}"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-log "║  PLATFORM SERVICES"
-log "║    ArgoCD          http://$(_alb argocd-server argocd)"
-log "║    Argo Rollouts   http://$(_alb argo-rollouts-dashboard argo-rollouts)"
-log "║    Grafana         http://$(_alb grafana monitoring)"
-log "║    Prometheus      http://$(_alb prometheus monitoring)"
-log "║    AlertManager    http://$(_alb alertmanager monitoring)"
-log "║    Pushgateway     http://$(_alb prometheus-pushgateway monitoring)"
-log "║    OpenCost        http://$(_alb opencost-alb opencost)"
-log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-log "║  APPLICATION SERVICES"
-log "║    hello-service   http://$(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-if [[ "$SKIP_AI" != "true" ]]; then
-log "║    AI Assistant    http://${BACKSTAGE_URL:-PENDING}/ai-assistant"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-log "║  AI/ML PLATFORM"
-log "║    KAgent UI           http://$(_alb kagent-ui kagent)"
-log "║    IDP Assistant (A2A) http://$(_alb idp-assistant kagent)"
-log "║    MLflow              http://$(_alb mlflow ml-platform)"
-log "║    Argo Workflows      http://$(_alb argo-workflows-server argo-workflows)"
-log "║    IDP MCP Server      http://$(_alb idp-mcp-server services-dev)"
-log "║    QA MCP Server       http://$(_alb qa-mcp-server services-dev)"
-log "║    Contract MCP Server http://$(_alb contract-mcp-server services-dev)"
-log "╠══════════════════════════════════════════════════════════════════════════════╣"
-fi
-log "╚══════════════════════════════════════════════════════════════════════════════╝"
-log ""
-if [[ "$BACKSTAGE_URL" == "PENDING" ]]; then
-  log "⚠️  Backstage LoadBalancer hostname not ready. Run this to patch it later:"
-  log "  BACKSTAGE_URL=\$(kubectl get svc backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-  log "  kubectl get configmap backstage-config -n backstage -o json | sed \"s|BACKSTAGE_ALB_URL|\${BACKSTAGE_URL}|g\" | kubectl apply -f -"
-  log "  kubectl rollout restart deployment/backstage -n backstage"
   log ""
+  log "╔══════════════════════════════════════════════════════════════════════════════╗"
+  log "║                     Bootstrap complete — AWS platform URLs                  ║"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  log "║  Cluster        $(kubectl config current-context)"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  log "║  DEVELOPER PORTAL"
+  log "║    Backstage       http://${BACKSTAGE_URL:-PENDING}"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  log "║  PLATFORM SERVICES"
+  log "║    ArgoCD          http://$(_alb argocd-server argocd)"
+  log "║    Argo Rollouts   http://$(_alb argo-rollouts-dashboard argo-rollouts)"
+  log "║    Grafana         http://$(_alb grafana monitoring)"
+  log "║    Prometheus      http://$(_alb prometheus monitoring)"
+  log "║    AlertManager    http://$(_alb alertmanager monitoring)"
+  log "║    Pushgateway     http://$(_alb prometheus-pushgateway monitoring)"
+  log "║    OpenCost        http://$(_alb opencost-alb opencost)"
+  log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  log "║  APPLICATION SERVICES"
+  log "║    hello-service   http://$(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  if [[ "$SKIP_AI" != "true" ]]; then
+  log "║    AI Assistant    http://${BACKSTAGE_URL:-PENDING}/ai-assistant"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  log "║  AI/ML PLATFORM"
+  log "║    KAgent UI           http://$(_alb kagent-ui kagent)"
+  log "║    IDP Assistant (A2A) http://$(_alb idp-assistant kagent)"
+  log "║    MLflow              http://$(_alb mlflow ml-platform)"
+  log "║    Argo Workflows      http://$(_alb argo-workflows-server argo-workflows)"
+  log "║    IDP MCP Server      http://$(_alb idp-mcp-server services-dev)"
+  log "║    QA MCP Server       http://$(_alb qa-mcp-server services-dev)"
+  log "║    Contract MCP Server http://$(_alb contract-mcp-server services-dev)"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  fi
+  log "╚══════════════════════════════════════════════════════════════════════════════╝"
+  log ""
+  if [[ "$BACKSTAGE_URL" == "PENDING" ]]; then
+    log "⚠️  Backstage LoadBalancer hostname not ready. Run this to patch it later:"
+    log "  BACKSTAGE_URL=\$(kubectl get svc backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+    log "  kubectl get configmap backstage-config -n backstage -o json | sed \"s|BACKSTAGE_ALB_URL|\${BACKSTAGE_URL}|g\" | kubectl apply -f -"
+    log "  kubectl rollout restart deployment/backstage -n backstage"
+    log ""
+  fi
+  log "Next steps if GITHUB_TOKEN was not set:"
+  log "  1. aws secretsmanager update-secret --secret-id idp-mvp/backstage \\"
+  log "       --secret-string \"\$(aws secretsmanager get-secret-value --secret-id idp-mvp/backstage --query SecretString --output text | python3 -c \"import json,sys; s=json.load(sys.stdin); s['GITHUB_TOKEN']='<YOUR_TOKEN>'; print(json.dumps(s))\")\""
+  log "  2. kubectl rollout restart deployment/backstage -n backstage"
+
+) >"$_P6B_LOG" 2>&1 &
+_P6B_PID=$!
+
+# ── Phase 6: AI/ML platform (KAgent + MLflow + MCP servers) ──────────────────
+timer_start "6. AI/ML platform"
+if [[ "$SKIP_AI" != "true" ]]; then
+  log "Phase 6: Deploying AI/ML platform..."
+  cd "$ROOT_DIR"
+  bash scripts/bootstrap-ai.sh --aws --region "${AWS_REGION}" --cluster "${CLUSTER_NAME}"
 fi
-log "Next steps if GITHUB_TOKEN was not set:"
-log "  1. aws secretsmanager update-secret --secret-id idp-mvp/backstage \\"
-log "       --secret-string \"\$(aws secretsmanager get-secret-value --secret-id idp-mvp/backstage --query SecretString --output text | python3 -c \"import json,sys; s=json.load(sys.stdin); s['GITHUB_TOKEN']='<YOUR_TOKEN>'; print(json.dumps(s))\")\""
-log "  2. kubectl rollout restart deployment/backstage -n backstage"
+
+timer_end "6. AI/ML platform"
+
+# ── Phase 6a/6b join ─────────────────────────────────────────────────────────
+timer_start "6a/6b. Argo Workflows + Velero (parallel with 6)"
+_bg_join "$_P6A_PID" "$_P6A_LOG" || log "  WARNING: Phase 6a (Argo Workflows) failed — non-critical for platform operation."
+_bg_join "$_P6B_PID" "$_P6B_LOG" || log "  WARNING: Phase 6b (Velero) failed — cluster backups are not configured."
+_P6A_PID=""; _P6B_PID=""
+timer_end "6a/6b. Argo Workflows + Velero (parallel with 6)"

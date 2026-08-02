@@ -84,6 +84,8 @@ git clone https://github.com/moatazeldebsy/backstage-platform-template.git && cd
 | 2 (AWS) | `bootstrap.sh` — Terraform → EKS → full platform **including AI/ML** (~45–60 min) | Auto, by `setup.sh` |
 | 3 (local, optional) | `bootstrap-ai.sh` — adds KAgent + MLflow + MCP servers | **Manual** — AWS already gets this in step 2, local doesn't |
 
+> **Don't run `setup.sh` and then `bootstrap-local.sh`.** Step 2a above is automatic — `setup.sh` has already run it by the time it finishes. Running it again just repeats a 15–20 minute install. If `setup.sh` printed the "Local IDP platform is up" banner with the access URLs, your cluster is up and the next (optional) step is `bootstrap-ai.sh`.
+
 `bootstrap-local.sh` (and `bootstrap.sh`/`bootstrap-multiregion.sh` on AWS) is also the script you run **standalone** for every day-2 operation afterwards — recreating the cluster, `--destroy`, `--start-backstage`, `--print-urls`, etc. You don't re-run `setup.sh` for those; see [Scripts Reference](docs/scripts-reference.md#setupsh-vs-bootstrap-localsh-why-two-scripts) for the full breakdown of what each script owns.
 
 For AWS, first copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and set `github_org`, `aws_region`, `cluster_name`, then run `./scripts/verify-secrets.sh` to confirm your credentials/secrets are in place before `bootstrap.sh`.

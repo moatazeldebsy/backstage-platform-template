@@ -30,6 +30,31 @@ prometheus:
       limits:
         cpu: 1500m
         memory: 1Gi
+    # Lenient probes — same rationale as Grafana's below. The chart's default
+    # liveness probe (failureThreshold=6, periodSeconds=5s = 30s grace) is far
+    # shorter than WAL replay + request handling can take under local CPU
+    # contention, so kubelet kills the container mid-replay, it restarts, and
+    # has to replay again — a self-perpetuating crashloop (observed: 725
+    # failed readiness probes / 47+ restarts over 17h+ without recovering on
+    # its own, unlike other components that stabilize once load eases).
+    # Overriding via `containers[]` (strategic-merge by name) since the
+    # Prometheus CRD doesn't expose livenessProbe/readinessProbe directly.
+    containers:
+      - name: prometheus
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: http-web
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 20
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: http-web
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 20
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -129,23 +154,29 @@ grafana:
     limits:
       cpu: 300m
       memory: 512Mi
-  # Lenient probes — Grafana can be slow to start when loading dashboard ConfigMaps
+  # Lenient probes — Grafana can be slow to start when loading dashboard
+  # ConfigMaps. The previous grace window (60s initial delay + 10*10s = 160s
+  # total) was still too short under local CPU contention: observed startup
+  # taking 157s+ (grafana-apiserver was still registering GroupVersions when
+  # SIGTERM landed), triggering the exact same self-perpetuating crashloop as
+  # Prometheus/the operator above — 45+ restarts / 714 failed readiness
+  # checks over 18h, surfacing as nginx 503s on grafana.idp.local.
   readinessProbe:
     httpGet:
       path: /api/health
       port: 3000
-    initialDelaySeconds: 30
-    timeoutSeconds: 5
-    periodSeconds: 10
-    failureThreshold: 10
+    initialDelaySeconds: 60
+    timeoutSeconds: 10
+    periodSeconds: 15
+    failureThreshold: 20
   livenessProbe:
     httpGet:
       path: /api/health
       port: 3000
-    initialDelaySeconds: 60
-    timeoutSeconds: 30
-    periodSeconds: 10
-    failureThreshold: 10
+    initialDelaySeconds: 90
+    timeoutSeconds: 15
+    periodSeconds: 15
+    failureThreshold: 20
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -211,6 +242,28 @@ prometheusOperator:
     limits:
       cpu: 500m
       memory: 384Mi
+  # Chart default is timeoutSeconds=1, failureThreshold=3 (~30s grace) — far too
+  # aggressive for local CPU contention. The operator reconciles every Prometheus/
+  # Alertmanager CR change into the underlying StatefulSet, so when it crashloops
+  # (observed: 677 restarts over 18h), nothing else in the stack can update either
+  # — including the lenient probes added to prometheusSpec/alertmanager above,
+  # which is what made this the actual root blocker, not a cosmetic symptom.
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: https
+      scheme: HTTPS
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 10
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: https
+      scheme: HTTPS
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 10
 
 # Note: Prometheus Pushgateway is installed as a separate Helm release (not a subchart of kube-prometheus-stack):
 #   helm upgrade --install prometheus-pushgateway prometheus-community/prometheus-pushgateway \

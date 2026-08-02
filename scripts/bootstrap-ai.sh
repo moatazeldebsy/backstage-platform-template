@@ -25,6 +25,7 @@ SKIP_KAGENT=false
 SKIP_MCP=false
 ADP=false
 DESTROY=false
+FORCE_BUILD=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,6 +37,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mcp)     SKIP_MCP=true; shift ;;
     --adp)          ADP=true; shift ;;
     --destroy)      DESTROY=true; shift ;;
+    --force-build)  FORCE_BUILD=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
@@ -55,6 +57,35 @@ check() { echo "✓ $*"; }
 warn()  { echo "  [ai] WARNING: $*" >&2; }
 log()   { echo "  [ai] $*"; }
 die()   { echo "✗ ERROR: $*" >&2; exit 1; }
+
+# Per-step wall-clock timings, printed as a slowest-first table on exit
+# (including on failure). Set IDP_TIMING=0 to silence.
+timer_enable_summary
+
+# Where skip-if-unchanged fingerprints for Helm releases and Docker images are
+# recorded. Shared with bootstrap-local.sh, which uses the same directory for
+# its ArgoCD release fingerprint.
+CACHE_DIR="${REPO_ROOT}/.idp-cache"
+# Bounded parallelism for MCP server image builds. Deliberately not "all at
+# once": these are npm-install-heavy Node builds, and on a local setup they run
+# on the *same* few CPUs as the Kind cluster they are being built for. A fixed
+# default of 4 was too aggressive on a 6-CPU VM — the builds competed with the
+# cluster for CPU, and on one --adp run that contention contributed to etcd
+# timing out and the API server becoming unreachable mid-deploy.
+#
+# So scale with what the container runtime actually has, leaving roughly two
+# thirds of it for the cluster: 6 CPUs -> 2 jobs, 12 -> 4 (the cap). An explicit
+# IDP_BUILD_JOBS always wins, and the probe failing is not fatal — fall back to 2.
+_default_build_jobs() {
+  local ncpu jobs
+  ncpu=$(docker info --format '{{.NCPU}}' 2>/dev/null || echo "")
+  [[ "$ncpu" =~ ^[0-9]+$ ]] || { echo 2; return; }
+  jobs=$(( ncpu / 3 ))
+  (( jobs < 1 )) && jobs=1
+  (( jobs > 4 )) && jobs=4
+  echo "$jobs"
+}
+IDP_BUILD_JOBS="${IDP_BUILD_JOBS:-$(_default_build_jobs)}"
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
 
@@ -181,6 +212,7 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws sts get-caller-identity &>/dev/null || die "AWS credentials not configured"
   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
   REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CLUSTER_NAME}"
+  tf_outputs_load "${REPO_ROOT}/terraform"
   # Ensure ECR repos exist for all MCP server images (idempotent).
   # Repo names must match the Terraform convention: ${CLUSTER_NAME}/${repo}
   # so that the REGISTRY path (…/${CLUSTER_NAME}/${repo}) resolves correctly.
@@ -193,38 +225,48 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
       [[ -d "${REPO_ROOT}/services/${_adp_svc}" ]] && _ecr_repos+=("${_adp_svc}")
     done
   fi
+  # One describe call for the whole registry, filtered locally, instead of one
+  # describe round trip per repo (up to 10 serial API calls). Listing without
+  # --repository-names is deliberate: passing names for a repo that doesn't
+  # exist yet fails the *entire* call with RepositoryNotFoundException.
+  _existing_ecr=$(aws ecr describe-repositories --region "${AWS_REGION}" \
+    --query 'repositories[].repositoryName' --output text 2>/dev/null | tr '\t' '\n')
   for _repo in "${_ecr_repos[@]}"; do
     _full_repo="${CLUSTER_NAME}/${_repo}"
-    aws ecr describe-repositories --region "${AWS_REGION}" --repository-names "${_full_repo}" &>/dev/null || \
-      aws ecr create-repository \
+    if printf '%s\n' "$_existing_ecr" | grep -qx "${_full_repo}"; then
+      continue
+    fi
+    # Note: this used to be `describe || create && info`, which — because || and
+    # && are left-associative — printed "Created" on the already-exists path too.
+    if aws ecr create-repository \
         --repository-name "${_full_repo}" \
         --region "${AWS_REGION}" \
         --image-scanning-configuration scanOnPush=true \
         --image-tag-mutability MUTABLE \
-        --query 'repository.repositoryUri' --output text \
-      && info "Created ECR repository: ${_full_repo}"
+        --query 'repository.repositoryUri' --output text >/dev/null; then
+      info "Created ECR repository: ${_full_repo}"
+    else
+      warn "Could not create ECR repository ${_full_repo} — docker push for ${_repo} will fail."
+    fi
   done
 
   # Login to ECR once; subsequent docker push calls reuse the session
   aws ecr get-login-password --region "${AWS_REGION}" | \
     docker login --username AWS --password-stdin \
       "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-  # Fetch ANTHROPIC_API_KEY and OPENAI_API_KEY from Secrets Manager (if not already in env)
-  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    ANTHROPIC_API_KEY=$(aws secretsmanager get-secret-value \
+  # Fetch ANTHROPIC_API_KEY and OPENAI_API_KEY from Secrets Manager (if not already
+  # in env) — one round trip, both keys parsed from the same JSON blob.
+  if [[ -z "${ANTHROPIC_API_KEY:-}" || -z "${OPENAI_API_KEY:-}" ]]; then
+    _kagent_secret_json=$(aws secretsmanager get-secret-value \
       --secret-id "idp-mvp/kagent" \
       --region "${AWS_REGION}" \
-      --query 'SecretString' --output text 2>/dev/null \
-      | python3 -c "import json,sys; print(json.load(sys.stdin).get('ANTHROPIC_API_KEY',''))" \
-      2>/dev/null || echo "")
-  fi
-  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-    OPENAI_API_KEY=$(aws secretsmanager get-secret-value \
-      --secret-id "idp-mvp/kagent" \
-      --region "${AWS_REGION}" \
-      --query 'SecretString' --output text 2>/dev/null \
-      | python3 -c "import json,sys; print(json.load(sys.stdin).get('OPENAI_API_KEY',''))" \
-      2>/dev/null || echo "")
+      --query 'SecretString' --output text 2>/dev/null || echo "{}")
+    if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+      ANTHROPIC_API_KEY=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('ANTHROPIC_API_KEY',''))" "$_kagent_secret_json" 2>/dev/null || echo "")
+    fi
+    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+      OPENAI_API_KEY=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('OPENAI_API_KEY',''))" "$_kagent_secret_json" 2>/dev/null || echo "")
+    fi
   fi
 else
   REGISTRY="localhost:5003"
@@ -248,6 +290,25 @@ else
     GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
   fi
+
+  # Authenticate the `argocd` CLI for the "is <svc>-local already an ArgoCD
+  # app?" check below (MCP server deploy loop). This is intentionally NOT
+  # ARGOCD_TOKEN (the user-configured token above, used only for the
+  # argocd-mcp-server's own runtime secret) — it's the admin session JWT
+  # bootstrap-local.sh's Step 8 mints fresh on every run and writes to
+  # local/backstage/.env. Without ARGOCD_SERVER/ARGOCD_AUTH_TOKEN set, every
+  # `argocd app get` call below fails with "server address unspecified" and
+  # is silently swallowed by `&>/dev/null`, so the script always concluded
+  # "app not found" and fell back to a direct `helm install` — even when
+  # ArgoCD already owned the resource, which then fails to adopt existing
+  # ArgoCD-managed objects (e.g. a PodDisruptionBudget missing Helm's
+  # meta.helm.sh/* ownership annotations).
+  _argocd_cli_token_file="${REPO_ROOT}/local/backstage/.env"
+  if [[ -f "$_argocd_cli_token_file" ]]; then
+    ARGOCD_SERVER="${ARGOCD_SERVER:-argocd.idp.local}"
+    ARGOCD_AUTH_TOKEN="${ARGOCD_AUTH_TOKEN:-$(grep '^ARGOCD_AUTH_TOKEN=' "$_argocd_cli_token_file" | cut -d= -f2- || true)}"
+    export ARGOCD_SERVER ARGOCD_AUTH_TOKEN
+  fi
 fi
 
 [[ -n "${ANTHROPIC_API_KEY:-}" ]] || die "ANTHROPIC_API_KEY is not set. Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
@@ -259,7 +320,175 @@ fi
 info "Starting AI platform bootstrap (Claude API, mode=${DEPLOY_MODE})..."
 echo ""
 
+# ── 0. /etc/hosts — AI platform entries ──────────────────────────────────────
+# First, not last: this is the only step needing `sudo`, and running it at the
+# end meant a long install finished by silently waiting on a password prompt.
+# The entries are static 127.0.0.1 mappings independent of anything installed
+# below. An already-correct /etc/hosts needs no sudo and stays silent.
+if [[ "$DEPLOY_MODE" == "local" ]]; then
+  timer_start "0. /etc/hosts"
+  info "Checking /etc/hosts entries (may prompt for your password)..."
+  append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
+    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
+  timer_end "0. /etc/hosts"
+fi
+
+# ── 0. MCP server images (built in the background) ───────────────────────────
+# Building these images needs only Docker and a reachable registry — not the
+# cluster, not KAgent, not MLflow. They used to be built one at a time at the
+# very end of the run, so the whole KAgent chain (CRD --wait, controller and
+# postgres rollouts, the controller API health poll) ran to completion first
+# with the Docker daemon sitting idle. Start them here instead and join just
+# before the deploy pass in section 6.
+
+MCP_SERVICES=(idp-mcp-server qa-mcp-server contract-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server)
+if $ADP; then
+  # ADP MCP servers land incrementally (see docs/agentic-platform.md) — only
+  # build ones whose source directory actually exists yet.
+  for _adp_svc in incident-mcp-server security-mcp-server approval-service; do
+    [[ -d "${REPO_ROOT}/services/${_adp_svc}" ]] && MCP_SERVICES+=("${_adp_svc}")
+  done
+fi
+
+# Does :0.1.0 for this service actually exist in the target registry? Used by
+# image_unchanged so a wiped local registry (the normal state after
+# `bootstrap-local.sh --destroy`) or a deleted ECR tag always forces a real
+# rebuild, no matter what the recorded fingerprint says.
+_mcp_tag_exists_cmd() {
+  local svc="$1"
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    printf 'aws ecr describe-images --region %q --repository-name %q --image-ids imageTag=0.1.0' \
+      "$AWS_REGION" "${CLUSTER_NAME}/${svc}"
+  else
+    printf 'curl -sf %q | grep -q %q' \
+      "http://${REGISTRY}/v2/${svc}/tags/list" '"0.1.0"'
+  fi
+}
+
+# Build + push one MCP server image, skipping both when the service source is
+# byte-identical to the last successful build and the tag is still in the
+# registry. This is what makes a no-change re-run cheap: previously every run
+# rebuilt all 7-10 Node images from scratch.
+_build_push_mcp_image() {
+  local svc="$1"
+  local fp_file="${CACHE_DIR}/image-${svc}.fingerprint"
+  local src_hash; src_hash=$(dir_content_hash "${REPO_ROOT}/services/${svc}")
+
+  if [[ "$FORCE_BUILD" != "true" ]] && \
+     image_unchanged "$fp_file" "$src_hash" "$(_mcp_tag_exists_cmd "$svc")"; then
+    info "${svc}: source unchanged and image present in registry — skipping build."
+    return 0
+  fi
+
+  info "Building ${svc}..."
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    # --platform linux/amd64 runs under emulation on an Apple-Silicon host,
+    # which is why the registry layer cache matters so much here: a repeat
+    # build reuses layers instead of re-emulating every npm install step.
+    # Falls back to plain `docker build` where buildx isn't available.
+    if docker buildx version &>/dev/null; then
+      docker buildx build \
+        --platform linux/amd64 --provenance=false \
+        --cache-from "type=registry,ref=${REGISTRY}/${svc}:buildcache" \
+        --cache-to "type=registry,ref=${REGISTRY}/${svc}:buildcache,mode=max,image-manifest=true" \
+        -t "${REGISTRY}/${svc}:0.1.0" \
+        -t "${REGISTRY}/${svc}:latest" \
+        --push \
+        "${REPO_ROOT}/services/${svc}/"
+    else
+      docker build \
+        --platform linux/amd64 --provenance=false \
+        -t "${REGISTRY}/${svc}:0.1.0" \
+        -t "${REGISTRY}/${svc}:latest" \
+        "${REPO_ROOT}/services/${svc}/"
+      docker push "${REGISTRY}/${svc}:0.1.0"
+      docker push "${REGISTRY}/${svc}:latest"
+    fi
+  else
+    docker build \
+      -t "${REGISTRY}/${svc}:0.1.0" \
+      -t "${REGISTRY}/${svc}:latest" \
+      "${REPO_ROOT}/services/${svc}/"
+    docker push "${REGISTRY}/${svc}:0.1.0"
+    docker push "${REGISTRY}/${svc}:latest"
+  fi
+
+  # Only record the fingerprint once build AND push both succeeded, so a
+  # failed push can never leave a fingerprint claiming the image is in the
+  # registry when it isn't.
+  helm_record_fingerprint "$fp_file" "$src_hash"
+}
+
+# Build every MCP image, at most IDP_BUILD_JOBS at a time. Bash 3.2 has no
+# `wait -n`, so this drains a full batch before starting the next one rather
+# than keeping a sliding window full — with a handful of similarly-sized Node
+# builds the difference is small, and it keeps the bookkeeping simple.
+# Returns non-zero if ANY build failed, after every build has been waited on.
+_run_mcp_builds() {
+  local rc=0 svc log
+  local pids=() logs=() names=()
+
+  # Nested so it can see this function's arrays (bash uses dynamic scoping).
+  # Per _bg_join's contract: join every job first, aggregate, then decide —
+  # never short-circuit mid-loop, which would leave siblings running detached.
+  _drain_builds() {
+    local j jrc
+    for (( j = 0; j < ${#pids[@]}; j++ )); do
+      jrc=0
+      _bg_join "${pids[$j]}" "${logs[$j]}" || jrc=$?
+      if (( jrc != 0 )); then
+        warn "${names[$j]}: image build/push failed (exit ${jrc})."
+        rc=1
+      fi
+    done
+    pids=(); logs=(); names=()
+  }
+
+  for svc in "${MCP_SERVICES[@]}"; do
+    log=$(mktemp)
+    ( _build_push_mcp_image "$svc" ) >"$log" 2>&1 &
+    pids+=("$!"); logs+=("$log"); names+=("$svc")
+    if (( ${#pids[@]} >= IDP_BUILD_JOBS )); then
+      _drain_builds
+    fi
+  done
+  _drain_builds
+
+  unset -f _drain_builds
+  return "$rc"
+}
+
+_MCP_BUILD_PID=""
+_MCP_BUILD_LOG=""
+if [[ "$SKIP_MCP" != "true" ]]; then
+  _MCP_BUILD_LOG=$(mktemp)
+  _run_mcp_builds >"$_MCP_BUILD_LOG" 2>&1 &
+  _MCP_BUILD_PID=$!
+  info "Building ${#MCP_SERVICES[@]} MCP server images in the background (up to ${IDP_BUILD_JOBS} at a time); output is shown when they're joined in step 6."
+fi
+
+# Don't leave build shells running detached if the script dies before section 6
+# joins them. (An in-flight `docker build` still finishes daemon-side; this is
+# about not orphaning the shells that were waiting on it.) No-op on the normal
+# path, where section 6 clears _MCP_BUILD_PID after joining.
+# This supersedes the EXIT trap installed by timer_enable_summary above, so it
+# has to re-invoke timer_summary itself.
+_kill_background_jobs() {
+  if [[ -n "${_MCP_BUILD_PID:-}" ]]; then
+    pkill -P "$_MCP_BUILD_PID" 2>/dev/null || true
+    kill "$_MCP_BUILD_PID" 2>/dev/null || true
+    rm -f "${_MCP_BUILD_LOG:-}" 2>/dev/null || true
+  fi
+  # Set in section 3, joined in 5e.
+  if [[ -n "${_MLFLOW_PID:-}" ]]; then
+    kill "$_MLFLOW_PID" 2>/dev/null || true
+    rm -f "${_MLFLOW_LOG:-}" 2>/dev/null || true
+  fi
+}
+trap '_kill_background_jobs; timer_summary' EXIT
+
 # ── 1. Namespaces ─────────────────────────────────────────────────────────────
+timer_start "1. Namespaces"
 
 # Wait for any of our target namespaces to finish terminating before re-applying.
 # Uses the shared helper from lib.sh.
@@ -312,7 +541,10 @@ repair_stuck_helm_release() {
 repair_stuck_helm_release kagent-crds kagent
 repair_stuck_helm_release kagent      kagent
 
+timer_end "1. Namespaces"
+
 # ── 2. Anthropic API key secret ───────────────────────────────────────────────
+timer_start "2. Secrets"
 
 info "Creating kagent-anthropic secret in kagent namespace..."
 kubectl create secret generic kagent-anthropic \
@@ -398,33 +630,55 @@ if $ADP; then
   fi
 fi
 
+timer_end "2. Secrets"
+
 # ── 3. MLflow ─────────────────────────────────────────────────────────────────
+timer_start "3. MLflow (launch)"
+
+_MLFLOW_PID=""
+_MLFLOW_LOG=""
 
 if [[ "$SKIP_MLFLOW" == "true" ]]; then
   info "Skipping MLflow (--skip-mlflow)."
 else
-  info "Deploying MLflow tracking server..."
+  info "Deploying MLflow tracking server (in the background)..."
+  # MLflow shares nothing with KAgent but the namespaces applied in step 1, and
+  # its `rollout status` blocks for up to 180s. Run it alongside the KAgent
+  # install rather than in front of it; joined at the end of section 4.
+  # The Terraform outputs are read here, on the main thread, so a missing output
+  # still aborts the script via die() — inside the background job it could not.
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    MLFLOW_BUCKET=$(cd "${REPO_ROOT}/terraform" && terraform output -raw mlflow_artifacts_bucket_name 2>/dev/null || echo "")
+    MLFLOW_BUCKET=$(tf_output mlflow_artifacts_bucket_name)
     [[ -n "$MLFLOW_BUCKET" ]] || die "Could not read mlflow_artifacts_bucket_name from Terraform outputs. Run terraform apply first."
-    MLFLOW_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw mlflow_role_arn 2>/dev/null || echo "")
+    MLFLOW_ROLE_ARN=$(tf_output mlflow_role_arn)
     [[ -n "$MLFLOW_ROLE_ARN" ]] || die "Could not read mlflow_role_arn from Terraform outputs."
-    sed "s|MLFLOW_ARTIFACTS_BUCKET_PLACEHOLDER|${MLFLOW_BUCKET}|g" \
-      "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" | kubectl apply -f -
-    kubectl annotate serviceaccount mlflow \
-      -n ml-platform \
-      "eks.amazonaws.com/role-arn=${MLFLOW_ROLE_ARN}" \
-      --overwrite
-    kubectl rollout status deployment/mlflow -n ml-platform --timeout=180s
-    check "MLflow deployed (S3 artifacts → s3://${MLFLOW_BUCKET}/artifacts)"
-  else
-    kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"
-    kubectl rollout status deployment/mlflow -n ml-platform --timeout=180s
-    check "MLflow deployed → http://mlflow.idp.local"
   fi
+
+  _MLFLOW_LOG=$(mktemp)
+  (
+    set -e
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      sed "s|MLFLOW_ARTIFACTS_BUCKET_PLACEHOLDER|${MLFLOW_BUCKET}|g" \
+        "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" | kubectl apply -f -
+      kubectl annotate serviceaccount mlflow \
+        -n ml-platform \
+        "eks.amazonaws.com/role-arn=${MLFLOW_ROLE_ARN}" \
+        --overwrite
+      kubectl rollout status deployment/mlflow -n ml-platform --timeout=180s
+      check "MLflow deployed (S3 artifacts → s3://${MLFLOW_BUCKET}/artifacts)"
+    else
+      kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml"
+      kubectl rollout status deployment/mlflow -n ml-platform --timeout=180s
+      check "MLflow deployed → http://mlflow.idp.local"
+    fi
+  ) >"$_MLFLOW_LOG" 2>&1 &
+  _MLFLOW_PID=$!
 fi
 
+timer_end "3. MLflow (launch)"
+
 # ── 4. KAgent ─────────────────────────────────────────────────────────────────
+timer_start "4. KAgent install + patches"
 
 if [[ "$SKIP_KAGENT" == "true" ]]; then
   info "Skipping KAgent (--skip-kagent)."
@@ -435,17 +689,32 @@ else
   # fixes this by returning {"error":false,"data":[]} before requests reach the controller.
   KAGENT_CHART_VERSION="0.9.4"
 
-  info "Installing KAgent via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
-  helm upgrade --install kagent-crds \
-    oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds \
-    --version "${KAGENT_CHART_VERSION}" \
-    --namespace kagent \
-    --create-namespace \
-    --wait \
-    --timeout 5m
-
   KAGENT_VALUES="${REPO_ROOT}/local/kagent/values.yaml"
   [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/aws/kagent/values.yaml"
+
+  # Skip-if-unchanged (lib.sh): a re-run against an already-healthy cluster
+  # shouldn't pay for two full `helm upgrade` cycles plus a 5m --wait when the
+  # pinned chart version and values file are byte-identical to the last
+  # successful install. Both fall through to a real install on any version bump,
+  # values edit, or release Helm no longer reports as deployed.
+  _crds_fp_file="${CACHE_DIR}/kagent-crds.fingerprint"
+  _crds_fp="${KAGENT_CHART_VERSION}"
+  _kagent_fp_file="${CACHE_DIR}/kagent.fingerprint"
+  _kagent_fp="${KAGENT_CHART_VERSION}:$(_sha256 "$KAGENT_VALUES")"
+
+  if helm_release_unchanged kagent-crds kagent "$_crds_fp_file" "$_crds_fp"; then
+    info "KAgent CRDs already at v${KAGENT_CHART_VERSION} — skipping reinstall."
+  else
+    info "Installing KAgent CRDs via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
+    helm upgrade --install kagent-crds \
+      oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds \
+      --version "${KAGENT_CHART_VERSION}" \
+      --namespace kagent \
+      --create-namespace \
+      --wait \
+      --timeout 5m
+    helm_record_fingerprint "$_crds_fp_file" "$_crds_fp"
+  fi
 
   # --force-conflicts: Helm v4 uses server-side apply; the kubectl patches below
   # take field ownership on first install, so subsequent helm upgrades would
@@ -455,15 +724,23 @@ else
   # registry that doesn't actually host these images — the real images live at
   # ghcr.io (same host the OCI chart itself was just pulled from). Without this
   # override, kagent-controller and kagent-ui sit in ImagePullBackOff forever.
-  helm upgrade --install kagent \
-    oci://ghcr.io/kagent-dev/kagent/helm/kagent \
-    --version "${KAGENT_CHART_VERSION}" \
-    --namespace kagent \
-    --values "${KAGENT_VALUES}" \
-    --set registry=ghcr.io \
-    --force-conflicts
+  if helm_release_unchanged kagent kagent "$_kagent_fp_file" "$_kagent_fp"; then
+    info "KAgent already installed (v${KAGENT_CHART_VERSION}, values unchanged) — skipping reinstall."
+  else
+    info "Installing KAgent via Helm (OCI registry, v${KAGENT_CHART_VERSION})..."
+    helm upgrade --install kagent \
+      oci://ghcr.io/kagent-dev/kagent/helm/kagent \
+      --version "${KAGENT_CHART_VERSION}" \
+      --namespace kagent \
+      --values "${KAGENT_VALUES}" \
+      --set registry=ghcr.io \
+      --force-conflicts
+    helm_record_fingerprint "$_kagent_fp_file" "$_kagent_fp"
+  fi
   # Don't --wait here: built-in Agent CRDs (argo-rollouts, cilium, etc.) take
   # longer than helm's wait window to reach Ready. Poll the controller pod only.
+  # Run this on the skip path too — cheap when the Deployment is already
+  # Available, and it still catches a pod knocked over since the last run.
   kubectl rollout status deployment/kagent-controller -n kagent --timeout=5m || \
     warn "kagent-controller not ready yet — pods are starting, will self-heal. Continuing..."
 
@@ -473,86 +750,98 @@ else
   # The KAgent helm chart (v0.9.2) does not propagate postgres.bundled.image or
   # postgres.vectorEnabled into the rendered Deployment/ConfigMap.  We patch
   # them directly so the `memory` table (vector(768) column) can be created.
-  info "Patching kagent-postgresql to pgvector image and enabling DATABASE_VECTOR_ENABLED..."
+  # Both patches are idempotent, but the rollouts they trigger are not free —
+  # applying them unconditionally costs a postgres rollout plus a full
+  # controller restart (two `rollout status --timeout=5m` waits) on every run.
+  # Read the live state instead and skip the whole block when it's already
+  # converged; any drift (fresh install, helm upgrade that reverted a field)
+  # still falls through to the real patch path.
+  _pg_image=$(kubectl get deployment kagent-postgresql -n kagent \
+    -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+  _vector_enabled=$(kubectl get configmap kagent-controller -n kagent \
+    -o jsonpath='{.data.DATABASE_VECTOR_ENABLED}' 2>/dev/null || echo "")
 
-  # Switch the bundled postgres to the pgvector-enabled image.
-  # --field-manager=helm: claim ownership as helm so the next helm upgrade can
-  # overwrite these fields without a server-side-apply conflict.
-  kubectl patch deployment kagent-postgresql -n kagent \
-    --field-manager=helm \
-    --type='json' \
-    --patch='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"pgvector/pgvector:pg18"},{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
-  kubectl rollout status deployment/kagent-postgresql -n kagent --timeout=5m || \
-    warn "kagent-postgresql rollout slow (cold pgvector image + probe ramp-up) — continuing; will retry connection below."
+  # The controller used to be restarted twice per run: once here (to pick up
+  # DATABASE_VECTOR_ENABLED) and again in section 5 (to reconcile the Agent CRs
+  # applied after it came up), each with its own multi-minute rollout wait. The
+  # restart now happens once, after the Agent manifests are applied — see
+  # "5c. Restart kagent-controller" below. This flag records whether it's needed.
+  _ctrl_restart_needed=false
 
-  # Enable vector support in the controller ConfigMap.
-  kubectl patch configmap kagent-controller -n kagent \
-    --field-manager=helm \
-    --patch='{"data":{"DATABASE_VECTOR_ENABLED":"true"}}'
+  if [[ "$_pg_image" == "pgvector/pgvector:pg18" && "$_vector_enabled" == "true" ]]; then
+    check "pgvector image + DATABASE_VECTOR_ENABLED already applied — skipping patch and controller restart."
+  else
+    _ctrl_restart_needed=true
+    info "Patching kagent-postgresql to pgvector image and enabling DATABASE_VECTOR_ENABLED..."
 
-  # Wait for postgres to be accepting connections, then create the extension.
-  PG_POD=$(kubectl get pod -n kagent --no-headers | awk '/postgresql/{print $1;exit}')
-  for i in $(seq 1 20); do
-    if kubectl exec -n kagent "$PG_POD" -- psql -U kagent -d kagent -c "SELECT 1" &>/dev/null 2>&1; then
-      break
-    fi
-    sleep 3
-  done
-  kubectl exec -n kagent "$PG_POD" -- \
-    psql -U kagent -d kagent -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>&1 || true
+    # Switch the bundled postgres to the pgvector-enabled image.
+    # --field-manager=helm: claim ownership as helm so the next helm upgrade can
+    # overwrite these fields without a server-side-apply conflict.
+    kubectl patch deployment kagent-postgresql -n kagent \
+      --field-manager=helm \
+      --type='json' \
+      --patch='[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"pgvector/pgvector:pg18"},{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
+    kubectl rollout status deployment/kagent-postgresql -n kagent --timeout=5m || \
+      warn "kagent-postgresql rollout slow (cold pgvector image + probe ramp-up) — continuing; will retry connection below."
 
-  # Restart the controller so it picks up DATABASE_VECTOR_ENABLED=true and
-  # runs the AutoMigrate that creates the memory table.
-  kubectl rollout restart deployment/kagent-controller -n kagent
-  kubectl rollout status  deployment/kagent-controller -n kagent --timeout=5m || \
-    warn "kagent-controller rollout slow — continuing; pod will become ready shortly."
-  check "pgvector extension enabled → memory table will be created on controller start"
+    # Enable vector support in the controller ConfigMap.
+    kubectl patch configmap kagent-controller -n kagent \
+      --field-manager=helm \
+      --patch='{"data":{"DATABASE_VECTOR_ENABLED":"true"}}'
 
-  # Wait for the controller HTTP API to be serving before applying resources.
-  # rollout status only checks the pod readiness probe; the API needs extra seconds
-  # to initialize its DB schema. Without this wait, SSR calls from kagent-ui to
-  # /agents/new and /prompts/new hit the API before it's ready → "This page couldn't load".
-  info "Waiting for KAgent controller API to be ready..."
-  _ctrl_pod=""
-  for i in $(seq 1 40); do
-    _ctrl_pod=$(kubectl get pod -n kagent --no-headers 2>/dev/null | awk '/kagent-controller-/{print $1;exit}')
-    if [[ -n "$_ctrl_pod" ]]; then
-      if kubectl exec -n kagent "$_ctrl_pod" -- \
-          wget -qO- http://127.0.0.1:8083/healthz &>/dev/null 2>&1; then
+    # Wait for postgres to be accepting connections, then create the extension.
+    PG_POD=$(kubectl get pod -n kagent --no-headers | awk '/postgresql/{print $1;exit}')
+    for i in $(seq 1 20); do
+      if kubectl exec -n kagent "$PG_POD" -- psql -U kagent -d kagent -c "SELECT 1" &>/dev/null 2>&1; then
         break
       fi
-    fi
-    sleep 5
-  done
-  [[ -n "$_ctrl_pod" ]] && check "KAgent controller API healthy" || \
-    warn "KAgent controller API health check timed out — UI pages may show errors on first load"
+      sleep 3
+    done
+    kubectl exec -n kagent "$PG_POD" -- \
+      psql -U kagent -d kagent -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>&1 || true
+    check "pgvector extension enabled → memory table will be created on controller restart"
+  fi
+
+  timer_end "4. KAgent install + patches"
 
   # ── 5. KAgent resources ─────────────────────────────────────────────────────
+  timer_start "5. KAgent resources"
 
   info "Applying KAgent ModelConfig, Ingress, agents, and MCP server registrations..."
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-haiku.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"
-  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"
-  fi
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-mcp-server-rbac.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/platform-agent.yaml"
-  # contract-mcp-server RemoteMCPServer registration is required: idp-agent and
-  # platform-agent both reference it as a tool source, so without it those
+  # One `kubectl apply` with repeated -f instead of ~16 separate invocations:
+  # these objects are independent (distinct ModelConfigs/RemoteMCPServers/
+  # Agents), so there is nothing to order between them, and a single call pays
+  # one process spawn and one client-side discovery round trip instead of 16.
+  # contract-toolserver is required, not optional: idp-agent and platform-agent
+  # both reference contract-mcp-server as a tool source, so without it those
   # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml"
-  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"
+  _kagent_manifests=(
+    modelconfig.yaml
+    modelconfig-haiku.yaml
+    modelconfig-sonnet.yaml
+    modelconfig-opus.yaml
+    idp-mcp-server-rbac.yaml
+    toolserver.yaml
+    idp-agent.yaml
+    qa-toolserver.yaml
+    qa-agent.yaml
+    github-toolserver.yaml
+    argocd-toolserver.yaml
+    cost-toolserver.yaml
+    release-agent.yaml
+    cost-agent.yaml
+    platform-agent.yaml
+    contract-toolserver.yaml
+    contract-agent.yaml
+  )
+  # Conditional — the OpenAI ModelConfig is only functional with a key present.
+  [[ -n "${OPENAI_API_KEY:-}" ]] && _kagent_manifests+=(modelconfig-openai.yaml)
+
+  _kagent_apply_args=()
+  for _m in "${_kagent_manifests[@]}"; do
+    _kagent_apply_args+=(-f "${REPO_ROOT}/kubernetes/kagent/${_m}")
+  done
+  kubectl apply "${_kagent_apply_args[@]}"
 
   if $ADP; then
     info "Applying Agentic Development Platform (ADP) components (docs/agentic-platform.md)..."
@@ -577,7 +866,7 @@ else
 
   # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    KAGENT_ESO_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw kagent_eso_role_arn 2>/dev/null || echo "")
+    KAGENT_ESO_ROLE_ARN=$(tf_output kagent_eso_role_arn)
     [[ -n "$KAGENT_ESO_ROLE_ARN" ]] || die "Could not read kagent_eso_role_arn from Terraform outputs."
   fi
     sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
@@ -637,7 +926,7 @@ else
     check "kagent-ui SSR → kagent-controller.kagent.svc.cluster.local:8083"
   fi
 
-  # ── 5e. Apply repo-managed nginx config to fix KAgent v0.9.4 broken UI pages ─
+  # ── 5b. Apply repo-managed nginx config to fix KAgent v0.9.4 broken UI pages ─
   # aws/kagent/nginx.conf (committed) contains two bug fixes for v0.9.4:
   #   Bug 1: /api/modelproviderconfigs + /api/promptlibraries return plain-text
   #          404 → JSON.parse() throws in Next.js → pages crash. Fixed with
@@ -665,15 +954,63 @@ else
     --overwrite 2>/dev/null || true
   check "nginx config applied from repo + disowned from Helm (upgrade-safe)"
 
-  # Restart kagent-controller after applying agents so it re-reconciles all
-  # Agent CRs to Ready=True. Without this, agents applied after the initial
-  # controller startup can stay in "Deployment is not ready, 0/1 pods are ready"
-  # even when their pods are running — the controller sees stale status.
-  info "Restarting kagent-controller to reconcile newly applied agents..."
-  kubectl rollout restart deployment/kagent-controller -n kagent 2>/dev/null || true
-  kubectl rollout status  deployment/kagent-controller -n kagent --timeout=3m 2>/dev/null || \
-    warn "kagent-controller restart slow — agents will self-heal once it's ready."
-  check "kagent-controller restarted → all agents reconciled to Ready"
+  # ── 5c. Restart kagent-controller (once) ────────────────────────────────────
+  # One restart now covers both reasons the controller used to be bounced twice
+  # per run:
+  #   1. picking up DATABASE_VECTOR_ENABLED=true from the 4b ConfigMap patch
+  #      (and running the AutoMigrate that creates the memory table), and
+  #   2. re-reconciling the Agent CRs applied just above — without it, agents
+  #      created after the controller started can sit at "Deployment is not
+  #      ready, 0/1 pods are ready" because the controller holds stale status.
+  # Both are now upstream of this point, so the restart is done here, once.
+  #
+  # Skipped entirely when 4b found nothing to patch AND every Agent already
+  # reports Ready=True — i.e. a converged re-run, where bouncing the controller
+  # only costs a rollout and drops the UI for a moment.
+  if [[ "$_ctrl_restart_needed" != "true" ]]; then
+    _agents_total=$(kubectl get agents -n kagent --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    _agents_ready=$(kubectl get agents -n kagent \
+      -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+      2>/dev/null | grep -c '^True$' || true)
+    if [[ "$_agents_total" == "0" || "$_agents_ready" != "$_agents_total" ]]; then
+      info "  ${_agents_ready}/${_agents_total} agents Ready — restarting controller to reconcile."
+      _ctrl_restart_needed=true
+    fi
+  fi
+
+  if [[ "$_ctrl_restart_needed" == "true" ]]; then
+    info "Restarting kagent-controller (pgvector config + agent reconcile)..."
+    kubectl rollout restart deployment/kagent-controller -n kagent 2>/dev/null || true
+    kubectl rollout status  deployment/kagent-controller -n kagent --timeout=5m 2>/dev/null || \
+      warn "kagent-controller restart slow — agents will self-heal once it's ready."
+    check "kagent-controller restarted → all agents reconciled to Ready"
+  else
+    check "kagent-controller already current and all agents Ready — no restart needed."
+  fi
+
+  # Wait for the controller HTTP API to be serving before the UI restarts against
+  # it. rollout status only checks the pod readiness probe; the API needs extra
+  # seconds to initialize its DB schema. Without this wait, SSR calls from
+  # kagent-ui to /agents/new and /prompts/new hit the API before it's ready →
+  # "This page couldn't load".
+  info "Waiting for KAgent controller API to be ready..."
+  # The controller image is distroless (no wget/curl/sh -c exec target), so we
+  # can't exec into the pod to hit its health endpoint. Port-forward the
+  # ClusterIP service instead and curl from the host, which has curl.
+  _ctrl_ready=false
+  kubectl -n kagent port-forward svc/kagent-controller 18083:8083 &>/dev/null &
+  _ctrl_pf_pid=$!
+  for i in $(seq 1 40); do
+    if curl -sf -o /dev/null http://127.0.0.1:18083/health 2>/dev/null; then
+      _ctrl_ready=true
+      break
+    fi
+    sleep 5
+  done
+  kill "$_ctrl_pf_pid" &>/dev/null || true
+  wait "$_ctrl_pf_pid" 2>/dev/null || true
+  [[ "$_ctrl_ready" == "true" ]] && check "KAgent controller API healthy" || \
+    warn "KAgent controller API health check timed out — UI pages may show errors on first load"
 
   # Restart kagent-ui so its Next.js SSR cache is rebuilt against the now-ready
   # controller. Without this, the cached SSR state from startup reflects the
@@ -685,51 +1022,19 @@ else
     warn "kagent-ui restart slow — /agents/new and /prompts/new should load once it's ready."
   check "kagent-ui restarted → SSR cache rebuilt against ready controller"
 
-  # ── 5d. Self-heal stuck RemoteMCPServers ─────────────────────────────────────
-  # Known kagent bug: the reconciler's tool-refresh transaction (DELETE + INSERT)
-  # can fail with `duplicate key value violates unique constraint "tool_pkey"`
-  # when the postgres `tool` table already has rows from a prior install (the
-  # PVC survives helm uninstall). The RemoteMCPServer stays ACCEPTED=False and
-  # its agents render with "No tools/agents available" in the UI even though
-  # the Agent CRs report READY=True. Clearing the stale rows unblocks the next
-  # reconcile tick (~60s).
-  info "Self-healing RemoteMCPServers (clearing stale tool rows if reconciler is stuck)..."
-  PG_POD=$(kubectl get pod -n kagent --no-headers 2>/dev/null | awk '/postgresql/{print $1;exit}')
-  for attempt in 1 2 3; do
-    stuck_servers=()
-    while IFS= read -r srv; do
-      [[ -z "$srv" ]] && continue
-      msg=$(kubectl get remotemcpserver "$srv" -n kagent \
-        -o jsonpath='{.status.conditions[?(@.type=="Accepted")].message}' 2>/dev/null || echo "")
-      status=$(kubectl get remotemcpserver "$srv" -n kagent \
-        -o jsonpath='{.status.conditions[?(@.type=="Accepted")].status}' 2>/dev/null || echo "")
-      if [[ "$status" == "False" && "$msg" == *"duplicate key value violates unique constraint"* ]]; then
-        stuck_servers+=("$srv")
-      fi
-    done < <(kubectl get remotemcpserver -n kagent -o name 2>/dev/null | sed 's|.*/||')
-
-    if (( ${#stuck_servers[@]} == 0 )); then
-      check "RemoteMCPServers reconciling cleanly"
-      break
-    fi
-
-    if [[ -z "$PG_POD" ]]; then
-      warn "kagent-postgresql pod not found — cannot self-heal stuck servers: ${stuck_servers[*]}"
-      break
-    fi
-
-    for srv in "${stuck_servers[@]}"; do
-      log "  Clearing stale tool rows for kagent/${srv} (attempt ${attempt}/3)..."
-      kubectl exec -n kagent "$PG_POD" -- \
-        psql -U kagent -d kagent -c \
-        "DELETE FROM tool WHERE server_name = 'kagent/${srv}';" >/dev/null 2>&1 || \
-        warn "  Failed to clear rows for ${srv}"
-    done
-
-    # Wait for the reconciler's next tick to repopulate.
-    sleep 65
-  done
 fi
+
+timer_end "5. KAgent resources"
+
+# ── 5d. Join MLflow ───────────────────────────────────────────────────────────
+# Launched back in section 3; by now it has had the whole KAgent install to roll
+# out, so this is usually instant. Outside the KAgent if/else on purpose, so it
+# still gets joined under --skip-kagent.
+timer_start "5d. Join MLflow"
+_bg_join "$_MLFLOW_PID" "$_MLFLOW_LOG" || \
+  warn "MLflow deploy failed — check: kubectl get po -n ml-platform"
+_MLFLOW_PID=""
+timer_end "5d. Join MLflow"
 
 # ── 6. IDP / QA MCP Servers ───────────────────────────────────────────────────
 # Local: build images into the local registry; ArgoCD (services-dev namespace)
@@ -746,9 +1051,21 @@ cleanup_stale_mcp_resources() {
   # Check if any of {ServiceAccount, Deployment, Service} exists with annotations
   # that don't match the expected Helm release (svc in services-dev). Helm cannot
   # adopt resources without matching ownership metadata, so we delete them all.
+  #
+  # ArgoCD-managed resources are exempt: ArgoCD renders the chart and applies it
+  # directly (it never runs `helm install`), so its resources never carry
+  # meta.helm.sh/* annotations in the first place. Without this exemption every
+  # ArgoCD-owned Deployment/Service/ServiceAccount here reads as "mismatched" and
+  # gets deleted on every single bootstrap run, only to be recreated later by
+  # ArgoCD's own reconciliation (or not, if it's slower than the caller's wait
+  # loop) — this was the real source of the "deployments.apps ... NotFound"
+  # flakiness, not a timing race.
   local needs_cleanup=false
   for kind in serviceaccount deployment service; do
     if kubectl get "$kind" "$svc" -n "$ns" &>/dev/null; then
+      local tracking_id
+      tracking_id=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null || true)
+      [[ -n "$tracking_id" ]] && continue
       local rel_name rel_ns
       rel_name=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)
       rel_ns=$(kubectl get "$kind" "$svc" -n "$ns" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' 2>/dev/null || true)
@@ -793,18 +1110,21 @@ else
   fi
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    CONTRACT_MCP_ROLE_ARN=$(cd "${REPO_ROOT}/terraform" && terraform output -raw contract_mcp_server_role_arn 2>/dev/null || echo "")
+    CONTRACT_MCP_ROLE_ARN=$(tf_output contract_mcp_server_role_arn)
     [[ -n "$CONTRACT_MCP_ROLE_ARN" ]] || warn "Could not read contract_mcp_server_role_arn from Terraform outputs — contract-mcp-server will lack DynamoDB access."
   fi
 
-  MCP_SERVICES=(idp-mcp-server qa-mcp-server contract-mcp-server agent-event-router github-mcp-server argocd-mcp-server cost-mcp-server)
-  if $ADP; then
-    # ADP MCP servers land incrementally (see docs/agentic-platform.md) — only
-    # build ones whose source directory actually exists yet.
-    for _adp_svc in incident-mcp-server security-mcp-server approval-service; do
-      [[ -d "${REPO_ROOT}/services/${_adp_svc}" ]] && MCP_SERVICES+=("${_adp_svc}")
-    done
+  # MCP_SERVICES and the image builds themselves are set up much earlier (see
+  # "0. MCP server images" above) so the builds overlap with the KAgent install.
+  # Wait for them here — the deploy pass below needs the images in the registry.
+  timer_start "6a. Join MCP image builds"
+  _bg_join "$_MCP_BUILD_PID" "$_MCP_BUILD_LOG" || \
+    warn "One or more MCP image builds failed — see the build output above. Affected services will fail to deploy."
+  _MCP_BUILD_PID=""
+  timer_end "6a. Join MCP image builds"
+  timer_start "6b. Deploy MCP servers"
 
+  if $ADP; then
     # Phase 4 HiTL approval gate prerequisites (docs/agentic-platform.md)
     if [[ -d "${REPO_ROOT}/services/approval-service" ]]; then
       info "Applying approval-service policy ConfigMap..."
@@ -837,34 +1157,57 @@ else
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
-    info "Building ${SVC}..."
     (
       set -e
+      # No build here: the images were built by the background pass launched in
+      # section 0 and joined in 6a above. This loop is deploy-only.
       if [[ "$DEPLOY_MODE" == "aws" ]]; then
-        docker build \
-          --platform linux/amd64 --provenance=false \
-          -t "${REGISTRY}/${SVC}:0.1.0" \
-          -t "${REGISTRY}/${SVC}:latest" \
-          "${REPO_ROOT}/services/${SVC}/"
-        docker push "${REGISTRY}/${SVC}:0.1.0"
-        docker push "${REGISTRY}/${SVC}:latest"
-        sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g; s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
-          "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
-          | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
-              --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
+        # Skip the `helm upgrade --install --wait 3m` when neither the image nor
+        # the chart values changed and Helm still reports the release deployed.
+        # The rollout status check still runs on the skip path — it's ~instant
+        # for a healthy Deployment but still catches one that has fallen over.
+        _svc_fp_file="${CACHE_DIR}/mcp-${SVC}.fingerprint"
+        _svc_fp="$(dir_content_hash "${REPO_ROOT}/services/${SVC}"):$(_sha256 "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml")"
+        if [[ "$FORCE_BUILD" != "true" ]] && \
+           helm_release_unchanged "${SVC}" services-dev "$_svc_fp_file" "$_svc_fp"; then
+          info "${SVC}: image and chart values unchanged — skipping Helm upgrade."
+          kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
+        else
+          sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g; s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
+            "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
+            | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
+                --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
+          helm_record_fingerprint "$_svc_fp_file" "$_svc_fp"
+        fi
         check "${SVC} deployed → ALB"
       else
-        docker build \
-          -t "${REGISTRY}/${SVC}:0.1.0" \
-          -t "${REGISTRY}/${SVC}:latest" \
-          "${REPO_ROOT}/services/${SVC}/"
-        docker push "${REGISTRY}/${SVC}:0.1.0"
-        docker push "${REGISTRY}/${SVC}:latest"
         # Try ArgoCD sync first; fall back to direct Helm install when the
         # ArgoCD application hasn't been registered yet (first-time install
-        # before app-of-apps-local.yaml is applied).
-        if argocd app get "${SVC}-local" --grpc-web &>/dev/null; then
-          argocd app sync "${SVC}-local" --grpc-web 2>/dev/null || true
+        # before app-of-apps-local.yaml is applied). --plaintext is required:
+        # the local ingress-nginx cert is self-signed and the CLI won't trust
+        # it over --grpc-web alone, which previously made every call here
+        # fail closed (see ARGOCD_SERVER/ARGOCD_AUTH_TOKEN setup above).
+        _argocd_get_err=""
+        if _argocd_get_err=$(argocd app get "${SVC}-local" --grpc-web --plaintext 2>&1 >/dev/null); then
+          argocd app sync "${SVC}-local" --grpc-web --plaintext 2>/dev/null || true
+          # `argocd app sync` can no-op or fail silently (see comment above on
+          # false negatives); the app's own Automated+selfHeal policy will
+          # still converge it independently. Either way the Deployment object
+          # may not exist the instant sync returns — poll for it so the
+          # `kubectl rollout status` below doesn't hit a race-y NotFound.
+          for _i in $(seq 1 18); do
+            kubectl get deployment "${SVC}" -n services-dev &>/dev/null && break
+            sleep 5
+          done
+        elif kubectl get deployment "${SVC}" -n services-dev \
+               -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null | grep -q .; then
+          # Defense in depth: `argocd app get` can false-negative (CLI auth
+          # hiccup, transient connectivity) even when the app genuinely
+          # exists. Don't blindly fight ArgoCD for ownership of resources it
+          # already tracks — that's what produced the original symptom here
+          # (a failed `helm install` unable to adopt an ArgoCD-owned
+          # PodDisruptionBudget missing meta.helm.sh/* annotations).
+          warn "${SVC}-local: 'argocd app get' failed (${_argocd_get_err:-no output}) but ${SVC}'s Deployment already carries an ArgoCD tracking-id — skipping direct Helm install to avoid an ownership conflict. Investigate: argocd app get ${SVC}-local --grpc-web --plaintext"
         else
           info "${SVC}-local ArgoCD app not found — deploying directly with Helm..."
           helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
@@ -875,8 +1218,70 @@ else
         kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
         check "${SVC} deployed to services-dev"
       fi
-    ) || warn "${SVC} build/deploy failed — check: kubectl get po -n services-dev"
+    )
+    # NOTE: deliberately not `(...) || warn ...` — wrapping a `set -e` subshell
+    # directly in a `||`/`if` test disables `-e` for the *entire* subshell (a
+    # well-known bash pitfall: bash sees the subshell's exit status is already
+    # being checked by the caller, so it stops self-terminating on internal
+    # command failures). That silently swallowed real docker/helm/kubectl
+    # failures here before, letting `check "... deployed"` print a false
+    # success. Capturing $? as its own statement keeps `-e` active inside.
+    _svc_rc=$?
+    if [[ $_svc_rc -ne 0 ]]; then
+      warn "${SVC} build/deploy failed (exit ${_svc_rc}) — check: kubectl get po -n services-dev"
+    fi
   done
+
+  # ── 6b. Self-heal stuck RemoteMCPServers ────────────────────────────────────
+  # Runs here, after the MCP servers are actually deployed. It used to run in
+  # section 5, before section 6 had created the Deployments these
+  # RemoteMCPServers point at — so it inspected servers that could not have
+  # been healthy yet, and its retry path burned a 65s sleep on that premise.
+  if [[ "$SKIP_KAGENT" != "true" ]]; then
+    # Known kagent bug: the reconciler's tool-refresh transaction (DELETE + INSERT)
+    # can fail with `duplicate key value violates unique constraint "tool_pkey"`
+    # when the postgres `tool` table already has rows from a prior install (the
+    # PVC survives helm uninstall). The RemoteMCPServer stays ACCEPTED=False and
+    # its agents render with "No tools/agents available" in the UI even though
+    # the Agent CRs report READY=True. Clearing the stale rows unblocks the next
+    # reconcile tick (~60s).
+    info "Self-healing RemoteMCPServers (clearing stale tool rows if reconciler is stuck)..."
+    PG_POD=$(kubectl get pod -n kagent --no-headers 2>/dev/null | awk '/postgresql/{print $1;exit}')
+    for attempt in 1 2 3; do
+      stuck_servers=()
+      while IFS= read -r srv; do
+        [[ -z "$srv" ]] && continue
+        msg=$(kubectl get remotemcpserver "$srv" -n kagent \
+          -o jsonpath='{.status.conditions[?(@.type=="Accepted")].message}' 2>/dev/null || echo "")
+        status=$(kubectl get remotemcpserver "$srv" -n kagent \
+          -o jsonpath='{.status.conditions[?(@.type=="Accepted")].status}' 2>/dev/null || echo "")
+        if [[ "$status" == "False" && "$msg" == *"duplicate key value violates unique constraint"* ]]; then
+          stuck_servers+=("$srv")
+        fi
+      done < <(kubectl get remotemcpserver -n kagent -o name 2>/dev/null | sed 's|.*/||')
+
+      if (( ${#stuck_servers[@]} == 0 )); then
+        check "RemoteMCPServers reconciling cleanly"
+        break
+      fi
+
+      if [[ -z "$PG_POD" ]]; then
+        warn "kagent-postgresql pod not found — cannot self-heal stuck servers: ${stuck_servers[*]}"
+        break
+      fi
+
+      for srv in "${stuck_servers[@]}"; do
+        log "  Clearing stale tool rows for kagent/${srv} (attempt ${attempt}/3)..."
+        kubectl exec -n kagent "$PG_POD" -- \
+          psql -U kagent -d kagent -c \
+          "DELETE FROM tool WHERE server_name = 'kagent/${srv}';" >/dev/null 2>&1 || \
+          warn "  Failed to clear rows for ${srv}"
+      done
+
+      # Wait for the reconciler's next tick to repopulate.
+      sleep 65
+    done
+  fi
 
   # Wire the HiTL approval gate into the tool servers whose mutating tools it
   # gates (argocd-mcp-server, github-mcp-server) and idp-mcp-server (which
@@ -894,6 +1299,8 @@ else
   fi
 fi
 
+timer_end "6b. Deploy MCP servers"
+
 # ── 7. KAgent UI port-forward (background) ───────────────────────────────────
 # Provides direct access at http://localhost:8082 alongside the ingress hostname.
 # Kills any stale port-forward first, then starts a fresh background one.
@@ -905,13 +1312,6 @@ if [[ "$SKIP_KAGENT" == "false" && "$DEPLOY_MODE" == "local" ]]; then
     --address 127.0.0.1 >/dev/null 2>&1 &
   echo $! > /tmp/kagent-ui-pf.pid
   check "KAgent UI port-forward → http://localhost:8082 (PID $(cat /tmp/kagent-ui-pf.pid))"
-fi
-
-# ── 8. /etc/hosts — AI platform entries ──────────────────────────────────────
-
-if [[ "$DEPLOY_MODE" == "local" ]]; then
-  append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

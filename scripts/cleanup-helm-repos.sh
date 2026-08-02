@@ -89,10 +89,14 @@ echo ""
 # ── Step 2: Ensure required repos are present ────────────────────────────────
 log "Verifying required Helm repositories..."
 ADDED=0
+ADDED_REPOS=()
+# One `helm repo list` for the whole loop instead of one per required repo —
+# each call re-reads and re-parses the repositories file.
+EXISTING_REPOS=$(helm repo list 2>/dev/null | awk 'NR>1{print $1}' || true)
 for entry in "${REQUIRED_REPOS[@]}"; do
   repo="${entry%%|*}"
   url="${entry#*|}"
-  if helm repo list 2>/dev/null | awk '{print $1}' | grep -q "^${repo}$"; then
+  if printf '%s\n' "$EXISTING_REPOS" | grep -qx "${repo}"; then
     echo -e "  ${GREEN}Present:${RESET} ${repo}"
   else
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -101,12 +105,17 @@ for entry in "${REQUIRED_REPOS[@]}"; do
       helm repo add "$repo" "$url"
       echo -e "  ${GREEN}Added:${RESET} ${repo} → ${url}"
       ADDED=$((ADDED + 1))
+      ADDED_REPOS+=("$repo")
     fi
   fi
 done
 
 if [[ "$DRY_RUN" != "true" && $ADDED -gt 0 ]]; then
-  helm repo update
+  # Scope the update to the repos just added. A bare `helm repo update` refreshes
+  # every repo the user has ever added on this machine — one network fetch each,
+  # for repos this platform does not use. Same reasoning as ensure_helm_repos in
+  # scripts/lib.sh.
+  helm repo update "${ADDED_REPOS[@]}"
   log "Updated ${ADDED} newly added repo(s)."
 fi
 

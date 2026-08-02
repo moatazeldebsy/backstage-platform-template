@@ -34,6 +34,14 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform"
 GLOBAL_TF_DIR="${ROOT_DIR}/terraform/global"
 
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/lib.sh"
+
+# Per-phase wall-clock timings, printed as a slowest-first table on exit
+# (including on failure). IDP_TIMING=0 silences it; IDP_FORCE=1 bypasses every
+# skip-if-unchanged check and reinstalls/rebuilds everything.
+timer_enable_summary
+
 SKIP_GLOBAL="${SKIP_GLOBAL:-false}"
 SKIP_STANDBY="${SKIP_STANDBY:-false}"
 SKIP_OBS="${SKIP_OBS:-false}"
@@ -84,6 +92,7 @@ if [[ -z "${GITHUB_TOKEN:-}" ]]; then
 fi
 
 # ── Phase 1: Global Terraform module ─────────────────────────────────────────
+timer_start "1. Global Terraform"
 # Provisions account-wide shared resources that span both regions:
 #   KMS multi-region CMK, ECR replication, Route53 health-check failover,
 #   Transit Gateway + inter-region peering, Aurora Global cluster,
@@ -105,15 +114,17 @@ fi
 
 # Read global outputs (needed for Phase 4 wiring even if --skip-global)
 log "Reading global Terraform outputs..."
-cd "$GLOBAL_TF_DIR"
-FAILOVER_RUNNER_ROLE=$(terraform output -raw failover_runner_role_arn   2>/dev/null || echo "")
-AURORA_WRITER=$(terraform output -raw aurora_primary_writer_endpoint    2>/dev/null || echo "")
-AURORA_READER_PRIMARY=$(terraform output -raw aurora_primary_reader_endpoint  2>/dev/null || echo "")
-AURORA_READER_STANDBY=$(terraform output -raw aurora_replica_reader_endpoint  2>/dev/null || echo "")
-THANOS_BUCKET=$(terraform output -raw thanos_metrics_bucket_name        2>/dev/null || echo "")
-cd "$ROOT_DIR"
+tf_outputs_load "$GLOBAL_TF_DIR"
+FAILOVER_RUNNER_ROLE=$(tf_output failover_runner_role_arn)
+AURORA_WRITER=$(tf_output aurora_primary_writer_endpoint)
+AURORA_READER_PRIMARY=$(tf_output aurora_primary_reader_endpoint)
+AURORA_READER_STANDBY=$(tf_output aurora_replica_reader_endpoint)
+THANOS_BUCKET=$(tf_output thanos_metrics_bucket_name)
+
+timer_end "1. Global Terraform"
 
 # ── Phase 2: Primary EKS workspace ───────────────────────────────────────────
+timer_start "2. Primary Terraform + EKS"
 step "Phase 2: Primary cluster — ${PRIMARY_REGION}"
 
 cd "$TF_DIR"
@@ -122,16 +133,19 @@ terraform workspace new "$PRIMARY_REGION" 2>/dev/null || terraform workspace sel
 terraform apply -auto-approve \
   -var-file="tfvars/${PRIMARY_REGION}.tfvars"
 
-PRIMARY_CLUSTER=$(terraform output -raw cluster_name)
-BACKSTAGE_SECRET_ARN=$(terraform output -raw backstage_secret_arn)
-TECHDOCS_BUCKET=$(terraform output -raw techdocs_bucket_name)
-BACKSTAGE_ROLE_ARN=$(terraform output -raw backstage_role_arn)
-CROSSPLANE_ROLE_PRIMARY=$(terraform output -raw crossplane_aws_role_arn)
-DORA_ROLE_ARN=$(terraform output -raw dora_exporter_role_arn          2>/dev/null || echo "")
-GRAFANA_ROLE_ARN=$(terraform output -raw grafana_role_arn             2>/dev/null || echo "")
-ARGO_ROLE_ARN=$(terraform output -raw argo_workflows_role_arn         2>/dev/null || echo "")
-DB_INIT_ROLE_ARN=$(terraform output -raw db_init_role_arn             2>/dev/null || echo "")
-ACM_CERT_ARN=$(terraform output -raw monitoring_acm_certificate_arn   2>/dev/null || echo "")
+# Reload cached outputs — same dir as the global module read above, but a
+# different terraform workspace, so `terraform output` returns different values.
+tf_outputs_load "$TF_DIR"
+PRIMARY_CLUSTER=$(tf_output_required cluster_name)
+BACKSTAGE_SECRET_ARN=$(tf_output_required backstage_secret_arn)
+TECHDOCS_BUCKET=$(tf_output_required techdocs_bucket_name)
+BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
+CROSSPLANE_ROLE_PRIMARY=$(tf_output_required crossplane_aws_role_arn)
+DORA_ROLE_ARN=$(tf_output dora_exporter_role_arn)
+GRAFANA_ROLE_ARN=$(tf_output grafana_role_arn)
+ARGO_ROLE_ARN=$(tf_output argo_workflows_role_arn)
+DB_INIT_ROLE_ARN=$(tf_output db_init_role_arn)
+ACM_CERT_ARN=$(tf_output monitoring_acm_certificate_arn)
 cd "$ROOT_DIR"
 
 log "Primary cluster: ${PRIMARY_CLUSTER} (${PRIMARY_REGION})"
@@ -144,7 +158,10 @@ aws eks update-kubeconfig \
   --alias  hub
 kubectl cluster-info --context hub
 
+timer_end "2. Primary Terraform + EKS"
+
 # ── Phase 2.1: Namespaces + RBAC ─────────────────────────────────────────────
+timer_start "2.1-2.5 Primary namespaces/ESO/secrets/obs"
 log "Phase 2.1: Namespaces and RBAC..."
 kubectl apply -f kubernetes/namespaces/namespaces.yaml       --context hub
 kubectl apply -f kubernetes/namespaces/services-quota.yaml   --context hub
@@ -172,9 +189,8 @@ kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f 
 
 # ── Phase 2.3: External Secrets Operator ─────────────────────────────────────
 log "Phase 2.3: External Secrets Operator..."
-helm repo add external-secrets https://charts.external-secrets.io 2>/dev/null || true
-helm repo update external-secrets
-helm upgrade --install external-secrets external-secrets/external-secrets \
+ensure_helm_repos external-secrets prometheus-community bitnami gatekeeper kyverno argo
+helm_upgrade_cached external-secrets external-secrets external-secrets/external-secrets \
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true \
@@ -223,7 +239,9 @@ if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     --secret-id "$BACKSTAGE_SECRET_ARN" \
     --query SecretString --output text)
 
-  UPDATED_SECRET=$(echo "$CURRENT_SECRET" | python3 -c "
+  UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" \
+    BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" \
+    AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" python3 -c "
 import json, sys, os
 s = json.load(sys.stdin)
 s['GITHUB_TOKEN'] = os.environ['GITHUB_TOKEN']
@@ -237,9 +255,7 @@ for key in ('AUTH_GITHUB_CLIENT_ID','AUTH_GITHUB_CLIENT_SECRET','GRAFANA_ADMIN_P
 s['BACKSTAGE_CATALOG_TOKEN'] = os.environ['BACKSTAGE_CATALOG_TOKEN']
 s['AUTH_SESSION_SECRET']     = os.environ['AUTH_SESSION_SECRET']
 print(json.dumps(s))
-" K8S_SA_TOKEN="$K8S_SA_TOKEN" \
-  BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" \
-  AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET")
+")
 
   aws secretsmanager update-secret \
     --region "${PRIMARY_REGION}" \
@@ -265,8 +281,6 @@ fi
 # ── Phase 2.5: Observability (kube-prometheus-stack + Thanos) ────────────────
 if [[ "$SKIP_OBS" != "true" ]]; then
   log "Phase 2.5: Observability stack (Prometheus + Thanos)..."
-  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
-  helm repo update prometheus-community
 
   kubectl create configmap grafana-dashboards-idp \
     --from-file=observability/grafana/dashboards/ \
@@ -292,7 +306,7 @@ if [[ "$SKIP_OBS" != "true" ]]; then
     rm -f "$tmp_obs.bak"
   fi
 
-  helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+  helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
     --namespace monitoring \
     --create-namespace \
     --values "$tmp_obs" \
@@ -305,90 +319,110 @@ if [[ "$SKIP_OBS" != "true" ]]; then
   kubectl apply -f aws/observability/grafana-multi-region-datasources.yaml --context hub
 
   # Thanos — query, store-gateway, compactor (metrics cross-region aggregation)
-  helm repo add bitnami https://charts.bitnami.com/bitnami 2>/dev/null || true
-  helm repo update bitnami
   kubectl apply -f aws/observability/thanos/ --context hub 2>/dev/null || \
     log "  Thanos ArgoCD app applied — ArgoCD will install the chart."
 fi
 
+timer_end "2.1-2.5 Primary namespaces/ESO/secrets/obs"
+
 # ── Phase 2.6: Policies (OPA/Gatekeeper + Kyverno) ───────────────────────────
+# Gatekeeper and Kyverno are independent policy engines touching different
+# namespaces and CRDs. bootstrap.sh has installed them as parallel background
+# jobs for a while; that pattern was never carried over here, so this script
+# paid both `--wait --timeout 5m` installs plus both readiness waits back to
+# back. Same _bg_join contract as everywhere else: join every job first,
+# aggregate, then decide — never short-circuit mid-loop.
+timer_start "2.6 Gatekeeper + Kyverno (parallel)"
 if [[ "$SKIP_POLICIES" != "true" ]]; then
   log "Phase 2.6: OPA/Gatekeeper + Kyverno policies..."
-  helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts 2>/dev/null || true
-  helm repo update gatekeeper
-  helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-    --namespace gatekeeper-system \
-    --create-namespace \
-    --set replicas=1 \
-    --set auditInterval=60 \
-    --kube-context hub \
-    --wait --timeout 5m
+  _mr_gk_log=$(mktemp); _mr_kyv_log=$(mktemp)
 
-  kubectl apply \
-    -f kubernetes/policies/require-health-probes.yaml \
-    -f kubernetes/policies/require-resource-limits.yaml \
-    -f kubernetes/policies/require-labels.yaml \
-    -f kubernetes/policies/deny-latest-tag.yaml \
-    -f kubernetes/policies/require-cost-tags.yaml \
-    --context hub 2>/dev/null || true
+  (
+    set -e
+    helm_upgrade_cached gatekeeper gatekeeper-system gatekeeper/gatekeeper \
+      --namespace gatekeeper-system \
+      --create-namespace \
+      --set replicas=1 \
+      --set auditInterval=60 \
+      --kube-context hub \
+      --wait --timeout 5m
 
-  kubectl wait crd \
-    requirehealthprobes.constraints.gatekeeper.sh \
-    requireresourcelimits.constraints.gatekeeper.sh \
-    requirelabels.constraints.gatekeeper.sh \
-    denylatestimgtag.constraints.gatekeeper.sh \
-    requirecosttags.constraints.gatekeeper.sh \
-    --for=condition=Established --timeout=120s --context hub
+    kubectl apply \
+      -f kubernetes/policies/require-health-probes.yaml \
+      -f kubernetes/policies/require-resource-limits.yaml \
+      -f kubernetes/policies/require-labels.yaml \
+      -f kubernetes/policies/deny-latest-tag.yaml \
+      -f kubernetes/policies/require-cost-tags.yaml \
+      --context hub 2>/dev/null || true
 
-  kubectl apply \
-    -f kubernetes/policies/require-health-probes.yaml \
-    -f kubernetes/policies/require-resource-limits.yaml \
-    -f kubernetes/policies/require-labels.yaml \
-    -f kubernetes/policies/deny-latest-tag.yaml \
-    -f kubernetes/policies/require-cost-tags.yaml \
-    --context hub
+    kubectl wait crd \
+      requirehealthprobes.constraints.gatekeeper.sh \
+      requireresourcelimits.constraints.gatekeeper.sh \
+      requirelabels.constraints.gatekeeper.sh \
+      denylatestimgtag.constraints.gatekeeper.sh \
+      requirecosttags.constraints.gatekeeper.sh \
+      --for=condition=Established --timeout=120s --context hub
 
-  helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
-  helm repo update kyverno
-  helm upgrade --install kyverno kyverno/kyverno \
-    --namespace kyverno \
-    --create-namespace \
-    --version 3.2.7 \
-    --set replicaCount=2 \
-    --set cleanupJobs.admissionReports.image.registry=registry.k8s.io \
-    --set cleanupJobs.admissionReports.image.repository=kubectl \
-    --set cleanupJobs.admissionReports.image.tag=v1.28.5 \
-    --set cleanupJobs.clusterAdmissionReports.image.registry=registry.k8s.io \
-    --set cleanupJobs.clusterAdmissionReports.image.repository=kubectl \
-    --set cleanupJobs.clusterAdmissionReports.image.tag=v1.28.5 \
-    --set cleanupJobs.ephemeralReports.image.registry=registry.k8s.io \
-    --set cleanupJobs.ephemeralReports.image.repository=kubectl \
-    --set cleanupJobs.ephemeralReports.image.tag=v1.28.5 \
-    --set cleanupJobs.clusterEphemeralReports.image.registry=registry.k8s.io \
-    --set cleanupJobs.clusterEphemeralReports.image.repository=kubectl \
-    --set cleanupJobs.clusterEphemeralReports.image.tag=v1.28.5 \
-    --set policyReportsCleanup.image.registry=registry.k8s.io \
-    --set policyReportsCleanup.image.repository=kubectl \
-    --set policyReportsCleanup.image.tag=v1.28.5 \
-    --set webhooksCleanup.image.registry=registry.k8s.io \
-    --set webhooksCleanup.image.repository=kubectl \
-    --set webhooksCleanup.image.tag=v1.28.5 \
-    --kube-context hub \
-    --wait --timeout 5m
+    kubectl apply \
+      -f kubernetes/policies/require-health-probes.yaml \
+      -f kubernetes/policies/require-resource-limits.yaml \
+      -f kubernetes/policies/require-labels.yaml \
+      -f kubernetes/policies/deny-latest-tag.yaml \
+      -f kubernetes/policies/require-cost-tags.yaml \
+      --context hub
 
-  kubectl wait deployment kyverno-admission-controller \
-    -n kyverno --for=condition=Available --timeout=120s --context hub
+  ) >"$_mr_gk_log" 2>&1 &
+  _mr_gk_pid=$!
 
-  kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml       --context hub
-  kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml --context hub
+  (
+    set -e
+    helm_upgrade_cached kyverno kyverno kyverno/kyverno \
+      --namespace kyverno \
+      --create-namespace \
+      --version 3.2.7 \
+      --set replicaCount=2 \
+      --set cleanupJobs.admissionReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.admissionReports.image.repository=kubectl \
+      --set cleanupJobs.admissionReports.image.tag=v1.28.5 \
+      --set cleanupJobs.clusterAdmissionReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.clusterAdmissionReports.image.repository=kubectl \
+      --set cleanupJobs.clusterAdmissionReports.image.tag=v1.28.5 \
+      --set cleanupJobs.ephemeralReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.ephemeralReports.image.repository=kubectl \
+      --set cleanupJobs.ephemeralReports.image.tag=v1.28.5 \
+      --set cleanupJobs.clusterEphemeralReports.image.registry=registry.k8s.io \
+      --set cleanupJobs.clusterEphemeralReports.image.repository=kubectl \
+      --set cleanupJobs.clusterEphemeralReports.image.tag=v1.28.5 \
+      --set policyReportsCleanup.image.registry=registry.k8s.io \
+      --set policyReportsCleanup.image.repository=kubectl \
+      --set policyReportsCleanup.image.tag=v1.28.5 \
+      --set webhooksCleanup.image.registry=registry.k8s.io \
+      --set webhooksCleanup.image.repository=kubectl \
+      --set webhooksCleanup.image.tag=v1.28.5 \
+      --kube-context hub \
+      --wait --timeout 5m
+
+    kubectl wait deployment kyverno-admission-controller \
+      -n kyverno --for=condition=Available --timeout=120s --context hub
+    wait_kyverno_webhook_ready 30 hub
+
+    kubectl apply -f kubernetes/policies/kyverno/team-quota-policy.yaml       --context hub
+    kubectl apply -f kubernetes/policies/kyverno/crossplane-team-label-policy.yaml --context hub
+  ) >"$_mr_kyv_log" 2>&1 &
+  _mr_kyv_pid=$!
+
+  _mr_gk_rc=0;  _bg_join "$_mr_gk_pid"  "$_mr_gk_log"  || _mr_gk_rc=$?
+  _mr_kyv_rc=0; _bg_join "$_mr_kyv_pid" "$_mr_kyv_log" || _mr_kyv_rc=$?
+  (( _mr_gk_rc  == 0 )) || warn "Phase 2.6 (Gatekeeper) failed — golden-path admission policies are not enforced."
+  (( _mr_kyv_rc == 0 )) || warn "Phase 2.6 (Kyverno) failed — team quotas and Crossplane labels are not auto-injected."
 fi
+timer_end "2.6 Gatekeeper + Kyverno (parallel)"
 
 # ── Phase 2.7: ArgoCD (primary) ───────────────────────────────────────────────
+timer_start "2.7 ArgoCD (primary)"
 if [[ "$SKIP_GITOPS" != "true" ]]; then
   log "Phase 2.7: ArgoCD (primary)..."
-  helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
-  helm repo update argo
-  helm upgrade --install argocd argo/argo-cd \
+  helm_upgrade_cached argocd argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \
     --values aws/argocd/argocd-helm-values.yaml \
@@ -441,12 +475,12 @@ if [[ "$SKIP_GITOPS" != "true" ]]; then
           --region "${PRIMARY_REGION}" \
           --secret-id "$BACKSTAGE_SECRET_ARN" \
           --query SecretString --output text)
-        UPDATED=$(echo "$CURRENT_SECRET" | python3 -c "
+        UPDATED=$(echo "$CURRENT_SECRET" | U="$ARGOCD_URL" T="$BS_ARGOCD_TOKEN" python3 -c "
 import json,sys,os
 s=json.load(sys.stdin)
 s['ARGOCD_URL']='https://'+os.environ['U']
 s['ARGOCD_AUTH_TOKEN']=os.environ['T']
-print(json.dumps(s))" U="$ARGOCD_URL" T="$BS_ARGOCD_TOKEN")
+print(json.dumps(s))")
         aws secretsmanager update-secret \
           --region "${PRIMARY_REGION}" \
           --secret-id "$BACKSTAGE_SECRET_ARN" \
@@ -457,7 +491,10 @@ print(json.dumps(s))" U="$ARGOCD_URL" T="$BS_ARGOCD_TOKEN")
   fi
 fi
 
+timer_end "2.7 ArgoCD (primary)"
+
 # ── Phase 2.8: Backstage (primary) ───────────────────────────────────────────
+timer_start "2.8 Backstage (primary)"
 log "Phase 2.8: Building and deploying Backstage..."
 ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${PRIMARY_REGION}.amazonaws.com"
 PRIMARY_CLUSTER_FINAL="${PRIMARY_CLUSTER}"
@@ -467,13 +504,21 @@ aws ecr get-login-password --region "${PRIMARY_REGION}" | \
   docker login --username AWS --password-stdin "${ECR_REGISTRY}"
 
 IMAGE_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo 'bootstrap')"
-docker build \
-  --platform linux/amd64 \
-  --provenance=false \
-  -f backstage/Dockerfile \
-  -t "${BACKSTAGE_IMAGE}:${IMAGE_TAG}" \
-  backstage/app/
-docker push "${BACKSTAGE_IMAGE}:${IMAGE_TAG}"
+# Skip when unchanged and already in ECR; otherwise build through buildx with an
+# ECR-side layer cache. This is a multi-stage build running yarn install +
+# yarn build:backend under amd64 emulation on an Apple-Silicon host — see
+# docker_build_push_amd64 in lib.sh.
+_bs_fp_file="${ROOT_DIR}/.idp-cache/mr-image-backstage.fingerprint"
+_bs_fp="$(dir_content_hash "${ROOT_DIR}/backstage/app"):$(_sha256 "${ROOT_DIR}/backstage/Dockerfile"):${IMAGE_TAG}"
+if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$_bs_fp_file" "$_bs_fp" \
+     "aws ecr describe-images --region ${PRIMARY_REGION} --repository-name ${PRIMARY_CLUSTER_FINAL}/backstage --image-ids imageTag=${IMAGE_TAG}"; then
+  log "Backstage unchanged and ${IMAGE_TAG} already in ECR — skipping build."
+else
+  docker_build_push_amd64 backstage/app/ "${BACKSTAGE_IMAGE}" \
+    -f backstage/Dockerfile \
+    -t "${BACKSTAGE_IMAGE}:${IMAGE_TAG}"
+  helm_record_fingerprint "$_bs_fp_file" "$_bs_fp"
+fi
 log "Backstage image pushed: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}"
 
 kubectl apply -f aws/backstage/external-secret.yaml --context hub
@@ -520,13 +565,19 @@ sed "s|image: REPLACE_WITH_ECR_IMAGE|image: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}|g" \
   | kubectl apply -f - --context hub 2>/dev/null || \
   warn "Standby Backstage deployment skipped (will be applied in Phase 3)."
 
+timer_end "2.8 Backstage (primary)"
+
 # ── Phase 2.9: AI/ML platform ────────────────────────────────────────────────
+timer_start "2.9 AI/ML platform"
 if [[ "$SKIP_AI" != "true" ]]; then
   log "Phase 2.9: AI/ML platform (KAgent + MLflow)..."
   bash scripts/bootstrap-ai.sh --aws --region "${PRIMARY_REGION}" --cluster "${PRIMARY_CLUSTER}"
 fi
 
+timer_end "2.9 AI/ML platform"
+
 # ── Phase 3: Standby EKS workspace ───────────────────────────────────────────
+timer_start "3. Standby Terraform + stack"
 if [[ "$SKIP_STANDBY" == "true" ]]; then
   warn "Skipping Phase 3 (--skip-standby). Run later with --skip-global to wire the standby cluster."
 else
@@ -537,8 +588,9 @@ else
   terraform apply -auto-approve \
     -var-file="tfvars/${STANDBY_REGION}.tfvars"
 
-  STANDBY_CLUSTER=$(terraform output -raw cluster_name)
-  CROSSPLANE_ROLE_STANDBY=$(terraform output -raw crossplane_aws_role_arn)
+  tf_outputs_load "$TF_DIR"
+  STANDBY_CLUSTER=$(tf_output_required cluster_name)
+  CROSSPLANE_ROLE_STANDBY=$(tf_output_required crossplane_aws_role_arn)
   cd "$ROOT_DIR"
 
   log "Standby cluster: ${STANDBY_CLUSTER} (${STANDBY_REGION})"
@@ -552,7 +604,7 @@ else
   # No Backstage, no full observability — this cluster is a warm standby
 
   # ESO on standby (reads from primary Secrets Manager via CRR)
-  helm upgrade --install external-secrets external-secrets/external-secrets \
+  helm_upgrade_cached external-secrets external-secrets external-secrets/external-secrets \
     --namespace external-secrets \
     --create-namespace \
     --set installCRDs=true \
@@ -562,9 +614,11 @@ else
   kubectl create serviceaccount external-secrets-sa -n external-secrets \
     --dry-run=client -o yaml | kubectl apply -f - --context standby
 
-  BACKSTAGE_ROLE_STANDBY=$(cd "$TF_DIR" && \
-    terraform workspace select "$STANDBY_REGION" &>/dev/null && \
-    terraform output -raw backstage_role_arn 2>/dev/null || echo "$BACKSTAGE_ROLE_ARN")
+  # tf_outputs_load "$TF_DIR" above already cached this standby workspace's
+  # outputs; fall back to the primary role ARN if this cluster has no
+  # backstage_role_arn output of its own (matches original fallback behavior).
+  BACKSTAGE_ROLE_STANDBY=$(tf_output backstage_role_arn)
+  [[ -n "$BACKSTAGE_ROLE_STANDBY" ]] || BACKSTAGE_ROLE_STANDBY="$BACKSTAGE_ROLE_ARN"
 
   kubectl annotate serviceaccount external-secrets-sa \
     -n external-secrets \
@@ -575,7 +629,7 @@ else
     | kubectl apply -f - --context standby
 
   # ArgoCD on standby (sync disabled by default — enabled on failover)
-  helm upgrade --install argocd argo/argo-cd \
+  helm_upgrade_cached argocd argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \
     --values aws/argocd/argocd-helm-values.yaml \
@@ -605,7 +659,10 @@ else
   log "Standby cluster provisioned."
 fi
 
+timer_end "3. Standby Terraform + stack"
+
 # ── Phase 4: Post-wiring ─────────────────────────────────────────────────────
+timer_start "4. Post-wiring"
 step "Phase 4: Post-wiring (IRSA, cluster registration, failover, Aurora, notifications)"
 
 if [[ "$SKIP_GITOPS" == "true" ]]; then
@@ -613,7 +670,10 @@ if [[ "$SKIP_GITOPS" == "true" ]]; then
 else
   # 4.0 — Patch Crossplane standby ProviderConfig with IRSA ARN
   if [[ -n "${CROSSPLANE_ROLE_STANDBY:-}" ]]; then
-    local _pc="${ROOT_DIR}/aws/crossplane/providers/provider-config-us-east-1.yaml"
+    # Not `local` — this is top-level script scope, not a function body, and
+    # bash errors "local: can only be used in a function", which under
+    # `set -euo pipefail` aborted the whole of Phase 4.
+    _pc="${ROOT_DIR}/aws/crossplane/providers/provider-config-us-east-1.yaml"
     if grep -q 'REPLACE_WITH_STANDBY_IRSA_ARN' "$_pc" 2>/dev/null; then
       log "4.0: Patching Crossplane ProviderConfig for standby (${STANDBY_REGION})..."
       sed -i.bak "s|REPLACE_WITH_STANDBY_IRSA_ARN|${CROSSPLANE_ROLE_STANDBY}|g" "$_pc"
@@ -743,3 +803,5 @@ echo "  2. Test failover (GameDay): argo submit aws/argo-workflows/failover-runb
 echo "  3. Review Thanos:         kubectl get pods -n monitoring --context hub | grep thanos"
 echo "  4. Verify standby sync:   kubectl get applications -n argocd --context standby"
 echo ""
+
+timer_end "4. Post-wiring"

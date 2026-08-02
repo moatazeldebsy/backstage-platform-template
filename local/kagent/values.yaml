@@ -21,6 +21,30 @@ ui:
   # Nginx forwards /api/* → kagent-controller:8083/api/* correctly.
   backendInternalUrl: "http://127.0.0.1:8080/api"
 
+# ── Built-in agents that cannot function on this cluster ─────────────────────
+# The chart ships an agent per ecosystem it knows about and enables them all by
+# default. Five of them have nothing to talk to here: the local Kind cluster
+# uses kindnet (not Cilium), and neither Istio nor kgateway is installed. They
+# start, idle, and never do anything.
+#
+# Measured on a running local cluster: 866Mi RSS and 5 pods, ~24% of the kagent
+# namespace's total memory. The idle CPU is small (21m), but the cost that
+# matters is the startup burst — five more Python/ADK agents booting at once on
+# a 6-CPU VM. That contention is what pushed etcd into "request timed out" and
+# took the API server down during a --adp run.
+#
+# Re-enable any of these by flipping the flag if you add the matching component.
+kgateway-agent:
+  enabled: false
+istio-agent:
+  enabled: false
+cilium-policy-agent:
+  enabled: false
+cilium-manager-agent:
+  enabled: false
+cilium-debug-agent:
+  enabled: false
+
 postgres:
   # Enable pgvector so the controller can create the memory table (vector(768)).
   vectorEnabled: true

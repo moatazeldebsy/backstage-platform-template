@@ -34,6 +34,17 @@ singleBinary:
     enabled: true
     size: 5Gi
 
+# The chart's chunksCache/resultsCache (memcached-backed) default to several
+# GB of memory requests each — fine on a real cluster, but on a local Kind
+# node they alone can exceed total node memory and starve every other pod
+# (observed: chunksCache requesting ~9.6Gi, resultsCache ~1.2Gi on a 12.65Gi
+# node). Local dev has trivial query/write volume, so disable both caches
+# rather than resize them — Loki falls back to querying storage directly.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
 # Promtail is deployed as a separate chart
 # See local/observability/loki/promtail-values.yaml
 
