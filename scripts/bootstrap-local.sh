@@ -600,6 +600,19 @@ fi
 
 log "Starting local IDP MVP bootstrap (cluster=$CLUSTER_NAME)"
 
+# ── Step 0: /etc/hosts ───────────────────────────────────────────────────────
+# Deliberately first. This is the only step that needs `sudo`, and it used to
+# run dead last — so a 35-minute install ended by silently blocking on a
+# password prompt long after the user had walked away (observed: 18 minutes of
+# a 36-minute run were spent waiting here, not working). The entries are static
+# 127.0.0.1 mappings that don't depend on anything the cluster does, so doing
+# them up front costs nothing and gets the prompt in front of you immediately.
+# Already-correct /etc/hosts needs no sudo at all and stays silent.
+timer_start "0. /etc/hosts"
+log "Step 0: Checking /etc/hosts entries (may prompt for your password)..."
+append_hosts_file "${ROOT_DIR}/local/hosts-append.txt"
+timer_end "0. /etc/hosts"
+
 # ── Step 1: Local container registry ─────────────────────────────────────────
 timer_start "1. Local registry"
 log "Step 1: Starting local container registry on port ${REGISTRY_PORT}..."
@@ -1555,12 +1568,6 @@ if ! $SKIP_GITOPS; then
 fi
 
 timer_end "13. ApplicationSet"
-
-# ── Step 7: /etc/hosts ───────────────────────────────────────────────────────
-timer_start "7. /etc/hosts"
-log "Step 7: Checking /etc/hosts entries..."
-append_hosts_file "${ROOT_DIR}/local/hosts-append.txt"
-timer_end "7. /etc/hosts"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 _print_url_banner

@@ -305,6 +305,19 @@ fi
 info "Starting AI platform bootstrap (Claude API, mode=${DEPLOY_MODE})..."
 echo ""
 
+# ── 0. /etc/hosts — AI platform entries ──────────────────────────────────────
+# First, not last: this is the only step needing `sudo`, and running it at the
+# end meant a long install finished by silently waiting on a password prompt.
+# The entries are static 127.0.0.1 mappings independent of anything installed
+# below. An already-correct /etc/hosts needs no sudo and stays silent.
+if [[ "$DEPLOY_MODE" == "local" ]]; then
+  timer_start "0. /etc/hosts"
+  info "Checking /etc/hosts entries (may prompt for your password)..."
+  append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
+    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
+  timer_end "0. /etc/hosts"
+fi
+
 # ── 0. MCP server images (built in the background) ───────────────────────────
 # Building these images needs only Docker and a reachable registry — not the
 # cluster, not KAgent, not MLflow. They used to be built one at a time at the
@@ -1284,13 +1297,6 @@ if [[ "$SKIP_KAGENT" == "false" && "$DEPLOY_MODE" == "local" ]]; then
     --address 127.0.0.1 >/dev/null 2>&1 &
   echo $! > /tmp/kagent-ui-pf.pid
   check "KAgent UI port-forward → http://localhost:8082 (PID $(cat /tmp/kagent-ui-pf.pid))"
-fi
-
-# ── 8. /etc/hosts — AI platform entries ──────────────────────────────────────
-
-if [[ "$DEPLOY_MODE" == "local" ]]; then
-  append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
