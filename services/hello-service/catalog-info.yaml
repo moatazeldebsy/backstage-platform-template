@@ -14,6 +14,12 @@ metadata:
     idp.io/slo-availability-target: "99.5"
     idp.io/slo-latency-target: "99.0"
     idp.io/sloth-service: hello-service
+    # Datadog tab (backstage/app/packages/app/src/extensions.tsx) — added per
+    # the "Enable Datadog APM & Monitoring" scaffolder template's documented
+    # convention (skeleton-addon/common/datadog/README.md). No dashboard-url:
+    # no dashboard has been created for this reference service yet.
+    datadoghq.com/monitor-tag: service:hello-service
+    datadoghq.com/site: app.datadoghq.eu
 spec:
   type: service
   lifecycle: production
