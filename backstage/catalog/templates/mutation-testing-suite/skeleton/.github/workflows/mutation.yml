@@ -16,10 +16,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
+      # No package-lock.json is committed here (and so no npm cache): the
+      # Stryker test-runner dependency is chosen at scaffold time
+      # (@stryker-mutator/<jest|mocha|jasmine>-runner), so a checked-in
+      # lockfile would be wrong for two of the three choices. Run
+      # `npm install --package-lock-only` once after scaffolding and commit
+      # the result to get reproducible installs and caching back.
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run Stryker mutation tests
         run: npm test
