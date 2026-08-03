@@ -862,6 +862,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#machine-requirements-and-what-to-do-if-you-dont-have-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      Machine requirements — and what to do if you don't have them
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Machine requirements — and what to do if you don't have them">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symptoms-of-an-under-resourced-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptoms of an under-resourced cluster
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-on-less" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running on less
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#bootstrap-1015-min" class="md-nav__link">
     <span class="md-ellipsis">
       Bootstrap (~10–15 min)
@@ -2098,6 +2131,156 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <blockquote>
 <p><strong>macOS ARM64 note</strong>: The cluster is pinned to K8s <strong>1.33.1</strong> (<code>kindest/node:v1.33.1</code>) — tested stable on macOS ARM64 with Docker Desktop.</p>
 </blockquote>
+<h2 id="machine-requirements-and-what-to-do-if-you-dont-have-them">Machine requirements — and what to do if you don't have them<a class="headerlink" href="#machine-requirements-and-what-to-do-if-you-dont-have-them" title="Permanent link">&para;</a></h2>
+<p>The full platform is ~90 pods. What it actually consumes once everything has
+settled (measured with <code>kubectl top</code>, not estimated):</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Installed by</th>
+<th align="right">CPU</th>
+<th align="right">Memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kubernetes itself (<code>kube-system</code>, ingress, storage)</td>
+<td>always</td>
+<td align="right">~780m</td>
+<td align="right">~1.9 GB</td>
+</tr>
+<tr>
+<td>Observability (Prometheus, Grafana, Loki, Tempo, OpenCost)</td>
+<td><code>bootstrap-local.sh</code></td>
+<td align="right">~650m</td>
+<td align="right">~1.6 GB</td>
+</tr>
+<tr>
+<td>GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts)</td>
+<td><code>bootstrap-local.sh</code></td>
+<td align="right">~310m</td>
+<td align="right">~0.8 GB</td>
+</tr>
+<tr>
+<td>Your services (<code>services-dev</code>)</td>
+<td><code>bootstrap-local.sh</code></td>
+<td align="right">~200m</td>
+<td align="right">~0.4 GB</td>
+</tr>
+<tr>
+<td><strong>AI/ML (KAgent, MLflow, MCP servers)</strong></td>
+<td><code>bootstrap-ai.sh</code></td>
+<td align="right">~300m</td>
+<td align="right"><strong>~2.9 GB</strong></td>
+</tr>
+<tr>
+<td><strong>Total, everything on</strong></td>
+<td></td>
+<td align="right"><strong>~3.6 cores</strong></td>
+<td align="right"><strong>~9 GB</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Give the container VM (Docker Desktop → Settings → Resources, or Rancher Desktop
+→ Virtual Machine) at least:</p>
+<table>
+<thead>
+<tr>
+<th>Setup</th>
+<th align="right">VM CPU</th>
+<th align="right">VM memory</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Recommended</strong></td>
+<td align="right">8</td>
+<td align="right">16 GB</td>
+<td>Full stack including AI/ML, with headroom to build images and run Backstage at the same time</td>
+</tr>
+<tr>
+<td><strong>Minimum for the full stack</strong></td>
+<td align="right">6</td>
+<td align="right">12 GB</td>
+<td>Works, but sits at ~75% memory with no headroom — see the symptoms below</td>
+</tr>
+<tr>
+<td><strong>Without AI/ML</strong></td>
+<td align="right">4</td>
+<td align="right">8 GB</td>
+<td><code>bootstrap-local.sh</code> only; don't run <code>bootstrap-ai.sh</code></td>
+</tr>
+<tr>
+<td><strong>Core only</strong></td>
+<td align="right">2</td>
+<td align="right">6 GB</td>
+<td>Add <code>--skip-obs --skip-policies</code> (see below)</td>
+</tr>
+</tbody>
+</table>
+<p>Since the VM is carved out of your host, the recommended tier wants a <strong>16 GB
+host at an absolute minimum, 24–32 GB to be comfortable</strong> — a 16 GB laptop
+giving 12 GB to the VM leaves very little for the rest of macOS.</p>
+<blockquote>
+<p><strong>Reading <code>kubectl get nodes</code> correctly</strong>: it reports the CPU/memory of the
+<em>VM</em> against each Kind node, so a 2-node cluster on a 6-CPU/12 GB VM looks like
+12 CPUs and 24 GB. It isn't — both nodes are containers sharing the one VM.
+The real ceiling is whatever you gave Docker/Rancher Desktop.</p>
+</blockquote>
+<h3 id="symptoms-of-an-under-resourced-cluster">Symptoms of an under-resourced cluster<a class="headerlink" href="#symptoms-of-an-under-resourced-cluster" title="Permanent link">&para;</a></h3>
+<p>These all look like different bugs but share one cause — CPU starvation making
+pods miss their liveness probes, so kubelet restarts them in a loop:</p>
+<ul>
+<li><code>503 Service Temporarily Unavailable</code> from nginx on <code>grafana.idp.local</code> and friends, clearing on its own after ~30s</li>
+<li>Pods with a high <code>RESTARTS</code> count but <code>Reason: Error</code> / exit code 137 (killed on liveness, <em>not</em> OOMKilled)</li>
+<li><code>etcd</code> election timeouts, or <code>lima-guestagent</code> dying, taking the whole cluster with it</li>
+<li>Bootstrap steps timing out on <code>--wait</code> that succeed when re-run</li>
+</ul>
+<p>Confirm before you tune anything — if <code>nr_throttled</code> is a large fraction of
+<code>nr_periods</code>, the container is CPU-throttled and needs a higher limit or a
+bigger VM, not a more lenient probe:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>top<span class="w"> </span>node
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span>cat<span class="w"> </span>/sys/fs/cgroup/cpu.stat
+</code></pre></div></td></tr></table></div>
+<h3 id="running-on-less">Running on less<a class="headerlink" href="#running-on-less" title="Permanent link">&para;</a></h3>
+<p>Trim from the bottom of the value/cost list. Each flag is independent:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Don&#39;t run bootstrap-ai.sh at all         → saves ~2.9 GB (the single biggest win)</span>
+./scripts/bootstrap-local.sh
+
+<span class="c1"># Or install AI/ML piecemeal — KAgent is the expensive part</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-kagent<span class="w">    </span><span class="c1"># keeps MLflow + MCP servers</span>
+
+<span class="c1"># Drop the metrics stack                   → saves ~1.6 GB</span>
+<span class="c1">#   (Backstage&#39;s Grafana/DORA/FinOps tabs go blank)</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs
+
+<span class="c1"># Drop admission control                   → saves ~0.6 GB</span>
+<span class="c1">#   (Kyverno + Gatekeeper; policy-violation demos stop working)</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies
+
+<span class="c1"># Leanest useful cluster: Backstage + ArgoCD + hello-service</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w"> </span>--skip-policies<span class="w"> </span>--skip-dora
+</code></pre></div></td></tr></table></div>
+<p>If you're below the "core only" tier, don't run the platform locally — use a
+cloud dev box, or deploy to AWS with <code>./scripts/bootstrap.sh</code>.</p>
 <h2 id="bootstrap-1015-min">Bootstrap (~10–15 min)<a class="headerlink" href="#bootstrap-1015-min" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>First time? Run <code>setup.sh</code> and nothing else.</strong> From the repo root:
@@ -2203,7 +2386,7 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 ./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows<span class="w"> </span><span class="c1"># (optional) install Argo Workflows for ML pipeline orchestration</span>
 ./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">      </span><span class="c1"># start Backstage (requires cluster already running)</span>
 </code></pre></div></td></tr></table></div>
-<p>Flags can be combined: <code>--skip-obs --skip-gitops</code> cuts bootstrap time roughly in half.</p>
+<p>Flags can be combined: <code>--skip-obs --skip-gitops</code> cuts bootstrap time roughly in half. For which flags to reach for on a resource-constrained machine, and how much each one saves, see <a href="#running-on-less">Running on less</a>.</p>
 <h2 id="access-services">Access services<a class="headerlink" href="#access-services" title="Permanent link">&para;</a></h2>
 <p><code>/etc/hosts</code> entries are written automatically by <code>bootstrap-local.sh</code>. If you need to add them manually:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;cat local/hosts-append.txt &gt;&gt; /etc/hosts&quot;</span>
@@ -2246,6 +2429,21 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 <td><strong>Prometheus</strong></td>
 <td><a href="http://prometheus.idp.local">http://prometheus.idp.local</a></td>
 <td>—</td>
+</tr>
+<tr>
+<td><strong>AlertManager</strong></td>
+<td><a href="http://alertmanager.idp.local">http://alertmanager.idp.local</a></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Argo Rollouts</strong></td>
+<td><a href="http://argo-rollouts.idp.local">http://argo-rollouts.idp.local</a></td>
+<td>— (canary/progressive-delivery dashboard)</td>
+</tr>
+<tr>
+<td><strong>Tempo</strong></td>
+<td><a href="http://tempo.idp.local/v1/traces">http://tempo.idp.local/v1/traces</a> (OTLP HTTP ingest) · <code>/ready</code> for health</td>
+<td>— (no UI — query traces via the Grafana Tempo datasource)</td>
 </tr>
 <tr>
 <td><strong>OpenCost</strong></td>

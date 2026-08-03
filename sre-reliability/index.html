@@ -2729,7 +2729,7 @@ spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
 <h3 id="accessing-argo-rollouts-ui">Accessing Argo Rollouts UI<a class="headerlink" href="#accessing-argo-rollouts-ui" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>argo<span class="w"> </span>rollouts<span class="w"> </span>dashboard<span class="w"> </span>-n<span class="w"> </span>services-dev
 </code></pre></div></td></tr></table></div>
-<p>Or via ingress: <code>http://argo-rollouts.idp.local</code> (requires <code>bootstrap-ai.sh</code>).</p>
+<p>Or via ingress: <code>http://argo-rollouts.idp.local</code> — installed by <code>bootstrap-local.sh</code> (no extra flag), and listed by <code>./scripts/bootstrap-local.sh --print-urls</code>.</p>
 <hr />
 <h2 id="multi-environment-gitops-promotion">Multi-Environment GitOps Promotion<a class="headerlink" href="#multi-environment-gitops-promotion" title="Permanent link">&para;</a></h2>
 <h3 id="flow">Flow<a class="headerlink" href="#flow" title="Permanent link">&para;</a></h3>
