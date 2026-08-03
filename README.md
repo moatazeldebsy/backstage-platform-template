@@ -64,6 +64,8 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 | **Local (Kind)** | `git`, `docker`, `kind` ≥ 0.27, `kubectl`, `helm` ≥ 3.14 — `brew install kind kubectl helm docker` on macOS |
 | **AWS** | Everything above, plus `aws` CLI (run `aws configure`), `terraform` ≥ 1.5, `jq` |
 
+**Local machine sizing**: the full stack is ~90 pods using **~3.6 CPU cores and ~9 GB** once settled. Give Docker/Rancher Desktop **8 CPU / 16 GB** for a comfortable run (6 CPU / 12 GB is the working minimum, and it's tight). Short on resources? Skip the AI/ML layer — it alone is ~2.9 GB — or pass `--skip-obs --skip-policies`. Sizing tiers, the symptoms of an under-resourced cluster, and how to trim: [Machine requirements](docs/local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them).
+
 `go` and Node.js are only needed if you want to build the `idp` CLI / run Backstage outside Docker — `setup.sh` builds the CLI for you automatically if Go is present, and skips it with a warning otherwise. Full checklists: [Local Setup](docs/local-setup.md#prerequisites) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md#required-tools).
 
 ```bash
@@ -107,7 +109,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
 | **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local | requires `bootstrap-ai.sh` |
 | **IDP / QA / Contract MCP Servers** | `http://<name>-mcp-server.idp.local/healthz` | requires `bootstrap-ai.sh` |
-| **Tempo** / **Argo Rollouts** | http://tempo.idp.local · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
+| **Tempo** / **Argo Rollouts** | http://tempo.idp.local/v1/traces (OTLP ingest, no UI) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 ## Platform Summary
