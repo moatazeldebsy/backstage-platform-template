@@ -204,7 +204,7 @@ The items below map to the original 25-team scaling analysis. ✅ = shipped in v
 | **Backstage** | Small/Medium/Large Helm value tiers | ✅ `helm/values-tiers/` |
 | **Backstage** | GitHub org sync (User/Group auto-import) | ✅ `app-config.aws.yaml` `githubOrg` provider |
 | **Backstage** | Catalog consolidation (49 URLs → 1 file) | ✅ `backstage/catalog/all-templates.yaml` |
-| **Backstage** | Template versioning (`v1` + `blessed`/`advanced` tags) | ✅ all 60 templates |
+| **Backstage** | Template versioning (`v1` + `blessed`/`advanced` tags) | ✅ all 61 templates |
 | **Backstage** | Permission framework (`permission.enabled: true`) | ✅ config added; backend plugin code still needed |
 | **Observability** | DORA `team=` label on all Prometheus metrics | ✅ `dora-exporter.py` |
 | **Observability** | `TEAM_MAP` env var for repo→team mapping | ✅ `dora-exporter.py` + CronJob YAMLs |

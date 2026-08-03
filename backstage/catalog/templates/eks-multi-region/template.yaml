@@ -19,6 +19,7 @@ metadata:
     - multi-region
     - gitops
     - v2
+    - advanced
 spec:
   owner: platform-team
   type: service

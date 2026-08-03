@@ -12,6 +12,8 @@ metadata:
     - slo
     - observability
     - reliability
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: service

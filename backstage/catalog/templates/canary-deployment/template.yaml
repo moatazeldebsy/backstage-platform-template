@@ -12,6 +12,8 @@ metadata:
     - progressive-delivery
     - canary
     - argo-rollouts
+    - v1
+    - advanced
 spec:
   owner: platform-team
   type: service
