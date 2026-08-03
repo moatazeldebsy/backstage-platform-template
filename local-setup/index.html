@@ -2441,9 +2441,14 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 <td>— (canary/progressive-delivery dashboard)</td>
 </tr>
 <tr>
-<td><strong>Tempo</strong></td>
-<td><a href="http://tempo.idp.local/v1/traces">http://tempo.idp.local/v1/traces</a> (OTLP HTTP ingest) · <code>/ready</code> for health</td>
-<td>— (no UI — query traces via the Grafana Tempo datasource)</td>
+<td><strong>Tempo</strong> (traces)</td>
+<td>View traces: <a href="http://grafana.idp.local/explore">http://grafana.idp.local/explore</a> → select the <strong>Tempo</strong> datasource</td>
+<td>— (Tempo has <strong>no UI of its own</strong>)</td>
+</tr>
+<tr>
+<td>↳ Tempo OTLP ingest</td>
+<td><code>POST http://tempo.idp.local/v1/traces</code> — an API endpoint, not a page. Opening it in a browser returns <code>405 method not allowed, supported: [POST]</code>, and <code>/</code> returns <code>404 page not found</code>; both mean Tempo is up. Health: <code>/ready</code></td>
+<td>—</td>
 </tr>
 <tr>
 <td><strong>OpenCost</strong></td>
