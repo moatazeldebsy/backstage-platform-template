@@ -22,6 +22,7 @@ metadata:
     - terraform
     - multi-region
     - v2
+    - advanced
 spec:
   owner: platform-team
   type: resource

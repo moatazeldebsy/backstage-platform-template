@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
-A Backstage developer portal, golden-path Helm chart, 60 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
+A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
@@ -41,7 +41,7 @@ A Backstage developer portal, golden-path Helm chart, 60 scaffold templates (ser
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
-| **Software templates** | 60 templates: 10 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, Team namespace, Create namespace, Add-secret, Decommission) + 50 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` |
+| **Software templates** | 61 templates: 10 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, Team namespace, Create namespace, Add-secret, Decommission) + 51 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (60 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
@@ -139,7 +139,7 @@ Full layer-by-layer breakdown: [docs/architecture.md](docs/architecture.md).
 | Channel | Who | Entry point |
 |---------|-----|-------------|
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
-| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 60 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 61 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
 
 ## Project Structure
