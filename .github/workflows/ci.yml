@@ -16,21 +16,15 @@ on:
       - 'aws/observability/**'
       - 'cli/**'
       - '.github/workflows/ci.yml'
+  # No `paths:` filter here, deliberately. `main` requires helm-lint, k8s-dry-run
+  # and backstage-compile to pass, and a required check that never *starts* is
+  # reported as pending forever — so a path filter on the trigger made every
+  # docs-only PR permanently unmergeable. Instead the workflow always starts and
+  # the `changes` job below decides which jobs actually do work. Jobs skipped by
+  # an `if:` condition report a "skipped" conclusion, which branch protection
+  # accepts as success.
   pull_request:
     branches: [main]
-    paths:
-      - 'services/**'
-      - 'helm/**'
-      - 'kubernetes/**'
-      - 'terraform/**'
-      - 'backstage/app/**'
-      - 'backstage/app-config*.yaml'
-      - 'backstage/Dockerfile'
-      - 'observability/**'
-      - 'local/observability/**'
-      - 'aws/observability/**'
-      - 'cli/**'
-      - '.github/workflows/ci.yml'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -40,6 +34,103 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Works out which areas a PR touches, so the expensive jobs below can skip
+  # themselves without the whole workflow being filtered out of existence.
+  # Uses plain git rather than a paths-filter action to avoid adding a
+  # third-party dependency to a workflow that pins every action by SHA.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      go-service: ${{ steps.filter.outputs.go-service }}
+      cli: ${{ steps.filter.outputs.cli }}
+      helm: ${{ steps.filter.outputs.helm }}
+      k8s: ${{ steps.filter.outputs.k8s }}
+      backstage: ${{ steps.filter.outputs.backstage }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+      python-obs: ${{ steps.filter.outputs.python-obs }}
+      contract-mcp: ${{ steps.filter.outputs.contract-mcp }}
+      scripts: ${{ steps.filter.outputs.scripts }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Collect changed files
+        id: filter
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "$BASE_REF"
+            files=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+          elif [[ -n "${BEFORE_SHA:-}" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]] \
+               && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "$BEFORE_SHA" "${{ github.sha }}")
+          else
+            # New branch, force-push, or shallow history — run everything rather
+            # than risk skipping a job that should have run.
+            files=$(git ls-files)
+          fi
+
+          echo "Changed files:"
+          echo "$files" | sed 's/^/  /'
+
+          # A change to the workflow itself re-runs everything.
+          if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
+            echo "ci.yml changed — running all jobs."
+            for k in go-service cli helm k8s backstage terraform python-obs contract-mcp scripts; do
+              echo "$k=true" >> "$GITHUB_OUTPUT"
+            done
+            exit 0
+          fi
+
+          match() { grep -qE "$1" <<<"$files" && echo true || echo false; }
+
+          {
+            echo "go-service=$(match '^services/hello-service/')"
+            echo "cli=$(match '^cli/')"
+            echo "helm=$(match '^helm/')"
+            echo "k8s=$(match '^kubernetes/')"
+            echo "backstage=$(match '^backstage/(app/|app-config.*\.yaml|Dockerfile)')"
+            echo "terraform=$(match '^terraform/')"
+            echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/)')"
+            echo "contract-mcp=$(match '^services/contract-mcp-server/')"
+            echo "scripts=$(match '^scripts/.*\.sh$')"
+          } >> "$GITHUB_OUTPUT"
+
+  # Shell scripts had no CI coverage at all — scripts/ was absent from the old
+  # path filter, so bootstrap-local.sh and friends were never even parsed.
+  shell-lint:
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Parse every script (bash -n)
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            bash -n "$f" || { echo "::error file=$f::bash -n failed"; fail=1; }
+          done < <(find scripts -name '*.sh' -type f | sort)
+          exit $fail
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          # SC1091: sourced files aren't followed in CI.
+          # Warnings are advisory for now; errors fail the build.
+          find scripts -name '*.sh' -type f -print0 \
+            | xargs -0 shellcheck --severity=error --exclude=SC1091
+
   secrets-scan:
     runs-on: ubuntu-latest
     permissions:
@@ -55,6 +146,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-hello-service:
+    needs: changes
+    if: needs.changes.outputs.go-service == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -78,6 +171,8 @@ jobs:
           retention-days: 1
 
   test-cli:
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -102,6 +197,8 @@ jobs:
         run: go test ./...
 
   python-observability-checks:
+    needs: changes
+    if: needs.changes.outputs.python-obs == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -121,6 +218,8 @@ jobs:
           python -m py_compile observability/flaky-test-exporter/exporter.py
 
   helm-lint:
+    needs: changes
+    if: needs.changes.outputs.helm == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -139,6 +238,8 @@ jobs:
         run: helm lint helm/service-template --set image.repository=test --set image.tag=abc1234
 
   k8s-dry-run:
+    needs: changes
+    if: needs.changes.outputs.k8s == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -175,6 +276,8 @@ jobs:
             kubernetes/kagent/
 
   backstage-compile:
+    needs: changes
+    if: needs.changes.outputs.backstage == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -203,6 +306,8 @@ jobs:
         run: docker build -t backstage:ci -f backstage/Dockerfile backstage/app
 
   contract-mcp-server-build:
+    needs: changes
+    if: needs.changes.outputs.contract-mcp == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -225,6 +330,8 @@ jobs:
         run: npm run build
 
   terraform-check:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
