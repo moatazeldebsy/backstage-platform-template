@@ -338,7 +338,7 @@ Use the **Canary Deployment** Backstage template (Create → Canary Deployment) 
 kubectl argo rollouts dashboard -n services-dev
 ```
 
-Or via ingress: `http://argo-rollouts.idp.local` (requires `bootstrap-ai.sh`).
+Or via ingress: `http://argo-rollouts.idp.local` — installed by `bootstrap-local.sh` (no extra flag), and listed by `./scripts/bootstrap-local.sh --print-urls`.
 
 ---
 

@@ -17,6 +17,84 @@ docker info     # Docker running
 
 > **macOS ARM64 note**: The cluster is pinned to K8s **1.33.1** (`kindest/node:v1.33.1`) — tested stable on macOS ARM64 with Docker Desktop.
 
+## Machine requirements — and what to do if you don't have them
+
+The full platform is ~90 pods. What it actually consumes once everything has
+settled (measured with `kubectl top`, not estimated):
+
+| Layer | Installed by | CPU | Memory |
+|---|---|---:|---:|
+| Kubernetes itself (`kube-system`, ingress, storage) | always | ~780m | ~1.9 GB |
+| Observability (Prometheus, Grafana, Loki, Tempo, OpenCost) | `bootstrap-local.sh` | ~650m | ~1.6 GB |
+| GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts) | `bootstrap-local.sh` | ~310m | ~0.8 GB |
+| Your services (`services-dev`) | `bootstrap-local.sh` | ~200m | ~0.4 GB |
+| **AI/ML (KAgent, MLflow, MCP servers)** | `bootstrap-ai.sh` | ~300m | **~2.9 GB** |
+| **Total, everything on** | | **~3.6 cores** | **~9 GB** |
+
+Give the container VM (Docker Desktop → Settings → Resources, or Rancher Desktop
+→ Virtual Machine) at least:
+
+| Setup | VM CPU | VM memory | Notes |
+|---|---:|---:|---|
+| **Recommended** | 8 | 16 GB | Full stack including AI/ML, with headroom to build images and run Backstage at the same time |
+| **Minimum for the full stack** | 6 | 12 GB | Works, but sits at ~75% memory with no headroom — see the symptoms below |
+| **Without AI/ML** | 4 | 8 GB | `bootstrap-local.sh` only; don't run `bootstrap-ai.sh` |
+| **Core only** | 2 | 6 GB | Add `--skip-obs --skip-policies` (see below) |
+
+Since the VM is carved out of your host, the recommended tier wants a **16 GB
+host at an absolute minimum, 24–32 GB to be comfortable** — a 16 GB laptop
+giving 12 GB to the VM leaves very little for the rest of macOS.
+
+> **Reading `kubectl get nodes` correctly**: it reports the CPU/memory of the
+> *VM* against each Kind node, so a 2-node cluster on a 6-CPU/12 GB VM looks like
+> 12 CPUs and 24 GB. It isn't — both nodes are containers sharing the one VM.
+> The real ceiling is whatever you gave Docker/Rancher Desktop.
+
+### Symptoms of an under-resourced cluster
+
+These all look like different bugs but share one cause — CPU starvation making
+pods miss their liveness probes, so kubelet restarts them in a loop:
+
+- `503 Service Temporarily Unavailable` from nginx on `grafana.idp.local` and friends, clearing on its own after ~30s
+- Pods with a high `RESTARTS` count but `Reason: Error` / exit code 137 (killed on liveness, *not* OOMKilled)
+- `etcd` election timeouts, or `lima-guestagent` dying, taking the whole cluster with it
+- Bootstrap steps timing out on `--wait` that succeed when re-run
+
+Confirm before you tune anything — if `nr_throttled` is a large fraction of
+`nr_periods`, the container is CPU-throttled and needs a higher limit or a
+bigger VM, not a more lenient probe:
+
+```bash
+kubectl top node
+kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- cat /sys/fs/cgroup/cpu.stat
+```
+
+### Running on less
+
+Trim from the bottom of the value/cost list. Each flag is independent:
+
+```bash
+# Don't run bootstrap-ai.sh at all         → saves ~2.9 GB (the single biggest win)
+./scripts/bootstrap-local.sh
+
+# Or install AI/ML piecemeal — KAgent is the expensive part
+./scripts/bootstrap-ai.sh --skip-kagent    # keeps MLflow + MCP servers
+
+# Drop the metrics stack                   → saves ~1.6 GB
+#   (Backstage's Grafana/DORA/FinOps tabs go blank)
+./scripts/bootstrap-local.sh --skip-obs
+
+# Drop admission control                   → saves ~0.6 GB
+#   (Kyverno + Gatekeeper; policy-violation demos stop working)
+./scripts/bootstrap-local.sh --skip-policies
+
+# Leanest useful cluster: Backstage + ArgoCD + hello-service
+./scripts/bootstrap-local.sh --skip-obs --skip-policies --skip-dora
+```
+
+If you're below the "core only" tier, don't run the platform locally — use a
+cloud dev box, or deploy to AWS with `./scripts/bootstrap.sh`.
+
 ## Bootstrap (~10–15 min)
 
 > **First time? Run `setup.sh` and nothing else.** From the repo root:
@@ -67,7 +145,7 @@ What it does (in order):
 ./scripts/bootstrap-local.sh --start-backstage      # start Backstage (requires cluster already running)
 ```
 
-Flags can be combined: `--skip-obs --skip-gitops` cuts bootstrap time roughly in half.
+Flags can be combined: `--skip-obs --skip-gitops` cuts bootstrap time roughly in half. For which flags to reach for on a resource-constrained machine, and how much each one saves, see [Running on less](#running-on-less).
 
 ## Access services
 
@@ -85,6 +163,9 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | **Grafana** | http://grafana.idp.local | `admin` / `admin` |
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |
 | **Prometheus** | http://prometheus.idp.local | — |
+| **AlertManager** | http://alertmanager.idp.local | — |
+| **Argo Rollouts** | http://argo-rollouts.idp.local | — (canary/progressive-delivery dashboard) |
+| **Tempo** | http://tempo.idp.local/v1/traces (OTLP HTTP ingest) · `/ready` for health | — (no UI — query traces via the Grafana Tempo datasource) |
 | **OpenCost** | http://opencost.idp.local | — |
 | **Pushgateway** | http://pushgateway.idp.local | — |
 | **KAgent UI** | http://kagent.idp.local | — (agent management) |

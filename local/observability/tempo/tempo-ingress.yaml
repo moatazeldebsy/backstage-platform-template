@@ -19,10 +19,20 @@ spec:
     - host: tempo.idp.local
       http:
         paths:
+          # OTLP HTTP ingest — the chart's otlp-http receiver listens on 4318
+          - path: /v1/traces
+            pathType: Prefix
+            backend:
+              service:
+                name: tempo
+                port:
+                  number: 4318
+          # Tempo HTTP API (/ready, /status, /api/traces/...) on 3200.
+          # Note: GET / itself is a 404 — Tempo serves no root page.
           - path: /
             pathType: Prefix
             backend:
               service:
                 name: tempo
                 port:
-                  number: 3100
+                  number: 3200
