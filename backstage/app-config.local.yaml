@@ -81,7 +81,12 @@ integrations:
 #
 # deploy-to-kind is intentionally NOT in all-templates.yaml (that file is shared
 # with AWS, and "deploy to a local Kind cluster" makes no sense there) — registered
-# here instead, local-only.
+# here instead, local-only. This is why the catalog holds 61 templates locally and
+# all-templates.yaml lists 60; the gap is by design, not drift.
+#
+# Any template registered this way should carry the `local-only` tag so it is
+# filterable and visibly distinct in the scaffolder list — the `local` tag means
+# only "works locally too" and is on ~35 templates that also ship to AWS.
 #
 # IMPORTANT: Backstage's config loader merges objects but *replaces* arrays
 # wholesale when a later config layer redefines the same key — it does not
