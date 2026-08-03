@@ -1,4 +1,7 @@
-import type { Options } from '@wdio/types';
+// wdio 9 moved the testrunner config shape: Options.Testrunner no longer
+// carries `capabilities`. WebdriverIO.Config (global, from @wdio/globals/types)
+// is the v9 equivalent.
+import '@wdio/globals/types';
 
 const DEVICE_FARM = process.env.DEVICE_FARM ?? '${{ values.deviceFarm }}';
 const APP_PATH = process.env.APP_PATH ?? 'path/to/your.app';
@@ -81,7 +84,7 @@ const hostname =
       ? 'ondemand.us-west-1.saucelabs.com'
       : '127.0.0.1';
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
   runner: 'local',
   specs: ['./tests/**/*.spec.ts'],
   framework: 'mocha',

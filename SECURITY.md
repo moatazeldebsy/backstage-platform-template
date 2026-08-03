@@ -62,8 +62,17 @@ This template ships with these security controls enabled by default:
 |---|---|---|---|
 | `react-router` / `react-router-dom` (`backstage/app`) | GHSA-wrjc-x8rr-h8h6, GHSA-337j-9hxr-rhxg, and the unpatched react-router-dom open-redirect advisory | Fix requires react-router **v7**, but the latest published `@backstage/frontend-defaults` and `@backstage/core-app-api` (as of 2026-07) still hard-pin `react-router-dom: ^6.30.2` as a peer dependency — Backstage hasn't shipped v7 support. Bumping independently breaks the frontend. | Backstage's frontend packages drop the react-router v6 peer dependency pin. |
 
+| `newman` / `newman-reporter-htmlextra` (`backstage/catalog/templates/newman-api-suite/skeleton`) | 19 alerts incl. GHSA-2w6w-674q-4c4q (handlebars, critical), plus lodash, node-forge, flatted, httpntlm | Both packages are already at their **latest** published versions (`newman@6.2.2`, `newman-reporter-htmlextra@1.23.1`) and the advisories are in their own dependency trees. npm's only offered "fix" is a **downgrade** to `newman@2.1.2` — four majors back — which is worse, not better. No upstream fix exists. Scope is a scaffolded API-test suite that runs Postman collections in CI, not a runtime service. | Postman ships a `newman` release that updates its handlebars/lodash chain, or the suite moves off newman. |
+| `brace-expansion` (`backstage/catalog/templates/appium-mobile-suite/skeleton`) | 1 alert, GHSA-rgw5-rvv9-x895 (high) | Only the nested `appium-uiautomator2-driver/node_modules/minimatch → brace-expansion@5.0.8` copy is affected; the root is already overridden to `5.0.9`. npm will not apply the override to that nested instance (verified with both `--package-lock-only` and a full `npm install`). Reachable only from Appium's own driver tooling in CI. | `appium-uiautomator2-driver` refreshes its `minimatch` pin, or npm resolves the nested override. |
+
 Dismissed on GitHub (Dependabot alerts #230, #233, #234, #235, #236) with reason
 `tolerable_risk` — see each alert's dismissal comment for the same rationale.
+
+**Never run `npm audit fix --force` in the scaffold skeletons.** For the test-suite
+templates npm's "fixes" are major *downgrades* to versions that merely predate the
+advisories — `appium@^3.6.0 → 1.22.3`, `newman@^6.2.2 → 2.1.2`,
+`@wdio/mocha-framework@^9.30.1 → 7.7.3`. Bump the direct dependency forward instead,
+and check `engines.node` against the `node-version` pinned in that skeleton's workflow.
 
 ## Scope
 
