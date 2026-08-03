@@ -35,14 +35,14 @@ jobs:
           gradle-version: '8.11.1'
 
       - name: Run tests
-        run: ./gradlew test
+        run: gradle test --no-daemon
 
       - name: Publish to GitHub Packages (tag push only)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
           GITHUB_ACTOR: ${{ '${{ github.actor }}' }}
-        run: ./gradlew publish
+        run: gradle publish --no-daemon
 
 {% elif values.platform === 'ios' %}
 jobs:

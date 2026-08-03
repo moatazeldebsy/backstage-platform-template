@@ -4,24 +4,39 @@ Logs parameters, metrics, and artifacts to MLflow.
 """
 
 import os
+
 import mlflow
+{%- if values.framework == 'sklearn' %}
 import mlflow.sklearn
-import numpy as np
+{%- elif values.framework == 'xgboost' %}
+import mlflow.xgboost
+import xgboost as xgb
+{%- endif %}
 from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, f1_score
 {%- if values.framework == 'sklearn' %}
 from sklearn.ensemble import RandomForestClassifier
-{%- elif values.framework == 'xgboost' %}
-import xgboost as xgb
-{%- elif values.framework == 'pytorch' %}
-import torch
-import torch.nn as nn
 {%- endif %}
+{%- if values.framework == 'sklearn' %}
+from sklearn.metrics import accuracy_score, f1_score
+{%- else %}
+from sklearn.metrics import accuracy_score
+{%- endif %}
+from sklearn.model_selection import train_test_split
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 EXPERIMENT_NAME = "${{ values.experimentName }}"
 REGISTER_MODEL = ${{ 'True' if values.registerModel else 'False' }}
+
+def build_params():
+    """Hyperparameters, read from the environment so CI and local runs can
+    override them without editing this file. Kept out of main() so it can be
+    unit-tested without an MLflow server."""
+    return {
+        "n_estimators": int(os.getenv("N_ESTIMATORS", "100")),
+        "max_depth": int(os.getenv("MAX_DEPTH", "5")),
+        "random_state": 42,
+    }
+
 
 def main():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -33,12 +48,7 @@ def main():
         X, y, test_size=0.2, random_state=42
     )
 
-    # Hyperparameters
-    params = {
-        "n_estimators": int(os.getenv("N_ESTIMATORS", "100")),
-        "max_depth": int(os.getenv("MAX_DEPTH", "5")),
-        "random_state": 42,
-    }
+    params = build_params()
 
     with mlflow.start_run(run_name="training-run"):
         mlflow.log_params(params)
