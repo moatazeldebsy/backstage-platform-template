@@ -165,7 +165,8 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | **Prometheus** | http://prometheus.idp.local | — |
 | **AlertManager** | http://alertmanager.idp.local | — |
 | **Argo Rollouts** | http://argo-rollouts.idp.local | — (canary/progressive-delivery dashboard) |
-| **Tempo** | http://tempo.idp.local/v1/traces (OTLP HTTP ingest) · `/ready` for health | — (no UI — query traces via the Grafana Tempo datasource) |
+| **Tempo** (traces) | View traces: http://grafana.idp.local/explore → select the **Tempo** datasource | — (Tempo has **no UI of its own**) |
+| ↳ Tempo OTLP ingest | `POST http://tempo.idp.local/v1/traces` — an API endpoint, not a page. Opening it in a browser returns `405 method not allowed, supported: [POST]`, and `/` returns `404 page not found`; both mean Tempo is up. Health: `/ready` | — |
 | **OpenCost** | http://opencost.idp.local | — |
 | **Pushgateway** | http://pushgateway.idp.local | — |
 | **KAgent UI** | http://kagent.idp.local | — (agent management) |

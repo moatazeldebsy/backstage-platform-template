@@ -165,7 +165,8 @@ _print_url_banner() {
   echo "║  Prometheus       http://prometheus.idp.local                             ║"
   echo "║  AlertManager     http://alertmanager.idp.local                           ║"
   echo "║  Pushgateway      http://pushgateway.idp.local                            ║"
-  echo "║  Tempo (traces)   http://tempo.idp.local/v1/traces  OTLP ingest           ║"
+  echo "║  Traces (Tempo)   http://grafana.idp.local/explore  → pick 'Tempo'        ║"
+  echo "║    └ OTLP ingest  tempo.idp.local/v1/traces  (POST only — no browser UI)  ║"
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   if kubectl get ns kagent &>/dev/null 2>&1; then
