@@ -129,7 +129,7 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 | `helm/values-tiers/` | Manual | Small/Medium/Large Helm value tiers for Backstage and ArgoCD |
 | `services/<svc>/` | Per-service CI | Legacy flat service values: `helm-values-local.yaml` (Kind), `helm-values-aws.yaml` (EKS) |
 | `teams/<teamName>/services/<svc>/` | Per-team CI | Team-scoped service values (auto-discovered by per-team ApplicationSet) |
-| `backstage/catalog/all-templates.yaml` | Both | Single Location file indexing all 50 templates; replaces 49 individual URL entries in `app-config.aws.yaml` |
+| `backstage/catalog/all-templates.yaml` | Both | Single Location file indexing all 60 templates; replaces the individual URL entries previously listed in `app-config.aws.yaml` |
 | `observability/` | Both | Shared alerting rules, Grafana dashboards (`grafana-helm-values.yaml` with sidecar enabled), DORA/tech-insights exporters |
 | `backstage/` | Both | Portal source, `app-config.yaml` (base), `app-config.local.yaml` (local overrides), catalog templates (all tagged `v1` + `blessed`/`advanced`) |
 | `scripts/` | Both | `bootstrap-local.sh` (local), `bootstrap.sh` (AWS), `bootstrap-ai.sh` (both), shared `lib.sh` |
@@ -224,7 +224,7 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
 | DORA exporter (local) | `local/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway; `team=` label via `TEAM_MAP` or GitHub topic |
 | DORA exporter (AWS) | `aws/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch; `TEAM_MAP` from Secrets Manager |
-| Template catalog | `backstage/catalog/all-templates.yaml` | Single Location file for all 50 templates (tagged `v1` + `blessed`/`advanced`) |
+| Template catalog | `backstage/catalog/all-templates.yaml` | Single Location file for all 60 templates (tagged `v1` + `blessed`/`advanced`) |
 | Permission framework | `backstage/app-config.aws.yaml` | `permission.enabled: true`; blocks unauthenticated scaffolder access |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 | material-table patch | `backstage/app/.yarn/patches/` | Fixes `uuid` v10 compatibility crash in catalog, api-docs, and techdocs pages |

@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
-A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
+A Backstage developer portal, golden-path Helm chart, 60 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
@@ -109,7 +109,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
 | **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local | requires `bootstrap-ai.sh` |
 | **IDP / QA / Contract MCP Servers** | `http://<name>-mcp-server.idp.local/healthz` | requires `bootstrap-ai.sh` |
-| **Tempo** / **Argo Rollouts** | http://tempo.idp.local/v1/traces (OTLP ingest, no UI) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
+| **Traces (Tempo)** / **Argo Rollouts** | Traces via Grafana Explore → Tempo datasource (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 ## Platform Summary
