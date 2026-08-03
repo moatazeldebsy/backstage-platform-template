@@ -100,7 +100,7 @@ Push to main (this repo)
         ├─ rubocop + bundler-audit
         ├─ rspec (70% coverage gate)
         ├─ docker build + smoke-test /healthz
-        ├─ docker push → GHCR (ghcr.io/${{ values.githubOrg }}/${{ values.name }})
+        ├─ docker push → GHCR (ghcr.io/${{ values.githubOrg }}/${{ values.repoName }})
         └─ updates helm-values-aws.yaml in backstage-platform-template  ← platform repo
               └─▶ ArgoCD detects the change and deploys to the Kind/EKS cluster
 ```

@@ -178,7 +178,7 @@ jobs:
         id: build
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
-          IMAGE=ghcr.io/${{ values.githubOrg }}/${{ values.name }}
+          IMAGE=ghcr.io/${{ values.githubOrg }}/${{ values.repoName }}
           docker build -t ${IMAGE}:${SHORT_SHA} -t ${IMAGE}:latest .
           docker push ${IMAGE}:${SHORT_SHA}
           docker push ${IMAGE}:latest

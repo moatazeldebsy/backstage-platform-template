@@ -157,6 +157,7 @@ spec:
         values:
           name: ${{ parameters.name }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
           owner: ${{ parameters.owner }}
           costCenter: ${{ parameters.costCenter }}
 
