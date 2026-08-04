@@ -3,8 +3,12 @@ kind: Template
 metadata:
   name: deploy-to-kind
   title: Deploy Service to local Kind cluster
-  description: Build and deploy an existing service to the local Kind cluster via Helm. Run this anytime after scaffolding.
+  description: "[Local only] Build and deploy an existing service to the local Kind cluster via Helm. Run this anytime after scaffolding. Not available on AWS."
   tags:
+    # local-only marks a template registered solely in app-config.local.yaml and
+    # deliberately absent from the AWS-shared catalog/all-templates.yaml. Distinct
+    # from the `local` tag, which 35 templates carry to mean "works locally too".
+    - local-only
     - deploy
     - local
     - kind

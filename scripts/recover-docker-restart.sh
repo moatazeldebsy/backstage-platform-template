@@ -315,6 +315,8 @@ check_url "http://hello-service.idp.local"    "hello-service"
 check_url "http://kagent.idp.local"           "KAgent UI"
 check_url "http://mlflow.idp.local"           "MLflow"
 check_url "http://opencost.idp.local"         "OpenCost"
+check_url "http://argo-rollouts.idp.local"    "Argo Rollouts"
+check_url "http://tempo.idp.local/ready"      "Tempo"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

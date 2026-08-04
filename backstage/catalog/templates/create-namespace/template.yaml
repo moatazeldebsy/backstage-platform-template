@@ -15,6 +15,7 @@ metadata:
     - self-service
     - local
     - v1
+    - blessed
 spec:
   owner: platform-team
   type: infrastructure

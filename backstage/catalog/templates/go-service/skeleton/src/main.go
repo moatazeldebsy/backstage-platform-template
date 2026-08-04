@@ -41,43 +41,65 @@ func init() {
 }
 
 func main() {
-	port := getEnv("PORT", "${{ values.port }}")
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if err := run(logger); err != nil {
+		logger.Error("server error", "error", err)
+		os.Exit(1)
+	}
+}
 
+// run starts the server and blocks until SIGINT/SIGTERM, then drains
+// in-flight requests. Split out of main() so tests can exercise the full
+// startup/shutdown path — main() itself stays too thin to need coverage.
+func run(logger *slog.Logger) error {
+	srv := newServer(getEnv("PORT", "${{ values.port }}"), logger)
+
+	errCh := make(chan error, 1)
+	go func() {
+		logger.Info("server starting", "addr", srv.Addr, "version", version)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-quit:
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	logger.Info("server shutting down")
+	return srv.Shutdown(ctx)
+}
+
+// newServer builds the HTTP server with the timeouts every golden-path
+// service is expected to set.
+func newServer(port string, logger *slog.Logger) *http.Server {
+	return &http.Server{
+		Addr:         ":" + port,
+		Handler:      loggingMiddleware(logger, newMux()),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+}
+
+// newMux registers every route the service exposes.
+func newMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
 	mux.HandleFunc("/healthz", handleLiveness)
 	mux.HandleFunc("/ready", handleReadiness)
 	mux.HandleFunc("/openapi.json", handleOpenAPI)
 	mux.Handle("/metrics", promhttp.Handler())
-
-	srv := &http.Server{
-		Addr:         ":" + port,
-		Handler:      loggingMiddleware(logger, mux),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	go func() {
-		logger.Info("server starting", "port", port, "version", version)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	logger.Info("server shutting down")
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Error("forced shutdown", "error", err)
-	}
+	return mux
 }
 
 func handleOpenAPI(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +139,9 @@ func handleReadiness(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 type responseWriter struct {

@@ -6,7 +6,7 @@
     "test": "cucumber-js --config cucumber.js"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^10.8.0",
+    "@cucumber/cucumber": "^12.2.0",
     "@types/node": "^20.0.0",
     "axios": "^1.7.0",
     "ts-node": "^10.9.0",

@@ -147,12 +147,22 @@ grafana:
   # Grafana needs ~350 Mi at steady state with dashboards loaded; give it 512 Mi
   # to avoid OOMKill during startup (which causes the readiness probe cascade and
   # the resulting 503 from nginx until the pod restarts and becomes ready again).
+  #
+  # CPU: the earlier 300m limit was the real cause of the *steady-state* 503s that
+  # the lenient probes below could not paper over. Grafana idles at ~113m but
+  # bursts well past 300m whenever dashboards render or alert rules evaluate, so
+  # cgroup CPU throttling kicked in on ~36% of periods (nr_throttled 2010/5520,
+  # 200s throttled). A throttled Grafana cannot answer /api/health inside the 15s
+  # probe timeout, so kubelet killed it on liveness (exit 137) and nginx served
+  # 503 until it came back. Limit raised to 1500m — same ceiling Prometheus gets
+  # above — while the request stays at 50m, so this costs nothing at scheduling
+  # time on a capacity-constrained Kind node; it only stops the throttling.
   resources:
     requests:
       cpu: 50m
       memory: 256Mi
     limits:
-      cpu: 300m
+      cpu: 1500m
       memory: 512Mi
   # Lenient probes — Grafana can be slow to start when loading dashboard
   # ConfigMaps. The previous grace window (60s initial delay + 10*10s = 160s

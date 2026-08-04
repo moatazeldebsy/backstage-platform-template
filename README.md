@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
-A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
+A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
@@ -41,7 +41,7 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
-| **Software templates** | 60 templates: 10 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, Team namespace, Create namespace, Add-secret, Decommission) + 50 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` |
+| **Software templates** | 61 templates: 10 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, Team namespace, Create namespace, Add-secret, Decommission) + 51 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (60 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
@@ -63,6 +63,8 @@ A Backstage developer portal, golden-path Helm chart, 51 scaffold templates (ser
 |---|---|
 | **Local (Kind)** | `git`, `docker`, `kind` ≥ 0.27, `kubectl`, `helm` ≥ 3.14 — `brew install kind kubectl helm docker` on macOS |
 | **AWS** | Everything above, plus `aws` CLI (run `aws configure`), `terraform` ≥ 1.5, `jq` |
+
+**Local machine sizing**: the full stack is ~90 pods using **~3.6 CPU cores and ~9 GB** once settled. Give Docker/Rancher Desktop **8 CPU / 16 GB** for a comfortable run (6 CPU / 12 GB is the working minimum, and it's tight). Short on resources? Skip the AI/ML layer — it alone is ~2.9 GB — or pass `--skip-obs --skip-policies`. Sizing tiers, the symptoms of an under-resourced cluster, and how to trim: [Machine requirements](docs/local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them).
 
 `go` and Node.js are only needed if you want to build the `idp` CLI / run Backstage outside Docker — `setup.sh` builds the CLI for you automatically if Go is present, and skips it with a warning otherwise. Full checklists: [Local Setup](docs/local-setup.md#prerequisites) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md#required-tools).
 
@@ -107,7 +109,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
 | **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local | requires `bootstrap-ai.sh` |
 | **IDP / QA / Contract MCP Servers** | `http://<name>-mcp-server.idp.local/healthz` | requires `bootstrap-ai.sh` |
-| **Tempo** / **Argo Rollouts** | http://tempo.idp.local · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
+| **Traces (Tempo)** / **Argo Rollouts** | Traces via Grafana Explore → Tempo datasource (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 ## Platform Summary
@@ -137,7 +139,7 @@ Full layer-by-layer breakdown: [docs/architecture.md](docs/architecture.md).
 | Channel | Who | Entry point |
 |---------|-----|-------------|
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
-| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 60 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 61 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
 
 ## Project Structure

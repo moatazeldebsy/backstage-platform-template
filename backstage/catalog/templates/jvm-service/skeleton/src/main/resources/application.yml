@@ -6,6 +6,14 @@ spring:
     name: ${{ values.name }}
 
 management:
+  # Without this the Prometheus export auto-configuration never runs
+  # (@ConditionalOnEnabledMetricsExport treats the default as false), so
+  # /actuator/prometheus 404s even though the registry is on the classpath
+  # and the endpoint is listed in exposure.include below.
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   endpoints:
     web:
       exposure:

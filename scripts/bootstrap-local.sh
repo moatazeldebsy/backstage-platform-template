@@ -153,12 +153,20 @@ _print_url_banner() {
   echo "║  ArgoCD           http://argocd.idp.local                                ║"
     fi
   fi
+  if kubectl get ns argo-rollouts &>/dev/null 2>&1; then
+  echo "║  Argo Rollouts    http://argo-rollouts.idp.local                          ║"
+  fi
+  if kubectl get deploy argo-workflows-server -n argo-workflows &>/dev/null 2>&1; then
+  echo "║  Argo Workflows   http://argo-workflows.idp.local                         ║"
+  fi
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Observability                                                            ║"
   echo "║  Grafana          http://grafana.idp.local         admin/admin            ║"
   echo "║  Prometheus       http://prometheus.idp.local                             ║"
   echo "║  AlertManager     http://alertmanager.idp.local                           ║"
   echo "║  Pushgateway      http://pushgateway.idp.local                            ║"
+  echo "║  Traces (Tempo)   http://grafana.idp.local/explore  → pick 'Tempo'        ║"
+  echo "║    └ OTLP ingest  tempo.idp.local/v1/traces  (POST only — no browser UI)  ║"
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   if kubectl get ns kagent &>/dev/null 2>&1; then

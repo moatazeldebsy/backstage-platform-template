@@ -8,7 +8,7 @@
     "report": "newman run collections/${{ values.name }}.postman_collection.json -e environments/dev.postman_environment.json --reporters htmlextra --reporter-htmlextra-export reports/report.html && open reports/report.html"
   },
   "devDependencies": {
-    "newman": "^6.1.0",
-    "newman-reporter-htmlextra": "^1.23.0"
+    "newman": "^6.2.2",
+    "newman-reporter-htmlextra": "^1.23.1"
   }
 }

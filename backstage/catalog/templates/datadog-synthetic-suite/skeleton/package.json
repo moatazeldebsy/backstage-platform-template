@@ -9,6 +9,6 @@
     "test:browser": "datadog-ci synthetics run-tests --config datadog-ci.json --files 'synthetics/browser-*.json'"
   },
   "devDependencies": {
-    "@datadog/datadog-ci": "^2.18.0"
+    "@datadog/datadog-ci": "^5.22.0"
   }
 }
