@@ -22,17 +22,33 @@ spec:
       provider:
         prometheus:
           address: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+          # The label is `status_code`, not `status` — that is what the golden-path
+          # chart's services actually emit. With `status` the 5xx selector matched
+          # nothing, so the numerator was always empty.
+          #
+          # `or vector(0)` is required for the healthy case: a service with zero
+          # 5xx has no matching series at all, so the division returned an empty
+          # result rather than 0. Argo Rollouts treats an empty result as
+          # Inconclusive, which pauses the canary indefinitely — a correctly
+          # behaving service could never be promoted.
+          #
+          # clamp_min on the denominator avoids a divide-by-zero (also empty) in
+          # the window before any traffic has been scraped.
           query: |
-            sum(rate(http_requests_total{
-              namespace="{{args.namespace}}",
-              service="{{args.service-name}}",
-              status=~"5.."
-            }[5m]))
+            (
+              sum(rate(http_requests_total{
+                namespace="{{args.namespace}}",
+                service="{{args.service-name}}",
+                status_code=~"5.."
+              }[5m])) or vector(0)
+            )
             /
-            sum(rate(http_requests_total{
-              namespace="{{args.namespace}}",
-              service="{{args.service-name}}"
-            }[5m]))
+            clamp_min(
+              sum(rate(http_requests_total{
+                namespace="{{args.namespace}}",
+                service="{{args.service-name}}"
+              }[5m])), 0.001
+            )
 
     - name: p99-latency
       interval: 30s
@@ -42,6 +58,15 @@ spec:
       provider:
         prometheus:
           address: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+          # `or vector(0)` for the same reason as error-rate above: with no
+          # scraped samples histogram_quantile yields an empty result, which
+          # Argo Rollouts scores Inconclusive and the canary stalls. No traffic
+          # means nothing to judge, so treat it as passing rather than blocking.
+          #
+          # NOTE: 0.5s is a production threshold. On a resource-constrained local
+          # Kind cluster p99 is routinely above it (~0.8s observed), because the
+          # only traffic is health probes landing in coarse histogram buckets. A
+          # canary demo run locally can legitimately trip this gate and roll back.
           query: |
             histogram_quantile(0.99,
               sum by (le) (
@@ -50,4 +75,4 @@ spec:
                   service="{{args.service-name}}"
                 }[5m])
               )
-            )
+            ) or vector(0)
