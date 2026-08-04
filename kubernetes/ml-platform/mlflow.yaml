@@ -61,6 +61,19 @@ spec:
               port: 5000
             initialDelaySeconds: 10
             periodSeconds: 10
+          # MLflow initialises its backing store on first boot, which on a
+          # resource-constrained local cluster can take well over the ~90s
+          # (initialDelay 30 + 3 × period 20) that livenessProbe alone allowed —
+          # the kubelet then killed it mid-startup and it restart-looped. A
+          # startupProbe gives it up to 5 minutes to come up, and liveness does
+          # not begin evaluating until startup succeeds, so steady-state
+          # failure detection is unchanged.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health
