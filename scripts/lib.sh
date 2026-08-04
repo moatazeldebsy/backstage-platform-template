@@ -946,6 +946,10 @@ app:
         disabled: ${disabled}
     - nav-item:custom-pages/approvals:
         disabled: ${disabled}
+    - page:custom-pages/kagent-platform:
+        disabled: ${disabled}
+    - nav-item:custom-pages/kagent-platform:
+        disabled: ${disabled}
 
 aiStack:
   enabled: ${enabled}
