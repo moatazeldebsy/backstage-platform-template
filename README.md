@@ -132,6 +132,15 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 
 Full layer-by-layer breakdown: [docs/architecture.md](docs/architecture.md).
 
+### AWS Architecture — Multi-Region (V2, opt-in)
+
+Active-standby across eu-central-1 (primary) and us-east-1 (warm standby), deployed with
+`./scripts/bootstrap-multiregion.sh`. Single-region setups are unaffected.
+
+![AWS V2 — Active-Standby Multi-Region](docs/assets/aws-architecture-v2.jpg)
+
+Topology, DR tiers, and the six rollout phases: [docs/multi-region.md](docs/multi-region.md).
+
 ## How It Works — Interaction Flows
 
 ![Interaction Flows](docs/assets/interaction-flows.jpg)

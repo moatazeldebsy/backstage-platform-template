@@ -6,6 +6,8 @@
 > are fully unaffected — no changes to `bootstrap-local.sh` or `bootstrap.sh` are required.
 > To deploy multi-region, use `./scripts/bootstrap-multiregion.sh` instead of `bootstrap.sh`.
 
+![AWS V2 — Active-Standby Multi-Region](assets/aws-architecture-v2.jpg)
+
 ## Topology
 
 | Dimension | Value |
