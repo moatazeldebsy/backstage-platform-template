@@ -14,6 +14,18 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 0
+    # react-router is held at v6 on purpose — see the Known Accepted Risks
+    # table in SECURITY.md. `open-pull-requests-limit: 0` does not suppress
+    # *security* update PRs, so without this ignore Dependabot keeps
+    # reopening an unmergeable bump (last one: #195).
+    #
+    # Such a PR cannot work even if rebased: the root package.json pins
+    # `react-router: ^6.30.4` under `resolutions`, so a bumped dependency
+    # declaration resolves back to 6.x anyway (verified — 0 lockfile entries
+    # for react-router 8 after a real yarn install).
+    ignore:
+      - dependency-name: react-router
+      - dependency-name: react-router-dom
 
   - package-ecosystem: npm
     directory: /services/idp-mcp-server
