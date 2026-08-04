@@ -934,6 +934,16 @@ write_backstage_ai_overlay() {
 # Gitignored. Hand edits are lost on the next bootstrap run.
 app:
   extensions:
+    # NOT AI-related, and NOT optional. This list replaces the app.extensions
+    # array from *every* earlier layer (base app-config.yaml AND
+    # app-config.local.yaml), because Backstage replaces arrays rather than
+    # merging them. app-config.local.yaml disables page:kubernetes — the
+    # standalone Kubernetes route renders the entity Kubernetes tab outside any
+    # entity context and dies with "Entity context is not available". Dropping
+    # the entry here silently brings that crash back, so it is repeated.
+    # Anything added to an earlier layer's app.extensions must be added here too.
+    - page:kubernetes:
+        disabled: true
     - page:custom-pages/ai-assistant:
         disabled: ${disabled}
     - nav-item:custom-pages/ai-assistant:
