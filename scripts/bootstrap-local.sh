@@ -912,8 +912,12 @@ timer_start "5. Prometheus + Grafana"
 if ! $SKIP_OBS; then
   log "Step 5: Installing Prometheus + Grafana (kube-prometheus-stack)..."
 
-  # Create Grafana dashboard ConfigMaps
-  kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+  # Create Grafana dashboard ConfigMaps.
+  # `kubectl create ns ... | kubectl apply` would apply a *bare* Namespace and
+  # strip the Pod Security labels Step 3 set from kubernetes/namespaces/namespaces.yaml
+  # (apply prunes fields absent from the new last-applied-configuration).
+  # Only create it when missing; Step 3 owns its labels.
+  kubectl get namespace monitoring &>/dev/null || kubectl create namespace monitoring
   kubectl create configmap grafana-dashboards-idp \
     --from-file="$(dirname "$0")/../observability/grafana/dashboards/idp/" \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
@@ -1017,7 +1021,8 @@ if ! $SKIP_OBS; then
 
   (
     set -e
-    kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+    # Create-if-missing rather than apply, so any labels declared elsewhere survive. See Step 5.
+    kubectl get namespace argo-rollouts &>/dev/null || kubectl create namespace argo-rollouts
     helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
       --namespace argo-rollouts \
       --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
