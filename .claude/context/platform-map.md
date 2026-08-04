@@ -70,7 +70,7 @@ Only **contract-mcp-server** has a CI job. The other seven MCP servers (`idp`, `
 | Workflow | Fires on | Guards |
 |---|---|---|
 | `codeql.yml` | push/PR to `backstage/app/`, `cli/`, `services/`; weekly Monday 06:00 | SAST across JS/TS + Go |
-| `build-and-deploy.yml` | push/PR touching `services/**` | Per-service image build → ECR → EKS deploy (`idp-mvp`, `us-east-1`) |
+| `build-and-deploy.yml` | push/PR touching `services/**` | Per-service image build → ECR → EKS deploy (cluster/region from `.idp-config.env`) |
 | `contract-check.yml` | PR touching `openapi.*`, `api/**`, `src/**` | Validates a service's OpenAPI spec against the contract registry; posts a PR comment |
 | `scaffold.yml` | push to `main` touching `kubernetes/teams/**`, `backstage/catalog/groups/**` | Applies scaffolder-generated namespaces/RBAC/ArgoCD projects to the cluster |
 | `eval.yml` | push/PR touching `test-suites/test-deepeval/**`, `kubernetes/kagent/idp-agent.yaml` | DeepEval LLM quality gate on the KAgent agent |

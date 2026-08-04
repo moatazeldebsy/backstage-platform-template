@@ -70,7 +70,7 @@ cardinality), `idp_test_pass_total`, `idp_test_fail_total`. Surfaced in the QA G
 dashboard.
 
 Needs a GitHub token with `actions:read` — local: `GITHUB_TOKEN` in `local/.env` before
-`bootstrap-local.sh`; AWS: `GITHUB_TOKEN` in the `idp-mvp/backstage` Secrets Manager
+`bootstrap-local.sh`; AWS: `GITHUB_TOKEN` in the `<cluster-name>/backstage` Secrets Manager
 entry. **A flaky-count of zero usually means the token is missing, not that the tests are
 clean** — check that first. Quarantine procedure: `docs/flaky-test-quarantine.md`.
 
