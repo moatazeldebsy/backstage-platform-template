@@ -912,8 +912,12 @@ timer_start "5. Prometheus + Grafana"
 if ! $SKIP_OBS; then
   log "Step 5: Installing Prometheus + Grafana (kube-prometheus-stack)..."
 
-  # Create Grafana dashboard ConfigMaps
-  kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+  # Create Grafana dashboard ConfigMaps.
+  # `kubectl create ns ... | kubectl apply` would apply a *bare* Namespace and
+  # strip the Pod Security labels Step 3 set from kubernetes/namespaces/namespaces.yaml
+  # (apply prunes fields absent from the new last-applied-configuration).
+  # Only create it when missing; Step 3 owns its labels.
+  kubectl get namespace monitoring &>/dev/null || kubectl create namespace monitoring
   kubectl create configmap grafana-dashboards-idp \
     --from-file="$(dirname "$0")/../observability/grafana/dashboards/idp/" \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
@@ -1017,7 +1021,8 @@ if ! $SKIP_OBS; then
 
   (
     set -e
-    kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+    # Create-if-missing rather than apply, so any labels declared elsewhere survive. See Step 5.
+    kubectl get namespace argo-rollouts &>/dev/null || kubectl create namespace argo-rollouts
     helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
       --namespace argo-rollouts \
       --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
@@ -1485,6 +1490,12 @@ if ! $SKIP_OBS; then
     set -e
     log "Step 11a: Deploying Flaky-Test Exporter CronJob..."
     GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
+    if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+      # local/.env is never sourced into this shell (load_idp_config only reads
+      # .idp-config.env, which has no token), so read it the same way Step 10b
+      # and Step 12 do.
+      GH_TOKEN_FOR_FLAKE=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
     if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
       warn "  GITHUB_TOKEN not set — Flaky-Test Exporter will deploy but skip every tick."
       warn "  Set GITHUB_TOKEN in local/.env (needs 'actions:read' on service repos) and re-apply."
