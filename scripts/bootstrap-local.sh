@@ -1486,6 +1486,12 @@ if ! $SKIP_OBS; then
     log "Step 11a: Deploying Flaky-Test Exporter CronJob..."
     GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
     if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+      # local/.env is never sourced into this shell (load_idp_config only reads
+      # .idp-config.env, which has no token), so read it the same way Step 10b
+      # and Step 12 do.
+      GH_TOKEN_FOR_FLAKE=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
+    if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
       warn "  GITHUB_TOKEN not set — Flaky-Test Exporter will deploy but skip every tick."
       warn "  Set GITHUB_TOKEN in local/.env (needs 'actions:read' on service repos) and re-apply."
       GH_TOKEN_FOR_FLAKE="placeholder-set-via-local-env"
