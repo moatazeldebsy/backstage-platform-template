@@ -926,8 +926,12 @@ timer_start "5. Prometheus + Grafana"
 if ! $SKIP_OBS; then
   log "Step 5: Installing Prometheus + Grafana (kube-prometheus-stack)..."
 
-  # Create Grafana dashboard ConfigMaps
-  kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+  # Create Grafana dashboard ConfigMaps.
+  # `kubectl create ns ... | kubectl apply` would apply a *bare* Namespace and
+  # strip the Pod Security labels Step 3 set from kubernetes/namespaces/namespaces.yaml
+  # (apply prunes fields absent from the new last-applied-configuration).
+  # Only create it when missing; Step 3 owns its labels.
+  kubectl get namespace monitoring &>/dev/null || kubectl create namespace monitoring
   kubectl create configmap grafana-dashboards-idp \
     --from-file="$(dirname "$0")/../observability/grafana/dashboards/idp/" \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
@@ -1031,7 +1035,8 @@ if ! $SKIP_OBS; then
 
   (
     set -e
-    kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+    # Create-if-missing rather than apply, so any labels declared elsewhere survive. See Step 5.
+    kubectl get namespace argo-rollouts &>/dev/null || kubectl create namespace argo-rollouts
     helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
       --namespace argo-rollouts \
       --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
@@ -1500,6 +1505,12 @@ if ! $SKIP_OBS; then
     log "Step 11a: Deploying Flaky-Test Exporter CronJob..."
     GH_TOKEN_FOR_FLAKE="${GITHUB_TOKEN:-}"
     if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
+      # local/.env is never sourced into this shell (load_idp_config only reads
+      # .idp-config.env, which has no token), so read it the same way Step 10b
+      # and Step 12 do.
+      GH_TOKEN_FOR_FLAKE=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
+    if [[ -z "$GH_TOKEN_FOR_FLAKE" ]]; then
       warn "  GITHUB_TOKEN not set — Flaky-Test Exporter will deploy but skip every tick."
       warn "  Set GITHUB_TOKEN in local/.env (needs 'actions:read' on service repos) and re-apply."
       GH_TOKEN_FOR_FLAKE="placeholder-set-via-local-env"
@@ -1559,6 +1570,10 @@ if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
   SLACK_WEBHOOK_URL=$(grep -E '^SLACK_WEBHOOK_URL=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
 fi
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+  # Not `( ... ) || warn`: bash ignores the subshell's `set -e` when the
+  # subshell is the left side of an AND-OR list, so a failing kubectl would
+  # fall through to the success log. Toggle errexit around it and test $?.
+  set +e
   (
     set -e
     kubectl create secret generic alertmanager-slack-webhook \
@@ -1566,7 +1581,10 @@ if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
     kubectl apply -f "${ROOT_DIR}/observability/alertmanager/alertmanager-config.yaml"
     log "AlertManager Slack webhook configured."
-  ) || warn "Step 12 (AlertManager) failed — skipping. Continuing..."
+  )
+  _step12_rc=$?
+  set -e
+  [[ $_step12_rc -eq 0 ]] || warn "Step 12 (AlertManager) failed — skipping. Continuing..."
 else
   warn "SLACK_WEBHOOK_URL not set — skipping AlertManager Slack routing."
 fi
@@ -1586,6 +1604,8 @@ timer_end "6. Images (join)"
 # ── Step 13: ArgoCD ApplicationSet ───────────────────────────────────────────
 timer_start "13. ApplicationSet"
 if ! $SKIP_GITOPS; then
+  # See Step 12 for why this is not `( ... ) || warn`.
+  set +e
   (
     set -e
     log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
@@ -1607,7 +1627,10 @@ if ! $SKIP_GITOPS; then
 
     kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
     log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
-  ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
+  )
+  _step13_rc=$?
+  set -e
+  [[ $_step13_rc -eq 0 ]] || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
 fi
 
 timer_end "13. ApplicationSet"

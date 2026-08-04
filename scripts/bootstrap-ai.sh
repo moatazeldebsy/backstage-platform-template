@@ -797,16 +797,39 @@ else
       --patch='{"data":{"DATABASE_VECTOR_ENABLED":"true"}}'
 
     # Wait for postgres to be accepting connections, then create the extension.
-    PG_POD=$(kubectl get pod -n kagent --no-headers | awk '/postgresql/{print $1;exit}')
-    for i in $(seq 1 20); do
-      if kubectl exec -n kagent "$PG_POD" -- psql -U kagent -d kagent -c "SELECT 1" &>/dev/null 2>&1; then
+    # Re-resolve the pod on *every* attempt rather than capturing it up front:
+    # the pgvector rollout above may still be replacing the pod, and a name
+    # captured too early points at the pre-patch postgres image, where
+    # CREATE EXTENSION fails with `extension "vector" is not available`.
+    PG_POD=""
+    for i in $(seq 1 40); do
+      PG_POD=$(kubectl get pod -n kagent --no-headers 2>/dev/null \
+        | awk '/postgresql/ && /Running/ {print $1; exit}')
+      if [[ -n "$PG_POD" ]] && kubectl exec -n kagent "$PG_POD" -- \
+           psql -U kagent -d kagent -c "SELECT 1" &>/dev/null; then
         break
       fi
       sleep 3
     done
-    kubectl exec -n kagent "$PG_POD" -- \
-      psql -U kagent -d kagent -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>&1 || true
-    check "pgvector extension enabled → memory table will be created on controller restart"
+
+    _pgvector_hint="kubectl exec -n kagent <pg-pod> -- psql -U kagent -d kagent -c 'CREATE EXTENSION vector;'"
+    if [[ -z "$PG_POD" ]]; then
+      warn "kagent-postgresql never became ready — pgvector extension NOT created. kagent-controller will crash-loop on 'vector migrations require pgvector'. Retry: ${_pgvector_hint}"
+    else
+      kubectl exec -n kagent "$PG_POD" -- \
+        psql -U kagent -d kagent -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>&1 || true
+      # Verify instead of assuming. The CREATE above is best-effort, and
+      # reporting success without checking is what previously printed
+      # "✓ pgvector extension enabled" over a failed CREATE, leaving the
+      # controller to crash-loop until someone read its logs.
+      if kubectl exec -n kagent "$PG_POD" -- \
+           psql -U kagent -d kagent -tAc \
+           "SELECT 1 FROM pg_extension WHERE extname='vector'" 2>/dev/null | grep -q 1; then
+        check "pgvector extension enabled → memory table will be created on controller restart"
+      else
+        warn "pgvector extension NOT enabled on ${PG_POD} — kagent-controller will crash-loop on 'vector migrations require pgvector'. Confirm the pod runs pgvector/pgvector:pg18, then: ${_pgvector_hint}"
+      fi
+    fi
   fi
 
   timer_end "4. KAgent install + patches"
@@ -1164,6 +1187,8 @@ else
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
 
+    # `set +e` around the subshell is load-bearing: see the NOTE after it.
+    set +e
     (
       set -e
       # No build here: the images were built by the background pass launched in
@@ -1226,14 +1251,25 @@ else
         check "${SVC} deployed to services-dev"
       fi
     )
+    _svc_rc=$?
+    set -e
     # NOTE: deliberately not `(...) || warn ...` — wrapping a `set -e` subshell
     # directly in a `||`/`if` test disables `-e` for the *entire* subshell (a
     # well-known bash pitfall: bash sees the subshell's exit status is already
     # being checked by the caller, so it stops self-terminating on internal
     # command failures). That silently swallowed real docker/helm/kubectl
     # failures here before, letting `check "... deployed"` print a false
-    # success. Capturing $? as its own statement keeps `-e` active inside.
-    _svc_rc=$?
+    # success.
+    #
+    # Capturing $? as its own statement keeps `-e` active inside the subshell,
+    # but on its own it is not enough: this script runs under a top-level
+    # `set -euo pipefail`, so a failing *standalone* subshell aborts the whole
+    # script before `_svc_rc=$?` is ever reached. That is not theoretical — a
+    # Kyverno webhook outage failed agent-event-router (4th of 7 services) and
+    # killed the run, silently skipping github/argocd/cost-mcp-server and every
+    # step after, with no warning printed. Hence the `set +e` above: it keeps
+    # errexit off for the duration of the subshell only, so the failure lands
+    # here as a warning and the loop carries on to the remaining services.
     if [[ $_svc_rc -ne 0 ]]; then
       warn "${SVC} build/deploy failed (exit ${_svc_rc}) — check: kubectl get po -n services-dev"
     fi
