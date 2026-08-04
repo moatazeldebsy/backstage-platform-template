@@ -44,3 +44,22 @@ podLabels:
 replicaCount: 1
 autoscaling:
   enabled: false
+
+# Progressive delivery: render an Argo Rollout instead of a Deployment, so the
+# reference service demonstrates the canary path the golden path provides.
+# Requires the Argo Rollouts controller, which bootstrap-local.sh installs.
+#
+# Pause durations are deliberately short here. The chart defaults (2m/5m) are
+# right for production but make a local walkthrough a seven-minute wait; the
+# analysis gates still run in full between steps.
+#
+# Traffic matters: the p99-latency gate reads a 5m histogram window, and on an
+# idle service the only samples are health probes landing in coarse buckets,
+# which pushes p99 above the 0.5s threshold and fails the canary. Under real
+# traffic p99 measured 0.09s. Send load while a canary is in progress.
+rollout:
+  enabled: true
+  canary:
+    initialWeight: 20
+    step1PauseDuration: "30s"
+    step2PauseDuration: "30s"
