@@ -1556,6 +1556,10 @@ if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
   SLACK_WEBHOOK_URL=$(grep -E '^SLACK_WEBHOOK_URL=' "${ROOT_DIR}/local/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
 fi
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+  # Not `( ... ) || warn`: bash ignores the subshell's `set -e` when the
+  # subshell is the left side of an AND-OR list, so a failing kubectl would
+  # fall through to the success log. Toggle errexit around it and test $?.
+  set +e
   (
     set -e
     kubectl create secret generic alertmanager-slack-webhook \
@@ -1563,7 +1567,10 @@ if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
     kubectl apply -f "${ROOT_DIR}/observability/alertmanager/alertmanager-config.yaml"
     log "AlertManager Slack webhook configured."
-  ) || warn "Step 12 (AlertManager) failed — skipping. Continuing..."
+  )
+  _step12_rc=$?
+  set -e
+  [[ $_step12_rc -eq 0 ]] || warn "Step 12 (AlertManager) failed — skipping. Continuing..."
 else
   warn "SLACK_WEBHOOK_URL not set — skipping AlertManager Slack routing."
 fi
@@ -1583,6 +1590,8 @@ timer_end "6. Images (join)"
 # ── Step 13: ArgoCD ApplicationSet ───────────────────────────────────────────
 timer_start "13. ApplicationSet"
 if ! $SKIP_GITOPS; then
+  # See Step 12 for why this is not `( ... ) || warn`.
+  set +e
   (
     set -e
     log "Step 13: Applying ArgoCD ApplicationSet (all environments)..."
@@ -1604,7 +1613,10 @@ if ! $SKIP_GITOPS; then
 
     kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
     log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
-  ) || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
+  )
+  _step13_rc=$?
+  set -e
+  [[ $_step13_rc -eq 0 ]] || warn "Step 13 (ApplicationSet) failed — ArgoCD may not be ready yet. Re-run bootstrap. Continuing..."
 fi
 
 timer_end "13. ApplicationSet"
