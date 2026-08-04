@@ -105,13 +105,16 @@ spec:
           severity: '{{ if eq .CommonLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
           description: '{{ .CommonAnnotations.summary }}'
           details:
-            namespace: '{{ .CommonLabels.namespace }}'
-            service: '{{ .CommonLabels.service }}'
-            runbook: '{{ .CommonAnnotations.runbook_url }}'
+            - key: namespace
+              value: '{{ .CommonLabels.namespace }}'
+            - key: service
+              value: '{{ .CommonLabels.service }}'
+            - key: runbook
+              value: '{{ .CommonAnnotations.runbook_url }}'
           sendResolved: true
-          links:
+          pagerDutyLinkConfigs:
             - href: '{{ .CommonAnnotations.runbook_url }}'
-              text: Runbook
+              alt: Runbook
 
     # Agent event router — forwards firing alerts to the AI triage agent via A2A,
     # and resolved alerts so it can close out any incident issue it auto-created.

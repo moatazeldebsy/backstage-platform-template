@@ -88,6 +88,11 @@ class ServiceFlakiness:
     repo: str            # "owner/name"
     results: dict[str, TestResult] = field(default_factory=dict)
     runs_observed: int = 0
+    # True when GitHub could not be queried at all (auth/network), as opposed to
+    # a healthy repo that simply has no flaky tests. Zeroed metrics for the two
+    # cases are indistinguishable downstream, so the caller checks this before
+    # publishing anything.
+    fetch_failed: bool = False
 
     def record(self, test_id: str, suite: str, outcome: str) -> None:
         tr = self.results.setdefault(test_id, TestResult(test_id=test_id, suite=suite))
@@ -214,6 +219,7 @@ def collect() -> list[ServiceFlakiness]:
             runs = list_recent_runs(repo)
         except Exception as e:
             log.warning("Skipping %s (%s): list_recent_runs failed: %s", name, repo, e)
+            sf.fetch_failed = True
             out.append(sf)
             continue
 
@@ -345,6 +351,18 @@ def main() -> None:
     if not services:
         log.warning("No services to report on")
         return
+
+    # Every repo failed to fetch — almost always a bad or placeholder token.
+    # Publishing here would report zero flakiness for every service, which reads
+    # as "nothing is flaky" rather than "no data was collected". Fail loudly so
+    # the CronJob surfaces it instead of silently poisoning the dashboard.
+    if all(s.fetch_failed for s in services):
+        log.error(
+            "All %d services failed to fetch from GitHub (check GITHUB_TOKEN "
+            "scopes: repo + actions:read) — refusing to publish empty metrics",
+            len(services),
+        )
+        sys.exit(1)
 
     if MODE == "cloudwatch":
         push_to_cloudwatch(services)
