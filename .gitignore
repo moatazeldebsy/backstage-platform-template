@@ -1,5 +1,13 @@
 CLAUDE.md
-.claude/
+
+# Claude Code: ignore local/session state, but ship the committed platform skills
+# (.claude/skills/, .claude/agents/, .claude/context/, .claude/settings.json).
+# settings.local.json, worktrees/ and scheduled_tasks.lock stay ignored.
+.claude/*
+!.claude/skills/
+!.claude/agents/
+!.claude/context/
+!.claude/settings.json
 
 # Terraform
 terraform/.terraform/
@@ -63,8 +71,6 @@ kubeconfig
 
 .playwright-cli/
 .playwright-mcp/
-
-.claude/
 
 # MkDocs build output
 site/
