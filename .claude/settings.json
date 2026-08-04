@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(helm lint:*)",
+      "Bash(helm template:*)",
+      "Bash(kubeconform:*)",
+      "Bash(terraform fmt:*)",
+      "Bash(terraform validate:*)",
+      "Bash(terraform init -backend=false:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(go test:*)",
+      "Bash(yarn lint:*)",
+      "Bash(yarn test:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx jest:*)",
+      "Bash(tsc:*)",
+      "Bash(python3 scripts/validate-catalog-templates.py)",
+      "Bash(python -m py_compile:*)",
+      "Bash(bash -n:*)",
+      "Bash(shellcheck:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status)"
+    ]
+  }
+}
