@@ -22,4 +22,26 @@ export interface Config {
      */
     kagent?: string;
   };
+
+  /**
+   * Whether the AI/ML layer (KAgent, MLflow, the MCP servers, and the ADP
+   * approval-service) is actually deployed to this cluster.
+   *
+   * Defaults to false: `bootstrap-local.sh` alone does not install any of it,
+   * so a stock local platform must not advertise AI Assistant / Agent
+   * Approvals / KAgent links that dead-end. `bootstrap-ai.sh` flips this to
+   * true (and `--destroy` flips it back) via the generated
+   * `local/backstage/app-config.ai.yaml` overlay.
+   *
+   * Page and nav-item visibility is handled separately, by the `app.extensions`
+   * disable list in app-config.yaml. This flag covers the links that are
+   * hardcoded into the custom Home/Support/Learning-Center pages, which the
+   * extension system cannot reach.
+   */
+  aiStack?: {
+    /**
+     * @visibility frontend
+     */
+    enabled?: boolean;
+  };
 }

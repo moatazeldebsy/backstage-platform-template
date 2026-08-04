@@ -11,16 +11,37 @@ app:
     # conflict and whichever wins leaves the other's nav item dead-ending on
     # the same page. Catalog keeps its own default path (/catalog).
 
-    # AI feature flags — set disabled: true in an env-specific config to hide
-    # the AI Assistant and AI Search pages and their sidebar nav items.
-    - custom-pages/page:ai-assistant:
-        disabled: false
-    - custom-pages/nav-item:ai-assistant:
-        disabled: false
-    - custom-pages/page:ai-search:
-        disabled: false
-    - custom-pages/nav-item:ai-search:
-        disabled: false
+    # AI feature flags — default OFF. `bootstrap-local.sh` on its own installs
+    # no AI stack, so these pages and their sidebar nav items would otherwise
+    # dead-end. `bootstrap-ai.sh` re-enables them by writing the generated
+    # overlay local/backstage/app-config.ai.yaml (and `--destroy` reverts it).
+    #
+    # ID format is `<kind>:<pluginId>/<name>` — see resolveExtensionId() in
+    # @backstage/frontend-plugin-api. These were previously written the other
+    # way round (`custom-pages/page:ai-assistant`), which matches no extension,
+    # so the flags silently did nothing whichever value they were set to.
+    #
+    # NOTE: Backstage does not deep-merge arrays — a later config layer replaces
+    # this list wholesale. The overlay must therefore repeat every entry below,
+    # and anything non-AI added here has to be added there too.
+    - page:custom-pages/ai-assistant:
+        disabled: true
+    - nav-item:custom-pages/ai-assistant:
+        disabled: true
+    - page:custom-pages/ai-search:
+        disabled: true
+    - nav-item:custom-pages/ai-search:
+        disabled: true
+    - page:custom-pages/approvals:
+        disabled: true
+    - nav-item:custom-pages/approvals:
+        disabled: true
+
+# Whether the AI/ML layer is deployed. Drives the hardcoded AI links on the
+# custom Home / Support / Learning-Center pages, which app.extensions cannot
+# reach. Kept in step with the flags above by the same two scripts.
+aiStack:
+  enabled: false
 
 organization:
   name: My Organization

@@ -64,6 +64,22 @@ import CloseIcon from '@material-ui/icons/Close';
 import DeleteIcon from '@material-ui/icons/Delete';
 import HistoryIcon from '@material-ui/icons/History';
 
+// ── AI layer availability ─────────────────────────────────────────────────────
+// True only when KAgent/MLflow/MCP servers are actually deployed, i.e. after
+// `bootstrap-ai.sh`. `bootstrap-local.sh` alone installs none of it.
+//
+// The AI *pages and nav items* are hidden declaratively via the app.extensions
+// disable list in app-config.yaml. This hook exists for the links hardcoded
+// into the custom Home / Support / Learning-Center pages below, which the
+// extension system cannot reach — without it those keep pointing at
+// /ai-assistant and the KAgent UI on a platform that has neither.
+//
+// Defaults to false: advertising a dead link is worse than omitting a live one.
+function useAiStackEnabled(): boolean {
+  const configApi = useApi(configApiRef);
+  return configApi.getOptionalBoolean('aiStack.enabled') ?? false;
+}
+
 // ── FinOps / Cost Overview page ───────────────────────────────────────────────
 // Queries OpenCost via the Backstage proxy (/api/proxy/opencost).
 // Shows stacked bar chart + detailed cost table with date-range / breakdown controls.
@@ -4225,6 +4241,7 @@ const ONBOARDING_KEY = 'idp_onboarding_step';
 
 function OnboardingPage() {
   const identityApi = useApi(identityApiRef);
+  const aiStackEnabled = useAiStackEnabled();
 
   const [step, setStep]     = useState<number>(() => {
     try { return parseInt(localStorage.getItem(ONBOARDING_KEY) ?? '0', 10); } catch { return 0; }
@@ -4392,7 +4409,9 @@ function OnboardingPage() {
                 {[
                   { href: '/catalog',    emoji: '📦', label: 'Catalog',      desc: 'Browse all services, APIs, and teams' },
                   { href: '/',           emoji: '📊', label: 'Dashboard',    desc: 'Platform-wide DORA metrics and status' },
-                  { href: '/ai-assistant', emoji: '🤖', label: 'AI Assistant', desc: 'Ask the IDP assistant anything' },
+                  ...(aiStackEnabled
+                    ? [{ href: '/ai-assistant', emoji: '🤖', label: 'AI Assistant', desc: 'Ask the IDP assistant anything' }]
+                    : []),
                   { href: '/scorecard',  emoji: '🏆', label: 'Scorecard',    desc: 'Quality tiers across all services' },
                   { href: '/learning-center', emoji: '🎓', label: 'Learning Center', desc: 'Tutorials by experience level, track your progress' },
                 ].map(({ href, emoji, label, desc }) => (
@@ -6072,12 +6091,14 @@ const HELP_CHANNELS = [
   { emoji: '📖', label: 'Browse TechDocs',          desc: 'Comprehensive platform documentation — getting started, runbooks.',     href: '/docs',        primary: false },
 ];
 
-const getUsefulLinks = (urls: { grafana: string; kagent: string; argocd: string }) => [
+// aiEnabled gates the KAgent UI link — it 404s on a platform where
+// bootstrap-ai.sh has not run, since nothing serves kagent.idp.local.
+const getUsefulLinks = (urls: { grafana: string; kagent: string; argocd: string }, aiEnabled: boolean) => [
   { emoji: '🏠', label: 'Platform Dashboard', href: '/' },
   { emoji: '📊', label: 'Grafana Dashboards', href: urls.grafana },
   { emoji: '🔒', label: 'Security Overview',  href: '/catalog' },
   { emoji: '📈', label: 'DORA Metrics',        href: '/dora' },
-  { emoji: '🤖', label: 'KAgent UI',           href: urls.kagent },
+  ...(aiEnabled ? [{ emoji: '🤖', label: 'KAgent UI', href: urls.kagent }] : []),
   { emoji: '🚀', label: 'ArgoCD',              href: urls.argocd },
 ];
 
@@ -6085,11 +6106,15 @@ function SupportPage() {
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const base = configApi.getString('backend.baseUrl');
+  const aiStackEnabled = useAiStackEnabled();
   const usefulLinks = getUsefulLinks({
     grafana: configApi.getOptionalString('externalLinks.grafana') ?? 'http://grafana.idp.local',
     kagent:  configApi.getOptionalString('externalLinks.kagent')  ?? 'http://kagent.idp.local',
     argocd:  configApi.getOptionalString('externalLinks.argocd')  ?? 'http://argocd.idp.local',
-  });
+  }, aiStackEnabled);
+  // The AI Assistant entry points at /ai-assistant, a route that does not exist
+  // when the page extension is disabled.
+  const helpChannels = HELP_CHANNELS.filter(ch => aiStackEnabled || ch.href !== '/ai-assistant');
 
   const [oncall, setOncall] = useState<string | null>(null);
 
@@ -6114,7 +6139,7 @@ function SupportPage() {
               <Typography variant="h6">Get Help</Typography>
             </Box>
             <Box style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {HELP_CHANNELS.map(ch => (
+              {helpChannels.map(ch => (
                 <a key={ch.label} href={ch.href}
                   style={{ display: 'block', padding: 14, borderRadius: 4, textDecoration: 'none', color: 'inherit', cursor: 'pointer',
                     background: ch.primary ? '#e3f2fd' : '#fff',

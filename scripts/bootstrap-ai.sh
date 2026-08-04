@@ -203,6 +203,13 @@ for i in json.load(sys.stdin).get('items',[]):
     sleep 2
   done
 
+  # Hide the AI surfaces again: nothing serves kagent.idp.local or /ai-assistant
+  # once this teardown finishes, and a visible-but-dead nav item is worse than
+  # an absent one. Backstage reads config only at startup, hence the restart.
+  write_backstage_ai_overlay false
+  info "AI surfaces hidden in Backstage (AI Assistant, AI Search, Agent Approvals)."
+  info "  Apply with: ./scripts/bootstrap-local.sh --start-backstage"
+
   info "Done. Re-run ./scripts/bootstrap-ai.sh to reinstall."
   exit 0
 fi
@@ -1358,6 +1365,13 @@ _alb_ai() {
     | grep -v '^$' || echo "pending..."
 }
 
+# The AI layer now exists, so reveal its Backstage surfaces (AI Assistant, AI
+# Search, and — with --adp — Agent Approvals). Local only: on AWS, Backstage
+# runs in-cluster from app-config.aws.yaml, not this compose overlay.
+if [[ "$DEPLOY_MODE" == "local" ]]; then
+  write_backstage_ai_overlay true
+fi
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════════════════╗"
 echo "║               AI/ML Platform Bootstrap Complete                          ║"
@@ -1388,6 +1402,8 @@ echo "╠═══════════════════════�
 echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"
 if [[ "$DEPLOY_MODE" == "local" ]]; then
 echo "║  All platform URLs: ./scripts/bootstrap-local.sh --print-urls            ║"
+echo "║  Show AI pages in Backstage (config is read only at startup):            ║"
+echo "║    ./scripts/bootstrap-local.sh --start-backstage                        ║"
 fi
 echo "╚═══════════════════════════════════════════════════════════════════════════╝"
 echo ""
