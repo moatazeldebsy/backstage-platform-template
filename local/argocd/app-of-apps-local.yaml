@@ -21,10 +21,26 @@ spec:
               revision: HEAD
               directories:
                 - path: services/*
-                # agent-event-router is AI-stack-only (bootstrap-ai.sh manages it).
-                # Excluding it prevents ArgoCD from auto-deploying before the image
-                # exists in the local registry or required secrets are created.
+                # The services below are AI-stack-only: bootstrap-ai.sh builds
+                # their images and creates the secrets/ConfigMaps they mount.
+                # Excluding them prevents ArgoCD from auto-deploying before any
+                # of that exists — and prevents the reverse problem, where a
+                # Deployment already carrying an ArgoCD tracking-id forces
+                # bootstrap-ai.sh to skip its own Helm install to avoid an
+                # ownership conflict.
                 - path: services/agent-event-router
+                  exclude: true
+                # bootstrap-local.sh's build loop already skips these two for
+                # the same reason, so ArgoCD deployed them with images that were
+                # never built → ImagePullBackOff on every fresh bootstrap.
+                - path: services/idp-mcp-server
+                  exclude: true
+                - path: services/qa-mcp-server
+                  exclude: true
+                # Mounts the approval-service-policy ConfigMap, which only
+                # bootstrap-ai.sh --adp creates; without it the pod is stuck in
+                # ContainerCreating indefinitely.
+                - path: services/approval-service
                   exclude: true
           # Generator 2: one entry per environment
           - list:
