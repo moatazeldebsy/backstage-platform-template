@@ -491,9 +491,23 @@ _start_backstage() {
   # The Backstage Dockerfile is multi-stage — it runs `yarn install` and
   # `yarn build:backend` inside the builder stage, so no host-side bundle
   # build is needed. Steady-state rebuilds reuse BuildKit cache mounts.
+  # The compose file bind-mounts app-config.ai.yaml unconditionally, so it has
+  # to exist before `up` or Docker silently creates a directory in its place and
+  # Backstage dies parsing it. Only seed it when absent: if bootstrap-ai.sh has
+  # already turned the AI layer on, restarting Backstage must not turn it off.
+  if [[ ! -f "${ROOT_DIR}/local/backstage/app-config.ai.yaml" ]]; then
+    write_backstage_ai_overlay false
+  fi
+
   log "Building and starting Backstage Docker Compose..."
   ${COMPOSE_CMD} build backstage
   ${COMPOSE_CMD} up -d
+  # The app-config layers are bind-mounted, so flipping app-config.ai.yaml
+  # changes no compose definition and — when the image build is a cache hit and
+  # the image ID is unchanged — `up -d` leaves the running container alone.
+  # Backstage reads config only at startup, so without this an AI-layer toggle
+  # silently does not apply and the operator sees stale nav items.
+  ${COMPOSE_CMD} restart backstage
   log "Backstage starting at http://localhost:3000 (allow ~30s)"
 
   if [[ "$PROVIDER" == "kind" ]]; then

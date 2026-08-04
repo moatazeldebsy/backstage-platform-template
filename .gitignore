@@ -94,3 +94,7 @@ AWS_PUBLIC_URLS.txt
 
 # Local bootstrap-script fingerprint cache (skip-if-unchanged Helm release checks)
 .idp-cache/
+
+# Generated Backstage AI-layer overlay — written by bootstrap-local.sh (AI off)
+# and bootstrap-ai.sh (AI on). Never hand-edited, never committed.
+local/backstage/app-config.ai.yaml

@@ -90,6 +90,11 @@ services:
     volumes:
       - ../../backstage/app-config.yaml:/app/app-config.yaml:ro
       - ../../backstage/app-config.local.yaml:/app/app-config.local.yaml:ro
+      # Generated (gitignored), never hand-edited. Written by bootstrap-local.sh
+      # with the AI layer off, rewritten by bootstrap-ai.sh with it on. It must
+      # always exist before `docker compose up`, or Docker bind-mounts a
+      # directory here and Backstage fails to parse it as config.
+      - ./app-config.ai.yaml:/app/app-config.ai.yaml:ro
       - ../../backstage/catalog:/catalog
       # tech-radar.json served as a static asset so the tech-radar backend can read it
       # via http://localhost:7007/tech-radar.json without needing a GitHub token
@@ -125,7 +130,8 @@ services:
         fi &&
         node packages/backend \
           --config app-config.yaml \
-          --config app-config.local.yaml
+          --config app-config.local.yaml \
+          --config app-config.ai.yaml
 
 volumes:
   backstage-postgres:
