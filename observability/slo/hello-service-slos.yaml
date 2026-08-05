@@ -26,8 +26,11 @@ spec:
       description: "99.5% of hello-service HTTP requests must succeed (non-5xx)"
       sli:
         events:
+          # Label is `status_code`, not `code` — `code` matches no series, so the
+          # error ratio was always empty and the availability SLO never reported.
+          # `or vector(0)` keeps a zero-error service at 0 rather than empty.
           errorQuery: |
-            sum(rate(http_requests_total{job="hello-service", code=~"5.."}[{{.window}}]))
+            sum(rate(http_requests_total{job="hello-service", status_code=~"5.."}[{{.window}}])) or vector(0)
           totalQuery: |
             sum(rate(http_requests_total{job="hello-service"}[{{.window}}]))
       alerting:
@@ -48,7 +51,13 @@ spec:
       description: "99% of hello-service requests must complete within 500ms (p99 < 500ms)"
       sli:
         events:
+          # Was inverted: the le="0.5" bucket counts requests FASTER than 500ms,
+          # i.e. the good events. Using it as errorQuery reported ~100% error
+          # budget burn on a healthy service. Errors are requests slower than the
+          # threshold: total - (requests within it).
           errorQuery: |
+            sum(rate(http_request_duration_seconds_count{job="hello-service"}[{{.window}}]))
+            -
             sum(rate(http_request_duration_seconds_bucket{job="hello-service", le="0.5"}[{{.window}}]))
           totalQuery: |
             sum(rate(http_request_duration_seconds_count{job="hello-service"}[{{.window}}]))
