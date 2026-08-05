@@ -25,3 +25,9 @@ spec:
   lifecycle: production
   owner: platform-team
   system: internal-developer-platform
+  # Links the API entity in backstage/catalog/apis/hello-service-api.yaml to
+  # this component. The API was catalogued and browsable under /api-docs, but
+  # without this relation Backstage had nothing to show on the component's API
+  # tab, and the API page listed no providing component.
+  providesApis:
+    - hello-service-api
