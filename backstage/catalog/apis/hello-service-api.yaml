@@ -20,8 +20,14 @@ spec:
       version: "1.0.0"
       description: Reference Go service deployed via the IDP golden path
     servers:
-      - url: http://hello-service.services.svc.cluster.local
-        description: In-cluster
+      # Reachable from a browser on a local Kind cluster, via nginx ingress.
+      - url: http://hello-service.idp.local
+        description: Local cluster (ingress)
+      # The golden-path chart names the Service <release>-service-template and
+      # the ApplicationSet deploys into services-dev, so the previous
+      # hello-service.services.svc.cluster.local resolved to nothing.
+      - url: http://hello-service-local-service-template.services-dev.svc.cluster.local
+        description: In-cluster (local)
     paths:
       /:
         get:
