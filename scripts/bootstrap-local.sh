@@ -949,6 +949,32 @@ if ! $SKIP_OBS; then
   kubectl apply -f "${ROOT_DIR}/observability/alertmanager/prometheus-rules.yaml"
   log "  PrometheusRules applied (SLO burn-rate, DORA anomalies, team budgets, KAgent guardrails)."
 
+  # Sloth SLOs. The source of truth is the PrometheusServiceLevel in
+  # observability/slo/, but that is a Sloth CRD with no operator installed here —
+  # it has to be compiled into a PrometheusRule. Without this step the Grafana
+  # SRE dashboard reports "no sloth_slo_info metrics found" on every fresh
+  # cluster, which is exactly what it did before.
+  #
+  # Prefer regenerating when the sloth binary is present, so an edit to the
+  # source takes effect without remembering to re-vendor. Otherwise apply the
+  # committed output, so the bootstrap has no hard dependency on sloth.
+  _slo_src="${ROOT_DIR}/observability/slo/hello-service-slos.yaml"
+  _slo_gen="${ROOT_DIR}/observability/slo/generated/hello-service-slo-rules.yaml"
+  if command -v sloth &>/dev/null; then
+    if sloth generate -i "$_slo_src" -o /tmp/idp-slo-rules.yaml &>/dev/null; then
+      kubectl apply -f /tmp/idp-slo-rules.yaml >/dev/null
+      log "  Sloth SLOs applied (regenerated from ${_slo_src##*/})."
+    else
+      warn "  sloth generate failed — falling back to the committed rules."
+      kubectl apply -f "$_slo_gen" >/dev/null
+    fi
+  elif [[ -f "$_slo_gen" ]]; then
+    kubectl apply -f "$_slo_gen" >/dev/null
+    log "  Sloth SLOs applied (committed rules; install sloth to regenerate)."
+  else
+    warn "  No SLO rules found — Grafana SRE dashboard will show no error budgets."
+  fi
+
   log "  Waiting for Grafana API to be ready..."
   for _i in {1..24}; do
     if kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
