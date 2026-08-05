@@ -1,6 +1,5 @@
 site_name: Go Service
-site_description: >-
-  Scaffold a Go HTTP service with CI/CD and Helm deployment
+site_description: Scaffold a Go HTTP service with CI/CD and Helm deployment
 docs_dir: docs
 nav:
   - Overview: index.md
