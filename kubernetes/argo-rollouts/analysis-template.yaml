@@ -18,7 +18,12 @@ spec:
       interval: 30s
       # Fail if more than 1% of requests are 5xx over the last 5 minutes
       failureCondition: result[0] > 0.01
-      failureLimit: 3
+      # count is mandatory for a metric used in a canary *step* analysis: without
+      # it the metric runs indefinitely and Argo Rollouts rejects the Rollout with
+      # InvalidSpec, leaving the service with no pods at all.
+      # 3 measurements x 30s interval = 90s per analysis step.
+      count: 3
+      failureLimit: 2
       provider:
         prometheus:
           address: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
@@ -54,7 +59,9 @@ spec:
       interval: 30s
       # Fail if p99 latency exceeds 500ms over the last 5 minutes
       failureCondition: result[0] > 0.5
-      failureLimit: 3
+      # See the note on error-rate above — count is required for step analyses.
+      count: 3
+      failureLimit: 2
       provider:
         prometheus:
           address: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
