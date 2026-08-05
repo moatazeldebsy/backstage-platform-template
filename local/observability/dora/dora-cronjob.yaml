@@ -82,6 +82,20 @@ spec:
                       key: GITHUB_TOKEN
                 - name: GITHUB_ORG
                   value: "moatazeldebsy"
+                # Cross-check discovered repos against the Backstage catalog, so
+                # the DORA dashboard only lists services the platform actually
+                # knows about. Set REQUIRE_CATALOG_ENTRY=false to report every
+                # repo carrying the idp-app topic instead.
+                - name: REQUIRE_CATALOG_ENTRY
+                  value: "true"
+                - name: BACKSTAGE_URL
+                  value: "http://backstage.default.svc.cluster.local:3000"
+                - name: BACKSTAGE_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-catalog-exporter-token
+                      key: token
+                      optional: true
                 - name: LOOKBACK_HOURS
                   value: "24"
                 # Optional: map repo names to team names for per-team DORA metrics.

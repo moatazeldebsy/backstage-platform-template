@@ -16,6 +16,7 @@ import os
 import logging
 from datetime import datetime, timezone, timedelta
 
+from urllib.parse import quote
 import requests
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
@@ -24,6 +25,14 @@ log = logging.getLogger(__name__)
 
 GITHUB_TOKEN       = os.environ["GITHUB_TOKEN"]
 GITHUB_ORG         = os.environ.get("GITHUB_ORG", "moatazeldebsy")
+BACKSTAGE_URL      = os.environ.get("BACKSTAGE_URL", "")
+BACKSTAGE_TOKEN    = os.environ.get("BACKSTAGE_TOKEN", "")
+# When true, only report services that exist in the Backstage catalog. Without
+# it the exporter reports every GitHub repo carrying the idp-app topic, which
+# includes repos that were scaffolded once and never registered (or since
+# removed from) the portal — they show on the DORA dashboard as services the
+# platform does not actually know about.
+REQUIRE_CATALOG    = os.environ.get("REQUIRE_CATALOG_ENTRY", "true").lower() != "false"
 PUSHGATEWAY_URL    = os.environ.get(
     "PUSHGATEWAY_URL",
     "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091",
@@ -211,12 +220,128 @@ def push_aggregate_metrics(repos: list, all_deploy_freq: list, all_lead_times: l
                     grouping_key=grouping, registry=registry)
 
 
+def prune_stale_services(current: set, discovery_ok: bool) -> None:
+    """Delete Pushgateway groups for services that no longer exist.
+
+    Pushgateway is a persistent store, not a scrape target: a group pushed once
+    is kept until explicitly deleted. So a service that is decommissioned — or
+    simply loses the idp-app topic — keeps serving its last DORA values forever,
+    and the Grafana dashboard lists services that are no longer on the platform.
+    Observed with 10 deleted demo services still reporting.
+
+    `discovery_ok` reports whether GitHub discovery itself succeeded, and is
+    deliberately separate from `current` being empty. A transient API failure
+    makes every service look deleted, and wiping the dashboard because a token
+    expired is far worse than briefly stale data. But zero services *after* the
+    catalog filter is a legitimate result — everything discovered was unknown to
+    Backstage — and must still prune, or the phantom services stay on the
+    dashboard forever.
+    """
+    if not discovery_ok:
+        log.warning("Skipping prune — GitHub discovery failed this run.")
+        return
+
+    try:
+        resp = requests.get(f"{PUSHGATEWAY_URL}/api/v1/metrics", timeout=15)
+        resp.raise_for_status()
+        groups = resp.json().get("data", [])
+    except Exception as exc:
+        log.warning("Could not list Pushgateway groups, skipping prune: %s", exc)
+        return
+
+    published = set()
+    for group in groups:
+        labels = group.get("labels", {})
+        if labels.get("job") != "dora-exporter":
+            continue
+        svc = labels.get("service")
+        # all-services is the org-wide aggregate, not a real service.
+        if svc and svc != "all-services":
+            published.add(svc)
+
+    # The aggregate is derived from the per-service set. With no reportable
+    # services it describes nothing, and is never recomputed (the aggregate push
+    # is guarded on having at least one service), so it would sit on the
+    # dashboard showing numbers for services that are no longer listed.
+    stale = published - current
+    if not current:
+        stale.add("all-services")
+
+    for svc in sorted(stale):
+        url = (f"{PUSHGATEWAY_URL}/metrics/job/dora-exporter"
+               f"/service/{quote(svc, safe='')}")
+        try:
+            r = requests.delete(url, timeout=15)
+            if r.status_code in (200, 202):
+                log.info("Pruned stale DORA series for removed service: %s", svc)
+            else:
+                log.warning("Prune failed for %s: HTTP %s", svc, r.status_code)
+        except Exception as exc:
+            log.warning("Prune failed for %s: %s", svc, exc)
+
+
+def get_catalog_services() -> set:
+    """Service identifiers known to the Backstage catalog.
+
+    Returns both entity names and the repo half of any github.com/project-slug
+    annotation, because the exporter discovers services by *repo* name while the
+    catalog keys them by *entity* name, and the two do not always match.
+
+    An empty set means "could not determine" — callers must not treat that as
+    "nothing is registered", or a Backstage outage would blank the dashboard.
+    """
+    if not BACKSTAGE_URL:
+        log.warning("BACKSTAGE_URL not set — cannot cross-check the catalog.")
+        return set()
+
+    headers = {"Authorization": f"Bearer {BACKSTAGE_TOKEN}"} if BACKSTAGE_TOKEN else {}
+    try:
+        resp = requests.get(
+            f"{BACKSTAGE_URL}/api/catalog/entities",
+            params={"filter": "kind=Component", "limit": 500},
+            headers=headers, timeout=30,
+        )
+        resp.raise_for_status()
+        entities = resp.json()
+    except Exception as exc:
+        log.warning("Could not read the Backstage catalog: %s", exc)
+        return set()
+
+    known = set()
+    for entity in entities:
+        meta = entity.get("metadata", {})
+        name = meta.get("name")
+        if name:
+            known.add(name)
+        slug = (meta.get("annotations") or {}).get("github.com/project-slug", "")
+        if "/" in slug:
+            known.add(slug.split("/", 1)[1])
+
+    log.info("Backstage catalog knows %d service identifiers", len(known))
+    return known
+
+
 def main():
     since = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
     log.info("Collecting DORA metrics since %s for org %s", since.isoformat(), GITHUB_ORG)
     log.info("Pushing to Pushgateway at %s", PUSHGATEWAY_URL)
 
     repos = get_service_repos()
+    discovered = list(repos)
+
+    if REQUIRE_CATALOG:
+        catalog = get_catalog_services()
+        if catalog:
+            kept = [r for r in repos if r in catalog]
+            dropped = [r for r in repos if r not in catalog]
+            if dropped:
+                log.info("Skipping %d repo(s) absent from the Backstage catalog: %s",
+                         len(dropped), dropped)
+            repos = kept
+        else:
+            # Empty means the catalog could not be read, not that it is empty.
+            log.warning("Catalog unavailable — reporting all discovered repos this run.")
+
     all_deploy_freq: list[float] = []
     all_lead_times:  list[float] = []
     all_cfr:         list[float] = []
@@ -249,6 +374,11 @@ def main():
     if all_deploy_freq:
         push_aggregate_metrics(repos, all_deploy_freq, all_lead_times, all_cfr, all_mttr)
         log.info("Published aggregate metrics for %d services.", len(repos))
+
+    # Reconcile: drop anything Pushgateway still holds that is no longer a
+    # reportable service. `discovered` is the pre-filter list, so a legitimate
+    # empty result after catalog filtering still prunes.
+    prune_stale_services(set(repos), discovery_ok=bool(discovered))
 
 
 if __name__ == "__main__":
