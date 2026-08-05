@@ -24,6 +24,7 @@ import logging
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
+from urllib.parse import quote
 
 import requests
 
@@ -216,6 +217,61 @@ def put_cloudwatch(metric_name: str, value: float, unit: str, dimensions: list):
         log.warning("CloudWatch publish failed: %s", exc)
 
 
+def prune_stale_services(current: set) -> None:
+    """Delete Pushgateway groups for services that no longer exist.
+
+    Pushgateway retains a pushed group until it is explicitly deleted, so a
+    decommissioned service (or one that lost the idp-app topic) keeps serving
+    its last DORA values indefinitely and stays on the Grafana dashboard.
+
+    Skipped when `current` is empty: a transient GitHub API failure makes every
+    service look deleted, and wiping the dashboard because a token expired is
+    worse than briefly stale data.
+
+    CloudWatch needs no equivalent — its metrics age out on their own.
+    """
+    if not current:
+        log.warning("Skipping prune — no services discovered this run (GitHub API failure?)")
+        return
+
+    try:
+        resp = requests.get(f"{PUSHGATEWAY_URL}/api/v1/metrics", timeout=15)
+        resp.raise_for_status()
+        groups = resp.json().get("data", [])
+    except Exception as exc:
+        log.warning("Could not list Pushgateway groups, skipping prune: %s", exc)
+        return
+
+    published = set()
+    for group in groups:
+        labels = group.get("labels", {})
+        if labels.get("job") != "dora-exporter":
+            continue
+        svc = labels.get("service")
+        if svc and svc != "all-services":
+            published.add(svc)
+
+    # The aggregate is derived from the per-service set. With no reportable
+    # services it describes nothing, and is never recomputed (the aggregate push
+    # is guarded on having at least one service), so it would sit on the
+    # dashboard showing numbers for services that are no longer listed.
+    stale = published - current
+    if not current:
+        stale.add("all-services")
+
+    for svc in sorted(stale):
+        url = (f"{PUSHGATEWAY_URL}/metrics/job/dora-exporter"
+               f"/service/{quote(svc, safe='')}")
+        try:
+            r = requests.delete(url, timeout=15)
+            if r.status_code in (200, 202):
+                log.info("Pruned stale DORA series for removed service: %s", svc)
+            else:
+                log.warning("Prune failed for %s: HTTP %s", svc, r.status_code)
+        except Exception as exc:
+            log.warning("Prune failed for %s: %s", svc, exc)
+
+
 def main():
     since = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
     log.info("Collecting DORA metrics since %s for org %s", since.isoformat(), GITHUB_ORG)
@@ -285,6 +341,9 @@ def main():
             put_cloudwatch("MTTR",              agg_mttr,        "Count",   agg_dims)
 
         log.info("Published aggregate metrics for %d services.", len(repos))
+
+    # Reconcile: drop anything Pushgateway still holds that is no longer a service.
+    prune_stale_services(set(repos))
 
 
 if __name__ == "__main__":
