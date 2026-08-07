@@ -1266,11 +1266,22 @@ if ! $SKIP_POLICIES; then
   (
     set -e
 
+    # Lenient probe timeouts — same rationale as local/policies/kyverno-values.yaml.
+    # The chart defaults readinessTimeout/livenessTimeout to 1s, which a loaded
+    # single-node Kind cluster cannot meet: the controller answers /healthz slowly
+    # rather than being unhealthy, gets killed by the probe, and its
+    # check-ignore-label webhook (failurePolicy=Fail) then rejects EVERY apply
+    # cluster-wide with "context deadline exceeded" — including bootstrap-ai.sh's
+    # own namespace/MLflow applies. The probes still catch a genuinely dead process.
     helm_upgrade_cached gatekeeper gatekeeper-system gatekeeper/gatekeeper \
       --namespace gatekeeper-system \
       --create-namespace \
       --version 3.18.2 \
       --set replicas=1 \
+      --set controllerManager.readinessTimeout=15 \
+      --set controllerManager.livenessTimeout=15 \
+      --set audit.readinessTimeout=15 \
+      --set audit.livenessTimeout=15 \
       --set controllerManager.resources.requests.cpu=100m \
       --set controllerManager.resources.requests.memory=128Mi \
       --set controllerManager.resources.limits.cpu=500m \
