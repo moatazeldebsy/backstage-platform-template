@@ -220,9 +220,12 @@ catalog:
       rules:
         - allow: [Component]
 
-  # GitHub org auto-discovery — finds repos tagged with the `idp` topic that
-  # contain a catalog-info.yaml. Scaffolded services are tagged automatically;
-  # add the `idp` topic to any pre-existing repo you want imported. Limiting
+  # GitHub org auto-discovery — finds repos tagged with the `idp` or `idp-app`
+  # topic that contain a catalog-info.yaml. Scaffolded services are tagged
+  # `idp-app` automatically by the scaffolder templates (publish:github
+  # `topics:`), so both must be listed here — the DORA exporter only reports
+  # repos the catalog knows, and dropping `idp-app` blanks every DORA panel.
+  # Add either topic to a pre-existing repo you want imported. Limiting
   # discovery by topic avoids scanning every fork/archived/tooling repo in the
   # org every 15 minutes (GitHub API rate-limit pressure).
   # Requires GITHUB_TOKEN with read:org + repo scopes in local/.env.
@@ -234,7 +237,7 @@ catalog:
         filters:
           branch: main
           topic:
-            include: [idp]
+            include: [idp, idp-app]
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }

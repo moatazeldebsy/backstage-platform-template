@@ -66,6 +66,12 @@ backend.add(
   import('@backstage/plugin-catalog-backend-module-scaffolder-entity-model'),
 );
 
+// GitHub org auto-discovery. Without this module the
+// `catalog.providers.github.idpOrg` block in app-config.yaml is inert config —
+// no repo is ever ingested, which in turn blanks every DORA panel because the
+// exporter only reports repos the catalog knows about.
+backend.add(import('@backstage/plugin-catalog-backend-module-github'));
+
 // See https://backstage.io/docs/features/software-catalog/configuration#subscribing-to-catalog-errors
 backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 

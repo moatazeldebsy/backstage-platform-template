@@ -2574,8 +2574,11 @@ function DoraMetricCard({ title, value, unit, series, band, metricKey }: {
 // dataSource tracks where metrics came from so the UI can be honest about it.
 // 'service' = per-entity Prometheus data (best)
 // 'aggregate' = all-services Prometheus aggregate (real but platform-wide)
-// 'demo' = generated placeholder (Prometheus unreachable or no data at all)
-type DoraDataSource = 'service' | 'aggregate' | 'demo';
+// 'empty' and 'demo' both render demo numbers, but for different reasons:
+// 'empty' = Prometheus answered 200 with no matching series (healthy, no data yet),
+// 'demo'  = the query itself failed (proxy down, network error, non-ok status).
+// Keeping them apart stops the UI blaming Prometheus for merely-absent metrics.
+type DoraDataSource = 'service' | 'aggregate' | 'empty' | 'demo';
 
 function DoraEntityContent() {
   const { entity } = useEntity();
@@ -2629,20 +2632,24 @@ function DoraEntityContent() {
     const candidates = [serviceName, repoName].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
 
     (async () => {
+      // Any rejected query means we never got a usable answer out of Prometheus.
+      // If every query resolved and simply had no series, Prometheus is healthy.
+      let anyQueryFailed = false;
+
       // 1. Try each candidate name that might match a Prometheus service label
       for (const name of candidates) {
         try {
           const m = await fetchForService(name);
           if (hasData(m)) { setMetrics(m); setSource('service'); setLoading(false); return; }
-        } catch { /* try next */ }
+        } catch { anyQueryFailed = true; /* try next */ }
       }
       // 2. Fall back to platform aggregate (real data, but org-wide not per-service)
       try {
         const agg = await fetchForService('all-services');
         if (hasData(agg)) { setMetrics(agg); setSource('aggregate'); setLoading(false); return; }
-      } catch { /* fall through */ }
-      // 3. No Prometheus data — show demo
-      setMetrics(DEMO); setSource('demo'); setLoading(false);
+      } catch { anyQueryFailed = true; /* fall through */ }
+      // 3. No usable data — distinguish "unreachable" from "reachable but empty"
+      setMetrics(DEMO); setSource(anyQueryFailed ? 'demo' : 'empty'); setLoading(false);
     })();
   }, [base, fetchApi, serviceName, repoName]);
 
@@ -2658,8 +2665,10 @@ function DoraEntityContent() {
       text: `✅ Live per-service data for "${serviceName}" from Prometheus.` },
     aggregate: { bg: '#e3f2fd', border: '#90caf9', color: '#0d47a1',
       text: `ℹ️ Showing platform aggregate (all repos) — no per-service entry found for "${serviceName}" in Prometheus. The DORA exporter tracks GitHub repos by their repository name. If this service lives in a separate GitHub repo, it will appear here automatically once the exporter runs.` },
+    empty: { bg: '#fff8e1', border: '#ffe082', color: '#7c6000',
+      text: `📊 Demo data — Prometheus is reachable but has no dora_* metrics yet. The DORA exporter only reports repos that exist in the Backstage catalog; check that the repo carries the "idp" or "idp-app" GitHub topic and a root catalog-info.yaml, and that GITHUB_TOKEN is set in local/.env.` },
     demo: { bg: '#fff8e1', border: '#ffe082', color: '#7c6000',
-      text: `📊 Demo data — Prometheus is unreachable or the DORA exporter hasn't run yet. Start the cluster and ensure GITHUB_TOKEN is set in local/.env.` },
+      text: `📊 Demo data — Prometheus is unreachable. Start the cluster and check the /prometheus proxy endpoint in app-config.` },
   };
 
   return (
@@ -3132,6 +3141,9 @@ function HomePage() {
 
   const [dora, setDora]       = useState<Record<string, DoraMetric>>(DORA_DEMO);
   const [doraDemo, setDoraDemo] = useState(true);
+  // Only true when a query actually failed — an empty-but-successful response
+  // means Prometheus is up and simply has no dora_* series yet.
+  const [doraUnreachable, setDoraUnreachable] = useState(false);
   const [counts, setCounts]   = useState({ components: 0, apis: 0, groups: 0 });
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3162,7 +3174,7 @@ function HomePage() {
           setDora({ freq: {value:freq,series:fS}, lead: {value:lead,series:lS}, cfr: {value:cfr,series:cS}, mttr: {value:mttr,series:mS} });
           setDoraDemo(false);
         }
-      }).catch(() => {}),
+      }).catch(() => { setDoraUnreachable(true); }),
       catalogFetch('Component').then((entities: any[]) => {
         setServices(entities.slice(0, 20));
         setCounts(prev => ({ ...prev, components: entities.length }));
@@ -3201,7 +3213,7 @@ function HomePage() {
 
             <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 8 }}>
               <Typography variant="h6">Platform DORA</Typography>
-              {doraDemo && <Chip label="demo data — Prometheus unreachable" size="small" style={{ background: '#fff8e1', color: '#7c6000', border: '1px solid #ffe082', fontSize: 10 }} />}
+              {doraDemo && <Chip label={doraUnreachable ? 'demo data — Prometheus unreachable' : 'demo data — no dora_* metrics yet'} size="small" style={{ background: '#fff8e1', color: '#7c6000', border: '1px solid #ffe082', fontSize: 10 }} />}
             </Box>
             <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
               {CARDS.map(({ key, title, unit }) => {
@@ -3276,6 +3288,9 @@ function DoraPage() {
 
   const [aggregate, setAggregate] = useState<Record<string, DoraMetric>>(DORA_DEMO);
   const [isDemo, setIsDemo]       = useState(true);
+  // Only true when a query actually failed — an empty-but-successful response
+  // means Prometheus is up and simply has no dora_* series yet.
+  const [unreachable, setUnreachable] = useState(false);
   const [perService, setPerService] = useState<Array<{name:string; freq:number; lead:number; cfr:number; mttr:number}>>([]);
   const [loading, setLoading]     = useState(true);
 
@@ -3286,16 +3301,22 @@ function DoraPage() {
     const scalar = (d: any) => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN');
     const allSeries = (d: any): Array<{metric: Record<string,string>; value: [number,string]}> => d?.data?.result ?? [];
 
+    // Set by any rejected query, so the banner can tell "Prometheus down" from
+    // "Prometheus fine, no dora_* series". Read only after the Promise.all settles.
+    let queryFailed = false;
+    const onFail = <T,>(fallback: T) => () => { queryFailed = true; return fallback; };
+
     Promise.all([
-      pq('avg(dora_deploy_frequency_per_day)').then(scalar).catch(() => NaN),
-      pq('avg(dora_lead_time_minutes)').then(scalar).catch(() => NaN),
-      pq('avg(dora_change_failure_rate_percent)').then(scalar).catch(() => NaN),
-      pq('avg(dora_mttr_minutes)').then(scalar).catch(() => NaN),
-      pq('dora_deploy_frequency_per_day').then(allSeries).catch(() => []),
-      pq('dora_lead_time_minutes').then(allSeries).catch(() => []),
-      pq('dora_change_failure_rate_percent').then(allSeries).catch(() => []),
-      pq('dora_mttr_minutes').then(allSeries).catch(() => []),
+      pq('avg(dora_deploy_frequency_per_day)').then(scalar).catch(onFail(NaN)),
+      pq('avg(dora_lead_time_minutes)').then(scalar).catch(onFail(NaN)),
+      pq('avg(dora_change_failure_rate_percent)').then(scalar).catch(onFail(NaN)),
+      pq('avg(dora_mttr_minutes)').then(scalar).catch(onFail(NaN)),
+      pq('dora_deploy_frequency_per_day').then(allSeries).catch(onFail([])),
+      pq('dora_lead_time_minutes').then(allSeries).catch(onFail([])),
+      pq('dora_change_failure_rate_percent').then(allSeries).catch(onFail([])),
+      pq('dora_mttr_minutes').then(allSeries).catch(onFail([])),
     ]).then(([freq, lead, cfr, mttr, freqSeries, leadSeries, cfrSeries, mttrSeries]) => {
+      setUnreachable(queryFailed);
       // freq===0 is a real "no deploys" reading, not missing data — only NaN means the query failed.
       if (!isNaN(freq as number)) {
         setAggregate({
@@ -3347,7 +3368,9 @@ function DoraPage() {
             {isDemo && (
               <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
                 <Typography variant="body2" style={{ color: '#7c6000' }}>
-                  📊 Demo data — Prometheus unreachable or DORA exporter not running. Start the cluster and ensure <code>GITHUB_TOKEN</code> is set.
+                  {unreachable
+                    ? <>📊 Demo data — Prometheus unreachable. Start the cluster and check the <code>/prometheus</code> proxy endpoint in app-config.</>
+                    : <>📊 Demo data — Prometheus is reachable but has no <code>dora_*</code> metrics yet. The DORA exporter only reports repos that exist in the Backstage catalog; check that your repos carry the <code>idp</code> or <code>idp-app</code> GitHub topic and a root <code>catalog-info.yaml</code>, and that <code>GITHUB_TOKEN</code> is set.</>}
                 </Typography>
               </Paper>
             )}
