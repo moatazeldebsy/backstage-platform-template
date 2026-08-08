@@ -1,3 +1,20 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-data
+  namespace: ml-platform
+  labels:
+    app: mlflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # No storageClassName: bind whatever the cluster's default class is. On Kind
+  # that is `standard` (rancher.io/local-path); naming it explicitly would break
+  # on any local cluster that names its default class differently.
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,6 +25,11 @@ metadata:
     backstage.io/kubernetes-id: mlflow
 spec:
   replicas: 1
+  # The PVC is ReadWriteOnce, so the replacement pod cannot mount the volume
+  # while the outgoing one still holds it — a RollingUpdate would deadlock with
+  # the new pod stuck ContainerCreating until progressDeadlineSeconds.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mlflow
@@ -35,7 +57,15 @@ spec:
             - "5000"
             - --backend-store-uri
             - sqlite:////mlflow/mlflow.db
-            - --default-artifact-root
+            # Proxied artifact serving (--serve-artifacts is on by default).
+            # Do NOT set --default-artifact-root to a path here: that makes the
+            # experiment's artifact root a bare local path, which *clients*
+            # resolve against their own filesystem. A training pod would then
+            # write the model into its own container and exit — log_model()
+            # reports success and the artifact is silently lost. With
+            # --artifacts-destination the root stays mlflow-artifacts:/, so
+            # clients upload through this server, which owns the storage.
+            - --artifacts-destination
             - /mlflow/artifacts
             - --workers
             - "1"
@@ -85,7 +115,8 @@ spec:
               mountPath: /mlflow
       volumes:
         - name: mlflow-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: mlflow-data
 ---
 apiVersion: v1
 kind: Service

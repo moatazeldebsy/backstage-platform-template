@@ -72,7 +72,13 @@ spec:
             - "5000"
             - --backend-store-uri
             - sqlite:////mlflow/mlflow.db
-            - --default-artifact-root
+            # Proxied artifact serving (--serve-artifacts is on by default) —
+            # see the note in kubernetes/ml-platform/mlflow.yaml. On AWS this
+            # also matters for credentials: with a bare s3:// artifact root,
+            # every client would need its own S3 access, and the scaffolder's
+            # training Job runs on the default SA with no IRSA. Routing uploads
+            # through this server means only the mlflow SA needs the bucket.
+            - --artifacts-destination
             - s3://MLFLOW_ARTIFACTS_BUCKET_PLACEHOLDER/artifacts
             - --workers
             - "1"
