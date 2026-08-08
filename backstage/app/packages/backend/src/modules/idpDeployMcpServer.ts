@@ -14,12 +14,23 @@ const kubeEnv = {
   KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
 };
 
+// imageTag defaults to 'latest' on purpose, unlike the third-party images
+// elsewhere in this repo, which are pinned. The image this refers to is built
+// by the scaffolded repo's own CI and does not exist yet at scaffold time, so
+// there is no immutable tag to pin to here. The repo's CI then takes over: it
+// pushes both :<sha8> and :latest, and rewrites kubernetes/mcpserver.yaml to
+// the sha, so the GitOps manifest converges on a pinned tag. This CRD is the
+// bootstrap that runs before that first build completes.
+//
+// Callers that already know a tag (a rebuild of a service whose image exists)
+// can pass one to get an immutable deployment.
 function buildMcpServerYaml(opts: {
   name: string;
   port: number;
   imageRepo: string;
+  imageTag: string;
 }): string {
-  const { name, port, imageRepo } = opts;
+  const { name, port, imageRepo, imageTag } = opts;
   return `apiVersion: kagent.dev/v1alpha2
 kind: MCPServer
 metadata:
@@ -30,7 +41,7 @@ metadata:
 spec:
   transportType: http
   deployment:
-    image: ${imageRepo}:latest
+    image: ${imageRepo}:${imageTag}
     port: ${port}
     replicas: 1
     resources:
@@ -58,6 +69,7 @@ function createDeployMcpServerAction() {
           port: { type: 'number', title: 'Port', default: 3001 },
           repoName: { type: 'string', title: 'GitHub repo name' },
           repoOwner: { type: 'string', title: 'GitHub repo owner' },
+          imageTag: { type: 'string', title: 'Container image tag', default: 'latest' },
         },
       },
       output: {
@@ -73,12 +85,13 @@ function createDeployMcpServerAction() {
       const port = (ctx.input['port'] as number | undefined) ?? 3001;
       const repoName = (ctx.input['repoName'] as string | undefined) ?? name;
       const repoOwner = (ctx.input['repoOwner'] as string | undefined) ?? '';
+      const imageTag = (ctx.input['imageTag'] as string | undefined) ?? 'latest';
 
       const imageRepo = repoOwner
         ? `ghcr.io/${repoOwner}/${repoName}`
         : `localhost:5003/${name}`;
 
-      ctx.logger.info(`Deploying MCPServer '${name}' to kagent namespace (image: ${imageRepo})...`);
+      ctx.logger.info(`Deploying MCPServer '${name}' to kagent namespace (image: ${imageRepo}:${imageTag})...`);
 
       try {
         await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
@@ -86,7 +99,7 @@ function createDeployMcpServerAction() {
         throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
       }
 
-      const yaml = buildMcpServerYaml({ name, port, imageRepo });
+      const yaml = buildMcpServerYaml({ name, port, imageRepo, imageTag });
       const tmpFile = path.join(os.tmpdir(), `mcpserver-${name}-${Date.now()}.yaml`);
 
       try {
