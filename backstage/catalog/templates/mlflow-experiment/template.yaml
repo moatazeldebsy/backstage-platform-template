@@ -139,6 +139,7 @@ spec:
         framework: ${{ parameters.framework }}
         pythonVersion: ${{ parameters.pythonVersion }}
         owner: ${{ parameters.owner }}
+        registerModel: ${{ parameters.registerModel }}
 
   output:
     links:

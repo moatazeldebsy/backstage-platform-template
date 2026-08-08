@@ -57,8 +57,16 @@ const frameworkDeps: Record<string, string> = {
 
 // Minimal but real training script: trains on Iris, logs to MLflow.
 // Reads MLFLOW_TRACKING_URI and MLFLOW_EXPERIMENT_NAME from env.
-function buildTrainScript(framework: string): string {
+//
+// This mirrors the skeleton's train.py, including its "<name>-model" registry
+// naming — the two are separate implementations of the same job and drift
+// easily. It differs deliberately in one respect: the skeleton skips
+// log_model() entirely when registration is off, whereas this always logs the
+// model artifact and only attaches registered_model_name when asked. The
+// parameter is "register in the Model Registry", not "produce a model".
+function buildTrainScript(framework: string, name: string, registerModel: boolean): string {
   const isXgboost = framework === 'xgboost';
+  const registerArg = registerModel ? `, registered_model_name="${name}-model"` : '';
   return `import os, mlflow, mlflow.sklearn
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -90,7 +98,7 @@ ${isXgboost
     f1  = f1_score(y_test, preds, average="weighted")
     mlflow.log_metric("accuracy", acc)
     mlflow.log_metric("f1_score", f1)
-    mlflow.sklearn.log_model(model, "model")
+    mlflow.sklearn.log_model(model, "model"${registerArg})
     print(f"accuracy={acc:.4f}  f1={f1:.4f}")
 print("Training complete.")
 `;
@@ -186,6 +194,11 @@ function createRunTrainingJobAction() {
           experimentName: { type: 'string', title: 'MLflow experiment name' },
           framework: { type: 'string', title: 'ML framework', default: 'sklearn' },
           pythonVersion: { type: 'string', title: 'Python version', default: '3.11' },
+          registerModel: {
+            type: 'boolean',
+            title: 'Register the trained model in the MLflow Model Registry',
+            default: true,
+          },
         },
       },
       output: {
@@ -202,9 +215,12 @@ function createRunTrainingJobAction() {
       const experimentName = ctx.input['experimentName'] as string;
       const framework = (ctx.input['framework'] as string | undefined) ?? 'sklearn';
       const pythonVersion = (ctx.input['pythonVersion'] as string | undefined) ?? '3.11';
+      // Default true to match the template's parameter default, so an older
+      // template revision that omits the input still registers.
+      const registerModel = (ctx.input['registerModel'] as boolean | undefined) ?? true;
 
       const deps = frameworkDeps[framework] ?? frameworkDeps['sklearn'];
-      const trainScript = buildTrainScript(framework);
+      const trainScript = buildTrainScript(framework, name, registerModel);
       const jobName = `${name}-initial-run`;
 
       ctx.logger.info(`Creating training job '${jobName}' in ml-platform (framework: ${framework}, python: ${pythonVersion})...`);
