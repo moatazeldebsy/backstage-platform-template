@@ -69,7 +69,17 @@ function createDeployMcpServerAction() {
           port: { type: 'number', title: 'Port', default: 3001 },
           repoName: { type: 'string', title: 'GitHub repo name' },
           repoOwner: { type: 'string', title: 'GitHub repo owner' },
-          imageTag: { type: 'string', title: 'Container image tag', default: 'latest' },
+          // No `default` on either: the scaffolder would populate it, and an
+          // auto-filled imageTag would always beat commitSha below. Absent
+          // means absent, so the precedence order stays meaningful.
+          imageTag: {
+            type: 'string',
+            title: 'Container image tag — overrides commitSha; falls back to "latest"',
+          },
+          commitSha: {
+            type: 'string',
+            title: 'Commit SHA to derive an immutable tag from (first 8 chars)',
+          },
         },
       },
       output: {
@@ -85,7 +95,20 @@ function createDeployMcpServerAction() {
       const port = (ctx.input['port'] as number | undefined) ?? 3001;
       const repoName = (ctx.input['repoName'] as string | undefined) ?? name;
       const repoOwner = (ctx.input['repoOwner'] as string | undefined) ?? '';
-      const imageTag = (ctx.input['imageTag'] as string | undefined) ?? 'latest';
+      // Precedence: an explicit tag, else the scaffold commit shortened to 8
+      // chars to match the scaffolded CI's `TAG="${GITHUB_SHA::8}"`, else
+      // 'latest'. publish:github emits commitHash as `commitResult?.commitHash`
+      // and so can yield undefined — hence the fallback rather than building a
+      // dangling "repo:" reference.
+      const explicitTag = (ctx.input['imageTag'] as string | undefined)?.trim();
+      const commitSha = (ctx.input['commitSha'] as string | undefined)?.trim();
+      const imageTag = explicitTag || (commitSha ? commitSha.slice(0, 8) : 'latest');
+      if (!explicitTag && !commitSha) {
+        ctx.logger.warn(
+          'No imageTag or commitSha supplied — falling back to :latest, which is mutable. ' +
+            'The scaffolded repo\'s CI will still pin kubernetes/mcpserver.yaml to its own commit SHA.',
+        );
+      }
 
       const imageRepo = repoOwner
         ? `ghcr.io/${repoOwner}/${repoName}`
