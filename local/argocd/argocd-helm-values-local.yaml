@@ -28,6 +28,11 @@ server:
     limits:
       cpu: 500m
       memory: 384Mi
+  # See the probe-timeout note on `controller` below.
+  readinessProbe:
+    timeoutSeconds: 15
+  livenessProbe:
+    timeoutSeconds: 15
 
 # Does the heavy lifting on "Refresh"/sync (reconciliation diffing against
 # every Application's live state) — caps it so a refresh can't starve the
@@ -41,6 +46,17 @@ controller:
     limits:
       cpu: 1000m
       memory: 768Mi
+  # Lenient probe timeouts — same rationale as local/policies/kyverno-values.yaml
+  # and the gatekeeper --set flags in bootstrap-local.sh. The chart defaults every
+  # ArgoCD probe to timeoutSeconds: 1, which this node cannot meet: it runs at
+  # ~380% CPU overcommit on limits, so the components answer /healthz slowly
+  # rather than being unhealthy. repo-server and server were probe-killed into
+  # CrashLoopBackOff (43 and 34 restarts), and the controller never went Ready,
+  # which left every Application stuck at "Sync Status: Unknown". The probes
+  # still catch a genuinely dead process.
+  # The controller has no liveness probe — readiness only.
+  readinessProbe:
+    timeoutSeconds: 15
 
 repoServer:
   replicas: 1
@@ -51,6 +67,11 @@ repoServer:
     limits:
       cpu: 1000m
       memory: 768Mi
+  # See the probe-timeout note on `controller` above.
+  readinessProbe:
+    timeoutSeconds: 15
+  livenessProbe:
+    timeoutSeconds: 15
 
 applicationSet:
   replicas: 1
@@ -65,6 +86,16 @@ applicationSet:
 configs:
   params:
     server.insecure: true
+
+    # The controller gives repo-server 60s (chart default) to return manifests
+    # before recording a ComparisonError. Every app here is a two-source app
+    # (helm/service-template + a $values ref to the same repo), so a refresh is
+    # a git fetch plus a `helm template` carrying the full --api-versions list
+    # from a cluster with Gatekeeper/Kyverno/Rollouts CRDs. On this node that
+    # measured 67-126s per GenerateManifest — the calls SUCCEED (grpc.code=OK),
+    # the controller just hangs up first, leaving every Application stuck at
+    # "Sync Status: Unknown". Raised to 300s to cover the observed worst case.
+    controller.repo.server.timeout.seconds: 300
 
   # Local user for Backstage (read-only API access)
   cm:
