@@ -122,6 +122,12 @@ helm template my-svc helm/service-template --values helm-values.yaml | \
 
 Promtail runs as a DaemonSet and ships all pod stdout/stderr to Loki. Grafana queries Loki via the built-in Loki datasource.
 
+> **Local (Kind) note:** Loki and Promtail ship **scaled to 0** and collect
+> nothing until re-enabled — the single-node cluster does not have the capacity
+> to run them alongside the rest of the platform. See
+> [local-setup.md → Loki and Tempo ship disabled](local-setup.md#loki-and-tempo-ship-disabled).
+> AWS is unaffected.
+
 | Environment | Loki location |
 |-------------|--------------|
 | Local (Kind) | `local/observability/loki/` — single-binary mode |
