@@ -115,6 +115,10 @@ spec:
           enableMetrics: ${{ parameters.enableMetrics }}
           enableScaffolding: ${{ parameters.enableScaffolding }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+          # Required by the skeleton's github.com/project-slug annotation; see
+          # the note in mlflow-experiment/template.yaml. Comes from the repo
+          # URL, not parameters.owner (a Backstage group ref).
+          githubOrg: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
 
     - id: publish
       name: Publish to GitHub

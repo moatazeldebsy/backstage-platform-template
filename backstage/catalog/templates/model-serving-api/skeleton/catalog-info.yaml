@@ -11,11 +11,11 @@ metadata:
     - ${{ values.target }}
   links:
     - title: Model Server Logs
-      url: https://github.com/${{ values.owner }}/${{ values.repoName }}/actions
+      url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/actions
     - title: API Documentation
-      url: https://github.com/${{ values.owner }}/${{ values.repoName }}#readme
+      url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}#readme
   annotations:
-    github.com/project-slug: ${{ values.owner }}/${{ values.repoName }}
+    github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
     backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-id: ${{ values.name }}
     backstage.io/kubernetes-namespace: ml-platform
@@ -23,9 +23,9 @@ metadata:
     idp.io/quality-gates: "coverage,static-analysis,vuln-scan,llm-eval"
     idp.io/model-name: ${{ values.modelName }}
     idp.io/deployment-target: ${{ values.target }}
-    sonarcloud.io/project-key: "${{ values.owner }}_${{ values.repoName }}"
-    sonarcloud.io/organization: "${{ values.owner }}"
-    snyk.io/org-slug: "${{ values.owner }}"
+    sonarcloud.io/project-key: "${{ values.githubOrg }}_${{ values.repoName }}"
+    sonarcloud.io/organization: "${{ values.githubOrg }}"
+    snyk.io/org-slug: "${{ values.githubOrg }}"
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
     jira/project-key: "${{ values.jiraProjectKey }}"
 
