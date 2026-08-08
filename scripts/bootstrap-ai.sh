@@ -522,6 +522,14 @@ done
 rm -f /tmp/ns_apply_err.$$
 check "Namespaces ready"
 
+# Backstage's base ClusterRole is read-only; the mlflow-experiment and
+# model-serving scaffolder actions apply Jobs/Deployments into ml-platform and
+# need namespaced write access. Same manifest for local and AWS — it binds both
+# SA identities (backstage/backstage in-cluster, default/backstage on Kind).
+info "Granting Backstage write access in ml-platform..."
+kubectl apply -f "${REPO_ROOT}/kubernetes/backstage/rbac-mlplatform.yaml"
+check "Backstage ml-platform RBAC applied"
+
 # Repair any helm releases stuck in `pending-*` state from a prior interrupted
 # run. Helm refuses subsequent upgrades with "another operation in progress"
 # until the orphan revision secret is removed.
