@@ -291,7 +291,13 @@ spec:
         fsGroup: 1000
       containers:
       - name: vllm
-        image: vllm/vllm-openai:latest
+        # Pinned, not :latest. vLLM ships breaking changes between minor
+        # releases and publishes nightlies to the same repo, so :latest silently
+        # re-rolls the serving stack under a scaffolded service — the same class
+        # of failure as the unpinned MLflow client (see MLFLOW_CLIENT_VERSION in
+        # idpRunTrainingJob.ts). Bump deliberately after checking the release
+        # notes for API and GPU-driver changes.
+        image: vllm/vllm-openai:v0.26.0
         imagePullPolicy: IfNotPresent
         env:
         - name: MODEL_NAME
