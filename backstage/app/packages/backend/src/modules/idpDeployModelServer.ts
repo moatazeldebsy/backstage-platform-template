@@ -50,7 +50,7 @@ function buildOllamaYaml(name: string, modelName: string): string {
   // Model name is passed via MODEL_NAME env var — never interpolated into Python source.
   const mockScript = `
 import json, os, uuid
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODEL = os.environ.get("MODEL_NAME", "unknown")
 
@@ -89,7 +89,10 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_json(404, {"error": "not found"})
 
-HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+# Threading, not the plain HTTPServer: that one serialises requests, so a
+# single slow call blocks the readiness and liveness probes behind it and the
+# kubelet kills a container that is actually healthy.
+ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
 `.trim();
 
   return `apiVersion: v1
@@ -148,18 +151,36 @@ spec:
           capabilities:
             drop: [ALL]
           readOnlyRootFilesystem: false
+        # A cold python:3.12-alpine start on a contended local Kind node,
+        # capped at 200m CPU, regularly needs more than the 10s that
+        # livenessProbe alone allowed — the kubelet killed the container
+        # mid-startup ("connection refused") and it restart-looped. The
+        # startupProbe gives it up to 150s to listen, and liveness does not
+        # begin evaluating until startup succeeds, so steady-state failure
+        # detection is unchanged. Same pattern as MLflow in
+        # kubernetes/ml-platform/mlflow.yaml.
+        # timeoutSeconds defaults to 1 on every probe, which this server misses
+        # under load ("context deadline exceeded") even while healthy — so it
+        # is set explicitly on all three, startup included.
+        startupProbe:
+          httpGet:
+            path: /health
+            port: api
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 30
         readinessProbe:
           httpGet:
             path: /health
             port: api
-          initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /health
             port: api
-          initialDelaySeconds: 10
           periodSeconds: 10
+          timeoutSeconds: 5
         volumeMounts:
         - name: script
           mountPath: /app
