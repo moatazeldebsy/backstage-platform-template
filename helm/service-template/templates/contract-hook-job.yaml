@@ -22,7 +22,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: contract-check
-          image: alpine/curl:latest
+          image: "{{ .Values.contractCheck.image.repository }}:{{ .Values.contractCheck.image.tag }}"
           env:
             - name: SERVICE_NAME
               value: {{ include "service-template.fullname" . | quote }}
@@ -79,7 +79,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: breaking-change-check
-          image: alpine/curl:latest
+          image: "{{ .Values.contractCheck.image.repository }}:{{ .Values.contractCheck.image.tag }}"
           env:
             - name: SERVICE_NAME
               value: {{ include "service-template.fullname" . | quote }}

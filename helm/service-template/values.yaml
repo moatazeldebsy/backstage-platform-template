@@ -158,6 +158,13 @@ securityContext:
 contractCheck:
   enabled: false
   mcpServerUrl: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
+  # Pinned rather than :latest — every scaffolded service inherits this chart,
+  # so a moving tag means the sync hooks can change under already-deployed
+  # services with no change on our side. Bump deliberately; curl ships CVE
+  # fixes regularly, so this is worth keeping current.
+  image:
+    repository: alpine/curl
+    tag: "8.21.0"
   # Set checkBreaking: true and provide versions to enable the PreSync blocking check.
   checkBreaking: false
   fromVersion: ""   # currently-deployed version (set in CI: --set contractCheck.fromVersion=1.0.0)
