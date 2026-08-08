@@ -322,19 +322,34 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: false
+        # vLLM has to pull the model weights and load them onto the GPU before
+        # it serves anything, which for a cold cache is minutes, not seconds —
+        # far past the ~90s that livenessProbe alone allowed (initialDelay 60 +
+        # 3 x period 10), so the kubelet killed it mid-download and it could
+        # never finish starting. The startupProbe allows 15 minutes; liveness
+        # and readiness do not evaluate until it succeeds, which is also why
+        # neither needs initialDelaySeconds any more.
+        startupProbe:
+          httpGet:
+            path: /health
+            port: api
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 90
         livenessProbe:
           httpGet:
             path: /health
             port: api
-          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
+        # /health, not /readiness: vLLM's OpenAI-compatible server does not
+        # serve a /readiness path, so this probe 404'd forever and the pod
+        # never went Ready — leaving the Service with no endpoints.
         readinessProbe:
           httpGet:
-            path: /readiness
+            path: /health
             port: api
-          initialDelaySeconds: 30
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 2
