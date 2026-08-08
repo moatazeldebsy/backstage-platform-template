@@ -41,6 +41,13 @@ users:
   await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
 }
 
+// Must track the MLflow *server* image tag in kubernetes/ml-platform/mlflow.yaml
+// and aws/ml-platform/mlflow.yaml. An unpinned `pip install mlflow` pulls a 3.x
+// client, whose log_model() calls POST /api/2.0/mlflow/logged-models — an
+// endpoint the 2.x server does not serve, so training fails with a 404 *after*
+// the run and its metrics have already been logged.
+const MLFLOW_CLIENT_VERSION = process.env.MLFLOW_CLIENT_VERSION ?? '2.13.0';
+
 const frameworkDeps: Record<string, string> = {
   sklearn: 'scikit-learn numpy',
   xgboost: 'xgboost scikit-learn numpy',
@@ -124,6 +131,14 @@ spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 1
   template:
+    # Labels are repeated on the pod template on purpose: labels on the Job's
+    # own metadata are not inherited by its pods, so without these the pods
+    # carry only job-name= and are invisible to both a kubectl -l app=<name>
+    # lookup and the entity's Kubernetes tab.
+    metadata:
+      labels:
+        app: ${name}
+        backstage.io/kubernetes-id: ${name}
     spec:
       restartPolicy: Never
       containers:
@@ -131,7 +146,7 @@ spec:
           image: python:${pythonVersion}-slim
           command: ["/bin/sh", "-c"]
           args:
-            - pip install --quiet mlflow ${deps} && python /app/train.py
+            - pip install --quiet "mlflow==${MLFLOW_CLIENT_VERSION}" ${deps} && python /app/train.py
           env:
             - name: MLFLOW_TRACKING_URI
               value: http://mlflow.ml-platform.svc.cluster.local:5000
