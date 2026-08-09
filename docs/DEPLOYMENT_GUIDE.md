@@ -83,7 +83,7 @@ Replaces `moatazeldebsy` and other placeholders across all template files, creat
 
 | Phase | Duration | What |
 |-------|----------|------|
-| 1 — Terraform | 15–25 min | VPC, EKS (1× t3.medium, scales to 0 overnight), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager |
+| 1 — Terraform | 15–25 min | VPC, EKS (6× t3.medium by default; scales to 0 overnight when `enable_cost_optimizer = true`), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager |
 | 2 — Platform base | 5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore |
 | 3 — GitOps | 5 min | ArgoCD, OPA/Gatekeeper, Crossplane |
 | 4 — Observability | 10 min | Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter |
@@ -177,9 +177,6 @@ import sys,json; d=json.load(sys.stdin); print('QA series:', len(d.get('data',{}
 | Backstage | `kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
 | Grafana | `kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
 | ArgoCD | `kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
-| Prometheus | `kubectl get ingress -n monitoring -l app=prometheus -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
-| Pushgateway | `kubectl get ingress prometheus-pushgateway -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
-| OpenCost | `kubectl get ingress opencost-alb -n opencost -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
 | hello-service | `kubectl get ingress -n services-dev -l app.kubernetes.io/instance=hello-service-dev -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
 
 ---
@@ -196,7 +193,7 @@ All issues below are **already fixed in the codebase**. This section documents t
 
 **Root cause:** Backstage config arrays replace rather than merge across config files. The production ConfigMap's `extensions` list overwrites the base config's `page:catalog: path: /` entry.
 
-**Fix (already applied):** `kubernetes/backstage/configmap.yaml` production overrides now explicitly include `page:catalog: path: /` alongside `page:kubernetes: disabled: true`.
+**Fix (already applied):** `backstage/app-config.aws.yaml` (rendered into the `backstage-config` ConfigMap by `bootstrap.sh`) now explicitly includes `page:catalog: path: /` alongside `page:kubernetes: disabled: true`.
 
 ---
 
@@ -206,7 +203,7 @@ All issues below are **already fixed in the codebase**. This section documents t
 
 **Root cause:** `dangerouslyDisableDefaultAuthPolicy: true` must be under `backend.auth`, not the top-level `auth` key.
 
-**Fix (already applied):** Correct placement in `kubernetes/backstage/configmap.yaml`:
+**Fix (already applied):** Correct placement in `backstage/app-config.aws.yaml`:
 ```yaml
 backend:
   auth:
@@ -290,10 +287,19 @@ backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platfo
 
 **Symptom:** No public URL for OpenCost or Pushgateway after deployment.
 
-**Fix (already applied):**
-- `kubernetes/finops/opencost.yaml` includes an ALB ingress (`opencost-alb`)
-- `aws/monitoring/pushgateway-ingress.yaml` provides the Pushgateway ALB ingress
-- Both are applied by `bootstrap.sh`
+**This is intentional, not a fault.** Both used to publish their own
+internet-facing ALB (~$16/mo each, no authentication in front of either). They
+are operator tools — OpenCost's data reaches users through the Backstage FinOps
+tab and the Grafana FinOps dashboard, and Pushgateway is written to by CI and
+scraped by Prometheus in-cluster. Reach the raw UIs with:
+
+```bash
+kubectl port-forward -n opencost   svc/opencost               9090:9090
+kubectl port-forward -n monitoring svc/prometheus-pushgateway 9091:9091
+```
+
+The same applies to Prometheus, Alertmanager and the Argo Rollouts dashboard;
+`bootstrap.sh` prints every port-forward command in its closing banner.
 
 ---
 
@@ -303,7 +309,7 @@ backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platfo
 
 **Root cause:** `backend.reading.allow` was missing from the ConfigMap, so Backstage blocked reads from `raw.githubusercontent.com`.
 
-**Fix (already applied):** `kubernetes/backstage/configmap.yaml` includes:
+**Fix (already applied):** `backstage/app-config.aws.yaml` includes:
 ```yaml
 backend:
   reading:
@@ -466,12 +472,36 @@ KAgent + MLflow + MCP servers add 2–4 extra ALBs (~$36–72/month) and ~6 Gi E
 
 ### Estimated monthly cost by configuration
 
-| Config | EC2 nodes | Cost optimizer | AI/ML | Est. monthly |
-|---|---|---|---|---|
-| Default (optimized) | 1× t3.medium | On (9 h/day) | Off | ~$150–180 |
-| Always-on, no AI | 1× t3.medium | Off | Off | ~$185–220 |
-| Always-on + AI | 1× t3.medium | Off | On | ~$240–290 |
-| Production | 3× t3.large | Off | Optional | ~$400–600 |
+Rough us-east-1 on-demand estimates at ~730 h/month. Treat them as order-of-
+magnitude only — the authoritative numbers are the AWS budget alert below and
+the OpenCost/Grafana FinOps dashboard, both of which this platform deploys.
+
+The fixed floor is ~$135/mo before a single workload runs: EKS control plane
+(~$73), one NAT gateway (~$33), RDS `db.t3.micro` (~$17), plus EBS/S3/ECR/
+Secrets (~$15). Nodes and ALBs are what actually move.
+
+| Config | EC2 nodes | Cost optimizer | AI/ML | ALBs | Est. monthly |
+|---|---|---|---|---|---|
+| Default | 6× t3.medium | On (8 PM–7 AM UTC) | Off | 3 | ~$280–310 |
+| Always-on, no AI | 6× t3.medium | Off | Off | 3 | ~$370–400 |
+| Always-on + AI | 6× t3.medium | Off | On | 6 | ~$430–490 |
+| Production | per `profiles/medium.tfvars` | Off | Optional | 6 | ~$700–900 |
+
+Where the money goes, and what has already been done about it:
+
+- **Nodes** dominate — 6× t3.medium is ~$182/mo on-demand. `enable_cost_optimizer`
+  takes ~45% off that by scaling to zero overnight. Within the t3 family the
+  $/vCPU and $/GiB are identical, so only the node *count* matters, not the size.
+- **ALBs** used to be the silent second-biggest line: every ALB Ingress
+  provisions its own load balancer at ~$16/mo, and there were eleven. Prometheus,
+  Alertmanager, Pushgateway, OpenCost and the Argo Rollouts dashboard no longer
+  publish one — they are operator tools, reachable with `kubectl port-forward`
+  (the bootstrap banner prints the exact commands). That is ~$82/mo, and it also
+  took five unauthenticated endpoints off the public internet.
+- **Consolidating the remaining ALBs** onto one would save ~$80/mo more, but it
+  needs real DNS: they all serve `path: /` with no hostname, so a shared
+  `group.name` would make them collide. Set `domain_name` and give each a real
+  host first.
 
 ### Budget alert
 

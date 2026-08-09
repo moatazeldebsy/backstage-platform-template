@@ -78,7 +78,7 @@ helm upgrade --install elasticsearch elastic/elasticsearch \
   --set resources.requests.memory=2Gi
 
 # Then install the ES search backend plugin in Backstage
-# See backstage/packages/backend/src/index.ts — add:
+# See backstage/app/packages/backend/src/index.ts — add:
 # backend.add(import('@backstage/plugin-search-backend-module-elasticsearch'));
 ```
 

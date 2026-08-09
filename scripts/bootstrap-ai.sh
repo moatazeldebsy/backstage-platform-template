@@ -1137,7 +1137,7 @@ else
   # AWS: create mcp-backstage-token secret in services-dev so MCP servers can
   # authenticate against the Backstage catalog API. The token value comes from
   # Secrets Manager (idp-mvp/backstage → BACKSTAGE_CATALOG_TOKEN) and must match
-  # the externalAccess token configured in kubernetes/backstage/configmap.yaml.
+  # the externalAccess token configured in backstage/app-config.aws.yaml.
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     info "Creating mcp-backstage-token secret in services-dev..."
     MCP_BS_TOKEN=$(aws secretsmanager get-secret-value \
@@ -1382,10 +1382,44 @@ _alb_ai() {
 }
 
 # The AI layer now exists, so reveal its Backstage surfaces (AI Assistant, AI
-# Search, and — with --adp — Agent Approvals). Local only: on AWS, Backstage
-# runs in-cluster from app-config.aws.yaml, not this compose overlay.
+# Search, KAgent, and — with --adp — Agent Approvals).
+#
+# Two mechanisms for the same flip, because the two targets load config
+# differently: locally Backstage reads a generated third --config layer, while
+# on AWS it runs in-cluster off the ConfigMaps rendered from
+# backstage/app-config*.yaml. On AWS we patch the live `backstage-config`
+# ConfigMap in place — regenerating it from the source file would put the flags
+# back to disabled, since the committed default is off.
 if [[ "$DEPLOY_MODE" == "local" ]]; then
   write_backstage_ai_overlay true
+else
+  info "Revealing Backstage AI surfaces (app.extensions + aiStack.enabled)..."
+  if kubectl get configmap backstage-config -n backstage &>/dev/null; then
+    # Flip every `disabled: true` that belongs to a custom-pages AI extension,
+    # plus aiStack.enabled. The AI entries are the only ones in that list
+    # carrying a custom-pages/ prefix, so page:kubernetes stays disabled.
+    kubectl get configmap backstage-config -n backstage -o json \
+      | python3 -c '
+import json, re, sys
+cm = json.load(sys.stdin)
+key = "app-config.aws.yaml"
+body = cm["data"][key]
+body = re.sub(
+    r"(- (?:page|nav-item):custom-pages/[\w-]+:\n\s+disabled: )true",
+    r"\1false",
+    body,
+)
+body = re.sub(r"(aiStack:\n\s+enabled: )false", r"\1true", body)
+cm["data"][key] = body
+json.dump(cm, sys.stdout)
+' | kubectl apply -f - >/dev/null \
+      && kubectl rollout restart deployment/backstage -n backstage >/dev/null 2>&1 \
+      && check "Backstage AI surfaces enabled (rolling restart triggered)" \
+      || warn "Could not enable the Backstage AI surfaces — patch backstage-config manually."
+  else
+    warn "ConfigMap backstage/backstage-config not found — run scripts/bootstrap.sh first;
+  the AI pages will stay hidden until it exists."
+  fi
 fi
 
 echo ""

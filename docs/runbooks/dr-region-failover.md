@@ -44,8 +44,20 @@ aws rds describe-global-clusters --global-cluster-identifier idp-mvp-global --re
 Per-service Crossplane claims resolve resources via the `default` `ProviderConfig` — repoint it so new claims (and any that reconcile during the incident) target us-east-1:
 
 ```bash
-kubectl --context us-east-1 apply -f aws/crossplane/provider-config-us-east-1-primary.yaml
+kubectl --context us-east-1 apply -f aws/crossplane/providers/provider-config.yaml
 ```
+
+> The path above previously pointed at `aws/crossplane/provider-config-us-east-1-primary.yaml`,
+> which does not exist in this repo — the file defining the `default`
+> ProviderConfig is `providers/provider-config.yaml`.
+>
+> Verify this step on a drill before relying on it. Both ProviderConfigs use
+> `credentials.source: IRSA`, so the AWS account and role come from whichever
+> cluster the provider pod runs in, and the *region* of a provisioned resource
+> comes from `spec.forProvider.region` on the claim — not from the
+> ProviderConfig. Applying `default` in the us-east-1 cluster is therefore
+> likely a no-op if the standby stack already bootstrapped it, and it does not
+> by itself repoint existing claims.
 
 This does not need to run against eu-central-1 — if that cluster's API server is unreachable, skip it and clean up when the region recovers.
 

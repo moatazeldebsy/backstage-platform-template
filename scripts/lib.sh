@@ -218,6 +218,35 @@ wait_kubectl_ready() {
   warn "kubectl API not ready after ${max}s — continuing, downstream steps may fail."
 }
 
+# Poll a predicate until it succeeds, or give up.
+#
+# The bootstrap scripts had eight near-identical hand-rolled `while … sleep n`
+# loops between them, each with its own off-by-one and its own idea of whether
+# timing out is fatal. This is that shape, once.
+#
+#   poll_until <desc> <max-seconds> <interval-seconds> <command...>
+#
+# Returns 0 as soon as the command exits 0; returns 1 on timeout (the caller
+# decides whether that is fatal — this never exits the script itself). Progress
+# is logged at most once every ~30s so a long wait shows life without flooding.
+poll_until() {
+  local desc="$1" max="$2" interval="$3"; shift 3
+  local elapsed=0 next_note=30
+  while (( elapsed < max )); do
+    if "$@"; then
+      (( elapsed > 0 )) && info "  ${desc}: ready after ${elapsed}s."
+      return 0
+    fi
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+    if (( elapsed >= next_note )); then
+      info "  ${desc}: still waiting (${elapsed}s/${max}s)..."
+      next_note=$((elapsed + 30))
+    fi
+  done
+  return 1
+}
+
 # Map a helm repo short-name to its chart index URL. Single source of truth so
 # each bootstrap script doesn't hand-maintain its own copy (they drifted before:
 # some scripts hardcoded `helm repo update` with no repo arg, refreshing every
@@ -421,16 +450,28 @@ helm_upgrade_cached() {
 # working-tree edit does not change the hash on its own. `git status
 # --porcelain` for the directory is folded in to cover exactly that case.
 #   $1 = directory path
+#
+# Extra git pathspecs may follow the directory, typically exclusions:
+#
+#   dir_content_hash services/hello-service ':!services/hello-service/helm-values-aws.yaml'
+#
+# Use that for files the build does not consume but the bootstrap itself
+# rewrites — otherwise the script's own output feeds back into the fingerprint
+# and every run looks changed. Exclusions apply to the git path only; the
+# non-git `find` fallback ignores them, which is safe because that path is for
+# directories git cannot see at all.
 dir_content_hash() {
-  local dir="$1" top listing=""
+  local dir="$1"; shift
+  local top listing=""
+  local -a specs=("$dir" "$@")
   if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
     listing=$(
       # Tracked files: index blob SHAs, no content re-hashing.
-      git -C "$top" ls-files -s -- "$dir" 2>/dev/null
+      git -C "$top" ls-files -s -- "${specs[@]}" 2>/dev/null
       # Modified, deleted, and untracked-but-not-ignored files: the blob SHAs
       # above are stale (or absent) for these, so mix in live content. -z plus
       # `read -d ''` keeps paths with spaces and renames intact.
-      git -C "$top" ls-files -m -d -o --exclude-standard -z -- "$dir" 2>/dev/null \
+      git -C "$top" ls-files -m -d -o --exclude-standard -z -- "${specs[@]}" 2>/dev/null \
         | while IFS= read -r -d '' rel; do
             printf '%s ' "$rel"
             [[ -f "$top/$rel" ]] && _sha256 "$top/$rel"
@@ -964,4 +1005,45 @@ app:
 aiStack:
   enabled: ${enabled}
 EOF
+}
+
+# ── Backstage ConfigMaps (AWS/EKS) ────────────────────────────────────────────
+# Generates the two ConfigMaps the in-cluster Backstage mounts as its --config
+# layers (see aws/backstage/deployment.yaml) directly from the source files.
+#
+# Usage: apply_backstage_configmaps [kubectl-context]
+#
+# These used to live as a hand-maintained second copy of both config files
+# embedded in a committed kubernetes/backstage/configmap.yaml (now deleted).
+# Since AWS reads *only* the
+# ConfigMaps, editing backstage/app-config*.yaml had no effect there, and the
+# copies silently rotted:
+#
+#   - the base copy still used the broken `custom-pages/page:ai-assistant`
+#     extension ID format (correct is `page:custom-pages/ai-assistant`), so
+#     every AI gating flag was inert, and it carried no `aiStack` key at all;
+#   - the AWS copy declared a one-entry `catalog.locations`, which — because
+#     Backstage replaces arrays rather than merging them — wiped all 17 file
+#     locations from the base layer. hello-service, the APIs, groups, domains
+#     and ML experiments were all missing from the catalog on EKS.
+#
+# Generating removes the whole class of bug. There is nothing to keep in sync.
+apply_backstage_configmaps() {
+  local ctx="${1:-}"
+  local root="${ROOT_DIR:-${REPO_ROOT:-$(pwd)}}"
+  local -a ctx_args=()
+  [[ -n "$ctx" ]] && ctx_args=(--context "$ctx")
+
+  local base="${root}/backstage/app-config.yaml"
+  local aws="${root}/backstage/app-config.aws.yaml"
+  [[ -f "$base" ]] || { err "missing ${base}"; return 1; }
+  [[ -f "$aws"  ]] || { err "missing ${aws}";  return 1; }
+
+  # --dry-run=client needs no cluster; the context applies to `kubectl apply`.
+  kubectl create configmap backstage-base-config -n backstage \
+    --from-file=app-config.yaml="$base" \
+    --dry-run=client -o yaml | kubectl apply "${ctx_args[@]}" -f -
+  kubectl create configmap backstage-config -n backstage \
+    --from-file=app-config.aws.yaml="$aws" \
+    --dry-run=client -o yaml | kubectl apply "${ctx_args[@]}" -f -
 }
