@@ -26,20 +26,89 @@ jobs:
           python3 - <<'PYEOF'
           import yaml, sys
 
+          # Presence checks catch a malformed manifest. They do NOT catch a
+          # manifest that is well-formed and still cannot reconcile, which is
+          # how both of this file's original defects reached a cluster: a
+          # modelConfig naming a ModelConfig that does not exist, and an MCP
+          # binding with no toolNames. kubectl apply accepts both; KAgent then
+          # fails asynchronously and the agent never starts. The value checks
+          # below exist for exactly that class.
+
+          # ModelConfigs applied by the platform (kubernetes/kagent/modelconfig*.yaml).
+          # Added your own? Add its name here too.
+          KNOWN_MODEL_CONFIGS = [
+              "claude-haiku",
+              "claude-sonnet",
+              "claude-opus",
+              "claude-anthropic",
+              "default-model-config",
+              "openai-prod",
+          ]
+
+          errors = []
+
           with open("kubernetes/agent.yaml") as f:
               doc = yaml.safe_load(f)
 
-          assert doc.get("apiVersion"), "apiVersion is required"
-          assert doc.get("kind"), "kind is required"
-          assert doc.get("metadata", {}).get("name"), "metadata.name is required"
+          if not doc.get("apiVersion"):
+              errors.append("apiVersion is required")
+          if not doc.get("kind"):
+              errors.append("kind is required")
+          if not doc.get("metadata", {}).get("name"):
+              errors.append("metadata.name is required")
+          if not doc.get("metadata", {}).get("labels", {}).get("backstage.io/kubernetes-id"):
+              errors.append("backstage.io/kubernetes-id label is required")
 
-          spec = doc.get("spec", {})
-          decl = spec.get("declarative", {})
+          decl = doc.get("spec", {}).get("declarative", {})
 
-          assert decl.get("modelConfig"), "spec.declarative.modelConfig is required"
-          assert decl.get("systemMessage"), "spec.declarative.systemMessage is required"
-          assert doc["metadata"].get("labels", {}).get("backstage.io/kubernetes-id"), \
-              "backstage.io/kubernetes-id label is required"
+          if not decl.get("systemMessage"):
+              errors.append("spec.declarative.systemMessage is required")
 
-          print("All required fields present")
+          model_config = decl.get("modelConfig")
+          if not model_config:
+              errors.append("spec.declarative.modelConfig is required")
+          elif model_config not in KNOWN_MODEL_CONFIGS:
+              errors.append(
+                  "spec.declarative.modelConfig is '%s', which is not a ModelConfig this "
+                  "platform applies. KAgent will reject the Agent with "
+                  "'ModelConfig.kagent.dev %s not found'. Expected one of: %s"
+                  % (model_config, model_config, ", ".join(KNOWN_MODEL_CONFIGS))
+              )
+
+          # `tools:` may be absent or an empty list (an agent with no tools is
+          # valid). It must never be null — KAgent reads that as tools: None and
+          # rejects the config with a pydantic ValidationError.
+          tools = decl.get("tools", [])
+          if "tools" in decl and tools is None:
+              errors.append(
+                  "spec.declarative.tools is null. Use an empty list ([]) for an agent "
+                  "with no tools — KAgent rejects null with 'Input should be a valid list'."
+              )
+          elif not isinstance(tools, list):
+              errors.append("spec.declarative.tools must be a list")
+          else:
+              for i, tool in enumerate(tools):
+                  where = "spec.declarative.tools[%d]" % i
+                  if tool.get("type") != "McpServer":
+                      continue
+                  mcp = tool.get("mcpServer") or {}
+                  if not mcp.get("name"):
+                      errors.append("%s.mcpServer.name is required" % where)
+                  tool_names = mcp.get("toolNames")
+                  if not tool_names:
+                      errors.append(
+                          "%s.mcpServer.toolNames is missing or empty. Without it KAgent "
+                          "reads the binding as tools: None and the agent pod crash-loops. "
+                          "List the tools this agent should have." % where
+                      )
+                  elif not isinstance(tool_names, list):
+                      errors.append("%s.mcpServer.toolNames must be a list" % where)
+
+          if errors:
+              print("Agent manifest validation failed:\n")
+              for e in errors:
+                  print("  - %s" % e)
+              sys.exit(1)
+
+          print("Agent manifest is valid (modelConfig: %s, %d tool binding(s))" % (model_config, len(tools)))
           PYEOF
