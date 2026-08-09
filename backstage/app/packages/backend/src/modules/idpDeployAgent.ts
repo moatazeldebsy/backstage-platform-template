@@ -74,6 +74,7 @@ function createDeployAgentAction() {
         properties: {
           name: { type: 'string', title: 'Agent name' },
           description: { type: 'string', title: 'Agent description' },
+          model: { type: 'string', title: 'LLM model id — selects the ModelConfig' },
           modelProvider: { type: 'string', title: 'Model provider', default: 'anthropic' },
           enableCatalogSearch: { type: 'boolean', title: 'Enable catalog search tool', default: true },
           enableMetrics: { type: 'boolean', title: 'Enable metrics tool', default: true },
@@ -96,9 +97,21 @@ function createDeployAgentAction() {
       const enableMetrics = (ctx.input['enableMetrics'] as boolean | undefined) ?? true;
       const enableScaffolding = (ctx.input['enableScaffolding'] as boolean | undefined) ?? false;
 
-      const modelConfig = modelProvider === 'openai' ? 'openai-prod'
-        : modelProvider === 'anthropic' ? 'claude-anthropic'
-        : 'claude-anthropic';
+      // Must name a ModelConfig that exists in the kagent namespace, or KAgent
+      // rejects the Agent with "ModelConfig.kagent.dev ... not found" — the CR
+      // applies cleanly and only then fails to reconcile, so the scaffold task
+      // reports success. Names come from kubernetes/kagent/modelconfig*.yaml.
+      //
+      // The form's `model` choice was previously discarded here: every agent
+      // got claude-anthropic (Haiku) whichever model the user picked. Keep this
+      // mapping in step with the skeleton's kubernetes/agent.yaml, which
+      // renders the same field for the repo's own GitOps copy.
+      const model = (ctx.input['model'] as string | undefined) ?? '';
+      const modelConfig = modelProvider === 'openai'
+        ? 'openai-prod'
+        : model.includes('opus') ? 'claude-opus'
+        : model.includes('sonnet') ? 'claude-sonnet'
+        : 'claude-haiku';
 
       ctx.logger.info(`Deploying Agent '${name}' to kagent namespace (modelConfig: ${modelConfig})...`);
 

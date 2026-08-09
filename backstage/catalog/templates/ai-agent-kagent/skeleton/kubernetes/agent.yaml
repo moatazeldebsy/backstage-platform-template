@@ -9,7 +9,12 @@ spec:
   type: Declarative
   description: "${{ values.description }}"
   declarative:
-    modelConfig: ${{ values.modelProvider }}-local
+    # Must name a ModelConfig that exists in the kagent namespace, or the agent
+    # is rejected with "ModelConfig.kagent.dev ... not found". These four are
+    # applied by bootstrap-ai.sh from kubernetes/kagent/modelconfig*.yaml.
+    # Keep this mapping in step with idpDeployAgent.ts, which applies the same
+    # Agent from the scaffolder action.
+    modelConfig: {% if values.model == 'claude-opus-4-7' %}claude-opus{% elif values.model == 'claude-sonnet-4-6' %}claude-sonnet{% else %}claude-haiku{% endif %}
     systemMessage: |
       You are ${{ values.name }}, an AI agent running on the Internal Developer Platform.
       ${{ values.description }}
@@ -23,6 +28,19 @@ spec:
           kind: RemoteMCPServer
           name: idp-mcp-server
           namespace: kagent
+          # Without toolNames the agent binds every tool the MCP server
+          # exposes, ignoring the checkboxes on the scaffolder form.
+          toolNames:
+{%- if values.enableCatalogSearch %}
+            - catalog_search
+{%- endif %}
+{%- if values.enableMetrics %}
+            - get_service_metrics
+{%- endif %}
+{%- if values.enableScaffolding %}
+            - scaffold_service
+            - list_deployments
+{%- endif %}
 {%- else %}
       []
 {%- endif %}

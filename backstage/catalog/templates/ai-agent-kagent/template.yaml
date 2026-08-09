@@ -147,6 +147,7 @@ spec:
       input:
         name: ${{ parameters.name }}
         description: ${{ parameters.description }}
+        model: ${{ parameters.model }}
         modelProvider: ${{ parameters.modelProvider }}
         enableCatalogSearch: ${{ parameters.enableCatalogSearch }}
         enableMetrics: ${{ parameters.enableMetrics }}
