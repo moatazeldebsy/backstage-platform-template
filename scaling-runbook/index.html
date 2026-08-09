@@ -379,6 +379,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -1036,6 +1053,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1390,10 +1427,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1404,8 +1441,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1663,10 +1700,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1677,8 +1714,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2284,6 +2321,11 @@ kubectl<span class="w"> </span>run<span class="w"> </span>quota-test<span class=
 </tr>
 <tr>
 <td><strong>Backstage</strong></td>
+<td>GitHub discovery for scaffolded services (replaces the URL catalog list)</td>
+<td>✅ <code>catalog.providers.github.idpOrg</code> in <code>app-config.yaml</code> / <code>app-config.aws.yaml</code> — topic-filtered, 15-min sync</td>
+</tr>
+<tr>
+<td><strong>Backstage</strong></td>
 <td>Template versioning (<code>v1</code> + <code>blessed</code>/<code>advanced</code> tags)</td>
 <td>✅ all 61 templates</td>
 </tr>
@@ -2324,12 +2366,8 @@ kubectl<span class="w"> </span>run<span class="w"> </span>quota-test<span class=
 </thead>
 <tbody>
 <tr>
-<td>GitHub discovery plugin (replace URL catalog list for services)</td>
-<td>Still URL-based for service <code>catalog-info.yaml</code> files; templates use <code>all-templates.yaml</code></td>
-</tr>
-<tr>
 <td>Group-based template visibility in Backstage</td>
-<td>Requires permission backend plugin code (<code>packages/backend/src/plugins/permission.ts</code>)</td>
+<td>Requires permission backend plugin code in <code>backstage/app/packages/backend/</code></td>
 </tr>
 <tr>
 <td>Per-team Grafana RBAC (org → team mapping)</td>

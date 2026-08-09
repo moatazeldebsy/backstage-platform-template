@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../agentic-platform/">
+        <link rel="prev" href="../agent-approvals/">
       
       
         <link rel="next" href="../contract-testing/">
@@ -368,6 +368,23 @@
     
   
   Agentic Development Platform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
 
       </a>
     </li>
@@ -1033,6 +1050,26 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -1231,6 +1268,30 @@
       DORA Exporter
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="DORA Exporter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-services-appear" class="md-nav__link">
+    <span class="md-ellipsis">
+      Which services appear
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pruning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1450,10 +1511,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1464,8 +1525,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1723,10 +1784,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1737,8 +1798,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2080,7 +2141,7 @@
 <ul>
 <li>Prometheus proxy must be reachable: <code>http://prometheus.idp.local</code> (local) or the in-cluster DNS endpoint (AWS)</li>
 <li>The Prometheus proxy is configured in <code>backstage/app-config.local.yaml</code> (<code>/api/proxy/prometheus</code>) and <code>backstage/app-config.aws.yaml</code></li>
-<li>DORA metrics are pushed by the DORA exporter CronJob — see <code>observability/dora-exporter/</code> for the metric definitions</li>
+<li>DORA metrics are pushed by the DORA exporter CronJob — see <code>local/observability/dora/dora-exporter.py</code> (local) and <code>aws/observability/dora/dora-exporter.py</code> (AWS) for the metric definitions</li>
 <li>All metrics carry a <code>team=</code> label (see <a href="#team-dimension">Team dimension</a> below)</li>
 </ul>
 <h3 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Permanent link">&para;</a></h3>
@@ -2230,13 +2291,54 @@ create a ConfigMap:</p>
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="dora-exporter">DORA Exporter<a class="headerlink" href="#dora-exporter" title="Permanent link">&para;</a></h2>
-<p>The DORA exporter (<code>observability/dora-exporter/</code>) is a Python script running as a Kubernetes CronJob. It:</p>
+<p>The DORA exporter (<code>local/observability/dora/dora-exporter.py</code> locally, <code>aws/observability/dora/dora-exporter.py</code> on AWS) is a Python script running as a Kubernetes CronJob. It:</p>
 <ol>
-<li>Queries the GitHub API for deployment events per service repo</li>
+<li>Discovers service repos in the GitHub org — every repo carrying the <code>idp-app</code> topic, which all scaffold templates set via <code>publish:github</code></li>
+<li>Cross-checks each one against the Backstage catalog, dropping repos the catalog doesn't know</li>
+<li>Queries the GitHub API for deployment events per surviving repo</li>
 <li>Calculates the four DORA metrics per service over a rolling window</li>
 <li>Pushes metrics to Prometheus Pushgateway with <code>service=&lt;name&gt;</code> labels</li>
+<li>Prunes Pushgateway series for services that are no longer discovered</li>
 </ol>
 <p>The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Local metrics also accept synthetic data via <code>./scripts/seed-qa-metrics.sh</code> for demo purposes.</p>
+<h3 id="which-services-appear">Which services appear<a class="headerlink" href="#which-services-appear" title="Permanent link">&para;</a></h3>
+<p>Two independent filters decide what lands on a dashboard, and a service must pass both:</p>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Env var</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub topic</td>
+<td><code>REPO_FILTER_TOPIC</code></td>
+<td><code>idp-app</code></td>
+<td>Only org repos with this topic are discovered</td>
+</tr>
+<tr>
+<td>Explicit allowlist</td>
+<td><code>REPO_INCLUDE</code></td>
+<td>—</td>
+<td>Comma-separated repo names; overrides topic filtering entirely</td>
+</tr>
+<tr>
+<td>Backstage catalog</td>
+<td><code>REQUIRE_CATALOG_ENTRY</code></td>
+<td><code>true</code></td>
+<td>Only report repos that exist as a <code>Component</code> in the catalog</td>
+</tr>
+</tbody>
+</table>
+<p>The catalog cross-check exists because the topic alone reports any repo that ever carried it, including ones nobody registered. It matches on both the entity name and the repo half of <code>github.com/project-slug</code>, since the exporter discovers by <em>repo</em> name while the catalog keys by <em>entity</em> name.</p>
+<p>Set <code>REQUIRE_CATALOG_ENTRY=false</code> to fall back to reporting every topic-tagged repo. The check needs <code>BACKSTAGE_URL</code> and <code>BACKSTAGE_TOKEN</code> (from the <code>backstage-catalog-exporter-token</code> secret); if <code>BACKSTAGE_URL</code> is unset the exporter logs a warning and skips the cross-check rather than blanking every service.</p>
+<h3 id="pruning">Pruning<a class="headerlink" href="#pruning" title="Permanent link">&para;</a></h3>
+<p>A service that is deleted, unregistered, or simply loses its <code>idp-app</code> topic would otherwise keep serving its last DORA values in Prometheus forever. Each run deletes Pushgateway groups for services not in the current discovery set.</p>
+<p><strong>A run where the catalog filter removes everything still prunes</strong> — that's a legitimate result, not a failure. But a run where GitHub <em>discovery itself</em> failed skips pruning entirely, so a GitHub outage can't wipe the dashboard.</p>
+<p><strong>If a service vanished from the DORA panels</strong>, check in this order: does the repo still carry the <code>idp-app</code> topic → is it registered as a <code>Component</code> in the Backstage catalog → does the catalog entity name or its <code>github.com/project-slug</code> match the repo name → check the CronJob logs for <code>Pruned stale DORA series for removed service</code>.</p>
 <hr />
 <h2 id="team-cost-budgets">Team Cost Budgets<a class="headerlink" href="#team-cost-budgets" title="Permanent link">&para;</a></h2>
 <h3 id="what-it-is">What it is<a class="headerlink" href="#what-it-is" title="Permanent link">&para;</a></h3>
@@ -2403,7 +2505,7 @@ create a ConfigMap:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../agentic-platform/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Agentic Development Platform">
+          <a href="../agent-approvals/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Agent Approvals">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2413,7 +2515,7 @@ create a ConfigMap:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Agentic Development Platform
+                Agent Approvals
               </div>
             </div>
           </a>

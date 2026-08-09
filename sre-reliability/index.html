@@ -379,6 +379,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -1036,6 +1053,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1188,10 +1225,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1202,8 +1239,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1497,6 +1534,15 @@
   <a href="#defining-an-slo" class="md-nav__link">
     <span class="md-ellipsis">
       Defining an SLO
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-slos-reach-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      How SLOs reach the cluster
     </span>
   </a>
   
@@ -2044,10 +2090,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2058,8 +2104,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2360,6 +2406,20 @@
 <li>The template writes a Sloth YAML to <code>observability/slo/&lt;service&gt;-slos.yaml</code> and opens a PR</li>
 </ol>
 <p>Example reference: <code>observability/slo/hello-service-slos.yaml</code> — 99.5% availability, p99 &lt; 500 ms.</p>
+<h3 id="how-slos-reach-the-cluster">How SLOs reach the cluster<a class="headerlink" href="#how-slos-reach-the-cluster" title="Permanent link">&para;</a></h3>
+<p>The <code>PrometheusServiceLevel</code> in <code>observability/slo/</code> is a Sloth CRD, and no Sloth operator runs
+on the local cluster — it has to be compiled into a <code>PrometheusRule</code> first. <code>bootstrap-local.sh</code>
+does this on every run:</p>
+<ul>
+<li>If the <code>sloth</code> binary is on PATH, it regenerates the rules from the source YAML and applies
+  them — so an edit to the SLO definition takes effect without re-vendoring anything.</li>
+<li>Otherwise it applies the committed output at <code>observability/slo/generated/hello-service-slo-rules.yaml</code>,
+  so the bootstrap has no hard dependency on Sloth being installed.</li>
+</ul>
+<p>If neither is available the bootstrap warns and the Grafana SRE dashboard reports
+"no <code>sloth_slo_info</code> metrics found" — which is the symptom to look for when error budgets
+are empty on a fresh cluster. <strong>After editing an SLO source file without <code>sloth</code> installed,
+regenerate and commit the rules</strong>, or the cluster keeps applying the stale committed copy.</p>
 <h3 id="multi-window-burn-rate-alerts">Multi-window burn-rate alerts<a class="headerlink" href="#multi-window-burn-rate-alerts" title="Permanent link">&para;</a></h3>
 <p>The platform ships two alert groups in <code>observability/alertmanager/prometheus-rules.yaml</code>:</p>
 <table>
@@ -2467,6 +2527,13 @@ created.</p>
 <h2 id="log-aggregation-loki-promtail">Log Aggregation — Loki + Promtail<a class="headerlink" href="#log-aggregation-loki-promtail" title="Permanent link">&para;</a></h2>
 <h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
 <p>Promtail runs as a DaemonSet and ships all pod stdout/stderr to Loki. Grafana queries Loki via the built-in Loki datasource.</p>
+<blockquote>
+<p><strong>Local (Kind) note:</strong> Loki and Promtail ship <strong>scaled to 0</strong> and collect
+nothing until re-enabled — the single-node cluster does not have the capacity
+to run them alongside the rest of the platform. See
+<a href="../local-setup/#loki-and-tempo-ship-disabled">local-setup.md → Loki and Tempo ship disabled</a>.
+AWS is unaffected.</p>
+</blockquote>
 <table>
 <thead>
 <tr>

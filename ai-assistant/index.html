@@ -381,6 +381,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -1324,6 +1341,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#where-the-ai-pages-come-from-and-why-theyre-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where the AI pages come from (and why they're hidden)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       Troubleshooting
@@ -1332,6 +1358,15 @@
   
     <nav class="md-nav" aria-label="Troubleshooting">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#an-ai-page-is-missing-from-the-sidebar" class="md-nav__link">
+    <span class="md-ellipsis">
+      An AI page is missing from the sidebar
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ai-assistant-did-not-respond-no-session-created" class="md-nav__link">
@@ -1396,7 +1431,7 @@
           <li class="md-nav__item">
   <a href="#prompt-lifecycle-management" class="md-nav__link">
     <span class="md-ellipsis">
-      Prompt Lifecycle Management ✅
+      Prompt Lifecycle Management
     </span>
   </a>
   
@@ -1607,6 +1642,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1759,10 +1814,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1773,8 +1828,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -2032,10 +2087,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2046,8 +2101,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -3227,7 +3282,68 @@ those tools pass one through.</p>
 </table>
 <p>Both alerts route to Slack <code>#platform-alerts</code>. See the <a href="../runbooks/kagent-guardrails/">KAgent Guardrails runbook</a>.</p>
 <hr />
+<h2 id="where-the-ai-pages-come-from-and-why-theyre-hidden">Where the AI pages come from (and why they're hidden)<a class="headerlink" href="#where-the-ai-pages-come-from-and-why-theyre-hidden" title="Permanent link">&para;</a></h2>
+<p>The AI pages — <strong>AI Assistant</strong>, <strong>AI Search</strong>, <strong>Agent Approvals</strong>, <strong>KAgent Platform</strong> — are
+disabled by default. <code>bootstrap-local.sh</code> on its own installs no AI stack, so those pages and
+their sidebar nav items would dead-end on a connection error. They are revealed only once the
+stack behind them exists.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>File</th>
+<th>AI pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td><code>backstage/app-config.yaml</code></td>
+<td><code>disabled: true</code> for all four, <code>aiStack.enabled: false</code></td>
+</tr>
+<tr>
+<td>Local overlay (generated)</td>
+<td><code>local/backstage/app-config.ai.yaml</code></td>
+<td>Written <code>false</code> by <code>bootstrap-local.sh</code>, <code>true</code> by <code>bootstrap-ai.sh</code>, back to <code>false</code> by <code>bootstrap-ai.sh --destroy</code></td>
+</tr>
+<tr>
+<td>AWS</td>
+<td><code>backstage/app-config.aws.yaml</code></td>
+<td>Enabled — this layer replaces the extensions array and doesn't re-disable them</td>
+</tr>
+</tbody>
+</table>
+<p>Both scripts call one helper, <code>write_backstage_ai_overlay</code> in <code>scripts/lib.sh</code>, so the list
+can't drift between them.</p>
+<p><strong>Three things to know before touching this:</strong></p>
+<ol>
+<li><strong>Config is read only at startup.</strong> Running <code>bootstrap-ai.sh</code> does not make the pages
+   appear in a running Backstage — restart it with <code>./scripts/bootstrap-local.sh --start-backstage</code>.</li>
+<li><strong>Backstage replaces <code>app.extensions</code> arrays, it does not merge them.</strong> The generated
+   overlay must repeat <em>every</em> entry from the earlier layers. Anything you add to
+   <code>app-config.yaml</code>'s extension list has to be added to <code>write_backstage_ai_overlay</code> too,
+   or the overlay silently drops it.</li>
+<li><strong>The <code>page:kubernetes: disabled</code> entry in that generated list is not AI-related and not
+   optional.</strong> The standalone Kubernetes route renders the entity Kubernetes tab outside any
+   entity context and dies with "Entity context is not available". Because of rule 2, dropping
+   it from the overlay brings that crash back.</li>
+</ol>
+<p><code>aiStack.enabled</code> is a separate flag for the same state: it drives the hardcoded AI links on
+the custom Home / Support / Learning Center pages, which <code>app.extensions</code> can't reach. The
+same helper keeps the two in step.</p>
+<p>The file is gitignored and generated — hand edits are lost on the next bootstrap run.</p>
+<hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="an-ai-page-is-missing-from-the-sidebar">An AI page is missing from the sidebar<a class="headerlink" href="#an-ai-page-is-missing-from-the-sidebar" title="Permanent link">&para;</a></h3>
+<p>The AI overlay is off, or Backstage hasn't restarted since it was turned on.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>grep<span class="w"> </span>-A1<span class="w"> </span><span class="s1">&#39;custom-pages/ai-assistant&#39;</span><span class="w"> </span>local/backstage/app-config.ai.yaml<span class="w">   </span><span class="c1"># disabled: true/false?</span>
+./scripts/bootstrap-ai.sh<span class="w">                                                </span><span class="c1"># deploy the stack (adds --adp for approvals)</span>
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">                           </span><span class="c1"># restart to pick up the config</span>
+</code></pre></div></td></tr></table></div>
+<p>If the file doesn't exist at all, <code>docker compose up</code> will bind-mount a directory in its place
+and Backstage will fail to parse it — run either bootstrap script to regenerate it.</p>
 <h3 id="ai-assistant-did-not-respond-no-session-created">"AI assistant did not respond (no session created)"<a class="headerlink" href="#ai-assistant-did-not-respond-no-session-created" title="Permanent link">&para;</a></h3>
 <p>KAgent is not running or the proxy target is wrong.</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -3298,19 +3414,28 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <li><strong>Gold:</strong> + cost attribution labels + system prompt versioned in ConfigMap</li>
 </ul>
 <p>View in Backstage <strong>Tech Insights</strong> tab on any service entity. Three new checks: <code>has-model-card</code>, <code>has-eval-suite</code>, <code>has-ai-observability</code>.</p>
-<h3 id="prompt-lifecycle-management">Prompt Lifecycle Management ✅<a class="headerlink" href="#prompt-lifecycle-management" title="Permanent link">&para;</a></h3>
-<p>System prompts extracted to ConfigMaps in <code>kubernetes/kagent/prompts/</code>:</p>
+<h3 id="prompt-lifecycle-management">Prompt Lifecycle Management<a class="headerlink" href="#prompt-lifecycle-management" title="Permanent link">&para;</a></h3>
+<p>System prompts live inline as <code>systemMessage</code> on each KAgent <code>Agent</code> CRD in
+<code>kubernetes/kagent/&lt;agent&gt;.yaml</code> — one file per agent, versioned in Git:</p>
 <ul>
-<li>Zero-downtime prompt updates (no pod restart)</li>
-<li>Version history via Git history</li>
-<li>Rollback via ArgoCD revert</li>
+<li>Version history and diffs come from Git history on the agent manifest</li>
+<li>Rollback is an ArgoCD revert of that manifest</li>
+<li>Editing a prompt means editing the CRD; the KAgent controller reconciles the change</li>
 </ul>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Update via Backstage:</span>
-<span class="c1"># Create → Update Agent Prompt → PR to kubernetes/kagent/prompts/&lt;agent&gt;-prompt.yaml</span>
-<span class="c1"># Or edit directly: kubectl edit configmap idp-assistant-prompt -n kagent</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Edit the prompt in Git (preferred — ArgoCD reconciles the change):</span>
+<span class="nv">$EDITOR</span><span class="w"> </span>kubernetes/kagent/release-agent.yaml<span class="w">   </span><span class="c1"># spec.systemMessage</span>
+
+<span class="c1"># Or, to try a prompt change against the live cluster before committing:</span>
+kubectl<span class="w"> </span>edit<span class="w"> </span>agent<span class="w"> </span>release-agent<span class="w"> </span>-n<span class="w"> </span>kagent
 </code></pre></div></td></tr></table></div>
+<p>Extracting prompts into standalone ConfigMaps (with a Backstage "Update Agent Prompt"
+template as the front door) is <strong>not implemented</strong> — there is no <code>kubernetes/kagent/prompts/</code>
+directory. Note this also means the Gold-tier "system prompt versioned in ConfigMap"
+scorecard item above is satisfied by Git versioning of the CRD, not by a separate ConfigMap.</p>
 <h3 id="ml-workflows-argo-workflows">ML Workflows (Argo Workflows) ✅<a class="headerlink" href="#ml-workflows-argo-workflows" title="Permanent link">&para;</a></h3>
 <p>Multi-step training + evaluation pipelines:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -3346,7 +3471,7 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <span class="c1"># Search query: &quot;how to debug deployment failures&quot;</span>
 <span class="c1"># → Returns relevant runbooks, ADRs, documentation</span>
 </code></pre></div></td></tr></table></div>
-<p>Backend: Voyage AI embeddings + pgvector (<code>kubernetes/pgvector.yaml</code>).</p>
+<p>Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the <code>pgvector/pgvector</code> image in <code>local/backstage/docker-compose.yml</code>, initialised by <code>local/backstage/init-pgvector.sql</code>; on AWS, the <code>vector</code> extension on the same Aurora/RDS instance.</p>
 <h3 id="ai-observability-dashboard">AI Observability Dashboard ✅<a class="headerlink" href="#ai-observability-dashboard" title="Permanent link">&para;</a></h3>
 <p>Monitor MCP servers in Grafana:</p>
 <ul>

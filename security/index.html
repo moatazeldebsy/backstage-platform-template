@@ -379,6 +379,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -1036,6 +1053,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1188,10 +1225,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1202,8 +1239,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1639,10 +1676,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1653,8 +1690,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2106,7 +2143,7 @@ with these safety defaults:</p>
 <li>Backstage <code>Dockerfile</code> runs as non-root, uses a distroless-style runtime stage, and pins all base-image digests.</li>
 <li>GitHub Actions CI uses <code>aws-actions/configure-aws-credentials</code> with OIDC — no long-lived AWS keys in repo secrets.</li>
 <li>Trivy scans every image build; Cosign signs images pushed to ECR/GHCR.</li>
-<li>OPA/Gatekeeper policies in <code>kubernetes/opa-policies/</code> reject pods that pull <code>:latest</code>, lack resource limits, or omit cost-allocation labels.</li>
+<li>OPA/Gatekeeper policies in <code>kubernetes/policies/</code> reject pods that pull <code>:latest</code>, lack resource limits, or omit cost-allocation labels.</li>
 <li>RDS security group restricts ingress to the VPC CIDR (no <code>0.0.0.0/0</code>).</li>
 <li>All namespaces enforce Pod Security Standards (<code>restricted</code> where possible, <code>baseline</code> for system namespaces).</li>
 </ul>

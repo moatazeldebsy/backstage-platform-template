@@ -379,6 +379,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -1036,6 +1053,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1342,10 +1379,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1356,8 +1393,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1615,10 +1652,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1629,8 +1666,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2060,7 +2097,7 @@ runs <code>kubectl apply -f kubernetes/teams/payments/</code> which creates:</p>
 ├── secret-store.yaml       # namespace-scoped SecretStore (if IAM role set)
 └── grafana-folder.yaml     # ConfigMap → Grafana sidecar creates folder
 </code></pre></div></td></tr></table></div>
-<p>And a Backstage Group entity at <code>backstage/catalog/groups/payments.yaml</code>.</p>
+<p>And a Backstage Group entity in <code>backstage/catalog/catalog-info.yaml</code> (all Group entities live in that one file today; <code>backstage/catalog/groups/</code> exists but is empty).</p>
 <hr />
 <h2 id="step-4-add-services-for-the-team">Step 4 — Add services for the team<a class="headerlink" href="#step-4-add-services-for-the-team" title="Permanent link">&para;</a></h2>
 <p>Team services follow the <strong><code>teams/&lt;teamName&gt;/services/&lt;serviceName&gt;/</code></strong> path convention:</p>
@@ -2177,7 +2214,7 @@ kubectl<span class="w"> </span>delete<span class="w"> </span>namespace<span clas
 terraform<span class="w"> </span>apply<span class="w"> </span>-var<span class="o">=</span><span class="s1">&#39;team_eso_roles=[]&#39;</span>
 
 <span class="c1"># 4. Archive the scaffold PR branch or delete kubernetes/teams/payments/</span>
-<span class="c1"># 5. Remove the Backstage Group entity from backstage/catalog/groups/payments.yaml</span>
+<span class="c1"># 5. Remove the Backstage Group entity from backstage/catalog/catalog-info.yaml</span>
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>

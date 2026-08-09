@@ -381,6 +381,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -889,6 +906,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#loki-and-tempo-ship-disabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      Loki and Tempo ship disabled
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1382,6 +1408,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1534,10 +1580,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1548,8 +1594,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1807,10 +1853,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1821,8 +1867,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2151,10 +2197,16 @@ settled (measured with <code>kubectl top</code>, not estimated):</p>
 <td align="right">~1.9 GB</td>
 </tr>
 <tr>
-<td>Observability (Prometheus, Grafana, Loki, Tempo, OpenCost)</td>
+<td>Observability (Prometheus, Grafana, OpenCost)</td>
 <td><code>bootstrap-local.sh</code></td>
 <td align="right">~650m</td>
 <td align="right">~1.6 GB</td>
+</tr>
+<tr>
+<td>↳ Loki + Promtail + Tempo</td>
+<td>installed but <strong>scaled to 0</strong> — see <a href="#loki-and-tempo-ship-disabled">below</a></td>
+<td align="right">0</td>
+<td align="right">0</td>
 </tr>
 <tr>
 <td>GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts)</td>
@@ -2281,6 +2333,51 @@ kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </sp
 </code></pre></div></td></tr></table></div>
 <p>If you're below the "core only" tier, don't run the platform locally — use a
 cloud dev box, or deploy to AWS with <code>./scripts/bootstrap.sh</code>.</p>
+<h3 id="loki-and-tempo-ship-disabled">Loki and Tempo ship disabled<a class="headerlink" href="#loki-and-tempo-ship-disabled" title="Permanent link">&para;</a></h3>
+<p>The log and trace backends — <strong>Loki</strong>, <strong>Promtail</strong>, and <strong>Tempo</strong> — are
+installed as Helm releases but run <strong>zero pods</strong> locally. Prometheus, Grafana,
+and OpenCost are unaffected; only log aggregation and distributed tracing are
+off, so the Grafana <strong>Loki</strong> and <strong>Tempo</strong> datasources return nothing.</p>
+<p>This is a deliberate capacity decision. A single-node Kind cluster on a 8CPU/16GB
+machine already sits at roughly <strong>380% CPU overcommit on limits</strong> with the rest
+of the platform up. Adding these three starves the control plane rather than
+merely slowing it: components answer <code>/healthz</code> too slowly and get probe-killed,
+and <code>kube-controller-manager</code> / <code>kube-scheduler</code> lose leadership when their
+leases miss the 5s renewal deadline. The symptom is a cluster that looks like
+eight unrelated things are broken at once.</p>
+<p>To turn them back on — <strong>give the node more CPU and memory first</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Where</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tempo</td>
+<td><code>local/observability/tempo/tempo-values.yaml</code></td>
+<td><code>replicas: 0</code> → <code>1</code></td>
+</tr>
+<tr>
+<td>Promtail</td>
+<td><code>local/observability/loki/promtail-values.yaml</code></td>
+<td>delete the <code>nodeSelector: {idp/disabled}</code> block</td>
+</tr>
+<tr>
+<td>Loki</td>
+<td><code>scripts/bootstrap-local.sh</code> (step 5c)</td>
+<td>remove the <code>kubectl scale statefulset loki --replicas=0</code> line</td>
+</tr>
+</tbody>
+</table>
+<p>Loki is the odd one out: its chart's <code>singleBinaryReplicas</code> helper hardcodes <code>1</code>
+unless object storage is in use, so <code>singleBinary.replicas</code> cannot express <code>0</code>
+and the scale-down has to happen after install.</p>
+<p>The URL banner only advertises the Loki and Tempo endpoints when their
+StatefulSets are actually scaled above zero, so it will start listing them once
+you re-enable them.</p>
 <h2 id="bootstrap-1015-min">Bootstrap (~10–15 min)<a class="headerlink" href="#bootstrap-1015-min" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>First time? Run <code>setup.sh</code> and nothing else.</strong> From the repo root:
@@ -2408,7 +2505,7 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 <tr>
 <td><strong>AI Assistant</strong></td>
 <td><a href="http://backstage.idp.local/ai-assistant">http://backstage.idp.local/ai-assistant</a></td>
-<td>— (integrated in Backstage)</td>
+<td>— (integrated in Backstage; hidden until <code>bootstrap-ai.sh</code> runs — see <a href="../ai-assistant/#where-the-ai-pages-come-from-and-why-theyre-hidden">why</a>)</td>
 </tr>
 <tr>
 <td><strong>hello-service</strong></td>
@@ -2442,12 +2539,17 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 </tr>
 <tr>
 <td><strong>Tempo</strong> (traces)</td>
-<td>View traces: <a href="http://grafana.idp.local/explore">http://grafana.idp.local/explore</a> → select the <strong>Tempo</strong> datasource</td>
+<td><strong>Scaled to 0 by default</strong> — see <a href="#loki-and-tempo-ship-disabled">Loki and Tempo ship disabled</a>. Once enabled: <a href="http://grafana.idp.local/explore">http://grafana.idp.local/explore</a> → select the <strong>Tempo</strong> datasource</td>
 <td>— (Tempo has <strong>no UI of its own</strong>)</td>
 </tr>
 <tr>
 <td>↳ Tempo OTLP ingest</td>
-<td><code>POST http://tempo.idp.local/v1/traces</code> — an API endpoint, not a page. Opening it in a browser returns <code>405 method not allowed, supported: [POST]</code>, and <code>/</code> returns <code>404 page not found</code>; both mean Tempo is up. Health: <code>/ready</code></td>
+<td>Once enabled: <code>POST http://tempo.idp.local/v1/traces</code> — an API endpoint, not a page. Opening it in a browser returns <code>405 method not allowed, supported: [POST]</code>, and <code>/</code> returns <code>404 page not found</code>; both mean Tempo is up. Health: <code>/ready</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Loki</strong> (logs)</td>
+<td><strong>Scaled to 0 by default</strong> — see <a href="#loki-and-tempo-ship-disabled">Loki and Tempo ship disabled</a>. Once enabled: <a href="http://grafana.idp.local/explore">http://grafana.idp.local/explore</a> → select the <strong>Loki</strong> datasource</td>
 <td>—</td>
 </tr>
 <tr>

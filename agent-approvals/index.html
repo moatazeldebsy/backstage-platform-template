@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../cli-reference/">
+        <link rel="prev" href="../agentic-platform/">
       
       
-        <link rel="next" href="../ai-assistant/">
+        <link rel="next" href="../dora-finops/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Scripts Reference - Internal Developer Platform</title>
+        <title>Agent Approvals - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#scripts-reference" class="md-skip">
+        <a href="#agent-approvals" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Scripts Reference
+              Agent Approvals
             
           </span>
         </div>
@@ -326,11 +326,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../scripts-reference/" class="md-tabs__link">
         
   
     
@@ -379,9 +377,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../agent-approvals/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -990,30 +990,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Scripts Reference
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../scripts-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1022,89 +1002,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      Prerequisites
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setupsh-vs-bootstrap-localsh-why-two-scripts" class="md-nav__link">
-    <span class="md-ellipsis">
-      setup.sh vs bootstrap-local.sh — why two scripts?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      Quick reference
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#day-0-day-1-platform-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      Day-0 / Day-1 — Platform setup
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#re-running-the-bootstrap-scripts-caching-and-parallelism" class="md-nav__link">
-    <span class="md-ellipsis">
-      Re-running the bootstrap scripts — caching and parallelism
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#day-2-per-service-operations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Day-2 — Per-service operations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#execution-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      Execution flow
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1153,10 +1050,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../agent-approvals/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1165,6 +1082,161 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Problem
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Solution
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How it works
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How it works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enforcement-is-opt-in-and-silent-when-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enforcement is opt-in, and silent when off
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-gate-actually-verifies" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the gate actually verifies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Policy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-it-from-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using it from Backstage
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      API reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      Audit log
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing the gate
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing the gate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unit tests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      End-to-end, local
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1895,7 +1967,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/scripts-reference.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/agent-approvals.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -1903,322 +1975,212 @@
   
 
 
-<h1 id="scripts-reference">Scripts Reference<a class="headerlink" href="#scripts-reference" title="Permanent link">&para;</a></h1>
-<p>Full reference for every script under <code>scripts/</code>, grouped by when you'd run it. For the <code>idp</code> CLI (scaffolding services and test suites), see <a href="../cli-reference/">CLI Reference</a>.</p>
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
-<p>Before running anything in <code>scripts/</code>, install the tools for the path you're taking:</p>
-<table>
-<thead>
-<tr>
-<th>Path</th>
-<th>Required tools</th>
-<th>Verify</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Local (Kind)</strong></td>
-<td><code>git</code>, <code>docker</code>, <code>kind</code> ≥ 0.27, <code>kubectl</code>, <code>helm</code> ≥ 3.14</td>
-<td><code>kind version &amp;&amp; kubectl version --client &amp;&amp; helm version &amp;&amp; docker info</code></td>
-</tr>
-<tr>
-<td><strong>AWS (single or multi-region)</strong></td>
-<td>Everything above, plus <code>aws</code> CLI (configured — <code>aws sts get-caller-identity</code> must succeed), <code>terraform</code> ≥ 1.5, <code>jq</code></td>
-<td><code>aws sts get-caller-identity &amp;&amp; terraform version &amp;&amp; jq --version</code></td>
-</tr>
-<tr>
-<td><strong>Multi-region only</strong></td>
-<td>Everything above, plus <code>argocd</code> CLI</td>
-<td><code>argocd version --client</code></td>
-</tr>
-<tr>
-<td>Optional, auto-installed if missing</td>
-<td><code>go</code> ≥ 1.26 (builds the <code>idp</code> CLI), Node.js 24 LTS (Backstage)</td>
-<td>—</td>
-</tr>
-</tbody>
-</table>
-<p><code>setup.sh</code> and <code>bootstrap-local.sh</code>/<code>bootstrap.sh</code> each run their own pre-flight check and will tell you exactly what's missing before doing anything destructive — but installing these upfront avoids a mid-run abort. Full local walkthrough: <a href="../local-setup/#prerequisites">Local Setup</a>. Full AWS walkthrough: <a href="../DEPLOYMENT_GUIDE/#required-tools">AWS Deployment Guide</a>.</p>
-<h2 id="setupsh-vs-bootstrap-localsh-why-two-scripts"><code>setup.sh</code> vs <code>bootstrap-local.sh</code> — why two scripts?<a class="headerlink" href="#setupsh-vs-bootstrap-localsh-why-two-scripts" title="Permanent link">&para;</a></h2>
-<p>They solve different problems and are <strong>not interchangeable</strong>:</p>
-<ul>
-<li><strong><code>setup.sh</code></strong> — a <strong>one-time</strong> personalization pass + dispatcher. It replaces <code>moatazeldebsy</code> / <code>idp-mvp</code> / etc. placeholders across the whole repo with your real values, creates <code>.env</code> files, builds the <code>idp</code> CLI, then asks <em>local / aws / multi / skip</em> and hands off to the right bootstrap script.</li>
-<li><strong><code>bootstrap-local.sh</code></strong> — the actual <strong>Kind/Rancher platform installer</strong>. It creates the cluster, installs ingress/ArgoCD/observability/OPA, builds and pushes <code>hello-service</code>, and wires up Backstage. It's fully standalone and is what you go back to for <strong>day-2</strong> operations (<code>--destroy</code>, <code>--start-backstage</code>, <code>--install-argocd</code>, <code>--print-urls</code>, recreating the cluster).</li>
-</ul>
-<p><strong>On a fresh clone you run <code>setup.sh</code> and nothing else</strong> — it invokes <code>bootstrap-local.sh</code> for you. Running both back to back is the common mistake: it just repeats a 15–20 minute install. If <code>setup.sh</code> ended with the "Local IDP platform is up" banner and the access URLs, the cluster is already up.</p>
-<p>The ordering exists because bootstrapping before personalizing would point ArgoCD's ApplicationSet, catalog entries, and ingress hostnames at unresolved placeholders instead of your org/cluster name — which is why <code>setup.sh</code> owns the dispatch rather than leaving it to you.</p>
-<p>Every later invocation (recreate the cluster, add a flag, retry a failed step) goes straight to <code>bootstrap-local.sh</code> (or <code>bootstrap.sh</code>/<code>bootstrap-multiregion.sh</code> on AWS) without touching <code>setup.sh</code> again.</p>
-<h2 id="quick-reference">Quick reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Script</th>
-<th>What it does</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>setup.sh</code></td>
-<td><strong>Start here (once).</strong> Guided interactive setup — replaces placeholders, creates <code>.env</code> files, then bootstraps local or AWS</td>
-</tr>
-<tr>
-<td><code>bootstrap-local.sh</code></td>
-<td>Day-2: re-create Kind cluster + platform. Flags: <code>--start-backstage</code>, <code>--skip-obs</code>, <code>--destroy</code>, <code>--print-urls</code></td>
-</tr>
-<tr>
-<td><code>bootstrap-ai.sh</code></td>
-<td>Add AI/ML stack on top of a running cluster. <strong>Local only</strong> — on AWS, <code>bootstrap.sh</code> already runs this for you. Flags: <code>--skip-mlflow</code>, <code>--skip-mcp</code>, <code>--skip-kagent</code>, <code>--aws</code>, <code>--destroy</code></td>
-</tr>
-<tr>
-<td><code>bootstrap.sh</code></td>
-<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~45–60 min). Pass <code>--skip-ai</code> to opt out</td>
-</tr>
-<tr>
-<td><code>bootstrap-multiregion.sh</code></td>
-<td>AWS multi-region (V2) bootstrap: active-standby eu-central-1 + us-east-1 (~30–50 min). See <a href="../multi-region/">Multi-Region</a></td>
-</tr>
-<tr>
-<td><code>verify-secrets.sh</code></td>
-<td>Pre-flight: checks all required secrets/API keys are set before an AWS deployment. Run before <code>bootstrap.sh</code></td>
-</tr>
-<tr>
-<td><code>validate-deployment.sh</code></td>
-<td>Post-deploy: 50+ automated checks across infra, K8s, Backstage, observability, GitOps, AI, security</td>
-</tr>
-<tr>
-<td><code>cleanup.sh</code></td>
-<td>Safe AWS teardown: 8 ordered phases, removes scaffolded services from ArgoCD + Git before <code>terraform destroy</code></td>
-</tr>
-<tr>
-<td><code>recover-docker-restart.sh</code></td>
-<td>Patch Kind after Docker Desktop restarts — fixes IPs, restarts ingress, smoke-tests all URLs</td>
-</tr>
-<tr>
-<td><code>register-argocd-cluster.sh</code></td>
-<td>Multi-region only: registers a spoke EKS cluster's credentials with the hub ArgoCD via Secrets Manager</td>
-</tr>
-</tbody>
-</table>
-<h2 id="day-0-day-1-platform-setup">Day-0 / Day-1 — Platform setup<a class="headerlink" href="#day-0-day-1-platform-setup" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Script</th>
-<th>Purpose</th>
-<th>Called by</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>setup.sh</code></td>
-<td><strong>Entry point.</strong> Interactive: replaces placeholders (org, AWS account, region, cluster name), creates <code>.env</code> files, then dispatches to local or AWS bootstrap.</td>
-<td>You (once)</td>
-</tr>
-<tr>
-<td><code>bootstrap-local.sh</code></td>
-<td>Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys <code>hello-service</code>. <code>--start-backstage</code> builds + starts Backstage, wires nginx, seeds metrics. <code>--destroy</code> tears everything down: removes scaffolded services from ArgoCD + Helm + git, then deletes the cluster.</td>
-<td><code>setup.sh</code> → local path, or standalone</td>
-</tr>
-<tr>
-<td><code>verify-secrets.sh</code></td>
-<td>Checks <code>GITHUB_TOKEN</code>, AWS credentials, and other required secrets are set and valid before an AWS deployment. Exits non-zero with the missing item if anything is wrong.</td>
-<td>Before <code>bootstrap.sh</code> (manual, or see <a href="../PRE_DEPLOYMENT_CHECKLIST/">PRE_DEPLOYMENT_CHECKLIST.md</a>)</td>
-</tr>
-<tr>
-<td><code>bootstrap.sh</code></td>
-<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — <strong>including the AI/ML stack</strong> (Phase 6 runs <code>bootstrap-ai.sh --aws</code> internally, unless <code>--skip-ai</code> is passed) — and pushes <code>hello-service</code> to ECR. ~45–60 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
-<td><code>setup.sh</code> → AWS path, or standalone</td>
-</tr>
-<tr>
-<td><code>bootstrap-multiregion.sh</code></td>
-<td>Provisions the V2 active-standby topology: <code>terraform/global</code> (KMS, Route53, TGW, Aurora Global, CloudFront) → primary EKS (full stack) → standby EKS (minimal stack) → post-wiring (IRSA, cluster registration, failover RBAC). ~30–50 min. Flags: <code>--skip-global</code>, <code>--skip-standby</code>, <code>--skip-obs</code>, <code>--skip-ai</code>. See <a href="../multi-region/">Multi-Region</a>.</td>
-<td><code>setup.sh</code> → multi path, or standalone</td>
-</tr>
-<tr>
-<td><code>register-argocd-cluster.sh</code></td>
-<td>Creates an <code>argocd-manager</code> service account on a target EKS cluster and writes its token to Secrets Manager, so the hub ArgoCD can manage it as a spoke. <code>--cluster &lt;name&gt; --region &lt;region&gt;</code>.</td>
-<td><code>bootstrap-multiregion.sh</code> (auto, for both primary + standby), or standalone to re-register after credential rotation</td>
-</tr>
-<tr>
-<td><code>validate-deployment.sh</code></td>
-<td><strong>Post-deploy validation.</strong> Runs 50+ automated tests across AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage. Exit 0 = success, 1 = failure with debug suggestions.</td>
-<td>After <code>bootstrap.sh</code> completes</td>
-</tr>
-<tr>
-<td><code>cleanup.sh</code></td>
-<td><strong>Safe teardown.</strong> Runs eight ordered phases: delete ALBs → disable RDS protection → clean Crossplane resources → empty S3/ECR → <strong>remove scaffolded services from ArgoCD + Helm + git</strong> → terraform destroy → delete CloudWatch log groups → verify. Use <code>--force</code> to skip prompts.</td>
-<td>When tearing down AWS resources</td>
-</tr>
-<tr>
-<td><code>cleanup-helm-repos.sh</code></td>
-<td>Removes stale Helm repos and ensures required repos are present before any <code>helm install</code>.</td>
-<td><code>setup.sh</code> (auto), or standalone</td>
-</tr>
-<tr>
-<td><code>get-k8s-credentials.sh</code></td>
-<td>Creates a Backstage service account in the cluster and writes K8s credentials to <code>local/backstage/.env</code>.</td>
-<td><code>bootstrap-local.sh</code> (auto), or standalone</td>
-</tr>
-<tr>
-<td><code>apply-catalog-exporter.sh</code></td>
-<td>Deploys the Backstage catalog CronJob to the <code>monitoring</code> namespace.</td>
-<td><code>bootstrap-local.sh</code> (auto), or standalone</td>
-</tr>
-<tr>
-<td><code>bootstrap-ai.sh</code></td>
-<td>Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires <code>ANTHROPIC_API_KEY</code> in <code>local/.env</code>. Options: <code>--skip-mlflow</code>, <code>--skip-kagent</code>, <code>--skip-mcp</code>, <code>--force-build</code>. Optional: set <code>VOYAGE_API_KEY</code> in <code>local/backstage/.env</code> to enable semantic search at <code>/ai-search</code>. See <a href="#re-running-the-bootstrap-scripts-caching-and-parallelism">Re-running the bootstrap scripts</a>.</td>
-<td><strong>Local:</strong> manual, run after <code>bootstrap-local.sh</code> if you want AI/ML. <strong>AWS:</strong> already run for you by <code>bootstrap.sh</code> — only run standalone (<code>--aws</code>) to retry a failed AI phase</td>
-</tr>
-<tr>
-<td><code>recover-docker-restart.sh</code></td>
-<td><strong>Post-Docker-restart recovery.</strong> Patches Kind cluster after Docker Desktop shuffles container IPs: fixes kubelet.conf, restarts kindnet/kube-proxy, replaces ingress-nginx pods, repairs Grafana PVC permissions, restarts Backstage Docker Compose, and smoke-tests all 11 service URLs. Flags: <code>--skip-backstage</code>, <code>--dry-run</code>. See <a href="../docker-recovery/">Docker Recovery</a>.</td>
-<td>After Docker Desktop restarts unexpectedly</td>
-</tr>
-</tbody>
-</table>
-<h2 id="re-running-the-bootstrap-scripts-caching-and-parallelism">Re-running the bootstrap scripts — caching and parallelism<a class="headerlink" href="#re-running-the-bootstrap-scripts-caching-and-parallelism" title="Permanent link">&para;</a></h2>
-<p><code>bootstrap-local.sh</code>, <code>bootstrap.sh</code>, <code>bootstrap-ai.sh</code> and
-<code>bootstrap-multiregion.sh</code> are all designed to be re-run. They skip work they
-can prove is unchanged and overlap the work that remains, so a re-run against a
-healthy cluster costs a fraction of a cold one.</p>
-<p><strong>What gets skipped on a re-run</strong></p>
-<table>
-<thead>
-<tr>
-<th>Work</th>
-<th>Skipped when</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Any Helm release (<code>helm_upgrade_cached</code>)</td>
-<td>The chart reference, <code>--version</code>, every <code>--set</code>, and the <em>contents</em> of every <code>--values</code>/<code>-f</code> file are unchanged <strong>and</strong> Helm reports the release <code>deployed</code></td>
-</tr>
-<tr>
-<td>Docker image builds (hello-service, Backstage, all MCP servers)</td>
-<td>The service's source hash is unchanged <strong>and</strong> the tag is still in the registry/ECR</td>
-</tr>
-<tr>
-<td>KAgent pgvector patch + controller restart</td>
-<td>The live Deployment already runs <code>pgvector/pgvector:pg18</code>, <code>DATABASE_VECTOR_ENABLED=true</code> is set, and every Agent reports <code>Ready=True</code></td>
-</tr>
-<tr>
-<td>metrics-server install + TLS patch (local)</td>
-<td>The pinned version is already the running image / the flag is already present</td>
-</tr>
-</tbody>
-</table>
-<p>Fingerprints live in <code>.idp-cache/</code> (gitignored). Every skip is <em>also</em> gated on
-live cluster or registry state, so deleting <code>.idp-cache/</code> only costs time, never
-correctness — a wiped registry, a deleted ECR tag, or a release Helm no longer
-considers healthy always forces the real work to run again.</p>
-<p>Helm fingerprints are keyed by <code>--kube-context</code> where one is passed, so
-<code>bootstrap-multiregion.sh</code> installing the same release on both the hub and
-standby clusters caches them independently rather than letting one mask the
-other.</p>
-<p><strong>What runs in parallel</strong></p>
-<table>
-<thead>
-<tr>
-<th>Script</th>
-<th>Overlapped work</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>bootstrap-local.sh</code></td>
-<td>All image builds run in the background from just after the registry starts (Step 1) and are joined before Step 13, the first step that needs them. Step 10 (Pushgateway/DORA) joins the Step 11 exporter group.</td>
-</tr>
-<tr>
-<td><code>bootstrap-ai.sh</code></td>
-<td>MCP server images build in the background, <code>IDP_BUILD_JOBS</code> at a time, overlapping the whole KAgent install. MLflow deploys in the background too.</td>
-</tr>
-<tr>
-<td><code>bootstrap.sh</code></td>
-<td>Argo Workflows and Velero run alongside the AI/ML platform phase. Backstage / ArgoCD / Grafana load balancer hostnames are polled in one loop rather than two sequential ones.</td>
-</tr>
-<tr>
-<td><code>bootstrap-multiregion.sh</code></td>
-<td>Gatekeeper and Kyverno install concurrently.</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Environment variables and flags</strong></p>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Default</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>IDP_FORCE</code></td>
-<td><code>0</code></td>
-<td>Set to <code>1</code> to bypass every skip-if-unchanged check and reinstall/rebuild everything. Applies to all four scripts.</td>
-</tr>
-<tr>
-<td><code>--force-build</code></td>
-<td>off</td>
-<td><code>bootstrap-ai.sh</code> only — same idea, scoped to MCP server images and their Helm releases.</td>
-</tr>
-<tr>
-<td><code>IDP_BUILD_JOBS</code></td>
-<td><code>4</code></td>
-<td><code>bootstrap-ai.sh</code> only — max concurrent image builds. Lower it if Docker Desktop has few CPUs; raising it past your core count usually makes the batch slower.</td>
-</tr>
-<tr>
-<td><code>IDP_TIMING</code></td>
-<td><code>1</code></td>
-<td>Per-step timings plus a slowest-first summary table on exit. Set to <code>0</code> to silence.</td>
-</tr>
-</tbody>
-</table>
-<p>The timing summary prints even when a run fails, so it is the fastest way to see
-which step is actually costing you time before trying to tune anything.</p>
-<p><strong>AWS image builds and Apple Silicon.</strong> The AWS scripts build <code>linux/amd64</code>
-images, which run under QEMU emulation on an M-series Mac — the Backstage image
-(multi-stage, <code>yarn install</code> + <code>yarn build:backend</code> in the builder) is the single
-most expensive step in a cold AWS bootstrap. Builds go through <code>docker buildx</code>
-with a <code>--cache-from/--cache-to type=registry</code> layer cache stored in ECR beside
-the image, so a rebuild only re-emulates the stages that actually changed, and a
-build on another machine or in CI hits the same cache. Without buildx available
-the scripts fall back to plain <code>docker build</code> + <code>docker push</code>.</p>
-<h2 id="day-2-per-service-operations">Day-2 — Per-service operations<a class="headerlink" href="#day-2-per-service-operations" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Tool</th>
-<th>Purpose</th>
-<th>When to run</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>idp scaffold service</code></td>
-<td>Scaffold a new service (Node.js / Python / Go) via Backstage API or locally. Built by <code>setup.sh</code> automatically.</td>
-<td>Each time you add a new service</td>
-</tr>
-<tr>
-<td><code>idp scaffold test-suite</code></td>
-<td>Scaffold a QA test suite (18 types). Uses Backstage Scaffolder API when running, local generation otherwise.</td>
-<td>Each time you add a test suite</td>
-</tr>
-<tr>
-<td><code>setup-runner.sh</code></td>
-<td>Download, configure, and start a GitHub Actions self-hosted runner so pushes auto-deploy to the local Kind cluster.</td>
-<td>After a service repo is created</td>
-</tr>
-<tr>
-<td><code>seed-qa-metrics.sh</code></td>
-<td>Push synthetic QA metrics so the Grafana QA dashboard shows data immediately.</td>
-<td>Optional — demo / dev only</td>
-</tr>
-</tbody>
-</table>
-<h2 id="execution-flow">Execution flow<a class="headerlink" href="#execution-flow" title="Permanent link">&para;</a></h2>
+<h1 id="agent-approvals">Agent Approvals<a class="headerlink" href="#agent-approvals" title="Permanent link">&para;</a></h1>
+<p>Human-in-the-loop (HiTL) gate for agent-initiated mutating actions — powered by <code>approval-service</code>, a policy ConfigMap, and enforcement inside the MCP tool servers themselves.</p>
+<p>Shipped as ADP Phase 4. See <a href="../agentic-platform/">Agentic Development Platform</a> for how it fits the wider agent architecture.</p>
+<hr />
+<h2 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
+<p>Agents that can only read are safe and not very useful. The moment an agent can sync an ArgoCD app, roll back a deployment, or approve a pull request, "the system prompt tells it to ask first" stops being a control — it's a suggestion the model is free to skip, and nothing in the platform records that it did.</p>
+<h2 id="the-solution">The Solution<a class="headerlink" href="#the-solution" title="Permanent link">&para;</a></h2>
+<p>A mutating tool call fails unless it carries an <code>approval_id</code> whose recorded status is <code>approved</code>. The check lives in the tool server's own code path, not in the prompt, so an agent cannot talk its way past it. Which actions need a human is data (a ConfigMap), not code — and every request, auto-approval, and human decision lands in an audit log.</p>
+<hr />
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span></pre></div></td><td class="code"><div><pre><span></span><code> agent (release-agent, qa-agent)
+   │
+   │ 1. check_policy(action, target)              ─┐
+   │ 2. request_approval(action, target, context)  ├─ idp-mcp-server → approval-service
+   │ 3. get_approval_status(approval_id)          ─┘
+   │
+   │ 4. sync_app(app_name, dry_run:false, approval_id)
+   ▼
+ argocd-mcp-server / github-mcp-server
+   │  requireApproval() → GET /approvals/:id on approval-service
+   │  rejects unless status == &quot;approved&quot; AND action+target match
+   ▼
+ real ArgoCD sync / GitHub review
+
+ human
+   │  Backstage → Agent Approvals (/approvals)
+   └─ approve / deny → POST /approvals/:id/decide
+</code></pre></div></td></tr></table></div>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REST API + <code>agent_approvals</code> table</td>
+<td><code>services/approval-service/</code></td>
+</tr>
+<tr>
+<td>Policy rules</td>
+<td><code>kubernetes/kagent/policies/configmap.yaml</code> → <code>src/policy.ts</code></td>
+</tr>
+<tr>
+<td>Agent-facing tools (<code>check_policy</code>, <code>request_approval</code>, <code>get_approval_status</code>)</td>
+<td><code>services/idp-mcp-server/src/server.ts</code></td>
+</tr>
+<tr>
+<td>Enforcement on <code>sync_app</code> / <code>rollback_app</code></td>
+<td><code>services/argocd-mcp-server/src/server.ts</code> (<code>requireApproval</code>)</td>
+</tr>
+<tr>
+<td>Enforcement on <code>approve_pr</code></td>
+<td><code>services/github-mcp-server/src/server.ts</code></td>
+</tr>
+<tr>
+<td>Approvals UI</td>
+<td><code>backstage/app/packages/app/src/extensions.tsx</code> (<code>ApprovalsPage</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>agent_approvals</code> table lives on the <strong>existing Backstage Postgres</strong> — Aurora/RDS on AWS, the docker-compose pgvector container locally (reached from Kind pods via <code>host.docker.internal</code>). No new database.</p>
+<h3 id="enforcement-is-opt-in-and-silent-when-off">Enforcement is opt-in, and silent when off<a class="headerlink" href="#enforcement-is-opt-in-and-silent-when-off" title="Permanent link">&para;</a></h3>
+<p><code>requireApproval()</code> returns immediately if <code>APPROVAL_SERVICE_URL</code> is unset. That is deliberate — the tool servers ship in every install, but the gate only activates once <code>bootstrap-ai.sh --adp</code> deploys <code>approval-service</code> and patches the env var into <code>idp-</code>, <code>argocd-</code>, and <code>github-mcp-server</code>. <strong>An unset <code>APPROVAL_SERVICE_URL</code> means mutating tools run ungated with no warning</strong>, so it is the first thing to check when the gate appears not to work.</p>
+<h3 id="what-the-gate-actually-verifies">What the gate actually verifies<a class="headerlink" href="#what-the-gate-actually-verifies" title="Permanent link">&para;</a></h3>
+<p>Beyond "is it approved", <code>requireApproval()</code> rejects a mismatched <code>action</code>/<code>target</code> pair — an approval issued for <code>sync_app</code> on <code>dev-hello-service</code> cannot be replayed against <code>prod-payments-api</code>. Without that check the gate would be a rubber stamp.</p>
+<hr />
+<h2 id="policy">Policy<a class="headerlink" href="#policy" title="Permanent link">&para;</a></h2>
+<p><code>kubernetes/kagent/policies/configmap.yaml</code> is mounted at <code>/etc/approval-service/policy.json</code>. Rules are evaluated <strong>top to bottom, first match wins</strong>, so specific patterns must precede <code>*</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Target pattern</th>
+<th>Requires approval</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sync_app</code></td>
+<td><code>prod-*</code></td>
+<td>yes</td>
+<td>Production sync always needs a human</td>
+</tr>
+<tr>
+<td><code>sync_app</code></td>
+<td><code>*</code></td>
+<td>no</td>
+<td>Non-prod sync is reversible by another sync</td>
+</tr>
+<tr>
+<td><code>rollback_app</code></td>
+<td><code>*</code></td>
+<td>yes</td>
+<td>Reverts a live deployment regardless of environment</td>
+</tr>
+<tr>
+<td><code>approve_pr</code></td>
+<td><code>*</code></td>
+<td>yes</td>
+<td>Merge-enabling action</td>
+</tr>
+<tr>
+<td><code>request_changes</code></td>
+<td><code>*</code></td>
+<td>no</td>
+<td>Blocks merge rather than enabling it</td>
+</tr>
+</tbody>
+</table>
+<p><code>targetPattern</code> supports exact match, a <code>prefix-*</code> glob, and <code>*</code>. <strong>An action with no matching rule fails safe</strong> — it requires approval (<code>matchedRule: "default-fallback"</code>). Adding a new mutating tool therefore defaults to gated, not open.</p>
+<p><code>src/policy.ts</code> also carries a <code>DEFAULT_POLICY</code> used only when the ConfigMap isn't mounted (local <code>npm run dev</code>, unit tests). It is stricter than the shipped policy — every <code>sync_app</code> requires approval. Don't read it as the deployed behaviour.</p>
+<p>Policy is cached at first read. <strong>Editing the ConfigMap requires a pod restart</strong> to take effect:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/policies/configmap.yaml
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/approval-service<span class="w"> </span>-n<span class="w"> </span>services-dev
+</code></pre></div></td></tr></table></div>
+<hr />
+<h2 id="using-it-from-backstage">Using it from Backstage<a class="headerlink" href="#using-it-from-backstage" title="Permanent link">&para;</a></h2>
+<p>Open <strong><a href="http://backstage.idp.local/approvals">http://backstage.idp.local/approvals</a></strong> (nav item: <strong>Agent Approvals</strong>). The page lists pending approvals by default, with an <strong>All (last 100)</strong> toggle for history, and shows each request's action, target, requesting agent, and the free-form <code>context</code> the agent supplied — its stated reason for wanting the action.</p>
+<p>Approve or deny writes <code>decided_by</code> from your Backstage identity. The agent's next <code>get_approval_status</code> call sees the decision and either retries or reports the denial.</p>
+<p>The page requires <code>bootstrap-ai.sh --adp</code> to have run: it reveals the route in the generated <code>local/backstage/app-config.ai.yaml</code>, and Backstage reads config <strong>only at startup</strong>, so restart it afterwards with <code>./scripts/bootstrap-local.sh --start-backstage</code>. Without that, the route is disabled; with the route on but <code>approval-service</code> down, the page shows <code>HTTP … — is approval-service deployed?</code>. See <a href="../ai-assistant/#where-the-ai-pages-come-from-and-why-theyre-hidden">AI Assistant § Where the AI pages come from</a> for how that gating works.</p>
+<hr />
+<h2 id="api-reference">API reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h2>
+<p>Base URL: <code>http://approval-service.idp.local</code> (local) · <code>http://approval-service.services-dev.svc.cluster.local:3009</code> (in-cluster) · <code>/api/proxy/approval-service</code> (through Backstage).</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Body / query</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/policy/check</code></td>
+<td><code>{action, target}</code></td>
+<td><code>{requires_approval, reason, matched_rule}</code></td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/approvals</code></td>
+<td><code>{action, agent, target, context?}</code></td>
+<td>201 — the approval, already <code>approved</code> if policy auto-approves</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/approvals</code></td>
+<td><code>?status=pending</code></td>
+<td><code>{total, approvals[]}</code> (unfiltered: last 100)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/approvals/:id</code></td>
+<td>—</td>
+<td>the approval, or 404</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/approvals/:id/decide</code></td>
+<td><code>{decision: approved\|denied, decided_by}</code></td>
+<td>the updated approval, or 409</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/healthz</code> · <code>/ready</code> · <code>/metrics</code></td>
+<td>—</td>
+<td>health, readiness, Prometheus metrics</td>
+</tr>
+</tbody>
+</table>
+<p><code>decide</code> is guarded by <code>WHERE status = 'pending'</code>, so a second decision on the same approval returns <strong>409</strong> rather than overwriting the first — decisions are immutable once made.</p>
+<h3 id="audit-log">Audit log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h3>
+<p><code>approval-service</code> emits <code>[AUDIT]</code> JSON lines for <code>approval_requested</code>, <code>approval_auto_approved</code>, and <code>approval_decided</code>, each carrying <code>approval_id</code>; gated tools' own <code>[AUDIT]</code> entries carry the <code>approval_id</code> they were given. Together they reconstruct who authorised what, when, and on whose behalf.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/approval-service<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>AUDIT
+</code></pre></div></td></tr></table></div>
+<p>See <a href="../ai-assistant/">AI Assistant § Structured audit log</a>.</p>
+<hr />
+<h2 id="testing-the-gate">Testing the gate<a class="headerlink" href="#testing-the-gate" title="Permanent link">&para;</a></h2>
+<h3 id="unit-tests">Unit tests<a class="headerlink" href="#unit-tests" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/approval-service<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>ci<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w">   </span><span class="c1"># policy rules + all five endpoints (store mocked)</span>
+<span class="nb">cd</span><span class="w"> </span>services/argocd-mcp-server<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>ci<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w">  </span><span class="c1"># approval-gate.test.ts</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="end-to-end-local">End-to-end, local<a class="headerlink" href="#end-to-end-local" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
 <span class="normal"> 4</span>
@@ -2238,48 +2200,99 @@ the scripts fall back to plain <code>docker build</code> + <code>docker push</co
 <span class="normal">18</span>
 <span class="normal">19</span>
 <span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code># First-time setup (interactive)
-scripts/setup.sh
-  └─ Phase 0: replace placeholders in all files
-  └─ Phase 1: choose local | aws | skip
-       │
-       ├─ local path ──► cleanup-helm-repos.sh          (auto)
-       │                ► bootstrap-local.sh
-       │                    ├─ get-k8s-credentials.sh   (auto)
-       │                    └─ apply-catalog-exporter.sh (auto)
-       │                ► bootstrap-local.sh --start-backstage
-       │                    ├─ docker compose build + up
-       │                    ├─ wire nginx endpoint
-       │                    ├─ seed QA metrics
-       │                    └─ trigger catalog export
-       │
-       └─ AWS path  ──► bootstrap.sh
-                          └─ terraform init/apply
-                          └─ helm installs on EKS
+<span class="normal">21</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--adp
+./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">        </span><span class="c1"># reveal /approvals</span>
 
-# Per new service (day-2)
-idp scaffold service --name my-svc --type nodejs   # Backstage API when running
-idp scaffold service --name my-svc --type nodejs --local  # offline / pre-Backstage
-scripts/setup-runner.sh --repo my-svc
+<span class="c1"># 0. the gate is actually wired in</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>deploy<span class="w"> </span>argocd-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{..env}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;,&#39;</span><span class="w"> </span><span class="s1">&#39;\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>APPROVAL
 
-# Per new QA test suite (day-2)
-idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
-idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20
-idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
+<span class="c1"># 1. policy says prod needs a human</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/policy/check<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;content-type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;action&quot;:&quot;sync_app&quot;,&quot;target&quot;:&quot;prod-payments-api&quot;}&#39;</span>
 
-# Optional
-scripts/seed-qa-metrics.sh
+<span class="c1"># 2. agent requests approval → pending</span>
+<span class="nv">ID</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/approvals<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;content-type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;action&quot;:&quot;sync_app&quot;,&quot;agent&quot;:&quot;release-agent&quot;,&quot;target&quot;:&quot;prod-payments-api&quot;,</span>
+<span class="s1">       &quot;context&quot;:{&quot;reason&quot;:&quot;deploy v1.4.2 after green CI&quot;}}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>.id<span class="k">)</span>
+
+<span class="c1"># 3. approve it (or use the Backstage UI)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/approvals/<span class="nv">$ID</span>/decide<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;content-type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;decision&quot;:&quot;approved&quot;,&quot;decided_by&quot;:&quot;your.name&quot;}&#39;</span>
 </code></pre></div></td></tr></table></div>
+<p>Cases worth asserting, because each is a different failure mode:</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Expected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sync_app</code> on <code>dev-*</code></td>
+<td>created already <code>approved</code>, <code>decided_by: policy:auto-approve</code></td>
+</tr>
+<tr>
+<td>unknown action (<code>delete_cluster</code>)</td>
+<td><code>requires_approval: true</code> (fail-safe)</td>
+</tr>
+<tr>
+<td>deciding the same ID twice</td>
+<td>409</td>
+</tr>
+<tr>
+<td><code>sync_app</code> real call, no <code>approval_id</code></td>
+<td>rejected: "Approval required for …"</td>
+</tr>
+<tr>
+<td>replaying an approval on a different app</td>
+<td>rejected: "requested for a different action/target"</td>
+</tr>
+<tr>
+<td>retry after a <strong>denial</strong></td>
+<td>rejected: "is not approved (status: denied)"</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mutating tools succeed with no approval</td>
+<td><code>APPROVAL_SERVICE_URL</code> unset on that tool server — re-run <code>bootstrap-ai.sh --adp</code></td>
+</tr>
+<tr>
+<td><code>/approvals</code> 404s or is missing from the nav</td>
+<td>AI overlay written with the layer off, or Backstage not restarted since</td>
+</tr>
+<tr>
+<td>Approvals page shows an HTTP error</td>
+<td><code>approval-service</code> not running, or the proxy target in <code>app-config.local.yaml</code> / <code>app-config.aws.yaml</code> unreachable</td>
+</tr>
+<tr>
+<td>Pod crash-loops on start</td>
+<td>Postgres unreachable — locally the compose Postgres must be up and reachable at <code>host.docker.internal:5432</code>; on AWS <code>approval-service-db</code> is copied from <code>backstage-secrets</code>, which requires <code>bootstrap.sh</code> to have run</td>
+</tr>
+<tr>
+<td>Policy edits have no effect</td>
+<td>Policy is cached — <code>kubectl rollout restart deployment/approval-service -n services-dev</code></td>
+</tr>
+<tr>
+<td><code>409</code> on every decide</td>
+<td>The approval was already decided; decisions are one-shot by design</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -2309,7 +2322,7 @@ scripts/seed-qa-metrics.sh
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../cli-reference/" class="md-footer__link md-footer__link--prev" aria-label="Previous: CLI Reference">
+          <a href="../agentic-platform/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Agentic Development Platform">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2319,20 +2332,20 @@ scripts/seed-qa-metrics.sh
                 Previous
               </span>
               <div class="md-ellipsis">
-                CLI Reference
+                Agentic Development Platform
               </div>
             </div>
           </a>
         
         
           
-          <a href="../ai-assistant/" class="md-footer__link md-footer__link--next" aria-label="Next: AI Assistant">
+          <a href="../dora-finops/" class="md-footer__link md-footer__link--next" aria-label="Next: DORA &amp; FinOps">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                AI Assistant
+                DORA & FinOps
               </div>
             </div>
             <div class="md-footer__button md-icon">

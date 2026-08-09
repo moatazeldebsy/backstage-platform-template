@@ -381,6 +381,23 @@
   
   
     <li class="md-tabs__item">
+      <a href="../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../dora-finops/" class="md-tabs__link">
         
   
@@ -865,6 +882,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#how-a-scaffolded-repo-stays-in-the-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      How a scaffolded repo stays in the catalog
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#2-clone-your-new-repo" class="md-nav__link">
     <span class="md-ellipsis">
       2. Clone your new repo
@@ -1214,6 +1240,26 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dora-finops/" class="md-nav__link">
         
   
@@ -1366,10 +1412,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1380,8 +1426,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1639,10 +1685,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_28" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
         
           
-          <label class="md-nav__link" for="__nav_28" id="__nav_28_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1653,8 +1699,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_28_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_28">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_29">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2035,8 +2081,22 @@
 <p>Fill in name, description, owner, and GitHub repo. Click <strong>Create</strong>.</p>
 <p>Backstage will:
 - Fetch the skeleton and render it with your values
-- Publish the repo to GitHub
+- Publish the repo to GitHub (tagging it with the <code>idp</code> / <code>idp-app</code> topics)
 - Register the component and API in the catalog</p>
+<h3 id="how-a-scaffolded-repo-stays-in-the-catalog">How a scaffolded repo stays in the catalog<a class="headerlink" href="#how-a-scaffolded-repo-stays-in-the-catalog" title="Permanent link">&para;</a></h3>
+<p>Registration is not a one-off write. <code>catalog.providers.github.idpOrg</code> (in <code>app-config.yaml</code>,
+with an AWS counterpart in <code>app-config.aws.yaml</code>) polls the GitHub org every 15 minutes and
+ingests the <code>catalog-info.yaml</code> from the <code>main</code> branch of every repo carrying the <code>idp</code> or
+<code>idp-app</code> topic. Scaffolded repos therefore appear on their own, and edits to a repo's
+<code>catalog-info.yaml</code> flow back into Backstage without touching this repo.</p>
+<p>Two consequences worth knowing:</p>
+<ul>
+<li><strong>Remove the topic and the service leaves the catalog</strong> — and, because the DORA exporter
+  cross-checks the catalog, it drops off the DORA dashboards too (see
+  <a href="../dora-finops/#which-services-appear">DORA &amp; FinOps § Which services appear</a>).</li>
+<li>A repo that isn't discovered can still be registered by hand via a <code>catalog.locations</code>
+  URL entry, which is how this repo's own hand-written services are listed.</li>
+</ul>
 <p><strong>Per-service infra (Crossplane, AWS)</strong></p>
 <table>
 <thead>
