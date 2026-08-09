@@ -16,12 +16,15 @@ Checks, in order of how much they have actually bitten us:
   6. every template is registered exactly once — either in the shared
      all-templates.yaml or, for local-only ones, in app-config.local.yaml,
      and anything registered only locally carries the `local-only` tag
+  7. the ModelConfig allow-list baked into the ai-agent-kagent skeleton's CI
+     still matches the ModelConfigs this repo applies
 
 Run from the repo root:  python3 scripts/validate-catalog-templates.py
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -38,6 +41,19 @@ LOCAL_CONFIG = Path("backstage/app-config.local.yaml")
 TIERS = {"blessed", "advanced"}
 VERSIONS = {"v1", "v2"}
 
+# Check 7. The generated agent repo cannot query the cluster from its own CI
+# without credentials, so its manifest validation carries a hardcoded copy of
+# the valid ModelConfig names. That copy silently goes stale when this repo
+# adds or renames one, and the symptom is a scaffolded agent that fails to
+# reconcile — the exact failure the check was added to prevent.
+AGENT_SKELETON_CI = (
+    TEMPLATES / "ai-agent-kagent/skeleton/.github/workflows/ci.yml"
+)
+MODELCONFIG_GLOB = "kubernetes/kagent/modelconfig*.yaml"
+# Shipped by the KAgent install itself, not by a manifest in this repo, so it
+# is legitimately in the skeleton's list with no file backing it.
+EXTERNAL_MODEL_CONFIGS = {"default-model-config"}
+
 errors: list[str] = []
 
 
@@ -51,6 +67,47 @@ def load(path: Path):
     except yaml.YAMLError as exc:
         err(path, f"invalid YAML — {exc}")
         return None
+
+
+def check_modelconfig_allowlist() -> None:
+    """Check 7 — skeleton's hardcoded ModelConfig list vs the real manifests."""
+    if not AGENT_SKELETON_CI.is_file():
+        err(AGENT_SKELETON_CI, "missing — the ai-agent-kagent skeleton has no CI")
+        return
+
+    text = AGENT_SKELETON_CI.read_text()
+    start = text.find("KNOWN_MODEL_CONFIGS = [")
+    if start == -1:
+        err(AGENT_SKELETON_CI, "no KNOWN_MODEL_CONFIGS list found in the skeleton CI")
+        return
+    end = text.find("]", start)
+    declared = set(re.findall(r'"([^"]+)"', text[start:end]))
+
+    applied = set()
+    for path in sorted(Path().glob(MODELCONFIG_GLOB)):
+        doc = load(path)
+        if isinstance(doc, dict):
+            name = doc.get("metadata", {}).get("name")
+            if name:
+                applied.add(name)
+
+    if not applied:
+        err(MODELCONFIG_GLOB, "matched no ModelConfig manifests — has the path moved?")
+        return
+
+    for name in sorted(applied - declared):
+        err(
+            AGENT_SKELETON_CI,
+            f"ModelConfig '{name}' is applied by this repo but missing from "
+            f"KNOWN_MODEL_CONFIGS — a scaffolded agent using it would fail its own CI",
+        )
+    for name in sorted(declared - applied - EXTERNAL_MODEL_CONFIGS):
+        err(
+            AGENT_SKELETON_CI,
+            f"KNOWN_MODEL_CONFIGS lists '{name}', which no {MODELCONFIG_GLOB} "
+            f"manifest defines — stale entry, or add it to EXTERNAL_MODEL_CONFIGS "
+            f"if KAgent ships it",
+        )
 
 
 def main() -> int:
@@ -119,6 +176,8 @@ def main() -> int:
             err(d, "registered twice (all-templates.yaml and app-config.local.yaml)")
         elif n in local and "local-only" not in tags_by_name.get(n, set()):
             err(d, "registered only in app-config.local.yaml but lacks the 'local-only' tag")
+
+    check_modelconfig_allowlist()
 
     total = len(template_dirs)
     blessed = sum(1 for t in tags_by_name.values() if "blessed" in t)

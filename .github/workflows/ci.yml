@@ -99,7 +99,11 @@ jobs:
             echo "helm=$(match '^helm/')"
             echo "k8s=$(match '^kubernetes/')"
             echo "backstage=$(match '^backstage/(app/|app-config.*\.yaml|Dockerfile)')"
-            echo "catalog=$(match '^backstage/catalog/')"
+            # kubernetes/kagent/modelconfig*.yaml is in here because check 7 of
+            # validate-catalog-templates.py compares those manifests against the
+            # allow-list in the ai-agent-kagent skeleton's CI. Without it, adding
+            # a ModelConfig touches no catalog path and the drift ships green.
+            echo "catalog=$(match '^(backstage/catalog/|kubernetes/kagent/modelconfig)')"
             echo "terraform=$(match '^terraform/')"
             echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/)')"
             echo "contract-mcp=$(match '^services/contract-mcp-server/')"
