@@ -3,6 +3,12 @@
 # helm upgrade --install tempo grafana/tempo \
 #   -n monitoring --values local/observability/tempo/tempo-values.yaml
 
+# Scaled to 0 — see the note in ../loki/loki-values.yaml. Tempo is installed but
+# not run locally, to keep the single-node Kind cluster off its capacity ceiling.
+# Set to 1 to re-enable tracing (tempo-ingress.yaml and the Grafana Tempo
+# datasource stay wired, so it comes back without further changes).
+replicas: 0
+
 tempo:
   reportingEnabled: false
   storage:

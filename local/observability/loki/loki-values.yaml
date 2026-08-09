@@ -5,6 +5,20 @@
 
 deploymentMode: SingleBinary
 
+# The canary DaemonSet continuously writes and reads back probe logs to verify
+# Loki is healthy. Pointless while Loki itself is scaled down, and it costs a
+# pod per node. Already disabled on the live cluster (parked on a nodeSelector
+# no node carries); turned off properly here.
+lokiCanary:
+  enabled: false
+
+# The chart's validate.yaml hard-fails the render with "Helm test requires the
+# Loki Canary to be enabled" if tests stay on while the canary is off, since the
+# test suite queries the canary's metrics endpoint. Nothing runs `helm test`
+# here, so turn it off alongside.
+test:
+  enabled: false
+
 loki:
   auth_enabled: false
   commonConfig:
@@ -22,6 +36,18 @@ loki:
           period: 24h
 
 singleBinary:
+  # NOTE: this value cannot turn Loki off, and 0 here would be a silent no-op.
+  # The chart's `loki.singleBinaryReplicas` helper hardcodes $replicas := 1 and
+  # only reads this field when using object storage AND replicas > 1; on
+  # filesystem storage it always renders 1. The scale-down is therefore applied
+  # after install by bootstrap-local.sh, not from here.
+  #
+  # Why it is scaled down at all: an 8CPU/16GB single-node Kind sits at ~380%
+  # CPU overcommit on limits with the rest of the platform up, and adding
+  # Loki + Tempo + Promtail starves the control plane — components answer
+  # /healthz slowly, get probe-killed, and leader-election leases miss their 5s
+  # renewal deadline. See promtail-values.yaml and ../tempo/tempo-values.yaml,
+  # which can express this directly.
   replicas: 1
   resources:
     requests:

@@ -41,6 +41,13 @@ users:
   await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
 }
 
+// Must track the MLflow *server* image tag in kubernetes/ml-platform/mlflow.yaml
+// and aws/ml-platform/mlflow.yaml. An unpinned `pip install mlflow` pulls a 3.x
+// client, whose log_model() calls POST /api/2.0/mlflow/logged-models — an
+// endpoint the 2.x server does not serve, so training fails with a 404 *after*
+// the run and its metrics have already been logged.
+const MLFLOW_CLIENT_VERSION = process.env.MLFLOW_CLIENT_VERSION ?? '2.13.0';
+
 const frameworkDeps: Record<string, string> = {
   sklearn: 'scikit-learn numpy',
   xgboost: 'xgboost scikit-learn numpy',
@@ -50,8 +57,16 @@ const frameworkDeps: Record<string, string> = {
 
 // Minimal but real training script: trains on Iris, logs to MLflow.
 // Reads MLFLOW_TRACKING_URI and MLFLOW_EXPERIMENT_NAME from env.
-function buildTrainScript(framework: string): string {
+//
+// This mirrors the skeleton's train.py, including its "<name>-model" registry
+// naming — the two are separate implementations of the same job and drift
+// easily. It differs deliberately in one respect: the skeleton skips
+// log_model() entirely when registration is off, whereas this always logs the
+// model artifact and only attaches registered_model_name when asked. The
+// parameter is "register in the Model Registry", not "produce a model".
+function buildTrainScript(framework: string, name: string, registerModel: boolean): string {
   const isXgboost = framework === 'xgboost';
+  const registerArg = registerModel ? `, registered_model_name="${name}-model"` : '';
   return `import os, mlflow, mlflow.sklearn
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -83,7 +98,7 @@ ${isXgboost
     f1  = f1_score(y_test, preds, average="weighted")
     mlflow.log_metric("accuracy", acc)
     mlflow.log_metric("f1_score", f1)
-    mlflow.sklearn.log_model(model, "model")
+    mlflow.sklearn.log_model(model, "model"${registerArg})
     print(f"accuracy={acc:.4f}  f1={f1:.4f}")
 print("Training complete.")
 `;
@@ -124,6 +139,14 @@ spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 1
   template:
+    # Labels are repeated on the pod template on purpose: labels on the Job's
+    # own metadata are not inherited by its pods, so without these the pods
+    # carry only job-name= and are invisible to both a kubectl -l app=<name>
+    # lookup and the entity's Kubernetes tab.
+    metadata:
+      labels:
+        app: ${name}
+        backstage.io/kubernetes-id: ${name}
     spec:
       restartPolicy: Never
       containers:
@@ -131,7 +154,7 @@ spec:
           image: python:${pythonVersion}-slim
           command: ["/bin/sh", "-c"]
           args:
-            - pip install --quiet mlflow ${deps} && python /app/train.py
+            - pip install --quiet "mlflow==${MLFLOW_CLIENT_VERSION}" ${deps} && python /app/train.py
           env:
             - name: MLFLOW_TRACKING_URI
               value: http://mlflow.ml-platform.svc.cluster.local:5000
@@ -171,6 +194,11 @@ function createRunTrainingJobAction() {
           experimentName: { type: 'string', title: 'MLflow experiment name' },
           framework: { type: 'string', title: 'ML framework', default: 'sklearn' },
           pythonVersion: { type: 'string', title: 'Python version', default: '3.11' },
+          registerModel: {
+            type: 'boolean',
+            title: 'Register the trained model in the MLflow Model Registry',
+            default: true,
+          },
         },
       },
       output: {
@@ -187,9 +215,12 @@ function createRunTrainingJobAction() {
       const experimentName = ctx.input['experimentName'] as string;
       const framework = (ctx.input['framework'] as string | undefined) ?? 'sklearn';
       const pythonVersion = (ctx.input['pythonVersion'] as string | undefined) ?? '3.11';
+      // Default true to match the template's parameter default, so an older
+      // template revision that omits the input still registers.
+      const registerModel = (ctx.input['registerModel'] as boolean | undefined) ?? true;
 
       const deps = frameworkDeps[framework] ?? frameworkDeps['sklearn'];
-      const trainScript = buildTrainScript(framework);
+      const trainScript = buildTrainScript(framework, name, registerModel);
       const jobName = `${name}-initial-run`;
 
       ctx.logger.info(`Creating training job '${jobName}' in ml-platform (framework: ${framework}, python: ${pythonVersion})...`);

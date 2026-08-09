@@ -25,7 +25,8 @@ settled (measured with `kubectl top`, not estimated):
 | Layer | Installed by | CPU | Memory |
 |---|---|---:|---:|
 | Kubernetes itself (`kube-system`, ingress, storage) | always | ~780m | ~1.9 GB |
-| Observability (Prometheus, Grafana, Loki, Tempo, OpenCost) | `bootstrap-local.sh` | ~650m | ~1.6 GB |
+| Observability (Prometheus, Grafana, OpenCost) | `bootstrap-local.sh` | ~650m | ~1.6 GB |
+| ↳ Loki + Promtail + Tempo | installed but **scaled to 0** — see [below](#loki-and-tempo-ship-disabled) | 0 | 0 |
 | GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts) | `bootstrap-local.sh` | ~310m | ~0.8 GB |
 | Your services (`services-dev`) | `bootstrap-local.sh` | ~200m | ~0.4 GB |
 | **AI/ML (KAgent, MLflow, MCP servers)** | `bootstrap-ai.sh` | ~300m | **~2.9 GB** |
@@ -95,6 +96,37 @@ Trim from the bottom of the value/cost list. Each flag is independent:
 If you're below the "core only" tier, don't run the platform locally — use a
 cloud dev box, or deploy to AWS with `./scripts/bootstrap.sh`.
 
+### Loki and Tempo ship disabled
+
+The log and trace backends — **Loki**, **Promtail**, and **Tempo** — are
+installed as Helm releases but run **zero pods** locally. Prometheus, Grafana,
+and OpenCost are unaffected; only log aggregation and distributed tracing are
+off, so the Grafana **Loki** and **Tempo** datasources return nothing.
+
+This is a deliberate capacity decision. A single-node Kind cluster on a 8CPU/16GB
+machine already sits at roughly **380% CPU overcommit on limits** with the rest
+of the platform up. Adding these three starves the control plane rather than
+merely slowing it: components answer `/healthz` too slowly and get probe-killed,
+and `kube-controller-manager` / `kube-scheduler` lose leadership when their
+leases miss the 5s renewal deadline. The symptom is a cluster that looks like
+eight unrelated things are broken at once.
+
+To turn them back on — **give the node more CPU and memory first**:
+
+| Component | Where | Change |
+|---|---|---|
+| Tempo | `local/observability/tempo/tempo-values.yaml` | `replicas: 0` → `1` |
+| Promtail | `local/observability/loki/promtail-values.yaml` | delete the `nodeSelector: {idp/disabled}` block |
+| Loki | `scripts/bootstrap-local.sh` (step 5c) | remove the `kubectl scale statefulset loki --replicas=0` line |
+
+Loki is the odd one out: its chart's `singleBinaryReplicas` helper hardcodes `1`
+unless object storage is in use, so `singleBinary.replicas` cannot express `0`
+and the scale-down has to happen after install.
+
+The URL banner only advertises the Loki and Tempo endpoints when their
+StatefulSets are actually scaled above zero, so it will start listing them once
+you re-enable them.
+
 ## Bootstrap (~10–15 min)
 
 > **First time? Run `setup.sh` and nothing else.** From the repo root:
@@ -158,15 +190,16 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
-| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (integrated in Backstage) |
+| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (integrated in Backstage; hidden until `bootstrap-ai.sh` runs — see [why](ai-assistant.md#where-the-ai-pages-come-from-and-why-theyre-hidden)) |
 | **hello-service** | http://hello-service.idp.local | — (managed by ArgoCD in `services-dev` as `hello-service-local-service-template`) |
 | **Grafana** | http://grafana.idp.local | `admin` / `admin` |
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |
 | **Prometheus** | http://prometheus.idp.local | — |
 | **AlertManager** | http://alertmanager.idp.local | — |
 | **Argo Rollouts** | http://argo-rollouts.idp.local | — (canary/progressive-delivery dashboard) |
-| **Tempo** (traces) | View traces: http://grafana.idp.local/explore → select the **Tempo** datasource | — (Tempo has **no UI of its own**) |
-| ↳ Tempo OTLP ingest | `POST http://tempo.idp.local/v1/traces` — an API endpoint, not a page. Opening it in a browser returns `405 method not allowed, supported: [POST]`, and `/` returns `404 page not found`; both mean Tempo is up. Health: `/ready` | — |
+| **Tempo** (traces) | **Scaled to 0 by default** — see [Loki and Tempo ship disabled](#loki-and-tempo-ship-disabled). Once enabled: http://grafana.idp.local/explore → select the **Tempo** datasource | — (Tempo has **no UI of its own**) |
+| ↳ Tempo OTLP ingest | Once enabled: `POST http://tempo.idp.local/v1/traces` — an API endpoint, not a page. Opening it in a browser returns `405 method not allowed, supported: [POST]`, and `/` returns `404 page not found`; both mean Tempo is up. Health: `/ready` | — |
+| **Loki** (logs) | **Scaled to 0 by default** — see [Loki and Tempo ship disabled](#loki-and-tempo-ship-disabled). Once enabled: http://grafana.idp.local/explore → select the **Loki** datasource | — |
 | **OpenCost** | http://opencost.idp.local | — |
 | **Pushgateway** | http://pushgateway.idp.local | — |
 | **KAgent UI** | http://kagent.idp.local | — (agent management) |

@@ -103,7 +103,7 @@ with these safety defaults:
 - Backstage `Dockerfile` runs as non-root, uses a distroless-style runtime stage, and pins all base-image digests.
 - GitHub Actions CI uses `aws-actions/configure-aws-credentials` with OIDC — no long-lived AWS keys in repo secrets.
 - Trivy scans every image build; Cosign signs images pushed to ECR/GHCR.
-- OPA/Gatekeeper policies in `kubernetes/opa-policies/` reject pods that pull `:latest`, lack resource limits, or omit cost-allocation labels.
+- OPA/Gatekeeper policies in `kubernetes/policies/` reject pods that pull `:latest`, lack resource limits, or omit cost-allocation labels.
 - RDS security group restricts ingress to the VPC CIDR (no `0.0.0.0/0`).
 - All namespaces enforce Pod Security Standards (`restricted` where possible, `baseline` for system namespaces).
 

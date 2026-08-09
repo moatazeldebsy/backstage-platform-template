@@ -20,6 +20,22 @@ Use the Backstage scaffolder to add an SLO to any service:
 
 Example reference: `observability/slo/hello-service-slos.yaml` — 99.5% availability, p99 < 500 ms.
 
+### How SLOs reach the cluster
+
+The `PrometheusServiceLevel` in `observability/slo/` is a Sloth CRD, and no Sloth operator runs
+on the local cluster — it has to be compiled into a `PrometheusRule` first. `bootstrap-local.sh`
+does this on every run:
+
+- If the `sloth` binary is on PATH, it regenerates the rules from the source YAML and applies
+  them — so an edit to the SLO definition takes effect without re-vendoring anything.
+- Otherwise it applies the committed output at `observability/slo/generated/hello-service-slo-rules.yaml`,
+  so the bootstrap has no hard dependency on Sloth being installed.
+
+If neither is available the bootstrap warns and the Grafana SRE dashboard reports
+"no `sloth_slo_info` metrics found" — which is the symptom to look for when error budgets
+are empty on a fresh cluster. **After editing an SLO source file without `sloth` installed,
+regenerate and commit the rules**, or the cluster keeps applying the stale committed copy.
+
 ### Multi-window burn-rate alerts
 
 The platform ships two alert groups in `observability/alertmanager/prometheus-rules.yaml`:
@@ -121,6 +137,12 @@ helm template my-svc helm/service-template --values helm-values.yaml | \
 ### Architecture
 
 Promtail runs as a DaemonSet and ships all pod stdout/stderr to Loki. Grafana queries Loki via the built-in Loki datasource.
+
+> **Local (Kind) note:** Loki and Promtail ship **scaled to 0** and collect
+> nothing until re-enabled — the single-node cluster does not have the capacity
+> to run them alongside the rest of the platform. See
+> [local-setup.md → Loki and Tempo ship disabled](local-setup.md#loki-and-tempo-ship-disabled).
+> AWS is unaffected.
 
 | Environment | Loki location |
 |-------------|--------------|

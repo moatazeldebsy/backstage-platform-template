@@ -165,8 +165,17 @@ _print_url_banner() {
   echo "║  Prometheus       http://prometheus.idp.local                             ║"
   echo "║  AlertManager     http://alertmanager.idp.local                           ║"
   echo "║  Pushgateway      http://pushgateway.idp.local                            ║"
+  # Tempo and Loki ship scaled to 0 on this node (capacity — see
+  # local/observability/tempo/tempo-values.yaml). Only advertise the trace/log
+  # endpoints when something is actually serving them, so the banner never
+  # points at a dead URL.
+  if [[ "$(kubectl -n monitoring get sts tempo -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)" != "0" ]]; then
   echo "║  Traces (Tempo)   http://grafana.idp.local/explore  → pick 'Tempo'        ║"
   echo "║    └ OTLP ingest  tempo.idp.local/v1/traces  (POST only — no browser UI)  ║"
+  fi
+  if [[ "$(kubectl -n monitoring get sts loki -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)" != "0" ]]; then
+  echo "║  Logs (Loki)      http://grafana.idp.local/explore  → pick 'Loki'         ║"
+  fi
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   if kubectl get ns kagent &>/dev/null 2>&1; then
@@ -1079,11 +1088,17 @@ if ! $SKIP_OBS; then
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/loki/loki-values.yaml" \
       --wait --timeout 5m
+    # Loki is installed but not run on this node — see the capacity note in
+    # loki-values.yaml. It cannot be expressed as a value: the chart's
+    # singleBinaryReplicas helper hardcodes 1 unless object storage is in use,
+    # so the StatefulSet is scaled down here instead. Promtail and Tempo carry
+    # the equivalent setting in their own values files.
+    kubectl -n monitoring scale statefulset loki --replicas=0 2>/dev/null || true
     helm_upgrade_cached promtail monitoring grafana/promtail \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/loki/promtail-values.yaml" \
       --wait --timeout 3m
-    log "  Step 5c: Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
+    log "  Step 5c: Loki + Promtail installed (scaled to 0 — see loki-values.yaml)."
   ) > "$_s5c_log" 2>&1 &
   _s5c_pid=$!
 

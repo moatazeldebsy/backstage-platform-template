@@ -129,7 +129,7 @@ aws secretsmanager create-secret \
 #### 5. Datadog API/App Keys (optional — required for the Datadog Agent, dd-trace APM, and the Datadog catalog tab)
 
 **Why:** Cluster-wide infra observability + APM (see
-[docs/sre-reliability.md](sre-reliability.md#datadog-infra-observability--apm))
+[docs/sre-reliability.md](sre-reliability.md#datadog-infra-observability-apm))
 
 **Get it:** https://app.datadoghq.eu/organization-settings/api-keys (API key) and
 https://app.datadoghq.eu/organization-settings/application-keys (App key)

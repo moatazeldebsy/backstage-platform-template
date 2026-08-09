@@ -124,6 +124,11 @@ spec:
         port: ${{ parameters.port }}
         repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
         repoOwner: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
+        # Deploy the image the scaffold commit will produce, rather than the
+        # mutable :latest. The action shortens this to 8 chars to match the
+        # tag the generated CI pushes (TAG="${GITHUB_SHA::8}"), and falls back
+        # to :latest if publish did not report a commit.
+        commitSha: ${{ steps.publish.output.commitHash }}
 
     - id: catalog
       name: Register in catalog

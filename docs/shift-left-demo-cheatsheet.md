@@ -14,7 +14,7 @@ For the why and the gate definitions, see [shift-left.md](shift-left.md). This p
 - [ ] Backstage built from a freshly-built image (see [local-setup.md](local-setup.md) — run `docker compose -f local/backstage/docker-compose.yml up -d backstage` if you just rebuilt)
 - [ ] Have a throwaway service repo at the ready (a previously-scaffolded `demo-svc`) — for Beat 1 & 2 (scaffold + Trivy)
 - [ ] **Beat 3 (contract testing):** `payments-api` is already deployed and registered — confirm: `curl http://contract-mcp-server.idp.local/api/contracts` returns `payments-api v1.0.0`
-- [ ] Have a branch ready with `currency` removed from `Account` in `services/payments-api/src/main.py` — use this for the "break it" step instead of doing it live if you're nervous
+- [ ] Have a branch ready with `currency` removed from `Account` in `src/main.py` **of the scaffolded `payments-api` repo** (it lives in its own GitHub repo, not in this one) — use this for the "break it" step instead of doing it live if you're nervous
 - [ ] Mute Slack
 
 ---
@@ -59,7 +59,7 @@ This is the showstopper. Don't skip it.
 |---|---|---|
 | 1 | Open AI Assistant (`/ai-assistant`) → select **contract-assistant** → type: *"List all registered contracts"* | `payments-api v1.0.0` with 6 paths listed |
 | 2 | Ask: *"Can I deploy payments-api v1.0.0?"* | `safe: true` — no consumers are blocked |
-| 3 | In `services/payments-api/src/main.py`, remove `currency` from the `Account` response model → push as a PR branch | GitHub Actions runs `contract-check.yml` |
+| 3 | In the `payments-api` repo's `src/main.py`, remove `currency` from the `Account` response model → push as a PR branch | GitHub Actions runs `contract-check.yml` |
 | 4 | Show the PR — a bot comment appears: *"Breaking change detected: removed field `currency` from `GET /api/accounts/{account_id}`"* | Diff summary + migration guide link in PR comment |
 | 5 | Ask AI Assistant: *"Can I deploy payments-api v1.1.0?"* | `safe: false` — blocked, with reason |
 | 6 | Revert the field → merge → ArgoCD PreSync hook passes | Deploy proceeds; ask *"Can I deploy payments-api v1.0.0?"* → `safe: true` again |

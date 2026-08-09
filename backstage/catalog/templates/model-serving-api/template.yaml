@@ -97,6 +97,11 @@ spec:
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+          # The skeleton previously built project-slug from `owner`, which is a
+          # Backstage group ref — it produced a slug like
+          # "group:default/ml-team/<repo>" and the entity page 404'd against
+          # api.github.com. See the note in mlflow-experiment/template.yaml.
+          githubOrg: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
 
     - id: publish
       name: Publish to GitHub

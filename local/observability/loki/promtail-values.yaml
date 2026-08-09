@@ -38,6 +38,16 @@ config:
               - __meta_kubernetes_pod_container_name
             target_label: __path__
 
+# Disabled — see the note in loki-values.yaml. A DaemonSet has no replica count,
+# so it is parked on a label no node carries, which schedules zero pods while
+# leaving the release installed. This mirrors the live cluster, where promtail
+# was already pinned to this exact selector out-of-band. Shipping logs to a Loki
+# that is scaled to 0 would burn a pod per node for nothing.
+# To re-enable, delete this nodeSelector and set singleBinary.replicas: 1 in
+# loki-values.yaml.
+nodeSelector:
+  idp/disabled: "true"
+
 resources:
   requests:
     cpu: 20m

@@ -204,6 +204,7 @@ The items below map to the original 25-team scaling analysis. ✅ = shipped in v
 | **Backstage** | Small/Medium/Large Helm value tiers | ✅ `helm/values-tiers/` |
 | **Backstage** | GitHub org sync (User/Group auto-import) | ✅ `app-config.aws.yaml` `githubOrg` provider |
 | **Backstage** | Catalog consolidation (49 URLs → 1 file) | ✅ `backstage/catalog/all-templates.yaml` |
+| **Backstage** | GitHub discovery for scaffolded services (replaces the URL catalog list) | ✅ `catalog.providers.github.idpOrg` in `app-config.yaml` / `app-config.aws.yaml` — topic-filtered, 15-min sync |
 | **Backstage** | Template versioning (`v1` + `blessed`/`advanced` tags) | ✅ all 61 templates |
 | **Backstage** | Permission framework (`permission.enabled: true`) | ✅ config added; backend plugin code still needed |
 | **Observability** | DORA `team=` label on all Prometheus metrics | ✅ `dora-exporter.py` |
@@ -215,8 +216,7 @@ The items below map to the original 25-team scaling analysis. ✅ = shipped in v
 
 | Item | Notes |
 |---|---|
-| GitHub discovery plugin (replace URL catalog list for services) | Still URL-based for service `catalog-info.yaml` files; templates use `all-templates.yaml` |
-| Group-based template visibility in Backstage | Requires permission backend plugin code (`packages/backend/src/plugins/permission.ts`) |
+| Group-based template visibility in Backstage | Requires permission backend plugin code in `backstage/app/packages/backend/` |
 | Per-team Grafana RBAC (org → team mapping) | Grafana folder exists; team RBAC provisioning via API not yet automated |
 | DORA team dimension in Grafana dashboard | Dashboard JSON needs `team` variable + per-team panel |
 | Thanos / Mimir for Prometheus HA | Plan when > 1M active series |

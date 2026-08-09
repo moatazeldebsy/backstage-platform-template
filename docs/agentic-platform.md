@@ -99,6 +99,9 @@ auto-merge before then.
 
 ### Phase 4 — HiTL Approval Layer & Policy-as-Prompt
 
+Operator/user guide: [Agent Approvals](agent-approvals.md) — policy rules, approval API, the Backstage
+UI, how to test the gate, and troubleshooting.
+
 | Component | Path |
 |-----------|------|
 | `approval-service` — REST API, `agent_approvals` table on the existing Backstage Postgres (Aurora/RDS in AWS, docker-compose pgvector image locally, reached via `host.docker.internal` from Kind pods) | `services/approval-service/` |

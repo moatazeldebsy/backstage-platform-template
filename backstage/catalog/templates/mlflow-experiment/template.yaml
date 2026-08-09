@@ -100,6 +100,13 @@ spec:
           pythonVersion: ${{ parameters.pythonVersion }}
           registerModel: ${{ parameters.registerModel }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+          # The skeleton builds github.com/project-slug from githubOrg/repoName.
+          # Without this the org renders empty, the annotation becomes
+          # "/<repo>", and the entity page fetches api.github.com/repos//<repo>,
+          # which fails preflight and surfaces as a "Failed to fetch" toast.
+          # Must come from the repo URL, not parameters.owner — that is a
+          # Backstage group ref (group:default/ml-team), not a GitHub org.
+          githubOrg: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
 
     - id: publish
       name: Publish to GitHub
@@ -132,6 +139,7 @@ spec:
         framework: ${{ parameters.framework }}
         pythonVersion: ${{ parameters.pythonVersion }}
         owner: ${{ parameters.owner }}
+        registerModel: ${{ parameters.registerModel }}
 
   output:
     links:
