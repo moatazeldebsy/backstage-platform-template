@@ -115,16 +115,17 @@ describe('AI scaffolder actions bootstrap the kubeconfig', () => {
   // all, so in-cluster on EKS they ran kubectl against a /tmp/kubeconfig that
   // does not exist. The RBAC granted to them was unusable as a result.
   it.each([
-    ['idpDeployAgent', '../idpDeployAgent'],
-    ['idpDeployMcpServer', '../idpDeployMcpServer'],
-    ['idpDeployModelServer', '../idpDeployModelServer'],
-    ['idpRunTrainingJob', '../idpRunTrainingJob'],
-    ['idpSetupContractTesting', '../idpSetupContractTesting'],
-  ])('%s imports the shared kubeconfig helper', (_name, modulePath) => {
+    'idpDeployAgent',
+    'idpDeployMcpServer',
+    'idpDeployModelServer',
+    'idpRunTrainingJob',
+    'idpSetupContractTesting',
+  ])('%s imports the shared kubeconfig helper', moduleName => {
     const fs = jest.requireActual('fs') as typeof import('fs');
     const path = jest.requireActual('path') as typeof import('path');
+    // __dirname is .../modules/__tests__, so the modules sit one level up.
     const src = fs.readFileSync(
-      path.join(__dirname, `${modulePath.replace('../', '../')}.ts`),
+      path.join(__dirname, '..', `${moduleName}.ts`),
       'utf8',
     );
     expect(src).toMatch(/from '\.\/kubeconfig'/);
