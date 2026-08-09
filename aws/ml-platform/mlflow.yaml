@@ -2,7 +2,7 @@
 #
 # Differences from mlflow.yaml (local):
 #   - Dedicated ServiceAccount with IRSA for S3 artifact access
-#   - EBS PVC (gp2, 1Gi) for the SQLite tracking DB (survives pod restarts)
+#   - EBS PVC (gp3, 1Gi) for the SQLite tracking DB (survives pod restarts)
 #   - S3 artifact root: s3://MLFLOW_ARTIFACTS_BUCKET_PLACEHOLDER/artifacts
 #     (placeholder substituted by bootstrap-ai.sh --aws via sed before kubectl apply)
 #   - ALB ingress instead of nginx
@@ -44,6 +44,14 @@ metadata:
     backstage.io/kubernetes-id: mlflow
 spec:
   replicas: 1
+  # The PVC is ReadWriteOnce, so the replacement pod cannot mount the volume
+  # while the outgoing one still holds it — a RollingUpdate would deadlock with
+  # the new pod stuck ContainerCreating until progressDeadlineSeconds. EBS is
+  # strictly single-attach, so this bites harder here than on Kind's local-path
+  # provisioner: without it, bootstrap-ai.sh's `rollout status --timeout=180s`
+  # fails the whole AWS bootstrap on every re-run.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mlflow
@@ -104,6 +112,18 @@ spec:
               port: 5000
             initialDelaySeconds: 10
             periodSeconds: 10
+          # MLflow initialises its backing store on first boot, which on a pod
+          # capped at 500m CPU can take well over the ~90s (initialDelay 30 +
+          # 3 × period 20) that livenessProbe alone allows — the kubelet then
+          # kills it mid-startup and it restart-loops. A startupProbe gives it
+          # up to 5 minutes, and liveness does not begin evaluating until
+          # startup succeeds, so steady-state failure detection is unchanged.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health

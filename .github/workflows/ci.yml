@@ -99,11 +99,16 @@ jobs:
             echo "helm=$(match '^helm/')"
             echo "k8s=$(match '^kubernetes/')"
             echo "backstage=$(match '^backstage/(app/|app-config.*\.yaml|Dockerfile)')"
-            # kubernetes/kagent/modelconfig*.yaml is in here because check 7 of
-            # validate-catalog-templates.py compares those manifests against the
-            # allow-list in the ai-agent-kagent skeleton's CI. Without it, adding
-            # a ModelConfig touches no catalog path and the drift ships green.
-            echo "catalog=$(match '^(backstage/catalog/|kubernetes/kagent/modelconfig)')"
+            # This filter is deliberately wider than backstage/catalog/:
+            #  - kubernetes/kagent/modelconfig*.yaml, because check 7 compares
+            #    those manifests against the allow-list in the ai-agent-kagent
+            #    skeleton's CI. Without it, adding a ModelConfig touches no
+            #    catalog path and the drift ships green.
+            #  - the rest of kubernetes/kagent/, aws/kagent/, the scaffolder
+            #    action modules and bootstrap-ai.sh, because check 8 validates
+            #    every kagent.dev apiVersion in those against the CRD versions
+            #    the pinned KAgent chart actually serves.
+            echo "catalog=$(match '^(backstage/catalog/|kubernetes/kagent/|aws/kagent/|backstage/app/packages/backend/src/modules/|scripts/(bootstrap-ai\.sh|validate-catalog-templates\.py))')"
             echo "terraform=$(match '^terraform/')"
             echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/)')"
             echo "contract-mcp=$(match '^services/contract-mcp-server/')"

@@ -18,6 +18,10 @@ Checks, in order of how much they have actually bitten us:
      and anything registered only locally carries the `local-only` tag
   7. the ModelConfig allow-list baked into the ai-agent-kagent skeleton's CI
      still matches the ModelConfigs this repo applies
+  8. every kagent.dev resource — in manifests and in the scaffolder actions
+     that emit them — uses an API version the pinned KAgent chart actually
+     serves for that kind (they are not uniform: MCPServer is v1alpha1 only,
+     Agent is v1alpha2)
 
 Run from the repo root:  python3 scripts/validate-catalog-templates.py
 """
@@ -53,6 +57,43 @@ MODELCONFIG_GLOB = "kubernetes/kagent/modelconfig*.yaml"
 # Shipped by the KAgent install itself, not by a manifest in this repo, so it
 # is legitimately in the skeleton's list with no file backing it.
 EXTERNAL_MODEL_CONFIGS = {"default-model-config"}
+
+# Check 8. The KAgent CRDs do not all serve the same API version, and the
+# difference is not guessable: MCPServer serves only v1alpha1 while Agent,
+# ModelConfig and most others serve v1alpha2. Getting it wrong produces "no
+# matches for kind" at apply time — on a cluster, long after CI passed.
+#
+# This table is transcribed from the CRDs in the pinned chart, read with:
+#
+#   helm pull oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds \
+#     --version <KAGENT_CHART_VERSION> --untar
+#   # then read spec.versions[].name where served: true, across
+#   # templates/*.yaml and charts/kmcp-crds/templates/*.yaml
+#
+# Re-transcribe it when KAGENT_CHART_VERSION moves in scripts/bootstrap-ai.sh;
+# the version below is asserted against that script so the two cannot drift
+# silently.
+KAGENT_CHART_VERSION = "0.9.4"
+BOOTSTRAP_AI = Path("scripts/bootstrap-ai.sh")
+KAGENT_SERVED_VERSIONS: dict[str, set[str]] = {
+    "Agent": {"v1alpha1", "v1alpha2"},
+    "AgentHarness": {"v1alpha2"},
+    "MCPServer": {"v1alpha1"},
+    "Memory": {"v1alpha1"},
+    "ModelConfig": {"v1alpha1", "v1alpha2"},
+    "ModelProviderConfig": {"v1alpha2"},
+    "RemoteMCPServer": {"v1alpha2"},
+    "SandboxAgent": {"v1alpha2"},
+    "ToolServer": {"v1alpha1"},
+}
+# Where kagent CRs are authored. TypeScript modules embed them as template
+# literals, so they are scanned as text rather than parsed as YAML.
+KAGENT_YAML_GLOBS = (
+    "kubernetes/kagent/*.yaml",
+    "aws/kagent/*.yaml",
+    "backstage/catalog/templates/*/skeleton/kubernetes/*.yaml",
+)
+KAGENT_TS_GLOB = "backstage/app/packages/backend/src/modules/*.ts"
 
 errors: list[str] = []
 
@@ -107,6 +148,103 @@ def check_modelconfig_allowlist() -> None:
             f"KNOWN_MODEL_CONFIGS lists '{name}', which no {MODELCONFIG_GLOB} "
             f"manifest defines — stale entry, or add it to EXTERNAL_MODEL_CONFIGS "
             f"if KAgent ships it",
+        )
+
+
+def _is_template(text: str) -> bool:
+    """True for Nunjucks/Actions-templated files, which are not valid YAML."""
+    return "{%" in text or "${{" in text
+
+
+def _scan_kagent_text(path: Path, text: str) -> int:
+    """Pull apiVersion/kind pairs out of text that cannot be parsed as YAML."""
+    found = 0
+    for match in re.finditer(
+        r"apiVersion:\s*kagent\.dev/(v1alpha\d+)\s*\n\s*kind:\s*(\w+)", text
+    ):
+        found += 1
+        _check_kagent_api_version(path, match.group(2), match.group(1))
+    if not found:
+        err(
+            path,
+            "mentions kagent.dev/ but no apiVersion/kind pair was found — the "
+            "check cannot see it, so a wrong version here would go unnoticed",
+        )
+    return found
+
+
+def _check_kagent_api_version(where: Path | str, kind: str, version: str) -> None:
+    served = KAGENT_SERVED_VERSIONS.get(kind)
+    if served is None:
+        err(
+            where,
+            f"kagent.dev/{version} kind '{kind}' is not in KAGENT_SERVED_VERSIONS — "
+            f"either a typo, or a new CRD that needs adding to the table",
+        )
+    elif version not in served:
+        err(
+            where,
+            f"{kind} is declared kagent.dev/{version}, but chart "
+            f"{KAGENT_CHART_VERSION} serves only {sorted(served)} for that kind — "
+            f"this fails at apply time with 'no matches for kind'",
+        )
+
+
+def check_kagent_api_versions() -> None:
+    """Check 8 — every kagent.dev CR uses a version the pinned chart serves."""
+    if BOOTSTRAP_AI.is_file():
+        pinned = re.search(
+            r'KAGENT_CHART_VERSION="([^"]+)"', BOOTSTRAP_AI.read_text()
+        )
+        if not pinned:
+            err(BOOTSTRAP_AI, "no KAGENT_CHART_VERSION found — has it been renamed?")
+        elif pinned.group(1) != KAGENT_CHART_VERSION:
+            err(
+                BOOTSTRAP_AI,
+                f"pins KAgent {pinned.group(1)}, but KAGENT_SERVED_VERSIONS in this "
+                f"script was transcribed from {KAGENT_CHART_VERSION} — re-read the "
+                f"chart's CRDs and update the table",
+            )
+
+    seen = 0
+    for pattern in KAGENT_YAML_GLOBS:
+        for path in sorted(Path().glob(pattern)):
+            text = path.read_text()
+            if "kagent.dev/" not in text:
+                continue
+            # Skeleton manifests are Nunjucks templates, not YAML — `{% if %}`
+            # is not parseable. Scan those as text; parse everything else, so a
+            # real manifest with a malformed body is still reported.
+            if _is_template(text):
+                seen += _scan_kagent_text(path, text)
+                continue
+            try:
+                docs = list(yaml.safe_load_all(text))
+            except yaml.YAMLError as exc:
+                err(path, f"invalid YAML — {exc}")
+                continue
+            for doc in docs:
+                if not isinstance(doc, dict):
+                    continue
+                api = str(doc.get("apiVersion", ""))
+                if not api.startswith("kagent.dev/"):
+                    continue
+                seen += 1
+                _check_kagent_api_version(
+                    path, str(doc.get("kind", "")), api.split("/", 1)[1]
+                )
+
+    # The scaffolder actions build these CRs as template literals; a mismatch
+    # here is exactly the bug that made the scaffolded agent fail to reconcile.
+    for path in sorted(Path().glob(KAGENT_TS_GLOB)):
+        text = path.read_text()
+        if "kagent.dev/" in text:
+            seen += _scan_kagent_text(path, text)
+
+    if not seen:
+        err(
+            "kagent apiVersion check",
+            "found no kagent.dev resources at all — have the paths moved?",
         )
 
 
@@ -178,6 +316,7 @@ def main() -> int:
             err(d, "registered only in app-config.local.yaml but lacks the 'local-only' tag")
 
     check_modelconfig_allowlist()
+    check_kagent_api_versions()
 
     total = len(template_dirs)
     blessed = sum(1 for t in tags_by_name.values() if "blessed" in t)
