@@ -35,7 +35,7 @@ Every later invocation (recreate the cluster, add a flag, retry a failed step) g
 | `setup.sh` | **Start here (once).** Guided interactive setup — replaces placeholders, creates `.env` files, then bootstraps local or AWS |
 | `bootstrap-local.sh` | Day-2: re-create Kind cluster + platform. Flags: `--start-backstage`, `--skip-obs`, `--destroy`, `--print-urls` |
 | `bootstrap-ai.sh` | Add AI/ML stack on top of a running cluster. **Local only** — on AWS, `bootstrap.sh` already runs this for you. Flags: `--skip-mlflow`, `--skip-mcp`, `--skip-kagent`, `--aws`, `--destroy` |
-| `bootstrap.sh` | AWS single-region bootstrap: Terraform → EKS → full platform **including AI/ML** (~45–60 min). Pass `--skip-ai` to opt out |
+| `bootstrap.sh` | AWS single-region bootstrap: Terraform → EKS → full platform **including AI/ML** (~40–70 min). Pass `--skip-ai` to opt out |
 | `bootstrap-multiregion.sh` | AWS multi-region (V2) bootstrap: active-standby eu-central-1 + us-east-1 (~30–50 min). See [Multi-Region](multi-region.md) |
 | `verify-secrets.sh` | Pre-flight: checks all required secrets/API keys are set before an AWS deployment. Run before `bootstrap.sh` |
 | `validate-deployment.sh` | Post-deploy: 50+ automated checks across infra, K8s, Backstage, observability, GitOps, AI, security |
@@ -50,7 +50,7 @@ Every later invocation (recreate the cluster, add a flag, retry a failed step) g
 | `setup.sh` | **Entry point.** Interactive: replaces placeholders (org, AWS account, region, cluster name), creates `.env` files, then dispatches to local or AWS bootstrap. | You (once) |
 | `bootstrap-local.sh` | Creates the Kind cluster, installs nginx ingress, Prometheus/Grafana, ArgoCD, and deploys `hello-service`. `--start-backstage` builds + starts Backstage, wires nginx, seeds metrics. `--destroy` tears everything down: removes scaffolded services from ArgoCD + Helm + git, then deletes the cluster. | `setup.sh` → local path, or standalone |
 | `verify-secrets.sh` | Checks `GITHUB_TOKEN`, AWS credentials, and other required secrets are set and valid before an AWS deployment. Exits non-zero with the missing item if anything is wrong. | Before `bootstrap.sh` (manual, or see [PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md)) |
-| `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — **including the AI/ML stack** (Phase 6 runs `bootstrap-ai.sh --aws` internally, unless `--skip-ai` is passed) — and pushes `hello-service` to ECR. ~45–60 min. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for full walkthrough. | `setup.sh` → AWS path, or standalone |
+| `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — **including the AI/ML stack** (Phase 6 runs `bootstrap-ai.sh --aws` internally, unless `--skip-ai` is passed) — and pushes `hello-service` to ECR. ~40–70 min. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for full walkthrough. | `setup.sh` → AWS path, or standalone |
 | `bootstrap-multiregion.sh` | Provisions the V2 active-standby topology: `terraform/global` (KMS, Route53, TGW, Aurora Global, CloudFront) → primary EKS (full stack) → standby EKS (minimal stack) → post-wiring (IRSA, cluster registration, failover RBAC). ~30–50 min. Flags: `--skip-global`, `--skip-standby`, `--skip-obs`, `--skip-ai`. See [Multi-Region](multi-region.md). | `setup.sh` → multi path, or standalone |
 | `register-argocd-cluster.sh` | Creates an `argocd-manager` service account on a target EKS cluster and writes its token to Secrets Manager, so the hub ArgoCD can manage it as a spoke. `--cluster <name> --region <region>`. | `bootstrap-multiregion.sh` (auto, for both primary + standby), or standalone to re-register after credential rotation |
 | `validate-deployment.sh` | **Post-deploy validation.** Runs 50+ automated tests across AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage. Exit 0 = success, 1 = failure with debug suggestions. | After `bootstrap.sh` completes |
@@ -104,6 +104,9 @@ other.
 | `--force-build` | off | `bootstrap-ai.sh` only — same idea, scoped to MCP server images and their Helm releases. |
 | `IDP_BUILD_JOBS` | `4` | `bootstrap-ai.sh` only — max concurrent image builds. Lower it if Docker Desktop has few CPUs; raising it past your core count usually makes the batch slower. |
 | `IDP_TIMING` | `1` | Per-step timings plus a slowest-first summary table on exit. Set to `0` to silence. |
+| `HELM_WAIT_SHORT` | `5m` | `helm --wait` budget for the quick installs. Raise it on a cold AWS account where ALB and EBS provisioning is slow. |
+| `HELM_WAIT_MED` | `10m` | Same, for the heavier charts (kube-prometheus-stack, Loki, Tempo). |
+| `HELM_WAIT_LONG` | `15m` | Used for the ArgoCD retry — the first attempt uses `HELM_WAIT_SHORT`, and only a failure escalates to this. |
 
 The timing summary prints even when a run fails, so it is the fastest way to see
 which step is actually costing you time before trying to tune anything.

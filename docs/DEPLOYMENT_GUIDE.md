@@ -81,17 +81,28 @@ Replaces `moatazeldebsy` and other placeholders across all template files, creat
 
 **What it deploys (in order):**
 
+Phase numbers below match the `timer_start` labels the script prints, so the
+timing table at the end of a run lines up with this one.
+
 | Phase | Duration | What |
 |-------|----------|------|
-| 1 — Terraform | 15–25 min | VPC, EKS (6× t3.medium by default; scales to 0 overnight when `enable_cost_optimizer = true`), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager |
-| 2 — Platform base | 5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore |
-| 3 — GitOps | 5 min | ArgoCD, OPA/Gatekeeper, Crossplane |
-| 4 — Observability | 10 min | Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter |
-| 4.6 — ArgoCD GitOps | 1 min | `idp-services` ApplicationSet auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server`, `qa-mcp-server` to `services-dev`. `contract-mcp-server` is excluded — deployed only by `bootstrap-ai.sh --aws`. |
-| 5 — hello-service | 5 min | Builds linux/amd64 image → ECR, ArgoCD deploys |
-| 6 — Backstage | 5 min | Deploys official image, injects real secrets |
+| 1 — Terraform | 15–25 min | VPC, EKS (6× t3.medium by default; scales to 0 overnight when `enable_cost_optimizer = true`), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager. EKS and RDS build concurrently, so this is bounded by the slower one, not their sum. |
+| 2 — kubectl config | <1 min | `aws eks update-kubeconfig`, connectivity check |
+| 2.5 — Image builds | starts here | hello-service + Backstage images build **in the background** for the rest of the run. Skipped entirely when the source is unchanged and the tag is already in ECR. |
+| 3 / 3.6 / 3.7 | 3–5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore, Secrets Manager population |
+| 4 — Prometheus + Grafana | 4–8 min | kube-prometheus-stack, dashboards, PrometheusRules |
+| 4a+4b — Pushgateway + OpenCost | 1–2 min | Installed concurrently |
+| 3.8–3.9 / 4.4x / 4.4 | 3–8 min | Gatekeeper + Kyverno, then Rollouts/Loki/Tempo/Datadog, then the exporter group — each a parallel batch |
+| 4.5–4.7 — GitOps | 3–5 min | ArgoCD (with one retry on a slow first ALB), the `idp-services` ApplicationSet, Crossplane, and the Backstage/ArgoCD tokens. The ApplicationSet auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server` and `qa-mcp-server` to `services-dev`; `contract-mcp-server` is excluded and deployed only by `bootstrap-ai.sh --aws`. |
+| 5 — Image builds (join) | 0–20 min | Waits for phase 2.5. Usually already finished, since it has had the whole platform install to run. Then writes the seed image tag into `helm-values-aws.yaml`. |
+| 5.6–5.8 — Backstage | 2–8 min | ExternalSecret, generated ConfigMaps, deployment, ALB hostname wait, catalog exporter, AlertManager routing |
+| 6 — AI/ML platform | 8–20 min | `bootstrap-ai.sh --aws` (skip with `--skip-ai`). Argo Workflows and Velero install in parallel with it. |
 
-**Total: ~45–60 minutes**
+**Total: ~40–70 minutes cold.** A repeat run against an existing cluster is far
+shorter — the image builds, helm releases and Terraform providers all skip when
+nothing has changed. Set `IDP_FORCE=1` to override every skip check, and
+`HELM_WAIT_SHORT`/`HELM_WAIT_MED`/`HELM_WAIT_LONG` to raise the helm timeouts on
+a slow account.
 
 ### Step 3: Update GitHub OAuth Callback URL
 
@@ -401,15 +412,30 @@ EKS is not free-tier compatible. Fixed monthly costs that cannot be eliminated w
 
 ### Default cost-optimized settings
 
-`terraform/terraform.tfvars` is pre-configured for minimum spend:
+`terraform/terraform.tfvars.example`, which `setup.sh` copies on first run, is
+tuned for the lowest spend that still actually runs the platform:
 
 ```hcl
-node_group_min_size      = 0        # scale-to-zero allowed
-node_group_desired_size  = 1        # single node (not 2–3)
-node_group_max_size      = 2
+node_group_min_size      = 0        # scale-to-zero allowed (cost optimizer)
+node_group_desired_size  = 6
+node_group_max_size      = 8
 enable_cost_optimizer    = true     # overnight Lambda scaler (see below)
 budget_monthly_limit_usd = "100"    # SNS alert at $80 actual / $100 forecasted
 ```
+
+This used to recommend `desired_size = 1`. A single t3.medium is 2 vCPU / 4 GiB,
+and rendering every chart and manifest this repo installs gives roughly 2.4 vCPU
+and 5.7 GiB of declared requests before per-node DaemonSet overhead (~0.3 vCPU
+and ~900 MiB each, for aws-node, kube-proxy, ebs-csi-node, promtail and the
+Datadog agent) — so one node could never have run it, and following that advice
+produced a cluster stuck in Pending.
+
+Six is deliberately conservative rather than measured on a live cluster. Once
+the platform is up, check the real numbers before going lower — OpenCost and
+Prometheus are both deployed, and the Grafana FinOps dashboard reports per-
+namespace cost and efficiency. Note that within the t3 family the $/vCPU and
+$/GiB are identical, so only the node *count* changes the bill; moving to
+t3.large buys memory at exactly proportional cost.
 
 ### Overnight node scaler
 

@@ -83,7 +83,7 @@ git clone https://github.com/moatazeldebsy/backstage-platform-template.git && cd
 | 1 | `setup.sh` — personalises placeholders, asks local or AWS | You run this |
 | 2a (local) | `bootstrap-local.sh` — the actual Kind cluster + platform installer (~15–20 min) | Auto, by `setup.sh` |
 | 2b (local) | `bootstrap-local.sh --start-backstage` — builds + starts Backstage (~2 min) | Auto, if you answer **Y** to "Start Backstage now?" |
-| 2 (AWS) | `bootstrap.sh` — Terraform → EKS → full platform **including AI/ML** (~45–60 min) | Auto, by `setup.sh` |
+| 2 (AWS) | `bootstrap.sh` — Terraform → EKS → full platform **including AI/ML** (~40–70 min) | Auto, by `setup.sh` |
 | 3 (local, optional) | `bootstrap-ai.sh` — adds KAgent + MLflow + MCP servers | **Manual** — AWS already gets this in step 2, local doesn't |
 
 > **Don't run `setup.sh` and then `bootstrap-local.sh`.** Step 2a above is automatic — `setup.sh` has already run it by the time it finishes. Running it again just repeats a 15–20 minute install. If `setup.sh` printed the "Local IDP platform is up" banner with the access URLs, your cluster is up and the next (optional) step is `bootstrap-ai.sh`.
