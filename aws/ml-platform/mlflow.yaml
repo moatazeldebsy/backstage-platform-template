@@ -106,12 +106,26 @@ spec:
             limits:
               memory: 512Mi
               cpu: 500m
+          # timeoutSeconds is set explicitly on every probe below, at the 15s the
+          # rest of this platform standardises on (Gatekeeper via
+          # scripts/bootstrap-local.sh, Kyverno via local/policies/kyverno-values.yaml
+          # — both for exactly this reason). The Kubernetes default is 1s, which is
+          # not enough for a single-worker gunicorn app on a 500m CPU limit under
+          # load: /health answers, just not within a second. The kubelet then reports
+          #   "context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+          # — not "connection refused" — and liveness kills the container roughly
+          # every 90s forever. The generous failureThresholds below do not help,
+          # because every individual attempt times out.
+          #
+          # periodSeconds is 20 throughout so timeout stays <= period; the startup
+          # budget is unchanged at 5 minutes (20s x 15).
           readinessProbe:
             httpGet:
               path: /health
               port: 5000
             initialDelaySeconds: 10
-            periodSeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 15
           # MLflow initialises its backing store on first boot, which on a pod
           # capped at 500m CPU can take well over the ~90s (initialDelay 30 +
           # 3 × period 20) that livenessProbe alone allows — the kubelet then
@@ -122,14 +136,16 @@ spec:
             httpGet:
               path: /health
               port: 5000
-            periodSeconds: 10
-            failureThreshold: 30
+            periodSeconds: 20
+            failureThreshold: 15
+            timeoutSeconds: 15
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
             initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 15
           volumeMounts:
             - name: mlflow-db
               mountPath: /mlflow
