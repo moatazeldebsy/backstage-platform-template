@@ -7,39 +7,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+
 const execAsync = promisify(exec);
-
-const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
-
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: KUBECONFIG_PATH,
-};
-
-async function ensureKubeconfig(): Promise<void> {
-  const k8sUrl = process.env.K8S_CLUSTER_URL;
-  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
-  if (!k8sUrl || !k8sToken) return; // local dev — caller has their own kubeconfig
-  const kubeconfig = `apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: ${k8sUrl}
-    insecure-skip-tls-verify: true
-  name: cluster
-contexts:
-- context:
-    cluster: cluster
-    user: backstage
-  name: default
-current-context: default
-users:
-- name: backstage
-  user:
-    token: ${k8sToken}
-`;
-  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
-}
 
 // Must track the MLflow *server* image tag in kubernetes/ml-platform/mlflow.yaml
 // and aws/ml-platform/mlflow.yaml. An unpinned `pip install mlflow` pulls a 3.x

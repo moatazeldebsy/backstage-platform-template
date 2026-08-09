@@ -6,43 +6,9 @@ import { promisify } from 'util';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
 const execFileAsync = promisify(execFile);
-
-const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
-
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: KUBECONFIG_PATH,
-};
-
-async function ensureKubeconfig(): Promise<void> {
-  const k8sUrl = process.env.K8S_CLUSTER_URL;
-  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
-  const k8sCa = process.env.K8S_CLUSTER_CA_B64;
-  if (!k8sUrl || !k8sToken) return;
-  if (!k8sCa) throw new Error('K8S_CLUSTER_CA_B64 env var required for secure TLS connections');
-
-  const kubeconfig = `apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: ${k8sUrl}
-    certificate-authority-data: ${k8sCa}
-  name: cluster
-contexts:
-- context:
-    cluster: cluster
-    user: backstage
-  name: default
-current-context: default
-users:
-- name: backstage
-  user:
-    token: ${k8sToken}
-`;
-  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
-}
 
 function buildOllamaYaml(name: string, modelName: string): string {
   // Uses a lightweight Python Alpine mock (~50MB) instead of Ollama (~2.7GB).

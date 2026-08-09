@@ -7,12 +7,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
-const execAsync = promisify(exec);
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
-};
+const execAsync = promisify(exec);
 
 // imageTag defaults to 'latest' on purpose, unlike the third-party images
 // elsewhere in this repo, which are pinned. The image this refers to is built
@@ -116,10 +113,15 @@ function createDeployMcpServerAction() {
 
       ctx.logger.info(`Deploying MCPServer '${name}' to kagent namespace (image: ${imageRepo}:${imageTag})...`);
 
+      // In-cluster (EKS) there is no kubeconfig on disk — write one from the
+      // K8S_* env vars first. No-ops when Backstage runs on the host against
+      // Kind and the developer's own kubeconfig already applies.
+      await ensureKubeconfig();
+
       try {
         await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
-        throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
+        throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
 
       const yaml = buildMcpServerYaml({ name, port, imageRepo, imageTag });
