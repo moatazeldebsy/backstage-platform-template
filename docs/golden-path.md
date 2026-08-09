@@ -57,8 +57,24 @@ Fill in name, description, owner, and GitHub repo. Click **Create**.
 
 Backstage will:
 - Fetch the skeleton and render it with your values
-- Publish the repo to GitHub
+- Publish the repo to GitHub (tagging it with the `idp` / `idp-app` topics)
 - Register the component and API in the catalog
+
+### How a scaffolded repo stays in the catalog
+
+Registration is not a one-off write. `catalog.providers.github.idpOrg` (in `app-config.yaml`,
+with an AWS counterpart in `app-config.aws.yaml`) polls the GitHub org every 15 minutes and
+ingests the `catalog-info.yaml` from the `main` branch of every repo carrying the `idp` or
+`idp-app` topic. Scaffolded repos therefore appear on their own, and edits to a repo's
+`catalog-info.yaml` flow back into Backstage without touching this repo.
+
+Two consequences worth knowing:
+
+- **Remove the topic and the service leaves the catalog** — and, because the DORA exporter
+  cross-checks the catalog, it drops off the DORA dashboards too (see
+  [DORA & FinOps § Which services appear](dora-finops.md#which-services-appear)).
+- A repo that isn't discovered can still be registered by hand via a `catalog.locations`
+  URL entry, which is how this repo's own hand-written services are listed.
 
 **Per-service infra (Crossplane, AWS)**
 

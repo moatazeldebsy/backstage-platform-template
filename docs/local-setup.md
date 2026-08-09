@@ -190,7 +190,7 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
-| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (integrated in Backstage) |
+| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (integrated in Backstage; hidden until `bootstrap-ai.sh` runs — see [why](ai-assistant.md#where-the-ai-pages-come-from-and-why-theyre-hidden)) |
 | **hello-service** | http://hello-service.idp.local | — (managed by ArgoCD in `services-dev` as `hello-service-local-service-template`) |
 | **Grafana** | http://grafana.idp.local | `admin` / `admin` |
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |

@@ -162,11 +162,36 @@ kubectl create configmap dora-team-map -n monitoring \
 
 The DORA exporter (`local/observability/dora/dora-exporter.py` locally, `aws/observability/dora/dora-exporter.py` on AWS) is a Python script running as a Kubernetes CronJob. It:
 
-1. Queries the GitHub API for deployment events per service repo
-2. Calculates the four DORA metrics per service over a rolling window
-3. Pushes metrics to Prometheus Pushgateway with `service=<name>` labels
+1. Discovers service repos in the GitHub org — every repo carrying the `idp-app` topic, which all scaffold templates set via `publish:github`
+2. Cross-checks each one against the Backstage catalog, dropping repos the catalog doesn't know
+3. Queries the GitHub API for deployment events per surviving repo
+4. Calculates the four DORA metrics per service over a rolling window
+5. Pushes metrics to Prometheus Pushgateway with `service=<name>` labels
+6. Prunes Pushgateway series for services that are no longer discovered
 
 The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Local metrics also accept synthetic data via `./scripts/seed-qa-metrics.sh` for demo purposes.
+
+### Which services appear
+
+Two independent filters decide what lands on a dashboard, and a service must pass both:
+
+| Filter | Env var | Default | Effect |
+|---|---|---|---|
+| GitHub topic | `REPO_FILTER_TOPIC` | `idp-app` | Only org repos with this topic are discovered |
+| Explicit allowlist | `REPO_INCLUDE` | — | Comma-separated repo names; overrides topic filtering entirely |
+| Backstage catalog | `REQUIRE_CATALOG_ENTRY` | `true` | Only report repos that exist as a `Component` in the catalog |
+
+The catalog cross-check exists because the topic alone reports any repo that ever carried it, including ones nobody registered. It matches on both the entity name and the repo half of `github.com/project-slug`, since the exporter discovers by *repo* name while the catalog keys by *entity* name.
+
+Set `REQUIRE_CATALOG_ENTRY=false` to fall back to reporting every topic-tagged repo. The check needs `BACKSTAGE_URL` and `BACKSTAGE_TOKEN` (from the `backstage-catalog-exporter-token` secret); if `BACKSTAGE_URL` is unset the exporter logs a warning and skips the cross-check rather than blanking every service.
+
+### Pruning
+
+A service that is deleted, unregistered, or simply loses its `idp-app` topic would otherwise keep serving its last DORA values in Prometheus forever. Each run deletes Pushgateway groups for services not in the current discovery set.
+
+**A run where the catalog filter removes everything still prunes** — that's a legitimate result, not a failure. But a run where GitHub *discovery itself* failed skips pruning entirely, so a GitHub outage can't wipe the dashboard.
+
+**If a service vanished from the DORA panels**, check in this order: does the repo still carry the `idp-app` topic → is it registered as a `Component` in the Backstage catalog → does the catalog entity name or its `github.com/project-slug` match the repo name → check the CronJob logs for `Pruned stale DORA series for removed service`.
 
 ---
 

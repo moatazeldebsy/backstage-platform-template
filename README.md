@@ -218,6 +218,31 @@ Shipped work and what's next are tracked on the **[GitHub Project board](https:/
 
 ---
 
+## Working on this repo with Claude Code
+
+This repo ships its own [Claude Code](https://claude.com/claude-code) configuration under
+`.claude/`, so an agent working here starts with the platform's conventions rather than
+re-deriving them. Nothing here is required to run the platform — it only affects how Claude
+behaves inside this repo.
+
+| Skill (`/name`) | Use it for |
+|---|---|
+| `platform-architect` | Deciding *where* a change belongs — Terraform vs Crossplane vs Helm vs `kubernetes/`, which of the three interaction channels exposes a capability, which app-config layer |
+| `platform-engineer` | Actually building the change across components; knows the per-component CI gate and runs it |
+| `platform-reviewer` | Reviewing a diff against this repo's conventions (dual local/AWS coverage, both template front doors, accepted risks) |
+| `golden-path-steward` | The 61 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
+| `qa-shift-left` | Test strategy, the Bronze/Silver/Gold scorecard, contract testing, flaky-test quarantine |
+| `security-advisor` | Kyverno/PSS, IRSA and least-privilege IAM, External Secrets, Dependabot triage |
+| `sre-responder` | Live incidents, SLOs and burn-rate alerts, rollback, DR failover, postmortems |
+
+Two sub-agents back them for work that would otherwise flood the main context:
+`drift-detector` (compares the known drift pairs — template skeleton vs CLI scaffolder,
+`app-config.yaml` vs `all-templates.yaml`, local vs AWS Helm values) and `platform-auditor`
+(sweeps a named domain against a checklist). Cross-cutting facts the skills share live in
+`.claude/context/platform-map.md`; `CLAUDE.md` carries the always-loaded instructions.
+
+---
+
 ## Documentation
 
 | Doc | Description |
@@ -232,6 +257,7 @@ Shipped work and what's next are tracked on the **[GitHub Project board](https:/
 | [Team Management](docs/team-management.md) | Onboard a new team: namespace, SecretStore, ArgoCD, Grafana |
 | [AI Assistant](docs/ai-assistant.md) | KAgent + MCP server setup and usage |
 | [Agentic Development Platform (ADP)](docs/agentic-platform.md) | Agent-driven dev workflow + ops, HiTL approval gate, opt-in phases |
+| [Agent Approvals](docs/agent-approvals.md) | HiTL gate for agent-initiated mutating actions — policy, approval API, Backstage UI |
 | [DORA + FinOps](docs/dora-finops.md) | DORA entity tab, SLOs, cost budgets |
 | [Contract Testing](docs/contract-testing.md) | MCP-driven contract gates |
 | [Mobile Platform](docs/mobile-platform.md) | Android / iOS / Flutter templates |

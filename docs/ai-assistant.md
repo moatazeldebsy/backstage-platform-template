@@ -501,7 +501,57 @@ Both alerts route to Slack `#platform-alerts`. See the [KAgent Guardrails runboo
 
 ---
 
+## Where the AI pages come from (and why they're hidden)
+
+The AI pages — **AI Assistant**, **AI Search**, **Agent Approvals**, **KAgent Platform** — are
+disabled by default. `bootstrap-local.sh` on its own installs no AI stack, so those pages and
+their sidebar nav items would dead-end on a connection error. They are revealed only once the
+stack behind them exists.
+
+| Layer | File | AI pages |
+|---|---|---|
+| Base | `backstage/app-config.yaml` | `disabled: true` for all four, `aiStack.enabled: false` |
+| Local overlay (generated) | `local/backstage/app-config.ai.yaml` | Written `false` by `bootstrap-local.sh`, `true` by `bootstrap-ai.sh`, back to `false` by `bootstrap-ai.sh --destroy` |
+| AWS | `backstage/app-config.aws.yaml` | Enabled — this layer replaces the extensions array and doesn't re-disable them |
+
+Both scripts call one helper, `write_backstage_ai_overlay` in `scripts/lib.sh`, so the list
+can't drift between them.
+
+**Three things to know before touching this:**
+
+1. **Config is read only at startup.** Running `bootstrap-ai.sh` does not make the pages
+   appear in a running Backstage — restart it with `./scripts/bootstrap-local.sh --start-backstage`.
+2. **Backstage replaces `app.extensions` arrays, it does not merge them.** The generated
+   overlay must repeat *every* entry from the earlier layers. Anything you add to
+   `app-config.yaml`'s extension list has to be added to `write_backstage_ai_overlay` too,
+   or the overlay silently drops it.
+3. **The `page:kubernetes: disabled` entry in that generated list is not AI-related and not
+   optional.** The standalone Kubernetes route renders the entity Kubernetes tab outside any
+   entity context and dies with "Entity context is not available". Because of rule 2, dropping
+   it from the overlay brings that crash back.
+
+`aiStack.enabled` is a separate flag for the same state: it drives the hardcoded AI links on
+the custom Home / Support / Learning Center pages, which `app.extensions` can't reach. The
+same helper keeps the two in step.
+
+The file is gitignored and generated — hand edits are lost on the next bootstrap run.
+
+---
+
 ## Troubleshooting
+
+### An AI page is missing from the sidebar
+
+The AI overlay is off, or Backstage hasn't restarted since it was turned on.
+
+```bash
+grep -A1 'custom-pages/ai-assistant' local/backstage/app-config.ai.yaml   # disabled: true/false?
+./scripts/bootstrap-ai.sh                                                # deploy the stack (adds --adp for approvals)
+./scripts/bootstrap-local.sh --start-backstage                           # restart to pick up the config
+```
+
+If the file doesn't exist at all, `docker compose up` will bind-mount a directory in its place
+and Backstage will fail to parse it — run either bootstrap script to regenerate it.
 
 ### "AI assistant did not respond (no session created)"
 

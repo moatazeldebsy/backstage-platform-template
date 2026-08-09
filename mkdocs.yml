@@ -33,6 +33,7 @@ nav:
   - Scripts Reference: scripts-reference.md
   - AI Assistant: ai-assistant.md
   - Agentic Development Platform: agentic-platform.md
+  - Agent Approvals: agent-approvals.md
   - DORA & FinOps: dora-finops.md
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
