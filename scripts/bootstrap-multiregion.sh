@@ -195,7 +195,7 @@ helm_upgrade_cached external-secrets external-secrets external-secrets/external-
   --create-namespace \
   --set installCRDs=true \
   --kube-context hub \
-  --wait --timeout 10m
+  --wait --timeout "${HELM_WAIT_MED}"
 
 kubectl wait --for=condition=ready pod \
   -l app.kubernetes.io/name=external-secrets \
@@ -213,14 +213,15 @@ kubectl annotate serviceaccount external-secrets-sa \
 sed "s/YOUR_AWS_REGION/${PRIMARY_REGION}/g" aws/external-secrets/cluster-secret-store.yaml \
   | kubectl apply -f - --context hub
 
-for i in $(seq 1 12); do
-  CSS=$(kubectl get clustersecretstore aws-secretsmanager \
-    -o jsonpath='{.status.conditions[0].reason}' \
-    --context hub 2>/dev/null || echo "NotReady")
-  [[ "$CSS" == "StoreValid" ]] && { log "ClusterSecretStore ready."; break; }
-  [[ $i -eq 12 ]] && warn "ClusterSecretStore may not be ready — proceeding"
-  sleep 5
-done
+_css_valid_hub() {
+  [[ "$(kubectl get clustersecretstore aws-secretsmanager \
+        -o jsonpath='{.status.conditions[0].reason}' --context hub 2>/dev/null)" == "StoreValid" ]]
+}
+if poll_until "ClusterSecretStore (hub)" 60 5 _css_valid_hub; then
+  log "ClusterSecretStore ready."
+else
+  warn "ClusterSecretStore may not be ready — proceeding"
+fi
 
 # ── Phase 2.4: Populate Secrets Manager ──────────────────────────────────────
 log "Phase 2.4: Populating Secrets Manager..."
@@ -312,7 +313,7 @@ if [[ "$SKIP_OBS" != "true" ]]; then
     --values "$tmp_obs" \
     --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
     --kube-context hub \
-    --wait --timeout 10m
+    --wait --timeout "${HELM_WAIT_MED}"
   rm -f "$tmp_obs"
 
   # Apply Thanos multi-region datasources for Grafana
@@ -329,7 +330,7 @@ timer_end "2.1-2.5 Primary namespaces/ESO/secrets/obs"
 # Gatekeeper and Kyverno are independent policy engines touching different
 # namespaces and CRDs. bootstrap.sh has installed them as parallel background
 # jobs for a while; that pattern was never carried over here, so this script
-# paid both `--wait --timeout 5m` installs plus both readiness waits back to
+# paid both `--wait` installs plus both readiness waits back to
 # back. Same _bg_join contract as everywhere else: join every job first,
 # aggregate, then decide — never short-circuit mid-loop.
 timer_start "2.6 Gatekeeper + Kyverno (parallel)"
@@ -345,7 +346,7 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
       --set replicas=1 \
       --set auditInterval=60 \
       --kube-context hub \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
 
     kubectl apply \
       -f kubernetes/policies/require-health-probes.yaml \
@@ -400,7 +401,7 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
       --set webhooksCleanup.image.repository=kubectl \
       --set webhooksCleanup.image.tag=v1.28.5 \
       --kube-context hub \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
 
     kubectl wait deployment kyverno-admission-controller \
       -n kyverno --for=condition=Available --timeout=120s --context hub
@@ -427,7 +428,7 @@ if [[ "$SKIP_GITOPS" != "true" ]]; then
     --create-namespace \
     --values aws/argocd/argocd-helm-values.yaml \
     --kube-context hub \
-    --wait --timeout 5m
+    --wait --timeout "${HELM_WAIT_SHORT}"
 
   ARGOCD_ADMIN_PASSWORD=$(kubectl get secret argocd-initial-admin-secret \
     -n argocd --context hub -o jsonpath='{.data.password}' | base64 --decode)
@@ -450,13 +451,13 @@ if [[ "$SKIP_GITOPS" != "true" ]]; then
 
   # Generate ArgoCD token for Backstage plugin
   ARGOCD_URL=""
-  for i in $(seq 1 60); do
+  _argocd_alb_hub() {
     ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
       --context hub -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-    [[ -n "$ARGOCD_URL" ]] && break
-    [[ $i -eq 60 ]] && { warn "ArgoCD LB not ready after 5m — skipping token generation."; break; }
-    sleep 5
-  done
+    [[ -n "$ARGOCD_URL" ]]
+  }
+  poll_until "ArgoCD ALB hostname (hub)" 300 5 _argocd_alb_hub \
+    || warn "ArgoCD LB not ready after 5m — skipping token generation." 
 
   if [[ -n "$ARGOCD_URL" ]]; then
     ADMIN_TOKEN=$(curl -s -k "https://${ARGOCD_URL}/api/v1/session" \
@@ -523,34 +524,44 @@ log "Backstage image pushed: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}"
 
 kubectl apply -f aws/backstage/external-secret.yaml --context hub
 
-for i in $(seq 1 12); do
-  STATUS=$(kubectl get externalsecret backstage-secrets -n backstage \
-    --context hub -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "NotFound")
-  [[ "$STATUS" == "SecretSynced" ]] && { log "ExternalSecret synced."; break; }
-  [[ $i -eq 12 ]] && warn "ExternalSecret may not be synced — proceeding"
-  sleep 5
-done
+_backstage_secret_synced_hub() {
+  [[ "$(kubectl get externalsecret backstage-secrets -n backstage \
+        --context hub -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null)" == "SecretSynced" ]]
+}
+if poll_until "ExternalSecret sync (hub)" 60 5 _backstage_secret_synced_hub; then
+  log "ExternalSecret synced."
+else
+  warn "ExternalSecret may not be synced — proceeding"
+fi
 
-log "Fetching RDS CA bundle..."
-RDS_CA_BUNDLE="$(mktemp)"
-curl -sSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o "${RDS_CA_BUNDLE}"
+# Cached under .idp-cache rather than re-downloaded every run (see bootstrap.sh).
+RDS_CA_BUNDLE="${ROOT_DIR}/.idp-cache/rds-global-bundle.pem"
+mkdir -p "$(dirname "${RDS_CA_BUNDLE}")"
+if [[ -s "${RDS_CA_BUNDLE}" && "${IDP_FORCE:-0}" != "1" ]]; then
+  log "Using cached RDS CA bundle."
+else
+  log "Fetching RDS CA bundle..."
+  curl -sSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    -o "${RDS_CA_BUNDLE}" || err "Could not download the RDS CA bundle."
+fi
 kubectl create configmap rds-ca-bundle -n backstage --context hub \
   --from-file=global-bundle.pem="${RDS_CA_BUNDLE}" \
   --dry-run=client -o yaml | kubectl apply -f - --context hub
-rm -f "${RDS_CA_BUNDLE}"
 
-kubectl apply -f kubernetes/backstage/configmap.yaml --context hub
+apply_backstage_configmaps hub
 sed "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}|g" \
   aws/backstage/deployment.yaml | kubectl apply -f - --context hub
 
 BACKSTAGE_URL=""
-for i in $(seq 1 36); do
+_backstage_lb_hub() {
   BACKSTAGE_URL=$(kubectl get svc backstage -n backstage \
     --context hub -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -n "$BACKSTAGE_URL" ]] && break
-  [[ $i -eq 36 ]] && { warn "Backstage LB hostname not ready — URL patching skipped."; BACKSTAGE_URL="PENDING"; }
-  sleep 10
-done
+  [[ -n "$BACKSTAGE_URL" ]]
+}
+if ! poll_until "Backstage LoadBalancer (hub)" 360 10 _backstage_lb_hub; then
+  warn "Backstage LB hostname not ready — URL patching skipped."
+  BACKSTAGE_URL="PENDING"
+fi
 
 if [[ "$BACKSTAGE_URL" != "PENDING" ]]; then
   kubectl get configmap backstage-config -n backstage --context hub -o json \
@@ -609,7 +620,7 @@ else
     --create-namespace \
     --set installCRDs=true \
     --kube-context standby \
-    --wait --timeout 10m
+    --wait --timeout "${HELM_WAIT_MED}"
 
   kubectl create serviceaccount external-secrets-sa -n external-secrets \
     --dry-run=client -o yaml | kubectl apply -f - --context standby
@@ -634,7 +645,7 @@ else
     --create-namespace \
     --values aws/argocd/argocd-helm-values.yaml \
     --kube-context standby \
-    --wait --timeout 5m
+    --wait --timeout "${HELM_WAIT_SHORT}"
 
   # Standby app-of-apps (auto-sync disabled — ArgoCD monitors but does not sync)
   kubectl apply -f aws/argocd/app-of-apps-standby.yaml -n argocd --context standby
@@ -790,8 +801,10 @@ echo "[$(date +%T)] ╠═══════════════════
 echo "[$(date +%T)] ║  PLATFORM SERVICES (primary)"
 echo "[$(date +%T)] ║    ArgoCD       http://$(_alb argocd-server argocd)"
 echo "[$(date +%T)] ║    Grafana      http://$(_alb grafana monitoring)"
-echo "[$(date +%T)] ║    Prometheus   http://$(_alb prometheus monitoring)"
-echo "[$(date +%T)] ║    Argo Rollouts http://$(_alb argo-rollouts-dashboard argo-rollouts)"
+echo "[$(date +%T)] ╠══════════════════════════════════════════════════════════════════════╣"
+echo "[$(date +%T)] ║  OPERATOR TOOLS — no public ALB by design; use port-forward --context hub"
+echo "[$(date +%T)] ║    Prometheus    kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090 --context hub"
+echo "[$(date +%T)] ║    Argo Rollouts kubectl port-forward -n argo-rollouts svc/argo-rollouts-dashboard 3100:3100 --context hub"
 echo "[$(date +%T)] ╠══════════════════════════════════════════════════════════════════════╣"
 echo "[$(date +%T)] ║  DISASTER RECOVERY"
 echo "[$(date +%T)] ║    Failover runbook:  argo submit aws/argo-workflows/failover-runbook.yaml"

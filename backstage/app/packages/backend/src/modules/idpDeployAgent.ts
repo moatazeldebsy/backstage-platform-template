@@ -7,12 +7,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
-const execAsync = promisify(exec);
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
-};
+const execAsync = promisify(exec);
 
 function buildAgentYaml(opts: {
   name: string;
@@ -69,22 +66,16 @@ function createDeployAgentAction() {
     description: 'Apply a KAgent Agent CRD to the local Kind cluster so the agent is immediately visible in the KAgent UI.',
     schema: {
       input: {
-        required: ['name', 'description'],
-        type: 'object',
-        properties: {
-          name: { type: 'string', title: 'Agent name' },
-          description: { type: 'string', title: 'Agent description' },
-          modelProvider: { type: 'string', title: 'Model provider', default: 'anthropic' },
-          enableCatalogSearch: { type: 'boolean', title: 'Enable catalog search tool', default: true },
-          enableMetrics: { type: 'boolean', title: 'Enable metrics tool', default: true },
-          enableScaffolding: { type: 'boolean', title: 'Enable scaffolding tool', default: false },
-        },
+        name: z => z.string().describe('Agent name'),
+        description: z => z.string().describe('Agent description'),
+        model: z => z.string().optional().describe('LLM model id — selects the ModelConfig'),
+        modelProvider: z => z.string().optional().describe('Model provider (default: anthropic)'),
+        enableCatalogSearch: z => z.boolean().optional().describe('Enable catalog search tool (default: true)'),
+        enableMetrics: z => z.boolean().optional().describe('Enable metrics tool (default: true)'),
+        enableScaffolding: z => z.boolean().optional().describe('Enable scaffolding tool (default: false)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          agentUrl: { type: 'string', title: 'KAgent UI URL' },
-        },
+        agentUrl: z => z.string().describe('KAgent UI URL'),
       },
     },
 
@@ -96,17 +87,34 @@ function createDeployAgentAction() {
       const enableMetrics = (ctx.input['enableMetrics'] as boolean | undefined) ?? true;
       const enableScaffolding = (ctx.input['enableScaffolding'] as boolean | undefined) ?? false;
 
-      const modelConfig = modelProvider === 'openai' ? 'openai-prod'
-        : modelProvider === 'anthropic' ? 'claude-anthropic'
-        : 'claude-anthropic';
+      // Must name a ModelConfig that exists in the kagent namespace, or KAgent
+      // rejects the Agent with "ModelConfig.kagent.dev ... not found" — the CR
+      // applies cleanly and only then fails to reconcile, so the scaffold task
+      // reports success. Names come from kubernetes/kagent/modelconfig*.yaml.
+      //
+      // The form's `model` choice was previously discarded here: every agent
+      // got claude-anthropic (Haiku) whichever model the user picked. Keep this
+      // mapping in step with the skeleton's kubernetes/agent.yaml, which
+      // renders the same field for the repo's own GitOps copy.
+      const model = (ctx.input['model'] as string | undefined) ?? '';
+      const modelConfig = modelProvider === 'openai'
+        ? 'openai-prod'
+        : model.includes('opus') ? 'claude-opus'
+        : model.includes('sonnet') ? 'claude-sonnet'
+        : 'claude-haiku';
 
       ctx.logger.info(`Deploying Agent '${name}' to kagent namespace (modelConfig: ${modelConfig})...`);
+
+      // In-cluster (EKS) there is no kubeconfig on disk — write one from the
+      // K8S_* env vars first. No-ops when Backstage runs on the host against
+      // Kind and the developer's own kubeconfig already applies.
+      await ensureKubeconfig();
 
       // Verify cluster is reachable
       try {
         await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
-        throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
+        throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
 
       const yaml = buildAgentYaml({ name, description, modelConfig, enableCatalogSearch, enableMetrics, enableScaffolding });

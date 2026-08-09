@@ -81,17 +81,28 @@ Replaces `moatazeldebsy` and other placeholders across all template files, creat
 
 **What it deploys (in order):**
 
+Phase numbers below match the `timer_start` labels the script prints, so the
+timing table at the end of a run lines up with this one.
+
 | Phase | Duration | What |
 |-------|----------|------|
-| 1 — Terraform | 15–25 min | VPC, EKS (1× t3.medium, scales to 0 overnight), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager |
-| 2 — Platform base | 5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore |
-| 3 — GitOps | 5 min | ArgoCD, OPA/Gatekeeper, Crossplane |
-| 4 — Observability | 10 min | Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter |
-| 4.6 — ArgoCD GitOps | 1 min | `idp-services` ApplicationSet auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server`, `qa-mcp-server` to `services-dev`. `contract-mcp-server` is excluded — deployed only by `bootstrap-ai.sh --aws`. |
-| 5 — hello-service | 5 min | Builds linux/amd64 image → ECR, ArgoCD deploys |
-| 6 — Backstage | 5 min | Deploys official image, injects real secrets |
+| 1 — Terraform | 15–25 min | VPC, EKS (6× t3.medium by default; scales to 0 overnight when `enable_cost_optimizer = true`), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager. EKS and RDS build concurrently, so this is bounded by the slower one, not their sum. |
+| 2 — kubectl config | <1 min | `aws eks update-kubeconfig`, connectivity check |
+| 2.5 — Image builds | starts here | hello-service + Backstage images build **in the background** for the rest of the run. Skipped entirely when the source is unchanged and the tag is already in ECR. |
+| 3 / 3.6 / 3.7 | 3–5 min | Namespaces, RBAC, External Secrets Operator, ClusterSecretStore, Secrets Manager population |
+| 4 — Prometheus + Grafana | 4–8 min | kube-prometheus-stack, dashboards, PrometheusRules |
+| 4a+4b — Pushgateway + OpenCost | 1–2 min | Installed concurrently |
+| 3.8–3.9 / 4.4x / 4.4 | 3–8 min | Gatekeeper + Kyverno, then Rollouts/Loki/Tempo/Datadog, then the exporter group — each a parallel batch |
+| 4.5–4.7 — GitOps | 3–5 min | ArgoCD (with one retry on a slow first ALB), the `idp-services` ApplicationSet, Crossplane, and the Backstage/ArgoCD tokens. The ApplicationSet auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server` and `qa-mcp-server` to `services-dev`; `contract-mcp-server` is excluded and deployed only by `bootstrap-ai.sh --aws`. |
+| 5 — Image builds (join) | 0–20 min | Waits for phase 2.5. Usually already finished, since it has had the whole platform install to run. Then writes the seed image tag into `helm-values-aws.yaml`. |
+| 5.6–5.8 — Backstage | 2–8 min | ExternalSecret, generated ConfigMaps, deployment, ALB hostname wait, catalog exporter, AlertManager routing |
+| 6 — AI/ML platform | 8–20 min | `bootstrap-ai.sh --aws` (skip with `--skip-ai`). Argo Workflows and Velero install in parallel with it. |
 
-**Total: ~45–60 minutes**
+**Total: ~40–70 minutes cold.** A repeat run against an existing cluster is far
+shorter — the image builds, helm releases and Terraform providers all skip when
+nothing has changed. Set `IDP_FORCE=1` to override every skip check, and
+`HELM_WAIT_SHORT`/`HELM_WAIT_MED`/`HELM_WAIT_LONG` to raise the helm timeouts on
+a slow account.
 
 ### Step 3: Update GitHub OAuth Callback URL
 
@@ -177,9 +188,6 @@ import sys,json; d=json.load(sys.stdin); print('QA series:', len(d.get('data',{}
 | Backstage | `kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
 | Grafana | `kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
 | ArgoCD | `kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
-| Prometheus | `kubectl get ingress -n monitoring -l app=prometheus -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
-| Pushgateway | `kubectl get ingress prometheus-pushgateway -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
-| OpenCost | `kubectl get ingress opencost-alb -n opencost -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
 | hello-service | `kubectl get ingress -n services-dev -l app.kubernetes.io/instance=hello-service-dev -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
 
 ---
@@ -196,7 +204,7 @@ All issues below are **already fixed in the codebase**. This section documents t
 
 **Root cause:** Backstage config arrays replace rather than merge across config files. The production ConfigMap's `extensions` list overwrites the base config's `page:catalog: path: /` entry.
 
-**Fix (already applied):** `kubernetes/backstage/configmap.yaml` production overrides now explicitly include `page:catalog: path: /` alongside `page:kubernetes: disabled: true`.
+**Fix (already applied):** `backstage/app-config.aws.yaml` (rendered into the `backstage-config` ConfigMap by `bootstrap.sh`) now explicitly includes `page:catalog: path: /` alongside `page:kubernetes: disabled: true`.
 
 ---
 
@@ -206,7 +214,7 @@ All issues below are **already fixed in the codebase**. This section documents t
 
 **Root cause:** `dangerouslyDisableDefaultAuthPolicy: true` must be under `backend.auth`, not the top-level `auth` key.
 
-**Fix (already applied):** Correct placement in `kubernetes/backstage/configmap.yaml`:
+**Fix (already applied):** Correct placement in `backstage/app-config.aws.yaml`:
 ```yaml
 backend:
   auth:
@@ -290,10 +298,19 @@ backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platfo
 
 **Symptom:** No public URL for OpenCost or Pushgateway after deployment.
 
-**Fix (already applied):**
-- `kubernetes/finops/opencost.yaml` includes an ALB ingress (`opencost-alb`)
-- `aws/monitoring/pushgateway-ingress.yaml` provides the Pushgateway ALB ingress
-- Both are applied by `bootstrap.sh`
+**This is intentional, not a fault.** Both used to publish their own
+internet-facing ALB (~$16/mo each, no authentication in front of either). They
+are operator tools — OpenCost's data reaches users through the Backstage FinOps
+tab and the Grafana FinOps dashboard, and Pushgateway is written to by CI and
+scraped by Prometheus in-cluster. Reach the raw UIs with:
+
+```bash
+kubectl port-forward -n opencost   svc/opencost               9090:9090
+kubectl port-forward -n monitoring svc/prometheus-pushgateway 9091:9091
+```
+
+The same applies to Prometheus, Alertmanager and the Argo Rollouts dashboard;
+`bootstrap.sh` prints every port-forward command in its closing banner.
 
 ---
 
@@ -303,7 +320,7 @@ backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platfo
 
 **Root cause:** `backend.reading.allow` was missing from the ConfigMap, so Backstage blocked reads from `raw.githubusercontent.com`.
 
-**Fix (already applied):** `kubernetes/backstage/configmap.yaml` includes:
+**Fix (already applied):** `backstage/app-config.aws.yaml` includes:
 ```yaml
 backend:
   reading:
@@ -395,15 +412,30 @@ EKS is not free-tier compatible. Fixed monthly costs that cannot be eliminated w
 
 ### Default cost-optimized settings
 
-`terraform/terraform.tfvars` is pre-configured for minimum spend:
+`terraform/terraform.tfvars.example`, which `setup.sh` copies on first run, is
+tuned for the lowest spend that still actually runs the platform:
 
 ```hcl
-node_group_min_size      = 0        # scale-to-zero allowed
-node_group_desired_size  = 1        # single node (not 2–3)
-node_group_max_size      = 2
+node_group_min_size      = 0        # scale-to-zero allowed (cost optimizer)
+node_group_desired_size  = 6
+node_group_max_size      = 8
 enable_cost_optimizer    = true     # overnight Lambda scaler (see below)
 budget_monthly_limit_usd = "100"    # SNS alert at $80 actual / $100 forecasted
 ```
+
+This used to recommend `desired_size = 1`. A single t3.medium is 2 vCPU / 4 GiB,
+and rendering every chart and manifest this repo installs gives roughly 2.4 vCPU
+and 5.7 GiB of declared requests before per-node DaemonSet overhead (~0.3 vCPU
+and ~900 MiB each, for aws-node, kube-proxy, ebs-csi-node, promtail and the
+Datadog agent) — so one node could never have run it, and following that advice
+produced a cluster stuck in Pending.
+
+Six is deliberately conservative rather than measured on a live cluster. Once
+the platform is up, check the real numbers before going lower — OpenCost and
+Prometheus are both deployed, and the Grafana FinOps dashboard reports per-
+namespace cost and efficiency. Note that within the t3 family the $/vCPU and
+$/GiB are identical, so only the node *count* changes the bill; moving to
+t3.large buys memory at exactly proportional cost.
 
 ### Overnight node scaler
 
@@ -466,12 +498,36 @@ KAgent + MLflow + MCP servers add 2–4 extra ALBs (~$36–72/month) and ~6 Gi E
 
 ### Estimated monthly cost by configuration
 
-| Config | EC2 nodes | Cost optimizer | AI/ML | Est. monthly |
-|---|---|---|---|---|
-| Default (optimized) | 1× t3.medium | On (9 h/day) | Off | ~$150–180 |
-| Always-on, no AI | 1× t3.medium | Off | Off | ~$185–220 |
-| Always-on + AI | 1× t3.medium | Off | On | ~$240–290 |
-| Production | 3× t3.large | Off | Optional | ~$400–600 |
+Rough us-east-1 on-demand estimates at ~730 h/month. Treat them as order-of-
+magnitude only — the authoritative numbers are the AWS budget alert below and
+the OpenCost/Grafana FinOps dashboard, both of which this platform deploys.
+
+The fixed floor is ~$135/mo before a single workload runs: EKS control plane
+(~$73), one NAT gateway (~$33), RDS `db.t3.micro` (~$17), plus EBS/S3/ECR/
+Secrets (~$15). Nodes and ALBs are what actually move.
+
+| Config | EC2 nodes | Cost optimizer | AI/ML | ALBs | Est. monthly |
+|---|---|---|---|---|---|
+| Default | 6× t3.medium | On (8 PM–7 AM UTC) | Off | 3 | ~$280–310 |
+| Always-on, no AI | 6× t3.medium | Off | Off | 3 | ~$370–400 |
+| Always-on + AI | 6× t3.medium | Off | On | 6 | ~$430–490 |
+| Production | per `profiles/medium.tfvars` | Off | Optional | 6 | ~$700–900 |
+
+Where the money goes, and what has already been done about it:
+
+- **Nodes** dominate — 6× t3.medium is ~$182/mo on-demand. `enable_cost_optimizer`
+  takes ~45% off that by scaling to zero overnight. Within the t3 family the
+  $/vCPU and $/GiB are identical, so only the node *count* matters, not the size.
+- **ALBs** used to be the silent second-biggest line: every ALB Ingress
+  provisions its own load balancer at ~$16/mo, and there were eleven. Prometheus,
+  Alertmanager, Pushgateway, OpenCost and the Argo Rollouts dashboard no longer
+  publish one — they are operator tools, reachable with `kubectl port-forward`
+  (the bootstrap banner prints the exact commands). That is ~$82/mo, and it also
+  took five unauthenticated endpoints off the public internet.
+- **Consolidating the remaining ALBs** onto one would save ~$80/mo more, but it
+  needs real DNS: they all serve `path: /` with no hostname, so a shared
+  `group.name` would make them collide. Set `domain_name` and give each a real
+  host first.
 
 ### Budget alert
 

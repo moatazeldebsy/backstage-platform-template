@@ -161,12 +161,22 @@ const entityFactRetriever: FactRetriever = {
       description: 'Mobile app has automated code signing configured — backstage.io/code-signing-setup annotation is "true"',
     },
   },
-  handler: async ({ entities, discovery, auth }) => {
+  // FactRetrieverContext does not supply `entities` — the retriever fetches
+  // them itself, which is what the token and catalog client below were always
+  // for. This used to destructure `entities` off the context, so at runtime it
+  // was undefined and the `for…of` threw immediately: every fact in this
+  // retriever silently produced nothing, and the scorecard stayed empty.
+  // entityFilter is the same filter declared on the retriever above.
+  handler: async ({ discovery, auth, entityFilter }) => {
     const { token } = await auth.getPluginRequestToken({
       onBehalfOf: await auth.getOwnServiceCredentials(),
       targetPluginId: 'catalog',
     });
     const catalogClient = new CatalogClient({ discoveryApi: discovery });
+    const { items: entities } = await catalogClient.getEntities(
+      { filter: entityFilter },
+      { token },
+    );
 
     const facts: TechInsightFact[] = [];
 

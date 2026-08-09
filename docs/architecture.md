@@ -98,7 +98,9 @@ Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-g
 ESO syncs secrets from AWS Secrets Manager into Kubernetes `Secret` objects. A single cluster-scoped `ClusterSecretStore` named `aws-secretsmanager` is created during bootstrap and shared by all `ExternalSecret` resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read `idp-mvp/*` secrets without static credentials.
 
 ### Observability parity (local = AWS)
-Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManager bundled). AWS uses ALB ingress and gp2 persistent volumes; local uses nginx and hostPath. Both install Prometheus Pushgateway as a separate Helm release so that `apply-catalog-exporter.sh`, `seed-qa-metrics.sh`, and the tech-insights-exporter CronJob can push metrics without modification.
+Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManager bundled). AWS uses gp3 persistent volumes; local uses hostPath. Both install Prometheus Pushgateway as a separate Helm release so that `apply-catalog-exporter.sh`, `seed-qa-metrics.sh`, and the tech-insights-exporter CronJob can push metrics without modification.
+
+On AWS only Grafana gets a public ALB. Prometheus, AlertManager, Pushgateway, OpenCost and the Argo Rollouts dashboard deliberately have no ingress: each one costs ~$16/mo for a load balancer, and each was internet-facing with no authentication in front of it. They are operator tools reachable with `kubectl port-forward` — `bootstrap.sh` prints the exact command for each in its closing banner. Consolidating the remaining ALBs behind one hostname needs DNS; see the cost section of the deployment guide.
 
 ### AWS Load Balancer Controller (AWS)
 All `Ingress` resources use `ingressClassName: alb`, backed by the AWS Load Balancer Controller. Supports `target-type: ip` (pod-level routing without NodePort).
@@ -344,9 +346,9 @@ EKS Cluster: idp-mvp (us-east-1)
 │   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
 │
 ├── monitoring                        (observability stack)
-│   ├── prometheus-kube-prometheus-prometheus  (metrics store, ALB ingress)
+│   ├── prometheus-kube-prometheus-prometheus  (metrics store, no public ALB)
 │   ├── prometheus-grafana                     (dashboards, ALB ingress)
-│   ├── prometheus-pushgateway                 (push endpoint, ALB ingress)
+│   ├── prometheus-pushgateway                 (push endpoint, no public ALB)
 │   ├── cronjob/dora-exporter                  (GitHub → Pushgateway + CloudWatch)
 │   └── cronjob/tech-insights-exporter         (scorecard metrics → Pushgateway)
 │
@@ -494,9 +496,6 @@ kubectl get ingress -A --no-headers | awk '{printf "%-30s %-20s %s\n", $1, $2, $
 | `backstage` | `backstage` | `backstage:7007` |
 | `argocd` | `argocd-server` | `argocd-server:80` |
 | `monitoring` | (grafana) | `prometheus-grafana:80` |
-| `monitoring` | (prometheus) | `prometheus-kube-prometheus-prometheus:9090` |
-| `monitoring` | `prometheus-pushgateway` | `prometheus-pushgateway:9091` |
-| `opencost` | `opencost-alb` | `opencost:9090` |
 | `services-dev` | (hello-service) | `hello-service-dev:80` |
 | `kagent` | `kagent-ui` | `kagent-ui:8080` |
 | `ml-platform` | `mlflow` | `mlflow:5000` |

@@ -7,39 +7,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+
 const execAsync = promisify(exec);
-
-const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
-
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: KUBECONFIG_PATH,
-};
-
-async function ensureKubeconfig(): Promise<void> {
-  const k8sUrl = process.env.K8S_CLUSTER_URL;
-  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
-  if (!k8sUrl || !k8sToken) return; // local dev — caller has their own kubeconfig
-  const kubeconfig = `apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: ${k8sUrl}
-    insecure-skip-tls-verify: true
-  name: cluster
-contexts:
-- context:
-    cluster: cluster
-    user: backstage
-  name: default
-current-context: default
-users:
-- name: backstage
-  user:
-    token: ${k8sToken}
-`;
-  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
-}
 
 // Must track the MLflow *server* image tag in kubernetes/ml-platform/mlflow.yaml
 // and aws/ml-platform/mlflow.yaml. An unpinned `pip install mlflow` pulls a 3.x
@@ -112,7 +82,7 @@ function buildManifests(opts: {
   trainScript: string;
   deps: string;
 }): string {
-  const { name, experimentName, framework, pythonVersion, trainScript, deps } = opts;
+  const { name, experimentName, pythonVersion, trainScript, deps } = opts;
   const jobName = `${name}-initial-run`;
   const cmName = `${name}-train-code`;
   // Indent train.py content for the ConfigMap literal block (4 spaces)
@@ -187,26 +157,19 @@ function createRunTrainingJobAction() {
     description: 'Create a Kubernetes Job in ml-platform that runs the initial training and logs metrics to the in-cluster MLflow.',
     schema: {
       input: {
-        required: ['name', 'experimentName'],
-        type: 'object',
-        properties: {
-          name: { type: 'string', title: 'Experiment repo name' },
-          experimentName: { type: 'string', title: 'MLflow experiment name' },
-          framework: { type: 'string', title: 'ML framework', default: 'sklearn' },
-          pythonVersion: { type: 'string', title: 'Python version', default: '3.11' },
-          registerModel: {
-            type: 'boolean',
-            title: 'Register the trained model in the MLflow Model Registry',
-            default: true,
-          },
-        },
+        name: z => z.string().describe('Experiment repo name'),
+        experimentName: z => z.string().describe('MLflow experiment name'),
+        framework: z => z.string().optional().describe('ML framework (default: sklearn)'),
+        pythonVersion: z => z.string().optional().describe('Python version (default: 3.11)'),
+        registerModel: z =>
+          z.boolean().optional().describe('Register the trained model in the MLflow Model Registry (default: true)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          mlflowUrl: { type: 'string', title: 'MLflow UI URL' },
-          jobName: { type: 'string', title: 'Kubernetes Job name' },
-        },
+        mlflowUrl: z => z.string().describe('MLflow UI URL'),
+        // Emitted by the handler but previously undeclared, so it was invisible
+        // to templates — `steps.<id>.output.catalogUrl` resolved to nothing.
+        catalogUrl: z => z.string().describe('Backstage catalog entity URL'),
+        jobName: z => z.string().describe('Kubernetes Job name'),
       },
     },
 

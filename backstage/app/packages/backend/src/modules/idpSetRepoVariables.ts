@@ -24,21 +24,10 @@ function createSetRepoVariablesAction(options: { integrations: ScmIntegrations }
       'Set GitHub Actions repository variables on a newly scaffolded repository using the platform GitHub integration token.',
     schema: {
       input: {
-        required: ['repoUrl', 'variables'],
-        type: 'object',
-        properties: {
-          repoUrl: {
-            type: 'string',
-            title: 'Repository URL',
-            description: 'The remote URL of the GitHub repo (e.g. https://github.com/org/repo)',
-          },
-          variables: {
-            type: 'object',
-            title: 'Variables',
-            description: 'Map of variable name → value to set as GitHub Actions repo variables',
-            additionalProperties: { type: 'string' },
-          },
-        },
+        repoUrl: z =>
+          z.string().describe('The remote URL of the GitHub repo (e.g. https://github.com/org/repo)'),
+        variables: z =>
+          z.record(z.string()).describe('Map of variable name → value to set as GitHub Actions repo variables'),
       },
     },
 

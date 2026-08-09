@@ -57,7 +57,14 @@ timer_start "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 log "Phase 1: Provisioning infrastructure with Terraform..."
 
 cd "$TF_DIR"
-terraform init -upgrade
+# `-upgrade` re-resolves and re-downloads every provider, which costs 30-90s on
+# a warm run for no benefit. Do it on the first init, or on demand via
+# IDP_FORCE=1 — the same convention the image-build skip checks use.
+if [[ ! -d "${TF_DIR}/.terraform" || "${IDP_FORCE:-0}" == "1" ]]; then
+  terraform init -upgrade
+else
+  terraform init
+fi
 terraform apply -auto-approve \
   -var "aws_region=${AWS_REGION}" \
   -var "cluster_name=${CLUSTER_NAME}"
@@ -78,6 +85,85 @@ aws eks update-kubeconfig --region "${AWS_REGION}" --name "${CLUSTER_NAME}"
 kubectl cluster-info
 
 timer_end "2. kubectl config"
+
+# ── Phase 2.5: Start the container image builds in the background ────────────
+#
+# These two builds (hello-service, and especially Backstage) used to run
+# strictly serially at Phases 5 and 5.5, near the end of the script — 12-25
+# minutes of emulated amd64 build with the cluster sitting completely idle
+# while it happened. Nothing between here and Phase 5.6 needs the images, and
+# the builds need nothing from the cluster, so they overlap the entire platform
+# install. Same pattern bootstrap-local.sh uses for its image builds.
+#
+# The tags are computed HERE, in the foreground, not inside the background job:
+# a subshell cannot export variables back to the parent, and Phase 5.6 needs
+# BACKSTAGE_IMAGE_TAG to render the deployment manifest. Computing them is just
+# hashing, so it costs nothing; only the build itself is backgrounded.
+timer_start "2.5 Image builds (background)"
+log "Phase 2.5: Starting hello-service + Backstage image builds in the background..."
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+IMAGE_REPO="${ECR_REGISTRY}/${CLUSTER_NAME}/hello-service"
+BACKSTAGE_IMAGE="${ECR_REGISTRY}/${CLUSTER_NAME}/backstage"
+
+# See Phase 5 for why these are content hashes rather than git-HEAD SHAs.
+IMAGE_TAG="$(dir_content_hash "${ROOT_DIR}/services/hello-service" \
+  ':!services/hello-service/helm-values-aws.yaml')"
+IMAGE_TAG="src-${IMAGE_TAG:0:12}"
+_bs_fp="$(dir_content_hash "${ROOT_DIR}/backstage/app"):$(_sha256 "${ROOT_DIR}/backstage/Dockerfile")"
+BACKSTAGE_IMAGE_TAG="src-$(printf '%s' "$_bs_fp" | _sha256_stdin | cut -c1-12)"
+
+aws ecr get-login-password --region "${AWS_REGION}" | \
+  docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+_build_aws_images() {
+  # hello-service. Skip when the source is unchanged and the tag is in ECR.
+  local hello_fp_file="${ROOT_DIR}/.idp-cache/aws-image-hello-service.fingerprint"
+  if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$hello_fp_file" "$IMAGE_TAG" \
+       "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/hello-service --image-ids imageTag=${IMAGE_TAG}"; then
+    log "  hello-service unchanged and ${IMAGE_TAG} already in ECR — skipping build."
+  else
+    docker_build_push_amd64 services/hello-service "${IMAGE_REPO}" \
+      --build-arg VERSION="${IMAGE_TAG}" \
+      -t "${IMAGE_REPO}:${IMAGE_TAG}" \
+      -t "${IMAGE_REPO}:latest"
+    helm_record_fingerprint "$hello_fp_file" "$IMAGE_TAG"
+  fi
+
+  # Backstage — the single most expensive build in the whole bootstrap:
+  # multi-stage, runs yarn install + yarn build:backend in the builder stage,
+  # all under amd64 emulation on an Apple-Silicon host. docker_build_push_amd64
+  # keeps the layer cache in ECR so an unrelated change reuses the yarn layers.
+  local bs_fp_file="${ROOT_DIR}/.idp-cache/aws-image-backstage.fingerprint"
+  if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$bs_fp_file" "$BACKSTAGE_IMAGE_TAG" \
+       "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/backstage --image-ids imageTag=${BACKSTAGE_IMAGE_TAG}"; then
+    log "  Backstage unchanged and ${BACKSTAGE_IMAGE_TAG} already in ECR — skipping build."
+  else
+    docker_build_push_amd64 backstage/app/ "${BACKSTAGE_IMAGE}" \
+      -f backstage/Dockerfile \
+      -t "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
+    helm_record_fingerprint "$bs_fp_file" "$BACKSTAGE_IMAGE_TAG"
+  fi
+}
+
+_IMAGES_LOG=$(mktemp)
+_build_aws_images >"$_IMAGES_LOG" 2>&1 &
+_IMAGES_PID=$!
+log "  Builds running in background (PID ${_IMAGES_PID}); output is replayed when joined at Phase 5."
+
+# Don't orphan the background build if the run dies before Phase 5 joins it.
+# Supersedes the EXIT trap from timer_enable_summary, so it re-invokes
+# timer_summary itself.
+_kill_image_builds() {
+  [[ -n "${_IMAGES_PID:-}" ]] || return 0
+  pkill -P "$_IMAGES_PID" 2>/dev/null || true
+  kill "$_IMAGES_PID" 2>/dev/null || true
+  rm -f "${_IMAGES_LOG:-}" 2>/dev/null || true
+}
+trap '_kill_image_builds; timer_summary' EXIT
+
+timer_end "2.5 Image builds (background)"
 
 # ── Phase 3: Platform namespaces + RBAC ──────────────────────────────────────
 timer_start "3. Namespaces + RBAC"
@@ -118,7 +204,7 @@ helm_upgrade_cached external-secrets external-secrets external-secrets/external-
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true \
-  --wait --timeout 10m
+  --wait --timeout "${HELM_WAIT_MED}"
 
 # ── Phase 3.6a: Create ClusterSecretStore (AWS Secrets Manager backend for ESO) ─
 log "Phase 3.6a: Creating ClusterSecretStore for AWS Secrets Manager..."
@@ -146,16 +232,15 @@ sed "s/YOUR_AWS_REGION/${AWS_REGION}/g" aws/external-secrets/cluster-secret-stor
   | kubectl apply -f -
 
 # Wait up to 60s for the ClusterSecretStore to become Ready
-for i in $(seq 1 12); do
-  CSS_STATUS=$(kubectl get clustersecretstore aws-secretsmanager \
-    -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "NotReady")
-  if [[ "$CSS_STATUS" == "StoreValid" ]]; then
-    log "  ClusterSecretStore aws-secretsmanager is Ready."
-    break
-  fi
-  [[ $i -eq 12 ]] && log "  WARNING: ClusterSecretStore may not be ready — proceeding anyway."
-  sleep 5
-done
+_css_valid() {
+  [[ "$(kubectl get clustersecretstore aws-secretsmanager \
+        -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null)" == "StoreValid" ]]
+}
+if poll_until "ClusterSecretStore" 60 5 _css_valid; then
+  log "  ClusterSecretStore aws-secretsmanager is Ready."
+else
+  warn "ClusterSecretStore may not be ready — proceeding anyway."
+fi
 
 # Deploy DORA cronjob now that ExternalSecret CRD exists
 if [[ "$SKIP_DORA" != "true" ]]; then
@@ -196,9 +281,26 @@ else
     --secret-id "$BACKSTAGE_SECRET_ARN" \
     --query SecretString --output text)
 
-  # Generate random tokens for Backstage session signing and external access.
-  BACKSTAGE_CATALOG_TOKEN=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
-  AUTH_SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))")
+  # Generate random tokens for Backstage session signing and external access,
+  # but only if the secret does not already carry them. Regenerating on every
+  # run invalidated every live Backstage session and silently broke any catalog
+  # token already handed out to an external caller (the catalog exporter, CI).
+  _existing_token() {
+    echo "$CURRENT_SECRET" | KEY="$1" python3 -c \
+      "import json,sys,os; print(json.load(sys.stdin).get(os.environ['KEY'],''))" 2>/dev/null || echo ""
+  }
+  _rand_hex() { openssl rand -hex 32 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(32))"; }
+
+  BACKSTAGE_CATALOG_TOKEN=$(_existing_token BACKSTAGE_CATALOG_TOKEN)
+  AUTH_SESSION_SECRET=$(_existing_token AUTH_SESSION_SECRET)
+  if [[ -z "$BACKSTAGE_CATALOG_TOKEN" || "$BACKSTAGE_CATALOG_TOKEN" == "REPLACE_ME" ]]; then
+    BACKSTAGE_CATALOG_TOKEN=$(_rand_hex)
+    log "  Generated a new BACKSTAGE_CATALOG_TOKEN."
+  fi
+  if [[ -z "$AUTH_SESSION_SECRET" || "$AUTH_SESSION_SECRET" == "REPLACE_ME" ]]; then
+    AUTH_SESSION_SECRET=$(_rand_hex)
+    log "  Generated a new AUTH_SESSION_SECRET."
+  fi
 
   UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" python3 -c "
 import json, sys, os
@@ -325,7 +427,7 @@ helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-s
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
   --set prometheus.prometheusSpec.thanos=null \
   --set grafana.sidecar.datasources.defaultDatasourceEnabled=true \
-  --wait --timeout 10m
+  --wait --timeout "${HELM_WAIT_MED}"
 rm -f "${tmp_obs_values}"
 
 kubectl apply -f observability/alertmanager/prometheus-rules.yaml
@@ -333,47 +435,71 @@ log "  PrometheusRules applied (SLO burn-rate, DORA anomalies, team budgets, KAg
 
 timer_end "4. Prometheus + Grafana"
 
-# ── Phase 4a: Prometheus Pushgateway ─────────────────────────────────────────
-timer_start "4a. Pushgateway"
-log "Phase 4a: Installing Prometheus Pushgateway..."
-helm_upgrade_cached prometheus-pushgateway monitoring prometheus-community/prometheus-pushgateway \
-  --namespace monitoring \
-  --set serviceMonitor.enabled=true \
-  --set "serviceMonitor.additionalLabels.release=prometheus" \
-  --set resources.requests.cpu=10m \
-  --set resources.requests.memory=32Mi \
-  --set resources.limits.cpu=100m \
-  --set resources.limits.memory=64Mi \
-  --set "extraArgs[0]=--web.enable-admin-api" \
-  --wait --timeout 5m
+# ── Phases 4a + 4b: Pushgateway and OpenCost (parallel) ──────────────────────
+# Two independent `--wait 5m` helm installs that share nothing but the
+# `monitoring` namespace, previously run strictly back-to-back. Same
+# aggregate-then-fail pattern as the Gatekeeper/Kyverno block above.
+timer_start "4a+4b. Pushgateway + OpenCost"
+log "Phases 4a/4b: Installing Pushgateway and OpenCost in parallel..."
 
-kubectl apply -f aws/monitoring/pushgateway-ingress.yaml
-log "Pushgateway ALB ingress applied."
+_pushgateway() {
+  helm_upgrade_cached prometheus-pushgateway monitoring prometheus-community/prometheus-pushgateway \
+    --namespace monitoring \
+    --set serviceMonitor.enabled=true \
+    --set "serviceMonitor.additionalLabels.release=prometheus" \
+    --set resources.requests.cpu=10m \
+    --set resources.requests.memory=32Mi \
+    --set resources.limits.cpu=100m \
+    --set resources.limits.memory=64Mi \
+    --set "extraArgs[0]=--web.enable-admin-api" \
+    --wait --timeout "${HELM_WAIT_SHORT}"
 
-# Seed QA demo metrics so the Grafana QA Platform dashboard has data immediately
-PUSHGATEWAY_INTERNAL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
-PUSHGATEWAY_URL="${PUSHGATEWAY_INTERNAL}" bash scripts/seed-qa-metrics.sh \
-  || log "  WARNING: QA metrics seed failed — run scripts/seed-qa-metrics.sh manually after deploy."
+  # No ALB ingress: Pushgateway is a metrics sink written to by CI and by
+  # seed-qa-metrics.sh (via the port-forward below), and read by Prometheus
+  # in-cluster. Nothing browses it, so a dedicated internet-facing ALB was
+  # ~$16/mo to publish an unauthenticated admin API.
 
-timer_end "4a. Pushgateway"
+  # Seed QA demo metrics so the Grafana QA Platform dashboard has data
+  # immediately. This used to point at the cluster-internal Service DNS name —
+  # but seed-qa-metrics.sh runs on the operator's laptop, where that name can
+  # never resolve, so the seed failed on every AWS bootstrap and the QA
+  # dashboard was always empty. Port-forward instead, as bootstrap-local.sh does.
+  local pf_pid=""
+  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &>/dev/null &
+  pf_pid=$!
+  if poll_until "Pushgateway port-forward" 20 2 \
+       curl -sf -o /dev/null http://localhost:9091/-/healthy; then
+    PUSHGATEWAY_URL=http://localhost:9091 bash scripts/seed-qa-metrics.sh \
+      || warn "QA metrics seed failed — run scripts/seed-qa-metrics.sh manually after deploy."
+  else
+    warn "Pushgateway port-forward never became healthy — skipping the QA metrics seed."
+  fi
+  kill "$pf_pid" 2>/dev/null || true
+  wait "$pf_pid" 2>/dev/null || true
+}
 
-# ── Phase 4b: OpenCost ────────────────────────────────────────────────────────
-timer_start "4b. OpenCost"
-log "Phase 4b: Installing OpenCost (cluster cost visibility)..."
+_opencost() {
+  kubectl apply -f kubernetes/finops/opencost.yaml
+  helm_upgrade_cached opencost opencost opencost/opencost \
+    --namespace opencost \
+    --set opencost.prometheus.internal.enabled=false \
+    --set opencost.prometheus.external.enabled=true \
+    --set "opencost.prometheus.external.url=http://prometheus-operated.monitoring.svc.cluster.local:9090" \
+    --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
+    --wait --timeout "${HELM_WAIT_SHORT}"
+  log "OpenCost installed."
+}
 
-kubectl apply -f kubernetes/finops/opencost.yaml
+_pg_log=$(mktemp); _pushgateway >"$_pg_log" 2>&1 & _pg_pid=$!
+_oc_log=$(mktemp); _opencost    >"$_oc_log" 2>&1 & _oc_pid=$!
 
-helm_upgrade_cached opencost opencost opencost/opencost \
-  --namespace opencost \
-  --set opencost.prometheus.internal.enabled=false \
-  --set opencost.prometheus.external.enabled=true \
-  --set "opencost.prometheus.external.url=http://prometheus-operated.monitoring.svc.cluster.local:9090" \
-  --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
-  --wait --timeout 5m
+# Join every job before deciding to abort — see the _bg_join contract in lib.sh.
+_p4_fail=0
+_bg_join "$_pg_pid" "$_pg_log" || { warn "Phase 4a (Pushgateway) failed"; _p4_fail=1; }
+_bg_join "$_oc_pid" "$_oc_log" || { warn "Phase 4b (OpenCost) failed";    _p4_fail=1; }
+(( _p4_fail == 0 )) || err "Pushgateway/OpenCost install failed — see output above."
 
-log "OpenCost installed."
-
-timer_end "4b. OpenCost"
+timer_end "4a+4b. Pushgateway + OpenCost"
 
 # ── Phase 3.8/3.9: OPA/Gatekeeper + Kyverno ──────────────────────────────────
 timer_start "3.8-3.9 Gatekeeper + Kyverno (parallel)"
@@ -394,7 +520,7 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
       --set auditInterval=60 \
       --set logLevel=WARNING \
       --wait \
-      --timeout 5m
+      --timeout "${HELM_WAIT_SHORT}"
 
     log "  Applying golden-path ConstraintTemplates..."
     # Pass 1: apply full files — creates ConstraintTemplates (Constraint instances
@@ -471,7 +597,7 @@ _p39_log=$(mktemp)
     --set webhooksCleanup.image.tag=1.28.5 \
     --set resources.requests.cpu=100m \
     --set resources.requests.memory=256Mi \
-    --wait --timeout 5m
+    --wait --timeout "${HELM_WAIT_SHORT}"
 
   kubectl wait deployment kyverno-admission-controller \
     -n kyverno --for=condition=Available --timeout=120s
@@ -516,7 +642,7 @@ _p44pre_log=$(mktemp); _p44preb_log=$(mktemp); _p44prec_log=$(mktemp); _p44pred_
   helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
     --namespace argo-rollouts \
     --values "${ROOT_DIR}/aws/argocd/argo-rollouts-values.yaml" \
-    --wait --timeout 5m
+    --wait --timeout "${HELM_WAIT_SHORT}"
   kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
   log "  Argo Rollouts installed. Services can opt into canary by setting rollout.enabled: true in their helm-values overlay."
 ) > "$_p44pre_log" 2>&1 &
@@ -536,7 +662,7 @@ _p44pre_pid=$!
     --set "loki.storage.bucketNames.ruler=${LOKI_BUCKET}" \
     --set "loki.storage.s3.region=${AWS_REGION}" \
     --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${LOKI_ROLE_ARN}" \
-    --wait --timeout 8m || log "WARNING: Loki install had issues — check aws/observability/loki/loki-values.yaml (requires S3 bucket)"
+    --wait --timeout "${HELM_WAIT_MED}" || log "WARNING: Loki install had issues — check aws/observability/loki/loki-values.yaml (requires S3 bucket)"
 
   helm_upgrade_cached promtail monitoring grafana/promtail \
     --namespace monitoring \
@@ -559,7 +685,7 @@ _p44preb_pid=$!
     --set "storage.trace.s3.bucket=${TEMPO_BUCKET}" \
     --set "storage.trace.s3.region=${AWS_REGION}" \
     --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${TEMPO_ROLE_ARN}" \
-    --wait --timeout 8m || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
+    --wait --timeout "${HELM_WAIT_MED}" || log "WARNING: Tempo install had issues — check aws/observability/tempo/tempo-values.yaml (requires S3 bucket)"
   log "  Tempo installed. Traces available in Grafana → Explore → Tempo datasource."
 ) > "$_p44prec_log" 2>&1 &
 _p44prec_pid=$!
@@ -583,7 +709,7 @@ _p44prec_pid=$!
     helm_upgrade_cached datadog datadog datadog/datadog \
       --namespace datadog \
       --values "${ROOT_DIR}/aws/observability/datadog/datadog-agent-values.yaml" \
-      --wait --timeout 5m || log "WARNING: Datadog Agent install had issues — check that datadog-secrets synced (kubectl get externalsecret -n datadog) and aws/observability/datadog/datadog-agent-values.yaml"
+      --wait --timeout "${HELM_WAIT_SHORT}" || log "WARNING: Datadog Agent install had issues — check that datadog-secrets synced (kubectl get externalsecret -n datadog) and aws/observability/datadog/datadog-agent-values.yaml"
     log "  Datadog Agent installed. Infra metrics/logs available in Datadog → Infrastructure; APM traces (including the Backstage backend) under Datadog → APM → Services."
   else
     log "  WARNING: datadog_eso_role_arn not found in Terraform outputs — skipping Datadog Agent install."
@@ -689,15 +815,30 @@ _bg_join "$_p44b_pid"  "$_p44b_log"  || { warn "Phase 4.4b (demo team namespace)
 timer_end "4.4 Exporters (parallel)"
 
 # ── Phase 4.5: Install ArgoCD ────────────────────────────────────────────────
-timer_start "4.5 ArgoCD"
+# timer_start sits inside the skip guard: it used to be outside it while both
+# timer_end calls were inside, so with --skip-gitops phases 4.5-4.7 silently
+# vanished from the timing summary.
 if [[ "$SKIP_GITOPS" != "true" ]]; then
+timer_start "4.5 ArgoCD"
 log "Phase 4.5: Installing ArgoCD..."
-helm_upgrade_cached argocd argocd argo/argo-cd \
+# Retried with a longer timeout rather than failing outright: a slow first
+# ALB/CRD warm-up on a cold account used to kill the entire bootstrap ~45
+# minutes in, with everything before it already done. Same two-attempt shape
+# as bootstrap-local.sh's ArgoCD step.
+if ! helm_upgrade_cached argocd argocd argo/argo-cd \
   --namespace argocd \
   --create-namespace \
   --values aws/argocd/argocd-helm-values.yaml \
-  --wait \
-  --timeout 5m
+  --wait --timeout "${HELM_WAIT_SHORT}"; then
+  warn "Phase 4.5 (ArgoCD) failed on first attempt — retrying with an extended timeout..."
+  helm_upgrade_cached argocd argocd argo/argo-cd \
+    --namespace argocd \
+    --create-namespace \
+    --values aws/argocd/argocd-helm-values.yaml \
+    --wait --timeout "${HELM_WAIT_LONG}" \
+    || err "ArgoCD failed to install after a retry. Raise the budget and re-run:
+  HELM_WAIT_SHORT=15m ./scripts/bootstrap.sh --region ${AWS_REGION} --cluster-name ${CLUSTER_NAME}"
+fi
 
 log "  ArgoCD installed."
 
@@ -719,6 +860,15 @@ timer_end "4.5 ArgoCD"
 # ── Phase 4.6: Apply the GitOps ApplicationSet ───────────────────────────────
 timer_start "4.6 ApplicationSet + Crossplane"
 log "Phase 4.6: Applying ArgoCD ApplicationSet (GitOps)..."
+# helm --wait only checks pod readiness, not that the aggregated API is serving
+# the CRD yet — applying straight after the install races and fails with
+# "no matches for kind ApplicationSet".
+_argocd_api_ready() {
+  kubectl get crd applicationsets.argoproj.io &>/dev/null \
+    && kubectl get applicationsets -n argocd &>/dev/null
+}
+poll_until "ArgoCD API" 150 5 _argocd_api_ready \
+  || warn "ArgoCD API still not serving ApplicationSets — the apply below may fail."
 kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
 log "  ApplicationSet applied — ArgoCD will sync services once image tags are set."
 
@@ -764,16 +914,28 @@ log "Phase 4.7: Generating ArgoCD API token for Backstage..."
 
 # Wait up to 5 minutes for ArgoCD ALB ingress to get a hostname
 ARGOCD_URL=""
-for i in $(seq 1 60); do
-  # ArgoCD uses ALB Ingress (not LoadBalancer service) — read from Ingress object
+# ArgoCD uses ALB Ingress (not a LoadBalancer service) — read from the Ingress.
+_argocd_alb_ready() {
   ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -n "$ARGOCD_URL" ]] && break
-  [[ $i -eq 60 ]] && { log "  WARNING: ArgoCD LB not ready after 5m — skipping token generation."; }
-  sleep 5
-done
+  [[ -n "$ARGOCD_URL" ]]
+}
+poll_until "ArgoCD ALB hostname" 300 5 _argocd_alb_ready \
+  || warn "ArgoCD LB not ready after 5m — skipping token generation."
 
-if [[ -n "$ARGOCD_URL" ]]; then
+# Minting a token is not idempotent: ArgoCD keeps every one ever issued in
+# argocd-secret and this used to add another on every run, so the secret grew
+# without bound and old tokens stayed valid forever. Reuse the stored one when
+# it still authenticates.
+_existing_argocd_token=$(aws secretsmanager get-secret-value \
+  --secret-id "$BACKSTAGE_SECRET_ARN" --query SecretString --output text 2>/dev/null \
+  | python3 -c "import json,sys; print(json.load(sys.stdin).get('ARGOCD_AUTH_TOKEN',''))" 2>/dev/null || echo "")
+
+if [[ -n "$ARGOCD_URL" && -n "$_existing_argocd_token" ]] && \
+   curl -sf -k -o /dev/null "https://${ARGOCD_URL}/api/v1/applications" \
+     -H "Authorization: Bearer ${_existing_argocd_token}"; then
+  log "  Existing ArgoCD token still valid — reusing it."
+elif [[ -n "$ARGOCD_URL" ]]; then
   # Login and get admin token
   ADMIN_TOKEN=$(curl -s -k "https://${ARGOCD_URL}/api/v1/session" \
     -H "Content-Type: application/json" \
@@ -811,36 +973,21 @@ fi # --skip-gitops
 
 timer_end "4.7 Backstage/ArgoCD tokens"
 
-# ── Phase 5: Build + push hello-service seed image ───────────────────────────
-timer_start "5. hello-service image"
-# CI (GitHub Actions) manages ongoing deployments via GitOps (update-image-tag job).
-# This phase seeds the initial image so ArgoCD has something to deploy on first run.
-log "Phase 5: Building and pushing hello-service seed image..."
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-IMAGE_REPO="${ECR_REGISTRY}/${CLUSTER_NAME}/hello-service"
-IMAGE_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo 'bootstrap')"
+# ── Phase 5: Join the image builds + seed the GitOps values ──────────────────
+timer_start "5. Image builds (join)"
+# The builds themselves started back at Phase 2.5 and have been running while
+# the whole platform installed. This is just the join point: the first thing
+# after here that needs the images is Phase 5.6's deployment manifest.
+log "Phase 5: Waiting for the background image builds to finish..."
+_bg_join "${_IMAGES_PID:-}" "${_IMAGES_LOG:-}" \
+  || err "Image build/push failed — see the replayed output above."
+_IMAGES_PID=""   # joined; stop the EXIT trap from trying to kill it
+log "  hello-service: ${IMAGE_REPO}:${IMAGE_TAG}"
+log "  Backstage:     ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
 
-aws ecr get-login-password --region "${AWS_REGION}" | \
-  docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-
-# Skip when the source and tag are unchanged and the tag is already in ECR.
-# The build itself now reuses an ECR-side layer cache — see
-# docker_build_push_amd64 in lib.sh for why that matters so much here.
-_hello_fp_file="${ROOT_DIR}/.idp-cache/aws-image-hello-service.fingerprint"
-_hello_fp="$(dir_content_hash "${ROOT_DIR}/services/hello-service"):${IMAGE_TAG}"
-if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$_hello_fp_file" "$_hello_fp" \
-     "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/hello-service --image-ids imageTag=${IMAGE_TAG}"; then
-  log "  hello-service unchanged and ${IMAGE_TAG} already in ECR — skipping build."
-else
-  docker_build_push_amd64 services/hello-service "${IMAGE_REPO}" \
-    --build-arg VERSION="${IMAGE_TAG}" \
-    -t "${IMAGE_REPO}:${IMAGE_TAG}" \
-    -t "${IMAGE_REPO}:latest"
-  helm_record_fingerprint "$_hello_fp_file" "$_hello_fp"
-fi
-
-# Write seed image tag into helm-values-aws.yaml so ArgoCD syncs immediately
+# CI (GitHub Actions) manages ongoing deployments via GitOps (update-image-tag
+# job). This only seeds the initial image so ArgoCD has something to deploy on
+# the first run. Write the seed tag into helm-values-aws.yaml.
 IMAGE_REPO_ESC="${IMAGE_REPO}" IMAGE_TAG_ESC="${IMAGE_TAG}" python3 - <<'PYEOF'
 import os, re
 f = 'services/hello-service/helm-values-aws.yaml'
@@ -852,43 +999,21 @@ PYEOF
 git config user.name  "idp-bot" 2>/dev/null || true
 git config user.email "idp-bot@platform" 2>/dev/null || true
 git add services/hello-service/helm-values-aws.yaml
-git diff --staged --quiet || \
-  git commit -m "chore(gitops): hello-service seed image ${IMAGE_TAG} [skip ci]" && \
-  git push 2>/dev/null || log "  (git push skipped — not in a git repo or no remote)"
-
-log "hello-service seed image pushed — ArgoCD will deploy to dev namespace."
-
-timer_end "5. hello-service image"
-
-# ── Phase 5.5: Build + push Backstage image ───────────────────────────────────
-timer_start "5.5 Backstage image"
-# The Backstage Dockerfile is multi-stage and runs yarn install + yarn build:backend
-# inside the builder stage. No host-side yarn build is needed.
-# Tagged with the git SHA (not :latest) so the deployment manifest pins an immutable
-# image — required by the repo's own OPA deny-latest-tag policy.
-log "Phase 5.5: Building and pushing Backstage image..."
-BACKSTAGE_IMAGE="${ECR_REGISTRY}/${CLUSTER_NAME}/backstage"
-BACKSTAGE_IMAGE_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo 'bootstrap')"
-
-# This is the single most expensive build in the whole bootstrap: multi-stage,
-# runs yarn install + yarn build:backend inside the builder, and does it all
-# under amd64 emulation on an Apple-Silicon host. The ECR layer cache means a
-# rebuild after an unrelated change reuses the yarn-install layers instead of
-# re-running them emulated. Fingerprint covers the app source and the Dockerfile.
-_bs_fp_file="${ROOT_DIR}/.idp-cache/aws-image-backstage.fingerprint"
-_bs_fp="$(dir_content_hash "${ROOT_DIR}/backstage/app"):$(_sha256 "${ROOT_DIR}/backstage/Dockerfile"):${BACKSTAGE_IMAGE_TAG}"
-if [[ "${IDP_FORCE:-0}" != "1" ]] && image_unchanged "$_bs_fp_file" "$_bs_fp" \
-     "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/backstage --image-ids imageTag=${BACKSTAGE_IMAGE_TAG}"; then
-  log "  Backstage unchanged and ${BACKSTAGE_IMAGE_TAG} already in ECR — skipping build."
+# Only commit when the values file actually changed. The old form was
+#   git diff --staged --quiet || git commit … && git push … || log …
+# which parses as (((A || B) && C) || D): with nothing staged, A succeeded and
+# it pushed anyway on every single run.
+if git diff --staged --quiet; then
+  log "  helm-values-aws.yaml already points at ${IMAGE_TAG} — nothing to commit."
 else
-  docker_build_push_amd64 backstage/app/ "${BACKSTAGE_IMAGE}" \
-    -f backstage/Dockerfile \
-    -t "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
-  helm_record_fingerprint "$_bs_fp_file" "$_bs_fp"
+  if git commit -m "chore(gitops): hello-service seed image ${IMAGE_TAG} [skip ci]" >/dev/null; then
+    git push 2>/dev/null || log "  (git push skipped — no remote, or push rejected)"
+  fi
 fi
-log "Backstage image pushed to ECR: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
 
-timer_end "5.5 Backstage image"
+log "hello-service seed image ready — ArgoCD will deploy to dev namespace."
+
+timer_end "5. Image builds (join)"
 
 # ── Phase 5.6: Deploy Backstage ───────────────────────────────────────────────
 timer_start "5.6 Deploy Backstage"
@@ -899,31 +1024,41 @@ kubectl apply -f aws/backstage/external-secret.yaml
 
 # Wait for ESO to sync the secret (up to 60s)
 log "  Waiting for ExternalSecret to sync..."
-for i in $(seq 1 12); do
-  STATUS=$(kubectl get externalsecret backstage-secrets -n backstage \
-    -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "NotFound")
-  if [[ "$STATUS" == "SecretSynced" ]]; then
-    log "  Secret synced successfully."
-    break
-  fi
-  [[ $i -eq 12 ]] && log "  WARNING: Secret may not be synced yet — proceeding anyway."
-  sleep 5
-done
+_backstage_secret_synced() {
+  [[ "$(kubectl get externalsecret backstage-secrets -n backstage \
+        -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null)" == "SecretSynced" ]]
+}
+if poll_until "ExternalSecret sync" 60 5 _backstage_secret_synced; then
+  log "  Secret synced successfully."
+else
+  warn "Secret may not be synced yet — proceeding anyway."
+fi
 
 # Fetch the RDS combined CA bundle so Postgres connections can verify the server
 # cert (rejectUnauthorized: true in app-config.aws.yaml) instead of skipping validation.
-log "  Fetching RDS CA bundle..."
-RDS_CA_BUNDLE="$(mktemp)"
-curl -sSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o "${RDS_CA_BUNDLE}"
+# Cached under .idp-cache rather than re-downloaded every run — it is a stable
+# published bundle, and a warm bootstrap should not need the network for it.
+RDS_CA_BUNDLE="${ROOT_DIR}/.idp-cache/rds-global-bundle.pem"
+mkdir -p "$(dirname "${RDS_CA_BUNDLE}")"
+if [[ -s "${RDS_CA_BUNDLE}" && "${IDP_FORCE:-0}" != "1" ]]; then
+  log "  Using cached RDS CA bundle."
+else
+  log "  Fetching RDS CA bundle..."
+  curl -sSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    -o "${RDS_CA_BUNDLE}" \
+    || err "Could not download the RDS CA bundle — Backstage cannot verify the Postgres server cert without it."
+fi
 kubectl create configmap rds-ca-bundle -n backstage \
   --from-file=global-bundle.pem="${RDS_CA_BUNDLE}" \
   --dry-run=client -o yaml | kubectl apply -f -
-rm -f "${RDS_CA_BUNDLE}"
 
 # Apply configmaps (base-config + production overrides) and deployment.
+# Generated from backstage/app-config*.yaml rather than applied from a
+# committed manifest — see apply_backstage_configmaps in lib.sh for the drift
+# that the old hand-maintained copy accumulated.
 # Substitute the real ECR image (pinned to the SHA tag just pushed) into the
 # deployment manifest before applying.
-kubectl apply -f kubernetes/backstage/configmap.yaml
+apply_backstage_configmaps
 sed "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}|g" \
   aws/backstage/deployment.yaml | kubectl apply -f -
 
@@ -941,16 +1076,19 @@ log "  Waiting for Backstage / ArgoCD / Grafana LoadBalancer hostnames..."
 BACKSTAGE_URL=""
 ARGOCD_URL=""
 GRAFANA_URL=""
-for i in $(seq 1 36); do
+# Each hostname is latched once seen, so a slow third LB doesn't re-query the
+# two that already resolved. poll_until runs the predicate in this shell, not a
+# subshell, so these assignments survive the loop.
+_albs_ready() {
   [[ -z "$BACKSTAGE_URL" ]] && BACKSTAGE_URL=$(kubectl get svc backstage -n backstage \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -z "$ARGOCD_URL" ]] && ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(kubectl get ingress prometheus-grafana -n monitoring \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -n "$BACKSTAGE_URL" && -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]] && break
-  sleep 10
-done
+  [[ -n "$BACKSTAGE_URL" && -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]]
+}
+poll_until "LoadBalancer hostnames" 360 10 _albs_ready || true
 if [[ -z "$BACKSTAGE_URL" ]]; then
   log "  Backstage LoadBalancer hostname not ready — skipping URL patch."
   BACKSTAGE_URL="PENDING"
@@ -958,14 +1096,24 @@ fi
 [[ -z "$ARGOCD_URL" ]] && log "  ArgoCD ALB hostname not ready — leaving externalLinks.argocd as a placeholder."
 [[ -z "$GRAFANA_URL" ]] && log "  Grafana ALB hostname not ready — leaving externalLinks.grafana as a placeholder."
 
-# Patch the configmap with the real ALB URLs and restart the pod
+# Patch the configmap with the real ALB URLs, and restart the pod only if that
+# actually changed something. The restart used to be unconditional, costing a
+# guaranteed 60-120s pod cycle on every warm run even when the rendered config
+# was byte-identical.
 if [[ "$BACKSTAGE_URL" != "PENDING" ]]; then
+  _cm_before=$(kubectl get configmap backstage-config -n backstage -o jsonpath='{.data}' 2>/dev/null || echo "")
   kubectl get configmap backstage-config -n backstage -o json \
     | sed "s|BACKSTAGE_ALB_URL|${BACKSTAGE_URL}|g" \
     | sed "s|ARGOCD_ALB_URL|${ARGOCD_URL:-ARGOCD_ALB_URL}|g" \
     | sed "s|GRAFANA_ALB_URL|${GRAFANA_URL:-GRAFANA_ALB_URL}|g" \
     | kubectl apply -f -
-  kubectl rollout restart deployment/backstage -n backstage
+  _cm_after=$(kubectl get configmap backstage-config -n backstage -o jsonpath='{.data}' 2>/dev/null || echo "")
+  if [[ "$_cm_before" != "$_cm_after" ]]; then
+    log "  Backstage config changed — restarting the deployment."
+    kubectl rollout restart deployment/backstage -n backstage
+  else
+    log "  Backstage config unchanged — skipping the rolling restart."
+  fi
 fi
 
 kubectl rollout status deployment/backstage -n backstage --timeout=120s || \
@@ -1113,7 +1261,7 @@ EOF
       helm_upgrade_cached velero velero vmware-tanzu/velero \
         --namespace velero \
         --values "${tmp_velero_values}" \
-        --wait --timeout 5m
+        --wait --timeout "${HELM_WAIT_SHORT}"
       rm -f "${tmp_velero_values}"
 
       # Daily backup schedule — 30-day TTL matches var.rds_backup_retention_days.
@@ -1161,13 +1309,16 @@ EOF
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  PLATFORM SERVICES"
   log "║    ArgoCD          http://$(_alb argocd-server argocd)"
-  log "║    Argo Rollouts   http://$(_alb argo-rollouts-dashboard argo-rollouts)"
   log "║    Grafana         http://$(_alb grafana monitoring)"
-  log "║    Prometheus      http://$(_alb prometheus monitoring)"
-  log "║    AlertManager    http://$(_alb alertmanager monitoring)"
-  log "║    Pushgateway     http://$(_alb prometheus-pushgateway monitoring)"
-  log "║    OpenCost        http://$(_alb opencost-alb opencost)"
   log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
+  log "╠══════════════════════════════════════════════════════════════════════════════╣"
+  log "║  OPERATOR TOOLS — no public ALB by design (~\$82/mo saved, and they have"
+  log "║  no authentication in front of them). Reach them with port-forward:"
+  log "║    Prometheus      kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090"
+  log "║    AlertManager    kubectl port-forward -n monitoring svc/alertmanager-operated 9093:9093"
+  log "║    Pushgateway     kubectl port-forward -n monitoring svc/prometheus-pushgateway 9091:9091"
+  log "║    OpenCost        kubectl port-forward -n opencost svc/opencost 9090:9090"
+  log "║    Argo Rollouts   kubectl port-forward -n argo-rollouts svc/argo-rollouts-dashboard 3100:3100"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  APPLICATION SERVICES"
   log "║    hello-service   http://$(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"

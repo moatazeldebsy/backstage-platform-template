@@ -3,9 +3,41 @@
 
 app:
   baseUrl: http://BACKSTAGE_ALB_URL
+  # Backstage does NOT deep-merge arrays — this list replaces the one in
+  # app-config.yaml wholesale (aws/backstage/deployment.yaml loads both with
+  # two --config flags), so every entry that file declares has to be repeated
+  # here. Omitting the AI entries un-gated all four AI pages on EKS even when
+  # bootstrap-ai.sh --aws had never been run. Same requirement as the local
+  # overlay in scripts/lib.sh (write_backstage_ai_overlay).
   extensions:
+    # The standalone Kubernetes route renders the entity Kubernetes tab outside
+    # any entity context and dies with "Entity context is not available".
     - page:kubernetes:
         disabled: true
+    # AI feature flags — default OFF, flipped on by bootstrap-ai.sh --aws once
+    # the AI layer actually exists. Kept in step with aiStack.enabled below.
+    - page:custom-pages/ai-assistant:
+        disabled: true
+    - nav-item:custom-pages/ai-assistant:
+        disabled: true
+    - page:custom-pages/ai-search:
+        disabled: true
+    - nav-item:custom-pages/ai-search:
+        disabled: true
+    - page:custom-pages/approvals:
+        disabled: true
+    - nav-item:custom-pages/approvals:
+        disabled: true
+    - page:custom-pages/kagent-platform:
+        disabled: true
+    - nav-item:custom-pages/kagent-platform:
+        disabled: true
+
+# Drives the hardcoded AI links on the custom Home / Support / Learning-Center
+# pages, which app.extensions cannot reach. bootstrap-ai.sh --aws flips this
+# together with the extension flags above.
+aiStack:
+  enabled: false
 
 backend:
   baseUrl: http://BACKSTAGE_ALB_URL
@@ -70,6 +102,14 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+    # Contract testing (docs/contract-testing.md). bootstrap-ai.sh --aws deploys
+    # contract-mcp-server — ECR repo, DynamoDB IRSA role and ALB included — but
+    # this proxy entry was only ever added to app-config.local.yaml, so on EKS
+    # the server ran with nothing able to reach it through Backstage.
+    /contract-mcp:
+      target: http://contract-mcp-server.services-dev.svc.cluster.local:3003
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
     # ADP Phase 4 HiTL approval gate (docs/agentic-platform.md) — only reachable
     # once bootstrap-ai.sh --adp has deployed approval-service.
     /approval-service:

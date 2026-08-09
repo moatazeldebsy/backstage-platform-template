@@ -12,15 +12,42 @@ app:
     - page:kubernetes:
         disabled: true
 
-    # AI feature flags are NOT set here. They live in the generated overlay
-    # local/backstage/app-config.ai.yaml (written by write_backstage_ai_overlay
-    # in scripts/lib.sh), which loads after this file and — because Backstage
-    # replaces the app.extensions array rather than merging it — must repeat
-    # every entry above, page:kubernetes included.
+    # The AI entries below are repeated from app-config.yaml on purpose.
+    # Backstage replaces the app.extensions array rather than merging it, so
+    # this list overrides the base one wholesale — and when it held only
+    # page:kubernetes, every AI page and nav item was silently un-gated.
     #
-    # The block previously suggested here used IDs of the form
-    # `custom-pages/page:ai-assistant`. That form matches no extension: the ID
-    # is `<kind>:<pluginId>/<name>`, i.e. `page:custom-pages/ai-assistant`.
+    # That is invisible under docker-compose, which loads the generated overlay
+    # local/backstage/app-config.ai.yaml (write_backstage_ai_overlay in
+    # scripts/lib.sh) as a later --config layer. But `yarn start` loads only
+    # app-config.yaml + app-config.local.yaml — the overlay lives outside the
+    # app directory and is never picked up — so the dev server showed AI pages
+    # that dead-end without bootstrap-ai.sh. Hence the duplication here too.
+    #
+    # Note the ID form: `<kind>:<pluginId>/<name>`, i.e.
+    # `page:custom-pages/ai-assistant` — NOT `custom-pages/page:ai-assistant`,
+    # which matches no extension and silently does nothing.
+    - page:custom-pages/ai-assistant:
+        disabled: true
+    - nav-item:custom-pages/ai-assistant:
+        disabled: true
+    - page:custom-pages/ai-search:
+        disabled: true
+    - nav-item:custom-pages/ai-search:
+        disabled: true
+    - page:custom-pages/approvals:
+        disabled: true
+    - nav-item:custom-pages/approvals:
+        disabled: true
+    - page:custom-pages/kagent-platform:
+        disabled: true
+    - nav-item:custom-pages/kagent-platform:
+        disabled: true
+
+# Matches the extension flags above. The overlay flips both together once
+# bootstrap-ai.sh has actually deployed the AI layer.
+aiStack:
+  enabled: false
 
 backend:
   # All traffic (frontend + API) is served through port 3000 (docker port mapping)
@@ -202,11 +229,13 @@ externalLinks:
 # Override the OpenCost proxy target — in-cluster DNS is not reachable from Docker;
 # use the ingress hostname that is mapped to host-gateway in docker-compose extra_hosts.
 proxy:
-  # Temporary diagnostic: one endpoint below fails http-proxy-middleware's
-  # "target" validation and crashes the whole backend startup (catalog/scaffolder
-  # never finish initializing as a result). skipInvalidProxies logs which route
-  # is bad instead of aborting startup. Remove once the bad endpoint is fixed.
-  skipInvalidProxies: true
+  # `skipInvalidProxies: true` used to sit here as a temporary diagnostic, for a
+  # bad endpoint that crashed backend startup outright (catalog and scaffolder
+  # never finished initializing). That endpoint is long fixed — every target in
+  # this file and in app-config.aws.yaml now parses as an absolute http(s) URL,
+  # including the ${VAR:-default} ones — so the flag was only masking future
+  # mistakes, and masking them on local while AWS had no equivalent guard. A
+  # malformed target should fail loudly in dev, where it is cheap to find.
   endpoints:
     /opencost:
       target: http://opencost.idp.local

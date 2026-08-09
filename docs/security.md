@@ -118,7 +118,7 @@ The following hardening steps were applied to the AWS Backstage deployment in co
 
 ### Database
 
-- **TLS cert validation enabled** — `rejectUnauthorized: true` is set for the PostgreSQL connection in `kubernetes/backstage/configmap.yaml`. The cluster CA is mounted from a Kubernetes secret.
+- **TLS cert validation enabled** — `rejectUnauthorized: true` is set for the PostgreSQL connection in `backstage/app-config.aws.yaml`. The cluster CA is mounted from a Kubernetes secret.
 
 ### Infrastructure
 

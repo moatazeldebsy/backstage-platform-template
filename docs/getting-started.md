@@ -42,7 +42,7 @@ Adding the AI/ML stack (`./scripts/bootstrap-ai.sh`) takes an additional **10–
 
 ---
 
-### AWS (EKS) — ~45–60 minutes
+### AWS (EKS) — ~40–70 minutes
 
 `./scripts/bootstrap.sh` provisions from scratch. Most of the time is AWS control-plane and ALB provisioning, which cannot be parallelised.
 
@@ -51,12 +51,12 @@ Adding the AI/ML stack (`./scripts/bootstrap-ai.sh`) takes an additional **10–
 | Terraform | VPC, EKS control plane + node groups, RDS, ECR, IAM/OIDC, Crossplane IRSA role | ~20–25 min |
 | ArgoCD + app-of-apps | Helm install + GitHub credentials + first sync | ~5 min |
 | External Secrets Operator | Helm install + ClusterSecretStore ready | ~3 min |
-| Prometheus + Grafana | `kube-prometheus-stack` + ALB ingress provisioning | ~5 min |
+| Prometheus + Grafana | `kube-prometheus-stack` + Grafana ALB provisioning | ~5 min |
 | OPA/Gatekeeper | CRDs + constraints | ~2 min |
 | Crossplane | Core + AWS providers healthy + compositions applied | ~5 min |
 | Backstage | ECR image push + K8s deploy + ExternalSecret sync + ALB | ~8 min |
 | hello-service + ALB | Helm install + ALB DNS propagation | ~3 min |
-| **Total** | | **~45–60 min** |
+| **Total** | | **~40–70 min** |
 
 > EKS control plane creation (~10 min) and ALB provisioning (~3–5 min per ingress) are the longest waits and are entirely AWS-side — no script change can speed them up.
 
@@ -77,7 +77,7 @@ Adding the AI/ML stack on AWS takes an additional **15–20 minutes**:
 
 | | Local (full) | Local + AI/ML | AWS (full) | AWS + AI/ML |
 |---|---|---|---|---|
-| First run | ~15–20 min | ~25–35 min | ~45–60 min | ~60–80 min |
+| First run | ~15–20 min | ~25–35 min | ~40–70 min | ~60–80 min |
 | Re-bootstrap | ~5–8 min | ~10–15 min | ~15–20 min | ~20–25 min |
 | Prerequisites | Docker, Kind | + `ANTHROPIC_API_KEY` | AWS account, Terraform | + `ANTHROPIC_API_KEY` |
 | Cost | Free | Free | ~$8/day | ~$8/day |
@@ -100,7 +100,7 @@ Personalisation has to happen before bootstrapping: `setup.sh` replaces `moataze
 
 > **🔐 CRITICAL - First:** Read [docs/PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md) and verify all API keys are set correctly. Run `./scripts/verify-secrets.sh` to validate before deployment.
 
-> **⚠️ NEW:** Then read [docs/DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: **45–60 minutes**.
+> **⚠️ NEW:** Then read [docs/DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: **40–70 minutes**.
 
 ### 1. Configure AWS
 
@@ -125,7 +125,7 @@ Or, if you have already run `setup.sh` for personalisation and want to re-run th
 ```bash
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 # Edit terraform/terraform.tfvars — update cluster_name, region if needed
-./scripts/bootstrap.sh  # ~45–60 min
+./scripts/bootstrap.sh  # ~40–70 min
 ```
 
 ### 3. Validate deployment

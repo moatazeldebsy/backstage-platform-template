@@ -27,36 +27,17 @@ function createDecommissionServiceAction(options: {
       'Decommission a service: archive or delete its GitHub repo and remove it from the catalog.',
     schema: {
       input: {
-        required: ['entityRef', 'action', 'confirmationText'],
-        type: 'object',
-        properties: {
-          entityRef: {
-            type: 'string',
-            title: 'Entity Reference',
-            description: 'Backstage entityRef, e.g. component:default/my-service',
-          },
-          action: {
-            type: 'string',
-            title: 'Action',
-            enum: ['archive', 'delete'],
-            description:
-              'archive = repo is frozen read-only (reversible); delete = permanent removal',
-          },
-          confirmationText: {
-            type: 'string',
-            title: 'Confirmation',
-            description: 'Type the service name exactly to confirm',
-          },
-        },
+        entityRef: z =>
+          z.string().describe('Backstage entityRef, e.g. component:default/my-service'),
+        action: z =>
+          z
+            .enum(['archive', 'delete'])
+            .describe('archive = repo is frozen read-only (reversible); delete = permanent removal'),
+        confirmationText: z =>
+          z.string().describe('Type the service name exactly to confirm'),
       },
       output: {
-        type: 'object',
-        properties: {
-          summary: {
-            type: 'string',
-            description: 'Decommission summary message',
-          },
-        },
+        summary: z => z.string().describe('Decommission summary message'),
       },
     },
 
@@ -90,7 +71,7 @@ function createDecommissionServiceAction(options: {
       ctx.logger.info('Confirmation validated.');
 
       // Step 2: Admin guard — verify caller is in platform-team group
-      const userEntityRef = ctx.user?.info.userEntityRef;
+      const userEntityRef = ctx.user?.ref;
       if (!userEntityRef) {
         throw new Error('Cannot determine current user entity ref.');
       }
@@ -110,13 +91,27 @@ function createDecommissionServiceAction(options: {
         const userNs = userNameParts.length > 1 ? userNameParts[0] : 'default';
         const userName = userNameParts.length > 1 ? userNameParts[1] : userNameParts[0];
 
+        // Only the catalog *fetch* is guarded. The membership decision below
+        // used to sit inside this try as well, so the "you must be a member"
+        // throw was caught by its own catch, logged as a warning, and the
+        // decommission carried on — the guard rejected nobody. The success
+        // path was broken too: it referenced an undefined `userRef`, throwing
+        // a ReferenceError into the same catch.
+        let userEntity;
         try {
-          const userEntity = await catalogClient.getEntityByName({
+          userEntity = await catalogClient.getEntityByName({
             kind: 'User',
             namespace: userNs,
             name: userName,
           });
-          const memberOf = (userEntity?.spec?.memberOf as string[]) || [];
+        } catch (e: any) {
+          ctx.logger.warn(
+            `Failed to fetch user entity for admin check: ${e.message}. Proceeding without group verification.`,
+          );
+        }
+
+        if (userEntity) {
+          const memberOf = (userEntity.spec?.memberOf as string[]) || [];
           const isPlatformTeamMember = memberOf.some(
             g => g === 'group:default/platform-team' || g === 'platform-team',
           );
@@ -125,11 +120,7 @@ function createDecommissionServiceAction(options: {
               'You must be a member of the platform-team group to decommission services. Contact your platform admin.',
             );
           }
-          ctx.logger.info(`Admin check passed for ${userRef}.`);
-        } catch (e: any) {
-          ctx.logger.warn(
-            `Failed to fetch user entity for admin check: ${e.message}. Proceeding without group verification.`,
-          );
+          ctx.logger.info(`Admin check passed for ${userEntityRef}.`);
         }
       }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef } from '@backstage/frontend-plugin-api';
+import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef, FrontendPlugin } from '@backstage/frontend-plugin-api';
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
 import { CATALOG_FILTER_EXISTS } from '@backstage/catalog-client';
@@ -36,10 +36,8 @@ import TrendingUpIcon from '@material-ui/icons/TrendingUp';
 import TrackChangesIcon from '@material-ui/icons/TrackChanges';
 import AccountTreeIcon from '@material-ui/icons/AccountTree';
 import DynamicFeedIcon from '@material-ui/icons/DynamicFeed';
-import ExtensionIcon from '@material-ui/icons/Extension';
 import EmojiPeopleIcon from '@material-ui/icons/EmojiPeople';
 import CalculateIcon from '@material-ui/icons/MonetizationOn';
-import SettingsIcon from '@material-ui/icons/Settings';
 import PersonIcon from '@material-ui/icons/Person';
 import SearchOutlinedIcon from '@material-ui/icons/SearchOutlined';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
@@ -140,7 +138,6 @@ function FinOpsPage() {
       .catch((err: any) => { setError(String(err)); setLoading(false); });
   }, [base, fetchApi, window_, aggregate]);
 
-  const names = rows.map(r => r.name);
   const grandTotal = rows.reduce((s, r) => s + r.total, 0);
   const maxBucketTotal = Math.max(...dailyBuckets.map(b => Object.values(b.items).reduce((s, v) => s + v, 0)), 0.0001);
 
@@ -2361,7 +2358,7 @@ const jiraEntityContent = EntityContentBlueprint.make({
 // Custom nav page showing Copilot usage via GitHub REST API (public, free).
 // Requires GITHUB_TOKEN in local/backstage/.env (already required for catalog).
 
-const copilotRouteRef = createRouteRef({ id: 'copilot-metrics' });
+const copilotRouteRef = createRouteRef();  // was id: 'copilot-metrics'
 
 interface CopilotDay {
   date: string;
@@ -3268,7 +3265,7 @@ function HomePage() {
   );
 }
 
-const homeRouteRef = createRouteRef({ id: 'platform-home' });
+const homeRouteRef = createRouteRef();  // was id: 'platform-home'
 const homePage = PageBlueprint.make({
   name: 'platform-home',
   params: { path: '/', routeRef: homeRouteRef, loader: async () => <HomePage /> },
@@ -3436,7 +3433,7 @@ function DoraPage() {
   );
 }
 
-const doraPageRouteRef = createRouteRef({ id: 'dora-platform' });
+const doraPageRouteRef = createRouteRef();  // was id: 'dora-platform'
 const doraPage = PageBlueprint.make({
   name: 'dora-platform',
   params: { path: '/dora', routeRef: doraPageRouteRef, loader: async () => <DoraPage /> },
@@ -3574,7 +3571,7 @@ function ScorecardPage() {
   );
 }
 
-const scorecardPageRouteRef = createRouteRef({ id: 'scorecard-platform' });
+const scorecardPageRouteRef = createRouteRef();  // was id: 'scorecard-platform'
 const scorecardPage = PageBlueprint.make({
   name: 'scorecard-platform',
   params: { path: '/scorecard', routeRef: scorecardPageRouteRef, loader: async () => <ScorecardPage /> },
@@ -3711,7 +3708,7 @@ function SloPage() {
   );
 }
 
-const sloPageRouteRef = createRouteRef({ id: 'slo-platform' });
+const sloPageRouteRef = createRouteRef();  // was id: 'slo-platform'
 const sloPage = PageBlueprint.make({
   name: 'slo-platform',
   params: { path: '/slo', routeRef: sloPageRouteRef, loader: async () => <SloPage /> },
@@ -3899,7 +3896,7 @@ function ArgocdPage() {
   );
 }
 
-const argocdPageRouteRef = createRouteRef({ id: 'argocd-platform' });
+const argocdPageRouteRef = createRouteRef();  // was id: 'argocd-platform'
 const argocdPage = PageBlueprint.make({
   name: 'argocd-platform',
   params: { path: '/argocd', routeRef: argocdPageRouteRef, loader: async () => <ArgocdPage /> },
@@ -4050,7 +4047,7 @@ function ActivityPage() {
   );
 }
 
-const activityRouteRef = createRouteRef({ id: 'activity-feed' });
+const activityRouteRef = createRouteRef();  // was id: 'activity-feed'
 const activityPage = PageBlueprint.make({
   name: 'activity-feed',
   params: { path: '/activity', routeRef: activityRouteRef, loader: async () => <ActivityPage /> },
@@ -4243,15 +4240,15 @@ function ApiExplorerPage() {
   );
 }
 
-const apiExplorerRouteRef = createRouteRef({ id: 'api-explorer' });
+const apiExplorerRouteRef = createRouteRef();  // was id: 'api-explorer'
 const apiExplorerPage = PageBlueprint.make({
   name: 'api-explorer',
   params: { path: '/apis', routeRef: apiExplorerRouteRef, loader: async () => <ApiExplorerPage /> },
 });
-const apiExplorerNavItem = NavItemBlueprint.make({
-  name: 'api-explorer',
-  params: { title: 'APIs', icon: ExtensionIcon as any, routeRef: apiExplorerRouteRef },
-});
+// No NavItemBlueprint here on purpose: the built-in apiDocsPlugin already
+// contributes an "APIs" nav item, and registering a second one gives the
+// sidebar two entries pointing at the same place. The page extension below is
+// still registered — only the duplicate nav item is omitted.
 
 // ── Onboarding Wizard ──────────────────────────────────────────────────────────
 // 4-step guide for new platform users. Progress persisted in localStorage.
@@ -4469,7 +4466,7 @@ function OnboardingPage() {
   );
 }
 
-const onboardingRouteRef = createRouteRef({ id: 'onboarding' });
+const onboardingRouteRef = createRouteRef();  // was id: 'onboarding'
 const onboardingPage = PageBlueprint.make({
   name: 'onboarding',
   params: { path: '/onboarding', routeRef: onboardingRouteRef, loader: async () => <OnboardingPage /> },
@@ -4692,7 +4689,7 @@ function LearningCenterPage() {
   );
 }
 
-const learningCenterRouteRef = createRouteRef({ id: 'learning-center' });
+const learningCenterRouteRef = createRouteRef();  // was id: 'learning-center'
 const learningCenterPage = PageBlueprint.make({
   name: 'learning-center',
   params: { path: '/learning-center', routeRef: learningCenterRouteRef, loader: async () => <LearningCenterPage /> },
@@ -4905,7 +4902,7 @@ function CostCalculatorPage() {
   );
 }
 
-const calculatorRouteRef = createRouteRef({ id: 'cost-calculator' });
+const calculatorRouteRef = createRouteRef();  // was id: 'cost-calculator'
 const calculatorPage = PageBlueprint.make({
   name: 'cost-calculator',
   params: { path: '/calculator', routeRef: calculatorRouteRef, loader: async () => <CostCalculatorPage /> },
@@ -5237,15 +5234,14 @@ function SettingsPage() {
   );
 }
 
-const settingsPageRouteRef = createRouteRef({ id: 'idp-settings' });
+const settingsPageRouteRef = createRouteRef();  // was id: 'idp-settings'
 const settingsPage = PageBlueprint.make({
   name: 'idp-settings',
   params: { path: '/idp-settings', routeRef: settingsPageRouteRef, loader: async () => <SettingsPage /> },
 });
-const settingsNavItem = NavItemBlueprint.make({
-  name: 'idp-settings',
-  params: { title: 'Settings', icon: SettingsIcon as any, routeRef: settingsPageRouteRef },
-});
+// No NavItemBlueprint here on purpose: the built-in userSettingsPlugin owns
+// the Settings group pinned at the bottom of the sidebar, so a second entry
+// would duplicate it. The page extension below is still registered.
 
 // ── User Profile ───────────────────────────────────────────────────────────────
 // Shows the current user's identity, owned entities from the catalog,
@@ -5410,7 +5406,7 @@ function UserProfilePage() {
   );
 }
 
-const profilePageRouteRef = createRouteRef({ id: 'user-profile' });
+const profilePageRouteRef = createRouteRef();  // was id: 'user-profile'
 const profilePage = PageBlueprint.make({
   name: 'user-profile',
   params: { path: '/profile', routeRef: profilePageRouteRef, loader: async () => <UserProfilePage /> },
@@ -5606,7 +5602,7 @@ function GlobalSearchPage() {
   );
 }
 
-const searchPageRouteRef = createRouteRef({ id: 'global-search' });
+const searchPageRouteRef = createRouteRef();  // was id: 'global-search'
 const searchPage = PageBlueprint.make({
   name: 'global-search',
   params: { path: '/search-page', routeRef: searchPageRouteRef, loader: async () => <GlobalSearchPage /> },
@@ -5796,7 +5792,7 @@ function AdminPage() {
   );
 }
 
-const adminPageRouteRef = createRouteRef({ id: 'admin-panel' });
+const adminPageRouteRef = createRouteRef();  // was id: 'admin-panel'
 const adminPage = PageBlueprint.make({
   name: 'admin-panel',
   params: { path: '/admin', routeRef: adminPageRouteRef, loader: async () => <AdminPage /> },
@@ -5862,7 +5858,7 @@ function KAgentPage() {
 
   const [agents, setAgents]         = useState<KAgentAgent[]>([]);
   const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
-  const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>(DEMO_MODEL_CONFIGS);
+  const [modelConfigs] = useState<ModelConfig[]>(DEMO_MODEL_CONFIGS);
   const [isDemo, setIsDemo]         = useState(false);
   const [loading, setLoading]       = useState(true);
   const [callsTotal, setCallsTotal] = useState<number | null>(null);
@@ -6087,7 +6083,7 @@ function KAgentPage() {
   );
 }
 
-const kagentPageRouteRef = createRouteRef({ id: 'kagent-platform' });
+const kagentPageRouteRef = createRouteRef();  // was id: 'kagent-platform'
 const kagentPage = PageBlueprint.make({
   name: 'kagent-platform',
   params: { path: '/kagent', routeRef: kagentPageRouteRef, loader: async () => <KAgentPage /> },
@@ -6231,7 +6227,7 @@ function SupportPage() {
   );
 }
 
-const supportPageRouteRef = createRouteRef({ id: 'support' });
+const supportPageRouteRef = createRouteRef();  // was id: 'support'
 const supportPage = PageBlueprint.make({
   name: 'support',
   params: { path: '/support', routeRef: supportPageRouteRef, loader: async () => <SupportPage /> },
@@ -6242,7 +6238,15 @@ const supportNavItem = NavItemBlueprint.make({
 });
 
 // ── Plugin registration ────────────────────────────────────────────────────────
-export const customPagesPlugin = createFrontendPlugin({
+// Explicitly annotated. Without it TypeScript tries to name the inferred type,
+// which reaches through a nested copy of @backstage/catalog-model hoisted under
+// plugin-catalog-react and fails with TS2742 ("cannot be named without a
+// reference to … This is likely not portable"). Whether that nested copy exists
+// depends on how yarn happens to hoist on a given install, so the error comes
+// and goes between machines — pinning the type here makes it deterministic.
+// App.tsx only passes this to the features list, so the non-generic
+// FrontendPlugin loses nothing.
+export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
   pluginId: 'custom-pages',
   routes: {
     root: finOpsRouteRef,
@@ -6262,7 +6266,7 @@ export const customPagesPlugin = createFrontendPlugin({
     activityPage,
     activityNavItem,
     apiExplorerPage,
-    // apiExplorerNavItem — removed: built-in apiDocsPlugin already adds "APIs" nav item
+    // (no apiExplorerNavItem — see the note at its page definition)
     onboardingPage,
     onboardingNavItem,
     learningCenterPage,
@@ -6270,7 +6274,7 @@ export const customPagesPlugin = createFrontendPlugin({
     calculatorPage,
     calculatorNavItem,
     settingsPage,
-    // settingsNavItem — removed: built-in userSettingsPlugin owns the Settings group at the bottom of the sidebar
+    // (no settingsNavItem — see the note at its page definition)
     profilePage,
     profileNavItem,
     searchPage,

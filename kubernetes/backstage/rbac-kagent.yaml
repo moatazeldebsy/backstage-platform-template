@@ -1,0 +1,59 @@
+# Write access for Backstage in the kagent namespace.
+#
+# Sibling of rbac-mlplatform.yaml, same reasoning: the base `backstage-read`
+# ClusterRole (rbac.yaml / get-k8s-credentials.sh) is deliberately read-only,
+# but two scaffolder actions shell out to `kubectl apply` against kagent:
+#
+#   idpDeployAgent     -> Agent      (ai-agent-kagent template)
+#   idpDeployMcpServer -> MCPServer  (mcp-server template)
+#
+# Without this the scaffold task fails on its last step with
+# "agents.kagent.dev is forbidden: User system:serviceaccount:default:backstage
+# cannot create resource agents", after the repo has already been published —
+# leaving a GitHub repo and a catalog entry with no running agent.
+#
+# Scope is a namespaced Role on purpose — this grants nothing outside kagent.
+# Both service-account identities are bound because the SA differs by
+# deployment target: in-cluster Backstage (AWS/EKS) runs as backstage/backstage,
+# while local Kind runs Backstage on the host with a token for default/backstage
+# minted by scripts/get-k8s-credentials.sh.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backstage-kagent
+  namespace: kagent
+  labels:
+    managed-by: idp-backstage
+rules:
+  # What the two actions create.
+  - apiGroups: [kagent.dev]
+    resources: [agents, mcpservers]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # Read-only on what a generated Agent references: modelConfig by name, and
+  # the idp-mcp-server RemoteMCPServer it binds tools from. Creating an Agent
+  # does not require these, but they let the actions verify a reference exists
+  # instead of applying a manifest that silently never reconciles.
+  - apiGroups: [kagent.dev]
+    resources: [modelconfigs, remotemcpservers, toolservers]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backstage-kagent
+  namespace: kagent
+  labels:
+    managed-by: idp-backstage
+subjects:
+  # In-cluster Backstage (AWS/EKS, and Kind if Backstage is run in-cluster).
+  - kind: ServiceAccount
+    name: backstage
+    namespace: backstage
+  # Local Kind: Backstage runs on the host with a token for this SA.
+  - kind: ServiceAccount
+    name: backstage
+    namespace: default
+roleRef:
+  kind: Role
+  name: backstage-kagent
+  apiGroup: rbac.authorization.k8s.io

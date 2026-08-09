@@ -20,9 +20,12 @@ resource "aws_sns_topic" "cost_alerts" {
 
 # ── Lambda: SNS → Slack ───────────────────────────────────────────────────────
 
+# source_file, not source_dir: handler.py only needs stdlib + boto3, and
+# source_dir was packaging this directory's stale handler.zip and its macOS SMB
+# lock files (.!12345!handler.zip) into every deployed version.
 data "archive_file" "cost_alert_lambda" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/cost-alert-to-slack"
+  source_file = "${path.module}/lambda/cost-alert-to-slack/handler.py"
   output_path = "${path.module}/lambda/cost-alert-to-slack.zip"
 }
 

@@ -7,37 +7,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
-const execAsync = promisify(exec);
-const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: KUBECONFIG_PATH,
-};
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
-async function ensureKubeconfig(): Promise<void> {
-  const k8sUrl = process.env.K8S_CLUSTER_URL;
-  const k8sToken = process.env.K8S_SERVICE_ACCOUNT_TOKEN;
-  if (!k8sUrl || !k8sToken) return;
-  const kubeconfig = `apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: ${k8sUrl}
-    insecure-skip-tls-verify: true
-  name: cluster
-contexts:
-- context:
-    cluster: cluster
-    user: backstage
-  name: default
-current-context: default
-users:
-- name: backstage
-  user:
-    token: ${k8sToken}
-`;
-  await fs.writeFile(KUBECONFIG_PATH, kubeconfig, { encoding: 'utf8', mode: 0o600 });
-}
+const execAsync = promisify(exec);
 
 const CONTRACT_MCP_HELM_VALUES = `
 fullnameOverride: contract-mcp-server
@@ -229,41 +201,20 @@ function createSetupContractTestingAction() {
       'and auto-register the target service contract. Idempotent — safe to run multiple times.',
     schema: {
       input: {
-        required: ['targetService'],
-        type: 'object',
-        properties: {
-          targetService: {
-            type: 'string',
-            title: 'Target Service Name',
-            description: 'Kubernetes service name to auto-register (must expose GET /openapi.json)',
-          },
-          targetNamespace: {
-            type: 'string',
-            title: 'Target Service Namespace',
-            default: 'services-dev',
-          },
-          targetPort: {
-            type: 'number',
-            title: 'Target Service Port',
-            description: 'K8s Service port (usually 80)',
-            default: 80,
-          },
-          skipDeploy: {
-            type: 'boolean',
-            title: 'Skip Infrastructure Deploy',
-            description: 'Set true if contract-mcp-server is already running',
-            default: false,
-          },
-        },
+        targetService: z =>
+          z.string().describe('Kubernetes service name to auto-register (must expose GET /openapi.json)'),
+        targetNamespace: z =>
+          z.string().optional().describe('Target service namespace (default: services-dev)'),
+        targetPort: z =>
+          z.number().optional().describe('K8s Service port, usually 80 (default: 80)'),
+        skipDeploy: z =>
+          z.boolean().optional().describe('Set true if contract-mcp-server is already running (default: false)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          contractServerUrl: { type: 'string', title: 'Contract MCP Server URL' },
-          agentUrl: { type: 'string', title: 'KAgent UI URL' },
-          contractRegistered: { type: 'string', title: 'Was a contract auto-discovered? (true/false)' },
-          discoveredPaths: { type: 'string', title: 'Discovered API paths (JSON array)' },
-        },
+        contractServerUrl: z => z.string().describe('Contract MCP Server URL'),
+        agentUrl: z => z.string().describe('KAgent UI URL'),
+        contractRegistered: z => z.string().describe('Was a contract auto-discovered? (true/false)'),
+        discoveredPaths: z => z.string().describe('Discovered API paths (JSON array)'),
       },
     },
 

@@ -7,12 +7,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
-const execAsync = promisify(exec);
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
-};
+const execAsync = promisify(exec);
 
 // imageTag defaults to 'latest' on purpose, unlike the third-party images
 // elsewhere in this repo, which are pinned. The image this refers to is built
@@ -62,31 +59,20 @@ function createDeployMcpServerAction() {
     description: 'Apply an MCPServer CRD to the cluster — the kmcp controller deploys it as a pod and makes it available to KAgent agents.',
     schema: {
       input: {
-        required: ['name', 'port'],
-        type: 'object',
-        properties: {
-          name: { type: 'string', title: 'MCP server name' },
-          port: { type: 'number', title: 'Port', default: 3001 },
-          repoName: { type: 'string', title: 'GitHub repo name' },
-          repoOwner: { type: 'string', title: 'GitHub repo owner' },
-          // No `default` on either: the scaffolder would populate it, and an
-          // auto-filled imageTag would always beat commitSha below. Absent
-          // means absent, so the precedence order stays meaningful.
-          imageTag: {
-            type: 'string',
-            title: 'Container image tag — overrides commitSha; falls back to "latest"',
-          },
-          commitSha: {
-            type: 'string',
-            title: 'Commit SHA to derive an immutable tag from (first 8 chars)',
-          },
-        },
+        name: z => z.string().describe('MCP server name'),
+        port: z => z.number().optional().describe('Port (default: 3001)'),
+        repoName: z => z.string().optional().describe('GitHub repo name'),
+        repoOwner: z => z.string().optional().describe('GitHub repo owner'),
+        // Neither carries a zod .default(): the scaffolder would then always
+        // supply imageTag, and an auto-filled imageTag beats commitSha in the
+        // precedence below. Absent must mean absent for that order to hold.
+        imageTag: z =>
+          z.string().optional().describe('Container image tag — overrides commitSha; falls back to "latest"'),
+        commitSha: z =>
+          z.string().optional().describe('Commit SHA to derive an immutable tag from (first 8 chars)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          mcpServerName: { type: 'string' },
-        },
+        mcpServerName: z => z.string().describe('Name of the applied MCPServer resource'),
       },
     },
 
@@ -116,10 +102,15 @@ function createDeployMcpServerAction() {
 
       ctx.logger.info(`Deploying MCPServer '${name}' to kagent namespace (image: ${imageRepo}:${imageTag})...`);
 
+      // In-cluster (EKS) there is no kubeconfig on disk — write one from the
+      // K8S_* env vars first. No-ops when Backstage runs on the host against
+      // Kind and the developer's own kubeconfig already applies.
+      await ensureKubeconfig();
+
       try {
         await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
-        throw new Error(`Cannot reach the Kind cluster: ${e.message}`);
+        throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
 
       const yaml = buildMcpServerYaml({ name, port, imageRepo, imageTag });

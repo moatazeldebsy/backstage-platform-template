@@ -7,8 +7,33 @@ global:
   # Single-replica install — scale up for production HA
   replicaCount: 1
 
+# Resource requests are declared PER COMPONENT below, not once at the top level.
+# There used to be a single top-level `resources:` block at the end of this file;
+# the argo-cd chart has no such key, so Helm silently dropped it and every ArgoCD
+# pod ran with no requests at all — BestEffort QoS, first to be evicted under
+# node pressure, and invisible to the scheduler when it bin-packs.
+#
+# Verify with:
+#   helm template argocd argo/argo-cd -f aws/argocd/argocd-helm-values.yaml \
+#     | grep -A4 'resources:'
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
 server:
   replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
   ingress:
     enabled: true
     ingressClassName: alb
@@ -24,9 +49,45 @@ server:
 
 repoServer:
   replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
 
 applicationSet:
   replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+notifications:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+dex:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
 
 configs:
   params:
@@ -48,11 +109,3 @@ configs:
       p, role:backstage-read, clusters, get, *, allow
       p, role:backstage-read, repositories, get, *, allow
       g, backstage, role:backstage-read
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi

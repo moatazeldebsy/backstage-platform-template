@@ -10,60 +10,24 @@ import {
 } from '@aws-sdk/client-secrets-manager';
 
 function createProvisionSecretAction() {
-  return createTemplateAction<{
-    serviceName: string;
-    secretKey: string;
-    secretValue: string;
-    awsRegion?: string;
-    secretPathPrefix?: string;
-  }>({
+  return createTemplateAction({
     id: 'idp:provision-secret',
     description:
       'Create (or update) an AWS Secrets Manager secret for a service and return an ExternalSecret manifest.',
     schema: {
       input: {
-        required: ['serviceName', 'secretKey', 'secretValue'],
-        type: 'object',
-        properties: {
-          serviceName: {
-            type: 'string',
-            title: 'Service name',
-            description: 'Name of the owning service (e.g. payments-api)',
-          },
-          secretKey: {
-            type: 'string',
-            title: 'Secret key',
-            description:
-              'Environment variable name the secret will be injected as (e.g. STRIPE_API_KEY)',
-          },
-          secretValue: {
-            type: 'string',
-            title: 'Secret value',
-            description: 'The sensitive value to store — never logged',
-          },
-          awsRegion: {
-            type: 'string',
-            title: 'AWS region',
-            default: 'us-east-1',
-          },
-          secretPathPrefix: {
-            type: 'string',
-            title: 'Secret path prefix',
-            description: 'AWS Secrets Manager path prefix',
-            default: 'idp-mvp/services',
-          },
-        },
+        serviceName: z => z.string().describe('Name of the owning service (e.g. payments-api)'),
+        secretKey: z =>
+          z.string().describe('Environment variable name the secret will be injected as (e.g. STRIPE_API_KEY)'),
+        secretValue: z => z.string().describe('The sensitive value to store — never logged'),
+        awsRegion: z => z.string().optional().describe('AWS region (default: us-east-1)'),
+        secretPathPrefix: z =>
+          z.string().optional().describe('AWS Secrets Manager path prefix (default: idp-mvp/services)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          secretArn: { type: 'string', title: 'AWS secret ARN' },
-          secretPath: { type: 'string', title: 'AWS Secrets Manager path' },
-          externalSecretYaml: {
-            type: 'string',
-            title: 'ExternalSecret manifest (ready to commit)',
-          },
-        },
+        secretArn: z => z.string().describe('AWS secret ARN'),
+        secretPath: z => z.string().describe('AWS Secrets Manager path'),
+        externalSecretYaml: z => z.string().describe('ExternalSecret manifest (ready to commit)'),
       },
     },
 

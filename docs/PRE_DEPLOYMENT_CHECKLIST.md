@@ -228,7 +228,7 @@ kubectl rollout restart deployment/kagent-controller -n kagent
 # 2. Personalise (first time only — replaces moatazeldebsy placeholders)
 ./scripts/setup.sh
 
-# 3. Deploy full stack (~45–60 min)
+# 3. Deploy full stack (~40–70 min)
 ./scripts/bootstrap.sh
 
 # 4. Update GitHub OAuth callback URL with the printed ALB hostname
