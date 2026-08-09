@@ -102,6 +102,14 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+    # Contract testing (docs/contract-testing.md). bootstrap-ai.sh --aws deploys
+    # contract-mcp-server — ECR repo, DynamoDB IRSA role and ALB included — but
+    # this proxy entry was only ever added to app-config.local.yaml, so on EKS
+    # the server ran with nothing able to reach it through Backstage.
+    /contract-mcp:
+      target: http://contract-mcp-server.services-dev.svc.cluster.local:3003
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
     # ADP Phase 4 HiTL approval gate (docs/agentic-platform.md) — only reachable
     # once bootstrap-ai.sh --adp has deployed approval-service.
     /approval-service:

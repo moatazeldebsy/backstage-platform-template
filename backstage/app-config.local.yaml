@@ -229,11 +229,13 @@ externalLinks:
 # Override the OpenCost proxy target — in-cluster DNS is not reachable from Docker;
 # use the ingress hostname that is mapped to host-gateway in docker-compose extra_hosts.
 proxy:
-  # Temporary diagnostic: one endpoint below fails http-proxy-middleware's
-  # "target" validation and crashes the whole backend startup (catalog/scaffolder
-  # never finish initializing as a result). skipInvalidProxies logs which route
-  # is bad instead of aborting startup. Remove once the bad endpoint is fixed.
-  skipInvalidProxies: true
+  # `skipInvalidProxies: true` used to sit here as a temporary diagnostic, for a
+  # bad endpoint that crashed backend startup outright (catalog and scaffolder
+  # never finished initializing). That endpoint is long fixed — every target in
+  # this file and in app-config.aws.yaml now parses as an absolute http(s) URL,
+  # including the ${VAR:-default} ones — so the flag was only masking future
+  # mistakes, and masking them on local while AWS had no equivalent guard. A
+  # malformed target should fail loudly in dev, where it is cheap to find.
   endpoints:
     /opencost:
       target: http://opencost.idp.local
