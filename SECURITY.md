@@ -69,6 +69,14 @@ This template ships with these security controls enabled by default:
 Dismissed on GitHub (Dependabot alerts #230, #233, #234, #235, #236) with reason
 `tolerable_risk` — see each alert's dismissal comment for the same rationale.
 
+**Not everything in the react-router family is blocked on v7.** `@remix-run/router`
+is a separate package, and GHSA-2j2x-hqr9-3h42 against it was fixed in 1.23.3 —
+which `react-router@6.30.4` already depends on. Only `react-router-dom@6.30.2`
+still pinned the vulnerable 1.23.2, so a single `@remix-run/router: ^1.23.3`
+entry under `resolutions` deduped both consumers onto the patched version with no
+v7 migration involved. Check whether an advisory names react-router itself before
+assuming the row above covers it.
+
 **Never run `npm audit fix --force` in the scaffold skeletons.** For the test-suite
 templates npm's "fixes" are major *downgrades* to versions that merely predate the
 advisories — `appium@^3.6.0 → 1.22.3`, `newman@^6.2.2 → 2.1.2`,
