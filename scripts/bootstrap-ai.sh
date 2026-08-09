@@ -530,6 +530,14 @@ info "Granting Backstage write access in ml-platform..."
 kubectl apply -f "${REPO_ROOT}/kubernetes/backstage/rbac-mlplatform.yaml"
 check "Backstage ml-platform RBAC applied"
 
+# Same problem one namespace over: the ai-agent-kagent and mcp-server templates
+# apply Agent/MCPServer CRs into kagent, which the read-only base ClusterRole
+# does not allow. Applied here rather than with the KAgent install because it
+# binds Backstage's SAs, not KAgent's.
+info "Granting Backstage write access in kagent..."
+kubectl apply -f "${REPO_ROOT}/kubernetes/backstage/rbac-kagent.yaml"
+check "Backstage kagent RBAC applied"
+
 # Repair any helm releases stuck in `pending-*` state from a prior interrupted
 # run. Helm refuses subsequent upgrades with "another operation in progress"
 # until the orphan revision secret is removed.
