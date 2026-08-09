@@ -42,6 +42,7 @@ import PersonIcon from '@material-ui/icons/Person';
 import SearchOutlinedIcon from '@material-ui/icons/SearchOutlined';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import SmartToyIcon from '@material-ui/icons/EmojiObjects';
+import ScienceIcon from '@material-ui/icons/BubbleChart';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import ChatIcon from '@material-ui/icons/Chat';
 import SchoolIcon from '@material-ui/icons/School';
@@ -5874,22 +5875,34 @@ function KAgentPage() {
       if (!isNaN(v)) setCallsTotal(v);
     }).catch(() => {});
 
-    // Try KAgent A2A API via the Kubernetes plugin's proxy for agent list
+    // Try the Agent CRDs via the Kubernetes plugin's proxy for the agent list
     // (the /api/proxy/kagent endpoint points at the KAgent UI, not the K8s API server).
-    const kagentFetch = fetchApi.fetch(`${base}/api/kubernetes/proxy/apis/kagent.dev/v1alpha1/namespaces/kagent/agents`)
+    //
+    // v1alpha2, matching kubernetes/kagent/*.yaml — and it has to be exact. The
+    // cluster still *serves* v1alpha1, so asking for it returns 200 with the full
+    // agent list and looks healthy, but the down-conversion strips the spec to
+    // `description` alone: model, MCP servers and tool counts all render as "—"
+    // on a page that reports no error. The fields also moved under
+    // spec.declarative in v1alpha2, so the version bump alone is not enough.
+    const kagentFetch = fetchApi.fetch(`${base}/api/kubernetes/proxy/apis/kagent.dev/v1alpha2/namespaces/kagent/agents`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: any) => {
         const items: any[] = data?.items ?? [];
         if (items.length === 0) return Promise.reject('empty');
-        const liveAgents: KAgentAgent[] = items.map((item: any) => ({
-          name:       item.metadata?.name ?? '—',
-          model:      item.spec?.modelConfig ?? '—',
-          mcpServers: (item.spec?.mcpServers ?? []).map((m: any) => m.name),
-          toolCount:  (item.spec?.toolNames ?? []).length,
-          calls24h:   0,
-          avgLatency: '—',
-          ready:      (item.status?.conditions ?? []).some((c: any) => c.type === 'Ready' && c.status === 'True'),
-        }));
+        const liveAgents: KAgentAgent[] = items.map((item: any) => {
+          const declarative = item.spec?.declarative ?? {};
+          // tools[] entries are { type: 'McpServer', mcpServer: { name, toolNames[] } }
+          const mcpTools: any[] = (declarative.tools ?? []).map((t: any) => t.mcpServer).filter(Boolean);
+          return {
+            name:       item.metadata?.name ?? '—',
+            model:      declarative.modelConfig ?? '—',
+            mcpServers: Array.from(new Set(mcpTools.map((m: any) => m.name).filter(Boolean))) as string[],
+            toolCount:  mcpTools.reduce((n: number, m: any) => n + (m.toolNames?.length ?? 0), 0),
+            calls24h:   0,
+            avgLatency: '—',
+            ready:      (item.status?.conditions ?? []).some((c: any) => c.type === 'Ready' && c.status === 'True'),
+          };
+        });
         // Try to enrich with per-agent call counts
         return pq('sum by (agent) (mcp_tool_calls_total)').then(d => {
           const callMap: Record<string, number> = {};
@@ -6093,6 +6106,379 @@ const kagentNavItem = NavItemBlueprint.make({
   params: { title: 'KAgent', icon: SmartToyIcon as any, routeRef: kagentPageRouteRef },
 });
 
+// ── MLflow — experiment tracking & model registry ─────────────────────────────
+// Reads the MLflow REST API through the Backstage proxy (/api/proxy/mlflow),
+// rather than the Kubernetes proxy the KAgent page above has to use — MLflow
+// serves a real HTTP API, KAgent's state only exists as CRDs.
+//
+// Unlike that page, a failure here is reported as a failure. Demo data appears
+// only when the AI layer is known to be absent (aiStack.enabled = false), so a
+// crashed MLflow pod cannot masquerade as "you haven't run bootstrap-ai.sh".
+
+interface MlflowExperiment {
+  id:           string;
+  name:         string;
+  runs:         number;
+  lastRun:      string;
+  latestMetric: string;
+  artifacts:    string;
+}
+
+interface MlflowRun {
+  id:         string;
+  name:       string;
+  experiment: string;
+  status:     string;
+  duration:   string;
+  metrics:    string;
+}
+
+interface RegisteredModel {
+  name:    string;
+  version: string;
+  stage:   string;
+  updated: string;
+}
+
+const DEMO_MLFLOW_EXPERIMENTS: MlflowExperiment[] = [
+  { id: '5', name: 'Test ML Experiment', runs: 1, lastRun: '1 min ago',  latestMetric: 'accuracy 0.940', artifacts: 'mlflow-artifacts:/5' },
+  { id: '2', name: 'Experiment Demo',    runs: 4, lastRun: '3 days ago', latestMetric: 'accuracy 0.912', artifacts: 'mlflow-artifacts:/2' },
+  { id: '0', name: 'Default',            runs: 0, lastRun: '—',          latestMetric: '—',              artifacts: 'mlflow-artifacts:/0' },
+];
+
+const DEMO_MLFLOW_RUNS: MlflowRun[] = [
+  { id: '4824853776ab', name: 'youthful-squid-244', experiment: 'Test ML Experiment', status: 'FINISHED', duration: '2.9s', metrics: 'accuracy 0.940 · f1_score 0.910' },
+  { id: '9f1c02ab7731', name: 'bustling-koi-118',   experiment: 'Experiment Demo',    status: 'FINISHED', duration: '4.1s', metrics: 'accuracy 0.912 · f1_score 0.887' },
+  { id: 'c40aa9e15d02', name: 'rebellious-cub-77',  experiment: 'Experiment Demo',    status: 'FAILED',   duration: '0.8s', metrics: '—' },
+];
+
+const DEMO_REGISTERED_MODELS: RegisteredModel[] = [
+  { name: 'test-ml-exp-model', version: '1', stage: 'None',       updated: '1 min ago'  },
+  { name: 'tiny-model',        version: '3', stage: 'Production', updated: '2 days ago' },
+];
+
+const relTime = (ms?: number): string => {
+  if (!ms || isNaN(ms)) return '—';
+  const secs = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+};
+
+const fmtDuration = (start?: number, end?: number): string => {
+  if (!start || !end || isNaN(start) || isNaN(end) || end < start) return '—';
+  const ms = end - start;
+  if (ms < 1000)  return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms / 60000)}m`;
+};
+
+// Shown in preference order when a run logs several metrics — the same ones the
+// skeleton train.py logs (backstage/catalog/templates/mlflow-experiment).
+const HEADLINE_METRICS = ['accuracy', 'f1_score', 'rmse', 'loss', 'r2_score'];
+
+const RUN_STATUS_COLOR: Record<string, string> = {
+  FINISHED: '#4caf50', RUNNING: '#1976d2', SCHEDULED: '#9e9e9e', FAILED: '#f44336', KILLED: '#ff9800',
+};
+
+function MlflowPage() {
+  const fetchApi  = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const aiEnabled = useAiStackEnabled();
+  const base      = configApi.getString('backend.baseUrl');
+  const mlflowUrl = configApi.getOptionalString('externalLinks.mlflow') ?? 'http://mlflow.idp.local';
+
+  const [experiments, setExperiments] = useState<MlflowExperiment[]>([]);
+  const [runs, setRuns]               = useState<MlflowRun[]>([]);
+  const [runTotal, setRunTotal]       = useState(0);
+  const [models, setModels]           = useState<RegisteredModel[]>([]);
+  const [status, setStatus]           = useState<'loading' | 'demo' | 'error' | 'ok'>('loading');
+  const [error, setError]             = useState('');
+
+  useEffect(() => {
+    // Nothing is deployed to reach, so don't make the user look at a 404.
+    if (!aiEnabled) {
+      setExperiments(DEMO_MLFLOW_EXPERIMENTS);
+      setRuns(DEMO_MLFLOW_RUNS);
+      setRunTotal(DEMO_MLFLOW_RUNS.length);
+      setModels(DEMO_REGISTERED_MODELS);
+      setStatus('demo');
+      return;
+    }
+
+    // MLflow 2.x REST surface on purpose: this platform runs the v2.13.0 server
+    // (kubernetes/ml-platform/mlflow.yaml), which does not serve the 3.x
+    // endpoints. Same pin, same reason as MLFLOW_CLIENT_VERSION in
+    // backend/src/modules/idpRunTrainingJob.ts.
+    const api = (path: string, body?: unknown) =>
+      fetchApi.fetch(
+        `${base}/api/proxy/mlflow/api/2.0/mlflow${path}`,
+        body === undefined ? undefined : {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      ).then(r => (r.ok ? r.json() : Promise.reject(new Error(`${path} → HTTP ${r.status}`))));
+
+    api('/experiments/search', { max_results: 100 })
+      .then(async (expData: any) => {
+        const live: any[] = (expData?.experiments ?? []).filter((e: any) => e.lifecycle_stage !== 'deleted');
+
+        // One runs query covering every experiment, reduced client-side — not
+        // one request per experiment. The 50-run cap means per-experiment
+        // counts are "recent runs", not lifetime totals; the column says so.
+        const runData = live.length
+          ? await api('/runs/search', {
+              experiment_ids: live.map((e: any) => e.experiment_id),
+              max_results: 50,
+              order_by: ['attributes.start_time DESC'],
+            })
+          : { runs: [] };
+
+        const allRuns: any[] = runData?.runs ?? [];
+        const expName: Record<string, string> = {};
+        live.forEach((e: any) => { expName[e.experiment_id] = e.name; });
+
+        // int64 fields come back as JSON strings (proto3), hence Number(...).
+        const headline = (r: any): string => {
+          const metrics: any[] = r?.data?.metrics ?? [];
+          const pick = HEADLINE_METRICS.map(k => metrics.find(m => m.key === k)).find(Boolean) ?? metrics[0];
+          return pick ? `${pick.key} ${Number(pick.value).toFixed(3)}` : '—';
+        };
+
+        setExperiments(live.map((e: any) => {
+          const mine = allRuns.filter(r => r.info?.experiment_id === e.experiment_id);
+          return {
+            id:           e.experiment_id,
+            name:         e.name,
+            runs:         mine.length,
+            lastRun:      relTime(Number(mine[0]?.info?.start_time)),
+            latestMetric: mine[0] ? headline(mine[0]) : '—',
+            artifacts:    e.artifact_location ?? '—',
+          };
+        }));
+
+        setRunTotal(allRuns.length);
+        setRuns(allRuns.slice(0, 10).map((r: any) => {
+          const metrics: any[] = r?.data?.metrics ?? [];
+          return {
+            id:         String(r.info?.run_id ?? '—').slice(0, 12),
+            name:       r.info?.run_name ?? String(r.info?.run_id ?? '—').slice(0, 8),
+            experiment: expName[r.info?.experiment_id] ?? r.info?.experiment_id ?? '—',
+            status:     r.info?.status ?? 'UNKNOWN',
+            duration:   fmtDuration(Number(r.info?.start_time), Number(r.info?.end_time)),
+            metrics:    metrics.slice(0, 3).map(m => `${m.key} ${Number(m.value).toFixed(3)}`).join(' · ') || '—',
+          };
+        }));
+
+        const modelData = await api('/registered-models/search?max_results=100');
+        setModels((modelData?.registered_models ?? []).map((m: any) => {
+          const latest = (m.latest_versions ?? []).slice()
+            .sort((a: any, b: any) => Number(b.version) - Number(a.version))[0];
+          return {
+            name:    m.name,
+            version: latest?.version ?? '—',
+            stage:   latest?.current_stage ?? 'None',
+            updated: relTime(Number(m.last_updated_timestamp)),
+          };
+        }));
+
+        setStatus('ok');
+      })
+      .catch((e: Error) => {
+        setError(e.message ?? String(e));
+        setStatus('error');
+      });
+  }, [aiEnabled, base, fetchApi]);
+
+  return (
+    <Page themeId="tool">
+      <Header
+        title="MLflow"
+        subtitle={`Experiment tracking · model registry · namespace: ml-platform${status === 'ok' ? ` · ${experiments.length} experiment${experiments.length !== 1 ? 's' : ''}` : ''}`}
+      />
+      <Content>
+        {status === 'loading' && <Progress />}
+        {status !== 'loading' && (
+          <>
+            {status === 'demo' && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — the AI/ML layer is not deployed. Run <code>./scripts/bootstrap-ai.sh</code> to install MLflow.
+                </Typography>
+              </Paper>
+            )}
+            {status === 'error' && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
+                <Typography variant="body2" style={{ color: '#b71c1c' }}>
+                  ⚠️ Couldn't reach MLflow ({error}). Check the deployment with{' '}
+                  <code>kubectl get pods -n ml-platform</code>.
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Summary cards */}
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Experiments',       value: experiments.length, sub: 'tracked in MLflow',        color: '#1976d2' },
+                { label: 'Runs',              value: runTotal,           sub: 'most recent (max 50)',     color: '#4caf50' },
+                { label: 'Registered Models', value: models.length,      sub: 'in the model registry',    color: '#7b1fa2' },
+              ].map(({ label, value, sub, color }) => (
+                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
+                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
+                  <Typography variant="caption" color="textSecondary">{sub}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            {/* Experiments */}
+            <Paper style={{ marginBottom: 20 }}>
+              <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6" style={{ flex: 1 }}>Experiments</Typography>
+                <Button variant="outlined" size="small" href={mlflowUrl} target="_blank" style={{ fontSize: 11, marginRight: 8 }}>
+                  Open MLflow UI ↗
+                </Button>
+                <Button variant="contained" color="primary" size="small" href="/create/templates/default/mlflow-experiment" style={{ fontSize: 11 }}>
+                  + New Experiment
+                </Button>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Name</strong></TableCell>
+                      <TableCell align="right"><strong>Recent runs</strong></TableCell>
+                      <TableCell><strong>Last run</strong></TableCell>
+                      <TableCell><strong>Latest metric</strong></TableCell>
+                      <TableCell><strong>Artifacts</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {experiments.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5}>
+                          <Typography variant="caption" color="textSecondary">
+                            No experiments yet — scaffold one with the ML Experiment (MLflow) template.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {experiments.map(exp => (
+                      <TableRow key={exp.id} hover>
+                        <TableCell style={{ fontWeight: 500 }}>{exp.name}</TableCell>
+                        <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{exp.runs}</Typography></TableCell>
+                        <TableCell><Typography variant="caption">{exp.lastRun}</Typography></TableCell>
+                        <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{exp.latestMetric}</Typography></TableCell>
+                        <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace', fontSize: 11 }}>{exp.artifacts}</Typography></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+
+            {/* Registered models + recent runs */}
+            <Box display="flex" style={{ gap: 20, flexWrap: 'wrap' }}>
+              <Paper style={{ flex: '1 1 340px' }}>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Registered Models</Typography>
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Model</strong></TableCell>
+                        <TableCell align="right"><strong>Latest version</strong></TableCell>
+                        <TableCell><strong>Stage</strong></TableCell>
+                        <TableCell><strong>Updated</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {models.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4}>
+                            <Typography variant="caption" color="textSecondary">No registered models.</Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {models.map(model => (
+                        <TableRow key={model.name} hover>
+                          <TableCell style={{ fontWeight: 500 }}>{model.name}</TableCell>
+                          <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>v{model.version}</Typography></TableCell>
+                          <TableCell>
+                            <Chip size="small" label={model.stage}
+                              style={{ background: model.stage === 'Production' ? '#4caf50' : '#9e9e9e', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                          </TableCell>
+                          <TableCell><Typography variant="caption">{model.updated}</Typography></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Paper>
+
+              <Paper style={{ flex: '1 1 380px' }}>
+                <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="h6">Recent Runs</Typography>
+                </Box>
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow style={{ background: '#f5f5f5' }}>
+                        <TableCell><strong>Run</strong></TableCell>
+                        <TableCell><strong>Experiment</strong></TableCell>
+                        <TableCell><strong>Status</strong></TableCell>
+                        <TableCell align="right"><strong>Duration</strong></TableCell>
+                        <TableCell><strong>Metrics</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {runs.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5}>
+                            <Typography variant="caption" color="textSecondary">No runs logged yet.</Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {runs.map(run => (
+                        <TableRow key={run.id} hover>
+                          <TableCell style={{ fontWeight: 500 }}>{run.name}</TableCell>
+                          <TableCell><Typography variant="caption">{run.experiment}</Typography></TableCell>
+                          <TableCell>
+                            <Chip size="small" label={run.status}
+                              style={{ background: RUN_STATUS_COLOR[run.status] ?? '#9e9e9e', color: '#fff', fontSize: 10, fontWeight: 600 }} />
+                          </TableCell>
+                          <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{run.duration}</Typography></TableCell>
+                          <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace', fontSize: 11 }}>{run.metrics}</Typography></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Paper>
+            </Box>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const mlflowPageRouteRef = createRouteRef();
+const mlflowPage = PageBlueprint.make({
+  name: 'mlflow-platform',
+  params: { path: '/mlflow', routeRef: mlflowPageRouteRef, loader: async () => <MlflowPage /> },
+});
+const mlflowNavItem = NavItemBlueprint.make({
+  name: 'mlflow-platform',
+  params: { title: 'MLflow', icon: ScienceIcon as any, routeRef: mlflowPageRouteRef },
+});
+
 // ── Support / Help Center ──────────────────────────────────────────────────────
 // Static help hub: Get Help channels, on-call info, useful links, and platform
 // announcements. PagerDuty on-call pulled from proxy when token is set.
@@ -6283,6 +6669,8 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     adminNavItem,
     kagentPage,
     kagentNavItem,
+    mlflowPage,
+    mlflowNavItem,
     supportPage,
     supportNavItem,
     // Existing pages

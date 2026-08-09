@@ -42,6 +42,11 @@ app:
         disabled: true
     - nav-item:custom-pages/kagent-platform:
         disabled: true
+    # MLflow only exists after bootstrap-ai.sh deploys it into ml-platform.
+    - page:custom-pages/mlflow-platform:
+        disabled: true
+    - nav-item:custom-pages/mlflow-platform:
+        disabled: true
 
 # Whether the AI/ML layer is deployed. Drives the hardcoded AI links on the
 # custom Home / Support / Learning-Center pages, which app.extensions cannot

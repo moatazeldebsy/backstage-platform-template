@@ -43,6 +43,10 @@ app:
         disabled: true
     - nav-item:custom-pages/kagent-platform:
         disabled: true
+    - page:custom-pages/mlflow-platform:
+        disabled: true
+    - nav-item:custom-pages/mlflow-platform:
+        disabled: true
 
 # Matches the extension flags above. The overlay flips both together once
 # bootstrap-ai.sh has actually deployed the AI layer.
@@ -225,6 +229,7 @@ externalLinks:
   argocd: http://argocd.idp.local
   grafana: http://grafana.idp.local
   kagent: http://kagent.idp.local
+  mlflow: http://mlflow.idp.local
 
 # Override the OpenCost proxy target — in-cluster DNS is not reachable from Docker;
 # use the ingress hostname that is mapped to host-gateway in docker-compose extra_hosts.
@@ -260,6 +265,15 @@ proxy:
       # A2A agent turns can take 60–180s (cold start + chained MCP tool calls).
       # Node.js http-proxy-middleware default is ~60s; raise to match ingress.
       timeout: 300000
+    # MLflow REST API behind the MLflow page (page:custom-pages/mlflow-platform).
+    # POST is required, not optional: experiments/search and runs/search are both
+    # POST in the MLflow 2.x API, and the proxy rejects any method not listed.
+    /mlflow:
+      target: http://mlflow.idp.local
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/mlflow': ''
     /contract-mcp:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']
