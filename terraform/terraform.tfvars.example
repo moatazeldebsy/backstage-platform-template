@@ -4,10 +4,23 @@ environment             = "dev"
 cluster_name            = "idp-mvp"
 cluster_version         = "1.32"
 vpc_cidr                = "10.0.0.0/16"
+# Node group sizing. A single t3.medium (2 vCPU / 4 GiB) cannot run this
+# platform: rendering every chart and manifest this repo installs gives ~2.4
+# vCPU / ~5.7 GiB of declared requests before the per-node DaemonSet overhead
+# (~0.3 vCPU + ~900 MiB × node count) for aws-node, kube-proxy, ebs-csi-node,
+# promtail and the Datadog agent. min_size stays 0 so the cost optimizer can
+# still scale the group to zero overnight.
+#
+# Within the t3 family $/vCPU and $/GiB are identical (a t3.large is exactly
+# 2× a t3.medium in both price and memory), so only the node *count* moves the
+# bill — there is nothing to gain by changing the instance type alone.
+#
+# Re-check against OpenCost / Prometheus once the platform is up rather than
+# trusting this number; both are deployed by bootstrap.sh.
 node_instance_types     = ["t3.medium"]
 node_group_min_size     = 0   # 0 allows scale-to-zero via cost optimizer
-node_group_max_size     = 2
-node_group_desired_size = 1   # single node; increase for production
+node_group_max_size     = 8
+node_group_desired_size = 6
 ecr_repositories        = ["hello-service", "idp-mcp-server", "qa-mcp-server", "contract-mcp-server"]
 
 # ── FinOps ────────────────────────────────────────────────────────────────────
@@ -15,7 +28,9 @@ budget_monthly_limit_usd = "100"   # alert at $80 actual / $100 forecasted
 budget_alert_email       = ""       # set to receive email alerts directly
 
 # ── Cost Optimizer (overnight node scale-down + RDS stop) ────────────────────
-# Nodes scale to 0 at 8 PM UTC, back to 1 at 7 AM UTC — saves ~60% of EC2 cost.
+# Nodes scale to 0 at 8 PM UTC and back to node_group_desired_size at 7 AM UTC,
+# and the RDS instance stops and starts with them — ~45% off EC2 + RDS.
+# Implemented in terraform/cost-optimizer.tf.
 enable_cost_optimizer          = true
 # cost_optimizer_scale_down_cron = "cron(0 20 * * ? *)"  # 8 pm UTC
 # cost_optimizer_scale_up_cron   = "cron(0 7  * * ? *)"  # 7 am UTC
