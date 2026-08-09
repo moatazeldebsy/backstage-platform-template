@@ -494,9 +494,6 @@ kubectl get ingress -A --no-headers | awk '{printf "%-30s %-20s %s\n", $1, $2, $
 | `backstage` | `backstage` | `backstage:7007` |
 | `argocd` | `argocd-server` | `argocd-server:80` |
 | `monitoring` | (grafana) | `prometheus-grafana:80` |
-| `monitoring` | (prometheus) | `prometheus-kube-prometheus-prometheus:9090` |
-| `monitoring` | `prometheus-pushgateway` | `prometheus-pushgateway:9091` |
-| `opencost` | `opencost-alb` | `opencost:9090` |
 | `services-dev` | (hello-service) | `hello-service-dev:80` |
 | `kagent` | `kagent-ui` | `kagent-ui:8080` |
 | `ml-platform` | `mlflow` | `mlflow:5000` |

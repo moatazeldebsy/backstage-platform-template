@@ -6,8 +6,12 @@
 
 dashboard:
   enabled: true
+  # Ingress deliberately OFF — the dashboard is an operator tool and its own ALB
+  # costs ~$16/mo. Rollout status is visible in the ArgoCD UI and in Backstage;
+  # this dashboard is for deep debugging:
+  #   kubectl port-forward -n argo-rollouts svc/argo-rollouts-dashboard 3100:3100
   ingress:
-    enabled: true
+    enabled: false
     ingressClassName: alb
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing

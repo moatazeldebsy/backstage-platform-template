@@ -15,15 +15,26 @@
 #     --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}"
 
 prometheus:
+  # Ingress deliberately OFF. Every ALB Ingress here provisions its own ALB
+  # (~$16/mo each, and none of these can share one: they all serve `path: /`
+  # with no hostname, so a shared group.name would make them collide). Prometheus
+  # is an operator tool, not a user-facing surface — Grafana is what people use,
+  # and it reads Prometheus in-cluster. Exposing the raw query API to the public
+  # internet with no auth was also the weakest link in this stack.
+  #
+  # Reach it when you need it:
+  #   kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
+  #
+  # If you later configure domain_name + Route53, switch these back on with real
+  # hostnames so they can share a single host-routed ALB.
   ingress:
-    enabled: true
-    ingressClassName: alb
-    # The chart defaults this ingress's pathType to ImplementationSpecific, which
-    # the AWS ALB controller renders as an exact-match-only listener rule (only "/"
-    # matches — every other path, like /query or /graph, 404s at the ALB itself,
-    # before the request ever reaches Prometheus). Prefix matches Grafana's own
-    # ingress default and makes the ALB rule a proper wildcard.
+    enabled: false
+    # Kept for the day this is re-enabled: the chart defaults pathType to
+    # ImplementationSpecific, which the ALB controller renders as an
+    # exact-match-only rule (only "/" matches — /query and /graph 404 at the ALB
+    # before reaching Prometheus). Prefix makes it a proper wildcard.
     pathType: Prefix
+    ingressClassName: alb
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
@@ -73,8 +84,12 @@ prometheus:
 
 alertmanager:
   enabled: true
+  # Ingress deliberately OFF — operator tool, own ALB, no auth. See the note on
+  # prometheus.ingress above. Alerts are delivered by the Slack/PagerDuty
+  # receivers configured in Phase 5.8, not by people browsing this UI.
+  #   kubectl port-forward -n monitoring svc/alertmanager-operated 9093:9093
   ingress:
-    enabled: true
+    enabled: false
     ingressClassName: alb
     # See the comment on prometheus.ingress.pathType above — same ALB
     # exact-match-only bug applies here by chart default.

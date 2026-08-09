@@ -61,28 +61,11 @@ spec:
                 port:
                   number: 9090
 ---
-# AWS (EKS) ingress — ALB, no hostname (match any ALB DNS)
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: opencost-alb
-  namespace: opencost
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/backend-protocol: HTTP
-spec:
-  ingressClassName: alb
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: opencost
-                port:
-                  number: 9090
+# AWS (EKS) ingress intentionally removed. It provisioned a dedicated ALB
+# (~$16/mo) to expose a cost-reporting UI to the public internet with no auth.
+# OpenCost's data reaches users through the Backstage FinOps tab and the Grafana
+# FinOps dashboard, both of which scrape it in-cluster. For the raw UI:
+#   kubectl port-forward -n opencost svc/opencost 9090:9090
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
