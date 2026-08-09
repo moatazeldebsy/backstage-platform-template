@@ -3,9 +3,41 @@
 
 app:
   baseUrl: http://BACKSTAGE_ALB_URL
+  # Backstage does NOT deep-merge arrays — this list replaces the one in
+  # app-config.yaml wholesale (aws/backstage/deployment.yaml loads both with
+  # two --config flags), so every entry that file declares has to be repeated
+  # here. Omitting the AI entries un-gated all four AI pages on EKS even when
+  # bootstrap-ai.sh --aws had never been run. Same requirement as the local
+  # overlay in scripts/lib.sh (write_backstage_ai_overlay).
   extensions:
+    # The standalone Kubernetes route renders the entity Kubernetes tab outside
+    # any entity context and dies with "Entity context is not available".
     - page:kubernetes:
         disabled: true
+    # AI feature flags — default OFF, flipped on by bootstrap-ai.sh --aws once
+    # the AI layer actually exists. Kept in step with aiStack.enabled below.
+    - page:custom-pages/ai-assistant:
+        disabled: true
+    - nav-item:custom-pages/ai-assistant:
+        disabled: true
+    - page:custom-pages/ai-search:
+        disabled: true
+    - nav-item:custom-pages/ai-search:
+        disabled: true
+    - page:custom-pages/approvals:
+        disabled: true
+    - nav-item:custom-pages/approvals:
+        disabled: true
+    - page:custom-pages/kagent-platform:
+        disabled: true
+    - nav-item:custom-pages/kagent-platform:
+        disabled: true
+
+# Drives the hardcoded AI links on the custom Home / Support / Learning-Center
+# pages, which app.extensions cannot reach. bootstrap-ai.sh --aws flips this
+# together with the extension flags above.
+aiStack:
+  enabled: false
 
 backend:
   baseUrl: http://BACKSTAGE_ALB_URL

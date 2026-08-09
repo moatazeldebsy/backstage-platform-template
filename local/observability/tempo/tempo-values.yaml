@@ -33,6 +33,14 @@ tempo:
     enabled: true
     remoteWriteUrl: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
 
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
 service:
   type: ClusterIP
 
@@ -40,10 +48,9 @@ persistence:
   enabled: true
   size: 5Gi
 
-resources:
-  requests:
-    cpu: 50m
-    memory: 128Mi
-  limits:
-    cpu: 300m
-    memory: 512Mi
+# NOTE: this belongs under `tempo:`, not at the top level. The grafana/tempo
+# chart has no top-level `resources` key, so a block out here is silently
+# dropped by Helm and the pod runs with no requests at all (BestEffort QoS).
+# Verify with:
+#   helm template tempo grafana/tempo -f local/observability/tempo/tempo-values.yaml \
+#     | grep -A4 resources:
