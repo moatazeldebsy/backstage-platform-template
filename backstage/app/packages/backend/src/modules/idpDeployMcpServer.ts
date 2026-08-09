@@ -31,7 +31,7 @@ function buildMcpServerYaml(opts: {
   imageTag: string;
 }): string {
   const { name, port, imageRepo, imageTag } = opts;
-  return `apiVersion: kagent.dev/v1alpha2
+  return `apiVersion: kagent.dev/v1alpha1
 kind: MCPServer
 metadata:
   name: ${name}
