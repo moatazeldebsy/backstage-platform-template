@@ -330,6 +330,17 @@ jobs:
         working-directory: backstage/app
         run: yarn install --immutable
 
+      # Runs before the build, and is the only real type gate here: the
+      # backstage-cli build transpiles rather than type-checks, so the bundle
+      # compiled happily for a long time while `tsc` reported 85 errors. Among
+      # them were a scaffolder action referencing an undefined variable, an
+      # authorization guard that swallowed its own denial, and a fact retriever
+      # reading a context field that no longer exists — all invisible to the
+      # build and to the tests.
+      - name: Type-check
+        working-directory: backstage/app
+        run: yarn tsc
+
       - name: Build backend bundle
         working-directory: backstage/app
         env:
