@@ -15,6 +15,8 @@ A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (ser
 
 ![Platform Architecture](docs/assets/platform-architecture.jpg)
 
+**[See the platform in action →](#screenshots)**
+
 </div>
 
 > **Multi-region (V2)** is on `main` and opt-in: active-standby AWS across eu-central-1 (primary) + us-east-1 (standby), via `./scripts/bootstrap-multiregion.sh`. Single-region setups are unaffected. See [docs/multi-region.md](docs/multi-region.md).
@@ -150,6 +152,113 @@ Topology, DR tiers, and the six rollout phases: [docs/multi-region.md](docs/mult
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
 | **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 61 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
+
+## Screenshots
+
+All shots are from a live local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh` — no mock-ups.
+
+### The portal
+
+The **Platform Dashboard** is the landing page: catalog counts, platform-wide DORA, and every service at a glance.
+
+![Platform Dashboard](docs/assets/screenshots/platform-dashboard.jpg)
+
+| Software Catalog | Teams |
+|---|---|
+| ![Software Catalog](docs/assets/screenshots/catalog-components.jpg) | ![Teams](docs/assets/screenshots/catalog-teams.jpg) |
+| Every service, API, MCP server and test suite, owned and tagged | 8 teams, each with its own namespace, SecretStore and Grafana folder |
+
+Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA, Scorecard, Security, Datadog, Trivy, SLOs:
+
+| TechDocs on the entity | Scorecard on the entity |
+|---|---|
+| ![Entity TechDocs](docs/assets/screenshots/entity-techdocs.jpg) | ![Entity Scorecard](docs/assets/screenshots/entity-scorecard-gold.jpg) |
+
+### Golden path — scaffold → repo → deploy
+
+61 templates in the Scaffolder, filtered by category, tag or owner:
+
+![Scaffolder templates](docs/assets/screenshots/scaffolder-templates.jpg)
+
+| Scaffolder task running | The repo it produced |
+|---|---|
+| ![Scaffolder task](docs/assets/screenshots/scaffolder-task-run.jpg) | ![Scaffolded repo](docs/assets/screenshots/scaffolded-repo-github.jpg) |
+| Generate → push to GitHub → register in catalog → run the first job | CI workflow, Dockerfile, `catalog-info.yaml`, TechDocs — all wired |
+
+Self-service infrastructure is the same flow — a Crossplane Claim committed to Git instead of a Terraform PR:
+
+![Crossplane templates](docs/assets/screenshots/templates-crossplane.jpg)
+
+| ArgoCD app-of-apps | Argo Rollouts canary |
+|---|---|
+| ![ArgoCD](docs/assets/screenshots/argocd-applications.jpg) | ![Argo Rollouts](docs/assets/screenshots/argo-rollouts-canary.jpg) |
+
+### Shift-left quality
+
+Bronze / Silver / Gold tiers across every service, with the cheapest unfilled check called out as the next action:
+
+![Scorecard overview](docs/assets/screenshots/scorecard-overview.jpg)
+
+| SLOs and error budgets | QA platform metrics |
+|---|---|
+| ![SLOs](docs/assets/screenshots/slos.jpg) | ![QA metrics](docs/assets/screenshots/grafana-qa-metrics.jpg) |
+| Sloth multi-window burn-rate, live from Prometheus | E2E pass rate, k6 p95 latency and error rate per run |
+
+### AI/ML platform and agents
+
+The **AI Assistant** answers in plans, not prose — it maps your intent onto the actual templates on the platform and asks for exactly the inputs they need:
+
+| Ask it anything | It plans the scaffold |
+|---|---|
+| ![AI Assistant](docs/assets/screenshots/ai-assistant.jpg) | ![AI Assistant scaffold plan](docs/assets/screenshots/ai-assistant-scaffold-plan.jpg) |
+
+| KAgent agents | MCP servers and model configs |
+|---|---|
+| ![KAgent](docs/assets/screenshots/kagent-agents.jpg) | ![MCP servers](docs/assets/screenshots/kagent-mcp-servers.jpg) |
+
+| Agent Approvals (HiTL gate) | MLflow experiment tracking |
+|---|---|
+| ![Agent Approvals](docs/assets/screenshots/agent-approvals.jpg) | ![MLflow](docs/assets/screenshots/mlflow-experiment.jpg) |
+| Every mutating agent action waits for a human — or an auto-approve policy | Runs and registered models from a scaffolded ML experiment |
+
+Semantic search over templates, components and TechDocs (Voyage AI + pgvector):
+
+![AI Search](docs/assets/screenshots/ai-search.jpg)
+
+### Observability, DORA and FinOps
+
+| DORA metrics | FinOps cost overview |
+|---|---|
+| ![DORA](docs/assets/screenshots/dora-metrics.jpg) | ![Cost Overview](docs/assets/screenshots/finops-cost-overview.jpg) |
+| Four keys platform-wide and per service, with performance bands | OpenCost spend by namespace, team or container |
+
+| Cost Calculator | Grafana — IDP services |
+|---|---|
+| ![Cost Calculator](docs/assets/screenshots/cost-calculator.jpg) | ![Grafana IDP services](docs/assets/screenshots/grafana-idp-services.jpg) |
+| Estimate a service's monthly cost *before* scaffolding it | Request rate, CPU/memory and restarts, filtered by catalog entity |
+
+<details>
+<summary><b>More screens</b> — Tech Radar, onboarding, Learning Center, API explorer, Copilot metrics, admin, activity feed</summary>
+
+<br>
+
+| Tech Radar (63 entries) | API Explorer |
+|---|---|
+| ![Tech Radar](docs/assets/screenshots/tech-radar.jpg) | ![API Explorer](docs/assets/screenshots/api-explorer.jpg) |
+
+| OpenAPI spec on the entity | Onboarding |
+|---|---|
+| ![OpenAPI](docs/assets/screenshots/api-openapi.jpg) | ![Onboarding](docs/assets/screenshots/onboarding.jpg) |
+
+| Learning Center | Copilot metrics |
+|---|---|
+| ![Learning Center](docs/assets/screenshots/learning-center.jpg) | ![Copilot metrics](docs/assets/screenshots/copilot-metrics.jpg) |
+
+| Admin | Activity feed |
+|---|---|
+| ![Admin](docs/assets/screenshots/admin.jpg) | ![Activity feed](docs/assets/screenshots/activity-feed.jpg) |
+
+</details>
 
 ## Project Structure
 
