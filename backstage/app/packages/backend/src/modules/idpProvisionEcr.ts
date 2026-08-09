@@ -9,43 +9,22 @@ import {
 } from '@aws-sdk/client-ecr';
 
 function createProvisionEcrAction() {
-  return createTemplateAction<{
-    serviceName: string;
-    clusterName: string;
-    awsRegion?: string;
-  }>({
+  return createTemplateAction({
     id: 'idp:provision-ecr',
     description:
       'Create (or reuse) an ECR repository for a service with image scanning and a 90-day untagged-image lifecycle policy.',
     schema: {
       input: {
-        required: ['serviceName', 'clusterName'],
-        type: 'object',
-        properties: {
-          serviceName: {
-            type: 'string',
-            title: 'Service name',
-            description: 'Name of the owning service (e.g. payments-api)',
-          },
-          clusterName: {
-            type: 'string',
-            title: 'Cluster name',
-            description:
-              'Cluster/prefix the repository is namespaced under (matches the ECR repo naming used by CI: "<clusterName>/<serviceName>")',
-          },
-          awsRegion: {
-            type: 'string',
-            title: 'AWS region',
-            default: 'us-east-1',
-          },
-        },
+        serviceName: z => z.string().describe('Name of the owning service (e.g. payments-api)'),
+        clusterName: z =>
+          z
+            .string()
+            .describe('Cluster/prefix the repository is namespaced under (matches the ECR repo naming used by CI: "<clusterName>/<serviceName>")'),
+        awsRegion: z => z.string().optional().describe('AWS region (default: us-east-1)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          repositoryUri: { type: 'string', title: 'ECR repository URI' },
-          repositoryArn: { type: 'string', title: 'ECR repository ARN' },
-        },
+        repositoryUri: z => z.string().describe('ECR repository URI'),
+        repositoryArn: z => z.string().describe('ECR repository ARN'),
       },
     },
 

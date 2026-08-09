@@ -88,11 +88,7 @@ spec:
 }
 
 function createCreateNamespaceAction() {
-  return createTemplateAction<{
-    name: string;
-    tier?: string;
-    networkPolicy?: boolean;
-  }>({
+  return createTemplateAction({
     id: 'idp:create-namespace',
     description:
       'Create a Kubernetes namespace with Pod Security Standards, a tiered ' +
@@ -101,34 +97,23 @@ function createCreateNamespaceAction() {
       '(RBAC, ArgoCD project, catalog entity) use the team-namespace template instead.',
     schema: {
       input: {
-        required: ['name'],
-        type: 'object',
-        properties: {
-          name: {
-            type: 'string',
-            title: 'Namespace name',
-            description: 'Lowercase, alphanumeric + hyphens (e.g. scratch-payments)',
-            pattern: '^[a-z][a-z0-9-]{1,61}[a-z0-9]$',
-          },
-          tier: {
-            type: 'string',
-            title: 'Sizing tier',
-            description: 'small: 4 CPU / 8Gi. medium: 16 CPU / 32Gi. large: no quota (LimitRange defaults only).',
-            enum: ['small', 'medium', 'large'],
-            default: 'small',
-          },
-          networkPolicy: {
-            type: 'boolean',
-            title: 'Apply default-deny NetworkPolicy',
-            default: true,
-          },
-        },
+        // The regex is enforced here rather than only in the handler: zod
+        // rejects a bad name before any cluster call is made.
+        name: z =>
+          z
+            .string()
+            .regex(/^[a-z][a-z0-9-]{1,61}[a-z0-9]$/)
+            .describe('Lowercase, alphanumeric + hyphens (e.g. scratch-payments)'),
+        tier: z =>
+          z
+            .enum(['small', 'medium', 'large'])
+            .optional()
+            .describe('small: 4 CPU / 8Gi. medium: 16 CPU / 32Gi. large: no quota (LimitRange defaults only). Default: small'),
+        networkPolicy: z =>
+          z.boolean().optional().describe('Apply default-deny NetworkPolicy (default: true)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          namespace: { type: 'string', title: 'Namespace created' },
-        },
+        namespace: z => z.string().describe('Namespace created'),
       },
     },
 

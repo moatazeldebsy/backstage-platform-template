@@ -66,23 +66,16 @@ function createDeployAgentAction() {
     description: 'Apply a KAgent Agent CRD to the local Kind cluster so the agent is immediately visible in the KAgent UI.',
     schema: {
       input: {
-        required: ['name', 'description'],
-        type: 'object',
-        properties: {
-          name: { type: 'string', title: 'Agent name' },
-          description: { type: 'string', title: 'Agent description' },
-          model: { type: 'string', title: 'LLM model id — selects the ModelConfig' },
-          modelProvider: { type: 'string', title: 'Model provider', default: 'anthropic' },
-          enableCatalogSearch: { type: 'boolean', title: 'Enable catalog search tool', default: true },
-          enableMetrics: { type: 'boolean', title: 'Enable metrics tool', default: true },
-          enableScaffolding: { type: 'boolean', title: 'Enable scaffolding tool', default: false },
-        },
+        name: z => z.string().describe('Agent name'),
+        description: z => z.string().describe('Agent description'),
+        model: z => z.string().optional().describe('LLM model id — selects the ModelConfig'),
+        modelProvider: z => z.string().optional().describe('Model provider (default: anthropic)'),
+        enableCatalogSearch: z => z.boolean().optional().describe('Enable catalog search tool (default: true)'),
+        enableMetrics: z => z.boolean().optional().describe('Enable metrics tool (default: true)'),
+        enableScaffolding: z => z.boolean().optional().describe('Enable scaffolding tool (default: false)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          agentUrl: { type: 'string', title: 'KAgent UI URL' },
-        },
+        agentUrl: z => z.string().describe('KAgent UI URL'),
       },
     },
 

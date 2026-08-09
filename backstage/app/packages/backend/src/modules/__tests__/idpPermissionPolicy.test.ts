@@ -6,8 +6,14 @@ import {
   isGuest,
 } from '../idpPermissionPolicy';
 
+// PolicyQueryUser also carries token/identity/credentials, which the policy
+// never reads — isGuest() looks only at info.userEntityRef. Building real
+// credentials here would add noise without adding coverage, so the stub is
+// narrowed once, in one place, rather than cast at every call site.
 function makeUser(userEntityRef?: string): PolicyQueryUser {
-  return { info: { userEntityRef: userEntityRef ?? '', ownershipEntityRefs: [] } };
+  return {
+    info: { userEntityRef: userEntityRef ?? '', ownershipEntityRefs: [] },
+  } as unknown as PolicyQueryUser;
 }
 
 function makeQuery(permissionName: string): PolicyQuery {
@@ -24,7 +30,9 @@ describe('isGuest', () => {
   });
 
   it('returns true when userEntityRef is missing', () => {
-    expect(isGuest({ info: { ownershipEntityRefs: [] } } as PolicyQueryUser)).toBe(true);
+    expect(
+      isGuest({ info: { ownershipEntityRefs: [] } } as unknown as PolicyQueryUser),
+    ).toBe(true);
   });
 
   it('returns true for exact user:default/guest ref', () => {

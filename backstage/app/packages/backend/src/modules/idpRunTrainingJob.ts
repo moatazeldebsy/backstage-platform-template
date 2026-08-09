@@ -82,7 +82,7 @@ function buildManifests(opts: {
   trainScript: string;
   deps: string;
 }): string {
-  const { name, experimentName, framework, pythonVersion, trainScript, deps } = opts;
+  const { name, experimentName, pythonVersion, trainScript, deps } = opts;
   const jobName = `${name}-initial-run`;
   const cmName = `${name}-train-code`;
   // Indent train.py content for the ConfigMap literal block (4 spaces)
@@ -157,26 +157,19 @@ function createRunTrainingJobAction() {
     description: 'Create a Kubernetes Job in ml-platform that runs the initial training and logs metrics to the in-cluster MLflow.',
     schema: {
       input: {
-        required: ['name', 'experimentName'],
-        type: 'object',
-        properties: {
-          name: { type: 'string', title: 'Experiment repo name' },
-          experimentName: { type: 'string', title: 'MLflow experiment name' },
-          framework: { type: 'string', title: 'ML framework', default: 'sklearn' },
-          pythonVersion: { type: 'string', title: 'Python version', default: '3.11' },
-          registerModel: {
-            type: 'boolean',
-            title: 'Register the trained model in the MLflow Model Registry',
-            default: true,
-          },
-        },
+        name: z => z.string().describe('Experiment repo name'),
+        experimentName: z => z.string().describe('MLflow experiment name'),
+        framework: z => z.string().optional().describe('ML framework (default: sklearn)'),
+        pythonVersion: z => z.string().optional().describe('Python version (default: 3.11)'),
+        registerModel: z =>
+          z.boolean().optional().describe('Register the trained model in the MLflow Model Registry (default: true)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          mlflowUrl: { type: 'string', title: 'MLflow UI URL' },
-          jobName: { type: 'string', title: 'Kubernetes Job name' },
-        },
+        mlflowUrl: z => z.string().describe('MLflow UI URL'),
+        // Emitted by the handler but previously undeclared, so it was invisible
+        // to templates — `steps.<id>.output.catalogUrl` resolved to nothing.
+        catalogUrl: z => z.string().describe('Backstage catalog entity URL'),
+        jobName: z => z.string().describe('Kubernetes Job name'),
       },
     },
 

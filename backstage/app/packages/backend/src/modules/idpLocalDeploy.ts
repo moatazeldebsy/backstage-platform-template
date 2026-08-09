@@ -23,57 +23,23 @@ const kubeEnv = {
 };
 
 function createDeployLocalAction() {
-  return createTemplateAction<{
-    serviceName: string;
-    namespace?: string;
-    imageTag?: string;
-    helmChartPath?: string;
-    registry?: string;
-  }>({
+  return createTemplateAction({
     id: 'idp:deploy-local',
     description:
       'Deploy a scaffolded service to the local Kind cluster via Helm.',
     schema: {
       input: {
-        required: ['serviceName'],
-        type: 'object',
-        properties: {
-          serviceName: {
-            type: 'string',
-            title: 'Service Name',
-            description:
-              'Name of the service to deploy (must match the Helm release name)',
-          },
-          namespace: {
-            type: 'string',
-            title: 'Kubernetes Namespace',
-            default: 'services',
-          },
-          imageTag: {
-            type: 'string',
-            title: 'Image Tag',
-            default: 'latest',
-          },
-          helmChartPath: {
-            type: 'string',
-            title: 'Helm Chart Path',
-            description:
-              'Absolute path to the helm chart inside the container',
-            default: '/helm/service-template',
-          },
-          registry: {
-            type: 'string',
-            title: 'Local Registry',
-            default: 'localhost:5003',
-          },
-        },
+        serviceName: z =>
+          z.string().describe('Name of the service to deploy (must match the Helm release name)'),
+        namespace: z => z.string().optional().describe('Kubernetes namespace (default: services)'),
+        imageTag: z => z.string().optional().describe('Image tag (default: latest)'),
+        helmChartPath: z =>
+          z.string().optional().describe('Absolute path to the helm chart inside the container (default: /helm/service-template)'),
+        registry: z => z.string().optional().describe('Local registry (default: localhost:5003)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          serviceUrl: { type: 'string', title: 'Service URL' },
-          releaseStatus: { type: 'string', title: 'Helm Release Status' },
-        },
+        serviceUrl: z => z.string().describe('Service URL'),
+        releaseStatus: z => z.string().describe('Helm Release Status'),
       },
     },
     async handler(ctx) {
@@ -174,36 +140,18 @@ function createDeployLocalAction() {
 // From inside the Docker container, the host registry (localhost:5003) is reachable
 // as host.docker.internal:5003 — same physical registry, different hostname.
 function createSeedImageAction() {
-  return createTemplateAction<{
-    serviceName: string;
-    registry?: string;
-    sourceImage?: string;
-  }>({
+  return createTemplateAction({
     id: 'idp:seed-image',
     description:
       'Tag and push a placeholder image to the local Kind registry for a new service. ' +
       'Prevents ImagePullBackOff on first ArgoCD deploy.',
     schema: {
       input: {
-        required: ['serviceName'],
-        type: 'object',
-        properties: {
-          serviceName: {
-            type: 'string',
-            title: 'Service Name',
-          },
-          registry: {
-            type: 'string',
-            title: 'Local Registry (as seen from the host)',
-            default: 'localhost:5003',
-          },
-          sourceImage: {
-            type: 'string',
-            title: 'Source image to tag (without registry prefix)',
-            description: 'Existing image in the local registry to use as placeholder',
-            default: 'hello-service:local',
-          },
-        },
+        serviceName: z => z.string().describe('Service name'),
+        registry: z =>
+          z.string().optional().describe('Local registry as seen from the host (default: localhost:5003)'),
+        sourceImage: z =>
+          z.string().optional().describe('Existing image in the local registry to use as placeholder (default: hello-service:local)'),
       },
     },
     async handler(ctx) {
@@ -256,17 +204,7 @@ function createSeedImageAction() {
 // catalog. This action gives the templates a GitHub-free registration path so
 // the new Component shows up after every local scaffold.
 function createCatalogRegisterLocalAction() {
-  return createTemplateAction<{
-    entityName: string;
-    entityKind?: string;
-    entityType?: string;
-    owner?: string;
-    description?: string;
-    namespace?: string;
-    annotations?: Record<string, string>;
-    catalogRootDir?: string;
-    backstageUrl?: string;
-  }>({
+  return createTemplateAction({
     id: 'idp:catalog-register-local',
     description:
       'Write a catalog-info.yaml to the local catalog directory and register ' +
@@ -274,50 +212,22 @@ function createCatalogRegisterLocalAction() {
       'publish:github + catalog:register cannot run.',
     schema: {
       input: {
-        required: ['entityName'],
-        type: 'object',
-        properties: {
-          entityName: { type: 'string', title: 'Entity name' },
-          entityKind: {
-            type: 'string',
-            title: 'Entity kind',
-            default: 'Component',
-          },
-          entityType: {
-            type: 'string',
-            title: 'Spec type (service/library/website/…)',
-            default: 'service',
-          },
-          owner: { type: 'string', title: 'Owner', default: 'platform-team' },
-          description: { type: 'string', title: 'Description' },
-          namespace: {
-            type: 'string',
-            title: 'Backstage namespace',
-            default: 'default',
-          },
-          annotations: {
-            type: 'object',
-            title: 'Extra metadata.annotations',
-            additionalProperties: { type: 'string' },
-          },
-          catalogRootDir: {
-            type: 'string',
-            title: 'Bind-mounted catalog dir inside the container',
-            default: '/catalog/scaffolded',
-          },
-          backstageUrl: {
-            type: 'string',
-            title: 'Backstage backend URL (used to POST the new Location)',
-            default: 'http://localhost:7007',
-          },
-        },
+        entityName: z => z.string().describe('Entity name'),
+        entityKind: z => z.string().optional().describe('Entity kind (default: Component)'),
+        entityType: z =>
+          z.string().optional().describe('Spec type — service/library/website/… (default: service)'),
+        owner: z => z.string().optional().describe('Owner (default: platform-team)'),
+        description: z => z.string().optional().describe('Description'),
+        namespace: z => z.string().optional().describe('Backstage namespace (default: default)'),
+        annotations: z => z.record(z.string()).optional().describe('Extra metadata.annotations'),
+        catalogRootDir: z =>
+          z.string().optional().describe('Bind-mounted catalog dir inside the container (default: /catalog/scaffolded)'),
+        backstageUrl: z =>
+          z.string().optional().describe('Backstage backend URL used to POST the new Location (default: http://localhost:7007)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          entityRef: { type: 'string' },
-          catalogInfoPath: { type: 'string' },
-        },
+        entityRef: z => z.string().describe('Entity reference of the registered component'),
+        catalogInfoPath: z => z.string().describe('Path of the written catalog-info.yaml'),
       },
     },
     async handler(ctx) {

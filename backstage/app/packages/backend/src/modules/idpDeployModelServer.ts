@@ -399,25 +399,14 @@ function createDeployModelServerAction() {
     description: 'Deploy an ML model as a REST API (Ollama for local Kind, vLLM for AWS EKS) to the ml-platform namespace.',
     schema: {
       input: {
-        required: ['name', 'modelName', 'target'],
-        type: 'object',
-        properties: {
-          name: { type: 'string', title: 'Model server name (k8s-safe)' },
-          modelName: { type: 'string', title: 'Model name (e.g., llama3.2, mistral)' },
-          target: {
-            type: 'string',
-            title: 'Deployment target (local or aws)',
-            enum: ['local', 'aws'],
-          },
-        },
+        name: z => z.string().describe('Model server name (k8s-safe)'),
+        modelName: z => z.string().describe('Model name (e.g., llama3.2, mistral)'),
+        target: z => z.enum(['local', 'aws']).describe('Deployment target'),
       },
       output: {
-        type: 'object',
-        properties: {
-          serverUrl: { type: 'string', title: 'Model Server URL' },
-          namespace: { type: 'string', title: 'Kubernetes namespace' },
-          deploymentName: { type: 'string', title: 'Deployment name' },
-        },
+        serverUrl: z => z.string().describe('Model Server URL'),
+        namespace: z => z.string().describe('Kubernetes namespace'),
+        deploymentName: z => z.string().describe('Deployment name'),
       },
     },
 

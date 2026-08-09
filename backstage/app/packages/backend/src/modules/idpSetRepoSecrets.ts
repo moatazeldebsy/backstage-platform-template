@@ -42,21 +42,10 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
       'Set GitHub Actions secrets on a newly scaffolded repository using the platform GitHub integration token.',
     schema: {
       input: {
-        required: ['repoUrl', 'secrets'],
-        type: 'object',
-        properties: {
-          repoUrl: {
-            type: 'string',
-            title: 'Repository URL',
-            description: 'The remote URL of the GitHub repo (e.g. https://github.com/org/repo)',
-          },
-          secrets: {
-            type: 'object',
-            title: 'Secrets',
-            description: 'Map of secret name → value to set as GitHub Actions secrets',
-            additionalProperties: { type: 'string' },
-          },
-        },
+        repoUrl: z =>
+          z.string().describe('The remote URL of the GitHub repo (e.g. https://github.com/org/repo)'),
+        secrets: z =>
+          z.record(z.string()).describe('Map of secret name → value to set as GitHub Actions secrets'),
       },
     },
 

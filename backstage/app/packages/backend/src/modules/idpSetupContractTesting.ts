@@ -201,41 +201,20 @@ function createSetupContractTestingAction() {
       'and auto-register the target service contract. Idempotent — safe to run multiple times.',
     schema: {
       input: {
-        required: ['targetService'],
-        type: 'object',
-        properties: {
-          targetService: {
-            type: 'string',
-            title: 'Target Service Name',
-            description: 'Kubernetes service name to auto-register (must expose GET /openapi.json)',
-          },
-          targetNamespace: {
-            type: 'string',
-            title: 'Target Service Namespace',
-            default: 'services-dev',
-          },
-          targetPort: {
-            type: 'number',
-            title: 'Target Service Port',
-            description: 'K8s Service port (usually 80)',
-            default: 80,
-          },
-          skipDeploy: {
-            type: 'boolean',
-            title: 'Skip Infrastructure Deploy',
-            description: 'Set true if contract-mcp-server is already running',
-            default: false,
-          },
-        },
+        targetService: z =>
+          z.string().describe('Kubernetes service name to auto-register (must expose GET /openapi.json)'),
+        targetNamespace: z =>
+          z.string().optional().describe('Target service namespace (default: services-dev)'),
+        targetPort: z =>
+          z.number().optional().describe('K8s Service port, usually 80 (default: 80)'),
+        skipDeploy: z =>
+          z.boolean().optional().describe('Set true if contract-mcp-server is already running (default: false)'),
       },
       output: {
-        type: 'object',
-        properties: {
-          contractServerUrl: { type: 'string', title: 'Contract MCP Server URL' },
-          agentUrl: { type: 'string', title: 'KAgent UI URL' },
-          contractRegistered: { type: 'string', title: 'Was a contract auto-discovered? (true/false)' },
-          discoveredPaths: { type: 'string', title: 'Discovered API paths (JSON array)' },
-        },
+        contractServerUrl: z => z.string().describe('Contract MCP Server URL'),
+        agentUrl: z => z.string().describe('KAgent UI URL'),
+        contractRegistered: z => z.string().describe('Was a contract auto-discovered? (true/false)'),
+        discoveredPaths: z => z.string().describe('Discovered API paths (JSON array)'),
       },
     },
 
