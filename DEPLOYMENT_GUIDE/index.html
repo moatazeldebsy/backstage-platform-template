@@ -2419,6 +2419,8 @@
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh
 </code></pre></div></td></tr></table></div>
 <p><strong>What it deploys (in order):</strong></p>
+<p>Phase numbers below match the <code>timer_start</code> labels the script prints, so the
+timing table at the end of a run lines up with this one.</p>
 <table>
 <thead>
 <tr>
@@ -2431,41 +2433,65 @@
 <tr>
 <td>1 — Terraform</td>
 <td>15–25 min</td>
-<td>VPC, EKS (1× t3.medium, scales to 0 overnight), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager</td>
+<td>VPC, EKS (6× t3.medium by default; scales to 0 overnight when <code>enable_cost_optimizer = true</code>), RDS (PostgreSQL), ECR, IAM/OIDC, Secrets Manager. EKS and RDS build concurrently, so this is bounded by the slower one, not their sum.</td>
 </tr>
 <tr>
-<td>2 — Platform base</td>
-<td>5 min</td>
-<td>Namespaces, RBAC, External Secrets Operator, ClusterSecretStore</td>
+<td>2 — kubectl config</td>
+<td>&lt;1 min</td>
+<td><code>aws eks update-kubeconfig</code>, connectivity check</td>
 </tr>
 <tr>
-<td>3 — GitOps</td>
-<td>5 min</td>
-<td>ArgoCD, OPA/Gatekeeper, Crossplane</td>
+<td>2.5 — Image builds</td>
+<td>starts here</td>
+<td>hello-service + Backstage images build <strong>in the background</strong> for the rest of the run. Skipped entirely when the source is unchanged and the tag is already in ECR.</td>
 </tr>
 <tr>
-<td>4 — Observability</td>
-<td>10 min</td>
-<td>Prometheus, Grafana, Pushgateway, OpenCost, DORA exporter</td>
+<td>3 / 3.6 / 3.7</td>
+<td>3–5 min</td>
+<td>Namespaces, RBAC, External Secrets Operator, ClusterSecretStore, Secrets Manager population</td>
 </tr>
 <tr>
-<td>4.6 — ArgoCD GitOps</td>
-<td>1 min</td>
-<td><code>idp-services</code> ApplicationSet auto-discovers <code>services/*</code> and deploys <code>hello-service</code>, <code>idp-mcp-server</code>, <code>qa-mcp-server</code> to <code>services-dev</code>. <code>contract-mcp-server</code> is excluded — deployed only by <code>bootstrap-ai.sh --aws</code>.</td>
+<td>4 — Prometheus + Grafana</td>
+<td>4–8 min</td>
+<td>kube-prometheus-stack, dashboards, PrometheusRules</td>
 </tr>
 <tr>
-<td>5 — hello-service</td>
-<td>5 min</td>
-<td>Builds linux/amd64 image → ECR, ArgoCD deploys</td>
+<td>4a+4b — Pushgateway + OpenCost</td>
+<td>1–2 min</td>
+<td>Installed concurrently</td>
 </tr>
 <tr>
-<td>6 — Backstage</td>
-<td>5 min</td>
-<td>Deploys official image, injects real secrets</td>
+<td>3.8–3.9 / 4.4x / 4.4</td>
+<td>3–8 min</td>
+<td>Gatekeeper + Kyverno, then Rollouts/Loki/Tempo/Datadog, then the exporter group — each a parallel batch</td>
+</tr>
+<tr>
+<td>4.5–4.7 — GitOps</td>
+<td>3–5 min</td>
+<td>ArgoCD (with one retry on a slow first ALB), the <code>idp-services</code> ApplicationSet, Crossplane, and the Backstage/ArgoCD tokens. The ApplicationSet auto-discovers <code>services/*</code> and deploys <code>hello-service</code>, <code>idp-mcp-server</code> and <code>qa-mcp-server</code> to <code>services-dev</code>; <code>contract-mcp-server</code> is excluded and deployed only by <code>bootstrap-ai.sh --aws</code>.</td>
+</tr>
+<tr>
+<td>5 — Image builds (join)</td>
+<td>0–20 min</td>
+<td>Waits for phase 2.5. Usually already finished, since it has had the whole platform install to run. Then writes the seed image tag into <code>helm-values-aws.yaml</code>.</td>
+</tr>
+<tr>
+<td>5.6–5.8 — Backstage</td>
+<td>2–8 min</td>
+<td>ExternalSecret, generated ConfigMaps, deployment, ALB hostname wait, catalog exporter, AlertManager routing</td>
+</tr>
+<tr>
+<td>6 — AI/ML platform</td>
+<td>8–20 min</td>
+<td><code>bootstrap-ai.sh --aws</code> (skip with <code>--skip-ai</code>). Argo Workflows and Velero install in parallel with it.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Total: ~45–60 minutes</strong></p>
+<p><strong>Total: ~40–70 minutes cold.</strong> A repeat run against an existing cluster is far
+shorter — the image builds, helm releases and Terraform providers all skip when
+nothing has changed. Set <code>IDP_FORCE=1</code> to override every skip check, and
+<code>HELM_WAIT_SHORT</code>/<code>HELM_WAIT_MED</code>/<code>HELM_WAIT_LONG</code> to raise the helm timeouts on
+a slow account.</p>
 <h3 id="step-3-update-github-oauth-callback-url">Step 3: Update GitHub OAuth Callback URL<a class="headerlink" href="#step-3-update-github-oauth-callback-url" title="Permanent link">&para;</a></h3>
 <p>After bootstrap completes, the Backstage ALB URL is printed. Update your GitHub OAuth app:</p>
 <ol>
@@ -2571,18 +2597,6 @@ curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;htt
 <td><code>kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
 </tr>
 <tr>
-<td>Prometheus</td>
-<td><code>kubectl get ingress -n monitoring -l app=prometheus -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
-</tr>
-<tr>
-<td>Pushgateway</td>
-<td><code>kubectl get ingress prometheus-pushgateway -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
-</tr>
-<tr>
-<td>OpenCost</td>
-<td><code>kubectl get ingress opencost-alb -n opencost -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
-</tr>
-<tr>
 <td>hello-service</td>
 <td><code>kubectl get ingress -n services-dev -l app.kubernetes.io/instance=hello-service-dev -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
 </tr>
@@ -2595,12 +2609,12 @@ curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;htt
 <h3 id="issue-1-backstage-shows-404-at-root">Issue 1: Backstage shows 404 at root <code>/</code><a class="headerlink" href="#issue-1-backstage-shows-404-at-root" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> Navigating to the Backstage ALB URL shows "Looks like someone dropped the mic!" 404.</p>
 <p><strong>Root cause:</strong> Backstage config arrays replace rather than merge across config files. The production ConfigMap's <code>extensions</code> list overwrites the base config's <code>page:catalog: path: /</code> entry.</p>
-<p><strong>Fix (already applied):</strong> <code>kubernetes/backstage/configmap.yaml</code> production overrides now explicitly include <code>page:catalog: path: /</code> alongside <code>page:kubernetes: disabled: true</code>.</p>
+<p><strong>Fix (already applied):</strong> <code>backstage/app-config.aws.yaml</code> (rendered into the <code>backstage-config</code> ConfigMap by <code>bootstrap.sh</code>) now explicitly includes <code>page:catalog: path: /</code> alongside <code>page:kubernetes: disabled: true</code>.</p>
 <hr />
 <h3 id="issue-2-backstage-catalog-returns-401-guest-login-broken">Issue 2: Backstage catalog returns 401 / guest login broken<a class="headerlink" href="#issue-2-backstage-catalog-returns-401-guest-login-broken" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> All API calls return 401. Guest sign-in doesn't work.</p>
 <p><strong>Root cause:</strong> <code>dangerouslyDisableDefaultAuthPolicy: true</code> must be under <code>backend.auth</code>, not the top-level <code>auth</code> key.</p>
-<p><strong>Fix (already applied):</strong> Correct placement in <code>kubernetes/backstage/configmap.yaml</code>:
+<p><strong>Fix (already applied):</strong> Correct placement in <code>backstage/app-config.aws.yaml</code>:
 <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">backend</span><span class="p">:</span>
@@ -2652,15 +2666,22 @@ docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"
 <hr />
 <h3 id="issue-9-opencost-and-pushgateway-have-no-alb-ingress">Issue 9: OpenCost and Pushgateway have no ALB ingress<a class="headerlink" href="#issue-9-opencost-and-pushgateway-have-no-alb-ingress" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> No public URL for OpenCost or Pushgateway after deployment.</p>
-<p><strong>Fix (already applied):</strong>
-- <code>kubernetes/finops/opencost.yaml</code> includes an ALB ingress (<code>opencost-alb</code>)
-- <code>aws/monitoring/pushgateway-ingress.yaml</code> provides the Pushgateway ALB ingress
-- Both are applied by <code>bootstrap.sh</code></p>
+<p><strong>This is intentional, not a fault.</strong> Both used to publish their own
+internet-facing ALB (~$16/mo each, no authentication in front of either). They
+are operator tools — OpenCost's data reaches users through the Backstage FinOps
+tab and the Grafana FinOps dashboard, and Pushgateway is written to by CI and
+scraped by Prometheus in-cluster. Reach the raw UIs with:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>port-forward<span class="w"> </span>-n<span class="w"> </span>opencost<span class="w">   </span>svc/opencost<span class="w">               </span><span class="m">9090</span>:9090
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>svc/prometheus-pushgateway<span class="w"> </span><span class="m">9091</span>:9091
+</code></pre></div></td></tr></table></div>
+<p>The same applies to Prometheus, Alertmanager and the Argo Rollouts dashboard;
+<code>bootstrap.sh</code> prints every port-forward command in its closing banner.</p>
 <hr />
 <h3 id="issue-10-tech-radar-shows-empty-not-allowed-to-read">Issue 10: Tech Radar shows empty / "not allowed to read"<a class="headerlink" href="#issue-10-tech-radar-shows-empty-not-allowed-to-read" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> Tech Radar page is blank or shows a reading permission error.</p>
 <p><strong>Root cause:</strong> <code>backend.reading.allow</code> was missing from the ConfigMap, so Backstage blocked reads from <code>raw.githubusercontent.com</code>.</p>
-<p><strong>Fix (already applied):</strong> <code>kubernetes/backstage/configmap.yaml</code> includes:
+<p><strong>Fix (already applied):</strong> <code>backstage/app-config.aws.yaml</code> includes:
 <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -2751,17 +2772,30 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 </table>
 <p><strong>Lowest cost approach:</strong> use <code>./scripts/bootstrap-local.sh --full</code> for daily development. Deploy to AWS only for demos, then clean up immediately.</p>
 <h3 id="default-cost-optimized-settings">Default cost-optimized settings<a class="headerlink" href="#default-cost-optimized-settings" title="Permanent link">&para;</a></h3>
-<p><code>terraform/terraform.tfvars</code> is pre-configured for minimum spend:</p>
+<p><code>terraform/terraform.tfvars.example</code>, which <code>setup.sh</code> copies on first run, is
+tuned for the lowest spend that still actually runs the platform:</p>
 <div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
 <span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="na">node_group_min_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="c1">        # scale-to-zero allowed</span>
-<span class="na">node_group_desired_size</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="c1">        # single node (not 2–3)</span>
-<span class="na">node_group_max_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">2</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="na">node_group_min_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="c1">        # scale-to-zero allowed (cost optimizer)</span>
+<span class="na">node_group_desired_size</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="m">6</span>
+<span class="na">node_group_max_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">8</span>
 <span class="na">enable_cost_optimizer</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="no">true</span><span class="c1">     # overnight Lambda scaler (see below)</span>
 <span class="na">budget_monthly_limit_usd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="c1">    # SNS alert at $80 actual / $100 forecasted</span>
 </code></pre></div></td></tr></table></div>
+<p>This used to recommend <code>desired_size = 1</code>. A single t3.medium is 2 vCPU / 4 GiB,
+and rendering every chart and manifest this repo installs gives roughly 2.4 vCPU
+and 5.7 GiB of declared requests before per-node DaemonSet overhead (~0.3 vCPU
+and ~900 MiB each, for aws-node, kube-proxy, ebs-csi-node, promtail and the
+Datadog agent) — so one node could never have run it, and following that advice
+produced a cluster stuck in Pending.</p>
+<p>Six is deliberately conservative rather than measured on a live cluster. Once
+the platform is up, check the real numbers before going lower — OpenCost and
+Prometheus are both deployed, and the Grafana FinOps dashboard reports per-
+namespace cost and efficiency. Note that within the t3 family the $/vCPU and
+$/GiB are identical, so only the node <em>count</em> changes the bill; moving to
+t3.large buys memory at exactly proportional cost.</p>
 <h3 id="overnight-node-scaler">Overnight node scaler<a class="headerlink" href="#overnight-node-scaler" title="Permanent link">&para;</a></h3>
 <p>When <code>enable_cost_optimizer = true</code>, two EventBridge-triggered Lambdas run on schedule:</p>
 <table>
@@ -2842,6 +2876,12 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 ./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--destroy
 </code></pre></div></td></tr></table></div>
 <h3 id="estimated-monthly-cost-by-configuration">Estimated monthly cost by configuration<a class="headerlink" href="#estimated-monthly-cost-by-configuration" title="Permanent link">&para;</a></h3>
+<p>Rough us-east-1 on-demand estimates at ~730 h/month. Treat them as order-of-
+magnitude only — the authoritative numbers are the AWS budget alert below and
+the OpenCost/Grafana FinOps dashboard, both of which this platform deploys.</p>
+<p>The fixed floor is ~$135/mo before a single workload runs: EKS control plane
+(~$73), one NAT gateway (~$33), RDS <code>db.t3.micro</code> (~$17), plus EBS/S3/ECR/
+Secrets (~$15). Nodes and ALBs are what actually move.</p>
 <table>
 <thead>
 <tr>
@@ -2849,40 +2889,61 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 <th>EC2 nodes</th>
 <th>Cost optimizer</th>
 <th>AI/ML</th>
+<th>ALBs</th>
 <th>Est. monthly</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Default (optimized)</td>
-<td>1× t3.medium</td>
-<td>On (9 h/day)</td>
+<td>Default</td>
+<td>6× t3.medium</td>
+<td>On (8 PM–7 AM UTC)</td>
 <td>Off</td>
-<td>~$150–180</td>
+<td>3</td>
+<td>~$280–310</td>
 </tr>
 <tr>
 <td>Always-on, no AI</td>
-<td>1× t3.medium</td>
+<td>6× t3.medium</td>
 <td>Off</td>
 <td>Off</td>
-<td>~$185–220</td>
+<td>3</td>
+<td>~$370–400</td>
 </tr>
 <tr>
 <td>Always-on + AI</td>
-<td>1× t3.medium</td>
+<td>6× t3.medium</td>
 <td>Off</td>
 <td>On</td>
-<td>~$240–290</td>
+<td>6</td>
+<td>~$430–490</td>
 </tr>
 <tr>
 <td>Production</td>
-<td>3× t3.large</td>
+<td>per <code>profiles/medium.tfvars</code></td>
 <td>Off</td>
 <td>Optional</td>
-<td>~$400–600</td>
+<td>6</td>
+<td>~$700–900</td>
 </tr>
 </tbody>
 </table>
+<p>Where the money goes, and what has already been done about it:</p>
+<ul>
+<li><strong>Nodes</strong> dominate — 6× t3.medium is ~$182/mo on-demand. <code>enable_cost_optimizer</code>
+  takes ~45% off that by scaling to zero overnight. Within the t3 family the
+  $/vCPU and $/GiB are identical, so only the node <em>count</em> matters, not the size.</li>
+<li><strong>ALBs</strong> used to be the silent second-biggest line: every ALB Ingress
+  provisions its own load balancer at ~$16/mo, and there were eleven. Prometheus,
+  Alertmanager, Pushgateway, OpenCost and the Argo Rollouts dashboard no longer
+  publish one — they are operator tools, reachable with <code>kubectl port-forward</code>
+  (the bootstrap banner prints the exact commands). That is ~$82/mo, and it also
+  took five unauthenticated endpoints off the public internet.</li>
+<li><strong>Consolidating the remaining ALBs</strong> onto one would save ~$80/mo more, but it
+  needs real DNS: they all serve <code>path: /</code> with no hostname, so a shared
+  <code>group.name</code> would make them collide. Set <code>domain_name</code> and give each a real
+  host first.</li>
+</ul>
 <h3 id="budget-alert">Budget alert<a class="headerlink" href="#budget-alert" title="Permanent link">&para;</a></h3>
 <p>A budget is provisioned in Terraform at <code>$100/month</code> with SNS alerts at:
 - <strong>80% actual</strong> (~$80 spent) — early warning

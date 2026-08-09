@@ -1971,7 +1971,7 @@
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~45–60 min). Pass <code>--skip-ai</code> to opt out</td>
+<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~40–70 min). Pass <code>--skip-ai</code> to opt out</td>
 </tr>
 <tr>
 <td><code>bootstrap-multiregion.sh</code></td>
@@ -2026,7 +2026,7 @@
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — <strong>including the AI/ML stack</strong> (Phase 6 runs <code>bootstrap-ai.sh --aws</code> internally, unless <code>--skip-ai</code> is passed) — and pushes <code>hello-service</code> to ECR. ~45–60 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
+<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — <strong>including the AI/ML stack</strong> (Phase 6 runs <code>bootstrap-ai.sh --aws</code> internally, unless <code>--skip-ai</code> is passed) — and pushes <code>hello-service</code> to ECR. ~40–70 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
 <td><code>setup.sh</code> → AWS path, or standalone</td>
 </tr>
 <tr>
@@ -2172,6 +2172,21 @@ other.</p>
 <td><code>IDP_TIMING</code></td>
 <td><code>1</code></td>
 <td>Per-step timings plus a slowest-first summary table on exit. Set to <code>0</code> to silence.</td>
+</tr>
+<tr>
+<td><code>HELM_WAIT_SHORT</code></td>
+<td><code>5m</code></td>
+<td><code>helm --wait</code> budget for the quick installs. Raise it on a cold AWS account where ALB and EBS provisioning is slow.</td>
+</tr>
+<tr>
+<td><code>HELM_WAIT_MED</code></td>
+<td><code>10m</code></td>
+<td>Same, for the heavier charts (kube-prometheus-stack, Loki, Tempo).</td>
+</tr>
+<tr>
+<td><code>HELM_WAIT_LONG</code></td>
+<td><code>15m</code></td>
+<td>Used for the ArgoCD retry — the first attempt uses <code>HELM_WAIT_SHORT</code>, and only a failure escalates to this.</td>
 </tr>
 </tbody>
 </table>

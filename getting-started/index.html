@@ -798,9 +798,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#aws-eks-4560-minutes" class="md-nav__link">
+  <a href="#aws-eks-4070-minutes" class="md-nav__link">
     <span class="md-ellipsis">
-      AWS (EKS) — ~45–60 minutes
+      AWS (EKS) — ~40–70 minutes
     </span>
   </a>
   
@@ -2127,7 +2127,7 @@
 </table>
 <p><code>--skip-mlflow</code>, <code>--skip-mcp</code>, <code>--skip-kagent</code> each save ~3–4 minutes from the AI stack.</p>
 <hr />
-<h3 id="aws-eks-4560-minutes">AWS (EKS) — ~45–60 minutes<a class="headerlink" href="#aws-eks-4560-minutes" title="Permanent link">&para;</a></h3>
+<h3 id="aws-eks-4070-minutes">AWS (EKS) — ~40–70 minutes<a class="headerlink" href="#aws-eks-4070-minutes" title="Permanent link">&para;</a></h3>
 <p><code>./scripts/bootstrap.sh</code> provisions from scratch. Most of the time is AWS control-plane and ALB provisioning, which cannot be parallelised.</p>
 <table>
 <thead>
@@ -2155,7 +2155,7 @@
 </tr>
 <tr>
 <td>Prometheus + Grafana</td>
-<td><code>kube-prometheus-stack</code> + ALB ingress provisioning</td>
+<td><code>kube-prometheus-stack</code> + Grafana ALB provisioning</td>
 <td>~5 min</td>
 </tr>
 <tr>
@@ -2181,7 +2181,7 @@
 <tr>
 <td><strong>Total</strong></td>
 <td></td>
-<td><strong>~45–60 min</strong></td>
+<td><strong>~40–70 min</strong></td>
 </tr>
 </tbody>
 </table>
@@ -2233,7 +2233,7 @@
 <td>First run</td>
 <td>~15–20 min</td>
 <td>~25–35 min</td>
-<td>~45–60 min</td>
+<td>~40–70 min</td>
 <td>~60–80 min</td>
 </tr>
 <tr>
@@ -2273,7 +2273,7 @@
 <h2 id="aws-setup">AWS Setup<a class="headerlink" href="#aws-setup" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>🔐 CRITICAL - First:</strong> Read <a href="../PRE_DEPLOYMENT_CHECKLIST/">docs/PRE_DEPLOYMENT_CHECKLIST.md</a> and verify all API keys are set correctly. Run <code>./scripts/verify-secrets.sh</code> to validate before deployment.</p>
-<p><strong>⚠️ NEW:</strong> Then read <a href="../DEPLOYMENT_GUIDE/">docs/DEPLOYMENT_GUIDE.md</a> for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: <strong>45–60 minutes</strong>.</p>
+<p><strong>⚠️ NEW:</strong> Then read <a href="../DEPLOYMENT_GUIDE/">docs/DEPLOYMENT_GUIDE.md</a> for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: <strong>40–70 minutes</strong>.</p>
 </blockquote>
 <h3 id="1-configure-aws">1. Configure AWS<a class="headerlink" href="#1-configure-aws" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -2298,7 +2298,7 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 <span class="normal">2</span>
 <span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>cp<span class="w"> </span>terraform/terraform.tfvars.example<span class="w"> </span>terraform/terraform.tfvars
 <span class="c1"># Edit terraform/terraform.tfvars — update cluster_name, region if needed</span>
-./scripts/bootstrap.sh<span class="w">  </span><span class="c1"># ~45–60 min</span>
+./scripts/bootstrap.sh<span class="w">  </span><span class="c1"># ~40–70 min</span>
 </code></pre></div></td></tr></table></div>
 <h3 id="3-validate-deployment">3. Validate deployment<a class="headerlink" href="#3-validate-deployment" title="Permanent link">&para;</a></h3>
 <p>After <code>bootstrap.sh</code> completes, run the validation script to verify all components:</p>
