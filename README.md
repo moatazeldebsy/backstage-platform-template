@@ -158,7 +158,7 @@ backstage-platform-template/
 ├── scripts/                    # setup.sh · bootstrap-local.sh · bootstrap-ai.sh · cleanup.sh
 ├── backstage/
 │   ├── app/                    # Backstage monorepo (v1.49.1)
-│   ├── catalog/templates/      # 51 golden-path templates
+│   ├── catalog/templates/      # 61 golden-path templates
 │   ├── app-config.yaml         # base config
 │   ├── app-config.local.yaml   # Kind overrides
 │   └── app-config.aws.yaml     # EKS overrides

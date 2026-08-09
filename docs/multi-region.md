@@ -45,11 +45,11 @@ Data layer:
 
 | Component | Path |
 |-----------|------|
-| Secondary EKS cluster (us-east-1) | `terraform/multi-region/` |
+| Secondary EKS cluster (us-east-1) | `terraform/` applied per-region by `scripts/bootstrap-multiregion.sh` (`--standby-region`) |
 | Route 53 + Global Accelerator + CloudFront | `terraform/global/` |
-| ECR cross-region replication | `terraform/ecr-replication/` |
-| Transit Gateway (inter-VPC, inter-region) | `terraform/transit-gateway/` |
-| KMS multi-region keys | `terraform/kms-multi-region/` |
+| ECR cross-region replication | `terraform/global/ecr-replication.tf` |
+| Transit Gateway (inter-VPC, inter-region) | `terraform/global/transit-gateway.tf` |
+| KMS multi-region keys | `terraform/global/kms.tf` |
 | ArgoCD hub-spoke ApplicationSet matrix | `aws/argocd/app-of-apps.yaml` |
 | Secrets Manager CRR + KMS replication | Terraform global module |
 

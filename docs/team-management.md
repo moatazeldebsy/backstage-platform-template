@@ -81,7 +81,7 @@ kubernetes/teams/payments/
 └── grafana-folder.yaml     # ConfigMap → Grafana sidecar creates folder
 ```
 
-And a Backstage Group entity at `backstage/catalog/groups/payments.yaml`.
+And a Backstage Group entity in `backstage/catalog/catalog-info.yaml` (all Group entities live in that one file today; `backstage/catalog/groups/` exists but is empty).
 
 ---
 
@@ -198,7 +198,7 @@ kubectl delete namespace team-payments
 terraform apply -var='team_eso_roles=[]'
 
 # 4. Archive the scaffold PR branch or delete kubernetes/teams/payments/
-# 5. Remove the Backstage Group entity from backstage/catalog/groups/payments.yaml
+# 5. Remove the Backstage Group entity from backstage/catalog/catalog-info.yaml
 ```
 
 ---

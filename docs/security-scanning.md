@@ -72,7 +72,7 @@ docker compose -f local/backstage/docker-compose.yml restart backstage
 
 Add the two tokens to AWS Secrets Manager (the existing `backstage-secrets` secret)
 and ensure they're projected into the Backstage pod via External Secrets. See
-`aws/external-secrets/backstage.yaml`.
+`aws/external-secrets/cluster-secret-store.yaml` (the ClusterSecretStore; the Backstage ExternalSecret itself is applied by `bootstrap.sh`).
 
 **GitHub Actions (for CI):**
 

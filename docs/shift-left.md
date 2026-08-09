@@ -170,10 +170,10 @@ Every language skeleton now ships with a `.pre-commit-config.yaml` covering `git
 
 | Gate | Behavior | File |
 |---|---|---|
-| OPA — deny `:latest` tags | Rejects pods at admission | `kubernetes/opa-policies/deny-latest-tag.yaml` |
-| OPA — require probes | Rejects pods without `livenessProbe` + `readinessProbe` | `kubernetes/opa-policies/require-health-probes.yaml` |
-| OPA — require resource limits | Rejects pods without `resources.limits` | `kubernetes/opa-policies/require-resource-limits.yaml` |
-| OPA — require cost labels | Rejects pods without cost-allocation labels | `kubernetes/opa-policies/require-cost-tags.yaml` |
+| OPA — deny `:latest` tags | Rejects pods at admission | `kubernetes/policies/deny-latest-tag.yaml` |
+| OPA — require probes | Rejects pods without `livenessProbe` + `readinessProbe` | `kubernetes/policies/require-health-probes.yaml` |
+| OPA — require resource limits | Rejects pods without `resources.limits` | `kubernetes/policies/require-resource-limits.yaml` |
+| OPA — require cost labels | Rejects pods without cost-allocation labels | `kubernetes/policies/require-cost-tags.yaml` |
 | Contract PreSync hook | Blocks deploy on breaking API change | `helm/service-template/templates/contract-hook-job.yaml` |
 | Contract PostSync hook | Auto-registers spec; runs compatibility report | Same |
 

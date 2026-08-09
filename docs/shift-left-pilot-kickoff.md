@@ -118,7 +118,7 @@ After the kickoff, the platform team runs a light-touch operating rhythm. Total 
 - Would you recommend this pilot to another team — yes / no / yes-with-changes?
 
 **Outputs:**
-- Public retro doc in `docs/shift-left-pilot-retro.md`.
+- Public retro doc in `docs/shift-left-pilot-retro.md` (to be written at pilot close — not in the repo yet).
 - Two named follow-on teams for round 2.
 - Top-3 platform changes filed as issues against `backstage-platform-template`.
 

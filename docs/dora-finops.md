@@ -38,7 +38,7 @@ If Prometheus is unreachable or the service has no data yet, the tab falls back 
 
 - Prometheus proxy must be reachable: `http://prometheus.idp.local` (local) or the in-cluster DNS endpoint (AWS)
 - The Prometheus proxy is configured in `backstage/app-config.local.yaml` (`/api/proxy/prometheus`) and `backstage/app-config.aws.yaml`
-- DORA metrics are pushed by the DORA exporter CronJob — see `observability/dora-exporter/` for the metric definitions
+- DORA metrics are pushed by the DORA exporter CronJob — see `local/observability/dora/dora-exporter.py` (local) and `aws/observability/dora/dora-exporter.py` (AWS) for the metric definitions
 - All metrics carry a `team=` label (see [Team dimension](#team-dimension) below)
 
 ### Implementation
@@ -160,7 +160,7 @@ kubectl create configmap dora-team-map -n monitoring \
 
 ## DORA Exporter
 
-The DORA exporter (`observability/dora-exporter/`) is a Python script running as a Kubernetes CronJob. It:
+The DORA exporter (`local/observability/dora/dora-exporter.py` locally, `aws/observability/dora/dora-exporter.py` on AWS) is a Python script running as a Kubernetes CronJob. It:
 
 1. Queries the GitHub API for deployment events per service repo
 2. Calculates the four DORA metrics per service over a rolling window

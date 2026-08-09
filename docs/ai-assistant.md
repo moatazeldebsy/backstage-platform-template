@@ -576,19 +576,27 @@ Quality gates for AI services (Bronze/Silver/Gold tiers):
 
 View in Backstage **Tech Insights** tab on any service entity. Three new checks: `has-model-card`, `has-eval-suite`, `has-ai-observability`.
 
-### Prompt Lifecycle Management ✅
+### Prompt Lifecycle Management
 
-System prompts extracted to ConfigMaps in `kubernetes/kagent/prompts/`:
+System prompts live inline as `systemMessage` on each KAgent `Agent` CRD in
+`kubernetes/kagent/<agent>.yaml` — one file per agent, versioned in Git:
 
-- Zero-downtime prompt updates (no pod restart)
-- Version history via Git history
-- Rollback via ArgoCD revert
+- Version history and diffs come from Git history on the agent manifest
+- Rollback is an ArgoCD revert of that manifest
+- Editing a prompt means editing the CRD; the KAgent controller reconciles the change
 
 ```bash
-# Update via Backstage:
-# Create → Update Agent Prompt → PR to kubernetes/kagent/prompts/<agent>-prompt.yaml
-# Or edit directly: kubectl edit configmap idp-assistant-prompt -n kagent
+# Edit the prompt in Git (preferred — ArgoCD reconciles the change):
+$EDITOR kubernetes/kagent/release-agent.yaml   # spec.systemMessage
+
+# Or, to try a prompt change against the live cluster before committing:
+kubectl edit agent release-agent -n kagent
 ```
+
+Extracting prompts into standalone ConfigMaps (with a Backstage "Update Agent Prompt"
+template as the front door) is **not implemented** — there is no `kubernetes/kagent/prompts/`
+directory. Note this also means the Gold-tier "system prompt versioned in ConfigMap"
+scorecard item above is satisfied by Git versioning of the CRD, not by a separate ConfigMap.
 
 ### ML Workflows (Argo Workflows) ✅
 
@@ -624,7 +632,7 @@ AI search across TechDocs, runbooks, catalog:
 # → Returns relevant runbooks, ADRs, documentation
 ```
 
-Backend: Voyage AI embeddings + pgvector (`kubernetes/pgvector.yaml`).
+Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the `pgvector/pgvector` image in `local/backstage/docker-compose.yml`, initialised by `local/backstage/init-pgvector.sql`; on AWS, the `vector` extension on the same Aurora/RDS instance.
 
 ### AI Observability Dashboard ✅
 
