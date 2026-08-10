@@ -6150,6 +6150,17 @@ const fmtUnits = (n: number): string =>
 
 const fmtCost = (n: number): string => (n >= 0.01 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(4)}` : '$0.00');
 
+// Langfuse reports trace latency in SECONDS on the /traces endpoint (per-
+// observation latency is in ms — do not copy this formatter over to that).
+// Sub-second traces are real: the A2A agent-card fetch lands around 25ms.
+const fmtLatency = (s: number): string => (s < 1 ? `${Math.round(s * 1000)}ms` : `${s.toFixed(1)}s`);
+
+// KAgent names its traces after the HTTP route it served, e.g.
+// "POST /api/a2a/kagent/idp-assistant/". The agent id is the path segment after
+// the kagent namespace; sessionId is a per-conversation UUID, not an agent name.
+const agentFromTraceName = (name: string): string =>
+  /\/a2a\/[^/]+\/([^/]+)/.exec(name)?.[1] ?? name;
+
 function LangfusePage() {
   const fetchApi    = useApi(fetchApiRef);
   const configApi   = useApi(configApiRef);
@@ -6202,7 +6213,11 @@ function LangfusePage() {
           obsTotal += Number(day?.countObservations ?? 0);
           costTotal += Number(day?.totalCost ?? 0);
           for (const u of day?.usage ?? []) {
-            const key = String(u?.model ?? 'unknown');
+            // Langfuse emits one bucket with model: null holding every
+            // non-generation observation (HTTP spans, tool calls). It carries no
+            // tokens and no cost, so rendering it as a model row is noise.
+            if (u?.model === null || u?.model === undefined) continue;
+            const key = String(u.model);
             const row = byModel.get(key) ?? { model: key, traces: 0, inputUnits: 0, outputUnits: 0, cost: 0 };
             row.traces += Number(u?.countTraces ?? 0);
             row.inputUnits += Number(u?.inputUsage ?? 0);
@@ -6219,11 +6234,9 @@ function LangfusePage() {
           (traceData?.data ?? []).slice(0, 25).map((t: any) => ({
             id:   String(t?.id ?? '').slice(0, 8),
             name: t?.name ?? '—',
-            // KAgent sets service.name per agent; the MCP servers set
-            // langfuse.session.id to the calling agent id (see telemetry.ts).
-            agent: t?.sessionId ?? t?.name ?? '—',
+            agent: t?.name ? agentFromTraceName(String(t.name)) : '—',
             user:  t?.userId ?? '—',
-            latency: t?.latency ? `${(Number(t.latency) / 1000).toFixed(1)}s` : '—',
+            latency: t?.latency !== undefined && t?.latency !== null ? fmtLatency(Number(t.latency)) : '—',
             cost:    t?.totalCost !== undefined ? fmtCost(Number(t.totalCost)) : '—',
             timestamp: relTime(t?.timestamp ? Date.parse(t.timestamp) : undefined),
           })),
@@ -6334,7 +6347,7 @@ function LangfusePage() {
                   <TableHead>
                     <TableRow style={{ background: '#f5f5f5' }}>
                       <TableCell><strong>Trace</strong></TableCell>
-                      <TableCell><strong>Agent / session</strong></TableCell>
+                      <TableCell><strong>Agent</strong></TableCell>
                       <TableCell><strong>User</strong></TableCell>
                       <TableCell align="right"><strong>Latency</strong></TableCell>
                       <TableCell align="right"><strong>Cost</strong></TableCell>
