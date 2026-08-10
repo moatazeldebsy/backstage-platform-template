@@ -20,7 +20,6 @@ import pytest
 
 import anthropic as _anthropic
 from deepeval.anthropic import Anthropic
-from deepeval import assert_test
 from deepeval.test_case import LLMTestCase, ToolCall
 from deepeval.metrics import (
     AnswerRelevancyMetric,
@@ -34,6 +33,10 @@ from conftest import (
     TOOL_DEFINITIONS,
     TOOL_STUB_RESPONSES,
     JUDGE_MODEL,
+    # Wraps deepeval's assert_test and appends each metric's score to
+    # results/metrics.jsonl, which scripts/push_to_langfuse.py turns into a
+    # trend line. Behaves identically otherwise.
+    assert_test,
 )
 
 MODEL = "claude-sonnet-4-6"
