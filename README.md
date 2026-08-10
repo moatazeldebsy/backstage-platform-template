@@ -15,7 +15,13 @@ A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (ser
 
 ![Platform Architecture](docs/assets/platform-architecture.jpg)
 
-**[See the platform in action →](#screenshots)**
+<video src="https://github.com/user-attachments/assets/ff3c4170-0b4a-4a69-b4a5-6766e1b1349a"
+       poster="docs/assets/idp-platform-teaser-thumbnail.jpg"
+       controls muted loop playsinline width="100%">
+  <a href="https://github.com/user-attachments/assets/ff3c4170-0b4a-4a69-b4a5-6766e1b1349a"><img src="docs/assets/idp-platform-teaser-thumbnail.jpg" alt="Watch the platform teaser" width="100%"></a>
+</video>
+
+**▶ [Watch the 36-second platform teaser](https://github.com/user-attachments/assets/ff3c4170-0b4a-4a69-b4a5-6766e1b1349a)** · **[See the platform in action →](#screenshots)**
 
 </div>
 
