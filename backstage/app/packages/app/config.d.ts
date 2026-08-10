@@ -25,6 +25,7 @@ export interface Config {
      * @visibility frontend
      */
     mlflow?: string;
+    langfuse?: string;
   };
 
   /**

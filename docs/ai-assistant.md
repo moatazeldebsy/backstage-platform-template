@@ -757,6 +757,112 @@ Dashboard: **Grafana** → "AI Platform"
 
 ---
 
+## LLM observability (Langfuse)
+
+Prometheus counts *that* a tool was called. Langfuse records *what the model
+actually did*: the prompt, the completion, token counts, cost, latency, and the
+tool calls inside each agent run.
+
+Deployed opt-in, because the chart brings Postgres, ClickHouse, Valkey and MinIO
+with it (6 pods, ~2.4Gi) and the local Kind node has little to spare:
+
+```bash
+./scripts/bootstrap-ai.sh --langfuse      # local: opt-in
+./scripts/bootstrap-ai.sh --aws           # AWS: on by default (--skip-langfuse to opt out)
+```
+
+Then open **AI Observability** in the Backstage sidebar, or
+<http://langfuse.idp.local> directly. The admin login is printed during
+bootstrap and recoverable with:
+
+```bash
+kubectl get secret langfuse-init -n ml-platform \
+  -o jsonpath='{.data.LANGFUSE_INIT_USER_PASSWORD}' | base64 -d
+```
+
+### How traces get there
+
+Nothing in Backstage produces them. KAgent exports OTLP directly:
+
+- **Agent LLM calls** — the KAgent runtime already ships OpenLLMetry
+  instrumentors (Anthropic, OpenAI, Google), so enabling `otel.tracing` is
+  enough to get `gen_ai.*` spans that Langfuse parses natively into model,
+  tokens and cost. `bootstrap-ai.sh --langfuse` appends that block to the
+  KAgent values and mounts the OTLP auth header from the `langfuse-kagent-otel`
+  Secret.
+- **MCP tool calls** — each server wraps its tools in a span
+  (`services/*/src/telemetry.ts`), tagged with `langfuse.session.id` (the
+  calling agent) and `langfuse.user.id` (the Backstage user). No-ops entirely
+  unless `LANGFUSE_OTLP_ENDPOINT` is set.
+
+> **Gotcha, and it fails silently.** The OTLP protocol value must be the exact
+> string `http/protobuf`. KAgent compares against that literal and falls back to
+> **gRPC** for anything else — including the intuitive `"http"` — which sends
+> gRPC frames at Langfuse's HTTP ingest path and drops every span with no error
+> in any log.
+
+Input/output capture is **off** by default (`LANGFUSE_CAPTURE_IO`). Tool
+arguments and results can carry PII and credentials, and Langfuse is a separate
+store from the `[AUDIT]` log stream. Turn it on deliberately.
+
+### When the AI Observability page shows no data
+
+The page reads Langfuse through the Backstage `/langfuse` proxy, so a failure can
+sit in either. Work outwards from Langfuse:
+
+```bash
+# 1. Is Langfuse itself serving? (expects 6 pods — use instance, not name:
+#    app.kubernetes.io/name is per-component and matches only web + worker)
+kubectl get pods -n ml-platform -l app.kubernetes.io/instance=langfuse
+
+# 2. Do the project keys work directly? (expects 200)
+PK=$(kubectl get secret langfuse-init -n ml-platform -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d)
+SK=$(kubectl get secret langfuse-init -n ml-platform -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}' | base64 -d)
+curl -s -o /dev/null -w '%{http_code}\n' -u "$PK:$SK" http://langfuse.idp.local/api/public/traces?limit=1
+
+# 3. Does it work through Backstage? (expects 200)
+#    Not a secret: this is the static local dev token declared in plaintext under
+#    backend.auth.externalAccess in backstage/app-config.local.yaml.
+BACKSTAGE_TOKEN=local-catalog-exporter-token
+curl -s -H "Authorization: Bearer ${BACKSTAGE_TOKEN}" \
+  'http://backstage.idp.local/api/proxy/langfuse/api/public/traces?limit=1'
+```
+
+| Symptom | Cause |
+|---|---|
+| `AuthenticationError: Missing credentials` on **any** `/api/proxy/*` route | Backstage's global backend auth gate, not a Langfuse problem. Browsers send a session token; `curl` needs the static `backend.auth.externalAccess` token, as in step 3 above. |
+| `401` from Langfuse itself | `LANGFUSE_BASIC_AUTH` is not reaching Backstage, so the proxy falls back to its `not-configured` default. Locally it must be listed under `environment:` in `local/backstage/docker-compose.yml` — `bootstrap-ai.sh` writes it to `local/backstage/.env`, but Compose reads that file for interpolation only and will not forward it on its own. |
+| `504`, and the error names **backstage.idp.local** as the target | `langfuse.idp.local` is missing from `extra_hosts` in the compose file, so it resolves to `127.0.0.1` inside the container and the proxy loops back into Backstage's own port 3000. |
+| nginx `502` on the whole portal | Backstage is down, not Langfuse. Locally it is a Docker Compose container, not a pod — check `docker ps -a --filter name=backstage` and `docker logs backstage-backstage-1`. A duplicate key anywhere in `app-config.*.yaml` throws `YAMLParseError: DUPLICATE_KEY` and exits the container; note that Python's `yaml.safe_load` accepts duplicates silently, so validating that way proves nothing. |
+| Page renders, but every run shows `0.0s` | A stale frontend bundle. `/traces` reports latency in **seconds**; dividing by 1000 was a real bug, fixed — rebuild the Backstage image to pick it up. |
+
+Config files are bind-mounted read-only, so `app-config.*.yaml` changes need only a
+container restart. Only frontend/backend code changes need a rebuild — and on a
+capacity-tight local node, scale the six Langfuse workloads to 0 first, rebuild, then
+scale back. The trace data lives in PVCs and survives that.
+
+### Prompt versioning
+
+`scripts/sync-agent-prompts.py` pushes each agent's `systemMessage` to Langfuse
+as a versioned prompt, and fails CI when a CRD and Langfuse disagree:
+
+```bash
+python3 scripts/sync-agent-prompts.py --push          # CRDs → Langfuse
+python3 scripts/sync-agent-prompts.py --check         # drift gate
+python3 scripts/sync-agent-prompts.py --check-evals   # CRD vs the DeepEval copy (runs in CI)
+```
+
+Git stays the source of truth. KAgent has no per-invocation prompt fetch, so
+Langfuse is the authoring and review surface, not the runtime. `systemMessageFrom`
+(a ConfigMap/Secret reference) does exist in `kagent.dev/v1alpha2` and is the
+path to deploying Langfuse-authored prompts without editing CRDs.
+
+`--check-evals` matters more than it looks: the DeepEval suite keeps a verbatim
+copy of `idp-agent.yaml`'s prompt, and when that copy drifts, CI grades a prompt
+that is not deployed.
+
+---
+
 ## Re-applying after a cluster rebuild
 
 `bootstrap-ai.sh` applies all agents, MCP servers, and ModelConfigs automatically.

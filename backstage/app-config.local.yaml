@@ -47,6 +47,10 @@ app:
         disabled: true
     - nav-item:custom-pages/mlflow-platform:
         disabled: true
+    - page:custom-pages/langfuse-platform:
+        disabled: true
+    - nav-item:custom-pages/langfuse-platform:
+        disabled: true
 
 # Matches the extension flags above. The overlay flips both together once
 # bootstrap-ai.sh has actually deployed the AI layer.
@@ -230,6 +234,7 @@ externalLinks:
   grafana: http://grafana.idp.local
   kagent: http://kagent.idp.local
   mlflow: http://mlflow.idp.local
+  langfuse: http://langfuse.idp.local
 
 # Override the OpenCost proxy target — in-cluster DNS is not reachable from Docker;
 # use the ingress hostname that is mapped to host-gateway in docker-compose extra_hosts.
@@ -274,6 +279,26 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/mlflow': ''
+    # Langfuse public API behind the AI Observability page
+    # (page:custom-pages/langfuse-platform). Only reachable once
+    # `bootstrap-ai.sh --langfuse` has deployed it — the page falls back to demo
+    # data rather than erroring when it has not.
+    #
+    # Langfuse authenticates its public API with HTTP Basic over the project key
+    # pair minted into the langfuse-init Secret at bootstrap. The default keeps
+    # Backstage startup working when Langfuse was never deployed; requests then
+    # fail with 401 and the page shows its error banner, which is the honest
+    # outcome. Export the real value with:
+    #   kubectl get secret langfuse-init -n ml-platform \
+    #     -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d
+    /langfuse:
+      target: http://langfuse.idp.local
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Basic ${LANGFUSE_BASIC_AUTH:-bm90LWNvbmZpZ3VyZWQ=}
+      pathRewrite:
+        '^/api/proxy/langfuse': ''
     /contract-mcp:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']

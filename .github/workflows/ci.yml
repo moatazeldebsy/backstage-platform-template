@@ -17,6 +17,9 @@ on:
       - 'aws/observability/**'
       - 'cli/**'
       - '.github/workflows/ci.yml'
+      # Weakening an allowlist here changes what secrets-scan will catch, so it
+      # has to re-run the scan rather than ride in on an unrelated push.
+      - '.gitleaks.toml'
   # No `paths:` filter here, deliberately. `main` requires helm-lint, k8s-dry-run
   # and backstage-compile to pass, and a required check that never *starts* is
   # reported as pending forever — so a path filter on the trigger made every
@@ -53,6 +56,7 @@ jobs:
       terraform: ${{ steps.filter.outputs.terraform }}
       python-obs: ${{ steps.filter.outputs.python-obs }}
       contract-mcp: ${{ steps.filter.outputs.contract-mcp }}
+      mcp-servers: ${{ steps.filter.outputs.mcp-servers }}
       scripts: ${{ steps.filter.outputs.scripts }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -85,7 +89,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp scripts; do
+            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp mcp-servers scripts; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -108,10 +112,17 @@ jobs:
             #    action modules and bootstrap-ai.sh, because check 8 validates
             #    every kagent.dev apiVersion in those against the CRD versions
             #    the pinned KAgent chart actually serves.
-            echo "catalog=$(match '^(backstage/catalog/|kubernetes/kagent/|aws/kagent/|backstage/app/packages/backend/src/modules/|scripts/(bootstrap-ai\.sh|validate-catalog-templates\.py))')"
+            #  - test-suites/test-deepeval/tests/ and sync-agent-prompts.py,
+            #    because the eval suite keeps a verbatim copy of idp-agent.yaml's
+            #    systemMessage. When that copy drifts, CI grades a prompt that is
+            #    not deployed and passing evals mean nothing — which had already
+            #    happened (25 lines here vs 50 in the CRD).
+            echo "catalog=$(match '^(backstage/catalog/|kubernetes/kagent/|aws/kagent/|backstage/app/packages/backend/src/modules/|test-suites/test-deepeval/tests/|scripts/(bootstrap-ai\.sh|validate-catalog-templates\.py|sync-agent-prompts\.py))')"
             echo "terraform=$(match '^terraform/')"
             echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/)')"
             echo "contract-mcp=$(match '^services/contract-mcp-server/')"
+            # Every MCP server except contract (which has its own job above).
+            echo "mcp-servers=$(match '^services/(idp|qa|github|argocd|cost|incident|security)-mcp-server/')"
             echo "scripts=$(match '^scripts/.*\.sh$')"
           } >> "$GITHUB_OUTPUT"
 
@@ -136,6 +147,11 @@ jobs:
 
       - name: Validate scaffolder catalog
         run: python3 scripts/validate-catalog-templates.py
+
+      # The DeepEval suite grades a copy of idp-agent.yaml's systemMessage.
+      # If the copy drifts, the evals are scoring a prompt that is not deployed.
+      - name: Check agent prompt / eval-suite drift
+        run: python3 scripts/sync-agent-prompts.py --check-evals
 
   # Shell scripts had no CI coverage at all — scripts/ was absent from the old
   # path filter, so bootstrap-local.sh and friends were never even parsed.
@@ -373,6 +389,82 @@ jobs:
       - name: TypeScript compile
         working-directory: services/contract-mcp-server
         run: npm run build
+
+  # Until this job existed, contract-mcp-server was the ONLY Node service with
+  # CI coverage — the other seven MCP servers were never compiled or tested, so
+  # a type error or a broken test in any of them shipped green. That became
+  # untenable once src/telemetry.ts started being copied across all eight.
+  mcp-servers-build:
+    needs: changes
+    if: needs.changes.outputs.mcp-servers == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - idp-mcp-server
+          - qa-mcp-server
+          - github-mcp-server
+          - argocd-mcp-server
+          - cost-mcp-server
+          - incident-mcp-server
+          - security-mcp-server
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/${{ matrix.service }}/package.json
+
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+
+      - name: TypeScript compile
+        working-directory: services/${{ matrix.service }}
+        run: npm run build
+
+      - name: Test
+        working-directory: services/${{ matrix.service }}
+        run: npm test
+
+  # src/telemetry.ts is copied verbatim into every MCP server (see the header
+  # comment in that file for why a shared package is not workable here). This
+  # is what stops the copies silently diverging.
+  mcp-telemetry-drift:
+    needs: changes
+    # contract-mcp-server carries a copy too, but is excluded from the
+    # mcp-servers filter because it has its own build job — so it needs naming
+    # here as well, or editing only that copy would skip the drift check.
+    if: needs.changes.outputs.mcp-servers == 'true' || needs.changes.outputs.contract-mcp == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Compare telemetry.ts checksums
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find services -name telemetry.ts -path '*/src/*' | sort)
+          if [[ ${#files[@]} -lt 2 ]]; then
+            echo "Only ${#files[@]} telemetry.ts found — nothing to compare."
+            exit 0
+          fi
+          printf '%s\n' "${files[@]}"
+          if [[ $(sha256sum "${files[@]}" | awk '{print $1}' | sort -u | wc -l) -ne 1 ]]; then
+            echo "::error::services/*/src/telemetry.ts copies have diverged."
+            sha256sum "${files[@]}"
+            first="${files[0]}"
+            for f in "${files[@]:1}"; do diff -u "$first" "$f" || true; done
+            exit 1
+          fi
+          echo "All ${#files[@]} telemetry.ts copies are identical."
 
   terraform-check:
     needs: changes

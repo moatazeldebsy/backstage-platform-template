@@ -135,6 +135,12 @@ variable "rds_username" {
   default     = "backstage"
 }
 
+variable "langfuse_rds_instance_class" {
+  description = "RDS instance class for the Langfuse PostgreSQL database. Langfuse's Postgres holds only metadata (users, API keys, projects, prompts) — the high-volume trace data lives in ClickHouse — so this stays smaller than the Backstage instance."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
 # ── FinOps variables ──────────────────────────────────────────────────────────
 variable "budget_monthly_limit_usd" {
   description = "Monthly AWS budget cap in USD. An alert fires at 80% (actual) and 100% (forecasted)."

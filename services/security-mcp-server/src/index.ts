@@ -2,6 +2,7 @@ import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { register, collectDefaultMetrics } from 'prom-client';
 import { createServer } from './server.js';
+import { initTracing, shutdownTracing } from './telemetry.js';
 
 const PORT = parseInt(process.env.PORT ?? '3010', 10);
 
@@ -12,6 +13,10 @@ if (!process.env.GITHUB_TOKEN) {
 collectDefaultMetrics();
 
 const app = express();
+
+// No-op unless LANGFUSE_OTLP_ENDPOINT is set, which bootstrap-ai.sh --langfuse
+// supplies through an optional ConfigMap/Secret pair.
+initTracing('security-mcp-server');
 
 app.get('/healthz', (_req, res) => res.json({ status: 'ok', version: '0.1.0' }));
 app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
@@ -28,6 +33,16 @@ app.post('/mcp', express.json(), async (req, res) => {
   await transport.handleRequest(req, res, req.body);
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Security MCP Server listening on :${PORT}`);
 });
+
+// Spans sit in the batch processor until its timer fires, so without a flush
+// the last few tool calls before a pod eviction are lost. Bounded inside
+// shutdownTracing so a hung exporter cannot stall termination.
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    server.close();
+    void shutdownTracing().then(() => process.exit(0));
+  });
+}

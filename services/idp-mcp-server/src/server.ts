@@ -4,6 +4,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import { Counter, Histogram } from 'prom-client';
 import fs from 'fs';
 import { TtlCache, sanitizeUserId, normalizeRepoUrl, parseTemplateRef, parseMemoryValue } from './utils.js';
+import { instrumentTools } from './telemetry.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,11 @@ export async function fetchK8s(path: string) {
 
 export function createServer(agentId = 'unknown', userRef = '') {
   const server = new McpServer({ name: 'idp-mcp-server', version: '1.0.0' });
+
+  // Wraps every server.tool() registered below in a Langfuse span. Must come
+  // before the registrations. No-op (and does not patch anything) unless
+  // tracing is enabled — see telemetry.ts.
+  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef });
 
   // ── catalog_search ────────────────────────────────────────────────────
 

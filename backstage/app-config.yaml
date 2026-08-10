@@ -47,6 +47,10 @@ app:
         disabled: true
     - nav-item:custom-pages/mlflow-platform:
         disabled: true
+    - page:custom-pages/langfuse-platform:
+        disabled: true
+    - nav-item:custom-pages/langfuse-platform:
+        disabled: true
 
 # Whether the AI/ML layer is deployed. Drives the hardcoded AI links on the
 # custom Home / Support / Learning-Center pages, which app.extensions cannot

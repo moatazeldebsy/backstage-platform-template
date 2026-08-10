@@ -64,6 +64,25 @@ jobs:
             --html=results/report.html \
             --self-contained-html
 
+      # always(), so a failing eval still publishes its scores — a metric that
+      # dropped below threshold is exactly the point worth having on the trend
+      # line. Skips silently unless LANGFUSE_HOST is configured; a cluster-local
+      # Langfuse is not reachable from a GitHub-hosted runner, so this only does
+      # anything against Langfuse Cloud or the AWS ALB.
+      - name: Push eval scores to Langfuse
+        if: env.skip != 'true' && always()
+        env:
+          LANGFUSE_HOST:       ${{ secrets.LANGFUSE_HOST }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+        run: |
+          if [[ -z "${LANGFUSE_HOST}" ]]; then
+            echo "::notice::LANGFUSE_HOST not set — skipping the Langfuse push."
+            exit 0
+          fi
+          pip install --quiet 'langfuse>=3'
+          python scripts/push_to_langfuse.py
+
       - name: Upload test report
         if: env.skip != 'true' && always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

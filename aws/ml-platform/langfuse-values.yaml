@@ -1,0 +1,166 @@
+# Langfuse Helm values — AWS/EKS variant.
+#
+# Applied by: scripts/bootstrap-ai.sh --aws (Langfuse is on by default there;
+# --skip-langfuse opts out). Placeholders are substituted by sed before helm
+# runs, from Terraform outputs:
+#   LANGFUSE_DB_HOST_PLACEHOLDER      <- langfuse_db_host
+#   LANGFUSE_BLOBS_BUCKET_PLACEHOLDER <- langfuse_blobs_bucket_name
+#   LANGFUSE_ROLE_ARN_PLACEHOLDER     <- langfuse_role_arn
+#
+# Differences from kubernetes/ml-platform/langfuse-values.yaml (local):
+#   - Postgres is RDS, not the bundled subchart (postgresql.deploy: false)
+#   - Blob storage is a real S3 bucket via IRSA, not MinIO (s3.deploy: false)
+#   - ClickHouse and Valkey stay in-cluster, on gp3 PVCs
+#   - ALB ingress instead of nginx, with no host rule (the ALB hostname is
+#     discovered post-apply, exactly as for MLflow)
+#   - Larger resource envelopes — EKS nodes are not the local capacity ceiling
+#
+# Why RDS here when MLflow uses SQLite-on-PVC even on AWS: the EKS cluster is
+# intentionally torn down between sessions, and trace history that disappears
+# with the cluster is worth very little. ClickHouse data is still cluster-local
+# and *is* lost on teardown — accepted, since the expensive-to-rebuild part
+# (users, API keys, projects, prompts) lives in Postgres.
+
+langfuse:
+  salt:
+    secretKeyRef: { name: langfuse-secrets, key: salt }
+  encryptionKey:
+    secretKeyRef: { name: langfuse-secrets, key: encryption-key }
+
+  nextauth:
+    # Patched to the real ALB hostname by bootstrap-ai.sh once the ingress has
+    # one, then the web deployment is restarted. Until that happens sign-in
+    # redirects point at the placeholder and will not work.
+    url: http://LANGFUSE_ALB_URL
+    secret:
+      secretKeyRef: { name: langfuse-secrets, key: nextauth-secret }
+
+  features:
+    telemetryEnabled: false
+
+  # Headless initialization — see the note in the local values file.
+  additionalEnvFrom:
+    - secretRef:
+        name: langfuse-init
+
+  serviceAccount:
+    create: true
+    name: langfuse
+    annotations:
+      # IRSA role granting s3:GetObject/PutObject/DeleteObject/ListBucket on the
+      # Langfuse blob bucket (terraform/iam.tf → module.langfuse_irsa).
+      eks.amazonaws.com/role-arn: LANGFUSE_ROLE_ARN_PLACEHOLDER
+
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+    # No host: the ALB hostname is not known at render time.
+    hosts:
+      - paths:
+          - path: /
+            pathType: Prefix
+
+  # Same probe widening as the local values file — see the long note there. EKS
+  # nodes are faster, but first boot still runs the Prisma migration and waits
+  # on ClickHouse, and the chart's ~50s liveness budget restarts the pod
+  # mid-migration.
+  web:
+    replicas: 2
+    # See the note in the local values file: Node sizes its old-space heap from
+    # the container memory limit, and langfuse-web OOMs its JS heap during boot
+    # if that limit is 1Gi. 2Gi is the working floor; this is already at it.
+    resources:
+      requests: { cpu: 250m, memory: 1Gi }
+      limits: { memory: 2Gi }
+    livenessProbe:
+      initialDelaySeconds: 120
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 30
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 30
+  worker:
+    replicas: 1
+    resources:
+      requests: { cpu: 250m, memory: 1Gi }
+      limits: { memory: 2Gi }
+    livenessProbe:
+      initialDelaySeconds: 120
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 30
+
+# ── Postgres: RDS ────────────────────────────────────────────────────────────
+postgresql:
+  deploy: false
+  host: LANGFUSE_DB_HOST_PLACEHOLDER
+  port: 5432
+  auth:
+    username: langfuse
+    database: langfuse
+    existingSecret: langfuse-secrets
+    secretKeys:
+      userPasswordKey: postgres-password
+      adminPasswordKey: postgres-password
+  # RDS requires TLS; without this the Prisma migration on first boot fails with
+  # "no pg_hba.conf entry ... no encryption".
+  args: "sslmode=require"
+
+# ── Blob storage: real S3 via IRSA ───────────────────────────────────────────
+s3:
+  deploy: false
+  storageProvider: "s3"
+  bucket: LANGFUSE_BLOBS_BUCKET_PLACEHOLDER
+  region: AWS_REGION_PLACEHOLDER
+  # Path-style is a MinIO requirement, not an S3 one — real S3 wants virtual
+  # host style, and forcing path style breaks SigV4 against some regions.
+  forcePathStyle: false
+  # accessKeyId / secretAccessKey deliberately left empty: with them unset the
+  # AWS SDK falls through to its default credential chain, which on EKS is the
+  # IRSA web-identity token from the annotated ServiceAccount above. Setting
+  # them here would both bypass IRSA and put long-lived keys in the values file.
+
+# ── ClickHouse / Valkey: in-cluster, gp3 ─────────────────────────────────────
+clickhouse:
+  deploy: true
+  auth:
+    existingSecret: langfuse-secrets
+    existingSecretKey: clickhouse-password
+  # Still single-node. Langfuse pins shards: 1 upstream, and a replicated
+  # ClickHouse would also pull in a ZooKeeper ensemble. Revisit if trace volume
+  # or an availability requirement justifies it.
+  replicaCount: 1
+  clusterEnabled: false
+  zookeeper:
+    enabled: false
+  resourcesPreset: none
+  resources:
+    requests: { cpu: 500m, memory: 4Gi }
+    limits: { memory: 8Gi }
+  persistence:
+    storageClass: gp3
+    size: 50Gi
+
+redis:
+  deploy: true
+  architecture: standalone
+  auth:
+    existingSecret: langfuse-secrets
+    existingSecretPasswordKey: redis-password
+  # `redis` aliases the Valkey subchart: primary, not master. See the note in
+  # the local values file — a `master:` block is silently ignored.
+  primary:
+    persistence:
+      storageClass: gp3
+      size: 8Gi
+    resourcesPreset: none
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 512Mi }
