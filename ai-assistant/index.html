@@ -1488,6 +1488,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#llm-observability-langfuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      LLM observability (Langfuse)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LLM observability (Langfuse)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-traces-get-there" class="md-nav__link">
+    <span class="md-ellipsis">
+      How traces get there
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-the-ai-observability-page-shows-no-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      When the AI Observability page shows no data
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prompt-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompt versioning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#re-applying-after-a-cluster-rebuild" class="md-nav__link">
     <span class="md-ellipsis">
       Re-applying after a cluster rebuild
@@ -3570,6 +3612,131 @@ scorecard item above is satisfied by Git versioning of the CRD, not by a separat
 <li>Token usage per model (if available)</li>
 </ul>
 <p>Dashboard: <strong>Grafana</strong> → "AI Platform"</p>
+<hr />
+<h2 id="llm-observability-langfuse">LLM observability (Langfuse)<a class="headerlink" href="#llm-observability-langfuse" title="Permanent link">&para;</a></h2>
+<p>Prometheus counts <em>that</em> a tool was called. Langfuse records <em>what the model
+actually did</em>: the prompt, the completion, token counts, cost, latency, and the
+tool calls inside each agent run.</p>
+<p>Deployed opt-in, because the chart brings Postgres, ClickHouse, Valkey and MinIO
+with it (6 pods, ~2.4Gi) and the local Kind node has little to spare:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse<span class="w">      </span><span class="c1"># local: opt-in</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w">           </span><span class="c1"># AWS: on by default (--skip-langfuse to opt out)</span>
+</code></pre></div></td></tr></table></div>
+<p>Then open <strong>AI Observability</strong> in the Backstage sidebar, or
+<a href="http://langfuse.idp.local">http://langfuse.idp.local</a> directly. The admin login is printed during
+bootstrap and recoverable with:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.LANGFUSE_INIT_USER_PASSWORD}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
+</code></pre></div></td></tr></table></div>
+<h3 id="how-traces-get-there">How traces get there<a class="headerlink" href="#how-traces-get-there" title="Permanent link">&para;</a></h3>
+<p>Nothing in Backstage produces them. KAgent exports OTLP directly:</p>
+<ul>
+<li><strong>Agent LLM calls</strong> — the KAgent runtime already ships OpenLLMetry
+  instrumentors (Anthropic, OpenAI, Google), so enabling <code>otel.tracing</code> is
+  enough to get <code>gen_ai.*</code> spans that Langfuse parses natively into model,
+  tokens and cost. <code>bootstrap-ai.sh --langfuse</code> appends that block to the
+  KAgent values and mounts the OTLP auth header from the <code>langfuse-kagent-otel</code>
+  Secret.</li>
+<li><strong>MCP tool calls</strong> — each server wraps its tools in a span
+  (<code>services/*/src/telemetry.ts</code>), tagged with <code>langfuse.session.id</code> (the
+  calling agent) and <code>langfuse.user.id</code> (the Backstage user). No-ops entirely
+  unless <code>LANGFUSE_OTLP_ENDPOINT</code> is set.</li>
+</ul>
+<blockquote>
+<p><strong>Gotcha, and it fails silently.</strong> The OTLP protocol value must be the exact
+string <code>http/protobuf</code>. KAgent compares against that literal and falls back to
+<strong>gRPC</strong> for anything else — including the intuitive <code>"http"</code> — which sends
+gRPC frames at Langfuse's HTTP ingest path and drops every span with no error
+in any log.</p>
+</blockquote>
+<p>Input/output capture is <strong>off</strong> by default (<code>LANGFUSE_CAPTURE_IO</code>). Tool
+arguments and results can carry PII and credentials, and Langfuse is a separate
+store from the <code>[AUDIT]</code> log stream. Turn it on deliberately.</p>
+<h3 id="when-the-ai-observability-page-shows-no-data">When the AI Observability page shows no data<a class="headerlink" href="#when-the-ai-observability-page-shows-no-data" title="Permanent link">&para;</a></h3>
+<p>The page reads Langfuse through the Backstage <code>/langfuse</code> proxy, so a failure can
+sit in either. Work outwards from Langfuse:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Is Langfuse itself serving? (expects 6 pods — use instance, not name:</span>
+<span class="c1">#    app.kubernetes.io/name is per-component and matches only web + worker)</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/instance<span class="o">=</span>langfuse
+
+<span class="c1"># 2. Do the project keys work directly? (expects 200)</span>
+<span class="nv">PK</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+<span class="nv">SK</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">&#39;%{http_code}\n&#39;</span><span class="w"> </span>-u<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PK</span><span class="s2">:</span><span class="nv">$SK</span><span class="s2">&quot;</span><span class="w"> </span>http://langfuse.idp.local/api/public/traces?limit<span class="o">=</span><span class="m">1</span>
+
+<span class="c1"># 3. Does it work through Backstage? (expects 200)</span>
+<span class="c1">#    Not a secret: this is the static local dev token declared in plaintext under</span>
+<span class="c1">#    backend.auth.externalAccess in backstage/app-config.local.yaml.</span>
+<span class="nv">BACKSTAGE_TOKEN</span><span class="o">=</span>local-catalog-exporter-token
+curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="si">${</span><span class="nv">BACKSTAGE_TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;http://backstage.idp.local/api/proxy/langfuse/api/public/traces?limit=1&#39;</span>
+</code></pre></div></td></tr></table></div>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AuthenticationError: Missing credentials</code> on <strong>any</strong> <code>/api/proxy/*</code> route</td>
+<td>Backstage's global backend auth gate, not a Langfuse problem. Browsers send a session token; <code>curl</code> needs the static <code>backend.auth.externalAccess</code> token, as in step 3 above.</td>
+</tr>
+<tr>
+<td><code>401</code> from Langfuse itself</td>
+<td><code>LANGFUSE_BASIC_AUTH</code> is not reaching Backstage, so the proxy falls back to its <code>not-configured</code> default. Locally it must be listed under <code>environment:</code> in <code>local/backstage/docker-compose.yml</code> — <code>bootstrap-ai.sh</code> writes it to <code>local/backstage/.env</code>, but Compose reads that file for interpolation only and will not forward it on its own.</td>
+</tr>
+<tr>
+<td><code>504</code>, and the error names <strong>backstage.idp.local</strong> as the target</td>
+<td><code>langfuse.idp.local</code> is missing from <code>extra_hosts</code> in the compose file, so it resolves to <code>127.0.0.1</code> inside the container and the proxy loops back into Backstage's own port 3000.</td>
+</tr>
+<tr>
+<td>nginx <code>502</code> on the whole portal</td>
+<td>Backstage is down, not Langfuse. Locally it is a Docker Compose container, not a pod — check <code>docker ps -a --filter name=backstage</code> and <code>docker logs backstage-backstage-1</code>. A duplicate key anywhere in <code>app-config.*.yaml</code> throws <code>YAMLParseError: DUPLICATE_KEY</code> and exits the container; note that Python's <code>yaml.safe_load</code> accepts duplicates silently, so validating that way proves nothing.</td>
+</tr>
+<tr>
+<td>Page renders, but every run shows <code>0.0s</code></td>
+<td>A stale frontend bundle. <code>/traces</code> reports latency in <strong>seconds</strong>; dividing by 1000 was a real bug, fixed — rebuild the Backstage image to pick it up.</td>
+</tr>
+</tbody>
+</table>
+<p>Config files are bind-mounted read-only, so <code>app-config.*.yaml</code> changes need only a
+container restart. Only frontend/backend code changes need a rebuild — and on a
+capacity-tight local node, scale the six Langfuse workloads to 0 first, rebuild, then
+scale back. The trace data lives in PVCs and survives that.</p>
+<h3 id="prompt-versioning">Prompt versioning<a class="headerlink" href="#prompt-versioning" title="Permanent link">&para;</a></h3>
+<p><code>scripts/sync-agent-prompts.py</code> pushes each agent's <code>systemMessage</code> to Langfuse
+as a versioned prompt, and fails CI when a CRD and Langfuse disagree:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--push<span class="w">          </span><span class="c1"># CRDs → Langfuse</span>
+python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--check<span class="w">         </span><span class="c1"># drift gate</span>
+python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--check-evals<span class="w">   </span><span class="c1"># CRD vs the DeepEval copy (runs in CI)</span>
+</code></pre></div></td></tr></table></div>
+<p>Git stays the source of truth. KAgent has no per-invocation prompt fetch, so
+Langfuse is the authoring and review surface, not the runtime. <code>systemMessageFrom</code>
+(a ConfigMap/Secret reference) does exist in <code>kagent.dev/v1alpha2</code> and is the
+path to deploying Langfuse-authored prompts without editing CRDs.</p>
+<p><code>--check-evals</code> matters more than it looks: the DeepEval suite keeps a verbatim
+copy of <code>idp-agent.yaml</code>'s prompt, and when that copy drifts, CI grades a prompt
+that is not deployed.</p>
 <hr />
 <h2 id="re-applying-after-a-cluster-rebuild">Re-applying after a cluster rebuild<a class="headerlink" href="#re-applying-after-a-cluster-rebuild" title="Permanent link">&para;</a></h2>
 <p><code>bootstrap-ai.sh</code> applies all agents, MCP servers, and ModelConfigs automatically.
