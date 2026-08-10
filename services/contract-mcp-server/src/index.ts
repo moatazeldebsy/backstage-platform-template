@@ -11,6 +11,7 @@ import { createStore, type ContractStore } from './store.js';
 import { parseSpec, generatePactJson, generatePactTestCode, detectBreakingChanges, extractSchemaContext, generateMigrationGuide } from './generator.js';
 import { createApp, parseServicesRegistry, resolveServiceBaseUrl, findAffectedConsumers } from './app.js';
 import { auditLog, getAuditLog } from './audit.js';
+import { initTracing, shutdownTracing, instrumentTools } from './telemetry.js';
 
 const PORT = parseInt(process.env.PORT ?? '3003', 10);
 const K8S_API = process.env.K8S_API ?? 'https://kubernetes.default.svc';
@@ -78,6 +79,12 @@ const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP t
 const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['server', 'tool'] });
 const agentToolCalls = new Counter({ name: 'mcp_agent_tool_calls_total', help: 'Tool calls attributed per calling agent', labelNames: ['server', 'tool', 'agent'] });
 
+// ── Tracing ───────────────────────────────────────────────────────────────
+
+// No-op unless LANGFUSE_OTLP_ENDPOINT is set, which bootstrap-ai.sh --langfuse
+// supplies through an optional ConfigMap/Secret pair.
+initTracing(SERVER_NAME);
+
 // ── Async initialisation (top-level await — ESM) ──────────────────────────
 
 const store: ContractStore = await createStore();
@@ -138,6 +145,11 @@ async function probeServiceForSpec(
 
 function createServer(agentId: string = 'unknown') {
   const server = new McpServer({ name: 'contract-mcp-server', version: '2.0.0' });
+
+  // Wraps every server.tool() registered below in a Langfuse span. Must come
+  // before the registrations. No-op (and does not patch anything) unless
+  // tracing is enabled — see telemetry.ts.
+  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef: '' });
 
   // ── register_contract ────────────────────────────────────────────────────
 
@@ -824,7 +836,7 @@ app.post('/mcp', express.json(), async (req, res) => {
   await transport.handleRequest(req, res, req.body);
 });
 
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, () => {
   console.log(`Contract MCP Server v2.0.0 listening on :${PORT}`);
   console.log(`  MCP endpoint:  POST http://localhost:${PORT}/mcp`);
   console.log(`  REST API:      http://localhost:${PORT}/api/contracts`);
@@ -832,3 +844,13 @@ app.listen(PORT, () => {
   console.log(`  Storage:       ${process.env.STORAGE_TYPE ?? 'memory'}`);
   console.log(`  Discovery:     ${DISCOVERY_MODE}`);
 });
+
+// Spans sit in the batch processor until its timer fires, so without a flush
+// the last few tool calls before a pod eviction are lost. Bounded inside
+// shutdownTracing so a hung exporter cannot stall termination.
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    httpServer.close();
+    void shutdownTracing().then(() => process.exit(0));
+  });
+}

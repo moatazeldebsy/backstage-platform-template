@@ -3,6 +3,7 @@ import { z } from 'zod';
 import fetch, { RequestInit } from 'node-fetch';
 import fs from 'fs';
 import { Counter, Histogram } from 'prom-client';
+import { instrumentTools } from './telemetry.js';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? '';
 const GITHUB_API = process.env.GITHUB_API ?? 'https://api.github.com';
@@ -64,6 +65,11 @@ async function fetchK8s(path: string) {
 
 export function createServer(agentId: string = 'unknown') {
   const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' });
+
+  // Wraps every server.tool() registered below in a Langfuse span. Must come
+  // before the registrations. No-op (and does not patch anything) unless
+  // tracing is enabled — see telemetry.ts.
+  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef: '' });
 
   server.tool(
     'list_vulnerable_deps',

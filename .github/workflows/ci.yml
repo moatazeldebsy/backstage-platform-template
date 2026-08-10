@@ -434,7 +434,10 @@ jobs:
   # is what stops the copies silently diverging.
   mcp-telemetry-drift:
     needs: changes
-    if: needs.changes.outputs.mcp-servers == 'true'
+    # contract-mcp-server carries a copy too, but is excluded from the
+    # mcp-servers filter because it has its own build job — so it needs naming
+    # here as well, or editing only that copy would skip the drift check.
+    if: needs.changes.outputs.mcp-servers == 'true' || needs.changes.outputs.contract-mcp == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

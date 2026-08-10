@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import fetch, { RequestInit } from 'node-fetch';
 import { Counter, Histogram } from 'prom-client';
+import { instrumentTools } from './telemetry.js';
 
 const BACKSTAGE_URL = process.env.BACKSTAGE_URL ?? 'http://backstage:7007';
 const BACKSTAGE_EXTERNAL_URL = process.env.BACKSTAGE_EXTERNAL_URL ?? 'http://backstage.idp.local';
@@ -55,11 +56,16 @@ export async function fetchPrometheus(query: string) {
   return res.json() as Promise<{ data: { result: Array<{ metric: Record<string, string>; value: [number, string] }> } }>;
 }
 
-export function createServer() {
+export function createServer(agentId: string = 'unknown') {
   const server = new McpServer({
     name: 'qa-mcp-server',
     version: '1.0.0',
   });
+
+  // Wraps every server.tool() registered below in a Langfuse span. Must come
+  // before the registrations. No-op (and does not patch anything) unless
+  // tracing is enabled — see telemetry.ts.
+  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef: '' });
 
   // ── Tool: list_test_suites ────────────────────────────────────────────────
   server.tool(
