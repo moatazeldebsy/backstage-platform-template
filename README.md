@@ -216,10 +216,14 @@ The **AI Assistant** answers in plans, not prose — it maps your intent onto th
 |---|---|
 | ![KAgent](docs/assets/screenshots/kagent-agents.jpg) | ![MCP servers](docs/assets/screenshots/kagent-mcp-servers.jpg) |
 
-| Agent Approvals (HiTL gate) | MLflow experiment tracking |
+The **MLflow** page gives experiment tracking and the model registry the same in-portal treatment — experiments, recent runs and registered models, read live from the MLflow API, without leaving the catalog:
+
+![MLflow page in Backstage](docs/assets/screenshots/mlflow-page.jpg)
+
+| Agent Approvals (HiTL gate) | MLflow's own UI |
 |---|---|
-| ![Agent Approvals](docs/assets/screenshots/agent-approvals.jpg) | ![MLflow](docs/assets/screenshots/mlflow-experiment.jpg) |
-| Every mutating agent action waits for a human — or an auto-approve policy | Runs and registered models from a scaffolded ML experiment |
+| ![Agent Approvals](docs/assets/screenshots/agent-approvals.jpg) | ![MLflow UI](docs/assets/screenshots/mlflow-experiment.jpg) |
+| Every mutating agent action waits for a human — or an auto-approve policy | One click away at `mlflow.idp.local`, for the deep-dive views |
 
 Semantic search over templates, components and TechDocs (Voyage AI + pgvector):
 
