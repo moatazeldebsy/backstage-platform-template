@@ -32,6 +32,10 @@ app:
         disabled: true
     - nav-item:custom-pages/kagent-platform:
         disabled: true
+    - page:custom-pages/mlflow-platform:
+        disabled: true
+    - nav-item:custom-pages/mlflow-platform:
+        disabled: true
     - page:custom-pages/langfuse-platform:
         disabled: true
     - nav-item:custom-pages/langfuse-platform:
@@ -106,6 +110,16 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+    # MLflow REST API behind the MLflow page. In-cluster Service DNS, not the
+    # ALB: the ALB hostname is only known after bootstrap-ai.sh runs, and this
+    # config is rendered into a ConfigMap before that. POST is required —
+    # experiments/search and runs/search are both POST in the MLflow 2.x API.
+    /mlflow:
+      target: http://mlflow.ml-platform.svc.cluster.local:5000
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/mlflow': ''
     # Langfuse public API behind the AI Observability page. In-cluster Service
     # DNS rather than the ALB: the ALB hostname is only known after
     # bootstrap-ai.sh runs, and this config is rendered into a ConfigMap before
@@ -197,6 +211,7 @@ externalLinks:
   argocd: http://ARGOCD_ALB_URL
   grafana: http://GRAFANA_ALB_URL
   kagent: http://KAGENT_ALB_URL
+  mlflow: http://MLFLOW_ALB_URL
   # Substituted by scripts/bootstrap-ai.sh once the Langfuse ALB has a hostname.
   langfuse: http://LANGFUSE_ALB_URL
 
@@ -398,8 +413,11 @@ kubernetes:
             - group: idp.platform
               apiVersion: v1alpha1
               plural: dynamotables
+            # v1alpha2 is the storage version (kubernetes/kagent/*.yaml). v1alpha1
+            # is still served but down-converts the spec to `description` alone,
+            # so the Kubernetes tab would list agents with everything blanked out.
             - group: kagent.dev
-              apiVersion: v1alpha1
+              apiVersion: v1alpha2
               plural: agents
 
 permission:

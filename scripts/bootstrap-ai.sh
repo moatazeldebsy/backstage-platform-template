@@ -1339,6 +1339,37 @@ timer_start "5d. Join MLflow"
 _bg_join "$_MLFLOW_PID" "$_MLFLOW_LOG" || \
   warn "MLflow deploy failed — check: kubectl get po -n ml-platform"
 _MLFLOW_PID=""
+
+# Patch Backstage's MLflow hostname with the real ALB, same as KAgent above.
+# Two consumers, both previously broken on EKS: externalLinks.mlflow (the
+# "Open MLflow UI" button on the MLflow page) and the MLFLOW_EXTERNAL_URL env
+# var in aws/backstage/deployment.yaml, which idpDeployModelServer.ts uses to
+# register models — nothing ever substituted that placeholder, so the call went
+# to the literal host "MLFLOW_ALB_URL" and failed with a silent warning.
+if [[ "$DEPLOY_MODE" == "aws" && "$SKIP_MLFLOW" != "true" ]]; then
+  info "Waiting for MLflow LoadBalancer hostname..."
+  MLFLOW_URL=""
+  for i in $(seq 1 36); do
+    MLFLOW_URL=$(kubectl get ingress mlflow -n ml-platform \
+      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    [[ -n "$MLFLOW_URL" ]] && break
+    sleep 10
+  done
+  if [[ -z "$MLFLOW_URL" ]]; then
+    warn "MLflow ALB hostname not ready — leaving externalLinks.mlflow as a placeholder."
+  elif ! kubectl get configmap backstage-config -n backstage &>/dev/null; then
+    # Standalone `bootstrap-ai.sh --aws` before bootstrap.sh has deployed
+    # Backstage. Warn rather than let `set -e` kill the run at this point.
+    warn "ConfigMap backstage/backstage-config not found — skipping the MLflow URL patch."
+  else
+    kubectl get configmap backstage-config -n backstage -o json \
+      | sed "s|MLFLOW_ALB_URL|${MLFLOW_URL}|g" \
+      | kubectl apply -f -
+    kubectl set env deployment/backstage -n backstage \
+      "MLFLOW_EXTERNAL_URL=http://${MLFLOW_URL}" >/dev/null
+    check "externalLinks.mlflow + MLFLOW_EXTERNAL_URL patched with ALB hostname"
+  fi
+fi
 timer_end "5d. Join MLflow"
 
 # ── 5d-bis. Join Langfuse ─────────────────────────────────────────────────────

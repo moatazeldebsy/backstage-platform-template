@@ -42,6 +42,11 @@ app:
         disabled: true
     - nav-item:custom-pages/kagent-platform:
         disabled: true
+    # MLflow only exists after bootstrap-ai.sh deploys it into ml-platform.
+    - page:custom-pages/mlflow-platform:
+        disabled: true
+    - nav-item:custom-pages/mlflow-platform:
+        disabled: true
     - page:custom-pages/langfuse-platform:
         disabled: true
     - nav-item:custom-pages/langfuse-platform:

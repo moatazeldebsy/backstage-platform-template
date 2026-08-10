@@ -49,7 +49,7 @@ A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (ser
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
-| **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. See [docs/ai-assistant.md](docs/ai-assistant.md) |
+| **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
 | **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly; surfaced as the **AI Observability** page in Backstage. Opt-in locally (`bootstrap-ai.sh --langfuse`), on by default on AWS. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
 | **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
@@ -110,7 +110,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **Prometheus** | http://prometheus.idp.local | — |
 | **OpenCost** | http://opencost.idp.local | — |
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
-| **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local | requires `bootstrap-ai.sh` |
+| **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local (also surfaced in Backstage at `/kagent` · `/mlflow`) | requires `bootstrap-ai.sh` |
 | **AI Observability** / **Langfuse UI** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | requires `bootstrap-ai.sh --langfuse`; Langfuse admin password in the `langfuse-init` Secret |
 | **IDP / QA / Contract MCP Servers** | `http://<name>-mcp-server.idp.local/healthz` | requires `bootstrap-ai.sh` |
 | **Traces (Tempo)** / **Argo Rollouts** | Traces via Grafana Explore → Tempo datasource (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
@@ -219,10 +219,14 @@ The **AI Assistant** answers in plans, not prose — it maps your intent onto th
 |---|---|
 | ![KAgent](docs/assets/screenshots/kagent-agents.jpg) | ![MCP servers](docs/assets/screenshots/kagent-mcp-servers.jpg) |
 
-| Agent Approvals (HiTL gate) | MLflow experiment tracking |
+The **MLflow** page gives experiment tracking and the model registry the same in-portal treatment — experiments, recent runs and registered models, read live from the MLflow API, without leaving the catalog:
+
+![MLflow page in Backstage](docs/assets/screenshots/mlflow-page.jpg)
+
+| Agent Approvals (HiTL gate) | MLflow's own UI |
 |---|---|
-| ![Agent Approvals](docs/assets/screenshots/agent-approvals.jpg) | ![MLflow](docs/assets/screenshots/mlflow-experiment.jpg) |
-| Every mutating agent action waits for a human — or an auto-approve policy | Runs and registered models from a scaffolded ML experiment |
+| ![Agent Approvals](docs/assets/screenshots/agent-approvals.jpg) | ![MLflow UI](docs/assets/screenshots/mlflow-experiment.jpg) |
+| Every mutating agent action waits for a human — or an auto-approve policy | One click away at `mlflow.idp.local`, for the deep-dive views |
 
 Semantic search over templates, components and TechDocs (Voyage AI + pgvector):
 

@@ -375,6 +375,66 @@ processing so you can see what the agent is doing.
 
 ---
 
+### 7. MLflow page — `/mlflow`
+
+**File:** `backstage/app/packages/app/src/extensions.tsx` (`MlflowPage`)
+
+Surfaces experiment tracking and the model registry inside the portal, so the
+output of the `mlflow-experiment` template and `idp:run-training-job` is visible
+without leaving Backstage. Sidebar entry **MLflow**; "Open MLflow UI ↗" links out
+to the real UI via `externalLinks.mlflow`.
+
+Three calls, all through the proxy, against the **MLflow 2.x** REST surface — the
+platform runs server v2.13.0 (`kubernetes/ml-platform/mlflow.yaml`) and 3.x-only
+endpoints 404 against it, the same pin `MLFLOW_CLIENT_VERSION` carries in
+`idpRunTrainingJob.ts`:
+
+| Data | Call |
+|---|---|
+| Experiments | `POST /api/2.0/mlflow/experiments/search` |
+| Runs | `POST /api/2.0/mlflow/runs/search` (one query for all experiments, capped at 50, reduced client-side) |
+| Registered models | `GET /api/2.0/mlflow/registered-models/search` |
+
+Because two of the three are POST, the proxy entry **must** list it:
+
+```yaml
+# backstage/app-config.local.yaml
+    /mlflow:
+      target: http://mlflow.idp.local
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/mlflow': ''
+
+# backstage/app-config.aws.yaml — in-cluster Service DNS, since the ALB
+# hostname isn't known when this file is rendered into the ConfigMap
+    /mlflow:
+      target: http://mlflow.ml-platform.svc.cluster.local:5000
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      pathRewrite:
+        '^/api/proxy/mlflow': ''
+```
+
+**Three display states, unlike the KAgent page's single demo fallback:** demo data
+with an amber banner when `aiStack.enabled` is false (nothing is deployed, so no
+request is made at all); live tables when the API answers; and a red banner
+carrying the failing endpoint and HTTP status when MLflow is deployed but
+unreachable. A crashed pod therefore reads as an outage, not as "not installed".
+
+Page and nav item are gated by `page:custom-pages/mlflow-platform` /
+`nav-item:custom-pages/mlflow-platform`, disabled by default and flipped on by
+`bootstrap-ai.sh`. That list is **replaced, not merged**, per config layer, so all
+four copies must agree: `backstage/app-config.yaml`, `app-config.local.yaml`,
+`app-config.aws.yaml`, and the heredoc in `write_backstage_ai_overlay()`
+(`scripts/lib.sh`).
+
+On AWS, `bootstrap-ai.sh` patches `MLFLOW_ALB_URL` into the `backstage-config`
+ConfigMap and sets `MLFLOW_EXTERNAL_URL` on the Deployment once the MLflow ALB has
+a hostname.
+
+---
+
 ## Scaffolding flow (step-by-step)
 
 When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-team":
