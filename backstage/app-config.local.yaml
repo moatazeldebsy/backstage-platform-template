@@ -265,9 +265,6 @@ proxy:
       # A2A agent turns can take 60–180s (cold start + chained MCP tool calls).
       # Node.js http-proxy-middleware default is ~60s; raise to match ingress.
       timeout: 300000
-      allowedMethods: ['GET', 'POST']
-      changeOrigin: true
-      pathRewrite:
     # Langfuse public API behind the AI Observability page
     # (page:custom-pages/langfuse-platform). Only reachable once
     # `bootstrap-ai.sh --langfuse` has deployed it — the page falls back to demo
