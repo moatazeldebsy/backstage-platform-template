@@ -1001,6 +1001,10 @@ app:
         disabled: ${disabled}
     - nav-item:custom-pages/kagent-platform:
         disabled: ${disabled}
+    - page:custom-pages/mlflow-platform:
+        disabled: ${disabled}
+    - nav-item:custom-pages/mlflow-platform:
+        disabled: ${disabled}
 
 aiStack:
   enabled: ${enabled}

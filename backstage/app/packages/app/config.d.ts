@@ -21,6 +21,10 @@ export interface Config {
      * @visibility frontend
      */
     kagent?: string;
+    /**
+     * @visibility frontend
+     */
+    mlflow?: string;
   };
 
   /**
