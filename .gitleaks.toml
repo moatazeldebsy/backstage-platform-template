@@ -1,0 +1,31 @@
+# gitleaks configuration for this repo.
+#
+# Until this file existed, CI ran gitleaks with its built-in rule set and no
+# allowlist ("no gitleaks config found in path .gitleaks.toml, using default
+# gitleaks config"). `useDefault = true` keeps every one of those rules active —
+# this file only adds exceptions, it does not replace the rule set.
+#
+# Keep exceptions narrow. Prefer matching the exact literal that is not a secret
+# over disabling a rule or excluding a whole file, so the rule keeps protecting
+# the rest of that file.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented non-secret local development values"
+# Match against the whole source line rather than just the captured secret, so
+# the surrounding context is what qualifies the exception.
+regexTarget = "line"
+regexes = [
+  # Backstage's static local dev token. Declared in plaintext under
+  # backend.auth.externalAccess in backstage/app-config.local.yaml — it exists
+  # so the in-cluster catalog-exporter CronJob can call the Backstage API
+  # without a user session on a Kind cluster, and it grants nothing anywhere
+  # else. docs/ai-assistant.md uses it in a `curl -H 'Authorization: Bearer …'`
+  # example, which matches the curl-auth-header rule on shape alone regardless
+  # of the value. The finding persists in history (commit cc8f22a) even though
+  # the current docs hoist it into a variable, and gitleaks scans commit ranges,
+  # not the working tree.
+  '''local-catalog-exporter-token''',
+]

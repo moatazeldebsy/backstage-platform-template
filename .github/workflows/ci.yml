@@ -17,6 +17,9 @@ on:
       - 'aws/observability/**'
       - 'cli/**'
       - '.github/workflows/ci.yml'
+      # Weakening an allowlist here changes what secrets-scan will catch, so it
+      # has to re-run the scan rather than ride in on an unrelated push.
+      - '.gitleaks.toml'
   # No `paths:` filter here, deliberately. `main` requires helm-lint, k8s-dry-run
   # and backstage-compile to pass, and a required check that never *starts* is
   # reported as pending forever — so a path filter on the trigger made every
