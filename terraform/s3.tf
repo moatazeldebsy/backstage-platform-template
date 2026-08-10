@@ -131,6 +131,70 @@ output "mlflow_artifacts_bucket_name" {
   value       = aws_s3_bucket.mlflow_artifacts.id
 }
 
+# ── Langfuse blob storage ───────────────────────────────────────────────────────
+# Langfuse writes raw trace events, multi-modal media and batch exports here.
+# Locally this role is played by the bundled MinIO subchart; on EKS it is a real
+# bucket reached via IRSA (see module.langfuse_irsa in iam.tf).
+resource "aws_s3_bucket" "langfuse_blobs" {
+  bucket = "idp-mvp-langfuse-${data.aws_caller_identity.current.account_id}"
+
+  tags = {
+    Name = "idp-mvp-langfuse-blobs"
+  }
+}
+
+# Deliberately NOT versioned, unlike the MLflow bucket. Langfuse treats these
+# objects as immutable, write-once event payloads and never updates one in
+# place, so versioning would only duplicate storage cost with no recovery value.
+resource "aws_s3_bucket_server_side_encryption_configuration" "langfuse_blobs" {
+  bucket = aws_s3_bucket.langfuse_blobs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "langfuse_blobs" {
+  bucket = aws_s3_bucket.langfuse_blobs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Trace payloads are high-volume and lose value quickly. ClickHouse holds the
+# queryable copy; these blobs are the raw ingest record behind it.
+resource "aws_s3_bucket_lifecycle_configuration" "langfuse_blobs" {
+  bucket = aws_s3_bucket.langfuse_blobs.id
+
+  rule {
+    id     = "expire-old-events"
+    status = "Enabled"
+    filter {}
+
+    expiration {
+      days = 90
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+resource "aws_s3_bucket_metric" "langfuse_blobs_size" {
+  bucket = aws_s3_bucket.langfuse_blobs.id
+  name   = "EntireBucket"
+}
+
+output "langfuse_blobs_bucket_name" {
+  description = "S3 bucket name for Langfuse blob storage (trace events, media, exports)"
+  value       = aws_s3_bucket.langfuse_blobs.id
+}
+
 # ── Velero cluster backup storage ───────────────────────────────────────────────────
 resource "aws_s3_bucket" "velero_backups" {
   bucket = "idp-mvp-velero-${data.aws_caller_identity.current.account_id}"

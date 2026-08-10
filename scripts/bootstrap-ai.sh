@@ -9,6 +9,12 @@
 #   --region <region>  AWS region (default: us-east-1, used with --aws)
 #   --cluster <name>   EKS cluster name (default: idp-mvp, used with --aws)
 #   --skip-mlflow      Skip MLflow tracking server
+#   --langfuse         Deploy Langfuse (LLM observability) and export KAgent
+#                       traces to it. Opt-in locally — the chart pulls Postgres,
+#                       ClickHouse, Valkey and MinIO (6 pods / ~2.4Gi), which a
+#                       single-node Kind cluster does not have spare. Always on
+#                       for --aws; use --skip-langfuse to opt out there.
+#   --skip-langfuse    Skip Langfuse (only meaningful with --aws)
 #   --skip-kagent      Skip KAgent CRDs and Helm install
 #   --skip-mcp         Skip IDP/QA/Contract MCP Server build and deploy
 #   --adp              Also deploy Agentic Development Platform (ADP) components
@@ -21,6 +27,10 @@ DEPLOY_MODE="local"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 SKIP_MLFLOW=false
+# Tri-state on purpose: "" means "not specified", which resolves after flag
+# parsing to on for AWS and off for local. A plain true/false default could not
+# tell "user passed --skip-langfuse" apart from "user said nothing".
+LANGFUSE=""
 SKIP_KAGENT=false
 SKIP_MCP=false
 ADP=false
@@ -33,6 +43,8 @@ while [[ $# -gt 0 ]]; do
     --region)       AWS_REGION="$2"; shift 2 ;;
     --cluster)      CLUSTER_NAME="$2"; shift 2 ;;
     --skip-mlflow)  SKIP_MLFLOW=true; shift ;;
+    --langfuse)     LANGFUSE=true; shift ;;
+    --skip-langfuse) LANGFUSE=false; shift ;;
     --skip-kagent)  SKIP_KAGENT=true; shift ;;
     --skip-mcp)     SKIP_MCP=true; shift ;;
     --adp)          ADP=true; shift ;;
@@ -41,6 +53,18 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
+
+# Resolve the Langfuse default now that DEPLOY_MODE is known: on by default for
+# AWS (EKS has the headroom and the Terraform-backed RDS/S3 to make it durable),
+# off by default locally (see the --langfuse note in the usage block above).
+if [[ -z "$LANGFUSE" ]]; then
+  [[ "$DEPLOY_MODE" == "aws" ]] && LANGFUSE=true || LANGFUSE=false
+fi
+
+# Pinned chart version. app 3.224.1. Bump deliberately: the chart carries four
+# subcharts whose resource defaults are far too large for the local cluster, and
+# kubernetes/ml-platform/langfuse-values.yaml tunes them by key name.
+LANGFUSE_CHART_VERSION="1.5.41"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${REPO_ROOT}/local/.env"
@@ -156,6 +180,15 @@ if $DESTROY; then
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
   fi
+
+  # Langfuse — Helm release. The PVCs behind Postgres/ClickHouse/Valkey/MinIO
+  # are NOT reclaimed by `helm uninstall`; they go with the ml-platform
+  # namespace delete below. The langfuse-secrets Secret is deleted explicitly
+  # because a stale salt/encryption key would make a later reinstall unable to
+  # read anything it wrote before.
+  helm uninstall langfuse --namespace ml-platform 2>/dev/null || true
+  kubectl delete secret langfuse-secrets    -n ml-platform 2>/dev/null || true
+  kubectl delete secret langfuse-kagent-otel -n kagent      2>/dev/null || true
 
   # KAgent contract resources
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml" 2>/dev/null || true
@@ -336,7 +369,7 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
   timer_start "0. /etc/hosts"
   info "Checking /etc/hosts entries (may prompt for your password)..."
   append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
+    "mlflow|langfuse|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
   timer_end "0. /etc/hosts"
 fi
 
@@ -490,6 +523,11 @@ _kill_background_jobs() {
   if [[ -n "${_MLFLOW_PID:-}" ]]; then
     kill "$_MLFLOW_PID" 2>/dev/null || true
     rm -f "${_MLFLOW_LOG:-}" 2>/dev/null || true
+  fi
+  # Set in section 3b, joined in 5e.
+  if [[ -n "${_LANGFUSE_PID:-}" ]]; then
+    kill "$_LANGFUSE_PID" 2>/dev/null || true
+    rm -f "${_LANGFUSE_LOG:-}" 2>/dev/null || true
   fi
 }
 trap '_kill_background_jobs; timer_summary' EXIT
@@ -700,6 +738,165 @@ fi
 
 timer_end "3. MLflow (launch)"
 
+# ── 3b. Langfuse (LLM observability) ──────────────────────────────────────────
+timer_start "3b. Langfuse (launch)"
+
+_LANGFUSE_PID=""
+_LANGFUSE_LOG=""
+
+if [[ "$LANGFUSE" != "true" ]]; then
+  info "Skipping Langfuse (pass --langfuse to enable LLM tracing)."
+else
+  info "Deploying Langfuse (in the background)..."
+
+  # ── Secrets ────────────────────────────────────────────────────────────────
+  # Generated once and then left alone. The salt and encryption key are used to
+  # hash API keys and encrypt stored credentials: regenerating either makes
+  # every existing trace, API key and integration secret undecryptable, so this
+  # block is deliberately create-if-absent rather than apply-always.
+  if kubectl get secret langfuse-secrets -n ml-platform >/dev/null 2>&1; then
+    info "  langfuse-secrets already exists — keeping it (regenerating would orphan existing data)."
+  else
+    _lf_pg_password=""
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      # RDS owns the password; Terraform put it in Secrets Manager.
+      _lf_pg_password=$(aws secretsmanager get-secret-value \
+        --secret-id "idp-mvp/langfuse" --region "$AWS_REGION" \
+        --query SecretString --output text 2>/dev/null \
+        | python3 -c "import json,sys; print(json.load(sys.stdin).get('POSTGRES_PASSWORD',''))" 2>/dev/null || true)
+      [[ -n "$_lf_pg_password" ]] || die "Could not read POSTGRES_PASSWORD from Secrets Manager idp-mvp/langfuse. Run terraform apply first."
+    else
+      _lf_pg_password=$(openssl rand -hex 16)
+    fi
+
+    kubectl create secret generic langfuse-secrets -n ml-platform \
+      --from-literal=salt="$(openssl rand -base64 32)" \
+      --from-literal=encryption-key="$(openssl rand -hex 32)" \
+      --from-literal=nextauth-secret="$(openssl rand -base64 32)" \
+      --from-literal=postgres-password="$_lf_pg_password" \
+      --from-literal=clickhouse-password="$(openssl rand -hex 16)" \
+      --from-literal=redis-password="$(openssl rand -hex 16)" \
+      --from-literal=minio-root-user="langfuse" \
+      --from-literal=minio-root-password="$(openssl rand -hex 16)" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    check "Secret langfuse-secrets created"
+  fi
+
+  # ── Headless project init ──────────────────────────────────────────────────
+  # Generates the org, project, an admin login and — the part everything else
+  # depends on — a deterministic API key pair. KAgent and the MCP servers export
+  # OTLP traces authenticated with these, so they must exist before those
+  # components start, and must not change on re-runs.
+  if kubectl get secret langfuse-init -n ml-platform >/dev/null 2>&1; then
+    info "  langfuse-init already exists — reusing the existing project API keys."
+  else
+    # bootstrap-ai.sh does not otherwise read .idp-config.env; load it here so
+    # the admin account uses the org's real contact address rather than a
+    # placeholder nobody owns. No-op when setup.sh has not run yet.
+    load_idp_config
+    _LF_PK="pk-lf-$(openssl rand -hex 16)"
+    _LF_SK="sk-lf-$(openssl rand -hex 16)"
+    _lf_admin_password=$(openssl rand -base64 18)
+    kubectl create secret generic langfuse-init -n ml-platform \
+      --from-literal=LANGFUSE_INIT_ORG_ID="idp" \
+      --from-literal=LANGFUSE_INIT_ORG_NAME="IDP Platform" \
+      --from-literal=LANGFUSE_INIT_PROJECT_ID="idp-agents" \
+      --from-literal=LANGFUSE_INIT_PROJECT_NAME="IDP Agents" \
+      --from-literal=LANGFUSE_INIT_PROJECT_PUBLIC_KEY="$_LF_PK" \
+      --from-literal=LANGFUSE_INIT_PROJECT_SECRET_KEY="$_LF_SK" \
+      --from-literal=LANGFUSE_INIT_USER_EMAIL="${CONTACT_EMAIL:-platform@example.com}" \
+      --from-literal=LANGFUSE_INIT_USER_NAME="Platform Admin" \
+      --from-literal=LANGFUSE_INIT_USER_PASSWORD="$_lf_admin_password" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    check "Secret langfuse-init created (project API keys minted)"
+    info "  Langfuse admin login: ${CONTACT_EMAIL:-platform@example.com} / ${_lf_admin_password}"
+    info "  (also recoverable via: kubectl get secret langfuse-init -n ml-platform -o jsonpath='{.data.LANGFUSE_INIT_USER_PASSWORD}' | base64 -d)"
+  fi
+
+  # Hand the same key pair to KAgent as an OTLP Basic auth header. kagent passes
+  # no explicit headers to its OTLP exporter, so the SDK's own env parsing picks
+  # OTEL_EXPORTER_OTLP_TRACES_HEADERS up on both its Python and Go runtimes.
+  # The value uses OTEL's `key=value` env encoding, not an HTTP header line.
+  _LF_PK=$(kubectl get secret langfuse-init -n ml-platform \
+    -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d)
+  _LF_SK=$(kubectl get secret langfuse-init -n ml-platform \
+    -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}' | base64 -d)
+  _LF_BASIC=$(printf '%s:%s' "$_LF_PK" "$_LF_SK" | base64 | tr -d '\n')
+  kubectl create secret generic langfuse-kagent-otel -n kagent \
+    --from-literal=OTEL_EXPORTER_OTLP_TRACES_HEADERS="Authorization=Basic ${_LF_BASIC}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret langfuse-kagent-otel created (OTLP auth for KAgent)"
+
+  # Backstage's /langfuse proxy authenticates with the same key pair — this is
+  # what makes the AI Observability page show live data instead of a 401.
+  # Same mechanism as GRAFANA_TOKEN in bootstrap-local.sh: env var locally,
+  # deployment env on AWS.
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    _lf_env="${REPO_ROOT}/local/backstage/.env"
+    touch "$_lf_env"
+    if grep -q "^LANGFUSE_BASIC_AUTH=" "$_lf_env" 2>/dev/null; then
+      sed -i.bak "s|^LANGFUSE_BASIC_AUTH=.*|LANGFUSE_BASIC_AUTH=${_LF_BASIC}|" "$_lf_env" && rm -f "${_lf_env}.bak"
+    else
+      echo "LANGFUSE_BASIC_AUTH=${_LF_BASIC}" >> "$_lf_env"
+    fi
+    info "  LANGFUSE_BASIC_AUTH written to local/backstage/.env (restart Backstage to pick it up)."
+  elif kubectl get deployment backstage -n backstage >/dev/null 2>&1; then
+    kubectl set env deployment/backstage -n backstage "LANGFUSE_BASIC_AUTH=${_LF_BASIC}" >/dev/null
+    check "LANGFUSE_BASIC_AUTH set on the Backstage deployment"
+  fi
+
+  # Terraform outputs are read here, on the main thread, so a missing output
+  # still aborts via die() — inside the background job it could not.
+  _LF_VALUES="${REPO_ROOT}/kubernetes/ml-platform/langfuse-values.yaml"
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    LANGFUSE_DB_HOST=$(tf_output langfuse_db_host)
+    [[ -n "$LANGFUSE_DB_HOST" ]] || die "Could not read langfuse_db_host from Terraform outputs. Run terraform apply first."
+    LANGFUSE_BUCKET=$(tf_output langfuse_blobs_bucket_name)
+    [[ -n "$LANGFUSE_BUCKET" ]] || die "Could not read langfuse_blobs_bucket_name from Terraform outputs."
+    LANGFUSE_ROLE_ARN=$(tf_output langfuse_role_arn)
+    [[ -n "$LANGFUSE_ROLE_ARN" ]] || die "Could not read langfuse_role_arn from Terraform outputs."
+
+    # Rendered to a temp file rather than passed as --set: helm_upgrade_cached
+    # hashes values-file CONTENT, not path, so a mktemp target still caches.
+    _LF_VALUES=$(mktemp)
+    sed -e "s|LANGFUSE_DB_HOST_PLACEHOLDER|${LANGFUSE_DB_HOST}|g" \
+        -e "s|LANGFUSE_BLOBS_BUCKET_PLACEHOLDER|${LANGFUSE_BUCKET}|g" \
+        -e "s|LANGFUSE_ROLE_ARN_PLACEHOLDER|${LANGFUSE_ROLE_ARN}|g" \
+        -e "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+        "${REPO_ROOT}/aws/ml-platform/langfuse-values.yaml" > "$_LF_VALUES"
+  fi
+
+  helm repo add langfuse https://langfuse.github.io/langfuse-k8s >/dev/null 2>&1 || true
+  helm repo update langfuse >/dev/null 2>&1 || true
+
+  _LANGFUSE_LOG=$(mktemp)
+  (
+    set -e
+    # 25m, not the 10m the other releases use. A first install pulls roughly
+    # 1.5GB of images — langfuse/langfuse is ~350MB on its own and the four
+    # Bitnami subcharts (postgresql, clickhouse, valkey, minio) are each in the
+    # same range. Measured on a local Kind cluster: 4m45s for the web image
+    # alone. On top of that ClickHouse runs its schema migration on first boot
+    # and langfuse-web crash-restarts until Postgres accepts connections, which
+    # is normal convergence rather than failure. A 10m budget fails the release
+    # while everything is still healthily pulling.
+    helm_upgrade_cached langfuse ml-platform langfuse/langfuse \
+      --version "$LANGFUSE_CHART_VERSION" \
+      --namespace ml-platform \
+      --values "$_LF_VALUES" \
+      --wait --timeout 25m
+    kubectl rollout status deployment/langfuse-web -n ml-platform --timeout=600s
+    if [[ "$DEPLOY_MODE" == "aws" ]]; then
+      check "Langfuse deployed (Postgres → RDS, blobs → s3://${LANGFUSE_BUCKET})"
+    else
+      check "Langfuse deployed → http://langfuse.idp.local"
+    fi
+  ) >"$_LANGFUSE_LOG" 2>&1 &
+  _LANGFUSE_PID=$!
+fi
+
+timer_end "3b. Langfuse (launch)"
+
 # ── 4. KAgent ─────────────────────────────────────────────────────────────────
 timer_start "4. KAgent install + patches"
 
@@ -714,6 +911,42 @@ else
 
   KAGENT_VALUES="${REPO_ROOT}/local/kagent/values.yaml"
   [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/aws/kagent/values.yaml"
+
+  # ── Langfuse tracing overlay ────────────────────────────────────────────────
+  # Appended only when Langfuse is deployed: the endpoint below resolves to
+  # nothing otherwise, and kagent would retry-and-fail export on every agent
+  # turn. Committing it to the values files would make tracing-on the default.
+  #
+  # Written to a temp file, which is fine for the fingerprint: _kagent_fp hashes
+  # the values file's CONTENT, not its path.
+  #
+  # protocol MUST be the literal "http/protobuf". kagent compares against that
+  # exact string and silently falls back to gRPC for anything else (including
+  # the intuitive "http"), which would export gRPC frames at Langfuse's HTTP
+  # ingest path and drop every span with no error surfaced.
+  if [[ "$LANGFUSE" == "true" ]]; then
+    _KAGENT_VALUES_LF=$(mktemp)
+    cat "$KAGENT_VALUES" > "$_KAGENT_VALUES_LF"
+    cat >> "$_KAGENT_VALUES_LF" <<'EOF'
+
+# ── Appended by scripts/bootstrap-ai.sh --langfuse (do not commit) ───────────
+otel:
+  tracing:
+    enabled: true
+    exporter:
+      otlp:
+        endpoint: "http://langfuse-web.ml-platform.svc.cluster.local:3000/api/public/otel/v1/traces"
+        protocol: "http/protobuf"
+        insecure: true
+        timeout: 15000
+controller:
+  envFrom:
+    - secretRef:
+        name: langfuse-kagent-otel
+EOF
+    KAGENT_VALUES="$_KAGENT_VALUES_LF"
+    info "KAgent will export LLM traces to Langfuse."
+  fi
 
   # Skip-if-unchanged (lib.sh): a re-run against an already-healthy cluster
   # shouldn't pay for two full `helm upgrade` cycles plus a 5m --wait when the
@@ -1082,6 +1315,50 @@ _bg_join "$_MLFLOW_PID" "$_MLFLOW_LOG" || \
 _MLFLOW_PID=""
 timer_end "5d. Join MLflow"
 
+# ── 5d-bis. Join Langfuse ─────────────────────────────────────────────────────
+timer_start "5d. Join Langfuse"
+
+if [[ -n "$_LANGFUSE_PID" ]]; then
+  _bg_join "$_LANGFUSE_PID" "$_LANGFUSE_LOG" || \
+    warn "Langfuse deploy failed — check: kubectl get po -n ml-platform -l app.kubernetes.io/name=langfuse"
+  _LANGFUSE_PID=""
+fi
+
+# Same ALB-hostname patch as MLflow above: externalLinks.langfuse drives the
+# "Open Langfuse" button on the AI Observability page, and NEXTAUTH_URL has to
+# be the hostname the browser actually uses or sign-in redirects break.
+if [[ "$DEPLOY_MODE" == "aws" && "$LANGFUSE" == "true" ]]; then
+  info "Waiting for Langfuse LoadBalancer hostname..."
+  LANGFUSE_URL=""
+  for i in $(seq 1 36); do
+    LANGFUSE_URL=$(kubectl get ingress langfuse -n ml-platform \
+      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    [[ -n "$LANGFUSE_URL" ]] && break
+    sleep 10
+  done
+  if [[ -z "$LANGFUSE_URL" ]]; then
+    warn "Langfuse ALB hostname not ready — leaving externalLinks.langfuse as a placeholder."
+  else
+    # NEXTAUTH_URL is rendered from the values file, so patch the release rather
+    # than the pod: a `kubectl set env` here would be reverted by the next
+    # helm upgrade.
+    helm upgrade langfuse langfuse/langfuse \
+      --version "$LANGFUSE_CHART_VERSION" \
+      --namespace ml-platform --reuse-values \
+      --set "langfuse.nextauth.url=http://${LANGFUSE_URL}" >/dev/null
+    if kubectl get configmap backstage-config -n backstage &>/dev/null; then
+      kubectl get configmap backstage-config -n backstage -o json \
+        | sed "s|LANGFUSE_ALB_URL|${LANGFUSE_URL}|g" \
+        | kubectl apply -f -
+      check "externalLinks.langfuse + NEXTAUTH_URL patched with ALB hostname"
+    else
+      warn "ConfigMap backstage/backstage-config not found — skipping the Langfuse URL patch."
+    fi
+  fi
+fi
+
+timer_end "5d. Join Langfuse"
+
 # ── 6. IDP / QA MCP Servers ───────────────────────────────────────────────────
 # Local: build images into the local registry; ArgoCD (services-dev namespace)
 #        manages the actual Kubernetes deployment via GitOps.
@@ -1430,6 +1707,7 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://$(_alb_ai kagent-ui kagent)"
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  IDP Assistant (A2A) http://$(_alb_ai idp-assistant kagent)"
   [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://$(_alb_ai mlflow ml-platform)"
+  [[ "$LANGFUSE"     == "true"  ]] && echo "║  Langfuse            http://$(_alb_ai langfuse ml-platform)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://$(_alb_ai idp-mcp-server services-dev)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://$(_alb_ai qa-mcp-server services-dev)"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://$(_alb_ai contract-mcp-server services-dev)"
@@ -1440,6 +1718,7 @@ else
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local"
   [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant"
   [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://mlflow.idp.local"
+  [[ "$LANGFUSE"     == "true"  ]] && echo "║  Langfuse            http://langfuse.idp.local"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz"
   [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz"

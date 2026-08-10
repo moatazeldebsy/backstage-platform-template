@@ -435,6 +435,54 @@ output "mlflow_role_arn" {
   value       = module.mlflow_irsa.iam_role_arn
 }
 
+# Langfuse IRSA — allows the Langfuse web and worker pods to read/write trace
+# event blobs, media and exports in S3. The chart's values file annotates the
+# `langfuse` ServiceAccount with this role ARN and leaves the S3 credential
+# fields empty, so the AWS SDK falls through to the IRSA web-identity token.
+module "langfuse_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-langfuse"
+
+  oidc_providers = {
+    main = {
+      provider_arn = module.eks.oidc_provider_arn
+      # The chart runs web and worker under one ServiceAccount.
+      namespace_service_accounts = ["ml-platform:langfuse"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "langfuse" {
+  name = "langfuse-s3-blobs"
+  role = module.langfuse_irsa.iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.langfuse_blobs.arn,
+          "${aws_s3_bucket.langfuse_blobs.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+output "langfuse_role_arn" {
+  description = "IAM role ARN for the Langfuse ServiceAccount (IRSA) — S3 blob storage access"
+  value       = module.langfuse_irsa.iam_role_arn
+}
+
 # KAgent ESO IRSA — allows External Secrets Operator in the kagent namespace to
 # read the Anthropic API key from Secrets Manager (idp-mvp/kagent).
 module "kagent_eso_irsa" {

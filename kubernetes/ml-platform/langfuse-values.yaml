@@ -1,0 +1,196 @@
+# Langfuse Helm values — local Kind cluster.
+#
+# Installed by: scripts/bootstrap-ai.sh --langfuse
+#   helm upgrade --install langfuse langfuse/langfuse --version <pinned> \
+#     -n ml-platform --values kubernetes/ml-platform/langfuse-values.yaml
+#
+# Langfuse is the LLM-observability backend for the AI stack: KAgent exports
+# OTLP traces here (see local/kagent/values.yaml → otel.tracing), so every agent
+# run lands as a trace with model, token counts, cost and latency.
+#
+# Unlike MLflow this is a Helm release rather than raw manifests, so it goes
+# through helm_upgrade_cached (scripts/lib.sh) and gets the fingerprint skip.
+#
+# ── Why this is opt-in (--langfuse) and tuned this hard ──────────────────────
+# The upstream chart pulls four subcharts (postgresql, clickhouse, valkey,
+# minio) and its defaults assume a real cluster: ClickHouse alone defaults to
+# replicaCount 3 plus a ZooKeeper ensemble, at the "2xlarge" resources preset.
+# On the single local Kind node — 6 CPU / ~13Gi, already at ~118% memory limits
+# before Langfuse exists — those defaults do not fit.
+#
+# As tuned below the release renders to 6 pods / 500m CPU / 2.38Gi memory
+# requests. Verify after changing anything here:
+#   helm template langfuse langfuse/langfuse -n ml-platform \
+#     --values kubernetes/ml-platform/langfuse-values.yaml
+#
+# Secrets (salt, encryption key, NextAuth secret, and the four datastore
+# passwords) all come from the `langfuse-secrets` Secret, which bootstrap-ai.sh
+# generates once and then leaves alone — regenerating the salt or encryption key
+# makes existing traces and API keys unreadable.
+
+langfuse:
+  salt:
+    secretKeyRef: { name: langfuse-secrets, key: salt }
+  encryptionKey:
+    secretKeyRef: { name: langfuse-secrets, key: encryption-key }
+
+  nextauth:
+    # Must be the URL the browser actually uses, not the in-cluster Service —
+    # NextAuth builds its OAuth/callback redirects from this value.
+    url: http://langfuse.idp.local
+    secret:
+      secretKeyRef: { name: langfuse-secrets, key: nextauth-secret }
+
+  features:
+    # No phone-home from a local dev cluster.
+    telemetryEnabled: false
+
+  # Headless initialization. Without this, Langfuse comes up with an empty
+  # database and the API keys that KAgent and the MCP servers need can only be
+  # minted by a human clicking through the UI — which would make
+  # `bootstrap-ai.sh --langfuse` a half-automated step.
+  #
+  # The LANGFUSE_INIT_* vars live in the `langfuse-init` Secret (keys are the
+  # env var names verbatim), generated once by bootstrap-ai.sh. They are applied
+  # only when the org/project does not already exist, so this is safe to leave
+  # in place across upgrades.
+  additionalEnvFrom:
+    - secretRef:
+        name: langfuse-init
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: langfuse.idp.local
+        paths:
+          - path: /
+            pathType: Prefix
+
+  # ── Probes ───────────────────────────────────────────────────────────────
+  # The chart's defaults kill this app during its own startup on a loaded local
+  # node. Liveness defaults to initialDelay 20 + period 10 x failureThreshold 3,
+  # so the container is restarted ~50s in — while langfuse-web is still running
+  # its Prisma migration and waiting for ClickHouse's schema migration. Observed
+  # directly: readiness "connection refused", then "failed liveness probe, will
+  # be restarted", then CrashLoopBackOff, with an empty log and exit code 143
+  # (SIGTERM) that makes it look like an application error rather than a probe.
+  #
+  # The chart exposes no startupProbe, so the startup budget has to come from a
+  # large liveness failureThreshold instead: 120s + 20s x 30 ~= 12 minutes to
+  # come up, after which steady-state detection is still 20s x 30. timeoutSeconds
+  # is 15 to match what the rest of this platform standardises on, and for the
+  # same reason as the long comment in mlflow.yaml — the default 1s is not enough
+  # for a Node app on a contended node, and every attempt then times out.
+  web:
+    replicas: 1
+    # 2Gi is not padding — it is the floor. langfuse-web is a Next.js app and
+    # Node sizes its old-space heap from the container memory limit, so a 1Gi
+    # limit yields a ~512Mi heap and the process dies with
+    #   FATAL ERROR: Reached heap limit Allocation failed -
+    #   JavaScript heap out of memory
+    # at ~503Mi during boot, long before it serves anything. Observed exactly
+    # that on this cluster. Raise the limit rather than setting
+    # NODE_OPTIONS=--max-old-space-size, so the cgroup limit and the heap stay
+    # consistent instead of letting Node overcommit past what the pod may use.
+    resources:
+      requests: { cpu: 100m, memory: 768Mi }
+      limits: { memory: 2Gi }
+    livenessProbe:
+      initialDelaySeconds: 120
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 30
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 30
+  worker:
+    replicas: 1
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 1Gi }
+    livenessProbe:
+      initialDelaySeconds: 120
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 30
+
+# ── Datastores ───────────────────────────────────────────────────────────────
+# No storageClassName anywhere below: bind whatever the cluster's default class
+# is. On Kind that is `standard` (rancher.io/local-path); naming it explicitly
+# would break on any local cluster that names its default class differently.
+# (Same reasoning as kubernetes/ml-platform/mlflow.yaml.)
+
+postgresql:
+  deploy: true
+  auth:
+    existingSecret: langfuse-secrets
+    # The chart connects as the default `postgres` superuser, so the user and
+    # admin passwords must be the same key.
+    secretKeys:
+      userPasswordKey: postgres-password
+      adminPasswordKey: postgres-password
+  primary:
+    persistence:
+      size: 2Gi
+    # resourcesPreset and resources are mutually exclusive in Bitnami charts:
+    # the preset wins unless it is set to "none". Leaving the default preset in
+    # place silently discards the resources block below.
+    resourcesPreset: none
+    resources:
+      requests: { cpu: 50m, memory: 192Mi }
+      limits: { memory: 512Mi }
+
+redis:
+  deploy: true
+  architecture: standalone
+  auth:
+    existingSecret: langfuse-secrets
+    existingSecretPasswordKey: redis-password
+  # `redis` is an alias for the Valkey subchart, which renamed master ->
+  # primary. A `master:` block here renders as silently ignored — the pod comes
+  # up with chart defaults (an 8Gi PVC and 100m/128Mi) and nothing warns you.
+  primary:
+    persistence:
+      size: 1Gi
+    resourcesPreset: none
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { memory: 192Mi }
+
+clickhouse:
+  deploy: true
+  auth:
+    existingSecret: langfuse-secrets
+    existingSecretKey: clickhouse-password
+  # Single-node. clusterEnabled: false also drops the ZooKeeper ensemble, which
+  # is what the replicated setup needs for ON CLUSTER DDL — that is 3 more pods
+  # this node has no room for. Langfuse never shards (upstream pins shards: 1),
+  # so the only thing given up here is ClickHouse-level HA.
+  replicaCount: 1
+  clusterEnabled: false
+  zookeeper:
+    enabled: false
+  resourcesPreset: none
+  resources:
+    requests: { cpu: 200m, memory: 1Gi }
+    limits: { memory: 2Gi }
+  persistence:
+    size: 5Gi
+
+s3:
+  # MinIO stands in for S3 locally. On AWS this is replaced by a real bucket —
+  # see aws/ml-platform/langfuse-values.yaml.
+  deploy: true
+  auth:
+    existingSecret: langfuse-secrets
+    rootUserSecretKey: minio-root-user
+    rootPasswordSecretKey: minio-root-password
+  resourcesPreset: none
+  resources:
+    requests: { cpu: 25m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  persistence:
+    size: 5Gi
