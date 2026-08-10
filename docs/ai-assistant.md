@@ -745,6 +745,39 @@ Input/output capture is **off** by default (`LANGFUSE_CAPTURE_IO`). Tool
 arguments and results can carry PII and credentials, and Langfuse is a separate
 store from the `[AUDIT]` log stream. Turn it on deliberately.
 
+### When the AI Observability page shows no data
+
+The page reads Langfuse through the Backstage `/langfuse` proxy, so a failure can
+sit in either. Work outwards from Langfuse:
+
+```bash
+# 1. Is Langfuse itself serving? (expects 6 pods — use instance, not name:
+#    app.kubernetes.io/name is per-component and matches only web + worker)
+kubectl get pods -n ml-platform -l app.kubernetes.io/instance=langfuse
+
+# 2. Do the project keys work directly? (expects 200)
+PK=$(kubectl get secret langfuse-init -n ml-platform -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d)
+SK=$(kubectl get secret langfuse-init -n ml-platform -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}' | base64 -d)
+curl -s -o /dev/null -w '%{http_code}\n' -u "$PK:$SK" http://langfuse.idp.local/api/public/traces?limit=1
+
+# 3. Does it work through Backstage? (expects 200)
+curl -s -H 'Authorization: Bearer local-catalog-exporter-token' \
+  'http://backstage.idp.local/api/proxy/langfuse/api/public/traces?limit=1'
+```
+
+| Symptom | Cause |
+|---|---|
+| `AuthenticationError: Missing credentials` on **any** `/api/proxy/*` route | Backstage's global backend auth gate, not a Langfuse problem. Browsers send a session token; `curl` needs the static `backend.auth.externalAccess` token, as in step 3 above. |
+| `401` from Langfuse itself | `LANGFUSE_BASIC_AUTH` is not reaching Backstage, so the proxy falls back to its `not-configured` default. Locally it must be listed under `environment:` in `local/backstage/docker-compose.yml` — `bootstrap-ai.sh` writes it to `local/backstage/.env`, but Compose reads that file for interpolation only and will not forward it on its own. |
+| `504`, and the error names **backstage.idp.local** as the target | `langfuse.idp.local` is missing from `extra_hosts` in the compose file, so it resolves to `127.0.0.1` inside the container and the proxy loops back into Backstage's own port 3000. |
+| nginx `502` on the whole portal | Backstage is down, not Langfuse. Locally it is a Docker Compose container, not a pod — check `docker ps -a --filter name=backstage` and `docker logs backstage-backstage-1`. A duplicate key anywhere in `app-config.*.yaml` throws `YAMLParseError: DUPLICATE_KEY` and exits the container; note that Python's `yaml.safe_load` accepts duplicates silently, so validating that way proves nothing. |
+| Page renders, but every run shows `0.0s` | A stale frontend bundle. `/traces` reports latency in **seconds**; dividing by 1000 was a real bug, fixed — rebuild the Backstage image to pick it up. |
+
+Config files are bind-mounted read-only, so `app-config.*.yaml` changes need only a
+container restart. Only frontend/backend code changes need a rebuild — and on a
+capacity-tight local node, scale the six Langfuse workloads to 0 first, rebuild, then
+scale back. The trace data lives in PVCs and survives that.
+
 ### Prompt versioning
 
 `scripts/sync-agent-prompts.py` pushes each agent's `systemMessage` to Langfuse

@@ -6272,7 +6272,7 @@ function LangfusePage() {
               <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
                 <Typography variant="body2" style={{ color: '#b71c1c' }}>
                   ⚠️ Couldn't reach Langfuse ({error}). Check it with{' '}
-                  <code>kubectl get pods -n ml-platform -l app.kubernetes.io/name=langfuse</code>. A 401 means{' '}
+                  <code>kubectl get pods -n ml-platform -l app.kubernetes.io/instance=langfuse</code>. A 401 means{' '}
                   <code>LANGFUSE_BASIC_AUTH</code> is not set for Backstage.
                 </Typography>
               </Paper>
