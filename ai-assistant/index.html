@@ -1248,6 +1248,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#7-mlflow-page-mlflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. MLflow page — /mlflow
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3109,6 +3118,86 @@ idp<span class="w"> </span>ai<span class="w"> </span>--timeout<span class="w"> <
 <p>The command posts a JSON-RPC 2.0 A2A message to <code>platform-assistant</code>, then polls
 <code>/api/sessions</code> for a response. Tool status lines are printed to stderr during
 processing so you can see what the agent is doing.</p>
+<hr />
+<h3 id="7-mlflow-page-mlflow">7. MLflow page — <code>/mlflow</code><a class="headerlink" href="#7-mlflow-page-mlflow" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>backstage/app/packages/app/src/extensions.tsx</code> (<code>MlflowPage</code>)</p>
+<p>Surfaces experiment tracking and the model registry inside the portal, so the
+output of the <code>mlflow-experiment</code> template and <code>idp:run-training-job</code> is visible
+without leaving Backstage. Sidebar entry <strong>MLflow</strong>; "Open MLflow UI ↗" links out
+to the real UI via <code>externalLinks.mlflow</code>.</p>
+<p>Three calls, all through the proxy, against the <strong>MLflow 2.x</strong> REST surface — the
+platform runs server v2.13.0 (<code>kubernetes/ml-platform/mlflow.yaml</code>) and 3.x-only
+endpoints 404 against it, the same pin <code>MLFLOW_CLIENT_VERSION</code> carries in
+<code>idpRunTrainingJob.ts</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Call</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Experiments</td>
+<td><code>POST /api/2.0/mlflow/experiments/search</code></td>
+</tr>
+<tr>
+<td>Runs</td>
+<td><code>POST /api/2.0/mlflow/runs/search</code> (one query for all experiments, capped at 50, reduced client-side)</td>
+</tr>
+<tr>
+<td>Registered models</td>
+<td><code>GET /api/2.0/mlflow/registered-models/search</code></td>
+</tr>
+</tbody>
+</table>
+<p>Because two of the three are POST, the proxy entry <strong>must</strong> list it:</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># backstage/app-config.local.yaml</span>
+<span class="w">    </span><span class="nt">/mlflow</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://mlflow.idp.local</span>
+<span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;GET&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;POST&#39;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">pathRewrite</span><span class="p">:</span>
+<span class="w">        </span><span class="s">&#39;^/api/proxy/mlflow&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">&#39;&#39;</span>
+
+<span class="c1"># backstage/app-config.aws.yaml — in-cluster Service DNS, since the ALB</span>
+<span class="c1"># hostname isn&#39;t known when this file is rendered into the ConfigMap</span>
+<span class="w">    </span><span class="nt">/mlflow</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://mlflow.ml-platform.svc.cluster.local:5000</span>
+<span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;GET&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;POST&#39;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">pathRewrite</span><span class="p">:</span>
+<span class="w">        </span><span class="s">&#39;^/api/proxy/mlflow&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">&#39;&#39;</span>
+</code></pre></div></td></tr></table></div>
+<p><strong>Three display states, unlike the KAgent page's single demo fallback:</strong> demo data
+with an amber banner when <code>aiStack.enabled</code> is false (nothing is deployed, so no
+request is made at all); live tables when the API answers; and a red banner
+carrying the failing endpoint and HTTP status when MLflow is deployed but
+unreachable. A crashed pod therefore reads as an outage, not as "not installed".</p>
+<p>Page and nav item are gated by <code>page:custom-pages/mlflow-platform</code> /
+<code>nav-item:custom-pages/mlflow-platform</code>, disabled by default and flipped on by
+<code>bootstrap-ai.sh</code>. That list is <strong>replaced, not merged</strong>, per config layer, so all
+four copies must agree: <code>backstage/app-config.yaml</code>, <code>app-config.local.yaml</code>,
+<code>app-config.aws.yaml</code>, and the heredoc in <code>write_backstage_ai_overlay()</code>
+(<code>scripts/lib.sh</code>).</p>
+<p>On AWS, <code>bootstrap-ai.sh</code> patches <code>MLFLOW_ALB_URL</code> into the <code>backstage-config</code>
+ConfigMap and sets <code>MLFLOW_EXTERNAL_URL</code> on the Deployment once the MLflow ALB has
+a hostname.</p>
 <hr />
 <h2 id="scaffolding-flow-step-by-step">Scaffolding flow (step-by-step)<a class="headerlink" href="#scaffolding-flow-step-by-step" title="Permanent link">&para;</a></h2>
 <p>When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-team":</p>
