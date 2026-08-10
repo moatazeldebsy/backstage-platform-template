@@ -63,6 +63,13 @@ services:
       GRAFANA_TOKEN: ${GRAFANA_TOKEN:-}
       # ArgoCD session token (JWT, not the admin password) — referenced by the /argocd proxy.
       ARGOCD_AUTH_TOKEN: ${ARGOCD_AUTH_TOKEN:-}
+      # Langfuse public-API key pair, base64'd as "publicKey:secretKey" — referenced
+      # by the /langfuse proxy behind the AI Observability page. Written to
+      # local/backstage/.env by `bootstrap-ai.sh --langfuse`; it must be listed here
+      # too, because Compose reads .env for interpolation only and does not forward
+      # it into the container on its own. Unset leaves the proxy on its
+      # "not-configured" default, which 401s and shows the page's error banner.
+      LANGFUSE_BASIC_AUTH: ${LANGFUSE_BASIC_AUTH:-}
       # Datadog API/App keys — referenced by the /datadog proxy (Datadog tab).
       DD_API_KEY: ${DD_API_KEY:-}
       DD_APP_KEY: ${DD_APP_KEY:-}
@@ -83,6 +90,10 @@ services:
       - "opencost.idp.local:host-gateway"
       - "mlflow.idp.local:host-gateway"
       - "kagent.idp.local:host-gateway"
+      # Without this, langfuse.idp.local resolves to 127.0.0.1 inside the container,
+      # so the /langfuse proxy loops back into Backstage's own port 3000 and times
+      # out with a 504 that confusingly names backstage.idp.local as the target.
+      - "langfuse.idp.local:host-gateway"
       - "idp-assistant.idp.local:host-gateway"
       - "idp-mcp-server.idp.local:host-gateway"
       - "contract-mcp-server.idp.local:host-gateway"
