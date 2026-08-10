@@ -697,6 +697,76 @@ Dashboard: **Grafana** → "AI Platform"
 
 ---
 
+## LLM observability (Langfuse)
+
+Prometheus counts *that* a tool was called. Langfuse records *what the model
+actually did*: the prompt, the completion, token counts, cost, latency, and the
+tool calls inside each agent run.
+
+Deployed opt-in, because the chart brings Postgres, ClickHouse, Valkey and MinIO
+with it (6 pods, ~2.4Gi) and the local Kind node has little to spare:
+
+```bash
+./scripts/bootstrap-ai.sh --langfuse      # local: opt-in
+./scripts/bootstrap-ai.sh --aws           # AWS: on by default (--skip-langfuse to opt out)
+```
+
+Then open **AI Observability** in the Backstage sidebar, or
+<http://langfuse.idp.local> directly. The admin login is printed during
+bootstrap and recoverable with:
+
+```bash
+kubectl get secret langfuse-init -n ml-platform \
+  -o jsonpath='{.data.LANGFUSE_INIT_USER_PASSWORD}' | base64 -d
+```
+
+### How traces get there
+
+Nothing in Backstage produces them. KAgent exports OTLP directly:
+
+- **Agent LLM calls** — the KAgent runtime already ships OpenLLMetry
+  instrumentors (Anthropic, OpenAI, Google), so enabling `otel.tracing` is
+  enough to get `gen_ai.*` spans that Langfuse parses natively into model,
+  tokens and cost. `bootstrap-ai.sh --langfuse` appends that block to the
+  KAgent values and mounts the OTLP auth header from the `langfuse-kagent-otel`
+  Secret.
+- **MCP tool calls** — each server wraps its tools in a span
+  (`services/*/src/telemetry.ts`), tagged with `langfuse.session.id` (the
+  calling agent) and `langfuse.user.id` (the Backstage user). No-ops entirely
+  unless `LANGFUSE_OTLP_ENDPOINT` is set.
+
+> **Gotcha, and it fails silently.** The OTLP protocol value must be the exact
+> string `http/protobuf`. KAgent compares against that literal and falls back to
+> **gRPC** for anything else — including the intuitive `"http"` — which sends
+> gRPC frames at Langfuse's HTTP ingest path and drops every span with no error
+> in any log.
+
+Input/output capture is **off** by default (`LANGFUSE_CAPTURE_IO`). Tool
+arguments and results can carry PII and credentials, and Langfuse is a separate
+store from the `[AUDIT]` log stream. Turn it on deliberately.
+
+### Prompt versioning
+
+`scripts/sync-agent-prompts.py` pushes each agent's `systemMessage` to Langfuse
+as a versioned prompt, and fails CI when a CRD and Langfuse disagree:
+
+```bash
+python3 scripts/sync-agent-prompts.py --push          # CRDs → Langfuse
+python3 scripts/sync-agent-prompts.py --check         # drift gate
+python3 scripts/sync-agent-prompts.py --check-evals   # CRD vs the DeepEval copy (runs in CI)
+```
+
+Git stays the source of truth. KAgent has no per-invocation prompt fetch, so
+Langfuse is the authoring and review surface, not the runtime. `systemMessageFrom`
+(a ConfigMap/Secret reference) does exist in `kagent.dev/v1alpha2` and is the
+path to deploying Langfuse-authored prompts without editing CRDs.
+
+`--check-evals` matters more than it looks: the DeepEval suite keeps a verbatim
+copy of `idp-agent.yaml`'s prompt, and when that copy drifts, CI grades a prompt
+that is not deployed.
+
+---
+
 ## Re-applying after a cluster rebuild
 
 `bootstrap-ai.sh` applies all agents, MCP servers, and ModelConfigs automatically.

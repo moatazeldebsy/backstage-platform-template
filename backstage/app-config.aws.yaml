@@ -32,6 +32,10 @@ app:
         disabled: true
     - nav-item:custom-pages/kagent-platform:
         disabled: true
+    - page:custom-pages/langfuse-platform:
+        disabled: true
+    - nav-item:custom-pages/langfuse-platform:
+        disabled: true
 
 # Drives the hardcoded AI links on the custom Home / Support / Learning-Center
 # pages, which app.extensions cannot reach. bootstrap-ai.sh --aws flips this
@@ -102,6 +106,19 @@ proxy:
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''
+      allowedMethods: ['GET', 'POST']
+      changeOrigin: true
+      pathRewrite:
+    # this ConfigMap is rendered. LANGFUSE_BASIC_AUTH is set on the Backstage
+    # deployment by bootstrap-ai.sh from the langfuse-init Secret.
+    /langfuse:
+      target: http://langfuse-web.ml-platform.svc.cluster.local:3000
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Basic ${LANGFUSE_BASIC_AUTH:-bm90LWNvbmZpZ3VyZWQ=}
+      pathRewrite:
+        '^/api/proxy/langfuse': ''
     # Contract testing (docs/contract-testing.md). bootstrap-ai.sh --aws deploys
     # contract-mcp-server — ECR repo, DynamoDB IRSA role and ALB included — but
     # this proxy entry was only ever added to app-config.local.yaml, so on EKS
@@ -180,6 +197,8 @@ externalLinks:
   argocd: http://ARGOCD_ALB_URL
   grafana: http://GRAFANA_ALB_URL
   kagent: http://KAGENT_ALB_URL
+  # Substituted by scripts/bootstrap-ai.sh once the Langfuse ALB has a hostname.
+  langfuse: http://LANGFUSE_ALB_URL
 
 # GitHub App integration — replaces the personal access token used in app-config.yaml.
 # Higher rate limits (5 000 req/hr per installation vs 5 000/hr per PAT globally),

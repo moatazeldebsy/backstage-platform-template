@@ -42,6 +42,7 @@ import PersonIcon from '@material-ui/icons/Person';
 import SearchOutlinedIcon from '@material-ui/icons/SearchOutlined';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import SmartToyIcon from '@material-ui/icons/EmojiObjects';
+import TimelineIcon from '@material-ui/icons/Timeline';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import ChatIcon from '@material-ui/icons/Chat';
 import SchoolIcon from '@material-ui/icons/School';
@@ -6093,6 +6094,292 @@ const kagentNavItem = NavItemBlueprint.make({
   params: { title: 'KAgent', icon: SmartToyIcon as any, routeRef: kagentPageRouteRef },
 });
 
+// Relative timestamps for the AI Observability table below.
+const relTime = (ms?: number): string => {
+  if (!ms || isNaN(ms)) return '—';
+  const secs = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+};
+
+// ── AI Observability (Langfuse) ────────────────────────────────────────────────
+// LLM tracing for the KAgent agents: token counts, cost, latency and tool calls
+// per agent run. KAgent exports OTLP straight to Langfuse (otel.tracing in
+// local/kagent/values.yaml), so nothing in Backstage produces these traces —
+// this page only reads them back through the /langfuse proxy.
+//
+// Deployed by `./scripts/bootstrap-ai.sh --langfuse` (opt-in locally).
+
+interface LangfuseModelUsage {
+  model:       string;
+  traces:      number;
+  inputUnits:  number;
+  outputUnits: number;
+  cost:        number;
+}
+
+interface LangfuseTrace {
+  id:        string;
+  name:      string;
+  agent:     string;
+  user:      string;
+  latency:   string;
+  cost:      string;
+  timestamp: string;
+}
+
+const DEMO_LANGFUSE_MODELS: LangfuseModelUsage[] = [
+  { model: 'claude-haiku-4-5',  traces: 128, inputUnits: 412_330, outputUnits: 38_210, cost: 0.62 },
+  { model: 'claude-sonnet-4-5', traces: 34,  inputUnits: 121_880, outputUnits: 15_440, cost: 1.44 },
+];
+
+const DEMO_LANGFUSE_TRACES: LangfuseTrace[] = [
+  { id: 'c1a90f2b', name: 'idp-assistant',      agent: 'idp-assistant',      user: 'user:default/moataz', latency: '4.2s',  cost: '$0.0041', timestamp: '2 min ago' },
+  { id: '7be31d04', name: 'qa-assistant',       agent: 'qa-assistant',       user: '—',                   latency: '2.8s',  cost: '$0.0012', timestamp: '11 min ago' },
+  { id: '9f04ca77', name: 'cost-agent',         agent: 'cost-agent',         user: 'user:default/moataz', latency: '6.1s',  cost: '$0.0089', timestamp: '1 hour ago' },
+  { id: '2d77b810', name: 'platform-assistant', agent: 'platform-assistant', user: '—',                   latency: '11.4s', cost: '$0.0154', timestamp: '3 hours ago' },
+];
+
+const fmtUnits = (n: number): string =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
+
+const fmtCost = (n: number): string => (n >= 0.01 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(4)}` : '$0.00');
+
+function LangfusePage() {
+  const fetchApi    = useApi(fetchApiRef);
+  const configApi   = useApi(configApiRef);
+  const aiEnabled   = useAiStackEnabled();
+  const base        = configApi.getString('backend.baseUrl');
+  const langfuseUrl = configApi.getOptionalString('externalLinks.langfuse') ?? 'http://langfuse.idp.local';
+
+  const [models, setModels]   = useState<LangfuseModelUsage[]>([]);
+  const [traces, setTraces]   = useState<LangfuseTrace[]>([]);
+  const [totals, setTotals]   = useState({ traces: 0, cost: 0, observations: 0 });
+  const [status, setStatus]   = useState<'loading' | 'demo' | 'error' | 'ok'>('loading');
+  const [error, setError]     = useState('');
+
+  useEffect(() => {
+    // Nothing deployed to reach — show the shape of the page rather than a 404.
+    if (!aiEnabled) {
+      setModels(DEMO_LANGFUSE_MODELS);
+      setTraces(DEMO_LANGFUSE_TRACES);
+      setTotals({ traces: 162, cost: 2.06, observations: 1043 });
+      setStatus('demo');
+      return;
+    }
+
+    // Langfuse public API. Auth is HTTP Basic over the project key pair and is
+    // injected by the proxy (see the /langfuse endpoint in app-config.*.yaml) —
+    // deliberately not held in the frontend.
+    const api = (path: string) =>
+      fetchApi
+        .fetch(`${base}/api/proxy/langfuse/api/public${path}`)
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`${path} → HTTP ${r.status}`))));
+
+    // Last 7 days of usage, aggregated server-side by Langfuse.
+    const from = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+
+    Promise.all([
+      api(`/metrics/daily?fromTimestamp=${encodeURIComponent(from)}`),
+      api('/traces?limit=25'),
+    ])
+      .then(([daily, traceData]: [any, any]) => {
+        const days: any[] = daily?.data ?? [];
+
+        // Roll the per-day, per-model buckets up into one row per model.
+        const byModel = new Map<string, LangfuseModelUsage>();
+        let costTotal = 0;
+        let traceTotal = 0;
+        let obsTotal = 0;
+
+        for (const day of days) {
+          traceTotal += Number(day?.countTraces ?? 0);
+          obsTotal += Number(day?.countObservations ?? 0);
+          costTotal += Number(day?.totalCost ?? 0);
+          for (const u of day?.usage ?? []) {
+            const key = String(u?.model ?? 'unknown');
+            const row = byModel.get(key) ?? { model: key, traces: 0, inputUnits: 0, outputUnits: 0, cost: 0 };
+            row.traces += Number(u?.countTraces ?? 0);
+            row.inputUnits += Number(u?.inputUsage ?? 0);
+            row.outputUnits += Number(u?.outputUsage ?? 0);
+            row.cost += Number(u?.totalCost ?? 0);
+            byModel.set(key, row);
+          }
+        }
+
+        setModels([...byModel.values()].sort((a, b) => b.cost - a.cost));
+        setTotals({ traces: traceTotal, cost: costTotal, observations: obsTotal });
+
+        setTraces(
+          (traceData?.data ?? []).slice(0, 25).map((t: any) => ({
+            id:   String(t?.id ?? '').slice(0, 8),
+            name: t?.name ?? '—',
+            // KAgent sets service.name per agent; the MCP servers set
+            // langfuse.session.id to the calling agent id (see telemetry.ts).
+            agent: t?.sessionId ?? t?.name ?? '—',
+            user:  t?.userId ?? '—',
+            latency: t?.latency ? `${(Number(t.latency) / 1000).toFixed(1)}s` : '—',
+            cost:    t?.totalCost !== undefined ? fmtCost(Number(t.totalCost)) : '—',
+            timestamp: relTime(t?.timestamp ? Date.parse(t.timestamp) : undefined),
+          })),
+        );
+
+        setStatus('ok');
+      })
+      .catch((e: Error) => {
+        setError(e.message ?? String(e));
+        setStatus('error');
+      });
+  }, [aiEnabled, base, fetchApi]);
+
+  return (
+    <Page themeId="tool">
+      <Header
+        title="AI Observability"
+        subtitle={`LLM tracing · cost · latency · powered by Langfuse${status === 'ok' ? ` · ${totals.traces} trace${totals.traces !== 1 ? 's' : ''} (7d)` : ''}`}
+      />
+      <Content>
+        {status === 'loading' && <Progress />}
+        {status !== 'loading' && (
+          <>
+            {status === 'demo' && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — Langfuse is not deployed. Run <code>./scripts/bootstrap-ai.sh --langfuse</code> to install it
+                  and start exporting KAgent traces.
+                </Typography>
+              </Paper>
+            )}
+            {status === 'error' && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
+                <Typography variant="body2" style={{ color: '#b71c1c' }}>
+                  ⚠️ Couldn't reach Langfuse ({error}). Check it with{' '}
+                  <code>kubectl get pods -n ml-platform -l app.kubernetes.io/name=langfuse</code>. A 401 means{' '}
+                  <code>LANGFUSE_BASIC_AUTH</code> is not set for Backstage.
+                </Typography>
+              </Paper>
+            )}
+
+            {/* Summary cards */}
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Traces',       value: String(totals.traces),         sub: 'agent runs (last 7 days)', color: '#1976d2' },
+                { label: 'Observations', value: String(totals.observations),   sub: 'LLM + tool spans',         color: '#0288d1' },
+                { label: 'LLM Cost',     value: fmtCost(totals.cost),          sub: 'last 7 days',              color: '#7b1fa2' },
+                { label: 'Models',       value: String(models.length),         sub: 'in use',                   color: '#4caf50' },
+              ].map(({ label, value, sub, color }) => (
+                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
+                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
+                  <Typography variant="caption" color="textSecondary">{sub}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            {/* Cost + token usage by model */}
+            <Paper style={{ marginBottom: 20 }}>
+              <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6" style={{ flex: 1 }}>Usage by model (7 days)</Typography>
+                <Button variant="outlined" size="small" href={langfuseUrl} target="_blank" style={{ fontSize: 11 }}>
+                  Open Langfuse ↗
+                </Button>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Model</strong></TableCell>
+                      <TableCell align="right"><strong>Traces</strong></TableCell>
+                      <TableCell align="right"><strong>Input units</strong></TableCell>
+                      <TableCell align="right"><strong>Output units</strong></TableCell>
+                      <TableCell align="right"><strong>Cost</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {models.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5}>
+                          <Typography variant="body2" color="textSecondary">
+                            No model usage recorded yet — chat with an agent in the AI Assistant to generate traces.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {models.map(m => (
+                      <TableRow key={m.model}>
+                        <TableCell><code style={{ fontSize: 12 }}>{m.model}</code></TableCell>
+                        <TableCell align="right">{m.traces}</TableCell>
+                        <TableCell align="right">{fmtUnits(m.inputUnits)}</TableCell>
+                        <TableCell align="right">{fmtUnits(m.outputUnits)}</TableCell>
+                        <TableCell align="right">{fmtCost(m.cost)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+
+            {/* Recent traces */}
+            <Paper>
+              <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6">Recent agent runs</Typography>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Trace</strong></TableCell>
+                      <TableCell><strong>Agent / session</strong></TableCell>
+                      <TableCell><strong>User</strong></TableCell>
+                      <TableCell align="right"><strong>Latency</strong></TableCell>
+                      <TableCell align="right"><strong>Cost</strong></TableCell>
+                      <TableCell><strong>When</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {traces.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6}>
+                          <Typography variant="body2" color="textSecondary">No traces yet.</Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {traces.map(t => (
+                      <TableRow key={t.id}>
+                        <TableCell><code style={{ fontSize: 11 }}>{t.id}</code></TableCell>
+                        <TableCell>{t.agent}</TableCell>
+                        <TableCell><span style={{ fontSize: 12 }}>{t.user}</span></TableCell>
+                        <TableCell align="right">{t.latency}</TableCell>
+                        <TableCell align="right">{t.cost}</TableCell>
+                        <TableCell>{t.timestamp}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const langfusePageRouteRef = createRouteRef();
+const langfusePage = PageBlueprint.make({
+  name: 'langfuse-platform',
+  params: { path: '/langfuse', routeRef: langfusePageRouteRef, loader: async () => <LangfusePage /> },
+});
+const langfuseNavItem = NavItemBlueprint.make({
+  name: 'langfuse-platform',
+  params: { title: 'AI Observability', icon: TimelineIcon as any, routeRef: langfusePageRouteRef },
+});
+
 // ── Support / Help Center ──────────────────────────────────────────────────────
 // Static help hub: Get Help channels, on-call info, useful links, and platform
 // announcements. PagerDuty on-call pulled from proxy when token is set.
@@ -6283,6 +6570,8 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     adminNavItem,
     kagentPage,
     kagentNavItem,
+    langfusePage,
+    langfuseNavItem,
     supportPage,
     supportNavItem,
     // Existing pages
