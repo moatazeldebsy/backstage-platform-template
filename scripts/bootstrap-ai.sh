@@ -839,7 +839,33 @@ else
     else
       echo "LANGFUSE_BASIC_AUTH=${_LF_BASIC}" >> "$_lf_env"
     fi
-    info "  LANGFUSE_BASIC_AUTH written to local/backstage/.env (restart Backstage to pick it up)."
+    check "LANGFUSE_BASIC_AUTH written to local/backstage/.env"
+
+    # Compose reads .env for interpolation at container-create time only, so the
+    # already-running Backstage still holds the old (or no) value — and
+    # bootstrap-local.sh always starts Backstage before this script runs. Without
+    # this recreate a fresh install ends with the AI Observability page showing a
+    # 401 banner, which reads as a broken deploy rather than a pending step.
+    # The AWS branch below gets this for free: `kubectl set env` rolls the pod.
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "backstage-backstage-1"; then
+      _lf_compose="docker compose -f ${REPO_ROOT}/local/backstage/docker-compose.yml"
+      # Defaulted rather than bare: the script runs under `set -u`, and _provider
+      # is assigned in a branch far above this one.
+      [[ "${_provider:-kind}" == "rancher-desktop" ]] && \
+        _lf_compose="${_lf_compose} -f ${REPO_ROOT}/local/backstage/docker-compose.rancher.yml"
+      info "  Recreating the Backstage container to pick it up..."
+      # --no-build is deliberate: this must never trigger the multi-stage image
+      # build, which is far heavier than anything else here and would compete
+      # with the Langfuse pods still starting up.
+      if $_lf_compose up -d --no-build backstage >/dev/null 2>&1; then
+        check "Backstage restarted with LANGFUSE_BASIC_AUTH"
+      else
+        warn "  Could not recreate Backstage automatically. Run:"
+        warn "    ${_lf_compose} up -d --no-build backstage"
+      fi
+    else
+      info "  Start Backstage with ./scripts/bootstrap-local.sh --start-backstage to pick it up."
+    fi
   elif kubectl get deployment backstage -n backstage >/dev/null 2>&1; then
     kubectl set env deployment/backstage -n backstage "LANGFUSE_BASIC_AUTH=${_LF_BASIC}" >/dev/null
     check "LANGFUSE_BASIC_AUTH set on the Backstage deployment"
