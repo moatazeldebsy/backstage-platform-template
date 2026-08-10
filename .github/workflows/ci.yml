@@ -53,6 +53,7 @@ jobs:
       terraform: ${{ steps.filter.outputs.terraform }}
       python-obs: ${{ steps.filter.outputs.python-obs }}
       contract-mcp: ${{ steps.filter.outputs.contract-mcp }}
+      mcp-servers: ${{ steps.filter.outputs.mcp-servers }}
       scripts: ${{ steps.filter.outputs.scripts }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -85,7 +86,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp scripts; do
+            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp mcp-servers scripts; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0

@@ -761,7 +761,10 @@ SK=$(kubectl get secret langfuse-init -n ml-platform -o jsonpath='{.data.LANGFUS
 curl -s -o /dev/null -w '%{http_code}\n' -u "$PK:$SK" http://langfuse.idp.local/api/public/traces?limit=1
 
 # 3. Does it work through Backstage? (expects 200)
-curl -s -H 'Authorization: Bearer local-catalog-exporter-token' \
+#    Not a secret: this is the static local dev token declared in plaintext under
+#    backend.auth.externalAccess in backstage/app-config.local.yaml.
+BACKSTAGE_TOKEN=local-catalog-exporter-token
+curl -s -H "Authorization: Bearer ${BACKSTAGE_TOKEN}" \
   'http://backstage.idp.local/api/proxy/langfuse/api/public/traces?limit=1'
 ```
 
