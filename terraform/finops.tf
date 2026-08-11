@@ -18,6 +18,39 @@ resource "aws_sns_topic" "cost_alerts" {
   }
 }
 
+# AWS Budgets and Cost Anomaly Detection are AWS-owned services publishing into
+# this topic from outside the account's own principals, so they need an explicit
+# topic policy. Without it AWS Budgets rejects the subscriber at create time
+# ("Invalid SNS Topic ARN or Insufficient Permissions") and anomaly alerts are
+# accepted but silently never delivered — the failure mode looks like "alerting
+# is configured but nothing ever fires".
+data "aws_iam_policy_document" "cost_alerts_topic" {
+  statement {
+    sid       = "AllowAWSCostServicesToPublish"
+    effect    = "Allow"
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.cost_alerts.arn]
+
+    principals {
+      type        = "Service"
+      identifiers = ["budgets.amazonaws.com", "costalerts.amazonaws.com"]
+    }
+
+    # Scope the grant to this account so the topic is not publishable by these
+    # services on behalf of any other AWS account.
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "cost_alerts" {
+  arn    = aws_sns_topic.cost_alerts.arn
+  policy = data.aws_iam_policy_document.cost_alerts_topic.json
+}
+
 # ── Lambda: SNS → Slack ───────────────────────────────────────────────────────
 
 # source_file, not source_dir: handler.py only needs stdlib + boto3, and
@@ -106,6 +139,10 @@ resource "aws_budgets_budget" "monthly" {
     notification_type         = "FORECASTED"
     subscriber_sns_topic_arns = [aws_sns_topic.cost_alerts.arn]
   }
+
+  # AWS Budgets validates that it can publish to the SNS subscriber at create
+  # time, so the topic policy must exist first or the apply fails.
+  depends_on = [aws_sns_topic_policy.cost_alerts]
 }
 
 # ── AWS Cost Anomaly Detection ────────────────────────────────────────────────
@@ -116,24 +153,36 @@ resource "aws_ce_anomaly_monitor" "cluster" {
   monitor_dimension = "SERVICE"
 }
 
-# Disabled: AWS requires Email subscriptions for DAILY frequency, not SNS
-# TODO: Reconfigure with email subscriber or use REALTIME frequency with SNS
-# resource "aws_ce_anomaly_subscription" "cluster" {
-#   name      = "${var.cluster_name}-anomaly-subscription"
-#   frequency = "DAILY"
-#
-#   monitor_arn_list = [aws_ce_anomaly_monitor.cluster.arn]
-#
-#   subscriber {
-#     type    = "SNS"
-#     address = aws_sns_topic.cost_alerts.arn
-#   }
-#
-#   threshold_expression {
-#     dimension {
-#       key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
-#       values        = ["20"]
-#       match_options = ["GREATER_THAN_OR_EQUAL"]
-#     }
-#   }
-# }
+# frequency must be IMMEDIATE for an SNS subscriber — AWS only accepts DAILY and
+# WEEKLY for EMAIL, which is what made the original DAILY+SNS combination invalid.
+# IMMEDIATE routes each anomaly straight to the topic, and from there through the
+# same SNS → Lambda → Slack path as the budget alerts.
+resource "aws_ce_anomaly_subscription" "cluster" {
+  name      = "${var.cluster_name}-anomaly-subscription"
+  frequency = "IMMEDIATE"
+
+  monitor_arn_list = [aws_ce_anomaly_monitor.cluster.arn]
+
+  subscriber {
+    type    = "SNS"
+    address = aws_sns_topic.cost_alerts.arn
+  }
+
+  threshold_expression {
+    dimension {
+      key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+      values        = ["20"]
+      match_options = ["GREATER_THAN_OR_EQUAL"]
+    }
+  }
+
+  # The topic policy is what makes costalerts.amazonaws.com able to publish;
+  # without this dependency Terraform can create the subscription first and the
+  # first anomalies are dropped.
+  depends_on = [aws_sns_topic_policy.cost_alerts]
+
+  tags = {
+    Project   = var.cluster_name
+    ManagedBy = "terraform"
+  }
+}

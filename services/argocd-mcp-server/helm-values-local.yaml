@@ -73,3 +73,13 @@ podLabels:
 
 autoscaling:
   enabled: false
+
+# Langfuse tracing for src/telemetry.ts. The langfuse-otel secret carries
+# LANGFUSE_OTLP_ENDPOINT / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY and is
+# created per-namespace by bootstrap-ai.sh (namespaces labelled
+# idp.io/langfuse=enabled). optional: true because Langfuse is opt-in — without
+# it, every MCP server would fail to start on a cluster deployed without Langfuse.
+envFrom:
+  - secretRef:
+      name: langfuse-otel
+      optional: true
