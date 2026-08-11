@@ -30,14 +30,22 @@ settled (measured with `kubectl top`, not estimated):
 | GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts) | `bootstrap-local.sh` | ~310m | ~0.8 GB |
 | Your services (`services-dev`) | `bootstrap-local.sh` | ~200m | ~0.4 GB |
 | **AI/ML (KAgent, MLflow, MCP servers)** | `bootstrap-ai.sh` | ~300m | **~2.9 GB** |
-| **Total, everything on** | | **~3.6 cores** | **~9 GB** |
+| **Langfuse (LLM observability, 6 pods)** | `bootstrap-ai.sh --langfuse` | ~500m | **~2.4 GB** |
+| **Total, everything on** | | **~4.1 cores** | **~11.4 GB** |
+
+Langfuse is opt-in precisely because of that last row — it is the single most
+expensive layer after core Kubernetes, and `langfuse-web` will not run under a
+1 GB limit (Node sizes its heap from the container limit and OOMs at ~503 MB;
+2 GB is the floor). Leave `--langfuse` off unless you are actually working on
+LLM tracing.
 
 Give the container VM (Docker Desktop → Settings → Resources, or Rancher Desktop
 → Virtual Machine) at least:
 
 | Setup | VM CPU | VM memory | Notes |
 |---|---:|---:|---|
-| **Recommended** | 8 | 16 GB | Full stack including AI/ML, with headroom to build images and run Backstage at the same time |
+| **Recommended** | 8 | 16 GB | Full stack including AI/ML, with headroom to build images and run Backstage at the same time. **Not with `--langfuse` as well** — at ~11.4 GB there is no headroom left, and rebuilding Backstage while Langfuse runs will destabilise the control plane. Scale the 6 Langfuse workloads to 0 first, rebuild, then scale back. |
+| **Full stack + Langfuse** | 10 | 20 GB | What `--langfuse` actually wants if you need to build images without scaling anything down |
 | **Minimum for the full stack** | 6 | 12 GB | Works, but sits at ~75% memory with no headroom — see the symptoms below |
 | **Without AI/ML** | 4 | 8 GB | `bootstrap-local.sh` only; don't run `bootstrap-ai.sh` |
 | **Core only** | 2 | 6 GB | Add `--skip-obs --skip-policies` (see below) |
