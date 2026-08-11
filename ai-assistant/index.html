@@ -1507,6 +1507,48 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#instrumenting-your-own-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Instrumenting your own service
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Instrumenting your own service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-credentials-reach-a-service-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the credentials reach a service namespace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cost-shows-000-for-a-model-langfuse-doesnt-know" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cost shows $0.00 for a model Langfuse doesn't know
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-service-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-service view
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#when-the-ai-observability-page-shows-no-data" class="md-nav__link">
     <span class="md-ellipsis">
       When the AI Observability page shows no data
@@ -3654,6 +3696,77 @@ in any log.</p>
 <p>Input/output capture is <strong>off</strong> by default (<code>LANGFUSE_CAPTURE_IO</code>). Tool
 arguments and results can carry PII and credentials, and Langfuse is a separate
 store from the <code>[AUDIT]</code> log stream. Turn it on deliberately.</p>
+<h3 id="instrumenting-your-own-service">Instrumenting your own service<a class="headerlink" href="#instrumenting-your-own-service" title="Permanent link">&para;</a></h3>
+<p>The two paths above cover platform-owned workloads. For a team's own service
+there are two self-service front doors in the scaffolder:</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enable Langfuse LLM Tracing</strong> (<code>enable-langfuse-tracing</code>)</td>
+<td>The service already exists. Opens a PR adding a drop-in telemetry module (runnable for Node.js and Python, setup notes for Go/JVM/Ruby), the Helm <code>envFrom</code> block, and the catalog annotation.</td>
+</tr>
+<tr>
+<td><strong>LLM App (Python + Langfuse)</strong> (<code>llm-app-langfuse</code>)</td>
+<td>You are starting a new one. Scaffolds a FastAPI service calling Claude with the instrumentation already wired.</td>
+</tr>
+</tbody>
+</table>
+<p>Both produce a service that reports into the same <code>idp-agents</code> project, tagged
+with its own name — there is no per-service project or key pair to manage.</p>
+<h4 id="how-the-credentials-reach-a-service-namespace">How the credentials reach a service namespace<a class="headerlink" href="#how-the-credentials-reach-a-service-namespace" title="Permanent link">&para;</a></h4>
+<p>The project key pair is minted <strong>in-cluster</strong> into <code>secret/langfuse-init</code> in
+<code>ml-platform</code>, and Kubernetes Secrets are namespace-scoped. The platform
+therefore copies it, by label, into a <code>langfuse-otel</code> Secret in every namespace
+that opts in:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>namespace<span class="w"> </span>&lt;ns&gt;<span class="w"> </span>idp.io/langfuse<span class="o">=</span>enabled
+./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse-keys-only<span class="w">     </span><span class="c1"># idempotent; deploys nothing</span>
+</code></pre></div></td></tr></table></div>
+<p><code>bootstrap-ai.sh --langfuse</code> labels <code>services-dev</code> and runs this itself, so a
+service deployed there needs nothing extra. Workloads already running when the
+Secret lands need a restart — <code>envFrom</code> is read at container start.</p>
+<p>Opting in by label rather than by a hardcoded namespace list is deliberate: a
+scaffolded service lands in a namespace this script has never heard of, and
+asking a developer to edit a bootstrap script to turn on their own tracing is
+not self-service.</p>
+<p>On AWS the same pair is also mirrored to Secrets Manager at
+<code>idp-mvp/langfuse/project-keys</code>, so teams who prefer pure GitOps can commit an
+<code>ExternalSecret</code> named <code>langfuse-otel</code> instead. Locally there is no External
+Secrets install (that is <code>bootstrap.sh</code>, not <code>bootstrap-local.sh</code>), so the label
+is the only mechanism there.</p>
+<h4 id="cost-shows-000-for-a-model-langfuse-doesnt-know">Cost shows $0.00 for a model Langfuse doesn't know<a class="headerlink" href="#cost-shows-000-for-a-model-langfuse-doesnt-know" title="Permanent link">&para;</a></h4>
+<p>Langfuse ships a built-in model price table, and a pinned chart's table is frozen
+at its release date — this build stops at <code>claude-opus-4-8</code>. A trace on anything
+newer still records <strong>tokens and latency correctly</strong>, but Langfuse cannot price
+it, so <code>calculatedTotalCost</code> is <code>0</code> and every cost column reads <code>$0.00</code>. It looks
+exactly like broken instrumentation and is not.</p>
+<p><code>bootstrap-ai.sh</code> seeds the missing definitions after Langfuse comes up (see
+<code>_seed_langfuse_model_prices</code>), so this is handled on a fresh install. Two things
+to know:</p>
+<ul>
+<li><strong>Pricing is applied at ingest.</strong> Traces recorded before the price existed keep
+  their <code>$0.00</code>; only new traces are priced.</li>
+<li><strong>Seeded models price input/output only.</strong> Langfuse's create endpoint accepts
+  the older <code>unit</code> + <code>inputPrice</code>/<code>outputPrice</code> schema, not the <code>prices</code> map its
+  built-in entries expose, so cached tokens fall back to the full input price
+  rather than the discounted cache rate. A cache-heavy workload therefore reads
+  slightly high. Add the cache tiers by hand in the Langfuse UI if that matters.</li>
+</ul>
+<p>When a new model appears, add it to the <code>specs</code> list in that function.</p>
+<h4 id="per-service-view">Per-service view<a class="headerlink" href="#per-service-view" title="Permanent link">&para;</a></h4>
+<p>A component carrying the <code>langfuse.com/service-name</code> annotation grows a
+<strong>Langfuse</strong> tab on its Backstage entity page, showing that service's traces,
+cost and average latency. It filters by Langfuse <strong>tag</strong> — the instrumentation
+sets <code>langfuse.trace.tags</code> to the service name, because <code>/traces.name</code> is the
+HTTP route KAgent served and <code>sessionId</code> is a per-conversation UUID, so neither
+identifies a service. Keep the annotation equal to <code>OTEL_SERVICE_NAME</code> in the
+service's Helm values; they are the two halves of that filter.</p>
 <h3 id="when-the-ai-observability-page-shows-no-data">When the AI Observability page shows no data<a class="headerlink" href="#when-the-ai-observability-page-shows-no-data" title="Permanent link">&para;</a></h3>
 <p>The page reads Langfuse through the Backstage <code>/langfuse</code> proxy, so a failure can
 sit in either. Work outwards from Langfuse:</p>
