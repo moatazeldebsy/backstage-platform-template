@@ -1,0 +1,236 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: enable-langfuse-tracing
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: advanced
+    idp.io/topic: observability
+    idp.io/tutorial-type: template
+  title: Enable Langfuse LLM Tracing
+  description: >
+    Opens a PR against an existing service repository that wires it into the platform's Langfuse
+    instance: a drop-in OpenTelemetry module (runnable for Node.js and Python, instructions for the
+    other runtimes), the Helm values block that injects the credentials, and the catalog annotation
+    that lights up the Langfuse tab on the service's entity page. The Langfuse deployment and its
+    project API keys are already provisioned platform-wide — no new secrets are created per service.
+  tags:
+    - langfuse
+    - llm
+    - ai
+    - observability
+    - tracing
+    - platform
+    - local
+    - aws
+    - v1
+    - advanced
+spec:
+  owner: platform-team
+  type: platform-capability
+
+  parameters:
+    - title: Target Service
+      required:
+        - targetRepoUrl
+        - owner
+        - language
+        - namespace
+      properties:
+        targetService:
+          title: Target Service (in Backstage catalog)
+          type: string
+          description: The service you want to send LLM traces to Langfuse
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              - kind: Component
+                spec.type: service
+              - kind: Component
+                spec.type: website
+        targetRepoUrl:
+          title: Target Service Repository
+          type: string
+          description: GitHub repo to open the PR against
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        language:
+          title: Language / Runtime
+          type: string
+          description: >
+            Node.js and Python get a runnable telemetry module; the others get setup instructions
+            for their OpenTelemetry SDK.
+          enum:
+            - nodejs
+            - python
+            - go
+            - jvm
+            - ruby
+          enumNames:
+            - Node.js (runnable module)
+            - Python (runnable module)
+            - Go (instructions)
+            - JVM (Java/Kotlin) (instructions)
+            - Ruby (instructions)
+        namespace:
+          title: Kubernetes Namespace
+          type: string
+          description: >
+            The namespace this service is deployed into. It gets labelled so the platform can copy
+            the Langfuse project keys into it.
+          default: services-dev
+
+    - title: Tracing Configuration
+      properties:
+        captureIo:
+          title: Capture prompt and completion text
+          type: boolean
+          description: >
+            Records the actual prompts and model outputs on each span. Leave OFF unless you are
+            certain the service never handles personal or otherwise sensitive data — traces are
+            readable by anyone with Langfuse access.
+          default: false
+        sampleRate:
+          title: Trace sample rate
+          type: number
+          description: Fraction of root traces to record, 0.0–1.0. Lower it for high-traffic services.
+          default: 1.0
+          minimum: 0
+          maximum: 1
+
+  steps:
+    - id: fetch-common
+      name: Generate common Langfuse files
+      action: fetch:template
+      input:
+        url: ./skeleton-addon/common
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+          language: ${{ parameters.language }}
+          namespace: ${{ parameters.namespace }}
+          captureIo: ${{ parameters.captureIo }}
+          sampleRate: ${{ parameters.sampleRate }}
+
+    - id: fetch-lang-nodejs
+      name: Generate Node.js telemetry module
+      action: fetch:template
+      if: ${{ parameters.language === 'nodejs' }}
+      input:
+        url: ./skeleton-addon/lang-nodejs
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-lang-python
+      name: Generate Python telemetry module
+      action: fetch:template
+      if: ${{ parameters.language === 'python' }}
+      input:
+        url: ./skeleton-addon/lang-python
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-lang-go
+      name: Generate Go instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'go' }}
+      input:
+        url: ./skeleton-addon/lang-go
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-lang-jvm
+      name: Generate JVM instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'jvm' }}
+      input:
+        url: ./skeleton-addon/lang-jvm
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-lang-ruby
+      name: Generate Ruby instrumentation notes
+      action: fetch:template
+      if: ${{ parameters.language === 'ruby' }}
+      input:
+        url: ./skeleton-addon/lang-ruby
+        values:
+          repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: publish-pr
+      name: Open Pull Request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.targetRepoUrl }}
+        title: 'feat(observability): send LLM traces to Langfuse'
+        branchName: feat/enable-langfuse-tracing
+        description: |
+          ## Enable Langfuse LLM Tracing
+
+          Wires this service into the platform's Langfuse instance, scoped to
+          **${{ parameters.language }}**:
+
+          | File | Purpose |
+          |---|---|
+          | `langfuse/README.md` | Env vars, the namespace label, and the catalog annotation to add |
+          | `langfuse/helm-values-patch.yaml` | The `envFrom` block to merge into `helm-values-*.yaml` |
+          | `langfuse/external-secret.yaml` | AWS-only GitOps alternative to the label mechanism |
+          {% if parameters.language == 'nodejs' %}| `langfuse/telemetry.ts` | Runnable OTEL module — call `initTracing()` at startup |{% endif %}
+          {% if parameters.language == 'python' %}| `langfuse/telemetry.py` | Runnable OTEL module — call `init_tracing()` at startup |{% endif %}
+          {% if parameters.language not in ['nodejs', 'python'] %}| `langfuse/${{ parameters.language }}-instrumentation.md` | OpenTelemetry setup steps for ${{ parameters.language }} |{% endif %}
+
+          **No new secrets are created.** Langfuse and its project API keys are already provisioned
+          platform-wide; the keys are copied into your namespace by label.
+
+          **After merging:**
+          1. Merge the `envFrom` block from `langfuse/helm-values-patch.yaml` into this repo's
+             `helm-values-local.yaml` / `helm-values-aws.yaml`.
+          2. Label the namespace and distribute the keys (one-off, from the platform repo):
+             ```
+             kubectl label namespace ${{ parameters.namespace }} idp.io/langfuse=enabled
+             ./scripts/bootstrap-ai.sh --langfuse-keys-only
+             ```
+          3. Add the `langfuse.com/service-name` annotation from `langfuse/README.md` to this
+             repo's `catalog-info.yaml`.
+          4. Redeploy — traces appear on the service's **Langfuse** tab in Backstage and in
+             Langfuse itself under service `${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}`.
+
+          > Scaffolded via the IDP Platform
+        sourcePath: .
+
+  output:
+    text:
+      - title: Next Steps
+        content: |
+          ## Pull Request Opened
+
+          Langfuse tracing files have been added to your service.
+
+          1. **Merge the PR.**
+          2. **Merge the `envFrom` block** from `langfuse/helm-values-patch.yaml` into your
+             `helm-values-*.yaml`.
+          3. **Label the namespace and distribute the keys** — from the platform repo:
+             `kubectl label namespace ${{ parameters.namespace }} idp.io/langfuse=enabled && ./scripts/bootstrap-ai.sh --langfuse-keys-only`
+          4. **Add the `langfuse.com/service-name` annotation** to `catalog-info.yaml` so the
+             Langfuse tab appears on the entity page.
+          5. **Redeploy**, then check the entity's **Langfuse** tab.
+
+          Tracing stays completely inert until `LANGFUSE_OTLP_ENDPOINT` is present in the
+          environment, so merging this PR cannot break the service on its own.
+    links:
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
+      - title: AI Observability (Langfuse)
+        url: /langfuse
+      - title: AI Platform Docs
+        url: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/ai-assistant.md

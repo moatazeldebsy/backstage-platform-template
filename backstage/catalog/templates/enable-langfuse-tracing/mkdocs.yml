@@ -1,0 +1,9 @@
+site_name: Enable Langfuse LLM Tracing
+site_description: >-
+  Wire an existing service into the platform's Langfuse instance — drop-in OpenTelemetry module,
+  Helm credential wiring, and the catalog annotation that drives the Langfuse entity tab.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core
