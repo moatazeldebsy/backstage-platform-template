@@ -1,0 +1,9 @@
+site_name: LLM App (Python + Langfuse)
+site_description: >-
+  Golden path for a Python service that calls Claude with Langfuse tracing already wired —
+  prompt, completion, tokens, cost and latency on every call.
+docs_dir: docs
+nav:
+  - Overview: index.md
+plugins:
+  - techdocs-core

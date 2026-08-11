@@ -1,0 +1,77 @@
+# Helm overrides for ${{ values.name }} on AWS/EKS.
+# image.tag is updated automatically by CI when pushed to main.
+#
+# ECR_REGISTRY_PLACEHOLDER is substituted at deploy time (see how bootstrap-ai.sh
+# renders the MCP servers' values) — replace it with your registry if you deploy
+# this chart by hand.
+replicaCount: 2
+
+image:
+  repository: ECR_REGISTRY_PLACEHOLDER/${{ values.name }}
+  tag: "latest"
+  pullPolicy: Always
+
+service:
+  port: 80
+  targetPort: ${{ values.port }}
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+  hosts:
+    - host: "" # match any hostname; use the ALB DNS directly
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "${{ values.port }}"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"
+  cost-center: ${{ values.costCenter }}
+  environment: aws
+
+metrics:
+  enabled: true
+
+# See helm-values-local.yaml for what each of these secrets is and who creates it.
+# On AWS you can instead have External Secrets pull the Langfuse pair from
+# Secrets Manager (idp-mvp/langfuse/project-keys) — commit an ExternalSecret
+# named langfuse-otel and this envFrom picks it up unchanged.
+envFrom:
+  - secretRef:
+      name: ${{ values.name }}-secrets
+      optional: true
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+
+env:
+  - name: LOG_LEVEL
+    value: info
+  - name: ENVIRONMENT
+    value: aws
+  - name: OTEL_SERVICE_NAME
+    value: "${{ values.name }}"
+  - name: LANGFUSE_CAPTURE_IO
+    value: "${{ values.captureIo }}"
+  - name: LANGFUSE_SAMPLE_RATE
+    value: "${{ values.sampleRate }}"
+
+labels:
+  backstage.io/kubernetes-id: ${{ values.name }}

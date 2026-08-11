@@ -1,0 +1,77 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/${{ values.name }}
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: ${{ values.port }}
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  hosts:
+    - host: ${{ values.name }}.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    # Higher than a plain Python service: the OpenTelemetry SDK and the
+    # Anthropic client both carry real allocation, and the batch span processor
+    # holds spans in memory between exports.
+    memory: 384Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "${{ values.port }}"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"
+  cost-center: "${{ values.costCenter }}"
+  environment: local
+  app.kubernetes.io/part-of: internal-developer-platform
+
+metrics:
+  enabled: true
+
+# ${{ values.name }}-secrets holds ANTHROPIC_API_KEY and is created by hand:
+#   kubectl create secret generic ${{ values.name }}-secrets -n services-dev \
+#     --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+# langfuse-otel is distributed by scripts/bootstrap-ai.sh to namespaces labelled
+# idp.io/langfuse=enabled. Both optional so a missing secret degrades one thing
+# instead of crashlooping the pod.
+envFrom:
+  - secretRef:
+      name: ${{ values.name }}-secrets
+      optional: true
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: local
+  - name: OTEL_SERVICE_NAME
+    value: "${{ values.name }}"
+  - name: LANGFUSE_CAPTURE_IO
+    value: "${{ values.captureIo }}"
+  - name: LANGFUSE_SAMPLE_RATE
+    value: "${{ values.sampleRate }}"
+
+labels:
+  backstage.io/kubernetes-id: ${{ values.name }}
