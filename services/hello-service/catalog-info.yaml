@@ -20,6 +20,12 @@ metadata:
     # no dashboard has been created for this reference service yet.
     datadoghq.com/monitor-tag: service:hello-service
     datadoghq.com/site: app.datadoghq.eu
+    # Langfuse tab (backstage/app/packages/app/src/extensions.tsx) — same
+    # convention as the Datadog block above, per the "Enable Langfuse LLM
+    # Tracing" template (skeleton-addon/common/langfuse/README.md). The value is
+    # the Langfuse *trace tag*, and must equal OTEL_SERVICE_NAME in the service's
+    # Helm values — the two are the halves of the tab's filter.
+    langfuse.com/service-name: hello-service
 spec:
   type: service
   lifecycle: production
