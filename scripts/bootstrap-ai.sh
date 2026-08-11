@@ -543,7 +543,14 @@ else
   fi
 fi
 
-[[ -n "${ANTHROPIC_API_KEY:-}" ]] || die "ANTHROPIC_API_KEY is not set. Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
+# REPLACE_ME must fail as loudly as an empty value. terraform/secrets.tf seeds
+# idp-mvp/kagent with the literal string "REPLACE_ME", which is non-empty — so an
+# emptiness-only check passes, KAgent installs, and every agent call then fails at
+# runtime with `invalid_x-api-key`. That presents as a broken AI stack rather than
+# a missing credential, which is a much harder thing to diagnose.
+if [[ -z "${ANTHROPIC_API_KEY:-}" || "${ANTHROPIC_API_KEY:-}" == "REPLACE_ME" ]]; then
+  die "ANTHROPIC_API_KEY is not set (or is still the REPLACE_ME placeholder). Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
+fi
 # OPENAI_API_KEY is optional; warn if not set but allow bootstrap to continue
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
   warn "OPENAI_API_KEY is not set. OpenAI ModelConfig will not be functional. Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS) to enable OpenAI agents."

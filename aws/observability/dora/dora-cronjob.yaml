@@ -6,7 +6,10 @@ metadata:
   name: dora-exporter-sa
   namespace: monitoring
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/idp-mvp-dora-exporter"
+    # Overwritten by bootstrap.sh from the dora_exporter_role_arn Terraform output
+    # immediately after this manifest is applied, so the literal value here only
+    # matters for the brief window in between (and for anyone applying by hand).
+    eks.amazonaws.com/role-arn: "arn:aws:iam::967825954374:role/idp-mvp-dora-exporter"
 
 ---
 # ExternalSecret syncs GITHUB_TOKEN from Secrets Manager key: idp-mvp/dora-exporter

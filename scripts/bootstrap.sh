@@ -18,7 +18,11 @@ source "${ROOT_DIR}/scripts/lib.sh"
 # skip-if-unchanged check and reinstalls/rebuilds everything.
 timer_enable_summary
 
-SKIP_OBS="${SKIP_OBS:-false}"
+# No SKIP_OBS here on purpose. It used to be accepted and then never read, so
+# `--skip-obs` silently installed the full observability stack anyway. Observability
+# is not optional on AWS — Backstage's cost, DORA and Tech Insights tabs all read
+# from Prometheus. bootstrap-local.sh and bootstrap-multiregion.sh do implement the
+# flag; an unknown-flag error here is more honest than pretending.
 SKIP_GITOPS="${SKIP_GITOPS:-false}"
 SKIP_POLICIES="${SKIP_POLICIES:-false}"
 SKIP_DORA="${SKIP_DORA:-false}"
@@ -33,7 +37,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --region)        AWS_REGION="$2"; shift 2 ;;
     --cluster-name)  CLUSTER_NAME="$2"; shift 2 ;;
-    --skip-obs)      SKIP_OBS=true; shift ;;
     --skip-gitops)   SKIP_GITOPS=true; shift ;;
     --skip-policies) SKIP_POLICIES=true; shift ;;
     --skip-dora)     SKIP_DORA=true; shift ;;
@@ -44,7 +47,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
-for cmd in aws terraform kubectl helm docker; do
+# python3, curl and git are used well into the run (secret generation, RDS CA
+# bundle download, the hello-service helm-values commit) but were not checked
+# here — so a missing one surfaced as a failure 15-40 minutes in, after the
+# cluster had already been created. Fail in the first second instead.
+for cmd in aws terraform kubectl helm docker python3 curl git; do
   command -v "$cmd" &>/dev/null || err "'$cmd' not found in PATH"
 done
 
@@ -270,13 +277,22 @@ if [[ -z "$K8S_SA_TOKEN" ]]; then
   log "  Then: aws secretsmanager update-secret --secret-id idp-mvp/backstage ..."
 fi
 
-# GITHUB_TOKEN must be supplied via environment variable
+# GITHUB_TOKEN is supplied via environment variable. Warn when it is missing, but
+# do NOT skip the merge on that basis: this block previously lived entirely inside
+# the `else`, so an unset GITHUB_TOKEN also discarded AUTH_GITHUB_*,
+# GRAFANA_ADMIN_PASSWORD, every GITHUB_APP_*, TEAM_MAP and K8S_SERVICE_ACCOUNT_TOKEN
+# even when those *were* exported — and, worse, skipped generating
+# BACKSTAGE_CATALOG_TOKEN and AUTH_SESSION_SECRET, leaving them as REPLACE_ME and
+# breaking Backstage outright. Every key below is applied only when its own value is
+# present, so running unconditionally is safe and strictly more correct.
 if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  log "  WARNING: GITHUB_TOKEN env var not set — leaving as REPLACE_ME in Secrets Manager"
+  log "  WARNING: GITHUB_TOKEN env var not set — leaving GITHUB_TOKEN as REPLACE_ME in Secrets Manager"
   log "  Set GITHUB_TOKEN and re-run, or update the secret manually:"
   log "  aws secretsmanager get-secret-value --secret-id idp-mvp/backstage"
-else
-  # Merge current secret value with real GITHUB_TOKEN and K8s SA token
+fi
+
+{
+  # Merge current secret value with whichever credentials are actually available
   CURRENT_SECRET=$(aws secretsmanager get-secret-value \
     --secret-id "$BACKSTAGE_SECRET_ARN" \
     --query SecretString --output text)
@@ -305,7 +321,11 @@ else
   UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" python3 -c "
 import json, sys, os
 s = json.load(sys.stdin)
-s['GITHUB_TOKEN'] = os.environ['GITHUB_TOKEN']
+# Conditional like every other key below — an unset GITHUB_TOKEN must leave the
+# existing value untouched rather than raise KeyError or blank it out.
+github_token = os.environ.get('GITHUB_TOKEN', '')
+if github_token:
+    s['GITHUB_TOKEN'] = github_token
 k8s_token = os.environ.get('K8S_SA_TOKEN', '')
 if k8s_token:
     s['K8S_SERVICE_ACCOUNT_TOKEN'] = k8s_token
@@ -338,8 +358,8 @@ print(json.dumps(s))
   aws secretsmanager update-secret \
     --secret-id "$BACKSTAGE_SECRET_ARN" \
     --secret-string "$UPDATED_SECRET"
-  log "  Secrets Manager updated with GITHUB_TOKEN + GitHub OAuth + Grafana credentials."
-fi
+  log "  Secrets Manager updated with the credentials available in the environment."
+}
 
 timer_end "3.7 Populate Secrets Manager"
 
@@ -1020,7 +1040,8 @@ timer_start "5.6 Deploy Backstage"
 log "Phase 5.6: Deploying Backstage..."
 
 # Apply External Secrets (creates backstage-secrets K8s Secret from Secrets Manager)
-kubectl apply -f aws/backstage/external-secret.yaml
+sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+  aws/backstage/external-secret.yaml | kubectl apply -f -
 
 # Wait for ESO to sync the secret (up to 60s)
 log "  Waiting for ExternalSecret to sync..."
