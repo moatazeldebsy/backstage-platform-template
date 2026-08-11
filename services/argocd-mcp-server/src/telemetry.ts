@@ -140,13 +140,25 @@ export function initTracing(serviceName: string, testProcessor?: SpanProcessor):
  */
 export async function shutdownTracing(timeoutMs = 2_000): Promise<void> {
   if (!provider) return;
+  // The loser of this race must be cleaned up. Previously the timer was left
+  // pending whenever shutdown() won — the normal path — which kept the event
+  // loop alive for the remainder of timeoutMs: a needless delay on SIGTERM in a
+  // pod, and a lingering handle that makes Jest workers fail to exit cleanly.
+  // unref() covers the window before clearTimeout runs; clearTimeout covers the
+  // case where the timer would otherwise stay armed.
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
       provider.shutdown(),
-      new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+      new Promise<void>(resolve => {
+        timer = setTimeout(resolve, timeoutMs);
+        timer.unref?.();
+      }),
     ]);
   } catch {
     /* shutting down anyway */
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
