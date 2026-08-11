@@ -33,6 +33,18 @@ variable "github_org" {
   type        = string
 }
 
+variable "platform_repo" {
+  description = <<-EOT
+    Name of the platform repository allowed to assume the GitHub Actions role.
+    Scopes the OIDC trust policy to a single repo rather than the whole org —
+    important because the scaffolder creates new repos under the same org, and
+    the role carries PowerUserAccess + IAMFullAccess. Mirrors PLATFORM_REPO in
+    .idp-config.env.
+  EOT
+  type        = string
+  default     = "backstage-platform-template"
+}
+
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string

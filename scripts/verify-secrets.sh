@@ -112,7 +112,10 @@ echo "┌───────────────────────�
 echo "│ 4. Slack Webhook (optional)                             │"
 echo "└─────────────────────────────────────────────────────────┘"
 
-if aws secretsmanager get-secret-value --secret-id "${CLUSTER_NAME}/slack" --region "$AWS_REGION" &>/dev/null; then
+# Secret id is "<cluster>/slack-webhook" (terraform/secrets.tf), not "<cluster>/slack".
+# The old name never matched, so this check warned on every run even when the
+# webhook was correctly configured — training people to ignore the output.
+if aws secretsmanager get-secret-value --secret-id "${CLUSTER_NAME}/slack-webhook" --region "$AWS_REGION" &>/dev/null; then
     check_pass "Slack webhook configured"
 else
     check_warn "Slack webhook not configured (optional for cost alerts)"

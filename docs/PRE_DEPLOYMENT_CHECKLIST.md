@@ -164,7 +164,10 @@ Tools:
 AWS:
   [ ] AWS region confirmed (default: us-east-1)
   [ ] Sufficient EC2 quota: 4× t3.medium + 4× t3.large in your region
-  [ ] S3 Terraform state bucket created (setup.sh does this)
+  [ ] S3 Terraform state bucket + DynamoDB lock table created BY HAND
+      (nothing in the repo creates them — setup.sh does NOT, despite what
+       this line used to claim. terraform/main.tf hardcodes the bucket name
+       and table, so `terraform init` fails at Phase 1 without them.)
 
 Credentials:
   [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)

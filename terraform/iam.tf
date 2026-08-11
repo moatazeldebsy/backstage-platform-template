@@ -47,8 +47,13 @@ resource "aws_iam_role" "github_actions" {
       }
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
+        # Scoped to the platform repo, not the whole org. This role carries
+        # PowerUserAccess + IAMFullAccess (below), and the scaffolder creates new
+        # repos under the same org — an org-wide "repo:<org>/*:*" trust would let
+        # any scaffolded repo's workflow assume a near-admin role. The trailing
+        # ":*" still needs StringLike so branches and environments match.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/*:*"
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.platform_repo}:*"
         }
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
