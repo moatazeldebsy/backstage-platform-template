@@ -2166,7 +2166,10 @@ automatically once these are set.</p>
 <span class="normal">21</span>
 <span class="normal">22</span>
 <span class="normal">23</span>
-<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
   [ ] aws sts get-caller-identity   → works, shows correct account
   [ ] terraform -version            → ≥ 1.5
   [ ] kubectl version               → installed
@@ -2179,7 +2182,10 @@ automatically once these are set.</p>
 AWS:
   [ ] AWS region confirmed (default: us-east-1)
   [ ] Sufficient EC2 quota: 4× t3.medium + 4× t3.large in your region
-  [ ] S3 Terraform state bucket created (setup.sh does this)
+  [ ] S3 Terraform state bucket + DynamoDB lock table created BY HAND
+      (nothing in the repo creates them — setup.sh does NOT, despite what
+       this line used to claim. terraform/main.tf hardcodes the bucket name
+       and table, so `terraform init` fails at Phase 1 without them.)
 
 Credentials:
   [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)
