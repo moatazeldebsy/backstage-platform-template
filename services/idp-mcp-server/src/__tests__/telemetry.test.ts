@@ -240,3 +240,30 @@ describe('telemetry — trace context propagation', () => {
     expect(await parentFrom(undefined)).toBeUndefined();
   });
 });
+
+describe('telemetry — shutdown timer cleanup', () => {
+  // shutdownTracing races provider.shutdown() against a timeout. The timer is
+  // the loser on the normal path, and leaving it armed kept the event loop
+  // alive for the rest of timeoutMs — delaying SIGTERM in a pod and leaving a
+  // handle that stops Jest workers exiting cleanly. A large timeoutMs makes the
+  // regression unmistakable: without the fix this test would hold a 30s handle.
+  it('clears the race timer when shutdown wins', async () => {
+    const t = await loadTelemetry(ENABLED_ENV);
+    t.initTracing('idp-mcp-server', new SimpleSpanProcessor(new InMemorySpanExporter()));
+    expect(t.tracingEnabled()).toBe(true);
+
+    const clearSpy = jest.spyOn(global, 'clearTimeout');
+    const started = Date.now();
+    await t.shutdownTracing(30_000);
+
+    expect(clearSpy).toHaveBeenCalled();
+    // Returns as soon as shutdown() resolves rather than waiting out the timer.
+    expect(Date.now() - started).toBeLessThan(5_000);
+    clearSpy.mockRestore();
+  });
+
+  it('is a no-op when tracing was never initialised', async () => {
+    const t = await loadTelemetry(CLEAN_ENV);
+    await expect(t.shutdownTracing(30_000)).resolves.toBeUndefined();
+  });
+});
