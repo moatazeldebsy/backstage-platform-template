@@ -15,6 +15,12 @@
 #                       single-node Kind cluster does not have spare. Always on
 #                       for --aws; use --skip-langfuse to opt out there.
 #   --skip-langfuse    Skip Langfuse (only meaningful with --aws)
+#   --langfuse-keys-only
+#                      Do nothing except (re)distribute the Langfuse project key
+#                       pair into every namespace labelled idp.io/langfuse=enabled,
+#                       then exit. Run this after labelling a namespace that was
+#                       created since the last full bootstrap — it is what makes a
+#                       scaffolded service's tracing start working.
 #   --skip-kagent      Skip KAgent CRDs and Helm install
 #   --skip-mcp         Skip IDP/QA/Contract MCP Server build and deploy
 #   --adp              Also deploy Agentic Development Platform (ADP) components
@@ -36,6 +42,7 @@ SKIP_MCP=false
 ADP=false
 DESTROY=false
 FORCE_BUILD=false
+LANGFUSE_KEYS_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mlflow)  SKIP_MLFLOW=true; shift ;;
     --langfuse)     LANGFUSE=true; shift ;;
     --skip-langfuse) LANGFUSE=false; shift ;;
+    --langfuse-keys-only) LANGFUSE_KEYS_ONLY=true; shift ;;
     --skip-kagent)  SKIP_KAGENT=true; shift ;;
     --skip-mcp)     SKIP_MCP=true; shift ;;
     --adp)          ADP=true; shift ;;
@@ -116,6 +124,190 @@ IDP_BUILD_JOBS="${IDP_BUILD_JOBS:-$(_default_build_jobs)}"
 command -v kubectl >/dev/null || die "kubectl not found"
 command -v helm    >/dev/null || die "helm not found"
 command -v docker  >/dev/null || die "docker not found"
+
+# ── Langfuse key distribution ─────────────────────────────────────────────────
+#
+# The project key pair is minted in-cluster by the headless init into
+# secret/langfuse-init (see "Headless project init" below) and is the only
+# credential Langfuse's OTLP ingest accepts. Everything that exports traces —
+# KAgent, the MCP servers, scaffolded services — needs it, and Kubernetes
+# Secrets are namespace-scoped, so it has to be copied per namespace.
+#
+# Opt-in by label rather than by a hardcoded namespace list: a service scaffolded
+# through enable-langfuse-tracing lands in a namespace this script has never
+# heard of, and asking a developer to edit a bootstrap script to turn on their
+# own tracing is not self-service.
+
+# In-cluster OTLP ingest URL. A COMPLETE path, deliberately not a base for
+# OTEL_EXPORTER_OTLP_ENDPOINT: exporters append /v1/traces to that variable,
+# which would yield .../otel/v1/traces/v1/traces and a silent 404. The consumers
+# read it as LANGFUSE_OTLP_ENDPOINT and pass it through verbatim (see the
+# `url:` note in services/*-mcp-server/src/telemetry.ts).
+LANGFUSE_OTLP_ENDPOINT="http://langfuse-web.ml-platform.svc.cluster.local:3000/api/public/otel/v1/traces"
+
+# Namespaces carrying this label get a `langfuse-otel` Secret.
+LANGFUSE_NS_LABEL="idp.io/langfuse=enabled"
+
+# Reads the key pair into _LF_PK / _LF_SK / _LF_BASIC. Single source for every
+# consumer below so the Basic-auth encoding cannot drift between them.
+_langfuse_read_keys() {
+  kubectl get secret langfuse-init -n ml-platform >/dev/null 2>&1 || return 1
+  _LF_PK=$(kubectl get secret langfuse-init -n ml-platform \
+    -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d)
+  _LF_SK=$(kubectl get secret langfuse-init -n ml-platform \
+    -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}' | base64 -d)
+  [[ -n "$_LF_PK" && -n "$_LF_SK" ]] || return 1
+  # tr -d '\n' matters: `base64` wraps at 76 columns on GNU coreutils, and a
+  # newline inside an HTTP header value makes every export fail with a 400.
+  _LF_BASIC=$(printf '%s:%s' "$_LF_PK" "$_LF_SK" | base64 | tr -d '\n')
+  return 0
+}
+
+# Copy the key pair into every labelled namespace as secret/langfuse-otel.
+# Idempotent — apply-always rather than create-if-absent, because unlike
+# langfuse-secrets (whose salt must never be regenerated) these are copies whose
+# source of truth lives elsewhere.
+_replicate_langfuse_keys() {
+  local ns_list ns count=0
+  _langfuse_read_keys || {
+    warn "secret/langfuse-init not found in ml-platform — Langfuse is not deployed yet. Run ./scripts/bootstrap-ai.sh --langfuse first."
+    return 1
+  }
+
+  ns_list=$(kubectl get namespaces -l "$LANGFUSE_NS_LABEL" \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+
+  if [[ -z "$ns_list" ]]; then
+    info "  No namespaces labelled ${LANGFUSE_NS_LABEL} — nothing to distribute."
+    info "  Label one with: kubectl label namespace <ns> ${LANGFUSE_NS_LABEL}"
+    return 0
+  fi
+
+  while IFS= read -r ns; do
+    [[ -n "$ns" ]] || continue
+    kubectl create secret generic langfuse-otel -n "$ns" \
+      --from-literal=LANGFUSE_OTLP_ENDPOINT="$LANGFUSE_OTLP_ENDPOINT" \
+      --from-literal=LANGFUSE_PUBLIC_KEY="$_LF_PK" \
+      --from-literal=LANGFUSE_SECRET_KEY="$_LF_SK" \
+      --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+    info "  langfuse-otel → namespace ${ns}"
+    count=$((count + 1))
+  done <<< "$ns_list"
+
+  check "Langfuse keys distributed to ${count} namespace(s)"
+  info "  Workloads already running there need a restart to pick it up:"
+  info "    kubectl rollout restart deployment/<name> -n <ns>"
+  return 0
+}
+
+# AWS only. Mirrors the pair into Secrets Manager so teams who prefer pure
+# GitOps can consume it through an ExternalSecret instead of this script.
+# Locally there is no External Secrets install (bootstrap.sh, not
+# bootstrap-local.sh, is what installs it), so the label path above is the only
+# mechanism there.
+# Langfuse ships a built-in model price table, but a pinned chart's table is
+# frozen at its release date — this build stops at claude-opus-4-8. A trace on a
+# newer model still records tokens and latency correctly, but Langfuse cannot
+# price it, so `calculatedTotalCost` is 0 and every cost column reads $0.00.
+# That looks exactly like broken instrumentation, so seed the missing entries.
+#
+# Prices are per TOKEN (list $/MTok ÷ 1e6).
+#
+# NOTE the schema asymmetry: Langfuse's built-in entries expose a rich `prices`
+# map (cache-write and cache-read tiers), but the CREATE endpoint only accepts
+# the older `unit` + `inputPrice`/`outputPrice` form — posting a `prices` map is
+# a 400 complaining about a missing `unit`. Seeded models therefore price
+# ordinary input/output only; cached tokens fall back to the input price rather
+# than the discounted cache rate, so a cache-heavy workload reads slightly high.
+# Add the tiers by hand in the Langfuse UI if that matters to you.
+_seed_langfuse_model_prices() {
+  local url="$1"
+  command -v curl >/dev/null || return 0
+  _langfuse_read_keys || return 0
+
+  # modelName|inputPricePerToken|outputPricePerToken
+  local specs=(
+    "claude-opus-5|0.000005|0.000025"
+    "claude-sonnet-5|0.000003|0.000015"
+    "claude-fable-5|0.00001|0.00005"
+  )
+
+  # The models endpoint caps `limit` at 100 (a larger value is a 400) and this
+  # build ships ~170 definitions, so the existence check MUST paginate — a
+  # single page silently misses entries and re-seeds duplicates on every run.
+  local existing="" page=1 body pages
+  while :; do
+    body=$(curl -fsS -u "${_LF_PK}:${_LF_SK}" "${url}/api/public/models?limit=100&page=${page}" 2>/dev/null) || {
+      warn "  Could not read Langfuse model prices — skipping price seeding."
+      return 0
+    }
+    existing+="$body"
+    pages=$(printf '%s' "$body" | python3 -c \
+      'import json,sys; print(json.load(sys.stdin).get("meta",{}).get("totalPages",1))' 2>/dev/null || echo 1)
+    (( page >= pages )) && break
+    page=$((page + 1))
+  done
+
+  local seeded=0
+
+  for spec in "${specs[@]}"; do
+    IFS='|' read -r _m _in _out <<< "$spec"
+    # Already known (built-in, or seeded by a previous run) — leave it alone.
+    # Langfuse allows duplicate definitions, so without this every run would add
+    # another copy of the same model.
+    if printf '%s' "$existing" | grep -q "\"modelName\":\"${_m}\""; then continue; fi
+
+    # matchPattern mirrors Langfuse's own convention so Bedrock/Vertex-prefixed
+    # ids for the same model resolve to this entry too.
+    curl -fsS -u "${_LF_PK}:${_LF_SK}" -X POST "${url}/api/public/models" \
+      -H 'content-type: application/json' \
+      -d "{
+        \"modelName\": \"${_m}\",
+        \"matchPattern\": \"(?i)^((anthropic/)?${_m}|(eu\\\\.|us\\\\.|apac\\\\.|global\\\\.)?anthropic\\\\.${_m}(-v1(:0)?)?)$\",
+        \"tokenizerId\": \"claude\",
+        \"unit\": \"TOKENS\",
+        \"inputPrice\": ${_in},
+        \"outputPrice\": ${_out}
+      }" >/dev/null 2>&1 && { info "  priced ${_m}"; seeded=$((seeded + 1)); } \
+        || warn "  Could not seed a price for ${_m} — cost will show \$0.00 for it."
+  done
+
+  if (( seeded > 0 )); then
+    check "Seeded ${seeded} model price definition(s) in Langfuse"
+    info "  Note: pricing is applied at ingest, so traces recorded BEFORE this still show \$0.00."
+  fi
+}
+
+_mirror_langfuse_keys_to_secrets_manager() {
+  [[ "$DEPLOY_MODE" == "aws" ]] || return 0
+  command -v aws >/dev/null || { warn "aws CLI not found — skipping the Secrets Manager mirror."; return 0; }
+
+  local payload
+  payload=$(printf '{"LANGFUSE_OTLP_ENDPOINT":"%s","LANGFUSE_PUBLIC_KEY":"%s","LANGFUSE_SECRET_KEY":"%s"}' \
+    "$LANGFUSE_OTLP_ENDPOINT" "$_LF_PK" "$_LF_SK")
+
+  if aws secretsmanager describe-secret --secret-id "idp-mvp/langfuse/project-keys" \
+       --region "$AWS_REGION" >/dev/null 2>&1; then
+    aws secretsmanager put-secret-value --secret-id "idp-mvp/langfuse/project-keys" \
+      --region "$AWS_REGION" --secret-string "$payload" >/dev/null
+  else
+    aws secretsmanager create-secret --name "idp-mvp/langfuse/project-keys" \
+      --region "$AWS_REGION" --secret-string "$payload" \
+      --description "Langfuse project API keys — mirrored by bootstrap-ai.sh for ExternalSecret consumers" >/dev/null
+  fi
+  check "Langfuse keys mirrored to Secrets Manager (idp-mvp/langfuse/project-keys)"
+}
+
+# ── Keys-only mode ────────────────────────────────────────────────────────────
+# Deliberately before the destroy block and everything else: this mode must not
+# deploy, build or tear down anything.
+
+if $LANGFUSE_KEYS_ONLY; then
+  info "Distributing Langfuse project keys (no deploy)..."
+  _replicate_langfuse_keys || exit 1
+  _mirror_langfuse_keys_to_secrets_manager
+  exit 0
+fi
 
 # ── Destroy mode ──────────────────────────────────────────────────────────────
 
@@ -817,15 +1009,21 @@ else
   # no explicit headers to its OTLP exporter, so the SDK's own env parsing picks
   # OTEL_EXPORTER_OTLP_TRACES_HEADERS up on both its Python and Go runtimes.
   # The value uses OTEL's `key=value` env encoding, not an HTTP header line.
-  _LF_PK=$(kubectl get secret langfuse-init -n ml-platform \
-    -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d)
-  _LF_SK=$(kubectl get secret langfuse-init -n ml-platform \
-    -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}' | base64 -d)
-  _LF_BASIC=$(printf '%s:%s' "$_LF_PK" "$_LF_SK" | base64 | tr -d '\n')
+  _langfuse_read_keys || die "secret/langfuse-init has no usable project key pair — delete it and re-run to re-mint."
   kubectl create secret generic langfuse-kagent-otel -n kagent \
     --from-literal=OTEL_EXPORTER_OTLP_TRACES_HEADERS="Authorization=Basic ${_LF_BASIC}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret langfuse-kagent-otel created (OTLP auth for KAgent)"
+
+  # Everything else that exports traces reads the pair from a `langfuse-otel`
+  # Secret in its own namespace. services-dev is labelled here rather than in a
+  # manifest because the namespace is created on demand by the MCP deploy pass
+  # below; developer namespaces opt in with the same label at any time and pick
+  # the keys up via --langfuse-keys-only.
+  kubectl create namespace services-dev --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+  kubectl label namespace services-dev "$LANGFUSE_NS_LABEL" --overwrite >/dev/null 2>&1 || true
+  _replicate_langfuse_keys || true
+  _mirror_langfuse_keys_to_secrets_manager
 
   # Backstage's /langfuse proxy authenticates with the same key pair — this is
   # what makes the AI Observability page show live data instead of a 401.
@@ -1379,6 +1577,13 @@ if [[ -n "$_LANGFUSE_PID" ]]; then
   _bg_join "$_LANGFUSE_PID" "$_LANGFUSE_LOG" || \
     warn "Langfuse deploy failed — check: kubectl get po -n ml-platform -l app.kubernetes.io/name=langfuse"
   _LANGFUSE_PID=""
+
+  # Needs Langfuse actually serving, so it runs here rather than next to the
+  # secret creation. Local only: on AWS the hostname is not known until the ALB
+  # is patched below, and the seeding runs there instead.
+  if [[ "$LANGFUSE" == "true" && "$DEPLOY_MODE" == "local" ]]; then
+    _seed_langfuse_model_prices "http://langfuse.idp.local"
+  fi
 fi
 
 # Same ALB-hostname patch as MLflow above: externalLinks.langfuse drives the
@@ -1408,6 +1613,9 @@ if [[ "$DEPLOY_MODE" == "aws" && "$LANGFUSE" == "true" ]]; then
         | sed "s|LANGFUSE_ALB_URL|${LANGFUSE_URL}|g" \
         | kubectl apply -f -
       check "externalLinks.langfuse + NEXTAUTH_URL patched with ALB hostname"
+      # The AWS counterpart of the local seeding above — only reachable now that
+      # the ALB hostname is known.
+      _seed_langfuse_model_prices "http://${LANGFUSE_URL}"
     else
       warn "ConfigMap backstage/backstage-config not found — skipping the Langfuse URL patch."
     fi
