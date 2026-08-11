@@ -284,5 +284,5 @@ spec:
         entityRef: ${{ steps.register.output.entityRef }}
       - title: Open Platform GitOps PR
         url: ${{ steps['platform-pr'].output.remoteUrl }}
-      - title: AI Observability (Langfuse)
-        url: /langfuse
+      - title: Langfuse (AI Observability)
+        url: http://langfuse.idp.local

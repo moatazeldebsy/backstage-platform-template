@@ -18,8 +18,11 @@ metadata:
     # trace tag the tab filters on.
     langfuse.com/service-name: "${{ values.name }}"
   links:
-    - title: AI Observability (Langfuse)
-      url: /langfuse
+    # Absolute, like the Grafana and ArgoCD links below. A relative URL such as
+    # /langfuse fails catalog validation outright ("expected a string that is a
+    # valid url"), which fails the whole catalog:register step.
+    - title: Langfuse (AI Observability)
+      url: http://langfuse.idp.local
       icon: dashboard
     - title: Grafana Dashboard
       url: http://grafana.idp.local/d/idp-services/idp-services-overview

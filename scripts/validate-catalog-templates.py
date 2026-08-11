@@ -22,6 +22,8 @@ Checks, in order of how much they have actually bitten us:
      that emit them — uses an API version the pinned KAgent chart actually
      serves for that kind (they are not uniform: MCPServer is v1alpha1 only,
      Agent is v1alpha2)
+  9. no skeleton catalog-info.yaml carries a relative link URL — Backstage
+     rejects those, and it fails catalog:register after the repo already exists
 
 Run from the repo root:  python3 scripts/validate-catalog-templates.py
 """
@@ -149,6 +151,33 @@ def check_modelconfig_allowlist() -> None:
             f"manifest defines — stale entry, or add it to EXTERNAL_MODEL_CONFIGS "
             f"if KAgent ships it",
         )
+
+
+def check_skeleton_entity_links() -> None:
+    """Check 9 — a skeleton's catalog-info.yaml must not carry a relative link URL.
+
+    Backstage validates `metadata.links[].url` as an absolute URL. A relative
+    one ("/langfuse") fails the entity policy check, which fails the whole
+    `catalog:register` step — so the scaffolder run dies AFTER creating the
+    GitHub repo, leaving a half-onboarded service. Nothing else in CI looks
+    inside a skeleton's catalog-info.yaml, so this shipped once already.
+
+    Template expressions are skipped: the value is only known after rendering.
+    """
+    for path in sorted(TEMPLATES.glob("*/skeleton*/**/catalog-info.yaml")):
+        text = path.read_text()
+        # Parsed as text, not YAML: skeletons contain ${{ }} expressions that a
+        # YAML load would choke on in some positions.
+        for match in re.finditer(r"^\s*url:\s*(\S+)\s*$", text, re.M):
+            value = match.group(1).strip("\"'")
+            if value.startswith("${{"):
+                continue
+            if value.startswith("/"):
+                err(
+                    path,
+                    f'relative link url "{value}" — Backstage requires an absolute '
+                    f"URL and catalog:register fails on it (use http://<tool>.idp.local)",
+                )
 
 
 def _is_template(text: str) -> bool:
@@ -317,6 +346,7 @@ def main() -> int:
 
     check_modelconfig_allowlist()
     check_kagent_api_versions()
+    check_skeleton_entity_links()
 
     total = len(template_dirs)
     blessed = sum(1 for t in tags_by_name.values() if "blessed" in t)
