@@ -136,7 +136,6 @@ spec:
     - id: inject-secrets
       name: Inject GCP credentials into repo secrets
       action: idp:repo:set-secrets
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         secrets: {}

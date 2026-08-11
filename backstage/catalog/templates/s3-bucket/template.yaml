@@ -126,7 +126,6 @@ spec:
     - id: open-pr
       name: Open PR to create S3 bucket
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         title: "feat(infra): create S3 bucket ${{ parameters.bucketName }}"

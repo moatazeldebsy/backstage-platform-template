@@ -169,14 +169,6 @@ spec:
           - mobile
           - idp-app
 
-    - id: register
-      name: Register in Catalog
-      action: catalog:register
-      continueOnError: true
-      input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
-
     - id: fetch-platform-values
       name: Prepare Platform GitOps Values
       if: ${{ parameters.enableWebDeploy }}
@@ -196,7 +188,6 @@ spec:
       name: Open Platform GitOps PR (Flutter Web)
       if: ${{ parameters.enableWebDeploy }}
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
         title: "feat: onboard ${{ parameters.name }} Flutter Web to GitOps"
@@ -224,6 +215,18 @@ spec:
       action: idp:seed-image
       input:
         serviceName: ${{ parameters.name }}
+
+    # Registration runs LAST on purpose. A failing step aborts the whole task —
+    # there is no per-step "continue on error" in Backstage — and catalog:register
+    # is the most failure-prone step here (it validates the rendered entity, needs a
+    # token, and talks to two services). Failing last leaves a fully scaffolded
+    # service that only needs re-registering, instead of skipping the steps below.
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
 
   output:
     links:

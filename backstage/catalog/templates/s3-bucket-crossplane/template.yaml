@@ -90,7 +90,6 @@ spec:
     - id: open-pr
       name: Open PR to register Crossplane Claim
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         title: "feat(infra): S3 bucket ${{ parameters.bucketName }} via Crossplane"

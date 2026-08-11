@@ -24,6 +24,8 @@ Checks, in order of how much they have actually bitten us:
      Agent is v1alpha2)
   9. no skeleton catalog-info.yaml carries a relative link URL — Backstage
      rejects those, and it fails catalog:register after the repo already exists
+ 10. steps fail the whole task (there is no `continueOnError`), so
+     catalog:register runs last and register-local runs before it
 
 Run from the repo root:  python3 scripts/validate-catalog-templates.py
 """
@@ -178,6 +180,52 @@ def check_skeleton_entity_links() -> None:
                     f'relative link url "{value}" — Backstage requires an absolute '
                     f"URL and catalog:register fails on it (use http://<tool>.idp.local)",
                 )
+
+
+def check_step_failure_semantics() -> None:
+    """Check 10 — a failing step aborts the task, so ordering is the only guard.
+
+    `continueOnError` is NOT a scaffolder field. TaskStep is exactly
+    {id, name, action, input?, if?, each?}, the workflow runner reads only those,
+    and the step schema passes unknown keys through silently — so the key looks
+    like a safety net while doing nothing. 84 of them had accumulated across 46
+    templates before this check existed.
+
+    Two rules follow, both learned from a real run that died at catalog:register
+    after publish:github had already created the repo:
+
+      a. No `continueOnError` — it is a lie about the runtime's behaviour.
+      b. catalog:register goes last. It is the most failure-prone step (it
+         validates the rendered entity, needs a token, talks to two services),
+         so anything after it is work a failure throws away.
+      c. register-local is a fallback for register, so it must come first —
+         otherwise it can never run in the case it exists for.
+    """
+    for f in sorted(TEMPLATES.glob("*/template.yaml")):
+        text = f.read_text()
+
+        for m in re.finditer(r"^[ \t]*continueOnError:", text, re.M):
+            line = text[: m.start()].count("\n") + 1
+            err(f, f"line {line}: `continueOnError` is not a scaffolder field and "
+                   f"does nothing — order the step to fail late instead")
+
+        blocks = re.split(r"\n    - id: ", text)[1:]
+        ids, actions = [], []
+        for b in blocks:
+            ids.append(b.split("\n")[0].strip())
+            am = re.search(r"^      action:\s*(\S+)", b, re.M)
+            actions.append(am.group(1) if am else "")
+
+        reg = [i for i, a in enumerate(actions) if a == "catalog:register"]
+        if reg and max(reg) != len(ids) - 1:
+            after = ", ".join(ids[max(reg) + 1 :])
+            err(f, f"catalog:register is not the last step; a failure there would "
+                   f"skip: {after}")
+
+        if "register" in ids and "register-local" in ids:
+            if ids.index("register-local") > ids.index("register"):
+                err(f, "register-local is a fallback for register but runs after it, "
+                       "so it can never run when register fails")
 
 
 def _is_template(text: str) -> bool:
@@ -347,6 +395,7 @@ def main() -> int:
     check_modelconfig_allowlist()
     check_kagent_api_versions()
     check_skeleton_entity_links()
+    check_step_failure_semantics()
 
     total = len(template_dirs)
     blessed = sum(1 for t in tags_by_name.values() if "blessed" in t)
