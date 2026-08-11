@@ -6161,6 +6161,27 @@ const fmtLatency = (s: number): string => (s < 1 ? `${Math.round(s * 1000)}ms` :
 const agentFromTraceName = (name: string): string =>
   /\/a2a\/[^/]+\/([^/]+)/.exec(name)?.[1] ?? name;
 
+// Shared by the platform page and the per-entity tab. Both render the same trace
+// table, and the seconds-vs-milliseconds latency handling above was wrong once
+// already — a second hand-rolled copy is how that regression comes back.
+const mapLangfuseTrace = (t: any): LangfuseTrace => ({
+  id:    String(t?.id ?? '').slice(0, 8),
+  name:  t?.name ?? '—',
+  agent: t?.name ? agentFromTraceName(String(t.name)) : '—',
+  user:  t?.userId ?? '—',
+  latency: t?.latency !== undefined && t?.latency !== null ? fmtLatency(Number(t.latency)) : '—',
+  cost:    t?.totalCost !== undefined ? fmtCost(Number(t.totalCost)) : '—',
+  timestamp: relTime(t?.timestamp ? Date.parse(t.timestamp) : undefined),
+});
+
+// The Langfuse public API, through the Backstage proxy. Auth is HTTP Basic over
+// the project key pair and is injected by the proxy (see the /langfuse endpoint
+// in app-config.*.yaml) — deliberately not held in the frontend.
+const langfuseApi = (fetchApi: { fetch: typeof fetch }, base: string) => (path: string) =>
+  fetchApi
+    .fetch(`${base}/api/proxy/langfuse/api/public${path}`)
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error(`${path} → HTTP ${r.status}`))));
+
 function LangfusePage() {
   const fetchApi    = useApi(fetchApiRef);
   const configApi   = useApi(configApiRef);
@@ -6184,13 +6205,7 @@ function LangfusePage() {
       return;
     }
 
-    // Langfuse public API. Auth is HTTP Basic over the project key pair and is
-    // injected by the proxy (see the /langfuse endpoint in app-config.*.yaml) —
-    // deliberately not held in the frontend.
-    const api = (path: string) =>
-      fetchApi
-        .fetch(`${base}/api/proxy/langfuse/api/public${path}`)
-        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`${path} → HTTP ${r.status}`))));
+    const api = langfuseApi(fetchApi, base);
 
     // Last 7 days of usage, aggregated server-side by Langfuse.
     const from = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
@@ -6230,17 +6245,7 @@ function LangfusePage() {
         setModels([...byModel.values()].sort((a, b) => b.cost - a.cost));
         setTotals({ traces: traceTotal, cost: costTotal, observations: obsTotal });
 
-        setTraces(
-          (traceData?.data ?? []).slice(0, 25).map((t: any) => ({
-            id:   String(t?.id ?? '').slice(0, 8),
-            name: t?.name ?? '—',
-            agent: t?.name ? agentFromTraceName(String(t.name)) : '—',
-            user:  t?.userId ?? '—',
-            latency: t?.latency !== undefined && t?.latency !== null ? fmtLatency(Number(t.latency)) : '—',
-            cost:    t?.totalCost !== undefined ? fmtCost(Number(t.totalCost)) : '—',
-            timestamp: relTime(t?.timestamp ? Date.parse(t.timestamp) : undefined),
-          })),
-        );
+        setTraces((traceData?.data ?? []).slice(0, 25).map(mapLangfuseTrace));
 
         setStatus('ok');
       })
@@ -6391,6 +6396,167 @@ const langfusePage = PageBlueprint.make({
 const langfuseNavItem = NavItemBlueprint.make({
   name: 'langfuse-platform',
   params: { title: 'AI Observability', icon: TimelineIcon as any, routeRef: langfusePageRouteRef },
+});
+
+// ── Langfuse entity tab — one service's traces ────────────────────────────────
+// The platform page above is org-wide; this is the same data scoped to one
+// component via the `langfuse.com/service-name` annotation, which the
+// enable-langfuse-tracing and llm-app-langfuse templates write.
+//
+// Filtering is by Langfuse TAG, not trace name: KAgent names traces after the
+// HTTP route it served and sessionId is a per-conversation UUID, so neither
+// identifies a service. The instrumentation sets `langfuse.trace.tags` to the
+// service name and this queries ?tags=<name> — verified server-side (an unknown
+// query param returns every trace; ?tags= with no match returns none).
+//
+// Per-service cost and latency are summed from the returned traces rather than
+// read from /metrics/daily: that endpoint aggregates per model and per day with
+// no tag dimension, so it cannot answer "this service only".
+
+function LangfuseEntityContent() {
+  const { entity } = useEntity();
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+  const langfuseUrl = configApi.getOptionalString('externalLinks.langfuse') ?? 'http://langfuse.idp.local';
+
+  const serviceName = entity.metadata.annotations?.['langfuse.com/service-name'];
+
+  const [traces, setTraces] = useState<LangfuseTrace[]>([]);
+  const [summary, setSummary] = useState({ count: 0, cost: 0, avgLatency: 0 });
+  const [status, setStatus] = useState<'loading' | 'error' | 'ok'>('loading');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!serviceName) return;
+
+    langfuseApi(fetchApi, base)(`/traces?tags=${encodeURIComponent(serviceName)}&limit=50`)
+      .then((data: any) => {
+        const rows: any[] = data?.data ?? [];
+        const cost = rows.reduce((sum, t) => sum + Number(t?.totalCost ?? 0), 0);
+        // Latency is in SECONDS on /traces (see fmtLatency). Averaging only the
+        // traces that reported one — a missing latency is not a zero.
+        const timed = rows.filter(t => t?.latency !== undefined && t?.latency !== null);
+        const avgLatency = timed.length
+          ? timed.reduce((sum, t) => sum + Number(t.latency), 0) / timed.length
+          : 0;
+
+        setSummary({ count: Number(data?.meta?.totalItems ?? rows.length), cost, avgLatency });
+        setTraces(rows.map(mapLangfuseTrace));
+        setStatus('ok');
+      })
+      .catch((e: Error) => {
+        setError(e.message ?? String(e));
+        setStatus('error');
+      });
+  }, [serviceName, base, fetchApi]);
+
+  if (!serviceName) {
+    return (
+      <Content>
+        <Paper style={{ padding: 24, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>LLM tracing not enabled</Typography>
+          <Typography variant="body2" color="textSecondary">
+            This component has no <code>langfuse.com/service-name</code> annotation, so there is
+            nothing to filter traces by. Run the <strong>Enable Langfuse LLM Tracing</strong>
+            {' '}scaffolder template to open a PR that adds the instrumentation, the Helm wiring and
+            this annotation.
+          </Typography>
+          <Box mt={2}>
+            <Link href="/create" target="_self">Open scaffolder ↗</Link>
+          </Box>
+        </Paper>
+      </Content>
+    );
+  }
+
+  return (
+    <Content>
+      {status === 'loading' && <Progress />}
+      {status === 'error' && (
+        <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
+          <Typography variant="body2" style={{ color: '#b71c1c' }}>
+            ⚠️ Couldn't reach Langfuse ({error}). Check it with{' '}
+            <code>kubectl get pods -n ml-platform -l app.kubernetes.io/instance=langfuse</code>. A 401 means{' '}
+            <code>LANGFUSE_BASIC_AUTH</code> is not set for Backstage.
+          </Typography>
+        </Paper>
+      )}
+      {status === 'ok' && (
+        <>
+          <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Traces',      value: String(summary.count),          sub: `tagged ${serviceName}`, color: '#1976d2' },
+              { label: 'LLM Cost',    value: fmtCost(summary.cost),          sub: 'across shown traces',   color: '#7b1fa2' },
+              { label: 'Avg latency', value: summary.avgLatency ? fmtLatency(summary.avgLatency) : '—', sub: 'per trace', color: '#0288d1' },
+            ].map(({ label, value, sub, color }) => (
+              <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
+                <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
+                <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
+                <Typography variant="caption" color="textSecondary">{sub}</Typography>
+              </Paper>
+            ))}
+          </Box>
+
+          <Paper>
+            <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+              <Typography variant="h6" style={{ flex: 1 }}>Recent traces</Typography>
+              <Button variant="outlined" size="small" href={langfuseUrl} target="_blank" style={{ fontSize: 11 }}>
+                Open Langfuse ↗
+              </Button>
+            </Box>
+            <TableContainer>
+              <MuiTable size="small">
+                <TableHead>
+                  <TableRow style={{ background: '#f5f5f5' }}>
+                    <TableCell><strong>Trace</strong></TableCell>
+                    <TableCell><strong>Operation</strong></TableCell>
+                    <TableCell><strong>User</strong></TableCell>
+                    <TableCell align="right"><strong>Latency</strong></TableCell>
+                    <TableCell align="right"><strong>Cost</strong></TableCell>
+                    <TableCell><strong>When</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {traces.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          No traces tagged <code>{serviceName}</code> yet. The service reports only
+                          once <code>secret/langfuse-otel</code> is present in its namespace and the
+                          pod has restarted — see the service's runbook.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {traces.map(t => (
+                    <TableRow key={t.id}>
+                      <TableCell><code style={{ fontSize: 11 }}>{t.id}</code></TableCell>
+                      <TableCell>{t.agent}</TableCell>
+                      <TableCell><span style={{ fontSize: 12 }}>{t.user}</span></TableCell>
+                      <TableCell align="right">{t.latency}</TableCell>
+                      <TableCell align="right">{t.cost}</TableCell>
+                      <TableCell>{t.timestamp}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </MuiTable>
+            </TableContainer>
+          </Paper>
+        </>
+      )}
+    </Content>
+  );
+}
+
+const langfuseEntityContent = EntityContentBlueprint.make({
+  name: 'langfuse',
+  params: {
+    path: '/langfuse',
+    title: 'Langfuse',
+    filter: 'kind:component',
+    loader: async () => <LangfuseEntityContent />,
+  },
 });
 
 // ── MLflow — experiment tracking & model registry ─────────────────────────────
@@ -6958,6 +7124,7 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     kagentNavItem,
     langfusePage,
     langfuseNavItem,
+    langfuseEntityContent,
     mlflowPage,
     mlflowNavItem,
     supportPage,

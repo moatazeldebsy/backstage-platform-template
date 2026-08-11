@@ -141,7 +141,6 @@ spec:
     - id: open-pr
       name: Open PR to create EKS cluster
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         title: "feat(infra): create EKS cluster ${{ parameters.clusterName }}"

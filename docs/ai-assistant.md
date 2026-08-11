@@ -805,6 +805,78 @@ Input/output capture is **off** by default (`LANGFUSE_CAPTURE_IO`). Tool
 arguments and results can carry PII and credentials, and Langfuse is a separate
 store from the `[AUDIT]` log stream. Turn it on deliberately.
 
+### Instrumenting your own service
+
+The two paths above cover platform-owned workloads. For a team's own service
+there are two self-service front doors in the scaffolder:
+
+| Template | Use when |
+|---|---|
+| **Enable Langfuse LLM Tracing** (`enable-langfuse-tracing`) | The service already exists. Opens a PR adding a drop-in telemetry module (runnable for Node.js and Python, setup notes for Go/JVM/Ruby), the Helm `envFrom` block, and the catalog annotation. |
+| **LLM App (Python + Langfuse)** (`llm-app-langfuse`) | You are starting a new one. Scaffolds a FastAPI service calling Claude with the instrumentation already wired. |
+
+Both produce a service that reports into the same `idp-agents` project, tagged
+with its own name — there is no per-service project or key pair to manage.
+
+#### How the credentials reach a service namespace
+
+The project key pair is minted **in-cluster** into `secret/langfuse-init` in
+`ml-platform`, and Kubernetes Secrets are namespace-scoped. The platform
+therefore copies it, by label, into a `langfuse-otel` Secret in every namespace
+that opts in:
+
+```bash
+kubectl label namespace <ns> idp.io/langfuse=enabled
+./scripts/bootstrap-ai.sh --langfuse-keys-only     # idempotent; deploys nothing
+```
+
+`bootstrap-ai.sh --langfuse` labels `services-dev` and runs this itself, so a
+service deployed there needs nothing extra. Workloads already running when the
+Secret lands need a restart — `envFrom` is read at container start.
+
+Opting in by label rather than by a hardcoded namespace list is deliberate: a
+scaffolded service lands in a namespace this script has never heard of, and
+asking a developer to edit a bootstrap script to turn on their own tracing is
+not self-service.
+
+On AWS the same pair is also mirrored to Secrets Manager at
+`idp-mvp/langfuse/project-keys`, so teams who prefer pure GitOps can commit an
+`ExternalSecret` named `langfuse-otel` instead. Locally there is no External
+Secrets install (that is `bootstrap.sh`, not `bootstrap-local.sh`), so the label
+is the only mechanism there.
+
+#### Cost shows $0.00 for a model Langfuse doesn't know
+
+Langfuse ships a built-in model price table, and a pinned chart's table is frozen
+at its release date — this build stops at `claude-opus-4-8`. A trace on anything
+newer still records **tokens and latency correctly**, but Langfuse cannot price
+it, so `calculatedTotalCost` is `0` and every cost column reads `$0.00`. It looks
+exactly like broken instrumentation and is not.
+
+`bootstrap-ai.sh` seeds the missing definitions after Langfuse comes up (see
+`_seed_langfuse_model_prices`), so this is handled on a fresh install. Two things
+to know:
+
+- **Pricing is applied at ingest.** Traces recorded before the price existed keep
+  their `$0.00`; only new traces are priced.
+- **Seeded models price input/output only.** Langfuse's create endpoint accepts
+  the older `unit` + `inputPrice`/`outputPrice` schema, not the `prices` map its
+  built-in entries expose, so cached tokens fall back to the full input price
+  rather than the discounted cache rate. A cache-heavy workload therefore reads
+  slightly high. Add the cache tiers by hand in the Langfuse UI if that matters.
+
+When a new model appears, add it to the `specs` list in that function.
+
+#### Per-service view
+
+A component carrying the `langfuse.com/service-name` annotation grows a
+**Langfuse** tab on its Backstage entity page, showing that service's traces,
+cost and average latency. It filters by Langfuse **tag** — the instrumentation
+sets `langfuse.trace.tags` to the service name, because `/traces.name` is the
+HTTP route KAgent served and `sessionId` is a per-conversation UUID, so neither
+identifies a service. Keep the annotation equal to `OTEL_SERVICE_NAME` in the
+service's Helm values; they are the two halves of that filter.
+
 ### When the AI Observability page shows no data
 
 The page reads Langfuse through the Backstage `/langfuse` proxy, so a failure can

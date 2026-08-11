@@ -17,6 +17,7 @@ spec:
     - ./templates/ruby-service/template.yaml
     - ./templates/jvm-service/template.yaml
     - ./templates/react-frontend/template.yaml
+    - ./templates/llm-app-langfuse/template.yaml
     # ── Blessed: Platform self-service ───────────────────────────────────────
     - ./templates/team-namespace/template.yaml
     - ./templates/create-namespace/template.yaml
@@ -86,3 +87,4 @@ spec:
     - ./templates/canary-deployment/template.yaml
     - ./templates/slo-definition/template.yaml
     - ./templates/enable-datadog-apm/template.yaml
+    - ./templates/enable-langfuse-tracing/template.yaml

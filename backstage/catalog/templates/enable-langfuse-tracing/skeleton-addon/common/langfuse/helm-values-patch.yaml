@@ -1,0 +1,36 @@
+# Langfuse tracing — merge this into helm-values-local.yaml and helm-values-aws.yaml.
+#
+# This is a PATCH, not a complete values file: `envFrom` and `env` are top-level
+# keys of helm/service-template, so if your values file already sets either one,
+# append these entries to the existing list rather than pasting the whole block.
+
+# Credentials, copied into this namespace by:
+#   kubectl label namespace ${{ values.namespace }} idp.io/langfuse=enabled
+#   ./scripts/bootstrap-ai.sh --langfuse-keys-only
+#
+# optional: true is deliberate. Without it the pod refuses to start until the
+# Secret exists, which turns "tracing is not set up yet" into an outage. The
+# instrumentation is already a no-op when the endpoint is absent, so the pod
+# starting untraced is the correct failure mode.
+envFrom:
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+
+env:
+  # Identifies this service on every trace, and is the value the Langfuse tab in
+  # Backstage filters on. Keep it equal to the `langfuse.com/service-name`
+  # annotation in catalog-info.yaml.
+  - name: OTEL_SERVICE_NAME
+    value: "${{ values.repoName }}"
+
+  # Records prompts and completions on each span. Leave "false" unless this
+  # service provably never handles personal or sensitive data — everyone with
+  # Langfuse access can read what this captures.
+  - name: LANGFUSE_CAPTURE_IO
+    value: "${{ values.captureIo }}"
+
+  # Fraction of root traces recorded, 0.0–1.0. Sampling is parent-based, so a
+  # sampled caller keeps its downstream spans and the waterfall stays whole.
+  - name: LANGFUSE_SAMPLE_RATE
+    value: "${{ values.sampleRate }}"

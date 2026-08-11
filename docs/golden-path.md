@@ -52,6 +52,7 @@ Open the Backstage portal and click **Create** → select one of:
 | Go Service | Go | 8080 |
 | Ruby Sinatra Service | Ruby / Sinatra | 4567 |
 | JVM (Java/Spring Boot) Service | Java 21 / Spring Boot / Gradle | 8080 |
+| LLM App (Python + Langfuse) | FastAPI + Claude, tracing pre-wired | 8000 |
 
 Fill in name, description, owner, and GitHub repo. Click **Create**.
 
@@ -207,6 +208,11 @@ Then re-add the deploy job to `.github/workflows/build-and-deploy.yml` (see `doc
 | Secret path | n/a (local uses ConfigMaps) | `/<teamName>/<secret-name>` in Secrets Manager |
 
 ## CLI Alternative (without Backstage)
+
+> The CLI scaffolder covers the three base runtimes — `nodejs`, `python`, `go`.
+> The specialist templates (Ruby, JVM, React, LLM App, MCP server, KAgent agent)
+> are Backstage-only by design: they carry skeletons the CLI's local generator
+> does not duplicate, which keeps the two implementations from drifting.
 
 ```bash
 # Scaffold — auto-detects Backstage; falls back to local generation

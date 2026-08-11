@@ -761,22 +761,50 @@ jobs:
             echo "has_aws=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # continue-on-error, because the guard above can only prove the secret is
+      # SET — not that the role behind it still exists. The EKS stack is torn
+      # down between sessions by design, which destroys the IAM role and the
+      # OIDC provider while leaving the secret in place. Without this, every PR
+      # goes red on "Could not assume role with OIDC" whenever the cluster is
+      # down, which is most of the time. This job only posts an advisory cost
+      # comment; it must never be the reason a PR cannot merge.
       - name: Configure AWS credentials (OIDC)
+        id: creds
         if: steps.guard.outputs.has_aws == 'true'
+        continue-on-error: true
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Separately tolerant: credentials can be valid while the cluster itself
+      # is gone, so a successful assume-role does not imply a reachable cluster.
       - name: Update kubeconfig
-        if: steps.guard.outputs.has_aws == 'true'
+        id: kubeconfig
+        if: steps.creds.outcome == 'success'
+        continue-on-error: true
         env:
           CLUSTER: ${{ env.EKS_CLUSTER_NAME }}
           REGION: ${{ env.AWS_REGION }}
         run: aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION"
 
+      - name: Report skipped cost context
+        if: steps.guard.outputs.has_aws != 'true' || steps.creds.outcome != 'success' || steps.kubeconfig.outcome != 'success'
+        run: |
+          echo "### 💰 Cost context skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.guard.outputs.has_aws }}" != "true" ]; then
+            echo "No \`AWS_ROLE_ARN\` secret configured." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.creds.outcome }}" != "success" ]; then
+            echo "Could not assume the AWS role — the EKS stack is most likely torn down." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Assumed the AWS role, but cluster \`${{ env.EKS_CLUSTER_NAME }}\` is unreachable." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This is advisory only and does not block the PR." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Query current dev namespace cost (OpenCost)
-        if: steps.guard.outputs.has_aws == 'true'
+        if: steps.kubeconfig.outcome == 'success'
         id: cost
         run: |
           kubectl port-forward svc/opencost -n opencost 9003:9003 &>/tmp/pf-opencost.log &
@@ -793,7 +821,7 @@ jobs:
           fi
 
       - name: Post cost context PR comment
-        if: steps.guard.outputs.has_aws == 'true' && steps.cost.outputs.found == 'true'
+        if: steps.kubeconfig.outcome == 'success' && steps.cost.outputs.found == 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           SERVICE: ${{ matrix.service }}

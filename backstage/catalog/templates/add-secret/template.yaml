@@ -95,7 +95,6 @@ spec:
     - id: open-pr
       name: Open PR to apply ExternalSecret
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
         title: "feat(${{ parameters.serviceName }}): add ${{ parameters.secretKey }} secret"

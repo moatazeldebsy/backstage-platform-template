@@ -39,9 +39,17 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      # Optional: authenticate to AWS if contract server requires AWS OIDC
+      # Optional: authenticate to AWS if contract server requires AWS OIDC.
+      # continue-on-error for the same reason as cost-context in
+      # build-and-deploy.yml — the `vars.AWS_ROLE_ARN != ''` check proves only
+      # that the variable is SET, not that the role still exists. The EKS stack
+      # is torn down between sessions, which removes the role and the OIDC
+      # provider while the variable stays configured. Nothing below depends on
+      # AWS credentials (the contract server is reached over HTTP with
+      # CONTRACT_TOKEN), so a failed assume-role must not fail the check.
       - name: Configure AWS credentials
         if: ${{ vars.AWS_ROLE_ARN != '' }}
+        continue-on-error: true
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}

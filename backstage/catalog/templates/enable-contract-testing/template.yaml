@@ -159,7 +159,6 @@ spec:
     - id: publish
       name: Publish contract test repo to GitHub
       action: publish:github
-      continueOnError: true
       if: ${{ parameters.createTestRepo }}
       input:
         description: Contract tests for ${{ parameters.consumerName }} → ${{ parameters.providerName }} (MCP-powered)
@@ -176,7 +175,6 @@ spec:
     - id: register-local
       name: Register in local catalog
       action: idp:catalog-register-local
-      continueOnError: true
       input:
         entityName: ${{ parameters.consumerName }}-${{ parameters.providerName }}-contract
         entityKind: Component
@@ -188,7 +186,6 @@ spec:
     - id: register
       name: Register in Backstage catalog
       action: catalog:register
-      continueOnError: true
       if: ${{ parameters.createTestRepo }}
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}

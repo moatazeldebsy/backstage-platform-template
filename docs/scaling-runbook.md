@@ -205,7 +205,7 @@ The items below map to the original 25-team scaling analysis. ✅ = shipped in v
 | **Backstage** | GitHub org sync (User/Group auto-import) | ✅ `app-config.aws.yaml` `githubOrg` provider |
 | **Backstage** | Catalog consolidation (49 URLs → 1 file) | ✅ `backstage/catalog/all-templates.yaml` |
 | **Backstage** | GitHub discovery for scaffolded services (replaces the URL catalog list) | ✅ `catalog.providers.github.idpOrg` in `app-config.yaml` / `app-config.aws.yaml` — topic-filtered, 15-min sync |
-| **Backstage** | Template versioning (`v1` + `blessed`/`advanced` tags) | ✅ all 61 templates |
+| **Backstage** | Template versioning (`v1` + `blessed`/`advanced` tags) | ✅ all 63 templates |
 | **Backstage** | Permission framework (`permission.enabled: true`) | ✅ config added; backend plugin code still needed |
 | **Observability** | DORA `team=` label on all Prometheus metrics | ✅ `dora-exporter.py` |
 | **Observability** | `TEAM_MAP` env var for repo→team mapping | ✅ `dora-exporter.py` + CronJob YAMLs |

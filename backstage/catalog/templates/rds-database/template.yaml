@@ -156,7 +156,6 @@ spec:
     - id: open-pr
       name: Open PR to provision database
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         title: "feat(infra): provision Managed Postgres ${{ parameters.instanceName }}"

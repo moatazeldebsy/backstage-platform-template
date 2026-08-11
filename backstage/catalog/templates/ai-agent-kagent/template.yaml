@@ -133,14 +133,6 @@ spec:
           - kagent
           - idp
 
-    - id: catalog
-      name: Register in catalog
-      action: catalog:register
-      continueOnError: true
-      input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
-
     - id: deploy
       name: Deploy Agent to KAgent
       action: idp:deploy-agent
@@ -152,6 +144,18 @@ spec:
         enableCatalogSearch: ${{ parameters.enableCatalogSearch }}
         enableMetrics: ${{ parameters.enableMetrics }}
         enableScaffolding: ${{ parameters.enableScaffolding }}
+
+    # Registration runs LAST on purpose. A failing step aborts the whole task —
+    # there is no per-step "continue on error" in Backstage — and catalog:register
+    # is the most failure-prone step here (it validates the rendered entity, needs a
+    # token, and talks to two services). Failing last leaves fully scaffolded output
+    # that only needs re-registering, instead of skipping the steps below.
+    - id: catalog
+      name: Register in catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
 
   output:
     links:

@@ -1,0 +1,11 @@
+fastapi>=0.111.0,!=0.136.3  # 0.136.3 compromised (MAL-2026-4750: injects typosquat 'fastar' dep)
+uvicorn[standard]>=0.29.0
+prometheus-client>=0.20.0
+anthropic>=0.116.0
+
+# Langfuse tracing. Raw OpenTelemetry rather than the Langfuse SDK — see the
+# design notes at the top of src/telemetry.py. The exporter is the *protobuf*
+# one: Langfuse's ingest and KAgent's exporter both speak OTLP/HTTP protobuf,
+# and matching them is what lets agent spans and service spans nest.
+opentelemetry-sdk>=1.27.0
+opentelemetry-exporter-otlp-proto-http>=1.27.0

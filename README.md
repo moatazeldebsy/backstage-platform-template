@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
-A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
+A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
@@ -49,14 +49,14 @@ A Backstage developer portal, golden-path Helm chart, 61 scaffold templates (ser
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.49.1 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
-| **Software templates** | 61 templates: 10 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, Team namespace, Create namespace, Add-secret, Decommission) + 51 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (60 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
+| **Software templates** | 63 templates: 11 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, LLM App, Team namespace, Create namespace, Add-secret, Decommission) + 52 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (62 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
-| **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Opt-in locally (`bootstrap-ai.sh --langfuse`), on by default on AWS. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
+| **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Opt-in locally (`bootstrap-ai.sh --langfuse`), on by default on AWS. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
 | **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
 | **Infrastructure** | Terraform for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3) + Crossplane for per-service resources (S3, RDS, MSK, DynamoDB, SQS) via ArgoCD-reconciled Claims. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) |
@@ -159,7 +159,7 @@ Topology, DR tiers, and the six rollout phases: [docs/multi-region.md](docs/mult
 | Channel | Who | Entry point |
 |---------|-----|-------------|
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
-| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 61 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 63 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
 
 ## Screenshots
@@ -185,7 +185,7 @@ Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA,
 
 ### Golden path — scaffold → repo → deploy
 
-61 templates in the Scaffolder, filtered by category, tag or owner:
+63 templates in the Scaffolder, filtered by category, tag or owner:
 
 ![Scaffolder templates](docs/assets/screenshots/scaffolder-templates.jpg)
 
@@ -287,7 +287,7 @@ backstage-platform-template/
 ├── scripts/                    # setup.sh · bootstrap-local.sh · bootstrap-ai.sh · cleanup.sh
 ├── backstage/
 │   ├── app/                    # Backstage monorepo (v1.49.1)
-│   ├── catalog/templates/      # 61 golden-path templates
+│   ├── catalog/templates/      # 63 golden-path templates
 │   ├── app-config.yaml         # base config
 │   ├── app-config.local.yaml   # Kind overrides
 │   └── app-config.aws.yaml     # EKS overrides
@@ -359,7 +359,7 @@ behaves inside this repo.
 | `platform-architect` | Deciding *where* a change belongs — Terraform vs Crossplane vs Helm vs `kubernetes/`, which of the three interaction channels exposes a capability, which app-config layer |
 | `platform-engineer` | Actually building the change across components; knows the per-component CI gate and runs it |
 | `platform-reviewer` | Reviewing a diff against this repo's conventions (dual local/AWS coverage, both template front doors, accepted risks) |
-| `golden-path-steward` | The 61 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
+| `golden-path-steward` | The 63 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
 | `qa-shift-left` | Test strategy, the Bronze/Silver/Gold scorecard, contract testing, flaky-test quarantine |
 | `security-advisor` | Kyverno/PSS, IRSA and least-privilege IAM, External Secrets, Dependabot triage |
 | `sre-responder` | Live incidents, SLOs and burn-rate alerts, rollback, DR failover, postmortems |

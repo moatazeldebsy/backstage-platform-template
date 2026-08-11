@@ -1,0 +1,18 @@
+# The 70% gate applies to the code you write.
+#
+# src/telemetry.py is shipped by the platform, byte-identical to the module the
+# enable-langfuse-tracing template installs, and its exporter-setup path needs a
+# live OTLP collector to exercise — it is covered in the platform repo. Counting
+# it here would either drag the gate below any useful threshold or push you to
+# write mock-heavy tests for code you did not author.
+#
+# tests/test_telemetry.py still pins the part that matters to this service: the
+# disabled-by-default contract. Delete this omit if you start editing telemetry.py
+# substantially — at that point it IS your code and should be held to the gate.
+[run]
+source = src
+omit =
+    src/telemetry.py
+
+[report]
+show_missing = True
