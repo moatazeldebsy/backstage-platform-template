@@ -1,0 +1,69 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/moatazeldebsy/hello-llm
+  tag: "latest"
+  pullPolicy: Always
+
+service:
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  hosts:
+    - host: hello-llm.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  team: "ml-team"
+  cost-center: "eng-platform"
+  environment: dev
+  app.kubernetes.io/part-of: internal-developer-platform
+
+metrics:
+  enabled: true
+
+# See helm-values-local.yaml for what each secret is and who creates it.
+envFrom:
+  - secretRef:
+      name: hello-llm-secrets
+      optional: true
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+
+env:
+  - name: LOG_LEVEL
+    value: info
+  - name: ENVIRONMENT
+    value: dev
+  - name: OTEL_SERVICE_NAME
+    value: "hello-llm"
+  - name: LANGFUSE_CAPTURE_IO
+    value: "true"
+  - name: LANGFUSE_SAMPLE_RATE
+    value: "1"
+
+labels:
+  backstage.io/kubernetes-id: hello-llm
