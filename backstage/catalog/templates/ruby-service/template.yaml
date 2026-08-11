@@ -135,22 +135,6 @@ spec:
         secrets:
           AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
 
-    - id: register
-      name: Register in Catalog
-      action: catalog:register
-      continueOnError: true
-      input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
-
-    - id: register-api
-      name: Register API in Catalog
-      action: catalog:register
-      continueOnError: true
-      input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/api-info.yaml'
-
     - id: fetch-platform-values
       name: Prepare Platform GitOps Values
       action: fetch:template
@@ -168,7 +152,6 @@ spec:
     - id: platform-pr
       name: Open Platform GitOps PR
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
         title: "feat: onboard ${{ parameters.name }} to GitOps"
@@ -187,6 +170,25 @@ spec:
       action: idp:seed-image
       input:
         serviceName: ${{ parameters.name }}
+
+    # Registration runs LAST on purpose. A failing step aborts the whole task —
+    # there is no per-step "continue on error" in Backstage — and catalog:register
+    # is the most failure-prone step here (it validates the rendered entity, needs a
+    # token, and talks to two services). Failing last leaves a fully scaffolded
+    # service that only needs re-registering, instead of skipping the steps below.
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    - id: register-api
+      name: Register API in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/api-info.yaml'
 
   output:
     links:

@@ -199,7 +199,6 @@ spec:
     - id: publish-pr
       name: Open Pull Request on Service Repo
       action: publish:github:pull-request
-      continueOnError: true
       if: ${{ parameters.deploymentMode === 'add-to-existing' }}
       input:
         repoUrl: ${{ parameters.targetRepoUrl }}
@@ -223,7 +222,6 @@ spec:
     - id: register
       name: Register in Catalog
       action: catalog:register
-      continueOnError: true
       if: ${{ parameters.deploymentMode !== 'add-to-existing' }}
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}

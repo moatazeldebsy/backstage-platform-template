@@ -104,7 +104,6 @@ spec:
     - id: publish-pr
       name: Open Pull Request on Flutter App Repo
       action: publish:github:pull-request
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.targetRepoUrl }}
         title: 'test: add ${{ parameters.name }} Flutter integration tests'
@@ -130,7 +129,6 @@ spec:
       name: Inject GCP credentials into repo secrets
       if: ${{ parameters.testRunner === 'firebase-test-lab' }}
       action: idp:repo:set-secrets
-      continueOnError: true
       input:
         repoUrl: ${{ parameters.targetRepoUrl }}
         secrets: {}
