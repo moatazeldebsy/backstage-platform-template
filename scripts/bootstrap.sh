@@ -168,7 +168,16 @@ _build_aws_images() {
        "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/hello-service --image-ids imageTag=${IMAGE_TAG}"; then
     log "  hello-service unchanged and ${IMAGE_TAG} already in ECR — skipping build."
   else
-    docker_build_push_amd64 services/hello-service "${IMAGE_REPO}" \
+    # ROOT_DIR-absolute, not relative. This function is launched at Phase 2.5, which
+    # runs while the working directory is still $TF_DIR (set at the top for the
+    # Terraform apply and not restored until Phase 3). The relative form resolved to
+    # terraform/services/hello-service and failed with
+    #   unable to prepare context: path "services/hello-service" not found
+    # It worked historically only because the builds used to run at Phase 5, after the
+    # `cd "$ROOT_DIR"`; backgrounding them to overlap the platform install moved them
+    # ahead of it. The failure surfaces at Phase 5 when the job is joined, far from its
+    # cause. Observed 2026-08-12.
+    docker_build_push_amd64 "${ROOT_DIR}/services/hello-service" "${IMAGE_REPO}" \
       --build-arg VERSION="${IMAGE_TAG}" \
       -t "${IMAGE_REPO}:${IMAGE_TAG}" \
       -t "${IMAGE_REPO}:latest"
@@ -184,8 +193,8 @@ _build_aws_images() {
        "aws ecr describe-images --region ${AWS_REGION} --repository-name ${CLUSTER_NAME}/backstage --image-ids imageTag=${BACKSTAGE_IMAGE_TAG}"; then
     log "  Backstage unchanged and ${BACKSTAGE_IMAGE_TAG} already in ECR — skipping build."
   else
-    docker_build_push_amd64 backstage/app/ "${BACKSTAGE_IMAGE}" \
-      -f backstage/Dockerfile \
+    docker_build_push_amd64 "${ROOT_DIR}/backstage/app/" "${BACKSTAGE_IMAGE}" \
+      -f "${ROOT_DIR}/backstage/Dockerfile" \
       -t "${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}"
     helm_record_fingerprint "$bs_fp_file" "$BACKSTAGE_IMAGE_TAG"
   fi
@@ -763,11 +772,19 @@ _p44prec_pid=$!
       "eks.amazonaws.com/role-arn=${DATADOG_ESO_ROLE_ARN}" \
       --overwrite
 
-    helm_upgrade_cached datadog datadog datadog/datadog \
+    if helm_upgrade_cached datadog datadog datadog/datadog \
       --namespace datadog \
       --values "${ROOT_DIR}/aws/observability/datadog/datadog-agent-values.yaml" \
-      --wait --timeout "${HELM_WAIT_SHORT}" || log "WARNING: Datadog Agent install had issues — check that datadog-secrets synced (kubectl get externalsecret -n datadog) and aws/observability/datadog/datadog-agent-values.yaml"
-    log "  Datadog Agent installed. Infra metrics/logs available in Datadog → Infrastructure; APM traces (including the Backstage backend) under Datadog → APM → Services."
+      --wait --timeout "${HELM_WAIT_SHORT}"; then
+      log "  Datadog Agent installed. Infra metrics/logs available in Datadog → Infrastructure; APM traces (including the Backstage backend) under Datadog → APM → Services."
+    else
+      # Previously the success line printed unconditionally on the next statement, so a
+      # failed install logged "install had issues" immediately followed by "Datadog Agent
+      # installed" — the reader is left to guess which is true.
+      log "  WARNING: Datadog Agent install FAILED — no agent is running."
+      log "           Check: kubectl get externalsecret -n datadog"
+      log "           and:   helm template datadog datadog/datadog -f aws/observability/datadog/datadog-agent-values.yaml"
+    fi
   else
     log "  WARNING: datadog_eso_role_arn not found in Terraform outputs — skipping Datadog Agent install."
     log "           Set datadog_api_key/datadog_app_key in terraform.tfvars, run 'terraform apply' in ${TF_DIR}, then re-run this phase manually:"
@@ -887,7 +904,27 @@ if ! helm_upgrade_cached argocd argocd argo/argo-cd \
   --create-namespace \
   --values aws/argocd/argocd-helm-values.yaml \
   --wait --timeout "${HELM_WAIT_SHORT}"; then
-  warn "Phase 4.5 (ArgoCD) failed on first attempt — retrying with an extended timeout..."
+  warn "Phase 4.5 (ArgoCD) failed on first attempt — clearing the stuck release and retrying with an extended timeout..."
+
+  # A timed-out `--wait` does not roll the release back: it stays in pending-install
+  # (or pending-upgrade) and keeps holding the release lock. Retrying straight away
+  # therefore ALWAYS failed with "another operation (install/upgrade/rollback) is in
+  # progress" — the retry could never succeed, and the real cause (usually
+  # "etcdserver: throttle: too many requests" while ArgoCD registers its CRDs) was
+  # buried under a misleading lock error. Observed 2026-08-12.
+  _argocd_status=$(helm status argocd -n argocd -o json 2>/dev/null \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['info']['status'])" 2>/dev/null || echo "")
+  case "$_argocd_status" in
+    pending-install)
+      log "  Release stuck in pending-install — uninstalling before retry."
+      helm uninstall argocd -n argocd --wait --timeout 5m >/dev/null 2>&1 || true
+      ;;
+    pending-upgrade|pending-rollback)
+      log "  Release stuck in ${_argocd_status} — rolling back before retry."
+      helm rollback argocd -n argocd --wait --timeout 5m >/dev/null 2>&1 || true
+      ;;
+  esac
+
   helm_upgrade_cached argocd argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \

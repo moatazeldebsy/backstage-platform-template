@@ -35,7 +35,15 @@ datadog:
 
   # Unified service tagging defaults; per-service overrides come from pod labels/annotations
   # set by the enable-datadog-apm scaffolder template (backstage/catalog/templates/enable-datadog-apm/).
-  env: production
+  #
+  # `datadog.env` is a LIST of environment-variable entries, not an environment name.
+  # It was previously the scalar `production`, which made the chart fail to render at
+  # all: `_helpers.tpl` does `range` over this value, giving
+  #   Error: datadog/templates/daemonset.yaml:150:12 ... range can't iterate over production
+  # The env tag for unified service tagging is carried by DD_ENV.
+  env:
+    - name: DD_ENV
+      value: production
 
 clusterAgent:
   enabled: true
