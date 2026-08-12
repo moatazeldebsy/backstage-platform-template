@@ -384,6 +384,17 @@ if client_secret:
 grafana_pw = os.environ.get('GRAFANA_ADMIN_PASSWORD', '')
 if grafana_pw:
     s['GRAFANA_ADMIN_PASSWORD'] = grafana_pw
+# Optional third-party keys consumed by Backstage but never provisioned by
+# terraform/secrets.tf. Without these the key simply never reaches Secrets Manager,
+# so the ExternalSecret (dataFrom: extract) has nothing to sync and the feature
+# reports itself unconfigured at runtime — VOYAGE_API_KEY produced
+#   503 {"error": "VOYAGE_API_KEY not configured"}
+# from the RAG search endpoint (packages/backend/src/modules/idpRagSearch.ts).
+# Each is applied only when actually exported, so an unset one changes nothing.
+for key in ('VOYAGE_API_KEY', 'SONAR_TOKEN', 'SNYK_TOKEN', 'DD_API_KEY', 'DD_APP_KEY'):
+    val = os.environ.get(key, '')
+    if val:
+        s[key] = val
 # GitHub App credentials (replaces GH_PAT for Backstage scaffolder + auto-merge CI).
 # Create at: github.com/settings/apps → New GitHub App. Permissions: Contents=Read,
 # Pull requests=Write, Members=Read, Metadata=Read. Then install on platform repo.
