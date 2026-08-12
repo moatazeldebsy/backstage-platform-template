@@ -234,13 +234,20 @@ poll_until() {
   local elapsed=0 next_note=30
   while (( elapsed < max )); do
     if "$@"; then
-      (( elapsed > 0 )) && info "  ${desc}: ready after ${elapsed}s."
+      # log(), not info(): info() is defined only in bootstrap-ai.sh, while this
+      # helper is shared. Called from bootstrap.sh, bootstrap-local.sh or
+      # bootstrap-multiregion.sh it emitted "lib.sh: line NNN: info: command not
+      # found" and swallowed the progress line — so a long poll went silent exactly
+      # when the operator most wants to see it. Not fatal only because every caller
+      # invokes poll_until in a condition or `|| ` context, which suppresses set -e.
+      # Observed 2026-08-12.
+      (( elapsed > 0 )) && log "  ${desc}: ready after ${elapsed}s."
       return 0
     fi
     sleep "$interval"
     elapsed=$((elapsed + interval))
     if (( elapsed >= next_note )); then
-      info "  ${desc}: still waiting (${elapsed}s/${max}s)..."
+      log "  ${desc}: still waiting (${elapsed}s/${max}s)..."
       next_note=$((elapsed + 30))
     fi
   done
