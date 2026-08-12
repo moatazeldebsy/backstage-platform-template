@@ -213,6 +213,41 @@ variable "anthropic_api_key" {
   default     = "REPLACE_ME"
 }
 
+variable "dora_github_token" {
+  description = <<-EOT
+    GitHub PAT (repo:read) for the DORA exporter. Stored in Secrets Manager at
+    idp-mvp/dora-exporter.
+
+    Previously the secret version hardcoded "REPLACE_ME", so the exporter
+    authenticated with that literal string and every run died on
+
+      401 Client Error: Unauthorized for url:
+      https://api.github.com/search/repositories?q=user:<org>+topic:idp-app
+
+    The CronJob failed every 15 minutes, no dora_* metrics were ever published, and
+    Backstage's DORA tab showed demo data blaming missing catalog topics — which was
+    misleading, since the exporter never got past its first API call. Worse, because
+    Terraform owned the value, populating it by hand was reverted on the next apply.
+    Observed 2026-08-13.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
+
+variable "slack_webhook_url" {
+  description = <<-EOT
+    Slack incoming webhook for cost and budget alerts. Stored in Secrets Manager at
+    idp-mvp/slack-webhook and read by the cost-alert Lambda.
+
+    Same reasoning as dora_github_token: the secret version hardcoded "REPLACE_ME",
+    so a hand-populated value was silently reverted by the next terraform apply.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
+
 # ── Datadog variables ──────────────────────────────────────────────────────────
 variable "datadog_api_key" {
   description = "Datadog API key. Stored in Secrets Manager (idp-mvp/datadog and idp-mvp/backstage)."
