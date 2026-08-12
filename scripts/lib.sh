@@ -234,13 +234,20 @@ poll_until() {
   local elapsed=0 next_note=30
   while (( elapsed < max )); do
     if "$@"; then
-      (( elapsed > 0 )) && info "  ${desc}: ready after ${elapsed}s."
+      # log(), not info(): info() is defined only in bootstrap-ai.sh, while this
+      # helper is shared. Called from bootstrap.sh, bootstrap-local.sh or
+      # bootstrap-multiregion.sh it emitted "lib.sh: line NNN: info: command not
+      # found" and swallowed the progress line — so a long poll went silent exactly
+      # when the operator most wants to see it. Not fatal only because every caller
+      # invokes poll_until in a condition or `|| ` context, which suppresses set -e.
+      # Observed 2026-08-12.
+      (( elapsed > 0 )) && log "  ${desc}: ready after ${elapsed}s."
       return 0
     fi
     sleep "$interval"
     elapsed=$((elapsed + interval))
     if (( elapsed >= next_note )); then
-      info "  ${desc}: still waiting (${elapsed}s/${max}s)..."
+      log "  ${desc}: still waiting (${elapsed}s/${max}s)..."
       next_note=$((elapsed + 30))
     fi
   done
@@ -1048,10 +1055,20 @@ apply_backstage_configmaps() {
   [[ -f "$aws"  ]] || { err "missing ${aws}";  return 1; }
 
   # --dry-run=client needs no cluster; the context applies to `kubectl apply`.
+  #
+  # ${ctx_args[@]+"${ctx_args[@]}"}, not "${ctx_args[@]}". macOS ships bash 3.2,
+  # where expanding an EMPTY array under `set -u` is an "unbound variable" error:
+  #   scripts/lib.sh: line 1060: ctx_args[@]: unbound variable
+  # ctx_args is only populated when a kube-context argument is passed, and the AWS
+  # path passes none — so bootstrap.sh aborted here on every Mac, right after
+  # Backstage's configmaps and before Phases 5.7, 5.8, 6a, 6b and 6. The AI/ML
+  # platform was simply never reached. The `+` form expands to nothing when the
+  # array is empty and to the properly quoted elements otherwise, on both bash 3.2
+  # and 5.x. Observed 2026-08-12.
   kubectl create configmap backstage-base-config -n backstage \
     --from-file=app-config.yaml="$base" \
-    --dry-run=client -o yaml | kubectl apply "${ctx_args[@]}" -f -
+    --dry-run=client -o yaml | kubectl apply ${ctx_args[@]+"${ctx_args[@]}"} -f -
   kubectl create configmap backstage-config -n backstage \
     --from-file=app-config.aws.yaml="$aws" \
-    --dry-run=client -o yaml | kubectl apply "${ctx_args[@]}" -f -
+    --dry-run=client -o yaml | kubectl apply ${ctx_args[@]+"${ctx_args[@]}"} -f -
 }
