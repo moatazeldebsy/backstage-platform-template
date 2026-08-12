@@ -64,3 +64,16 @@ envFrom:
   - secretRef:
       name: langfuse-otel
       optional: true
+
+# Required by the Gatekeeper constraint require-cost-allocation-labels, which
+# denies any workload missing team / cost-center / environment. Without these the
+# admission webhook rejected the release outright:
+#   admission webhook "validation.gatekeeper.sh" denied the request:
+#   [require-cost-allocation-labels] Missing required cost label 'team'
+# so this service could never deploy on AWS. Observed 2026-08-12 — 7 of 11 services
+# were affected; idp/qa/contract-mcp-server and hello-service already had them.
+podLabels:
+  backstage.io/kubernetes-id: argocd-mcp-server
+  team: platform-team
+  cost-center: CC-1000
+  environment: dev
