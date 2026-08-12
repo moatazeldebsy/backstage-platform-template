@@ -69,7 +69,7 @@ resource "aws_secretsmanager_secret_version" "dora_exporter" {
   secret_id = aws_secretsmanager_secret.dora_exporter.id
 
   secret_string = jsonencode({
-    GITHUB_TOKEN = "REPLACE_ME" # GitHub PAT with repo:read scope
+    GITHUB_TOKEN = var.dora_github_token
   })
 }
 
@@ -83,7 +83,7 @@ resource "aws_secretsmanager_secret_version" "slack_webhook" {
   secret_id = aws_secretsmanager_secret.slack_webhook.id
 
   secret_string = jsonencode({
-    SLACK_WEBHOOK_URL = "REPLACE_ME" # Slack incoming webhook URL
+    SLACK_WEBHOOK_URL = var.slack_webhook_url
   })
 }
 

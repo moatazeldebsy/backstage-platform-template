@@ -1032,13 +1032,28 @@ _existing_argocd_token=$(aws secretsmanager get-secret-value \
   --secret-id "$BACKSTAGE_SECRET_ARN" --query SecretString --output text 2>/dev/null \
   | python3 -c "import json,sys; print(json.load(sys.stdin).get('ARGOCD_AUTH_TOKEN',''))" 2>/dev/null || echo "")
 
+# Probe the scheme instead of assuming https. The ArgoCD ALB only gets a TLS
+# listener when var.domain_name is set (terraform/acm.tf is entirely
+# `count = var.domain_name != "" ? 1 : 0`), and domain_name is empty by default —
+# so on a stock install https://<alb> simply does not answer:
+#   https -> 000 (connection failed)   http -> 405 (correct: /session is POST-only)
+# Every curl below used https unconditionally, so ADMIN_TOKEN came back empty, no
+# backstage token was ever minted, ARGOCD_AUTH_TOKEN stayed unset, and Backstage's
+# ArgoCD tab silently fell back to demo data. Nothing failed loudly: the `|| echo ""`
+# fallbacks turned each dead request into an empty string. Observed 2026-08-13.
+ARGOCD_SCHEME="https"
+if ! curl -sk -o /dev/null --max-time 10 "https://${ARGOCD_URL}/api/v1/session" 2>/dev/null; then
+  ARGOCD_SCHEME="http"
+  log "  ArgoCD ALB has no TLS listener (no domain_name configured) — using http for token minting."
+fi
+
 if [[ -n "$ARGOCD_URL" && -n "$_existing_argocd_token" ]] && \
-   curl -sf -k -o /dev/null "https://${ARGOCD_URL}/api/v1/applications" \
+   curl -sf -k -o /dev/null "${ARGOCD_SCHEME}://${ARGOCD_URL}/api/v1/applications" \
      -H "Authorization: Bearer ${_existing_argocd_token}"; then
   log "  Existing ArgoCD token still valid — reusing it."
 elif [[ -n "$ARGOCD_URL" ]]; then
   # Login and get admin token
-  ADMIN_TOKEN=$(curl -s -k "https://${ARGOCD_URL}/api/v1/session" \
+  ADMIN_TOKEN=$(curl -s -k "${ARGOCD_SCHEME}://${ARGOCD_URL}/api/v1/session" \
     -H "Content-Type: application/json" \
     -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_ADMIN_PASSWORD}\"}" \
     | python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))" 2>/dev/null || echo "")
@@ -1046,7 +1061,7 @@ elif [[ -n "$ARGOCD_URL" ]]; then
   if [[ -n "$ADMIN_TOKEN" ]]; then
     # Generate a token for the backstage local account
     BACKSTAGE_ARGOCD_TOKEN=$(curl -s -k \
-      "https://${ARGOCD_URL}/api/v1/account/backstage/token" \
+      "${ARGOCD_SCHEME}://${ARGOCD_URL}/api/v1/account/backstage/token" \
       -H "Authorization: Bearer ${ADMIN_TOKEN}" \
       -X POST \
       | python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))" 2>/dev/null || echo "")
