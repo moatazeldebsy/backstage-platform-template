@@ -1,0 +1,63 @@
+# Master index of platform entities — Groups, Users, Systems, Domains, APIs,
+# Components and Resources. Registered by URL from app-config.aws.yaml, exactly
+# like all-templates.yaml next to it.
+#
+# Why this file exists
+# --------------------
+# The AWS overlay used to register these with `type: file` locations pointing at
+# /catalog/... and /services/... Those paths only exist locally, where
+# local/backstage/docker-compose.yml bind-mounts the repo:
+#
+#     - ../../backstage/catalog:/catalog
+#
+# On EKS the Backstage image contains no /catalog directory at all and nothing
+# mounts one, so all seventeen file locations silently resolved to nothing. The
+# catalog came up with Templates only (registered via the one URL location) and
+# ZERO Group or User entities, so the Platform Dashboard's "Teams in catalog"
+# tile rendered empty. Observed 2026-08-13.
+#
+# Registering by URL removes the dependency on the filesystem layout entirely, so
+# local and AWS resolve the same entities from the same source of truth.
+#
+# Targets are relative to this file's own location, which is how Backstage
+# resolves them for a URL-registered Location. Adding an entity file = add one
+# line here; no app-config edit needed.
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: all-entities
+  description: Master index of platform Groups, Users, Systems, Domains, APIs and Components
+spec:
+  targets:
+    # ── Org: Groups, Users, and the platform System ──────────────────────────
+    # catalog-info.yaml is the one that carries the Group and User entities the
+    # dashboard's Teams tile counts.
+    - ./catalog-info.yaml
+    - ./qa-catalog.yaml
+    - ./mobile-catalog.yaml
+
+    # ── Domains ──────────────────────────────────────────────────────────────
+    - ./domains/ai-ml.yaml
+    - ./domains/engineering.yaml
+    - ./domains/mobile.yaml
+    - ./domains/platform.yaml
+    - ./domains/quality.yaml
+
+    # ── APIs ─────────────────────────────────────────────────────────────────
+    - ./apis/hello-service-api.yaml
+
+    # ── Platform services described under backstage/catalog/services ─────────
+    - ./services/idp-assistant/catalog-info.yaml
+    - ./services/contract-mcp-server/catalog-info.yaml
+
+    # ── Resources ────────────────────────────────────────────────────────────
+    - ./resources/ai-platform.yaml
+    - ./resources/argo-workflows.yaml
+
+    # ── Repo-root entities (two levels up from backstage/catalog) ────────────
+    - ../../catalog-info.yaml
+    - ../../services/hello-service/catalog-info.yaml
+    - ../../services/idp-mcp-server/catalog-info.yaml
+    - ../../services/idp-mcp-server/api.yaml
+    - ../../services/qa-mcp-server/catalog-info.yaml
+    - ../../test-suites/test-deepeval/catalog-info.yaml

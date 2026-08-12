@@ -81,6 +81,10 @@ auth:
   session:
     secret: ${AUTH_SESSION_SECRET}
   providers:
+    # DEMO ONLY — not committed. Anyone who knows the ALB hostname can enter the
+    # portal with no credentials, over plain HTTP. Remove once GitHub sign-in works.
+    guest:
+      dangerouslyAllowOutsideDevelopment: true
     github:
       production:
         clientId: ${AUTH_GITHUB_CLIENT_ID}
@@ -290,83 +294,29 @@ catalog:
       target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/all-templates.yaml
       rules:
         - allow: [Template, Location]
-    # Platform entities (catalog-info.yaml, groups, domains, mobile/qa catalogs,
-    # services, resources, ML experiments): Backstage's config loader merges
-    # objects but *replaces* arrays wholesale when a later config layer
-    # redefines the same key — it does NOT concatenate them. Since this file
-    # is merged on top of app-config.yaml (aws/backstage/deployment.yaml's two
-    # --config flags), a `catalog.locations` list here completely replaces
-    # (not appends to) the base list unless every base entry is duplicated
-    # below too. Keep this list in sync with app-config.yaml's
-    # `catalog.locations` (same requirement noted in app-config.local.yaml).
-    - type: file
-      target: /catalog/catalog-info.yaml
+    # Platform entities — Groups, Users, Systems, Domains, APIs, Components and
+    # Resources — registered via ONE url location, exactly like all-templates.yaml
+    # above.
+    #
+    # These were previously seventeen `type: file` entries pointing at /catalog/...
+    # and /services/... Those paths exist only locally, where
+    # local/backstage/docker-compose.yml bind-mounts `../../backstage/catalog:/catalog`.
+    # The EKS image has no /catalog directory and nothing mounts one, so every one
+    # of them silently resolved to nothing: the catalog came up with Templates only
+    # and ZERO Group/User entities, leaving the Platform Dashboard's "Teams in
+    # catalog" tile empty. Nothing errored — a file location matching no files is
+    # not a failure. Observed 2026-08-13.
+    #
+    # backstage/catalog/all-entities.yaml is a kind: Location whose targets are
+    # relative to itself, so the same index resolves from any checkout path.
+    #
+    # NOTE the array-replacement rule still applies: this list replaces
+    # app-config.yaml's wholesale, so anything that must exist on AWS has to be
+    # reachable from all-templates.yaml or all-entities.yaml.
+    - type: url
+      target: https://github.com/moatazeldebsy/backstage-platform-template/blob/main/backstage/catalog/all-entities.yaml
       rules:
-        - allow: [Component, System, User, Group]
-    - type: file
-      target: /catalog/groups/*.yaml
-      rules:
-        - allow: [Group]
-    - type: file
-      target: /catalog/domains/*.yaml
-      rules:
-        - allow: [Domain, System]
-    - type: file
-      target: /catalog/mobile-catalog.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /catalog/qa-catalog.yaml
-      rules:
-        - allow: [User, Group, Component, Resource]
-    - type: file
-      target: /catalog-info.yaml
-      rules:
-        - allow: [System]
-    - type: file
-      target: /catalog/apis/hello-service-api.yaml
-      rules:
-        - allow: [API]
-    - type: file
-      target: /services/hello-service/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /catalog/services/idp-assistant/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /catalog/services/contract-mcp-server/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /catalog/resources/ai-platform.yaml
-      rules:
-        - allow: [Resource, Component]
-    - type: file
-      target: /catalog/resources/argo-workflows.yaml
-      rules:
-        - allow: [Resource]
-    - type: file
-      target: /services/idp-mcp-server/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /services/idp-mcp-server/api.yaml
-      rules:
-        - allow: [API]
-    - type: file
-      target: /services/qa-mcp-server/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /test-suites/test-deepeval/catalog-info.yaml
-      rules:
-        - allow: [Component]
-    - type: file
-      target: /catalog/ml-experiments/*/catalog-info.yaml
-      rules:
-        - allow: [Component]
+        - allow: [Component, System, API, Resource, Location, User, Group, Domain]
 
   # Keep the topic list in sync with app-config.yaml — scaffolder templates tag
   # new repos `idp-app`, so both topics must be included or the catalog (and
