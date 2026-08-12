@@ -79,11 +79,17 @@ fi
 # KUBERNETES_MASTER" before creating anything. A single untargeted apply therefore
 # cannot bootstrap an empty account. Creating the cluster first makes the endpoint
 # and CA known, after which the full apply configures the provider normally.
-# `-target=module.eks` pulls module.vpc in as a dependency, so this is the whole
-# foundation. On a warm run the guard is false and behaviour is unchanged.
+#
+# module.vpc MUST be targeted explicitly alongside module.eks. `-target` includes
+# only what the target *depends on*, and the cluster depends on subnet IDs — not on
+# the NAT gateway, its EIP, or the private route tables. Targeting module.eks alone
+# therefore builds a cluster whose private subnets have no 0.0.0.0/0 route, and every
+# node fails with "NodeCreationFailure: Instances failed to join the kubernetes
+# cluster" ~20 minutes in, because it cannot reach the EKS API or pull from ECR.
+# Observed on a real run 2026-08-12.
 if ! terraform state list 2>/dev/null | grep -q '^module\.eks\.aws_eks_cluster'; then
-  log "  Cold state detected — applying module.eks first (the kubectl provider needs a known cluster endpoint)."
-  terraform apply -auto-approve -target=module.eks \
+  log "  Cold state detected — applying module.vpc + module.eks first (the kubectl provider needs a known cluster endpoint)."
+  terraform apply -auto-approve -target=module.vpc -target=module.eks \
     -var "aws_region=${AWS_REGION}" \
     -var "cluster_name=${CLUSTER_NAME}"
 fi
