@@ -7,6 +7,20 @@ global:
   # Single-replica install — scale up for production HA
   replicaCount: 1
 
+  # Empty on purpose. The server Ingress renders its host as
+  #   {{ tpl .Values.server.ingress.hostname $ | default .Values.global.domain }}
+  # so an unset hostname falls through to global.domain, whose chart default is
+  # "argocd.example.com". ALB only routes requests whose Host header matches a rule,
+  # so that placeholder made the raw ALB hostname 404. bootstrap.sh used to strip it
+  # afterwards with `kubectl patch`, which gave the field manager "kubectl-patch"
+  # ownership of .spec.rules — and every subsequent `helm upgrade` then died with
+  #   conflict with "kubectl-patch" using networking.k8s.io/v1: .spec.rules
+  # making the script non-idempotent: run one succeeded, run two always failed.
+  # Setting this empty renders `host: null`, which Kubernetes treats as "match any
+  # host" (verified with kubectl apply --dry-run=server), so no patch is needed and
+  # Helm keeps sole ownership. Set to a real domain once DNS exists.
+  domain: ""
+
 # Resource requests are declared PER COMPONENT below, not once at the top level.
 # There used to be a single top-level `resources:` block at the end of this file;
 # the argo-cd chart has no such key, so Helm silently dropped it and every ArgoCD

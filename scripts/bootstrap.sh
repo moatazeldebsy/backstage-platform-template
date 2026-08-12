@@ -914,9 +914,13 @@ if ! helm_upgrade_cached argocd argocd argo/argo-cd \
   # buried under a misleading lock error. Observed 2026-08-12.
   _argocd_status=$(helm status argocd -n argocd -o json 2>/dev/null \
     | python3 -c "import json,sys; print(json.load(sys.stdin)['info']['status'])" 2>/dev/null || echo "")
+  # `failed` is included deliberately: a failed UPGRADE leaves the release in that
+  # state (not pending-*), and whatever broke it — a field-manager conflict on an
+  # object Helm no longer solely owns, for instance — is still present on the retry.
+  # Handling only pending-* meant the retry re-ran into the identical error.
   case "$_argocd_status" in
-    pending-install)
-      log "  Release stuck in pending-install — uninstalling before retry."
+    pending-install|failed)
+      log "  Release in ${_argocd_status} — uninstalling before retry so the retry starts clean."
       helm uninstall argocd -n argocd --wait --timeout 5m >/dev/null 2>&1 || true
       ;;
     pending-upgrade|pending-rollback)
@@ -936,14 +940,17 @@ fi
 
 log "  ArgoCD installed."
 
-# argocd-helm-values.yaml sets server.ingress.hosts: [] intending "match any
-# hostname via ALB DNS", but the argo-cd chart still renders a default
-# "argocd.example.com" host rule on the Ingress even with an empty hosts list —
-# ALB only routes requests whose Host header matches a rule, so hitting the
-# raw ALB hostname 404s until that placeholder host is removed.
-kubectl patch ingress argocd-server -n argocd --type=json \
-  -p='[{"op": "remove", "path": "/spec/rules/0/host"}]' 2>/dev/null \
-  || log "  WARNING: could not remove ArgoCD ingress placeholder host — check manually if the ALB URL 404s."
+# The ArgoCD ingress placeholder host is now handled declaratively by
+# `global.domain: ""` in aws/argocd/argocd-helm-values.yaml, which renders
+# `host: null` (Kubernetes: match any host).
+#
+# There used to be a `kubectl patch ... --type=json` here that stripped the host
+# after the fact. It worked once, then broke every subsequent run: the patch gave
+# the field manager "kubectl-patch" ownership of .spec.rules, so the next
+# `helm upgrade` failed with
+#   conflict with "kubectl-patch" using networking.k8s.io/v1: .spec.rules
+# Keeping the fix in values means Helm retains sole ownership and the phase is
+# genuinely idempotent. Observed 2026-08-12.
 
 ARGOCD_ADMIN_PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath='{.data.password}' | base64 --decode)
