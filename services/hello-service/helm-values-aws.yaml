@@ -2,7 +2,7 @@
 # image.tag is updated automatically by CI when pushed to main
 image:
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service
-  tag: latest
+  tag: src-9345b7e7abc5
 replicaCount: 1
 service:
   port: 80
