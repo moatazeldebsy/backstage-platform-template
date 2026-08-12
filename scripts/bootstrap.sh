@@ -391,7 +391,8 @@ if grafana_pw:
 #   503 {"error": "VOYAGE_API_KEY not configured"}
 # from the RAG search endpoint (packages/backend/src/modules/idpRagSearch.ts).
 # Each is applied only when actually exported, so an unset one changes nothing.
-for key in ('VOYAGE_API_KEY', 'SONAR_TOKEN', 'SNYK_TOKEN', 'DD_API_KEY', 'DD_APP_KEY'):
+for key in ('VOYAGE_API_KEY', 'SONAR_TOKEN', 'SNYK_TOKEN', 'DD_API_KEY', 'DD_APP_KEY',
+            'GRAFANA_TOKEN'):
     val = os.environ.get(key, '')
     if val:
         s[key] = val
