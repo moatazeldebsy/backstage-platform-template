@@ -244,12 +244,27 @@ externalLinks:
 integrations:
   github:
     - host: github.com
-      apps:
-        - appId: ${GITHUB_APP_ID}
-          clientId: ${GITHUB_APP_CLIENT_ID}
-          clientSecret: ${GITHUB_APP_CLIENT_SECRET}
-          webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
-          privateKey: ${GITHUB_APP_PRIVATE_KEY}
+      # Token, not a GitHub App. This array REPLACES the base app-config.yaml one
+      # wholesale (Backstage merges objects but never concatenates arrays — the same
+      # trap called out for catalog.locations below), so whatever is written here is
+      # the only GitHub integration the backend gets.
+      #
+      # It previously declared an `apps:` block reading GITHUB_APP_ID and friends.
+      # bootstrap.sh only writes those to Secrets Manager when they are exported, and
+      # they usually are not — so every value resolved to undefined and the backend
+      # failed with
+      #   Missing required config value at 'integrations.github[0].apps[0].appId'
+      # which prevented core.urlReader from being instantiated and took down
+      # CATALOG, SCAFFOLDER and TECHDOCS at startup. The portal still served HTTP 200
+      # and /healthz stayed green — those report overall backend health, not
+      # per-plugin readiness — so the only visible symptom was an empty catalog:
+      # no components, no templates, no tech radar. /api/catalog/locations returned
+      # 503 "Service has not started up yet" indefinitely. Observed 2026-08-12.
+      #
+      # GITHUB_TOKEN is populated by bootstrap.sh Phase 3.7 and is what the base
+      # config already used. To use a GitHub App instead, add the `apps:` block back
+      # AND make sure all five GITHUB_APP_* values reach Secrets Manager first.
+      token: ${GITHUB_TOKEN}
 
 techRadar:
   url: https://raw.githubusercontent.com/moatazeldebsy/backstage-platform-template/main/backstage/catalog/tech-radar.json
