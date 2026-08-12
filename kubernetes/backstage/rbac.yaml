@@ -30,6 +30,22 @@ rules:
   - apiGroups: [kagent.dev]
     resources: [agents]
     verbs: [get, list, watch]
+  # Argo Rollouts — the Kubernetes tab queries rollouts for any entity whose
+  # workload is canary-deployed. Without this the entity page shows
+  #   Error fetching Kubernetes resource:
+  #   '/apis/argoproj.io/v1alpha1/namespaces/<ns>/rollouts', status code: 403
+  # and warns that the Error Reporting card may be inaccurate. Argo Rollouts is
+  # installed by bootstrap.sh Phase 4.4-pre, so the CRD is always present on AWS.
+  - apiGroups: [argoproj.io]
+    resources: [rollouts, analysisruns, analysistemplates]
+    verbs: [get, list, watch]
+  # Crossplane claims — the self-service infrastructure a scaffolded service
+  # requests (docs/crossplane-vs-terraform.md). Same 403 symptom as above for
+  # s3buckets and dynamotables; the remaining kinds are listed so the tab does not
+  # regress the moment someone claims one.
+  - apiGroups: [idp.platform]
+    resources: [s3buckets, dynamotables, rdsinstances, sqsqueues, mskclusters]
+    verbs: [get, list, watch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
