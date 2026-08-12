@@ -87,11 +87,26 @@ fi
 # node fails with "NodeCreationFailure: Instances failed to join the kubernetes
 # cluster" ~20 minutes in, because it cannot reach the EKS API or pull from ECR.
 # Observed on a real run 2026-08-12.
-if ! terraform state list 2>/dev/null | grep -q '^module\.eks\.aws_eks_cluster'; then
+#
+# Fail closed when the state cannot be READ. `terraform state list 2>/dev/null`
+# alone cannot distinguish "no cluster yet" from "state is locked / unreachable /
+# credentials expired" — both produce empty output, and treating the latter as a
+# cold start runs a targeted apply against an environment that already exists.
+# Observed 2026-08-12: a stale lock left by an interrupted apply made this log
+# "Cold state detected" for a cluster that was already ACTIVE and in state.
+if ! _tf_state_output=$(terraform state list 2>&1); then
+  log "  ERROR: cannot read Terraform state — refusing to guess whether this is a cold start."
+  log "$_tf_state_output"
+  err "Resolve the state error above (a stale lock needs 'terraform force-unlock <ID>') and re-run."
+fi
+
+if ! grep -q '^module\.eks\.aws_eks_cluster' <<<"$_tf_state_output"; then
   log "  Cold state detected — applying module.vpc + module.eks first (the kubectl provider needs a known cluster endpoint)."
   terraform apply -auto-approve -target=module.vpc -target=module.eks \
     -var "aws_region=${AWS_REGION}" \
     -var "cluster_name=${CLUSTER_NAME}"
+else
+  log "  Existing cluster found in state — skipping the cold-start phase."
 fi
 
 terraform apply -auto-approve \
