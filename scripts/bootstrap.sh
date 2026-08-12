@@ -72,6 +72,22 @@ if [[ ! -d "${TF_DIR}/.terraform" || "${IDP_FORCE:-0}" == "1" ]]; then
 else
   terraform init
 fi
+# Two-phase apply on cold state. The alekc/kubectl provider (2.x, used for the
+# Karpenter EC2NodeClass/NodePool manifests) cannot configure itself while
+# module.eks.cluster_endpoint is still unknown — it fails the whole plan with
+# "invalid provider configuration: no configuration has been provided, try setting
+# KUBERNETES_MASTER" before creating anything. A single untargeted apply therefore
+# cannot bootstrap an empty account. Creating the cluster first makes the endpoint
+# and CA known, after which the full apply configures the provider normally.
+# `-target=module.eks` pulls module.vpc in as a dependency, so this is the whole
+# foundation. On a warm run the guard is false and behaviour is unchanged.
+if ! terraform state list 2>/dev/null | grep -q '^module\.eks\.aws_eks_cluster'; then
+  log "  Cold state detected — applying module.eks first (the kubectl provider needs a known cluster endpoint)."
+  terraform apply -auto-approve -target=module.eks \
+    -var "aws_region=${AWS_REGION}" \
+    -var "cluster_name=${CLUSTER_NAME}"
+fi
+
 terraform apply -auto-approve \
   -var "aws_region=${AWS_REGION}" \
   -var "cluster_name=${CLUSTER_NAME}"
