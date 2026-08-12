@@ -65,7 +65,16 @@ backend:
         # downloads https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem and
         # mounts it into the rds-ca-bundle ConfigMap at the path below (see deployment.yaml).
         rejectUnauthorized: true
-        ca: /config/rds-ca-bundle.pem
+        # $file, not a bare path. node-postgres expects `ca` to be the certificate
+        # CONTENTS; given a plain string it treats "/config/rds-ca-bundle.pem" as the
+        # PEM itself, fails to parse it, falls back to the system trust store and
+        # rejects Amazon's CA. Backstage then crashlooped on
+        #   Failed to connect to the database ... self-signed certificate in certificate chain
+        # with the readiness probe returning 404 because the backend never finished
+        # starting. The file was mounted correctly the whole time (165 KB, valid PEM) —
+        # only the config was wrong. $file inlines it at load time. Observed 2026-08-12.
+        ca:
+          $file: /config/rds-ca-bundle.pem
 
 auth:
   environment: production

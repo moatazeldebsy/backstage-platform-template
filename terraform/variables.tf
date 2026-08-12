@@ -70,9 +70,23 @@ variable "vpc_cidr" {
 }
 
 variable "node_instance_types" {
-  description = "EC2 instance types for EKS node group"
+  description = <<-EOT
+    EC2 instance types for the EKS node group.
+
+    Sized by POD IP capacity, not CPU/RAM. The AWS VPC CNI assigns each pod a real
+    subnet IP from the node's ENIs, so max-pods-per-node is a property of the
+    instance type: t3.medium allows 17, t3.large allows 35. The full platform is
+    ~110 pods (~90 before the AI/ML layer), so 6x t3.medium caps out at 102 and pods
+    fail to schedule with
+
+      aws-cni failed (add): add cmd: failed to assign an IP address to container
+
+    Observed 2026-08-12: every node pinned at 17/17, the kube-prometheus admission
+    hook stuck in CrashLoopBackOff, and the DORA and flaky-test exporter CronJobs
+    all failing. CPU and memory were never the constraint.
+  EOT
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.large"]
 }
 
 variable "memory_optimized_instance_types" {
