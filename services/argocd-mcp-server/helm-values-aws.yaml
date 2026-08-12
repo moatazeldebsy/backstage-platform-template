@@ -44,6 +44,17 @@ env:
       secretKeyRef:
         name: argocd-mcp-server-token
         key: token
+        # optional: true so a missing token DEGRADES the server instead of
+        # preventing it from starting. bootstrap-ai.sh only creates this secret
+        # when ARGOCD_TOKEN is exported, and otherwise warns
+        #   "argocd-mcp-server will start without an ArgoCD token
+        #    (all ArgoCD tools will fail)"
+        # — which was untrue: a non-optional secretKeyRef left every replica in
+        # CreateContainerConfigError ("secret argocd-mcp-server-token not found")
+        # and the deployment never became Available, so the helm release failed and
+        # its ALB served 503 indefinitely. Matches the pattern already used for the
+        # langfuse-otel envFrom. Observed 2026-08-12.
+        optional: true
 
 securityContext:
   allowPrivilegeEscalation: false
