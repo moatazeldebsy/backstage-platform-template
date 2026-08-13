@@ -2648,7 +2648,7 @@ curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;htt
 <span class="normal">3</span>
 <span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/hello-service
 docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-t<span class="w"> </span><span class="m">967825954374</span>.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">AWS_ACCOUNT_ID</span><span class="si">}</span><span class="s2">.dkr.ecr.</span><span class="si">${</span><span class="nv">AWS_REGION</span><span class="si">}</span><span class="s2">.amazonaws.com/idp-mvp/hello-service:latest&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--push<span class="w"> </span>.
 </code></pre></div></td></tr></table></div></p>
 <hr />
