@@ -58,6 +58,8 @@ output "techdocs_bucket_name" {
 
 # ── MLflow artifact storage ─────────────────────────────────────────────────────────
 resource "aws_s3_bucket" "mlflow_artifacts" {
+  count = var.enable_ai ? 1 : 0
+
   bucket = "idp-mvp-mlflow-${data.aws_caller_identity.current.account_id}"
 
   tags = {
@@ -66,7 +68,9 @@ resource "aws_s3_bucket" "mlflow_artifacts" {
 }
 
 resource "aws_s3_bucket_versioning" "mlflow_artifacts" {
-  bucket = aws_s3_bucket.mlflow_artifacts.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.mlflow_artifacts[0].id
 
   versioning_configuration {
     status = "Enabled"
@@ -74,7 +78,9 @@ resource "aws_s3_bucket_versioning" "mlflow_artifacts" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts" {
-  bucket = aws_s3_bucket.mlflow_artifacts.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.mlflow_artifacts[0].id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -84,7 +90,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts"
 }
 
 resource "aws_s3_bucket_public_access_block" "mlflow_artifacts" {
-  bucket = aws_s3_bucket.mlflow_artifacts.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.mlflow_artifacts[0].id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -94,7 +102,9 @@ resource "aws_s3_bucket_public_access_block" "mlflow_artifacts" {
 
 # ── MLflow Lifecycle Policy: Clean up old artifacts to reduce costs ────────────
 resource "aws_s3_bucket_lifecycle_configuration" "mlflow_artifacts" {
-  bucket = aws_s3_bucket.mlflow_artifacts.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.mlflow_artifacts[0].id
 
   rule {
     id     = "delete-old-artifacts"
@@ -122,13 +132,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "mlflow_artifacts" {
 
 # ── MLflow S3 Bucket Metrics for cost monitoring ────────────────────────────────
 resource "aws_s3_bucket_metric" "mlflow_artifacts_size" {
-  bucket = aws_s3_bucket.mlflow_artifacts.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.mlflow_artifacts[0].id
   name   = "EntireBucket"
 }
 
 output "mlflow_artifacts_bucket_name" {
   description = "S3 bucket name for MLflow artifact storage"
-  value       = aws_s3_bucket.mlflow_artifacts.id
+  value       = one(aws_s3_bucket.mlflow_artifacts[*].id)
 }
 
 # ── Langfuse blob storage ───────────────────────────────────────────────────────
@@ -136,6 +148,8 @@ output "mlflow_artifacts_bucket_name" {
 # Locally this role is played by the bundled MinIO subchart; on EKS it is a real
 # bucket reached via IRSA (see module.langfuse_irsa in iam.tf).
 resource "aws_s3_bucket" "langfuse_blobs" {
+  count = var.enable_ai ? 1 : 0
+
   bucket = "idp-mvp-langfuse-${data.aws_caller_identity.current.account_id}"
 
   tags = {
@@ -147,7 +161,9 @@ resource "aws_s3_bucket" "langfuse_blobs" {
 # objects as immutable, write-once event payloads and never updates one in
 # place, so versioning would only duplicate storage cost with no recovery value.
 resource "aws_s3_bucket_server_side_encryption_configuration" "langfuse_blobs" {
-  bucket = aws_s3_bucket.langfuse_blobs.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.langfuse_blobs[0].id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -157,7 +173,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "langfuse_blobs" {
 }
 
 resource "aws_s3_bucket_public_access_block" "langfuse_blobs" {
-  bucket = aws_s3_bucket.langfuse_blobs.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.langfuse_blobs[0].id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -168,7 +186,9 @@ resource "aws_s3_bucket_public_access_block" "langfuse_blobs" {
 # Trace payloads are high-volume and lose value quickly. ClickHouse holds the
 # queryable copy; these blobs are the raw ingest record behind it.
 resource "aws_s3_bucket_lifecycle_configuration" "langfuse_blobs" {
-  bucket = aws_s3_bucket.langfuse_blobs.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.langfuse_blobs[0].id
 
   rule {
     id     = "expire-old-events"
@@ -186,13 +206,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "langfuse_blobs" {
 }
 
 resource "aws_s3_bucket_metric" "langfuse_blobs_size" {
-  bucket = aws_s3_bucket.langfuse_blobs.id
+  count = var.enable_ai ? 1 : 0
+
+  bucket = aws_s3_bucket.langfuse_blobs[0].id
   name   = "EntireBucket"
 }
 
 output "langfuse_blobs_bucket_name" {
   description = "S3 bucket name for Langfuse blob storage (trace events, media, exports)"
-  value       = aws_s3_bucket.langfuse_blobs.id
+  value       = one(aws_s3_bucket.langfuse_blobs[*].id)
 }
 
 # ── Velero cluster backup storage ───────────────────────────────────────────────────

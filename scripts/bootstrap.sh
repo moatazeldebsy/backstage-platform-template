@@ -26,7 +26,14 @@ timer_enable_summary
 SKIP_GITOPS="${SKIP_GITOPS:-false}"
 SKIP_POLICIES="${SKIP_POLICIES:-false}"
 SKIP_DORA="${SKIP_DORA:-false}"
-SKIP_AI="${SKIP_AI:-false}"
+# AI/ML is opt-in on AWS, matching local: bootstrap-local.sh installs the core and
+# bootstrap-ai.sh adds AI. It used to be opt-out here, so every AWS install paid
+# for KAgent, MLflow, Langfuse and ten MCP servers whether or not it wanted them.
+WITH_AI="${WITH_AI:-false}"
+WITH_ADP="${WITH_ADP:-false}"
+# Explicit opt-in to DESTROYING AI infrastructure that already exists. Never
+# implied by omitting --with-ai; see the guard before the Terraform apply.
+REMOVE_AI_INFRA="${REMOVE_AI_INFRA:-false}"
 SKIP_VELERO="${SKIP_VELERO:-false}"
 
 log()  { echo "[$(date +%T)] INFO  $*"; }
@@ -40,8 +47,27 @@ while [[ $# -gt 0 ]]; do
     --skip-gitops)   SKIP_GITOPS=true; shift ;;
     --skip-policies) SKIP_POLICIES=true; shift ;;
     --skip-dora)     SKIP_DORA=true; shift ;;
-    --skip-ai)       SKIP_AI=true; shift ;;
+    --with-ai)       WITH_AI=true; shift ;;
+    --adp)           WITH_AI=true; WITH_ADP=true; shift ;;
+    --remove-ai-infra) REMOVE_AI_INFRA=true; shift ;;
+    # Accepted for one release. AI/ML is now opt-in, so this is already the
+    # default — erroring on it would break every existing script and runbook.
+    --skip-ai)       log "NOTE: --skip-ai is now the default; use --with-ai to install the AI/ML stack."; shift ;;
     --skip-velero)   SKIP_VELERO=true; shift ;;
+    -h|--help)
+      cat <<'USAGE'
+Usage: bootstrap.sh [flags]
+  --region <r>          AWS region
+  --cluster-name <n>    EKS cluster name
+  --with-ai             Also install the AI/ML stack (KAgent, MLflow, Langfuse, MCP servers)
+  --adp                 Implies --with-ai, and adds the agentic development platform
+  --remove-ai-infra     Destroy existing AI/ML infrastructure (Langfuse RDS, S3 buckets, IRSA)
+  --skip-gitops         Skip ArgoCD and the app-of-apps
+  --skip-policies       Skip Gatekeeper/Kyverno policies
+  --skip-dora           Skip the DORA exporter
+  --skip-velero         Skip Velero backups
+USAGE
+      exit 0 ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -138,6 +164,30 @@ if ! _tf_state_output=$(terraform state list 2>&1); then
   err "Resolve the state error above (a stale lock needs 'terraform force-unlock <ID>') and re-run."
 fi
 
+# Never destroy AI/ML infrastructure just because --with-ai was omitted.
+#
+# enable_ai/enable_langfuse default to false, so a plain `bootstrap.sh` against a
+# cluster that already has the AI stack would schedule the Langfuse RDS instance —
+# with its data — the two S3 buckets and their IRSA roles for destruction. Omitting
+# a flag must not delete a database.
+#
+# So: if the state already contains AI resources, keep them, and say so. Removing
+# them is possible but has to be asked for explicitly.
+TF_AI_VARS=()
+if [[ "$WITH_AI" == "true" ]]; then
+  TF_AI_VARS=(-var "enable_ai=true" -var "enable_langfuse=true")
+elif grep -qE '^(aws_db_instance\.langfuse|aws_s3_bucket\.(mlflow_artifacts|langfuse_blobs)|module\.(mlflow|langfuse)_irsa)' <<<"$_tf_state_output"; then
+  if [[ "$REMOVE_AI_INFRA" == "true" ]]; then
+    log "  --remove-ai-infra given — AI/ML infrastructure WILL BE DESTROYED, including the Langfuse database."
+    TF_AI_VARS=(-var "enable_ai=false" -var "enable_langfuse=false")
+  else
+    log "  AI/ML infrastructure already exists in state — keeping it (pass --remove-ai-infra to destroy it)."
+    TF_AI_VARS=(-var "enable_ai=true" -var "enable_langfuse=true")
+  fi
+else
+  TF_AI_VARS=(-var "enable_ai=false" -var "enable_langfuse=false")
+fi
+
 if ! grep -q '^module\.eks\.aws_eks_cluster' <<<"$_tf_state_output"; then
   log "  Cold state detected — applying module.vpc + module.eks first (the kubectl provider needs a known cluster endpoint)."
   terraform apply -auto-approve -target=module.vpc -target=module.eks \
@@ -149,7 +199,8 @@ fi
 
 terraform apply -auto-approve \
   -var "aws_region=${AWS_REGION}" \
-  -var "cluster_name=${CLUSTER_NAME}"
+  -var "cluster_name=${CLUSTER_NAME}" \
+  "${TF_AI_VARS[@]}"
 
 tf_outputs_load "$TF_DIR"
 BACKSTAGE_SECRET_ARN=$(tf_output_required backstage_secret_arn)
@@ -1381,7 +1432,7 @@ _P6A_PID=""
 _P6A_LOG=$(mktemp)
 (
   set -e
-  if [[ "$SKIP_AI" != "true" ]]; then
+  if [[ "$WITH_AI" == "true" ]]; then
     log "Phase 6a: Installing Argo Workflows for ML orchestration..."
     (
       set -e
@@ -1539,7 +1590,7 @@ EOF
   log "║  APPLICATION SERVICES"
   log "║    hello-service   http://$(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
-  if [[ "$SKIP_AI" != "true" ]]; then
+  if [[ "$WITH_AI" == "true" ]]; then
   log "║    AI Assistant    http://${BACKSTAGE_URL:-PENDING}/ai-assistant"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  AI/ML PLATFORM"
@@ -1571,10 +1622,12 @@ _P6B_PID=$!
 
 # ── Phase 6: AI/ML platform (KAgent + MLflow + MCP servers) ──────────────────
 timer_start "6. AI/ML platform"
-if [[ "$SKIP_AI" != "true" ]]; then
+if [[ "$WITH_AI" == "true" ]]; then
   log "Phase 6: Deploying AI/ML platform..."
   cd "$ROOT_DIR"
-  bash scripts/bootstrap-ai.sh --aws --region "${AWS_REGION}" --cluster "${CLUSTER_NAME}"
+  _ai_args=(--aws --region "${AWS_REGION}" --cluster "${CLUSTER_NAME}")
+  [[ "$WITH_ADP" == "true" ]] && _ai_args+=(--adp)
+  bash scripts/bootstrap-ai.sh "${_ai_args[@]}"
 fi
 
 timer_end "6. AI/ML platform"

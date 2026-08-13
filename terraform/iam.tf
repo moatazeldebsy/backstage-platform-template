@@ -396,8 +396,28 @@ output "backstage_role_arn" {
 
 # ── AI/ML IRSA roles ───────────────────────────────────────────────────────────────────
 
+# Adding `count` to a module changes its state address from module.X to
+# module.X[0]. Terraform auto-detects that for plain resources but NOT for module
+# instances: without these blocks it plans to destroy and recreate both IAM roles.
+# They carry the same name, so the apply either fails on the name conflict or
+# leaves the mlflow/langfuse ServiceAccounts annotated with a role that briefly
+# does not exist, breaking their S3 access mid-apply.
+#
+# Harmless on a fresh install — a moved block whose source is absent is a no-op.
+moved {
+  from = module.mlflow_irsa
+  to   = module.mlflow_irsa[0]
+}
+
+moved {
+  from = module.langfuse_irsa
+  to   = module.langfuse_irsa[0]
+}
+
 # MLflow IRSA — allows MLflow to read/write experiment artifacts to S3
 module "mlflow_irsa" {
+  count = var.enable_ai ? 1 : 0
+
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.30"
 
@@ -412,8 +432,10 @@ module "mlflow_irsa" {
 }
 
 resource "aws_iam_role_policy" "mlflow" {
+  count = var.enable_ai ? 1 : 0
+
   name = "mlflow-s3-artifacts"
-  role = module.mlflow_irsa.iam_role_name
+  role = module.mlflow_irsa[0].iam_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -427,8 +449,8 @@ resource "aws_iam_role_policy" "mlflow" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.mlflow_artifacts.arn,
-          "${aws_s3_bucket.mlflow_artifacts.arn}/*"
+          aws_s3_bucket.mlflow_artifacts[0].arn,
+          "${aws_s3_bucket.mlflow_artifacts[0].arn}/*"
         ]
       }
     ]
@@ -437,7 +459,7 @@ resource "aws_iam_role_policy" "mlflow" {
 
 output "mlflow_role_arn" {
   description = "IAM role ARN for the MLflow ServiceAccount (IRSA) — S3 artifact access"
-  value       = module.mlflow_irsa.iam_role_arn
+  value       = one(module.mlflow_irsa[*].iam_role_arn)
 }
 
 # Langfuse IRSA — allows the Langfuse web and worker pods to read/write trace
@@ -445,6 +467,8 @@ output "mlflow_role_arn" {
 # `langfuse` ServiceAccount with this role ARN and leaves the S3 credential
 # fields empty, so the AWS SDK falls through to the IRSA web-identity token.
 module "langfuse_irsa" {
+  count = var.enable_ai ? 1 : 0
+
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.30"
 
@@ -460,8 +484,10 @@ module "langfuse_irsa" {
 }
 
 resource "aws_iam_role_policy" "langfuse" {
+  count = var.enable_ai ? 1 : 0
+
   name = "langfuse-s3-blobs"
-  role = module.langfuse_irsa.iam_role_name
+  role = module.langfuse_irsa[0].iam_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -475,8 +501,8 @@ resource "aws_iam_role_policy" "langfuse" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.langfuse_blobs.arn,
-          "${aws_s3_bucket.langfuse_blobs.arn}/*"
+          aws_s3_bucket.langfuse_blobs[0].arn,
+          "${aws_s3_bucket.langfuse_blobs[0].arn}/*"
         ]
       }
     ]
@@ -485,7 +511,7 @@ resource "aws_iam_role_policy" "langfuse" {
 
 output "langfuse_role_arn" {
   description = "IAM role ARN for the Langfuse ServiceAccount (IRSA) — S3 blob storage access"
-  value       = module.langfuse_irsa.iam_role_arn
+  value       = one(module.langfuse_irsa[*].iam_role_arn)
 }
 
 # KAgent ESO IRSA — allows External Secrets Operator in the kagent namespace to

@@ -458,6 +458,30 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   aws sts get-caller-identity &>/dev/null || die "AWS credentials not configured"
   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
   REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${CLUSTER_NAME}"
+
+  # The AI layer's infrastructure — MLflow and Langfuse S3 buckets, their IRSA
+  # roles, and the Langfuse RDS instance — is gated behind enable_ai /
+  # enable_langfuse and defaults to off, so that a core-only `bootstrap.sh` does
+  # not pay for it. This script is the thing that wants it, so it turns it on and
+  # applies before reading any of the outputs below.
+  #
+  # Idempotent: on a cluster that already has them this is a no-op plan.
+  if [[ -f "${REPO_ROOT}/terraform/backend.hcl" ]]; then
+    info "Enabling AI/ML infrastructure in Terraform (enable_ai, enable_langfuse)..."
+    (
+      cd "${REPO_ROOT}/terraform"
+      terraform init -input=false -backend-config=backend.hcl >/dev/null
+      terraform apply -auto-approve -input=false \
+        -var "aws_region=${AWS_REGION}" \
+        -var "cluster_name=${CLUSTER_NAME}" \
+        -var "enable_ai=true" \
+        -var "enable_langfuse=${LANGFUSE}"
+    ) || die "terraform apply failed while enabling the AI/ML infrastructure."
+  else
+    warn "terraform/backend.hcl not found — skipping the AI infrastructure apply."
+    warn "If the MLflow/Langfuse outputs below are empty, run ./scripts/setup.sh first."
+  fi
+
   tf_outputs_load "${REPO_ROOT}/terraform"
   # Ensure ECR repos exist for all MCP server images (idempotent).
   # Repo names must match the Terraform convention: ${CLUSTER_NAME}/${repo}
