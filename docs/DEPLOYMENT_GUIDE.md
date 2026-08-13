@@ -96,7 +96,7 @@ timing table at the end of a run lines up with this one.
 | 4.5–4.7 — GitOps | 3–5 min | ArgoCD (with one retry on a slow first ALB), the `idp-services` ApplicationSet, Crossplane, and the Backstage/ArgoCD tokens. The ApplicationSet auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server` and `qa-mcp-server` to `services-dev`; `contract-mcp-server` is excluded and deployed only by `bootstrap-ai.sh --aws`. |
 | 5 — Image builds (join) | 0–20 min | Waits for phase 2.5. Usually already finished, since it has had the whole platform install to run. Then writes the seed image tag into `helm-values-aws.yaml`. |
 | 5.6–5.8 — Backstage | 2–8 min | ExternalSecret, generated ConfigMaps, deployment, ALB hostname wait, catalog exporter, AlertManager routing |
-| 6 — AI/ML platform | 8–20 min | `bootstrap-ai.sh --aws` (skip with `--skip-ai`). Argo Workflows and Velero install in parallel with it. |
+| 6 — AI/ML platform | 8–20 min | `bootstrap-ai.sh --aws`, **only with `--with-ai`/`--adp`**. Argo Workflows and Velero install in parallel with it. |
 
 **Total: ~40–70 minutes cold.** A repeat run against an existing cluster is far
 shorter — the image builds, helm releases and Terraform providers all skip when
@@ -111,22 +111,32 @@ After bootstrap completes, the Backstage ALB URL is printed. Update your GitHub 
 1. Go to https://github.com/settings/developers → your OAuth app → Edit
 2. Update callback URL: `http://<BACKSTAGE_ALB_HOSTNAME>/api/auth/github/handler/frame`
 
-### Step 4: AI/ML stack — already deployed
+### Step 4: AI/ML stack — opt-in
 
-`bootstrap.sh` runs the AI/ML stack itself in Phase 6 (MLflow, KAgent,
-idp-assistant, Langfuse and the MCP servers), so there is nothing to do here unless
-you passed `--skip-ai`. It requires `ANTHROPIC_API_KEY` in Secrets Manager.
-
-This step used to say to run `./scripts/bootstrap-ai.sh`, which was wrong twice
-over: the stack was already installed, and without `--aws` that command targets your
-local Kind context rather than EKS.
-
-The one thing `bootstrap.sh` does **not** install is the agentic development
-platform. To add it:
+AI/ML is a layer, not part of the core, matching how local works. Add it with a
+flag on the same script:
 
 ```bash
-./scripts/bootstrap-ai.sh --aws --adp \
-  --region <region> --cluster <cluster-name>
+./scripts/bootstrap.sh --with-ai    # KAgent, MLflow, Langfuse, MCP servers
+./scripts/bootstrap.sh --adp        # implies --with-ai, adds the agentic platform
+```
+
+Requires `ANTHROPIC_API_KEY` in Secrets Manager.
+
+Skipping it is a real cost saving, not just skipped workloads: `enable_ai` and
+`enable_langfuse` gate the Langfuse RDS instance and the MLflow/Langfuse S3 buckets
+and IRSA roles, so a core-only install never provisions them. The old `--skip-ai`
+flag skipped the Helm installs but still built a second RDS instance.
+
+Removing the infrastructure is deliberately explicit: omitting `--with-ai` on a
+cluster that already has it **keeps** it, because a forgotten flag must not drop
+the Langfuse database. Pass `--remove-ai-infra` to actually destroy it.
+
+You can also call `bootstrap-ai.sh` directly — note the `--aws` flag, without which
+it targets your local Kind context rather than EKS:
+
+```bash
+./scripts/bootstrap-ai.sh --aws --adp --region <region> --cluster <cluster-name>
 ```
 
 ---
@@ -167,7 +177,7 @@ Merge the PR — CI (`scaffold.yml`) applies the manifests.
 ./scripts/validate-deployment.sh
 ```
 
-Runs 50+ automated checks. All should pass.
+Runs ~40 automated checks across 10 categories. All should pass.
 
 ### Manual Smoke Tests
 

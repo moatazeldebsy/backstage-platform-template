@@ -23,7 +23,8 @@
 #   ./scripts/bootstrap-multiregion.sh --skip-global   # if global module already applied
 #   ./scripts/bootstrap-multiregion.sh --skip-standby  # primary only, wire standby later
 #   ./scripts/bootstrap-multiregion.sh --skip-obs      # skip Thanos / Grafana
-#   ./scripts/bootstrap-multiregion.sh --skip-ai       # skip KAgent / MLflow
+#   ./scripts/bootstrap-multiregion.sh --with-ai       # also install KAgent / MLflow
+#   ./scripts/bootstrap-multiregion.sh --adp           # + the agentic dev platform
 
 set -euo pipefail
 
@@ -45,7 +46,9 @@ timer_enable_summary
 SKIP_GLOBAL="${SKIP_GLOBAL:-false}"
 SKIP_STANDBY="${SKIP_STANDBY:-false}"
 SKIP_OBS="${SKIP_OBS:-false}"
-SKIP_AI="${SKIP_AI:-false}"
+# Opt-in, matching bootstrap.sh and bootstrap-local.sh.
+WITH_AI="${WITH_AI:-false}"
+WITH_ADP="${WITH_ADP:-false}"
 SKIP_GITOPS="${SKIP_GITOPS:-false}"
 SKIP_POLICIES="${SKIP_POLICIES:-false}"
 
@@ -57,7 +60,9 @@ while [[ $# -gt 0 ]]; do
     --skip-global)    SKIP_GLOBAL=true;    shift ;;
     --skip-standby)   SKIP_STANDBY=true;   shift ;;
     --skip-obs)       SKIP_OBS=true;       shift ;;
-    --skip-ai)        SKIP_AI=true;        shift ;;
+    --with-ai)        WITH_AI=true;        shift ;;
+    --adp)            WITH_AI=true; WITH_ADP=true; shift ;;
+    --skip-ai)        log "NOTE: --skip-ai is now the default; use --with-ai."; shift ;;
     --skip-gitops)    SKIP_GITOPS=true;    shift ;;
     --skip-policies)  SKIP_POLICIES=true;  shift ;;
     *) echo "[ERROR] Unknown flag: $1"; exit 1 ;;
@@ -146,7 +151,9 @@ cd "$TF_DIR"
 terraform init -upgrade -backend-config=backend.hcl
 terraform workspace new "$PRIMARY_REGION" 2>/dev/null || terraform workspace select "$PRIMARY_REGION"
 terraform apply -auto-approve \
-  -var-file="tfvars/${PRIMARY_REGION}.tfvars"
+  -var-file="tfvars/${PRIMARY_REGION}.tfvars" \
+  -var "enable_ai=${WITH_AI}" \
+  -var "enable_langfuse=${WITH_AI}"
 
 # Reload cached outputs — same dir as the global module read above, but a
 # different terraform workspace, so `terraform output` returns different values.
@@ -595,9 +602,11 @@ timer_end "2.8 Backstage (primary)"
 
 # ── Phase 2.9: AI/ML platform ────────────────────────────────────────────────
 timer_start "2.9 AI/ML platform"
-if [[ "$SKIP_AI" != "true" ]]; then
+if [[ "$WITH_AI" == "true" ]]; then
   log "Phase 2.9: AI/ML platform (KAgent + MLflow)..."
-  bash scripts/bootstrap-ai.sh --aws --region "${PRIMARY_REGION}" --cluster "${PRIMARY_CLUSTER}"
+  _ai_args=(--aws --region "${PRIMARY_REGION}" --cluster "${PRIMARY_CLUSTER}")
+  [[ "$WITH_ADP" == "true" ]] && _ai_args+=(--adp)
+  bash scripts/bootstrap-ai.sh "${_ai_args[@]}"
 fi
 
 timer_end "2.9 AI/ML platform"
@@ -611,8 +620,11 @@ else
 
   cd "$TF_DIR"
   terraform workspace new "$STANDBY_REGION" 2>/dev/null || terraform workspace select "$STANDBY_REGION"
+  # The standby cluster never runs the AI stack — it is a DR target.
   terraform apply -auto-approve \
-    -var-file="tfvars/${STANDBY_REGION}.tfvars"
+    -var-file="tfvars/${STANDBY_REGION}.tfvars" \
+    -var "enable_ai=false" \
+    -var "enable_langfuse=false"
 
   tf_outputs_load "$TF_DIR"
   STANDBY_CLUSTER=$(tf_output_required cluster_name)

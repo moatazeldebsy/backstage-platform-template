@@ -186,6 +186,31 @@ variable "slack_webhook_secret_name" {
   default     = "idp-mvp/slack-webhook"
 }
 
+# ── AI/ML layer ───────────────────────────────────────────────────────────────
+# The AI/ML stack (KAgent, MLflow, Langfuse, the MCP servers) is an opt-in layer
+# on AWS, matching how local works: bootstrap-local.sh installs the core and
+# bootstrap-ai.sh adds AI. This gates the *infrastructure* half of that split.
+#
+# It used to be unconditional, so `bootstrap.sh --skip-ai` skipped the workloads
+# but still provisioned a second RDS instance and two S3 buckets — the flag saved
+# no money at all, which is the main reason anyone reaches for it.
+#
+# bootstrap-ai.sh --aws sets this to true before it applies.
+variable "enable_ai" {
+  description = "Provision the AI/ML layer's infrastructure (MLflow + Langfuse S3 buckets and their IRSA roles). Set automatically by scripts/bootstrap-ai.sh --aws."
+  type        = bool
+  default     = false
+}
+
+# Separate from enable_ai because Langfuse is the expensive part — it is the only
+# component here that needs a dedicated RDS instance. Running the AI stack without
+# LLM tracing is a reasonable thing to want.
+variable "enable_langfuse" {
+  description = "Provision the Langfuse Postgres RDS instance and its Secrets Manager entry. Requires enable_ai."
+  type        = bool
+  default     = false
+}
+
 # ── Cost Optimizer variables ──────────────────────────────────────────────────
 variable "enable_cost_optimizer" {
   description = "Enable overnight EKS node scale-down and RDS stop/start to reduce idle costs"

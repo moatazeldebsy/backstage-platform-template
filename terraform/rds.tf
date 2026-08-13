@@ -80,9 +80,13 @@ resource "random_password" "langfuse_rds" {
   # misparse the URI, so restrict to a URL-safe alphabet rather than escaping.
   special          = true
   override_special = "-_"
+
+  count = var.enable_langfuse ? 1 : 0
 }
 
 resource "aws_db_instance" "langfuse" {
+  count = var.enable_langfuse ? 1 : 0
+
   identifier     = "${var.cluster_name}-langfuse"
   engine         = "postgres"
   engine_version = "17"
@@ -90,7 +94,7 @@ resource "aws_db_instance" "langfuse" {
 
   db_name  = "langfuse"
   username = "langfuse"
-  password = random_password.langfuse_rds.result
+  password = random_password.langfuse_rds[0].result
 
   # Reuses the Backstage subnet group and security group: both are generic
   # (private subnets; 5432 from the EKS node security group) and a second copy
@@ -117,16 +121,20 @@ resource "aws_db_instance" "langfuse" {
 # Secret, so the password never has to be passed on a command line or read
 # back out of Terraform state by hand.
 resource "aws_secretsmanager_secret" "langfuse" {
+  count = var.enable_langfuse ? 1 : 0
+
   name                    = "idp-mvp/langfuse"
   description             = "Langfuse self-hosted credentials — Postgres password and app secrets"
   recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "langfuse" {
-  secret_id = aws_secretsmanager_secret.langfuse.id
+  count = var.enable_langfuse ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.langfuse[0].id
 
   secret_string = jsonencode({
-    POSTGRES_PASSWORD = random_password.langfuse_rds.result
+    POSTGRES_PASSWORD = random_password.langfuse_rds[0].result
   })
 }
 
@@ -134,10 +142,10 @@ output "langfuse_db_host" {
   description = "RDS endpoint hostname for the Langfuse Postgres database"
   # .address is the bare hostname; .endpoint includes :5432, which the Helm
   # values set separately and would duplicate into host:5432:5432.
-  value = aws_db_instance.langfuse.address
+  value = one(aws_db_instance.langfuse[*].address)
 }
 
 output "langfuse_db_secret_arn" {
   description = "Secrets Manager ARN holding the Langfuse Postgres password"
-  value       = aws_secretsmanager_secret.langfuse.arn
+  value       = one(aws_secretsmanager_secret.langfuse[*].arn)
 }

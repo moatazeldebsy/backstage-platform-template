@@ -27,7 +27,7 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 
 > **Multi-region (V2)** is on `main` and opt-in: active-standby AWS across eu-central-1 (primary) + us-east-1 (standby), via `./scripts/bootstrap-multiregion.sh`. Single-region setups are unaffected. See [docs/multi-region.md](docs/multi-region.md).
 
-> **Agentic Development Platform (ADP)** is on `main` and opt-in: extends the AI/ML stack into a first-class agent layer for both dev workflow (scaffold/code/test/review) and ops (cost/incidents/security), with a human-in-the-loop approval gate for any mutating action. Enable with `./scripts/bootstrap-ai.sh --adp`. See [docs/agentic-platform.md](docs/agentic-platform.md).
+> **Agentic Development Platform (ADP)** is on `main` and opt-in: extends the AI/ML stack into a first-class agent layer for both dev workflow (scaffold/code/test/review) and ops (cost/incidents/security), with a human-in-the-loop approval gate for any mutating action. Enable with `./scripts/bootstrap.sh --adp` on AWS, or `./scripts/bootstrap-ai.sh --adp` locally. See [docs/agentic-platform.md](docs/agentic-platform.md).
 
 ## Compatibility
 
@@ -56,12 +56,12 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
-| **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Opt-in locally (`bootstrap-ai.sh --langfuse`), on by default on AWS. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
+| **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Opt-in on both targets: `bootstrap-ai.sh --langfuse` locally, and part of `--with-ai` on AWS. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
 | **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
 | **Infrastructure** | Terraform for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3) + Crossplane for per-service resources (S3, RDS, MSK, DynamoDB, SQS) via ArgoCD-reconciled Claims. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) |
 | **Multi-region V2** | Active-standby eu-central-1 + us-east-1, opt-in. See [docs/multi-region.md](docs/multi-region.md) |
-| **Agentic Development Platform (ADP)** | Opt-in agent layer on top of the AI/ML platform — dev-workflow agents (scaffold/code/test/review) and ops agents (cost/incidents/security), gated by a human-in-the-loop approval layer. `./scripts/bootstrap-ai.sh --adp`. See [docs/agentic-platform.md](docs/agentic-platform.md) |
+| **Agentic Development Platform (ADP)** | Opt-in agent layer on top of the AI/ML platform — dev-workflow agents (scaffold/code/test/review) and ops agents (cost/incidents/security), gated by a human-in-the-loop approval layer. `bootstrap.sh --adp` (AWS) or `bootstrap-ai.sh --adp` (local). See [docs/agentic-platform.md](docs/agentic-platform.md) |
 | **CI/CD** | GitHub Actions — test → Docker build → ECR push → Helm deploy to EKS |
 
 ## Quick Start
@@ -92,8 +92,8 @@ git clone https://github.com/moatazeldebsy/backstage-platform-template.git && cd
 | 1 | `setup.sh` — personalises placeholders, asks local or AWS | You run this |
 | 2a (local) | `bootstrap-local.sh` — the actual Kind cluster + platform installer (~15–20 min) | Auto, by `setup.sh` |
 | 2b (local) | `bootstrap-local.sh --start-backstage` — builds + starts Backstage (~2 min) | Auto, if you answer **Y** to "Start Backstage now?" |
-| 2 (AWS) | `bootstrap.sh` — Terraform → EKS → full platform **including AI/ML** (~40–70 min) | Auto, by `setup.sh` |
-| 3 (local, optional) | `bootstrap-ai.sh` — adds KAgent + MLflow + MCP servers | **Manual** — AWS already gets this in step 2, local doesn't |
+| 2 (AWS) | `bootstrap.sh` — Terraform → EKS → core platform (~40–70 min). AI/ML is **opt-in**: add `--with-ai`, or `--adp` for the agentic layer too | Auto, by `setup.sh` |
+| 3 (optional, both targets) | `bootstrap-ai.sh` — adds KAgent + MLflow + Langfuse + MCP servers (`--aws` on EKS) | **Manual** on local and AWS alike |
 
 > **Don't run `setup.sh` and then `bootstrap-local.sh`.** Step 2a above is automatic — `setup.sh` has already run it by the time it finishes. Running it again just repeats a 15–20 minute install. If `setup.sh` printed the "Local IDP platform is up" banner with the access URLs, your cluster is up and the next (optional) step is `bootstrap-ai.sh`.
 

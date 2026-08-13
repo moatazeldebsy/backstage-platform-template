@@ -237,8 +237,12 @@ kubectl rollout restart deployment/kagent-controller -n kagent
 # 2. Verify secrets (now that the cluster name is yours)
 ./scripts/verify-secrets.sh
 
-# 3. Deploy the full stack (~40–70 min). This INCLUDES the AI/ML stack —
-#    KAgent, MLflow, Langfuse and the MCP servers — unless you pass --skip-ai.
+# 3. Deploy the core platform (~40–70 min). AI/ML is opt-in:
+#      --with-ai  adds KAgent, MLflow, Langfuse and the MCP servers
+#      --adp      implies --with-ai and adds the agentic development platform
+#    Without them, no Langfuse RDS or MLflow/Langfuse S3 buckets are provisioned
+#    either, so skipping the AI layer is a real cost saving rather than just
+#    skipping the workloads.
 ./scripts/bootstrap.sh
 
 # 4. Update the GitHub OAuth callback URL with the printed ALB hostname
@@ -247,13 +251,17 @@ kubectl rollout restart deployment/kagent-controller -n kagent
 ./scripts/validate-deployment.sh
 ```
 
-To add the agentic development platform, which `bootstrap.sh` does **not** install,
-run `bootstrap-ai.sh` again with `--adp`. Note the `--aws` flag: without it the
-script targets your local Kind context, not EKS.
+To add the AI/ML stack after the fact, re-run with `--with-ai` (or `--adp`), or
+call `bootstrap-ai.sh` directly. Note the `--aws` flag on the latter: without it
+the script targets your local Kind context, not EKS.
 
 ```bash
-./scripts/bootstrap-ai.sh --aws --adp \
-  --region <region> --cluster <cluster-name>
+./scripts/bootstrap.sh --with-ai        # or --adp
+./scripts/bootstrap-ai.sh --aws --adp --region <region> --cluster <cluster-name>
 ```
+
+Removing AI infrastructure is deliberately explicit. Omitting `--with-ai` on a
+cluster that already has it **keeps** it — otherwise a forgotten flag would drop
+the Langfuse database. Pass `--remove-ai-infra` to actually destroy it.
 
 See `docs/DEPLOYMENT_GUIDE.md` for full details, known issues, and troubleshooting.
