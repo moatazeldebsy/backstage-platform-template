@@ -29,7 +29,16 @@ spec:
                   pip install requests --quiet && python /app/exporter.py
               env:
                 - name: BACKSTAGE_URL
-                  value: "http://backstage.default.svc.cluster.local:3000"
+                  # Substituted per environment by bootstrap.sh (AWS) and
+                  # bootstrap-local.sh (Kind). Both apply THIS shared manifest, but
+                  # Backstage lives in different places: on Kind it is a Docker
+                  # Compose container fronted by a selector-less Service in the
+                  # default namespace on :3000, while on EKS it is a real Deployment
+                  # in the backstage namespace on :80. The hardcoded local address
+                  # left both exporters in CrashLoopBackOff on AWS with
+                  #   Failed to resolve 'backstage.default.svc.cluster.local'
+                  # Observed 2026-08-13.
+                  value: "BACKSTAGE_URL_PLACEHOLDER"
                 - name: BACKSTAGE_TOKEN
                   valueFrom:
                     secretKeyRef:

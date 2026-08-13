@@ -1539,7 +1539,8 @@ if ! $SKIP_OBS; then
     kubectl create configmap tech-insights-exporter-script \
       --from-file=exporter.py="${ROOT_DIR}/observability/tech-insights-exporter/exporter.py" \
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-    kubectl apply -f "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml"
+    sed "s|BACKSTAGE_URL_PLACEHOLDER|http://backstage.default.svc.cluster.local:3000|g" \
+      "${ROOT_DIR}/observability/tech-insights-exporter/cronjob.yaml" | kubectl apply -f -
     kubectl apply -f "${ROOT_DIR}/kubernetes/finops/team-budgets-configmap.yaml"
     log "  Tech Insights Exporter deployed + team budget ConfigMap applied."
   ) > "$_step11_log" 2>&1 &
@@ -1574,7 +1575,8 @@ if ! $SKIP_OBS; then
       --from-file=exporter.py="${ROOT_DIR}/observability/flaky-test-exporter/exporter.py" \
       --from-file=quarantine.py="${ROOT_DIR}/observability/flaky-test-exporter/quarantine.py" \
       -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-    kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/cronjob.yaml"
+    sed "s|BACKSTAGE_URL_PLACEHOLDER|http://backstage.default.svc.cluster.local:3000|g" \
+      "${ROOT_DIR}/observability/flaky-test-exporter/cronjob.yaml" | kubectl apply -f -
     kubectl apply -f "${ROOT_DIR}/observability/flaky-test-exporter/quarantine-cronjob.yaml"
     log "  Flaky-Test Exporter + Quarantine Sync deployed."
   ) > "$_step11a_log" 2>&1 &

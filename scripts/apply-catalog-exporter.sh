@@ -17,9 +17,29 @@
 set -euo pipefail
 
 NAMESPACE="monitoring"
-BACKSTAGE_URL="http://backstage.default.svc.cluster.local:3000"
+# Backstage lives in a different place per environment, and this script is called by
+# BOTH bootstraps. On Kind it is a Docker Compose container fronted by a
+# selector-less Service in the default namespace on :3000; on EKS it is a real
+# Deployment in the backstage namespace on :80. Hardcoding the local address left
+# catalog-exporter in CrashLoopBackOff on AWS with
+#   Failed to resolve 'backstage.default.svc.cluster.local'
+# Detect the real Service rather than guessing, so neither environment needs a flag.
+# Observed 2026-08-13.
+if kubectl get svc backstage -n backstage >/dev/null 2>&1; then
+  BACKSTAGE_URL="${BACKSTAGE_URL:-http://backstage.backstage.svc.cluster.local:80}"
+else
+  BACKSTAGE_URL="${BACKSTAGE_URL:-http://backstage.default.svc.cluster.local:3000}"
+fi
 PUSHGATEWAY_URL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
-CATALOG_TOKEN="local-catalog-exporter-token"
+# Same split as BACKSTAGE_URL above. app-config.local.yaml pins the static
+# externalAccess token to the literal "local-catalog-exporter-token", but on AWS
+# bootstrap.sh generates a random BACKSTAGE_CATALOG_TOKEN into Secrets Manager and
+# syncs it to backstage-secrets. Using the local literal there would have produced a
+# 401 from every export the moment the URL was fixed. Prefer the real cluster secret
+# and fall back to the local literal.
+CATALOG_TOKEN="${CATALOG_TOKEN:-$(kubectl get secret backstage-secrets -n backstage \
+  -o jsonpath='{.data.BACKSTAGE_CATALOG_TOKEN}' 2>/dev/null | base64 -d 2>/dev/null || true)}"
+CATALOG_TOKEN="${CATALOG_TOKEN:-local-catalog-exporter-token}"
 
 log()  { echo "[$(date +%T)] INFO  $*"; }
 warn() { echo "[$(date +%T)] WARN  $*"; }
@@ -31,7 +51,8 @@ fi
 
 log "Deploying catalog exporter to namespace ${NAMESPACE}..."
 
-kubectl apply -f - <<'MANIFEST_END'
+sed -e "s|BACKSTAGE_URL_PLACEHOLDER|${BACKSTAGE_URL}|g" \
+    -e "s|CATALOG_TOKEN_PLACEHOLDER|${CATALOG_TOKEN}|g" <<'MANIFEST_END' | kubectl apply -f -
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -66,10 +87,16 @@ spec:
               env:
                 - name: PYTHONPATH
                   value: /deps
+                # Interpolated from the variables resolved at the top of this
+                # script, NOT hardcoded. These two lines previously repeated the
+                # local address and the local static token verbatim, so the
+                # environment detection above had no effect on what actually got
+                # deployed and the CronJob crashlooped on AWS with
+                #   Failed to resolve 'backstage.default.svc.cluster.local'
                 - name: BACKSTAGE_URL
-                  value: http://backstage.default.svc.cluster.local:3000
+                  value: BACKSTAGE_URL_PLACEHOLDER
                 - name: CATALOG_TOKEN
-                  value: local-catalog-exporter-token
+                  value: CATALOG_TOKEN_PLACEHOLDER
                 - name: PUSHGATEWAY_URL
                   value: http://prometheus-pushgateway.monitoring.svc.cluster.local:9091
               command:
