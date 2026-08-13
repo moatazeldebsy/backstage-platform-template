@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../image-pull-backoff/">
+        <link rel="prev" href="../../crossplane-vs-terraform/">
       
       
-        <link rel="next" href="../cost-budget-exceeded/">
+        <link rel="next" href="../../team-management/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Kind Node IP Mismatch - Internal Developer Platform</title>
+        <title>ADR-0001: Batch orchestration - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#kind-node-ip-mismatch-after-crash-runbook" class="md-skip">
+        <a href="#adr-0001-where-batch-and-pipeline-work-runs" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Kind Node IP Mismatch
+              ADR-0001: Batch orchestration
             
           </span>
         </div>
@@ -462,11 +462,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../design/adr-0001-batch-orchestration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   Design Decisions
@@ -634,13 +636,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -1189,25 +1189,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" checked>
         
           
-          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1218,7 +1223,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_20">
             <span class="md-nav__icon md-icon"></span>
             Design Decisions
@@ -1229,10 +1234,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../design/adr-0001-batch-orchestration/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    ADR-0001: Batch orchestration
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1241,6 +1266,86 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-this-means-concretely" class="md-nav__link">
+    <span class="md-ellipsis">
+      What this means concretely
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consequences
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternatives-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alternatives considered
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1590,30 +1695,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_30" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_30" >
         
           
-          <label class="md-nav__link" for="__nav_30" id="__nav_30_label" tabindex="">
+          <label class="md-nav__link" for="__nav_30" id="__nav_30_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1624,7 +1724,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_30_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_30_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_30">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
@@ -1638,7 +1738,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1659,7 +1759,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment-rollback/" class="md-nav__link">
+      <a href="../../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1680,7 +1780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pod-crash-loop/" class="md-nav__link">
+      <a href="../../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1701,7 +1801,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-memory/" class="md-nav__link">
+      <a href="../../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1722,7 +1822,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-cpu/" class="md-nav__link">
+      <a href="../../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1743,7 +1843,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../db-recovery/" class="md-nav__link">
+      <a href="../../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1764,7 +1864,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../image-pull-backoff/" class="md-nav__link">
+      <a href="../../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1782,30 +1882,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Kind Node IP Mismatch
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1814,182 +1894,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#symptoms" class="md-nav__link">
-    <span class="md-ellipsis">
-      Symptoms
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#root-cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      Root Cause
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#diagnosis" class="md-nav__link">
-    <span class="md-ellipsis">
-      Diagnosis
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Diagnosis">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-confirm-the-ip-mismatch" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Confirm the IP mismatch
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-confirm-the-api-server-cert-covers-the-new-ip" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Confirm the API server cert covers the new IP
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-check-kubeletconf-target" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Check kubelet.conf target
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fix
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Fix">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-1-update-kubeletconf-with-the-new-ip" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1 — Update kubelet.conf with the new IP
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-restart-the-kubelet" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Restart the kubelet
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-wait-for-the-node-to-recover" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Wait for the node to recover
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-fix-inotify-limits-if-kube-proxy-is-crash-looping" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Fix inotify limits if kube-proxy is crash-looping
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-verify-full-cluster-health" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5 — Verify full cluster health
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-6-fix-kagent-controller-if-still-crashloopbackoff" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 6 — Fix kagent-controller if still CrashLoopBackOff
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#known-harmless-failure" class="md-nav__link">
-    <span class="md-ellipsis">
-      Known Harmless Failure
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prevention" class="md-nav__link">
-    <span class="md-ellipsis">
-      Prevention
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-runbooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Related Runbooks
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2002,7 +1906,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cost-budget-exceeded/" class="md-nav__link">
+      <a href="../../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2023,7 +1927,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kagent-guardrails/" class="md-nav__link">
+      <a href="../../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2044,7 +1948,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dr-region-failover/" class="md-nav__link">
+      <a href="../../runbooks/dr-region-failover/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2100,7 +2004,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/kind-node-ip-mismatch.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/design/adr-0001-batch-orchestration.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2108,165 +2012,102 @@
   
 
 
-<h1 id="kind-node-ip-mismatch-after-crash-runbook">Kind Node IP Mismatch After Crash Runbook<a class="headerlink" href="#kind-node-ip-mismatch-after-crash-runbook" title="Permanent link">&para;</a></h1>
-<h2 id="symptoms">Symptoms<a class="headerlink" href="#symptoms" title="Permanent link">&para;</a></h2>
+<h1 id="adr-0001-where-batch-and-pipeline-work-runs">ADR-0001: Where batch and pipeline work runs<a class="headerlink" href="#adr-0001-where-batch-and-pipeline-work-runs" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted · <strong>Date:</strong> 2026-08-14</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>The platform had three ways to run work that isn't a long-lived service, and no
+written rule for choosing between them. That produced a specific oddity: Argo
+Workflows was installed in every environment — opt-in locally, on by default on
+AWS, with an S3 artifact bucket and an IRSA role — to carry <strong>exactly one
+manifest</strong>, a DR failover runbook. Zero <code>WorkflowTemplate</code>s, zero <code>CronWorkflow</code>s.</p>
+<p>Meanwhile the ML training story it had been installed for was a single bare
+<code>kind: Job</code>, submitted by the <code>idp:run-training-job</code> scaffolder action.</p>
+<p>The recurring question — "should this move to Argo Workflows?" — kept being
+re-litigated because the answer was never recorded.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p><strong>Argo Workflows is for multi-step, artifact-passing, human-gated, in-cluster
+work. Nothing else moves there.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Use it when</th>
+<th>Do not use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GitHub Actions</strong></td>
+<td>The work is triggered by a source change, gates a merge, or must run for an external contributor with no cluster access</td>
+<td>It needs in-cluster endpoints, or must pause for a human mid-run</td>
+</tr>
+<tr>
+<td><strong>Kubernetes CronJob</strong></td>
+<td>A single container on a schedule, no DAG, no artifacts</td>
+<td>You need step ordering, per-step images, or a gate</td>
+</tr>
+<tr>
+<td><strong>Argo Workflows</strong></td>
+<td>Multiple steps with different images, artifacts passed between them, a conditional gate, or a <code>suspend</code> step for human approval</td>
+<td>It's a single container, or it must work where Argo isn't installed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-this-means-concretely">What this means concretely<a class="headerlink" href="#what-this-means-concretely" title="Permanent link">&para;</a></h3>
+<p><strong>Stays in GitHub Actions.</strong> All build/test/scan/image-push/GitOps promotion
+(<code>.github/workflows/build-and-deploy.yml</code>, <code>ci.yml</code>, <code>contract-check.yml</code>,
+<code>codeql.yml</code>, <code>eval.yml</code>). Moving CI into the cluster would trade fast PR
+feedback and a well-understood secret model for nothing — and it would stop
+working for anyone without cluster credentials, which for an open-source template
+is most contributors.</p>
+<p><strong>Stays a CronJob.</strong> The DORA exporter, the Tech Insights exporter, and the two
+flaky-test exporters. Each is one container on a schedule with no artifacts.
+They must also keep working on a cluster where Argo Workflows is not installed,
+which is now the default (it is part of the opt-in AI/ML layer).</p>
+<p><strong>Moves to Argo Workflows.</strong> Two <code>WorkflowTemplate</code>s, plus the DR runbook that
+was already there:</p>
 <ul>
-<li>One or more nodes stuck in <code>NotReady</code> after Docker / Rancher Desktop crash and restart</li>
-<li>Pods stuck in <code>Terminating</code> or <code>Pending</code> state</li>
-<li><code>ingress-nginx</code> controller unable to schedule a replacement pod — all <code>*.idp.local</code> URLs return 502 / unreachable</li>
-<li><code>kubectl get nodes</code> shows a node as <code>NotReady</code> even though its Docker container is running</li>
-<li>Kubelet logs inside the node container show repeated connection errors to the old IP:</li>
+<li><code>ml-training-pipeline</code> — <code>train → evaluate → register → deploy-gate</code>. The
+  evaluate step fails the run below a minimum accuracy, and <code>deploy-gate</code> is a
+  <code>suspend</code> step. <strong>Those two things are the entire justification</strong>: a <code>Job</code>
+  would log a bad model and exit 0, and it has nowhere to pause for a human.</li>
+<li><code>llm-eval-pipeline</code> — the full nightly / pre-promotion eval matrix, which needs
+  in-cluster endpoints (the MCP servers, the KAgent A2A endpoint, an in-cluster
+  model server, Langfuse) that GitHub Actions cannot reach. <strong>PR-time smoke evals
+  stay in Actions</strong>, where they gate the merge.</li>
 </ul>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>dial tcp 172.18.0.X:6443: connect: connection refused
-</code></pre></div></td></tr></table></div>
-<h2 id="root-cause">Root Cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h2>
-<p>Kind runs each cluster node as a Docker container. When Docker or Rancher Desktop crashes and restarts, it may reassign container IPs — the control-plane node gets a <strong>different IP</strong> than what is baked into <code>/etc/kubernetes/kubelet.conf</code>. The kubelet then cannot reach the API server, so the node reports <code>NodeStatusUnknown</code> and stays <code>NotReady</code>.</p>
-<p>This cascades to:
-- Pods that were running on the affected node get evicted and enter <code>Terminating</code>
-- Replacement pods that require a <code>NotReady</code> node (e.g. DaemonSets, ingress with node affinity) stay <code>Pending</code>
-- inotify resource limits may also be exhausted after the restart, causing kube-proxy to crash</p>
-<h2 id="diagnosis">Diagnosis<a class="headerlink" href="#diagnosis" title="Permanent link">&para;</a></h2>
-<h3 id="1-confirm-the-ip-mismatch">1. Confirm the IP mismatch<a class="headerlink" href="#1-confirm-the-ip-mismatch" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Current Docker container IPs</span>
-<span class="k">for</span><span class="w"> </span>c<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>docker<span class="w"> </span>ps<span class="w"> </span>--filter<span class="w"> </span><span class="s2">&quot;name=idp-mvp&quot;</span><span class="w"> </span>--format<span class="w"> </span><span class="s2">&quot;{{.Names}}&quot;</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$c</span><span class="s2">: </span><span class="k">$(</span>docker<span class="w"> </span>inspect<span class="w"> </span><span class="nv">$c</span><span class="w"> </span>--format<span class="w"> </span><span class="s1">&#39;{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="k">done</span>
-
-<span class="c1"># IPs registered in Kubernetes</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>wide
-</code></pre></div></td></tr></table></div>
-<p>If the control-plane's Docker IP differs from its <code>INTERNAL-IP</code> in kubectl, you have an IP mismatch.</p>
-<h3 id="2-confirm-the-api-server-cert-covers-the-new-ip">2. Confirm the API server cert covers the new IP<a class="headerlink" href="#2-confirm-the-api-server-cert-covers-the-new-ip" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>openssl<span class="w"> </span>x509<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-in<span class="w"> </span>/etc/kubernetes/pki/apiserver.crt<span class="w"> </span>-noout<span class="w"> </span>-ext<span class="w"> </span>subjectAltName
-</code></pre></div></td></tr></table></div>
-<p>The new IP must appear in the <code>IP Address:</code> list. If it does not, a cluster recreate is required (see <strong>Prevention</strong> below).</p>
-<h3 id="3-check-kubeletconf-target">3. Check kubelet.conf target<a class="headerlink" href="#3-check-kubeletconf-target" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>grep<span class="w"> </span>server:<span class="w"> </span>/etc/kubernetes/kubelet.conf
-</code></pre></div></td></tr></table></div>
-<p>It should match the <strong>current</strong> Docker IP of the control-plane.</p>
-<h2 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">&para;</a></h2>
-<p>Replace <code>172.18.0.NEW</code> with the current Docker IP of the control-plane container (from step 1 above).</p>
-<h3 id="step-1-update-kubeletconf-with-the-new-ip">Step 1 — Update kubelet.conf with the new IP<a class="headerlink" href="#step-1-update-kubeletconf-with-the-new-ip" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">NEW_IP</span><span class="o">=</span><span class="k">$(</span>docker<span class="w"> </span>inspect<span class="w"> </span>idp-mvp-control-plane<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--format<span class="w"> </span><span class="s1">&#39;{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}&#39;</span><span class="k">)</span>
-
-docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;s|https://[0-9.]*:6443|https://</span><span class="si">${</span><span class="nv">NEW_IP</span><span class="si">}</span><span class="s2">:6443|g&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>/etc/kubernetes/kubelet.conf
-</code></pre></div></td></tr></table></div>
-<h3 id="step-2-restart-the-kubelet">Step 2 — Restart the kubelet<a class="headerlink" href="#step-2-restart-the-kubelet" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>kubelet
-</code></pre></div></td></tr></table></div>
-<h3 id="step-3-wait-for-the-node-to-recover">Step 3 — Wait for the node to recover<a class="headerlink" href="#step-3-wait-for-the-node-to-recover" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-w
-<span class="c1"># Expect: idp-mvp-control-plane   Ready   control-plane   ...</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="step-4-fix-inotify-limits-if-kube-proxy-is-crash-looping">Step 4 — Fix inotify limits if kube-proxy is crash-looping<a class="headerlink" href="#step-4-fix-inotify-limits-if-kube-proxy-is-crash-looping" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>kube-proxy
-
-<span class="c1"># If any pod shows Error / CrashLoopBackOff with &quot;too many open files&quot;:</span>
-docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.inotify.max_user_instances<span class="o">=</span><span class="m">1024</span>
-docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-control-plane<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.inotify.max_user_watches<span class="o">=</span><span class="m">655360</span>
-
-<span class="c1"># Delete the crashing pod so the DaemonSet recreates it</span>
-kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>&lt;kube-proxy-pod-name&gt;
-</code></pre></div></td></tr></table></div>
-<h3 id="step-5-verify-full-cluster-health">Step 5 — Verify full cluster health<a class="headerlink" href="#step-5-verify-full-cluster-health" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># All nodes Ready</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-
-<span class="c1"># No non-Running pods (excluding expected failures like catalog-exporter)</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Running<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>Completed
-</code></pre></div></td></tr></table></div>
-<p>ingress-nginx should reschedule and reach <code>Running</code> within ~60 seconds, restoring all <code>*.idp.local</code> URLs.</p>
-<h3 id="step-6-fix-kagent-controller-if-still-crashloopbackoff">Step 6 — Fix kagent-controller if still CrashLoopBackOff<a class="headerlink" href="#step-6-fix-kagent-controller-if-still-crashloopbackoff" title="Permanent link">&para;</a></h3>
-<p>After DNS recovers the <code>kagent-controller</code> may still crash because the startup probe kills it before the pgvector DB migrations complete (default window is only ~60 s).</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Check</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kagent-controller
-
-<span class="c1"># If CrashLoopBackOff, widen the startup probe window and restart</span>
-kubectl<span class="w"> </span>patch<span class="w"> </span>deployment<span class="w"> </span>kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>--type<span class="o">=</span><span class="s1">&#39;json&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-p<span class="o">=</span><span class="s1">&#39;[{&quot;op&quot;: &quot;replace&quot;, &quot;path&quot;: &quot;/spec/template/spec/containers/0/startupProbe/failureThreshold&quot;, &quot;value&quot;: 12}]&#39;</span>
-
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>-n<span class="w"> </span>kagent
-
-<span class="c1"># Wait for 1/1 Running</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-w<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kagent-controller
-</code></pre></div></td></tr></table></div>
-<h2 id="known-harmless-failure">Known Harmless Failure<a class="headerlink" href="#known-harmless-failure" title="Permanent link">&para;</a></h2>
-<p><code>catalog-exporter</code> in the <code>monitoring</code> namespace will stay in <code>CrashLoopBackOff</code> whenever Backstage is <strong>not</strong> running via Docker Compose. It tries to reach <code>backstage.default.svc.cluster.local:3000</code> (in-cluster DNS), which does not exist when Backstage is down. Start Backstage to resolve it:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
-<h2 id="prevention">Prevention<a class="headerlink" href="#prevention" title="Permanent link">&para;</a></h2>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <ul>
-<li>
-<p><strong>Add a fixed IP subnet to Docker:</strong> configure Docker Desktop / Rancher Desktop to use a stable subnet so container IPs do not change across restarts. Set this in Docker Desktop → Settings → Docker Engine:</p>
-<div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;default-address-pools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;base&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;172.18.0.0/16&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="w"> </span><span class="p">}</span>
-<span class="w">  </span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div></td></tr></table></div>
-<p>Kind still assigns IPs dynamically within that pool, but stability is improved on clean restarts.</p>
-</li>
+<li><code>idp:run-training-job</code> submits a <code>Workflow</code> when the
+  <code>workflowtemplates.argoproj.io</code> CRD is present, and <strong>falls back to the
+  original <code>Job</code></strong> when it is not. The fallback is not optional: Argo Workflows
+  is part of the opt-in AI/ML layer, so a core-only install legitimately lacks
+  it, and the scaffolder template must still work there. <code>IDP_TRAINING_BACKEND=job</code>
+  forces the fallback.</li>
+<li>The fallback path silently loses the accuracy gate and the approval step. The
+  action logs a warning saying so rather than pretending they ran.</li>
+<li>A single-region AWS install without <code>--with-ai</code> has no Argo Workflows, so the
+  DR failover runbook is unavailable there. Acceptable — DR is a multi-region
+  feature and <code>bootstrap-multiregion.sh</code> installs it — but worth knowing.</li>
+<li>The training pipeline runs 5 pods where the Job ran 1. Requests are modest and
+  the Job fallback remains for constrained clusters.</li>
 </ul>
+<h2 id="alternatives-considered">Alternatives considered<a class="headerlink" href="#alternatives-considered" title="Permanent link">&para;</a></h2>
+<p><strong>Move CI into Argo Workflows</strong> (Tekton-style). Rejected: it loses PR-time
+feedback, complicates the secret model, and breaks for contributors without a
+cluster.</p>
+<p><strong>Move the exporters to <code>CronWorkflow</code>.</strong> Rejected: they gain nothing from a DAG
+and would acquire a hard dependency on an optional component.</p>
+<p><strong>Remove Argo Workflows entirely</strong> and keep the bare <code>Job</code>. Genuinely tempting
+given it carried one manifest — but the accuracy gate and the approval step are
+real requirements that a <code>Job</code> cannot express, and the DR runbook already needs
+typed parameters and per-step images.</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Graceful shutdown:</strong> use <code>./scripts/bootstrap-local.sh --destroy</code> before shutting down Docker / Rancher Desktop, then re-bootstrap on next use. This avoids IP drift entirely.</li>
-</ul>
-<ul>
-<li>
-<p><strong>Cluster recreate (last resort):</strong> if the API server cert does not cover the new IP, recreate the cluster:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
-./scripts/bootstrap-local.sh<span class="w"> </span>--full
-</code></pre></div></td></tr></table></div>
-</li>
-</ul>
-<h2 id="related-runbooks">Related Runbooks<a class="headerlink" href="#related-runbooks" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../pod-crash-loop/">Pod Crash Loop</a></li>
-<li><a href="../image-pull-backoff/">ImagePullBackOff</a></li>
+<li><code>kubernetes/argo-workflows/workflowtemplates/</code></li>
+<li><code>backstage/app/packages/backend/src/modules/idpRunTrainingJob.ts</code></li>
+<li><code>aws/argo-workflows/failover-runbook.yaml</code></li>
+<li><code>docs/multi-region.md</code></li>
 </ul>
 
 
@@ -2297,7 +2138,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../image-pull-backoff/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ImagePullBackOff">
+          <a href="../../crossplane-vs-terraform/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Crossplane vs Terraform">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2307,20 +2148,20 @@ kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> <
                 Previous
               </span>
               <div class="md-ellipsis">
-                ImagePullBackOff
+                Crossplane vs Terraform
               </div>
             </div>
           </a>
         
         
           
-          <a href="../cost-budget-exceeded/" class="md-footer__link md-footer__link--next" aria-label="Next: Cost Budget Exceeded">
+          <a href="../../team-management/" class="md-footer__link md-footer__link--next" aria-label="Next: Team Management">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Cost Budget Exceeded
+                Team Management
               </div>
             </div>
             <div class="md-footer__button md-icon">

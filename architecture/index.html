@@ -465,6 +465,24 @@
   
   
   
+    
+    
+      <li class="md-tabs__item">
+        <a href="../design/adr-0001-batch-orchestration/" class="md-tabs__link">
+          
+  
+  Design Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
     <li class="md-tabs__item">
       <a href="../team-management/" class="md-tabs__link">
         
@@ -788,6 +806,15 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Design decisions
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#overview" class="md-nav__link">
@@ -1483,6 +1510,74 @@
   
   
   
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        
+          
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Design Decisions
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_20">
+            <span class="md-nav__icon md-icon"></span>
+            Design Decisions
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0001: Batch orchestration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../team-management/" class="md-nav__link">
         
@@ -1556,10 +1651,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_24" >
         
           
-          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_24" id="__nav_24_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1570,8 +1665,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_23">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_24_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_24">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1829,10 +1924,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_29" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_30" >
         
           
-          <label class="md-nav__link" for="__nav_29" id="__nav_29_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_30" id="__nav_30_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1843,8 +1938,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_29_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_29">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_30_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_30">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2132,6 +2227,12 @@
 
 
 <h1 id="platform-architecture">Platform Architecture<a class="headerlink" href="#platform-architecture" title="Permanent link">&para;</a></h1>
+<h2 id="design-decisions">Design decisions<a class="headerlink" href="#design-decisions" title="Permanent link">&para;</a></h2>
+<p>Recorded as ADRs under <code>docs/design/</code>, so the reasoning survives the decision:</p>
+<ul>
+<li><a href="../design/adr-0001-batch-orchestration/">ADR-0001: Where batch and pipeline work runs</a> —
+  GitHub Actions vs CronJob vs Argo Workflows, and why CI stays in Actions.</li>
+</ul>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p><img alt="Platform Architecture" src="../assets/platform-architecture.jpg" /></p>
 <p>Six layers — Developer Portal (Backstage + templates + AI), Golden Paths (21 service templates + 18 QA templates + 5 Crossplane Claims), AI-Native IDP (KAgent agents + MLflow + MCP servers + Argo Workflows), Delivery &amp; Quality (GitHub Actions + ArgoCD + Helm + scorecard gates), Runtime (Kubernetes: Kind locally, EKS on AWS + Crossplane), Observability &amp; Infra (Prometheus + Grafana + DORA + Terraform).</p>
