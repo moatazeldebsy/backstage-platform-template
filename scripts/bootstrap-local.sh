@@ -1257,6 +1257,10 @@ if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
       --timeout 300s || err "Argo Workflows Helm install failed"
 
     kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml"
+    # WorkflowTemplates — without these idp:run-training-job silently falls back
+    # to a bare Job, losing the accuracy gate and the approval step.
+    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/workflowtemplates/" \
+      || warn "Could not apply WorkflowTemplates — idp:run-training-job will fall back to a Job"
     check "Argo Workflows installed — UI at http://argo-workflows.idp.local"
   )
 else

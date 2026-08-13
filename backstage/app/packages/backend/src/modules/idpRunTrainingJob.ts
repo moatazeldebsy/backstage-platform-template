@@ -151,6 +151,86 @@ spec:
 `;
 }
 
+/**
+ * Submits the ml-training-pipeline WorkflowTemplate instead of a bare Job.
+ *
+ * The pipeline can do the two things a Job cannot: fail the run when accuracy is
+ * below a threshold, and stop at a suspend gate for a human before anything is
+ * promoted. The ConfigMap carrying train.py is identical either way, so only the
+ * second document differs.
+ */
+function buildWorkflowManifests(opts: {
+  name: string;
+  experimentName: string;
+  pythonVersion: string;
+  trainScript: string;
+  deps: string;
+  registerModel: boolean;
+  minAccuracy: number;
+}): string {
+  const { name, experimentName, pythonVersion, trainScript, deps, registerModel, minAccuracy } = opts;
+  const cmName = `${name}-train-code`;
+  const indented = trainScript.split('\n').map(l => `    ${l}`).join('\n');
+
+  return `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${cmName}
+  namespace: ml-platform
+data:
+  train.py: |
+${indented}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ${name}-train-
+  namespace: ml-platform
+  labels:
+    app: ${name}
+    backstage.io/kubernetes-id: ${name}
+spec:
+  workflowTemplateRef:
+    name: ml-training-pipeline
+  arguments:
+    parameters:
+      - name: name
+        value: "${name}"
+      - name: experiment-name
+        value: "${experimentName}"
+      - name: python-version
+        value: "${pythonVersion}"
+      - name: deps
+        value: "${deps}"
+      - name: code-configmap
+        value: "${cmName}"
+      - name: mlflow-client-version
+        value: "${MLFLOW_CLIENT_VERSION}"
+      - name: min-accuracy
+        value: "${minAccuracy}"
+      - name: register-model
+        value: "${registerModel}"
+`;
+}
+
+/**
+ * Argo Workflows is part of the opt-in AI/ML layer, so it is legitimately absent
+ * on a core-only install. Falling back to the original Job keeps this action
+ * working there rather than failing the scaffold.
+ */
+async function workflowsAvailable(): Promise<boolean> {
+  if (process.env.IDP_TRAINING_BACKEND === 'job') return false;
+  try {
+    await execAsync('kubectl get crd workflowtemplates.argoproj.io --request-timeout=5s', {
+      env: kubeEnv,
+      timeout: 10_000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function createRunTrainingJobAction() {
   return createTemplateAction({
     id: 'idp:run-training-job',
@@ -163,13 +243,19 @@ function createRunTrainingJobAction() {
         pythonVersion: z => z.string().optional().describe('Python version (default: 3.11)'),
         registerModel: z =>
           z.boolean().optional().describe('Register the trained model in the MLflow Model Registry (default: true)'),
+        minAccuracy: z =>
+          z.number().optional().describe('Fail the pipeline below this accuracy (default: 0, i.e. no gate). Ignored on the Job fallback.'),
       },
       output: {
         mlflowUrl: z => z.string().describe('MLflow UI URL'),
         // Emitted by the handler but previously undeclared, so it was invisible
         // to templates — `steps.<id>.output.catalogUrl` resolved to nothing.
         catalogUrl: z => z.string().describe('Backstage catalog entity URL'),
-        jobName: z => z.string().describe('Kubernetes Job name'),
+        jobName: z => z.string().describe('Kubernetes Job name (empty when the Argo Workflows pipeline was used)'),
+        // Declared, not just emitted — an undeclared output resolves to nothing
+        // in `steps.<id>.output.<name>`, which is how catalogUrl was invisible.
+        workflowName: z => z.string().describe('Argo Workflow name (empty when the Job fallback was used)'),
+        argoUrl: z => z.string().describe('Argo Workflows UI URL'),
       },
     },
 
@@ -197,27 +283,62 @@ function createRunTrainingJobAction() {
         throw new Error(`Cannot reach the Kubernetes cluster: ${e.message}`);
       }
 
-      const yaml = buildManifests({ name, experimentName, framework, pythonVersion, trainScript, deps });
+      const useWorkflow = await workflowsAvailable();
+      const minAccuracy = (ctx.input['minAccuracy'] as number | undefined) ?? 0;
 
-      const tmpFile = path.join(os.tmpdir(), `training-job-${name}-${Date.now()}.yaml`);
+      const yaml = useWorkflow
+        ? buildWorkflowManifests({
+            name, experimentName, pythonVersion, trainScript, deps, registerModel, minAccuracy,
+          })
+        : buildManifests({ name, experimentName, framework, pythonVersion, trainScript, deps });
+
+      if (!useWorkflow) {
+        ctx.logger.warn(
+          'Argo Workflows is not installed (no workflowtemplates.argoproj.io CRD) — ' +
+            'falling back to a single Kubernetes Job. The accuracy gate and the ' +
+            'deploy approval step are skipped. Install the AI/ML layer to get them: ' +
+            './scripts/bootstrap-ai.sh',
+        );
+      }
+
+      const tmpFile = path.join(os.tmpdir(), `training-${useWorkflow ? 'workflow' : 'job'}-${name}-${Date.now()}.yaml`);
+      let submittedWorkflow = '';
       try {
         await fs.writeFile(tmpFile, yaml, 'utf8');
-        const { stdout, stderr } = await execAsync(`kubectl apply -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
-        if (stdout) ctx.logger.info(stdout.trim());
+        // `create` not `apply`: the Workflow uses generateName, which apply
+        // rejects because it has no name to diff against.
+        const verb = useWorkflow ? 'create' : 'apply';
+        const { stdout, stderr } = await execAsync(`kubectl ${verb} -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
+        if (stdout) {
+          ctx.logger.info(stdout.trim());
+          const m = stdout.match(/workflow\.argoproj\.io\/(\S+)\s+created/);
+          if (m) submittedWorkflow = m[1];
+        }
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
         await fs.unlink(tmpFile).catch(() => undefined);
       }
 
       const mlflowExternalUrl = process.env.MLFLOW_EXTERNAL_URL ?? 'http://mlflow.idp.local';
+      const argoExternalUrl = process.env.ARGO_WORKFLOWS_EXTERNAL_URL ?? 'http://argo-workflows.idp.local';
       const backstageBaseUrl = process.env.APP_BASE_URL ?? process.env.BACKSTAGE_URL ?? 'http://backstage.idp.local';
-      ctx.logger.info(`✓ Job '${jobName}' submitted to ml-platform namespace`);
+
+      if (useWorkflow) {
+        ctx.logger.info(`✓ Workflow '${submittedWorkflow || `${name}-train-*`}' submitted to ml-platform`);
+        ctx.logger.info(`  Steps: train → evaluate → register → deploy-gate (suspends for approval)`);
+        ctx.logger.info(`  Resume the gate with: argo resume ${submittedWorkflow || '<workflow>'} -n ml-platform`);
+        ctx.logger.info(`  Monitor: ${argoExternalUrl}`);
+      } else {
+        ctx.logger.info(`✓ Job '${jobName}' submitted to ml-platform namespace`);
+        ctx.logger.info(`  Monitor: kubectl get pods -n ml-platform -l app=${name}`);
+      }
       ctx.logger.info(`  Training will appear at ${mlflowExternalUrl} once the pod completes (~60–90s for image pull + training)`);
-      ctx.logger.info(`  Monitor: kubectl get pods -n ml-platform -l app=${name}`);
 
       ctx.output('mlflowUrl', mlflowExternalUrl);
       ctx.output('catalogUrl', `${backstageBaseUrl}/catalog/default/component/${name}`);
-      ctx.output('jobName', jobName);
+      ctx.output('jobName', useWorkflow ? '' : jobName);
+      ctx.output('workflowName', submittedWorkflow);
+      ctx.output('argoUrl', argoExternalUrl);
     },
   });
 }
