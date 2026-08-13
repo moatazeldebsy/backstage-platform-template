@@ -6951,12 +6951,34 @@ const HELP_CHANNELS = [
 
 // aiEnabled gates the KAgent UI link — it 404s on a platform where
 // bootstrap-ai.sh has not run, since nothing serves kagent.idp.local.
-const getUsefulLinks = (urls: { grafana: string; kagent: string; argocd: string }, aiEnabled: boolean) => [
+// Every href here is either an in-app route declared below in this file, or an
+// externalLinks.* value from app-config. MLflow and Langfuse were already
+// configured in app-config.aws.yaml (and substituted with real ALB hostnames by
+// bootstrap-ai.sh) but this function never accepted them, so two working surfaces
+// had no entry point from Support. The AI-gated ones follow KAgent's lead and are
+// hidden when aiStack.enabled is false, so they never render a dead link on a
+// cluster bootstrapped with --skip-ai.
+const getUsefulLinks = (
+  urls: { grafana: string; kagent: string; argocd: string; mlflow: string; langfuse: string },
+  aiEnabled: boolean,
+) => [
   { emoji: '🏠', label: 'Platform Dashboard', href: '/' },
   { emoji: '📊', label: 'Grafana Dashboards', href: urls.grafana },
-  { emoji: '🔒', label: 'Security Overview',  href: '/catalog' },
+  // Was '/catalog', which is the catalog, not the security page — /security is a
+  // real route declared in this file and is what the label promises.
+  { emoji: '🔒', label: 'Security Overview',  href: '/security' },
   { emoji: '📈', label: 'DORA Metrics',        href: '/dora' },
-  ...(aiEnabled ? [{ emoji: '🤖', label: 'KAgent UI', href: urls.kagent }] : []),
+  { emoji: '🏅', label: 'Scorecard',           href: '/scorecard' },
+  { emoji: '💰', label: 'FinOps / Cost',       href: '/finops' },
+  { emoji: '🎯', label: 'SLOs',                href: '/slo' },
+  { emoji: '📚', label: 'Service Catalog',     href: '/catalog' },
+  ...(aiEnabled
+    ? [
+        { emoji: '🤖', label: 'KAgent UI',          href: urls.kagent },
+        { emoji: '🧪', label: 'MLflow',             href: urls.mlflow },
+        { emoji: '🔍', label: 'AI Observability',   href: urls.langfuse },
+      ]
+    : []),
   { emoji: '🚀', label: 'ArgoCD',              href: urls.argocd },
 ];
 
@@ -6966,9 +6988,11 @@ function SupportPage() {
   const base = configApi.getString('backend.baseUrl');
   const aiStackEnabled = useAiStackEnabled();
   const usefulLinks = getUsefulLinks({
-    grafana: configApi.getOptionalString('externalLinks.grafana') ?? 'http://grafana.idp.local',
-    kagent:  configApi.getOptionalString('externalLinks.kagent')  ?? 'http://kagent.idp.local',
-    argocd:  configApi.getOptionalString('externalLinks.argocd')  ?? 'http://argocd.idp.local',
+    grafana:  configApi.getOptionalString('externalLinks.grafana')  ?? 'http://grafana.idp.local',
+    kagent:   configApi.getOptionalString('externalLinks.kagent')   ?? 'http://kagent.idp.local',
+    argocd:   configApi.getOptionalString('externalLinks.argocd')   ?? 'http://argocd.idp.local',
+    mlflow:   configApi.getOptionalString('externalLinks.mlflow')   ?? 'http://mlflow.idp.local',
+    langfuse: configApi.getOptionalString('externalLinks.langfuse') ?? 'http://langfuse.idp.local',
   }, aiStackEnabled);
   // The AI Assistant entry points at /ai-assistant, a route that does not exist
   // when the page extension is disabled.
