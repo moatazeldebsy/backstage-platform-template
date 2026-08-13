@@ -54,8 +54,16 @@ spec:
                 value: "{{path.basename}}"
               - name: global.region
                 value: "{{region}}"
+            # Optional per-service progressive-delivery overlay. A scaffolder
+            # skeleton cannot merge into an existing file, which is why the
+            # canary-deployment template used to emit a .patch nobody applied --
+            # a second, wholly-generated values file is something it *can* write.
+            # ignoreMissingValueFiles is mandatory: without it every service that
+            # has no such file puts this whole ApplicationSet into ComparisonError.
+            ignoreMissingValueFiles: true
             valueFiles:
               - $values/services/{{path.basename}}/{{valuesFile}}
+              - $values/services/{{path.basename}}/helm-values-rollout-{{env}}.yaml
         - repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
           targetRevision: HEAD
           ref: values
