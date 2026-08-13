@@ -10,6 +10,10 @@ metadata:
   annotations:
     github.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
     backstage.io/techdocs-ref: dir:.
+    # Drives the Langfuse entity tab. These components also match the tab
+    # filter on spec.type, but the annotation is what lets it filter traces
+    # to this service rather than showing demo data.
+    langfuse.com/service-name: ${{ values.name }}
     backstage.io/kubernetes-id: ${{ values.name }}
     backstage.io/kubernetes-namespace: kagent
     grafana/alert-label-selector: "service=${{ values.name }}"

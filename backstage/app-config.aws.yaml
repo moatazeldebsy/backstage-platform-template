@@ -40,6 +40,12 @@ app:
         disabled: true
     - nav-item:custom-pages/langfuse-platform:
         disabled: true
+    # The per-entity Langfuse tab was never in this list, so it rendered on every
+    # component even with the AI stack switched off. Its filter now also matches
+    # AI/ML spec.types without the annotation, which makes disabling it here the
+    # only thing keeping it off a non-AI cluster.
+    - entity-content:custom-pages/langfuse:
+        disabled: true
 
 # Drives the hardcoded AI links on the custom Home / Support / Learning-Center
 # pages, which app.extensions cannot reach. bootstrap-ai.sh --aws flips this
