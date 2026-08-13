@@ -1053,9 +1053,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-4-aiml-stack-already-deployed" class="md-nav__link">
+  <a href="#step-4-aiml-stack-opt-in" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4: AI/ML stack — already deployed
+      Step 4: AI/ML stack — opt-in
     </span>
   </a>
   
@@ -2504,7 +2504,7 @@ timing table at the end of a run lines up with this one.</p>
 <tr>
 <td>6 — AI/ML platform</td>
 <td>8–20 min</td>
-<td><code>bootstrap-ai.sh --aws</code> (skip with <code>--skip-ai</code>). Argo Workflows and Velero install in parallel with it.</td>
+<td><code>bootstrap-ai.sh --aws</code>, <strong>only with <code>--with-ai</code>/<code>--adp</code></strong>. Argo Workflows and Velero install in parallel with it.</td>
 </tr>
 </tbody>
 </table>
@@ -2519,18 +2519,24 @@ a slow account.</p>
 <li>Go to <a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → your OAuth app → Edit</li>
 <li>Update callback URL: <code>http://&lt;BACKSTAGE_ALB_HOSTNAME&gt;/api/auth/github/handler/frame</code></li>
 </ol>
-<h3 id="step-4-aiml-stack-already-deployed">Step 4: AI/ML stack — already deployed<a class="headerlink" href="#step-4-aiml-stack-already-deployed" title="Permanent link">&para;</a></h3>
-<p><code>bootstrap.sh</code> runs the AI/ML stack itself in Phase 6 (MLflow, KAgent,
-idp-assistant, Langfuse and the MCP servers), so there is nothing to do here unless
-you passed <code>--skip-ai</code>. It requires <code>ANTHROPIC_API_KEY</code> in Secrets Manager.</p>
-<p>This step used to say to run <code>./scripts/bootstrap-ai.sh</code>, which was wrong twice
-over: the stack was already installed, and without <code>--aws</code> that command targets your
-local Kind context rather than EKS.</p>
-<p>The one thing <code>bootstrap.sh</code> does <strong>not</strong> install is the agentic development
-platform. To add it:</p>
+<h3 id="step-4-aiml-stack-opt-in">Step 4: AI/ML stack — opt-in<a class="headerlink" href="#step-4-aiml-stack-opt-in" title="Permanent link">&para;</a></h3>
+<p>AI/ML is a layer, not part of the core, matching how local works. Add it with a
+flag on the same script:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--adp<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster<span class="w"> </span>&lt;cluster-name&gt;
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh<span class="w"> </span>--with-ai<span class="w">    </span><span class="c1"># KAgent, MLflow, Langfuse, MCP servers</span>
+./scripts/bootstrap.sh<span class="w"> </span>--adp<span class="w">        </span><span class="c1"># implies --with-ai, adds the agentic platform</span>
+</code></pre></div></td></tr></table></div>
+<p>Requires <code>ANTHROPIC_API_KEY</code> in Secrets Manager.</p>
+<p>Skipping it is a real cost saving, not just skipped workloads: <code>enable_ai</code> and
+<code>enable_langfuse</code> gate the Langfuse RDS instance and the MLflow/Langfuse S3 buckets
+and IRSA roles, so a core-only install never provisions them. The old <code>--skip-ai</code>
+flag skipped the Helm installs but still built a second RDS instance.</p>
+<p>Removing the infrastructure is deliberately explicit: omitting <code>--with-ai</code> on a
+cluster that already has it <strong>keeps</strong> it, because a forgotten flag must not drop
+the Langfuse database. Pass <code>--remove-ai-infra</code> to actually destroy it.</p>
+<p>You can also call <code>bootstrap-ai.sh</code> directly — note the <code>--aws</code> flag, without which
+it targets your local Kind context rather than EKS:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--adp<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster<span class="w"> </span>&lt;cluster-name&gt;
 </code></pre></div></td></tr></table></div>
 <hr />
 <h3 id="step-5-provision-team-namespaces">Step 5: Provision team namespaces<a class="headerlink" href="#step-5-provision-team-namespaces" title="Permanent link">&para;</a></h3>
@@ -2569,7 +2575,7 @@ IAM role ARN. The scaffold PR creates:
 <h2 id="post-deployment-validation">Post-Deployment Validation<a class="headerlink" href="#post-deployment-validation" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/validate-deployment.sh
 </code></pre></div></td></tr></table></div>
-<p>Runs 50+ automated checks. All should pass.</p>
+<p>Runs ~40 automated checks across 10 categories. All should pass.</p>
 <h3 id="manual-smoke-tests">Manual Smoke Tests<a class="headerlink" href="#manual-smoke-tests" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
