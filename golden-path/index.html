@@ -950,6 +950,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#progressive-delivery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Progressive delivery
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Progressive delivery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Which strategy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollback-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rollback thresholds
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#conventions-reference" class="md-nav__link">
     <span class="md-ellipsis">
       Conventions Reference
@@ -2300,6 +2333,66 @@ docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;nam
 <li><strong>AWS</strong>: CloudWatch → Log Groups → <code>/aws/containerinsights/idp-mvp/application</code></li>
 <li><strong>Metrics</strong>: Grafana → IDP Services dashboard</li>
 </ul>
+<h2 id="progressive-delivery">Progressive delivery<a class="headerlink" href="#progressive-delivery" title="Permanent link">&para;</a></h2>
+<p>Every service deploys through the same chart, which renders <strong>either</strong> a plain
+Deployment or an Argo Rollout. Opt in with the <strong>Enable Progressive Delivery</strong>
+scaffolder template — it opens a PR adding
+<code>services/&lt;name&gt;/helm-values-rollout-&lt;env&gt;.yaml</code>, which the ArgoCD ApplicationSets
+already list as an optional second values file. Nothing has to be hand-merged.</p>
+<h3 id="which-strategy">Which strategy<a class="headerlink" href="#which-strategy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Canary</th>
+<th>Blue-green</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Traffic</td>
+<td>Shifts gradually (20% → 50% → 100% by default)</td>
+<td>All at once, on promotion</td>
+</tr>
+<tr>
+<td>Extra capacity</td>
+<td>One canary ReplicaSet, sized to the step weight</td>
+<td>A full second stack</td>
+</tr>
+<tr>
+<td>Analysis</td>
+<td>Runs at each step; failure aborts and rolls back</td>
+<td>Runs before promotion</td>
+</tr>
+<tr>
+<td>Rollback</td>
+<td>Abort mid-rollout; blast radius limited to the canary weight</td>
+<td>Instant — active Service points back at the old ReplicaSet</td>
+</tr>
+<tr>
+<td>Good for</td>
+<td>Stateless HTTP services with useful per-request metrics</td>
+<td>Session-affine or stateful services, expensive analysis, anything where you want to verify the new version end to end before any user sees it</td>
+</tr>
+</tbody>
+</table>
+<p>Blue-green doubles the pod count during promotion. On a single-node local cluster
+set <code>rollout.blueGreen.previewReplicaCount: 1</code>, or the preview stack will evict
+platform components.</p>
+<p>Blue-green also keeps a human in the loop by default
+(<code>autoPromotionEnabled: false</code>): the new version comes up fully and is reachable
+on the <code>-preview</code> Service, and you promote with</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>argo<span class="w"> </span>rollouts<span class="w"> </span>promote<span class="w"> </span>&lt;service&gt;<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;
+</code></pre></div></td></tr></table></div>
+<h3 id="rollback-thresholds">Rollback thresholds<a class="headerlink" href="#rollback-thresholds" title="Permanent link">&para;</a></h3>
+<p><code>rollout.analysis.errorRateThreshold</code> and <code>latencyThresholdSeconds</code> are passed to
+the cluster-scoped <code>http-error-rate</code> AnalysisTemplate as arguments, so the
+thresholds are per-service while the PromQL stays in one place. They are
+<strong>fractions, not percentages</strong> — <code>0.01</code> is 1%. The scaffolder form takes a percent
+and converts, so this only matters when hand-editing.</p>
+<p>The chart ships a <code>values.schema.json</code> covering the rollout block, so a typo like
+<code>strategy: blue-green</code> fails at <code>helm lint</code> rather than producing a Rollout with
+no strategy — which Argo accepts and then never progresses.</p>
 <h2 id="conventions-reference">Conventions Reference<a class="headerlink" href="#conventions-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
