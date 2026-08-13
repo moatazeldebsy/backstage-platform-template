@@ -15,13 +15,16 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "idp-mvp-terraform-state-YOUR_AWS_ACCOUNT_ID"
-    key            = "platform/global/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "idp-mvp-terraform-locks"
-    encrypt        = true
-  }
+  # Partial backend, sharing the bucket and lock table that
+  # ensure_tf_state_backend() (scripts/lib.sh) creates for the root module.
+  # bootstrap-multiregion.sh supplies terraform/backend.hcl plus an overriding
+  # key= so the global module keeps its own state path:
+  #   terraform init -backend-config=../backend.hcl \
+  #                  -backend-config="key=platform/global/terraform.tfstate"
+  #
+  # The bucket name here used to be hardcoded to a different shape than the one
+  # anything actually creates, so this module could never have initialised.
+  backend "s3" {}
 }
 
 # Default provider targets the primary region (eu-central-1)

@@ -177,6 +177,12 @@ Install them and re-run this script, or run manually:
   caller=$(aws sts get-caller-identity --query 'Arn' --output text)
   log "Authenticated as: ${caller}"
 
+  # ── Terraform state backend ─────────────────────────────────────────────────
+  # Must come before any terraform init. Terraform cannot create the bucket its
+  # own backend lives in, so this is provisioned with the AWS CLI first.
+  log "Preparing the Terraform state backend..."
+  ensure_tf_state_backend "${AWS_REGION}" "${CLUSTER_NAME}"
+
   # ── Terraform vars ──────────────────────────────────────────────────────────
   local tfvars="${ROOT_DIR}/terraform/terraform.tfvars"
   if [[ ! -f "$tfvars" ]]; then
@@ -198,7 +204,7 @@ Install them and re-run this script, or run manually:
 
   # ── Bootstrap AWS ────────────────────────────────────────────────────────────
   step "Bootstrapping AWS EKS platform (single-region)..."
-  log "Running scripts/bootstrap.sh (this takes 15–25 minutes)..."
+  log "Running scripts/bootstrap.sh (this takes 40–70 minutes)..."
   "${ROOT_DIR}/scripts/bootstrap.sh" \
     --region "${AWS_REGION}" \
     --cluster-name "${CLUSTER_NAME}"

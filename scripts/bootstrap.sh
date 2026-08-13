@@ -64,13 +64,23 @@ timer_start "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 log "Phase 1: Provisioning infrastructure with Terraform..."
 
 cd "$TF_DIR"
+
+# main.tf declares a partial `backend "s3" {}`; every value comes from this file.
+# Create it here if setup.sh has not already, so bootstrap.sh remains runnable on
+# its own — Terraform cannot provision its own backend, and failing at init with
+# "Backend configuration required" is a poor first experience.
+if [[ ! -f "${TF_DIR}/backend.hcl" ]]; then
+  log "  No terraform/backend.hcl — creating the state bucket and lock table..."
+  ensure_tf_state_backend "$AWS_REGION" "$CLUSTER_NAME"
+fi
+
 # `-upgrade` re-resolves and re-downloads every provider, which costs 30-90s on
 # a warm run for no benefit. Do it on the first init, or on demand via
 # IDP_FORCE=1 — the same convention the image-build skip checks use.
 if [[ ! -d "${TF_DIR}/.terraform" || "${IDP_FORCE:-0}" == "1" ]]; then
-  terraform init -upgrade
+  terraform init -upgrade -backend-config=backend.hcl
 else
-  terraform init
+  terraform init -backend-config=backend.hcl
 fi
 # Two-phase apply on cold state. The alekc/kubectl provider (2.x, used for the
 # Karpenter EC2NodeClass/NodePool manifests) cannot configure itself while
