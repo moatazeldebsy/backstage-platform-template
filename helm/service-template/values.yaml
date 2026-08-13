@@ -83,10 +83,56 @@ lifecycle:
 # Set rollout.enabled: true in the service's helm-values overlay to opt in.
 rollout:
   enabled: false
+
+  # canary   — shift traffic gradually, analysing at each step. Default.
+  # blueGreen — run the new version alongside the old at full size, cut over in
+  #             one step. Prefer it for session-affine or stateful services, when
+  #             analysis is expensive, or when instant rollback matters more than
+  #             limiting blast radius.
+  strategy: canary
+
+  # Thresholds are passed to the ClusterAnalysisTemplate as args rather than
+  # being baked into it. The template stays a single cluster-scoped resource --
+  # its PromQL carries several hard-won fixes (the status_code label name, the
+  # `or vector(0)` guard, clamp_min) and duplicating it per service is how those
+  # silently regress -- while the numbers become per-service.
+  analysis:
+    enabled: true
+    templateName: http-error-rate
+    clusterScope: true
+    errorRateThreshold: "0.01"      # fraction, not percent: 0.01 = 1%
+    latencyThresholdSeconds: "0.5"
+
   canary:
+    # Full step list. Leave empty to get the legacy 20 -> analysis -> 50 ->
+    # analysis -> 100 sequence built from the three deprecated keys below.
+    # An `analysis: {}` entry expands to the templates+args block.
+    steps: []
+    #  - setWeight: 20
+    #  - pause: { duration: 2m }
+    #  - analysis: {}
+    #  - setWeight: 50
+    #  - pause: { duration: 5m }
+    #  - analysis: {}
+
+    # DEPRECATED — used only when steps is empty. Kept so existing overlays
+    # (services/hello-service/helm-values-local.yaml) keep working unchanged.
     initialWeight: 20         # % of traffic routed to canary pods in step 1
     step1PauseDuration: "2m"  # how long to observe at initialWeight before analysis
     step2PauseDuration: "5m"  # how long to observe at 50% before promoting to 100%
+
+  blueGreen:
+    # false means a human promotes via `kubectl argo rollouts promote`. That is
+    # the point of blue-green: the new version is fully up and verifiable before
+    # any traffic moves.
+    autoPromotionEnabled: false
+    autoPromotionSeconds: 0
+    scaleDownDelaySeconds: 30
+    # Blue-green doubles the pod count during promotion. On a single-node local
+    # cluster set this to 1 so the preview stack does not evict the platform.
+    previewReplicaCount: null
+    prePromotionAnalysis: true
+    postPromotionAnalysis: false
 
 # HPA is enabled by default so services on the golden path absorb traffic
 # spikes without manual scaling. Disable in dev/local overlays (e.g.

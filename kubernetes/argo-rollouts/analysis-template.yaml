@@ -13,11 +13,20 @@ spec:
     - name: service-name
     - name: namespace
       value: services-dev
+    # Defaults deliberately equal the values these conditions used to hardcode, so
+    # a Rollout that passes no args behaves exactly as before. The golden-path
+    # chart passes them from values.rollout.analysis so the numbers can be
+    # per-service without forking this template -- its PromQL below carries
+    # several hard-won fixes and duplicating it per service is how those regress.
+    - name: error-rate-threshold
+      value: "0.01"
+    - name: latency-threshold
+      value: "0.5"
   metrics:
     - name: error-rate
       interval: 30s
       # Fail if more than 1% of requests are 5xx over the last 5 minutes
-      failureCondition: result[0] > 0.01
+      failureCondition: result[0] > {{args.error-rate-threshold}}
       # count is mandatory for a metric used in a canary *step* analysis: without
       # it the metric runs indefinitely and Argo Rollouts rejects the Rollout with
       # InvalidSpec, leaving the service with no pods at all.
@@ -58,7 +67,7 @@ spec:
     - name: p99-latency
       interval: 30s
       # Fail if p99 latency exceeds 500ms over the last 5 minutes
-      failureCondition: result[0] > 0.5
+      failureCondition: result[0] > {{args.latency-threshold}}
       # See the note on error-rate above — count is required for step analyses.
       count: 3
       failureLimit: 2
