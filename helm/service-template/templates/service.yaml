@@ -20,7 +20,7 @@ spec:
   {{- end }}
   selector:
     {{- include "service-template.selectorLabels" . | nindent 4 }}
-{{- if .Values.rollout.enabled }}
+{{- if and .Values.rollout.enabled (ne .Values.rollout.strategy "blueGreen") }}
 ---
 # Canary service — Argo Rollouts routes a percentage of traffic here during canary steps
 apiVersion: v1
@@ -30,6 +30,28 @@ metadata:
   labels:
     {{- include "service-template.labels" . | nindent 4 }}
     rollout-type: canary
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "service-template.selectorLabels" . | nindent 4 }}
+{{- end }}
+{{- if and .Values.rollout.enabled (eq .Values.rollout.strategy "blueGreen") }}
+---
+# Preview service — points at the new ReplicaSet before promotion, so the new
+# version can be verified end to end while all live traffic still goes to active.
+# Named by the Rollout's blueGreen.previewService; without it Argo rejects the spec.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "service-template.fullname" . }}-preview
+  labels:
+    {{- include "service-template.labels" . | nindent 4 }}
+    rollout-type: preview
 spec:
   type: {{ .Values.service.type }}
   ports:

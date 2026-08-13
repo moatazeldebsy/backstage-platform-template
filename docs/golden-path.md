@@ -189,6 +189,48 @@ Then re-add the deploy job to `.github/workflows/build-and-deploy.yml` (see `doc
 - **AWS**: CloudWatch → Log Groups → `/aws/containerinsights/idp-mvp/application`
 - **Metrics**: Grafana → IDP Services dashboard
 
+## Progressive delivery
+
+Every service deploys through the same chart, which renders **either** a plain
+Deployment or an Argo Rollout. Opt in with the **Enable Progressive Delivery**
+scaffolder template — it opens a PR adding
+`services/<name>/helm-values-rollout-<env>.yaml`, which the ArgoCD ApplicationSets
+already list as an optional second values file. Nothing has to be hand-merged.
+
+### Which strategy
+
+| | Canary | Blue-green |
+|---|---|---|
+| Traffic | Shifts gradually (20% → 50% → 100% by default) | All at once, on promotion |
+| Extra capacity | One canary ReplicaSet, sized to the step weight | A full second stack |
+| Analysis | Runs at each step; failure aborts and rolls back | Runs before promotion |
+| Rollback | Abort mid-rollout; blast radius limited to the canary weight | Instant — active Service points back at the old ReplicaSet |
+| Good for | Stateless HTTP services with useful per-request metrics | Session-affine or stateful services, expensive analysis, anything where you want to verify the new version end to end before any user sees it |
+
+Blue-green doubles the pod count during promotion. On a single-node local cluster
+set `rollout.blueGreen.previewReplicaCount: 1`, or the preview stack will evict
+platform components.
+
+Blue-green also keeps a human in the loop by default
+(`autoPromotionEnabled: false`): the new version comes up fully and is reachable
+on the `-preview` Service, and you promote with
+
+```bash
+kubectl argo rollouts promote <service> -n <namespace>
+```
+
+### Rollback thresholds
+
+`rollout.analysis.errorRateThreshold` and `latencyThresholdSeconds` are passed to
+the cluster-scoped `http-error-rate` AnalysisTemplate as arguments, so the
+thresholds are per-service while the PromQL stays in one place. They are
+**fractions, not percentages** — `0.01` is 1%. The scaffolder form takes a percent
+and converts, so this only matters when hand-editing.
+
+The chart ships a `values.schema.json` covering the rollout block, so a typo like
+`strategy: blue-green` fails at `helm lint` rather than producing a Rollout with
+no strategy — which Argo accepts and then never progresses.
+
 ## Conventions Reference
 
 | Convention | Local | AWS |

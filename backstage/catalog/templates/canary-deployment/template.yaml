@@ -2,11 +2,12 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: canary-deployment
-  title: Enable Canary Deployments
+  title: Enable Progressive Delivery
   description: >
-    Opts an existing service into Argo Rollouts canary deployments.
-    Configures traffic splitting steps, auto-rollback on error-rate spike,
-    and opens a PR updating the service's helm-values overlay.
+    Opts an existing service into Argo Rollouts — canary or blue-green.
+    Configures the traffic steps, auto-rollback thresholds and analysis, then
+    opens a PR adding a helm-values-rollout-<env>.yaml overlay that the ArgoCD
+    ApplicationSets already pick up. Nothing has to be hand-merged.
   tags:
     - sre
     - progressive-delivery
@@ -43,7 +44,27 @@ spec:
             - Staging (helm-values-staging.yaml)
             - Production (helm-values.yaml)
 
-    - title: Canary traffic steps
+    - title: Strategy
+      required:
+        - strategy
+      properties:
+        strategy:
+          title: Rollout strategy
+          type: string
+          default: canary
+          enum:
+            - canary
+            - blueGreen
+          enumNames:
+            - "Canary — shift traffic gradually, analysing at each step"
+            - "Blue-green — run both versions at full size, cut over in one step"
+        autoPromotionEnabled:
+          title: Auto-promote (blue-green only)
+          type: boolean
+          description: "Leave off to verify the new version on the -preview Service before any traffic moves."
+          default: false
+
+    - title: Canary traffic steps (ignored for blue-green)
       required:
         - initialWeight
         - step1PauseDuration
@@ -82,16 +103,24 @@ spec:
 
   steps:
     - id: fetch
-      name: Generate values overlay patch
+      name: Generate the rollout values overlay
       action: fetch:template
       input:
         url: ./skeleton
         values:
           serviceName: ${{ parameters.serviceName }}
+          strategy: ${{ parameters.strategy }}
+          autoPromotionEnabled: ${{ parameters.autoPromotionEnabled }}
           environment: ${{ parameters.environment }}
           initialWeight: ${{ parameters.initialWeight }}
           step1PauseDuration: ${{ parameters.step1PauseDuration }}
           step2PauseDuration: ${{ parameters.step2PauseDuration }}
+          # These two were collected by the form and then only interpolated into
+          # the PR description — they never reached the chart, so every canary ran
+          # on the ClusterAnalysisTemplate's hardcoded 1% / 500ms no matter what
+          # was typed here.
+          errorRateThreshold: ${{ parameters.errorRateThreshold }}
+          latencyThresholdMs: ${{ parameters.latencyThresholdMs }}
 
     - id: pr
       name: Open pull request
