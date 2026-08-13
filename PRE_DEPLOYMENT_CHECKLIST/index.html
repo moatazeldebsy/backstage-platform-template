@@ -1117,6 +1117,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-install-failure-modes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known Failure Modes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2258,22 +2279,37 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <span class="normal">13</span>
 <span class="normal">14</span>
 <span class="normal">15</span>
-<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Verify secrets</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Personalise FIRST (first time only — replaces moatazeldebsy and the other</span>
+<span class="c1">#    placeholders, creates the Terraform state bucket, writes .idp-config.env).</span>
+<span class="c1">#    This has to come before verify-secrets.sh: that script looks secrets up by</span>
+<span class="c1">#    &quot;&lt;cluster-name&gt;/kagent&quot; and friends, and the cluster name is one of the</span>
+<span class="c1">#    values setup.sh substitutes. Run it the other way round on a fresh clone and</span>
+<span class="c1">#    every check reports a missing secret under the template&#39;s default name.</span>
+./scripts/setup.sh
+<span class="c1"># → answer &quot;skip&quot; if you want to review before deploying</span>
+
+<span class="c1"># 2. Verify secrets (now that the cluster name is yours)</span>
 ./scripts/verify-secrets.sh
 
-<span class="c1"># 2. Personalise (first time only — replaces moatazeldebsy placeholders)</span>
-./scripts/setup.sh
-
-<span class="c1"># 3. Deploy full stack (~40–70 min)</span>
+<span class="c1"># 3. Deploy the full stack (~40–70 min). This INCLUDES the AI/ML stack —</span>
+<span class="c1">#    KAgent, MLflow, Langfuse and the MCP servers — unless you pass --skip-ai.</span>
 ./scripts/bootstrap.sh
 
-<span class="c1"># 4. Update GitHub OAuth callback URL with the printed ALB hostname</span>
+<span class="c1"># 4. Update the GitHub OAuth callback URL with the printed ALB hostname</span>
 
 <span class="c1"># 5. Run validation</span>
 ./scripts/validate-deployment.sh
-
-<span class="c1"># 6. Optional: deploy AI/ML stack</span>
-./scripts/bootstrap-ai.sh
+</code></pre></div></td></tr></table></div>
+<p>To add the agentic development platform, which <code>bootstrap.sh</code> does <strong>not</strong> install,
+run <code>bootstrap-ai.sh</code> again with <code>--adp</code>. Note the <code>--aws</code> flag: without it the
+script targets your local Kind context, not EKS.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--adp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster<span class="w"> </span>&lt;cluster-name&gt;
 </code></pre></div></td></tr></table></div>
 <p>See <code>docs/DEPLOYMENT_GUIDE.md</code> for full details, known issues, and troubleshooting.</p>
 

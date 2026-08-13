@@ -919,6 +919,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-install-failure-modes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known Failure Modes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2716,7 +2737,7 @@ Datadog dashboards/APM traces with exactly when a revision went live, so an inci
 spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
 <ul>
 <li>Requires the <code>DD_API_KEY</code> repository secret on the platform repo (see
-  <a href="../getting-started/#3-github-actions-secrets">docs/getting-started.md</a>); the step no-ops if it's
+  <a href="../getting-started/#4-github-actions-secrets">docs/getting-started.md</a>); the step no-ops if it's
   unset, and is <code>continue-on-error: true</code> regardless — deployment tracking is observability, not a
   release gate.</li>
 <li>No production marker today: production promotion only opens a PR

@@ -867,45 +867,36 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-clean-up-when-done" class="md-nav__link">
+  <a href="#4-github-actions-secrets" class="md-nav__link">
     <span class="md-ellipsis">
-      4. Clean up (when done)
+      4. GitHub Actions secrets
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-github-actions-secrets" class="md-nav__link">
+  <a href="#5-team-namespace-setup" class="md-nav__link">
     <span class="md-ellipsis">
-      3. GitHub Actions secrets
+      5. Team namespace setup
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-team-namespace-setup" class="md-nav__link">
+  <a href="#6-verify" class="md-nav__link">
     <span class="md-ellipsis">
-      4. Team namespace setup
+      6. Verify
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-verify" class="md-nav__link">
+  <a href="#7-backstage-on-aws" class="md-nav__link">
     <span class="md-ellipsis">
-      4. Verify
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-deploy-backstage-to-aws-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Deploy Backstage to AWS (optional)
+      7. Backstage on AWS
     </span>
   </a>
   
@@ -1115,6 +1106,27 @@
   
   <span class="md-ellipsis">
     Deployment Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-install-failure-modes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known Failure Modes
   </span>
   
 
@@ -2286,8 +2298,8 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 <span class="normal">3</span>
 <span class="normal">4</span>
 <span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/moatazeldebsy/idp-mvp
-<span class="nb">cd</span><span class="w"> </span>idp-mvp
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/moatazeldebsy/backstage-platform-template
+<span class="nb">cd</span><span class="w"> </span>backstage-platform-template
 
 <span class="c1"># Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)</span>
 ./scripts/setup.sh
@@ -2304,12 +2316,7 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 <p>After <code>bootstrap.sh</code> completes, run the validation script to verify all components:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/validate-deployment.sh
 </code></pre></div></td></tr></table></div>
-<p>This runs 50+ automated tests across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.</p>
-<h3 id="4-clean-up-when-done">4. Clean up (when done)<a class="headerlink" href="#4-clean-up-when-done" title="Permanent link">&para;</a></h3>
-<p>To safely tear down all AWS resources:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp
-</code></pre></div></td></tr></table></div>
-<p>This script deletes orphaned load balancers first, then runs <code>terraform destroy</code> with verification.</p>
+<p>This runs ~40 automated checks across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.</p>
 <hr />
 <p><strong>What gets provisioned:</strong>
 - EKS cluster (4× t3.medium nodes, 1.29)
@@ -2320,7 +2327,7 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 - Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
 - <code>hello-service</code> reference deployment</p>
 <p><strong>Cost:</strong> ~$248/month for a development environment (4 nodes running continuously).</p>
-<h3 id="3-github-actions-secrets">3. GitHub Actions secrets<a class="headerlink" href="#3-github-actions-secrets" title="Permanent link">&para;</a></h3>
+<h3 id="4-github-actions-secrets">4. GitHub Actions secrets<a class="headerlink" href="#4-github-actions-secrets" title="Permanent link">&para;</a></h3>
 <p>Add these secrets to any scaffolded service repo to enable AWS CD:</p>
 <table>
 <thead>
@@ -2383,7 +2390,7 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 </tr>
 </tbody>
 </table>
-<h3 id="4-team-namespace-setup">4. Team namespace setup<a class="headerlink" href="#4-team-namespace-setup" title="Permanent link">&para;</a></h3>
+<h3 id="5-team-namespace-setup">5. Team namespace setup<a class="headerlink" href="#5-team-namespace-setup" title="Permanent link">&para;</a></h3>
 <p>After the platform is bootstrapped, onboard teams using the <strong>Provision Team Namespace</strong> scaffold template (tagged <code>blessed</code>). Each team gets:
 - An isolated <code>team-&lt;name&gt;</code> namespace with quota, LimitRange, NetworkPolicy
 - A per-team ArgoCD AppProject + ApplicationSet scanning <code>teams/&lt;name&gt;/services/*</code>
@@ -2394,7 +2401,7 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 <p><strong>Path convention</strong>: Team service values files go under <code>teams/&lt;teamName&gt;/services/&lt;serviceName&gt;/</code>,
 <strong>not</strong> <code>services/&lt;teamName&gt;/</code>. The <code>services/</code> path is reserved for legacy platform-owned services.</p>
 </blockquote>
-<h3 id="4-verify">4. Verify<a class="headerlink" href="#4-verify" title="Permanent link">&para;</a></h3>
+<h3 id="6-verify">6. Verify<a class="headerlink" href="#6-verify" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -2416,22 +2423,19 @@ kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"
 <p><strong>Observability note:</strong> <code>bootstrap.sh</code> installs the full <code>kube-prometheus-stack</code> (Prometheus + Grafana + AlertManager + Pushgateway) on AWS at parity with the local Kind setup. Grafana is pre-configured with the CloudWatch datasource using IRSA — no static AWS credentials needed.</p>
 <p>OPA/Gatekeeper enforces all five golden-path policies (<code>require-health-probes</code>, <code>require-resource-limits</code>, <code>require-labels</code>, <code>deny-latest-tag</code>, <code>require-cost-tags</code>). The bootstrap waits for CRDs to be established before applying constraints rather than sleeping.</p>
 </blockquote>
-<h3 id="5-deploy-backstage-to-aws-optional">5. Deploy Backstage to AWS (optional)<a class="headerlink" href="#5-deploy-backstage-to-aws-optional" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Build the Backstage backend bundle first</span>
-<span class="nb">cd</span><span class="w"> </span>backstage/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>install<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>build:backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../..
-
-<span class="c1"># Build and push the production image</span>
-docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>&lt;ECR_URI&gt;/backstage:latest<span class="w"> </span>./backstage
-docker<span class="w"> </span>push<span class="w"> </span>&lt;ECR_URI&gt;/backstage:latest
-
-<span class="c1"># Deploy (Kubernetes manifests TBD)</span>
+<h3 id="7-backstage-on-aws">7. Backstage on AWS<a class="headerlink" href="#7-backstage-on-aws" title="Permanent link">&para;</a></h3>
+<p>Nothing to do — <code>bootstrap.sh</code> already did it. Phase 5.6 builds the image, pushes it
+to ECR under a content-hash tag, applies <code>aws/backstage/deployment.yaml</code> with that
+tag substituted, waits for the ExternalSecret to sync and for the ALB hostname, then
+patches the config with the real URLs.</p>
+<p>This section used to describe a manual <code>docker build</code> ending in
+<code># Deploy (Kubernetes manifests TBD)</code>. The manifests have existed for some time and
+the whole flow is automated; following the old steps would have pushed an image that
+nothing deployed.</p>
+<p>To rebuild and roll out after changing Backstage, re-run the bootstrap — the image
+fingerprint changes, so it rebuilds and redeploys, and skips everything else that is
+unchanged:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster-name<span class="w"> </span>&lt;name&gt;
 </code></pre></div></td></tr></table></div>
 <h2 id="adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service<a class="headerlink" href="#adding-aws-cd-to-a-scaffolded-service" title="Permanent link">&para;</a></h2>
 <p>Scaffolded service repos ship with CI only (<code>test</code> job). To add AWS deployment:</p>
@@ -2516,18 +2520,13 @@ docker<span class="w"> </span>push<span class="w"> </span>&lt;ECR_URI&gt;/backst
 <span class="w">          </span><span class="no">--wait --timeout 120s</span>
 </code></pre></div></td></tr></table></div>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Remove all deployed services first</span>
-helm<span class="w"> </span>uninstall<span class="w"> </span>hello-service<span class="w"> </span>-n<span class="w"> </span>services
-helm<span class="w"> </span>uninstall<span class="w"> </span>grafana<span class="w"> </span>-n<span class="w"> </span>monitoring
-
-<span class="c1"># Destroy infrastructure</span>
-<span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>destroy
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp
 </code></pre></div></td></tr></table></div>
+<p>Use <code>cleanup.sh</code> rather than a bare <code>terraform destroy</code>. It deletes orphaned load
+balancers first — AWS Load Balancer Controller creates ALBs that Terraform does not
+own, and they hold the subnets and security groups <code>destroy</code> is trying to remove, so
+it fails partway and leaves the account in a half-torn-down state. The script also
+verifies the teardown afterwards.</p>
 
 
 

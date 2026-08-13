@@ -14,7 +14,7 @@
         <link rel="prev" href="../PRE_DEPLOYMENT_CHECKLIST/">
       
       
-        <link rel="next" href="../TROUBLESHOOTING/">
+        <link rel="next" href="../aws-install-failure-modes/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -1053,9 +1053,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-4-optional-deploy-aiml-stack" class="md-nav__link">
+  <a href="#step-4-aiml-stack-already-deployed" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4: Optional — Deploy AI/ML Stack
+      Step 4: AI/ML stack — already deployed
     </span>
   </a>
   
@@ -1442,6 +1442,27 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-install-failure-modes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known Failure Modes
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -2498,10 +2519,19 @@ a slow account.</p>
 <li>Go to <a href="https://github.com/settings/developers">https://github.com/settings/developers</a> → your OAuth app → Edit</li>
 <li>Update callback URL: <code>http://&lt;BACKSTAGE_ALB_HOSTNAME&gt;/api/auth/github/handler/frame</code></li>
 </ol>
-<h3 id="step-4-optional-deploy-aiml-stack">Step 4: Optional — Deploy AI/ML Stack<a class="headerlink" href="#step-4-optional-deploy-aiml-stack" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh
+<h3 id="step-4-aiml-stack-already-deployed">Step 4: AI/ML stack — already deployed<a class="headerlink" href="#step-4-aiml-stack-already-deployed" title="Permanent link">&para;</a></h3>
+<p><code>bootstrap.sh</code> runs the AI/ML stack itself in Phase 6 (MLflow, KAgent,
+idp-assistant, Langfuse and the MCP servers), so there is nothing to do here unless
+you passed <code>--skip-ai</code>. It requires <code>ANTHROPIC_API_KEY</code> in Secrets Manager.</p>
+<p>This step used to say to run <code>./scripts/bootstrap-ai.sh</code>, which was wrong twice
+over: the stack was already installed, and without <code>--aws</code> that command targets your
+local Kind context rather than EKS.</p>
+<p>The one thing <code>bootstrap.sh</code> does <strong>not</strong> install is the agentic development
+platform. To add it:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--adp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster<span class="w"> </span>&lt;cluster-name&gt;
 </code></pre></div></td></tr></table></div>
-<p>Deploys MLflow, KAgent, idp-assistant, and MCP servers. Requires <code>ANTHROPIC_API_KEY</code>.</p>
 <hr />
 <h3 id="step-5-provision-team-namespaces">Step 5: Provision team namespaces<a class="headerlink" href="#step-5-provision-team-namespaces" title="Permanent link">&para;</a></h3>
 <p>After the platform is up, onboard teams via the Backstage <strong>Provision Team Namespace</strong> template.
@@ -2604,7 +2634,12 @@ curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;htt
 </table>
 <hr />
 <h2 id="known-issues-fixes">Known Issues &amp; Fixes<a class="headerlink" href="#known-issues-fixes" title="Permanent link">&para;</a></h2>
-<p>All issues below are <strong>already fixed in the codebase</strong>. This section documents them for reference if you encounter them on a fresh environment.</p>
+<p>All issues below are <strong>already fixed in the codebase</strong>. This section is history, not
+live advice — it is here so a symptom on an older checkout is searchable.</p>
+<p>For the failures found during the 2026-08 AWS runs, grouped by the <em>class</em> of
+mistake that allowed them and naming the file that now prevents each one, see
+<a href="../aws-install-failure-modes/">AWS install: known failure modes</a>. For debugging a
+run right now, start at <a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md</a>.</p>
 <hr />
 <h3 id="issue-1-backstage-shows-404-at-root">Issue 1: Backstage shows 404 at root <code>/</code><a class="headerlink" href="#issue-1-backstage-shows-404-at-root" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> Navigating to the Backstage ALB URL shows "Looks like someone dropped the mic!" 404.</p>
@@ -3145,13 +3180,13 @@ points at EKS — it will target the wrong cluster.</p>
         
         
           
-          <a href="../TROUBLESHOOTING/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshooting">
+          <a href="../aws-install-failure-modes/" class="md-footer__link md-footer__link--next" aria-label="Next: Known Failure Modes">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Troubleshooting
+                Known Failure Modes
               </div>
             </div>
             <div class="md-footer__button md-icon">

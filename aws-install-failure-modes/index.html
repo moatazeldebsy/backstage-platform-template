@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../scaling-runbook/">
+        <link rel="prev" href="../DEPLOYMENT_GUIDE/">
       
       
-        <link rel="next" href="../shift-left/">
+        <link rel="next" href="../TROUBLESHOOTING/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>For Leadership - Internal Developer Platform</title>
+        <title>Known Failure Modes - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#shift-left-quality-leadership-guide" class="md-skip">
+        <a href="#aws-install-known-failure-modes" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              For Leadership
+              Known Failure Modes
             
           </span>
         </div>
@@ -257,10 +257,12 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
           
   
@@ -513,13 +515,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../shift-left-leadership/" class="md-tabs__link">
           
   
   Shift-Left Quality
@@ -841,25 +841,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -870,7 +875,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             AWS Deployment
@@ -923,10 +928,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../aws-install-failure-modes/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Known Failure Modes
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -935,6 +960,113 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      The classes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-placeholders-that-were-never-substituted" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Placeholders that were never substituted
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-cold-account-terraform-ordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Cold-account Terraform ordering
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-control-flow-that-silently-discarded-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Control flow that silently discarded configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-placeholder-values-that-passed-a-non-empty-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Placeholder values that passed a non-empty check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-things-that-were-never-installed-on-aws-at-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Things that were never installed on AWS at all
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-over-broad-iam" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Over-broad IAM
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-still-is-not-covered" class="md-nav__link">
+    <span class="md-ellipsis">
+      What still is not covered
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#if-you-hit-something-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      If you hit something new
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1231,30 +1363,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_23" >
         
           
-          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="">
+          <label class="md-nav__link" for="__nav_23" id="__nav_23_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1265,7 +1392,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_23_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_23">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
@@ -1276,30 +1403,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    For Leadership
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1308,182 +1415,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-business-case-in-one-paragraph" class="md-nav__link">
-    <span class="md-ellipsis">
-      The business case in one paragraph
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-shift-left-means-on-this-platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      What "shift-left" means on this platform
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-maturity-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      The maturity model
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adoption-plan" class="md-nav__link">
-    <span class="md-ellipsis">
-      Adoption plan
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Adoption plan">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#phase-1-pilot-weeks-14" class="md-nav__link">
-    <span class="md-ellipsis">
-      Phase 1 — Pilot (Weeks 1–4)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-2-expand-months-23" class="md-nav__link">
-    <span class="md-ellipsis">
-      Phase 2 — Expand (Months 2–3)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-3-scale-to-gold-months-46" class="md-nav__link">
-    <span class="md-ellipsis">
-      Phase 3 — Scale to Gold (Months 4–6)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-are-investing" class="md-nav__link">
-    <span class="md-ellipsis">
-      What you are investing
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-read-the-dashboards" class="md-nav__link">
-    <span class="md-ellipsis">
-      How to read the dashboards
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to read the dashboards">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#scorecard-dashboard-grafana" class="md-nav__link">
-    <span class="md-ellipsis">
-      Scorecard dashboard (Grafana)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dora-dashboard-grafana" class="md-nav__link">
-    <span class="md-ellipsis">
-      DORA dashboard (Grafana)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ai-assistant-backstage" class="md-nav__link">
-    <span class="md-ellipsis">
-      AI Assistant (Backstage)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#governance-and-decision-rights" class="md-nav__link">
-    <span class="md-ellipsis">
-      Governance and decision rights
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#risks-and-mitigations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Risks and mitigations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#faq-for-leaders" class="md-nav__link">
-    <span class="md-ellipsis">
-      FAQ for leaders
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start-checklist-for-leadership" class="md-nav__link">
-    <span class="md-ellipsis">
-      Quick-start checklist for leadership
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2014,7 +1945,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/shift-left-leadership.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/aws-install-failure-modes.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2022,278 +1953,124 @@
   
 
 
-<h1 id="shift-left-quality-leadership-guide">Shift-Left Quality — Leadership Guide<a class="headerlink" href="#shift-left-quality-leadership-guide" title="Permanent link">&para;</a></h1>
-<p>This page is for engineering leaders: VPs, Directors, and Heads of Engineering who are sponsoring or evaluating the shift-left quality programme. It covers the business case, the adoption plan, what you need to invest, and how to measure success.</p>
-<p>For the practitioner guide (what engineers do day-to-day), see <a href="../shift-left/">Shift-Left Quality Engineering</a>.
-For the pilot kickoff agenda, see <a href="../shift-left-pilot-kickoff/">Shift-Left Pilot Kickoff</a>.</p>
+<h1 id="aws-install-known-failure-modes">AWS install: known failure modes<a class="headerlink" href="#aws-install-known-failure-modes" title="Permanent link">&para;</a></h1>
+<p>The AWS path went effectively untested between May and 2026-08-11. Bringing a real
+cluster up over the following days surfaced roughly twenty distinct defects. Every
+one of them is fixed <strong>in the scripts, Terraform, or manifests</strong> — none was a
+manual workaround — so a fresh install gets the fixes automatically.</p>
+<p>This page exists for two reasons. If your run fails, the symptom is probably here
+along with the file that was supposed to prevent it. And if you are changing the
+bootstrap path, these are the shapes of mistake it has actually made, which is more
+useful than a checklist of things that have never gone wrong.</p>
+<p>For live debugging start with <a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md</a>; this page is
+about <em>why</em> each class of failure was possible.</p>
 <hr />
-<h2 id="the-business-case-in-one-paragraph">The business case in one paragraph<a class="headerlink" href="#the-business-case-in-one-paragraph" title="Permanent link">&para;</a></h2>
-<p>Defects caught in production cost 10–100× what they cost if caught at the pull-request stage, and 1,000× what they cost if caught in a developer's editor. Every escaped defect is a compounded cost: engineer time to reproduce, incident response, customer impact, and reputation. The shift-left programme moves detection upstream — into CI, the PR gate, and the deploy hook — without slowing delivery. The platform provides the automation; your teams provide the services. The result is faster release cycles, fewer incidents, and a measurable quality baseline you can report on.</p>
-<hr />
-<h2 id="what-shift-left-means-on-this-platform">What "shift-left" means on this platform<a class="headerlink" href="#what-shift-left-means-on-this-platform" title="Permanent link">&para;</a></h2>
-<p>Shift-left is not a new test suite. It is a set of <strong>automated gates</strong> embedded in the developer workflow so that quality checks run closer to the source of the defect. On this platform, four loops enforce those gates:</p>
+<h2 id="the-classes">The classes<a class="headerlink" href="#the-classes" title="Permanent link">&para;</a></h2>
+<h3 id="1-placeholders-that-were-never-substituted">1. Placeholders that were never substituted<a class="headerlink" href="#1-placeholders-that-were-never-substituted" title="Permanent link">&para;</a></h3>
+<p>The most common defect by a wide margin. A manifest ships with a literal token, and
+either nothing substitutes it or the substitution targets a different file.</p>
 <table>
 <thead>
 <tr>
-<th>Loop</th>
-<th>When it runs</th>
-<th>What it catches</th>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fixed in</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Local</strong></td>
-<td>Immediately, in the developer's terminal</td>
-<td>Syntax, formatting, secrets committed by accident</td>
+<td>First <code>terraform init</code> fails with <code>AccessDenied</code> / <code>NoSuchBucket</code></td>
+<td><code>main.tf</code> pinned the backend to the maintainer's own bucket. Not a <code>YOUR_*</code> token, so <code>placeholders.conf</code> never rewrote it</td>
+<td><code>terraform/main.tf</code>, <code>ensure_tf_state_backend()</code> in <code>scripts/lib.sh</code></td>
 </tr>
 <tr>
-<td><strong>PR</strong></td>
-<td>Within 2–5 minutes of every commit</td>
-<td>Coverage gaps, vulnerable dependencies, container failures, API breaking changes</td>
+<td><code>terraform/global</code> could never initialise</td>
+<td>Its bucket name had a different shape from anything the repo creates</td>
+<td><code>terraform/global/main.tf</code></td>
 </tr>
 <tr>
-<td><strong>Deploy</strong></td>
-<td>At ArgoCD sync time</td>
-<td>Policy violations, breaking API contract changes</td>
+<td>Backstage pods point at <code>http://BACKSTAGE_ALB_URL</code>, KAgent links dead, Datadog shows version <code>BACKSTAGE_IMAGE_TAG</code></td>
+<td><code>bootstrap.sh</code>'s <code>sed</code> matched only the <code>image:</code> line; <code>bootstrap-ai.sh</code> patched the <em>ConfigMap</em>, but the scaffolder reads the <em>deployment env</em></td>
+<td><code>scripts/bootstrap.sh</code>, <code>scripts/bootstrap-ai.sh</code></td>
 </tr>
 <tr>
-<td><strong>Runtime</strong></td>
-<td>Every 15 minutes</td>
-<td>Scorecard regressions, flaky tests, drift from quality baseline</td>
+<td>External Secrets always resolved against <code>us-east-1</code> regardless of <code>--region</code></td>
+<td>Region hardcoded in the manifest</td>
+<td><code>aws/backstage/external-secret.yaml</code></td>
 </tr>
 </tbody>
 </table>
-<p>Every gate is provided by the Internal Developer Platform and wired automatically into each new service at scaffold time. Teams do not configure these gates — they inherit them.</p>
-<hr />
-<h2 id="the-maturity-model">The maturity model<a class="headerlink" href="#the-maturity-model" title="Permanent link">&para;</a></h2>
-<p>Every service in the platform catalog is scored against 11 checks and assigned a tier:</p>
-<table>
-<thead>
-<tr>
-<th>Tier</th>
-<th>Threshold</th>
-<th>What it means</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>🥉 Bronze</td>
-<td>4 / 11</td>
-<td>Baseline hygiene: the service has an owner, docs, health probes, a runbook, an API definition, and a pinned image tag</td>
-</tr>
-<tr>
-<td>🥈 Silver</td>
-<td>7 / 11</td>
-<td>Bronze + shift-left CI: coverage gate, static analysis, vulnerability scanning — all blocking at PR time</td>
-</tr>
-<tr>
-<td>🥇 Gold</td>
-<td>10 / 11</td>
-<td>Silver + contract testing (API breaking-change gate) + end-to-end tests</td>
-</tr>
-</tbody>
-</table>
-<p>A service scaffolded from the platform today reaches <strong>Silver automatically</strong> — the hardened CI template is the default. Moving from Silver to Gold requires two deliberate steps (contract suite + E2E suite) and takes approximately two days of engineering time.</p>
-<p>The tier is visible to everyone — in Backstage's Tech Insights tab on each service entity, and in a Grafana dashboard filterable by team and tier. Leadership can see the distribution across the organisation at a glance.</p>
-<hr />
-<h2 id="adoption-plan">Adoption plan<a class="headerlink" href="#adoption-plan" title="Permanent link">&para;</a></h2>
-<p>The programme rolls out in three phases. Each phase builds on the last and is designed to be low-risk: no team is blocked from shipping while adopting.</p>
-<h3 id="phase-1-pilot-weeks-14">Phase 1 — Pilot (Weeks 1–4)<a class="headerlink" href="#phase-1-pilot-weeks-14" title="Permanent link">&para;</a></h3>
-<p><strong>Goal:</strong> Prove the path works on two real services with two willing teams.</p>
+<p><strong>If you are adding a placeholder:</strong> grep for every consumer of the value before
+assuming one substitution covers it. Config maps and deployment envs are different
+places, and something usually reads both.</p>
+<h3 id="2-cold-account-terraform-ordering">2. Cold-account Terraform ordering<a class="headerlink" href="#2-cold-account-terraform-ordering" title="Permanent link">&para;</a></h3>
+<p>An empty account is a different environment from one that already has a cluster,
+and the difference is not cosmetic.</p>
 <ul>
-<li>The platform team pairs with two volunteer service teams through a <a href="../shift-left-pilot-kickoff/">structured 4-week pilot</a>.</li>
-<li>Each pilot team lands one service at Gold tier.</li>
-<li>The platform team captures time-to-tier, blockers, and team feedback.</li>
-<li>Output: a retro doc, a prioritised improvement list, and two named champion teams who can brief peers.</li>
+<li>The <code>alekc/kubectl</code> provider (used for the Karpenter <code>EC2NodeClass</code>/<code>NodePool</code>
+  manifests) cannot configure itself while <code>module.eks.cluster_endpoint</code> is
+  unknown. It fails the entire plan before creating anything, so a single
+  untargeted apply <strong>cannot</strong> bootstrap an empty account. <code>bootstrap.sh</code> therefore
+  applies <code>module.vpc</code> + <code>module.eks</code> first.</li>
+<li><code>module.vpc</code> must be targeted <strong>explicitly</strong> alongside <code>module.eks</code>. <code>-target</code>
+  pulls in only what the target depends on, and the cluster depends on subnet IDs —
+  not on the NAT gateway, its EIP, or the private route tables. Targeting
+  <code>module.eks</code> alone builds a cluster whose private subnets have no <code>0.0.0.0/0</code>
+  route, and every node fails <code>NodeCreationFailure: Instances failed to join the
+  kubernetes cluster</code> about twenty minutes in.</li>
+<li>Detecting "cold start" by <code>terraform state list</code> returning nothing is wrong: a
+  stale lock, expired credentials and an unreachable backend all produce empty
+  output too. <code>bootstrap.sh</code> fails closed when the state cannot be <em>read</em>.</li>
 </ul>
-<p><strong>Leadership asks:</strong>
-- Nominate two teams (pick teams that ship frequently — the feedback loop compounds faster).
-- Protect ~1 day/week of tech lead time for 4 weeks. Engineers and tech leads run the work; the platform team is alongside.
-- Attend the week-4 retro readout (30 minutes).</p>
-<p><strong>Success bar:</strong> Both services at Gold within 21 days. CI duration increase ≤30%. At least one breaking-change deploy blocked by the contract gate (demonstrating the gate works).</p>
-<hr />
-<h3 id="phase-2-expand-months-23">Phase 2 — Expand (Months 2–3)<a class="headerlink" href="#phase-2-expand-months-23" title="Permanent link">&para;</a></h3>
-<p><strong>Goal:</strong> Roll out Silver-tier adoption to all services that have been active in the last 90 days.</p>
+<p>All three live in <code>scripts/bootstrap.sh</code>, Phase 1.</p>
+<h3 id="3-control-flow-that-silently-discarded-configuration">3. Control flow that silently discarded configuration<a class="headerlink" href="#3-control-flow-that-silently-discarded-configuration" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Each team is given a self-service path: one Backstage template click to upgrade CI, one sprint to clear the coverage baseline.</li>
-<li>The platform team runs bi-weekly office hours (30 min) rather than pairing per team.</li>
-<li>A Grafana dashboard tracks tier adoption rate across the organisation — leadership can see it without asking.</li>
-<li>Teams that hit a specific blocker (e.g. a legacy service with untestable code) get a documented exception process, not a deadline that forces a shortcut.</li>
+<li>The Phase 3.7 credential merge was nested inside the <code>else</code> of a <code>GITHUB_TOKEN</code>
+  check, so when a token <em>was</em> present it discarded <code>AUTH_GITHUB_*</code>,
+  <code>GRAFANA_ADMIN_PASSWORD</code>, five <code>GITHUB_APP_*</code> values and <code>TEAM_MAP</code>, and never
+  generated <code>BACKSTAGE_CATALOG_TOKEN</code> or <code>AUTH_SESSION_SECRET</code>.</li>
+<li><code>--skip-obs</code> was parsed and never read.</li>
+<li><code>poll_until</code> called an undefined <code>info()</code> for three of its four callers.</li>
 </ul>
-<p><strong>Leadership asks:</strong>
-- Set an organisation-level target: "All active services at Silver by end of Month 3."
-- Announce the target and the tool — a short Slack message from leadership with a link to the self-service path is enough.
-- Review the adoption dashboard monthly. Identify teams that are stuck and unblock them (usually: protected time from other work, not a platform problem).</p>
-<p><strong>Success bar:</strong> ≥80% of active services at Silver. Adoption rate increasing week-on-week. No team has been blocked from shipping by a gate.</p>
-<hr />
-<h3 id="phase-3-scale-to-gold-months-46">Phase 3 — Scale to Gold (Months 4–6)<a class="headerlink" href="#phase-3-scale-to-gold-months-46" title="Permanent link">&para;</a></h3>
-<p><strong>Goal:</strong> Drive Gold-tier adoption for services that are user-facing or on the critical path.</p>
+<h3 id="4-placeholder-values-that-passed-a-non-empty-check">4. Placeholder values that passed a non-empty check<a class="headerlink" href="#4-placeholder-values-that-passed-a-non-empty-check" title="Permanent link">&para;</a></h3>
+<p><code>REPLACE_ME</code> is not empty, so <code>[[ -n "$KEY" ]]</code> accepts it. KAgent installed
+"successfully" against a placeholder Anthropic key and failed at first use. Any
+check on an optional key must test for the placeholder explicitly — see
+<code>scripts/verify-secrets.sh</code> for the pattern.</p>
+<h3 id="5-things-that-were-never-installed-on-aws-at-all">5. Things that were never installed on AWS at all<a class="headerlink" href="#5-things-that-were-never-installed-on-aws-at-all" title="Permanent link">&para;</a></h3>
+<p>Each of these worked locally and was assumed to work on EKS:</p>
 <ul>
-<li>Prioritise: customer-facing services, services with the highest change failure rate, services that have been the source of the most incidents in the past 6 months.</li>
-<li>Gold requires contract testing and E2E tests. For legacy services without an OpenAPI spec, the platform provides a migration guide.</li>
-<li>The maturity model and scorecard become part of the engineering planning cycle — Gold tier is an input to "is this service ready for more traffic / a new team dependency?"</li>
+<li><code>metrics-server</code> (not installed on EKS; also needed a control-plane SG path)</li>
+<li>Sloth SLO rules</li>
+<li>The catalog and Tech Insights exporters</li>
+<li>Groups and Users — seventeen <code>type: file</code> catalog locations resolved to nothing
+  in the container, leaving the catalog with zero <code>Group</code>/<code>User</code> entities</li>
+<li>A GitHub token for Backstage, without which catalog, scaffolder and TechDocs
+  cannot start</li>
 </ul>
-<p><strong>Leadership asks:</strong>
-- Define which services are the first Gold targets (this is a product/engineering judgement, not a platform decision).
-- Incorporate tier into quarterly planning — "we're taking this service from Silver to Gold this quarter" is a valid engineering goal.
-- Consider making Gold a prerequisite for services handling PII or serving &gt;1k RPS. This is a policy decision for leadership, not the platform team.</p>
-<p><strong>Success bar:</strong> All user-facing and critical-path services at Gold. Change failure rate trending down in DORA dashboard. Flaky-test count per service ≤2.</p>
+<p><strong>The pattern:</strong> local uses a bind mount and a Kind-specific path; EKS has neither.
+Anything that reads from disk or assumes a local addon needs an explicit AWS path.</p>
+<h3 id="6-over-broad-iam">6. Over-broad IAM<a class="headerlink" href="#6-over-broad-iam" title="Permanent link">&para;</a></h3>
+<p>The GitHub Actions OIDC trust policy was scoped <code>repo:&lt;org&gt;/*:*</code> — PowerUser plus
+IAMFullAccess for <em>every</em> repository in the org, including every scaffolded service.
+Now scoped to <code>var.platform_repo</code>.</p>
 <hr />
-<h2 id="what-you-are-investing">What you are investing<a class="headerlink" href="#what-you-are-investing" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Resource</th>
-<th>Phase 1</th>
-<th>Phase 2</th>
-<th>Phase 3</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Engineering time (pilot teams)</td>
-<td>~1 day/week × 2 teams × 4 weeks</td>
-<td>1–2 days per team (self-service)</td>
-<td>1–2 days per service for Gold steps</td>
-</tr>
-<tr>
-<td>Platform team time</td>
-<td>~3 hrs/week facilitation</td>
-<td>~1 hr/week office hours</td>
-<td>As needed for blockers</td>
-</tr>
-<tr>
-<td>Leadership time</td>
-<td>Kickoff nomination + week-4 readout</td>
-<td>Monthly dashboard review</td>
-<td>Quarterly planning input</td>
-</tr>
-<tr>
-<td>Tooling cost</td>
-<td>$0 — all gates are open source, already in the platform</td>
-<td>Same</td>
-<td>Same</td>
-</tr>
-</tbody>
-</table>
-<p>The main investment is engineering time for the pilot teams. No new tooling budget is required — the platform already provides every gate described in this programme.</p>
-<hr />
-<h2 id="how-to-read-the-dashboards">How to read the dashboards<a class="headerlink" href="#how-to-read-the-dashboards" title="Permanent link">&para;</a></h2>
-<p>Three dashboards give leadership visibility without requiring Kubernetes access.</p>
-<h3 id="scorecard-dashboard-grafana">Scorecard dashboard (Grafana)<a class="headerlink" href="#scorecard-dashboard-grafana" title="Permanent link">&para;</a></h3>
-<p><code>http://grafana.idp.local/d/scorecard</code> (local) or the ALB URL after AWS deployment.</p>
+<h2 id="what-still-is-not-covered">What still is not covered<a class="headerlink" href="#what-still-is-not-covered" title="Permanent link">&para;</a></h2>
+<p>Being explicit about the gaps, because a green CI run should not imply more than it
+proves:</p>
 <ul>
-<li><strong>Tier distribution panel</strong> — pie chart of Bronze / Silver / Gold across all services. This is the headline adoption metric.</li>
-<li><strong>Per-team panel</strong> — filter by <code>team</code> label to see any team's distribution.</li>
-<li><strong>Per-check heatmap</strong> — which specific checks are failing organisation-wide. If <code>has-coverage-gate</code> is red for 40% of services, that is the next highest-leverage gate to drive.</li>
+<li><strong>No CI job runs an actual AWS bootstrap.</strong> <code>aws-plan-check</code> validates that the
+  Terraform configuration parses, resolves and plans; it cannot catch a runtime
+  ordering bug, a missing IAM permission, or anything in the ~4,500 lines of bash.</li>
+<li><strong>Ten of the eleven services have never been built by CI.</strong> The build matrix now
+  covers them, but that only exercises on a change under <code>services/&lt;name&gt;/</code>.</li>
+<li><strong>Sloth has no in-cluster operator.</strong> The CRD is inert and the rules are vendored;
+  editing the source without the <code>sloth</code> binary on PATH silently does nothing. See
+  <code>docs/sre-reliability.md</code>.</li>
 </ul>
-<h3 id="dora-dashboard-grafana">DORA dashboard (Grafana)<a class="headerlink" href="#dora-dashboard-grafana" title="Permanent link">&para;</a></h3>
-<p><code>http://grafana.idp.local/d/dora/dora-metrics</code></p>
-<p>Four metrics tied directly to the shift-left programme:
-- <strong>Deployment frequency</strong> — increases as teams gain confidence to ship. Should trend up after Silver adoption.
-- <strong>Lead time for changes</strong> — time from commit to production. The PR gates add minutes; they remove hours of manual review and incident investigation. Should trend down.
-- <strong>Change failure rate</strong> — percentage of deployments that cause an incident. Should trend down as contract and E2E gates catch regressions before deploy.
-- <strong>Mean time to recovery</strong> — time to restore service after an incident. Runbook adoption (Bronze check) and the alerting stack drive this down.</p>
-<h3 id="ai-assistant-backstage">AI Assistant (Backstage)<a class="headerlink" href="#ai-assistant-backstage" title="Permanent link">&para;</a></h3>
-<p><code>http://backstage.idp.local/ai-assistant</code></p>
-<p>The IDP assistant can answer questions like "which services on team X are below Silver?" or "what is the current Gold adoption rate?" in plain language, using live data from the platform.</p>
-<hr />
-<h2 id="governance-and-decision-rights">Governance and decision rights<a class="headerlink" href="#governance-and-decision-rights" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Decision</th>
-<th>Who decides</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Which gates are mandatory (OPA, PreSync hook)</td>
-<td>Platform team — these are cluster-wide and not opt-out</td>
-</tr>
-<tr>
-<td>Coverage threshold (default 70%)</td>
-<td>Platform team owns the default; service teams can raise it for their own service</td>
-</tr>
-<tr>
-<td>Which services are first Gold targets</td>
-<td>Engineering leadership</td>
-</tr>
-<tr>
-<td>Exception to a gate for a specific service</td>
-<td>Platform team approves, with a time-boxed remediation plan</td>
-</tr>
-<tr>
-<td>Tier targets per team</td>
-<td>Engineering leadership + team leads, set quarterly</td>
-</tr>
-<tr>
-<td>Tool changes inside a gate (e.g. swap <code>ruff</code> for <code>pylint</code>)</td>
-<td>Platform team — standardisation is load-bearing for scorecard accuracy</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="risks-and-mitigations">Risks and mitigations<a class="headerlink" href="#risks-and-mitigations" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Risk</th>
-<th>Likelihood</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Legacy services can't hit Silver (no tests, no coverage)</td>
-<td>Medium</td>
-<td>Bronze is the floor; Silver adoption is incentivised not mandated in Phase 2. Exception process exists.</td>
-</tr>
-<tr>
-<td>Gates slow down CI and teams resist</td>
-<td>Low</td>
-<td>Gates add 2–5 min to PR builds. The platform team monitors CI duration weekly in Phase 1 and will tune if needed.</td>
-</tr>
-<tr>
-<td>Pilot teams deprioritise due to feature pressure</td>
-<td>Medium</td>
-<td>Leadership commitment to protect ~1 day/week is the primary mitigation. Pilot kickoff is explicit about this.</td>
-</tr>
-<tr>
-<td>Scorecard data lags reality</td>
-<td>Low</td>
-<td>Scorecard refreshes every 15 min. Exception: a new service takes up to 30 min to appear after catalog registration.</td>
-</tr>
-<tr>
-<td>Contract testing breaks existing CI for legacy services</td>
-<td>Low</td>
-<td><code>enable-contract-testing</code> only runs on services that opt in. Existing CI is unchanged until the template is applied.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="faq-for-leaders">FAQ for leaders<a class="headerlink" href="#faq-for-leaders" title="Permanent link">&para;</a></h2>
-<p><strong>Do we need to rewrite our existing tests?</strong>
-No. The gates wrap existing tests with coverage enforcement and scanning. The only new tests required are contract tests (Day 2) and E2E tests (Day 3 / Gold), and those are scaffolded automatically.</p>
-<p><strong>What happens to services that never reach Gold?</strong>
-Nothing immediately. Bronze and Silver have real value. Gold is the target for services that are user-facing or load-bearing for other teams. Services in an internal tooling role may be fine at Silver indefinitely.</p>
-<p><strong>Can teams skip gates for an urgent release?</strong>
-Local gates (pre-commit) can be bypassed per-commit (<code>--no-verify</code>). PR gates require an explicit CI override (PR admin can skip with justification). Deploy-time OPA and contract gates are not bypassable without a platform team change. This is intentional — the deploy gates exist specifically to prevent "skip it just this once" becoming a habit.</p>
-<p><strong>How does this relate to our compliance or audit requirements?</strong>
-The scorecard provides documented evidence of: test coverage ≥70%, vulnerability scanning on every PR, image signing (Cosign), and API contract validation. These artefacts can be exported from Grafana or queried from CloudWatch (AWS). If your compliance requirement has a specific format, the platform team can add an exporter.</p>
-<p><strong>Who do I call when a gate is wrong and a team is stuck?</strong>
-The platform team owns the gates. File an issue in <code>backstage-platform-template</code> tagged <code>priority/high</code>. SLA: platform team responds within 1 working day, proposes a fix or exception within 3.</p>
-<hr />
-<h2 id="quick-start-checklist-for-leadership">Quick-start checklist for leadership<a class="headerlink" href="#quick-start-checklist-for-leadership" title="Permanent link">&para;</a></h2>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Read this page (done).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Nominate two pilot teams — pick the ones that ship most often.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Confirm with those teams' managers that ~1 day/week is available for 4 weeks.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Book 30 minutes for the week-4 pilot retro readout.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Set a Phase 2 target: "All active services at Silver by [date]."</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Review the scorecard dashboard once after Phase 1 completes.</li>
-</ul>
-<p>That's it for Phase 1. The platform team handles the rest.</p>
+<h2 id="if-you-hit-something-new">If you hit something new<a class="headerlink" href="#if-you-hit-something-new" title="Permanent link">&para;</a></h2>
+<p>Fix it in the script, not by hand on the cluster — a manual fix leaves the next
+person with the identical failure. Then add the symptom here.</p>
 
 
 
@@ -2323,7 +2100,7 @@ The platform team owns the gates. File an issue in <code>backstage-platform-temp
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../scaling-runbook/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Scaling Runbook">
+          <a href="../DEPLOYMENT_GUIDE/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Deployment Guide">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2333,20 +2110,20 @@ The platform team owns the gates. File an issue in <code>backstage-platform-temp
                 Previous
               </span>
               <div class="md-ellipsis">
-                Scaling Runbook
+                Deployment Guide
               </div>
             </div>
           </a>
         
         
           
-          <a href="../shift-left/" class="md-footer__link md-footer__link--next" aria-label="Next: Programme Overview">
+          <a href="../TROUBLESHOOTING/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshooting">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Programme Overview
+                Troubleshooting
               </div>
             </div>
             <div class="md-footer__button md-icon">
