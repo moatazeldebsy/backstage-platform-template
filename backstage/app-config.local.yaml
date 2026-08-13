@@ -51,6 +51,12 @@ app:
         disabled: true
     - nav-item:custom-pages/langfuse-platform:
         disabled: true
+    # The per-entity Langfuse tab was never in this list, so it rendered on every
+    # component even with the AI stack switched off. Its filter now also matches
+    # AI/ML spec.types without the annotation, which makes disabling it here the
+    # only thing keeping it off a non-AI cluster.
+    - entity-content:custom-pages/langfuse:
+        disabled: true
 
 # Matches the extension flags above. The overlay flips both together once
 # bootstrap-ai.sh has actually deployed the AI layer.

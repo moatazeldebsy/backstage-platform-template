@@ -4,6 +4,10 @@ import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
 import { CATALOG_FILTER_EXISTS } from '@backstage/catalog-client';
 import type { Entity } from '@backstage/catalog-model';
+import {
+  showScorecard, showSecurity, showDatadog, showTrivy, showOnCall,
+  showGrafana, showJira, showDora, showBudget, showSlo, showLangfuse,
+} from './entityFilters';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
   Content,
@@ -1495,7 +1499,7 @@ const scorecardEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/scorecard',
     title: 'Scorecard',
-    filter: 'kind:component',
+    filter: showScorecard,
     loader: async () => <ScorecardEntityContent />,
   },
 });
@@ -1660,7 +1664,7 @@ const securityEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/security',
     title: 'Security',
-    filter: 'kind:component',
+    filter: showSecurity,
     loader: async () => <SecurityEntityContent />,
   },
 });
@@ -1671,6 +1675,17 @@ const securityEntityContent = EntityContentBlueprint.make({
 // SLO status via the /api/proxy/datadog proxy (see app-config.aws.yaml) —
 // the DD_API_KEY/DD_APP_KEY never reach the browser. Empty state when no
 // annotations are present (e.g. before running enable-datadog-apm).
+
+/** Marks any panel rendering representative rather than live data. */
+function DemoChip() {
+  return (
+    <Chip
+      label="Demo data"
+      size="small"
+      style={{ marginLeft: 8, backgroundColor: '#ffe082', color: '#7c6000', fontWeight: 600 }}
+    />
+  );
+}
 
 interface DatadogMonitor {
   id: number;
@@ -1684,12 +1699,36 @@ interface DatadogSlo {
   status?: number;
 }
 
+// Demo fixtures, shaped exactly like the real API responses so the render path is
+// identical — the integration stays proven rather than bypassed. Same approach the
+// Langfuse platform page already uses (DEMO_LANGFUSE_*).
+//
+// GET /api/v1/monitor returns a bare array.
+const DEMO_DATADOG_MONITORS: DatadogMonitor[] = [
+  { id: 1, name: 'High p99 latency', overall_state: 'OK' },
+  { id: 2, name: 'Error rate > 1%', overall_state: 'OK' },
+  { id: 3, name: 'Pod restart loop', overall_state: 'Warn' },
+];
+
+// GET /api/v1/slo/{id} returns { data: { name, thresholds: [{ target }] } }.
+const DEMO_DATADOG_SLO: DatadogSlo = {
+  name: 'Availability — 99.9% of requests succeed',
+  target_threshold: 99.9,
+};
+
+// Fall back to demo data when the integration is absent or the credentials are
+// rejected, never when Datadog itself is broken: a 5xx is a real outage and
+// dressing it up as demo data would hide it.
+const isDatadogUnconfigured = (status: number) =>
+  status === 401 || status === 403 || status === 404;
+
 function DatadogMonitorsCard({ monitorTag, site }: { monitorTag: string; site: string }) {
   const fetchApi = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const [monitors, setMonitors] = useState<DatadogMonitor[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     const baseUrl = configApi.getString('backend.baseUrl');
@@ -1697,11 +1736,26 @@ function DatadogMonitorsCard({ monitorTag, site }: { monitorTag: string; site: s
     fetchApi
       .fetch(url)
       .then(async res => {
-        if (!res.ok) throw new Error(`Datadog monitors: ${res.status}`);
+        if (!res.ok) {
+          if (isDatadogUnconfigured(res.status)) {
+            setMonitors(DEMO_DATADOG_MONITORS); setDemo(true); setLoading(false);
+            return;
+          }
+          throw new Error(`Datadog monitors: ${res.status}`);
+        }
         setMonitors(await res.json());
         setLoading(false);
       })
-      .catch((err: Error) => { setError(err.message); setLoading(false); });
+      // A network-level rejection means the proxy endpoint is not configured at
+      // all, which is the commonest case on a fresh install.
+      .catch((err: Error) => {
+        if (err instanceof TypeError) {
+          setMonitors(DEMO_DATADOG_MONITORS); setDemo(true);
+        } else {
+          setError(err.message);
+        }
+        setLoading(false);
+      });
   }, [fetchApi, configApi, monitorTag]);
 
   const monitorsUrl = `https://${site}/monitors/manage?q=${encodeURIComponent(monitorTag)}`;
@@ -1712,6 +1766,7 @@ function DatadogMonitorsCard({ monitorTag, site }: { monitorTag: string; site: s
     <Box mb={3}>
       <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
         Datadog Monitors — <code>{monitorTag}</code>
+        {demo && <DemoChip />}
       </Typography>
       <Paper style={{ padding: 16 }}>
         {loading && <Progress />}
@@ -1752,6 +1807,7 @@ function DatadogSloCard({ sloId, site }: { sloId: string; site: string }) {
   const [slo, setSlo] = useState<DatadogSlo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     const baseUrl = configApi.getString('backend.baseUrl');
@@ -1759,7 +1815,13 @@ function DatadogSloCard({ sloId, site }: { sloId: string; site: string }) {
     fetchApi
       .fetch(url)
       .then(async res => {
-        if (!res.ok) throw new Error(`Datadog SLO: ${res.status}`);
+        if (!res.ok) {
+          if (isDatadogUnconfigured(res.status)) {
+            setSlo(DEMO_DATADOG_SLO); setDemo(true); setLoading(false);
+            return;
+          }
+          throw new Error(`Datadog SLO: ${res.status}`);
+        }
         const json = await res.json();
         const data = json?.data;
         setSlo({
@@ -1768,14 +1830,23 @@ function DatadogSloCard({ sloId, site }: { sloId: string; site: string }) {
         });
         setLoading(false);
       })
-      .catch((err: Error) => { setError(err.message); setLoading(false); });
+      .catch((err: Error) => {
+        if (err instanceof TypeError) {
+          setSlo(DEMO_DATADOG_SLO); setDemo(true);
+        } else {
+          setError(err.message);
+        }
+        setLoading(false);
+      });
   }, [fetchApi, configApi, sloId]);
 
   const sloUrl = `https://${site}/slo?slo_id=${encodeURIComponent(sloId)}`;
 
   return (
     <Box mb={3}>
-      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>Datadog SLO</Typography>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        Datadog SLO{demo && <DemoChip />}
+      </Typography>
       <Paper style={{ padding: 16 }}>
         {loading && <Progress />}
         {!loading && error && (
@@ -1808,21 +1879,25 @@ function DatadogEntityContent() {
 
   const configured = Boolean(dashboardUrl || monitorTag || sloId);
 
+  // Unannotated services still render the cards, against placeholder identifiers
+  // that resolve to demo data. An empty "not configured" panel taught nobody what
+  // the tab is for; this shows the real layout and keeps the call-to-action.
+  const effectiveMonitorTag = monitorTag || `service:${entity.metadata.name}`;
+  const effectiveSloId = sloId || 'demo-slo';
+
   return (
     <Content>
       {!configured && (
         <Box mb={3}>
-          <Paper style={{ padding: 24, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>Datadog not configured</Typography>
-            <Typography variant="body2" color="textSecondary">
-              This service does not have Datadog annotations yet. Run the
-              <strong> Enable Datadog APM & Monitoring</strong> scaffolder template
-              (Catalog → Create → search "datadog") to open a PR that wires up
-              APM tracing, dashboards, and monitors for this service.
+          <Paper style={{ padding: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+            <Typography variant="body2" style={{ color: '#7c6000' }}>
+              📊 <strong>Demo data</strong> — this service has no Datadog annotations,
+              so the panels below show representative values. Run the
+              <strong> Enable Datadog APM &amp; Monitoring</strong> scaffolder template
+              (Catalog → Create → search "datadog") to wire up real APM tracing,
+              dashboards and monitors.
+              <Box mt={1}><Link href="/create" target="_self">Open scaffolder ↗</Link></Box>
             </Typography>
-            <Box mt={2}>
-              <Link href="/create" target="_self">Open scaffolder ↗</Link>
-            </Box>
           </Paper>
         </Box>
       )}
@@ -1833,8 +1908,8 @@ function DatadogEntityContent() {
           </Paper>
         </Box>
       )}
-      {monitorTag && <DatadogMonitorsCard monitorTag={monitorTag} site={site} />}
-      {sloId && <DatadogSloCard sloId={sloId} site={site} />}
+      <DatadogMonitorsCard monitorTag={effectiveMonitorTag} site={site} />
+      <DatadogSloCard sloId={effectiveSloId} site={site} />
     </Content>
   );
 }
@@ -1844,7 +1919,7 @@ const datadogEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/datadog',
     title: 'Datadog',
-    filter: 'kind:component',
+    filter: showDatadog,
     loader: async () => <DatadogEntityContent />,
   },
 });
@@ -1969,7 +2044,7 @@ const trivyEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/trivy',
     title: 'Trivy',
-    filter: 'kind:component',
+    filter: showTrivy,
     loader: async () => <TrivyEntityContent />,
   },
 });
@@ -2110,7 +2185,7 @@ const pagerDutyEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/on-call',
     title: 'On-Call',
-    filter: 'kind:component',
+    filter: showOnCall,
     loader: async () => <PagerDutyEntityContent />,
   },
 });
@@ -2241,7 +2316,7 @@ const grafanaEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/grafana',
     title: 'Grafana',
-    filter: 'kind:component',
+    filter: showGrafana,
     loader: async () => <GrafanaEntityContent />,
   },
 });
@@ -2351,7 +2426,7 @@ const jiraEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/jira',
     title: 'Jira',
-    filter: 'kind:component',
+    filter: showJira,
     loader: async () => <JiraEntityContent />,
   },
 });
@@ -2734,7 +2809,7 @@ const doraEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/dora',
     title: 'DORA',
-    filter: 'kind:component',
+    filter: showDora,
     loader: async () => <DoraEntityContent />,
   },
 });
@@ -2905,7 +2980,7 @@ const teamBudgetEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/budget',
     title: 'Budget',
-    filter: 'kind:group',
+    filter: showBudget,
     loader: async () => <TeamBudgetEntityContent />,
   },
 });
@@ -3129,7 +3204,7 @@ const sloEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/slo',
     title: 'SLOs',
-    filter: 'kind:component',
+    filter: showSlo,
     loader: async () => <SloEntityContent />,
   },
 });
@@ -6477,11 +6552,25 @@ function LangfuseEntityContent() {
 
   const [traces, setTraces] = useState<LangfuseTrace[]>([]);
   const [summary, setSummary] = useState({ count: 0, cost: 0, avgLatency: 0 });
-  const [status, setStatus] = useState<'loading' | 'error' | 'ok'>('loading');
+  // 'demo' matches the platform-wide Langfuse page, which has had this state all
+  // along — the entity tab was the one place that could only ever error.
+  const [status, setStatus] = useState<'loading' | 'demo' | 'error' | 'ok'>('loading');
   const [error, setError] = useState('');
 
+  const showDemo = () => {
+    setTraces(DEMO_LANGFUSE_TRACES);
+    setSummary({
+      count: DEMO_LANGFUSE_TRACES.length,
+      cost: 0.0421,
+      avgLatency: 1.83,
+    });
+    setStatus('demo');
+  };
+
   useEffect(() => {
-    if (!serviceName) return;
+    // No annotation: this component is an AI/ML type that the tab filter matched
+    // on spec.type, so show what tracing would look like rather than nothing.
+    if (!serviceName) { showDemo(); return; }
 
     langfuseApi(fetchApi, base)(`/traces?tags=${encodeURIComponent(serviceName)}&limit=50`)
       .then((data: any) => {
@@ -6499,29 +6588,29 @@ function LangfuseEntityContent() {
         setStatus('ok');
       })
       .catch((e: Error) => {
+        // Langfuse unreachable is the normal state on a cluster without the AI
+        // stack, so it is demo data rather than an error page.
+        if (e instanceof TypeError) { showDemo(); return; }
         setError(e.message ?? String(e));
         setStatus('error');
       });
+    // showDemo is stable for the lifetime of this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceName, base, fetchApi]);
 
-  if (!serviceName) {
-    return (
-      <Content>
-        <Paper style={{ padding: 24, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>LLM tracing not enabled</Typography>
-          <Typography variant="body2" color="textSecondary">
-            This component has no <code>langfuse.com/service-name</code> annotation, so there is
-            nothing to filter traces by. Run the <strong>Enable Langfuse LLM Tracing</strong>
-            {' '}scaffolder template to open a PR that adds the instrumentation, the Helm wiring and
-            this annotation.
-          </Typography>
-          <Box mt={2}>
-            <Link href="/create" target="_self">Open scaffolder ↗</Link>
-          </Box>
-        </Paper>
-      </Content>
-    );
-  }
+  const demoBanner = status === 'demo' && (
+    <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+      <Typography variant="body2" style={{ color: '#7c6000' }}>
+        📊 <strong>Demo data</strong> —{' '}
+        {serviceName
+          ? <>Langfuse is not reachable from this cluster.</>
+          : <>this component has no <code>langfuse.com/service-name</code> annotation.
+              Run the <strong>Enable Langfuse LLM Tracing</strong> scaffolder template to add the
+              instrumentation, the Helm wiring and the annotation.</>}
+        <Box mt={1}><Link href="/create" target="_self">Open scaffolder ↗</Link></Box>
+      </Typography>
+    </Paper>
+  );
 
   return (
     <Content>
@@ -6535,11 +6624,12 @@ function LangfuseEntityContent() {
           </Typography>
         </Paper>
       )}
-      {status === 'ok' && (
+      {demoBanner}
+      {(status === 'ok' || status === 'demo') && (
         <>
           <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
             {[
-              { label: 'Traces',      value: String(summary.count),          sub: `tagged ${serviceName}`, color: '#1976d2' },
+              { label: 'Traces',      value: String(summary.count),          sub: serviceName ? `tagged ${serviceName}` : 'representative sample', color: '#1976d2' },
               { label: 'LLM Cost',    value: fmtCost(summary.cost),          sub: 'across shown traces',   color: '#7b1fa2' },
               { label: 'Avg latency', value: summary.avgLatency ? fmtLatency(summary.avgLatency) : '—', sub: 'per trace', color: '#0288d1' },
             ].map(({ label, value, sub, color }) => (
@@ -6607,7 +6697,7 @@ const langfuseEntityContent = EntityContentBlueprint.make({
   params: {
     path: '/langfuse',
     title: 'Langfuse',
-    filter: 'kind:component',
+    filter: showLangfuse,
     loader: async () => <LangfuseEntityContent />,
   },
 });
