@@ -57,3 +57,57 @@ subjects:
 - kind: ServiceAccount
   name: argo-workflows
   namespace: ml-platform
+
+---
+# Runner identity for the ml-training and llm-eval WorkflowTemplates.
+#
+# Separate from the argo-workflows SA above, which is the controller's. Pipeline
+# pods run user-authored training code, so they get their own identity with only
+# what that code needs: read its ConfigMap, read the MLflow/Langfuse credentials,
+# and nothing else. No pod create, no workflow write.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ml-pipeline-runner
+  namespace: ml-platform
+  annotations:
+    # Patched by bootstrap-ai.sh --aws with the Terraform argo_workflows_role_arn
+    # so artifact upload to the S3 bucket works via IRSA. Harmless on local.
+    eks.amazonaws.com/role-arn: "REPLACE_WITH_ARGO_WORKFLOWS_ROLE_ARN"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ml-pipeline-runner
+  namespace: ml-platform
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  # Argo's executor reports step status back through the workflow's own pod
+  # resource; without this the steps run but never report outputs.
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflowtaskresults"]
+    verbs: ["create", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ml-pipeline-runner
+  namespace: ml-platform
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ml-pipeline-runner
+subjects:
+  - kind: ServiceAccount
+    name: ml-pipeline-runner
+    namespace: ml-platform

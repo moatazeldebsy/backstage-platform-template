@@ -1462,10 +1462,23 @@ _P6A_LOG=$(mktemp)
       # Apply RBAC if ServiceAccount creation succeeded
       kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
 
+      # Patch the pipeline runner SA with the IRSA role so workflow artifacts can
+      # reach the S3 bucket created above. Non-fatal: the pipelines still run
+      # without artifact upload.
+      if [[ -n "${ARGO_ROLE_ARN:-}" ]]; then
+        kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
+          "eks.amazonaws.com/role-arn=${ARGO_ROLE_ARN}" --overwrite 2>/dev/null || true
+      fi
+
+      # WorkflowTemplates. Without these the training pipeline has nothing to
+      # reference and idp:run-training-job silently falls back to a bare Job.
+      kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/workflowtemplates/" 2>/dev/null \
+        || log "WARNING: could not apply WorkflowTemplates — idp:run-training-job will fall back to a Job"
+
       log "Argo Workflows deployed — UI pending ALB provisioning"
     )
   else
-    log "Phase 6a: Skipping Argo Workflows (--skip-ai flag)"
+    log "Phase 6a: Skipping Argo Workflows (AI/ML layer not requested — pass --with-ai)"
   fi
 
 

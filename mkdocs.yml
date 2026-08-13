@@ -39,6 +39,8 @@ nav:
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
   - Crossplane vs Terraform: crossplane-vs-terraform.md
+  - Design Decisions:
+    - "ADR-0001: Batch orchestration": design/adr-0001-batch-orchestration.md
   - Team Management: team-management.md
   - GitHub App Setup: github-app-setup.md
   - Scaling Runbook: scaling-runbook.md
