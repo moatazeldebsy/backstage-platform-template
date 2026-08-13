@@ -26,14 +26,16 @@ export interface Config {
      */
     mlflow?: string;
     /**
-     * @visibility frontend
+     * Langfuse UI. The annotation below was missing while every sibling had it,
+     * so Backstage stripped this key from the config delivered to the browser and
+     * consumers fell back to the hardcoded langfuse.idp.local default — on AWS as
+     * well as locally, even though the ConfigMap held the correct ALB hostname.
+     * Note the tag must be the LAST thing in this comment: prose placed after it
+     * is parsed as part of the tag's value and fails schema validation with
+     * `keyword "visibility" value is invalid`, which surfaces only during
+     * `yarn build`, not `yarn tsc`. Observed 2026-08-13.
      *
-     * This annotation was missing while every sibling had it, so Backstage
-     * stripped externalLinks.langfuse from the config delivered to the browser
-     * and the Useful Links entry fell back to the hardcoded langfuse.idp.local
-     * default — on AWS as well as locally, even though the ConfigMap held the
-     * correct ALB hostname all along. Exactly the failure the comment on this
-     * interface describes. Observed 2026-08-13.
+     * @visibility frontend
      */
     langfuse?: string;
   };
