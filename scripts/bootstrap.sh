@@ -896,6 +896,25 @@ _p44a2_pid=$!
   log "Phase 4.4a: Applying ServiceMonitor for services namespaces..."
   kubectl apply -f kubernetes/monitoring/servicemonitor.yaml
   log "  ServiceMonitor applied — Prometheus will scrape services/services-dev."
+
+  # Sloth SLO rules. bootstrap-local.sh has done this since it was written (see the
+  # comment at its Step 5c) but bootstrap.sh never did, so on EKS the SRE dashboard
+  # and Backstage's /slo page both reported
+  #   "no sloth_slo_info metrics found — apply Sloth SLO manifests"
+  # with the rules sitting committed in the repo, unapplied. Observed 2026-08-13.
+  #
+  # The source of truth is a PrometheusServiceLevel (a Sloth CRD), but no Sloth
+  # operator runs in either environment — it is compiled ahead of time and the
+  # output committed, so this is a plain kubectl apply with no new dependency. The
+  # generated rules carry `release: prometheus`, which is what the kube-prometheus
+  # ruleSelector matches, so Prometheus picks them up without further wiring.
+  _slo_gen="${ROOT_DIR}/observability/slo/generated/hello-service-slo-rules.yaml"
+  if [[ -f "$_slo_gen" ]]; then
+    kubectl apply -f "$_slo_gen"
+    log "  Sloth SLO rules applied — error budgets available in Grafana and /slo."
+  else
+    log "  WARNING: ${_slo_gen##*/} not found — /slo will show demo data."
+  fi
 ) > "$_p44a_log" 2>&1 &
 _p44a_pid=$!
 

@@ -3076,7 +3076,12 @@ function SloEntityContent() {
                 <TableRow>
                   <TableCell style={{ fontWeight: 600 }}>SLO engine</TableCell>
                   <TableCell>
-                    <Link href="https://sloth.slok.dev" target="_blank" rel="noopener">Sloth ↗</Link>
+                    {/* sloth.dev, not sloth.slok.dev. The latter is the CRD API
+                        GROUP (apiVersion: sloth.slok.dev/v1, correct in the SLO
+                        manifests) and was mistaken for a hostname here — it has no
+                        DNS record, so the link died with ERR_NAME_NOT_RESOLVED.
+                        Verified 2026-08-13: sloth.dev returns 200. */}
+                    <Link href="https://sloth.dev" target="_blank" rel="noopener">Sloth ↗</Link>
                     {' '}(Prometheus multi-window burn-rate)
                   </TableCell>
                 </TableRow>
@@ -4247,10 +4252,25 @@ const apiExplorerPage = PageBlueprint.make({
   name: 'api-explorer',
   params: { path: '/apis', routeRef: apiExplorerRouteRef, loader: async () => <ApiExplorerPage /> },
 });
-// No NavItemBlueprint here on purpose: the built-in apiDocsPlugin already
-// contributes an "APIs" nav item, and registering a second one gives the
-// sidebar two entries pointing at the same place. The page extension below is
-// still registered — only the duplicate nav item is omitted.
+// This DOES get a nav item, despite the earlier note here claiming a second entry
+// would point "at the same place". It does not: apiDocsPlugin's "APIs" item routes
+// to its own /api-docs page, while this one routes to /apis — a different, richer
+// explorer (search, type/lifecycle filters, owner, a detail pane) built from the
+// catalog API in this file. Without an entry the page was reachable only by typing
+// the URL, so most of the portal's users never saw it.
+//
+// Deliberately titled "API Explorer" rather than "APIs" so the two are tellable
+// apart in the sidebar. The plugin's own item is left alone: it is registered
+// without an explicit name, so disabling it would mean guessing the generated
+// extension id, and a wrong guess silently disables nothing.
+const apiExplorerNavItem = NavItemBlueprint.make({
+  name: 'api-explorer',
+  params: {
+    title: 'API Explorer',
+    icon: AccountTreeIcon as any,
+    routeRef: apiExplorerRouteRef,
+  },
+});
 
 // ── Onboarding Wizard ──────────────────────────────────────────────────────────
 // 4-step guide for new platform users. Progress persisted in localStorage.
@@ -7138,7 +7158,7 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     activityPage,
     activityNavItem,
     apiExplorerPage,
-    // (no apiExplorerNavItem — see the note at its page definition)
+    apiExplorerNavItem,
     onboardingPage,
     onboardingNavItem,
     learningCenterPage,
