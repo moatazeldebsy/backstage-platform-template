@@ -1,0 +1,169 @@
+# ML training pipeline.
+#
+# This is the job Argo Workflows was actually installed for. Until now the
+# platform submitted a single bare `kind: Job` (idpRunTrainingJob.ts) which can
+# train and log to MLflow but cannot do the two things that make a pipeline a
+# pipeline: fail the run when the model is not good enough, and stop for a human
+# before anything is promoted.
+#
+# Deliberately NOT moved here: anything source-triggered (that stays in GitHub
+# Actions — PR feedback, its secret model, and it works for contributors with no
+# cluster) and the recurring single-container exporters (those stay CronJobs, and
+# must keep working on clusters where Argo is not installed). See
+# docs/design/adr-0001-batch-orchestration.md.
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ml-training-pipeline
+  namespace: ml-platform
+  labels:
+    idp.platform/type: ml-pipeline
+spec:
+  entrypoint: train-and-evaluate
+  serviceAccountName: ml-pipeline-runner
+
+  # Workflow pods are the one place in this platform that runs user-authored
+  # code, so they get the restricted profile explicitly rather than inheriting.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  arguments:
+    parameters:
+      - name: name
+      - name: experiment-name
+      - name: python-version
+        value: "3.11"
+      - name: deps
+        value: "scikit-learn pandas numpy"
+      - name: code-configmap
+      - name: mlflow-client-version
+        value: "2.16.2"
+      # The evaluate step fails the DAG below this accuracy. This is the whole
+      # reason for a pipeline: a Job would log a bad model and exit 0.
+      - name: min-accuracy
+        value: "0.0"
+      - name: register-model
+        value: "true"
+
+  volumes:
+    - name: code
+      configMap:
+        name: "{{workflow.parameters.code-configmap}}"
+
+  templates:
+    - name: train-and-evaluate
+      dag:
+        tasks:
+          - name: train
+            template: train
+          - name: evaluate
+            template: evaluate
+            dependencies: [train]
+            arguments:
+              parameters:
+                - name: accuracy
+                  value: "{{tasks.train.outputs.parameters.accuracy}}"
+          - name: register
+            template: register
+            dependencies: [evaluate]
+            when: "{{workflow.parameters.register-model}} == true"
+          # suspend blocks until a human resumes:
+          #   argo resume <workflow> -n ml-platform
+          # activeDeadlineSeconds stops a forgotten gate pinning workflow
+          # resources open forever.
+          - name: deploy-gate
+            template: deploy-gate
+            dependencies: [register]
+
+    - name: train
+      outputs:
+        parameters:
+          - name: accuracy
+            valueFrom:
+              # train.py writes its headline metric here. Defaulting rather than
+              # failing keeps older train.py revisions working — they simply skip
+              # the accuracy gate instead of breaking the pipeline.
+              path: /tmp/accuracy
+              default: "0.0"
+      container:
+        image: python:{{workflow.parameters.python-version}}-slim
+        command: ["/bin/sh", "-c"]
+        args:
+          - >-
+            pip install --quiet "mlflow=={{workflow.parameters.mlflow-client-version}}"
+            {{workflow.parameters.deps}} &&
+            python /app/train.py
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.ml-platform.svc.cluster.local:5000
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "{{workflow.parameters.experiment-name}}"
+          - name: N_ESTIMATORS
+            value: "100"
+          - name: MAX_DEPTH
+            value: "5"
+        resources:
+          requests: { cpu: 250m, memory: 256Mi }
+          limits: { cpu: "1", memory: 1Gi }
+        volumeMounts:
+          - name: code
+            mountPath: /app
+
+    - name: evaluate
+      inputs:
+        parameters:
+          - name: accuracy
+      script:
+        image: python:{{workflow.parameters.python-version}}-slim
+        command: [python]
+        source: |
+          import sys
+          accuracy = float("{{inputs.parameters.accuracy}}" or 0.0)
+          threshold = float("{{workflow.parameters.min-accuracy}}" or 0.0)
+          print(f"accuracy={accuracy} threshold={threshold}")
+          if accuracy < threshold:
+              print("FAIL: below the minimum accuracy — not registering or deploying.")
+              sys.exit(1)
+          print("PASS")
+        resources:
+          requests: { cpu: 50m, memory: 64Mi }
+          limits: { cpu: 200m, memory: 128Mi }
+
+    - name: register
+      script:
+        image: python:{{workflow.parameters.python-version}}-slim
+        command: ["/bin/sh", "-c"]
+        source: |
+          pip install --quiet "mlflow=={{workflow.parameters.mlflow-client-version}}"
+          python - <<'PY'
+          import mlflow, os
+          mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
+          exp = mlflow.get_experiment_by_name(os.environ["MLFLOW_EXPERIMENT_NAME"])
+          if not exp:
+              print("No such experiment — nothing to register.")
+              raise SystemExit(0)
+          runs = mlflow.search_runs([exp.experiment_id], order_by=["start_time DESC"], max_results=1)
+          if runs.empty:
+              print("No runs — nothing to register.")
+              raise SystemExit(0)
+          run_id = runs.iloc[0]["run_id"]
+          mlflow.register_model(f"runs:/{run_id}/model", os.environ["MODEL_NAME"])
+          print(f"Registered {os.environ['MODEL_NAME']} from run {run_id}")
+          PY
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.ml-platform.svc.cluster.local:5000
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "{{workflow.parameters.experiment-name}}"
+          - name: MODEL_NAME
+            value: "{{workflow.parameters.name}}"
+        resources:
+          requests: { cpu: 100m, memory: 256Mi }
+          limits: { cpu: 500m, memory: 1Gi }
+
+    - name: deploy-gate
+      suspend: {}
+      # 7 days. A gate nobody resumes should expire rather than hold the
+      # workflow — and its artifacts — open indefinitely.
+      activeDeadlineSeconds: 604800
