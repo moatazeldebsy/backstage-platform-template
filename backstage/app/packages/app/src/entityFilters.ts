@@ -113,14 +113,29 @@ export const showJira = (e: Entity): boolean =>
 /** DORA measures deployments, so an entity that is never deployed has no DORA. */
 export const showDora = (e: Entity): boolean => isDeployed(e);
 
+/**
+ * Deployed services, plus anything explicitly annotated.
+ *
+ * Not annotation-only, because **no template emits these annotations**: the
+ * `slo-definition` template opens its PR against the *platform* repo to add
+ * `observability/slo/<service>-slos.yaml`, while a service's catalog-info.yaml
+ * lives in the service's own repo — and a scaffolder skeleton cannot patch an
+ * existing file. Gating on annotations alone would hide the tab from every
+ * service forever.
+ *
+ * An SLO tab on a deployed service is a reasonable call to action even before an
+ * SLO exists; the entities this is protecting (mobile SDKs, Terraform modules,
+ * test suites) are already excluded by isDeployed.
+ */
 export const showSlo = (e: Entity): boolean =>
-  isComponent(e) &&
-  hasAnyAnnotation(
-    e,
-    ANNOTATION.SLOTH_SERVICE,
-    ANNOTATION.SLO_AVAILABILITY,
-    ANNOTATION.SLO_LATENCY,
-  );
+  isDeployed(e) ||
+  (isComponent(e) &&
+    hasAnyAnnotation(
+      e,
+      ANNOTATION.SLOTH_SERVICE,
+      ANNOTATION.SLO_AVAILABILITY,
+      ANNOTATION.SLO_LATENCY,
+    ));
 
 export const showBudget = (e: Entity): boolean => isKind(e, 'group');
 
