@@ -6958,28 +6958,41 @@ const HELP_CHANNELS = [
 // had no entry point from Support. The AI-gated ones follow KAgent's lead and are
 // hidden when aiStack.enabled is false, so they never render a dead link on a
 // cluster bootstrapped with --skip-ai.
-const getUsefulLinks = (
-  urls: { grafana: string; kagent: string; argocd: string; mlflow: string; langfuse: string },
-  aiEnabled: boolean,
-) => [
+// Prefer IN-PORTAL routes over externalLinks.* wherever an in-portal page exists.
+// Those pages are environment-independent by construction: /kagent, /mlflow,
+// /langfuse and /argocd are PageBlueprint routes declared in this file and resolve
+// identically on Kind and on EKS, with no ALB hostname, no ConfigMap substitution
+// and no frontend-visibility annotation in the path. externalLinks.* is still used
+// for Grafana, which has no in-portal page.
+//
+// The previous version linked KAgent/MLflow/Langfuse straight at externalLinks.*,
+// which broke in two different ways at once: langfuse lacked an @visibility
+// frontend annotation in config.d.ts, so Backstage stripped it from the config sent
+// to the browser and the link silently fell back to the hardcoded
+// langfuse.idp.local default even on AWS — and any environment whose substitution
+// had not run would send users to a dead *.idp.local host.
+//
+// Every href below is either a Backstage core route (/, /catalog) or a
+// PageBlueprint path declared in this file. Entity CONTENT paths are deliberately
+// NOT used: /security for example is an EntityContentBlueprint, so it only exists
+// under /catalog/<ns>/<kind>/<name>/security and 404s at the root.
+const getUsefulLinks = (urls: { grafana: string }, aiEnabled: boolean) => [
   { emoji: '🏠', label: 'Platform Dashboard', href: '/' },
   { emoji: '📊', label: 'Grafana Dashboards', href: urls.grafana },
-  // Was '/catalog', which is the catalog, not the security page — /security is a
-  // real route declared in this file and is what the label promises.
-  { emoji: '🔒', label: 'Security Overview',  href: '/security' },
+  { emoji: '📚', label: 'Service Catalog',     href: '/catalog' },
   { emoji: '📈', label: 'DORA Metrics',        href: '/dora' },
   { emoji: '🏅', label: 'Scorecard',           href: '/scorecard' },
   { emoji: '💰', label: 'FinOps / Cost',       href: '/finops' },
   { emoji: '🎯', label: 'SLOs',                href: '/slo' },
-  { emoji: '📚', label: 'Service Catalog',     href: '/catalog' },
+  { emoji: '🔎', label: 'API Explorer',        href: '/apis' },
   ...(aiEnabled
     ? [
-        { emoji: '🤖', label: 'KAgent UI',          href: urls.kagent },
-        { emoji: '🧪', label: 'MLflow',             href: urls.mlflow },
-        { emoji: '🔍', label: 'AI Observability',   href: urls.langfuse },
+        { emoji: '🤖', label: 'KAgent',           href: '/kagent' },
+        { emoji: '🧪', label: 'MLflow',           href: '/mlflow' },
+        { emoji: '🔍', label: 'AI Observability', href: '/langfuse' },
       ]
     : []),
-  { emoji: '🚀', label: 'ArgoCD',              href: urls.argocd },
+  { emoji: '🚀', label: 'ArgoCD',              href: '/argocd' },
 ];
 
 function SupportPage() {
@@ -6988,11 +7001,7 @@ function SupportPage() {
   const base = configApi.getString('backend.baseUrl');
   const aiStackEnabled = useAiStackEnabled();
   const usefulLinks = getUsefulLinks({
-    grafana:  configApi.getOptionalString('externalLinks.grafana')  ?? 'http://grafana.idp.local',
-    kagent:   configApi.getOptionalString('externalLinks.kagent')   ?? 'http://kagent.idp.local',
-    argocd:   configApi.getOptionalString('externalLinks.argocd')   ?? 'http://argocd.idp.local',
-    mlflow:   configApi.getOptionalString('externalLinks.mlflow')   ?? 'http://mlflow.idp.local',
-    langfuse: configApi.getOptionalString('externalLinks.langfuse') ?? 'http://langfuse.idp.local',
+    grafana: configApi.getOptionalString('externalLinks.grafana') ?? 'http://grafana.idp.local',
   }, aiStackEnabled);
   // The AI Assistant entry points at /ai-assistant, a route that does not exist
   // when the page extension is disabled.
