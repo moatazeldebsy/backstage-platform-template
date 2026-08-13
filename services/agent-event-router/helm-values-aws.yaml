@@ -76,6 +76,20 @@ env:
   # INCIDENT_REPO — owner/repo where auto-created incident issues are filed.
   - name: INCIDENT_REPO
     value: "moatazeldebsy/backstage-platform-template"
+  # Which severities get a tracked issue. Critical only by default — set to
+  # "critical,warning" to also file P2s, but be sure the alert volume warrants it.
+  - name: INCIDENT_SEVERITIES
+    value: "critical"
+  # Optional PagerDuty cross-linking. Without these an incident is still filed,
+  # it just carries no link to the PD incident that paged the on-call engineer.
+  - name: PAGERDUTY_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: agent-event-router-secrets
+        key: pagerduty-token
+        optional: true
+  - name: PAGERDUTY_SERVICE_IDS
+    value: ""
 
 securityContext:
   allowPrivilegeEscalation: false

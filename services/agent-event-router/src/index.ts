@@ -10,6 +10,20 @@ const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN ?? '';
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '5000', 10);
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? '';
 const INCIDENT_REPO = process.env.INCIDENT_REPO ?? '';
+// Which alert severities get a tracked GitHub issue. Critical only by default:
+// filing for warnings on a noisy cluster buries the repo, and that is a decision
+// each operator should make rather than inherit.
+const INCIDENT_SEVERITIES = (process.env.INCIDENT_SEVERITIES ?? 'critical')
+  .split(',')
+  .map(s => s.trim().toLowerCase())
+  .filter(Boolean);
+// Optional. Without it incidents are still filed, just not cross-linked to the
+// PagerDuty incident that paged the on-call engineer.
+const PAGERDUTY_TOKEN = process.env.PAGERDUTY_TOKEN ?? '';
+const PAGERDUTY_SERVICE_IDS = (process.env.PAGERDUTY_SERVICE_IDS ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 
 if (!GITHUB_WEBHOOK_SECRET) {
   console.warn('[event-router] WARNING: GITHUB_WEBHOOK_SECRET not set — /webhook/github will return 503');
@@ -76,6 +90,11 @@ const app = createApp({
   postFn: postToAgent,
   counter: eventsTotal,
   github: GITHUB_TOKEN && INCIDENT_REPO ? { token: GITHUB_TOKEN, repo: INCIDENT_REPO } : undefined,
+  severities: INCIDENT_SEVERITIES,
+  pagerduty:
+    PAGERDUTY_TOKEN && PAGERDUTY_SERVICE_IDS.length
+      ? { token: PAGERDUTY_TOKEN, serviceIds: PAGERDUTY_SERVICE_IDS }
+      : undefined,
 });
 
 app.get('/metrics', async (_req: Request, res: Response) => {

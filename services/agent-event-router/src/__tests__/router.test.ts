@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import request from 'supertest';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import { MemoryIncidentStore } from '../incidents';
 import {
   verifyGitHubSignature,
   verifyBearerToken,
@@ -408,7 +409,7 @@ describe('routeAlertManager', () => {
   it('includes the tracked issue number in the incident-agent message when one was created', async () => {
     const fetchImpl = mockFetch([{ ok: true, status: 201, json: { number: 77 } }]);
     const github: GitHubIncidentConfig = { token: 't', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
-    const openIncidents = new Map<string, OpenIncident>();
+    const openIncidents = new MemoryIncidentStore();
     const payload = {
       alerts: [
         {
@@ -510,14 +511,14 @@ describe('routeAlertManager incident tracking', () => {
   let postFn: jest.Mock;
   let github: GitHubIncidentConfig;
   let fetchImpl: jest.Mock;
-  let openIncidents: Map<string, OpenIncident>;
+  let openIncidents: MemoryIncidentStore;
 
   beforeEach(() => {
     jest.resetAllMocks();
     postFn = jest.fn().mockResolvedValue(undefined);
     fetchImpl = mockFetch([{ ok: true, json: { number: 99 } }]);
     github = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
-    openIncidents = new Map();
+    openIncidents = new MemoryIncidentStore();
   });
 
   it('creates an incident issue for a firing critical alert', async () => {
@@ -536,11 +537,11 @@ describe('routeAlertManager incident tracking', () => {
     await routeAlertManager(payload, postFn, undefined, github, openIncidents);
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(openIncidents.get('fp1')).toEqual({ issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
+    expect(await openIncidents.get('fp1')).toEqual({ issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
   });
 
   it('does not create a second issue for a repeat firing notification (same fingerprint)', async () => {
-    openIncidents.set('fp1', { issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
+    openIncidents.put('fp1', { issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
     const payload = {
       alerts: [
         {
@@ -572,11 +573,11 @@ describe('routeAlertManager incident tracking', () => {
     await routeAlertManager(payload, postFn, undefined, github, openIncidents);
 
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(openIncidents.size).toBe(0);
+    expect(openIncidents.size()).toBe(0);
   });
 
   it('resolves a tracked incident and removes it from the open map', async () => {
-    openIncidents.set('fp1', { issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
+    openIncidents.put('fp1', { issueNumber: 99, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' });
     fetchImpl = mockFetch([{ ok: true }, { ok: true }, { ok: true }]);
     github = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
 
@@ -595,7 +596,7 @@ describe('routeAlertManager incident tracking', () => {
     await routeAlertManager(payload, postFn, undefined, github, openIncidents);
 
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(openIncidents.has('fp1')).toBe(false);
+    expect(await openIncidents.get('fp1')).toBeUndefined();
     expect(postFn).not.toHaveBeenCalled();
   });
 

@@ -2,6 +2,18 @@ import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import type { Counter } from 'prom-client';
+import {
+  type IncidentStore,
+  type OpenIncident,
+  type PagerDutyConfig,
+  GitHubIncidentStore,
+  addPagerDutyNote,
+  correlatePagerDuty,
+  renderMarker,
+  toPriority,
+} from './incidents';
+
+export type { OpenIncident } from './incidents';
 
 export type PostFn = (agentName: string, message: string) => Promise<void>;
 export type EventCounter = Counter<'source' | 'event_type' | 'agent' | 'outcome'>;
@@ -94,12 +106,6 @@ export async function routeGitHub(
 // a record beyond the page itself. Seeded fields mirror docs/postmortem-template.md;
 // the rest of that template is filled in by a human during the 48h follow-up.
 
-export interface OpenIncident {
-  issueNumber: number;
-  alertname: string;
-  startsAt: string;
-}
-
 export interface GitHubIncidentConfig {
   token: string;
   repo: string; // "owner/repo"
@@ -122,6 +128,7 @@ function incidentId(startsAt: string): string {
 export async function createIncidentIssue(
   alert: Record<string, unknown>,
   config: GitHubIncidentConfig,
+  pagerduty?: PagerDutyConfig,
 ): Promise<number | null> {
   const labels = (alert.labels as Record<string, string>) ?? {};
   const annotations = (alert.annotations as Record<string, string>) ?? {};
@@ -131,6 +138,16 @@ export async function createIncidentIssue(
   const service = labels.service ?? namespace;
   const startsAt = (alert.startsAt as string) ?? new Date().toISOString();
   const id = incidentId(startsAt);
+  const priority = toPriority(severity);
+  const fingerprint = (alert.fingerprint as string) ?? `${name}:${namespace}`;
+
+  // Best-effort: a missing or ambiguous PagerDuty match must not stop the issue
+  // being filed. This is the only join between the two systems, since
+  // Alertmanager owns the PD dedup key and will not let us set it.
+  let pd: { id: string; url: string } | null = null;
+  if (pagerduty) {
+    pd = await correlatePagerDuty({ alertname: name, service, startsAt }, pagerduty);
+  }
 
   const body = [
     '## Incident Summary',
@@ -138,7 +155,7 @@ export async function createIncidentIssue(
     '| Field | Value |',
     '|-------|-------|',
     `| **Incident ID** | ${id} |`,
-    `| **Severity** | ${severity} |`,
+    `| **Severity** | ${priority} (${severity}) |`,
     `| **Service(s) affected** | ${service} |`,
     `| **Start time** | ${startsAt} |`,
     `| **Alert** | \`${name}\` |`,
@@ -147,9 +164,25 @@ export async function createIncidentIssue(
     annotations.description ? `**Details:** ${annotations.description}` : '',
     annotations.runbook_url ? `**Runbook:** ${annotations.runbook_url}` : '',
     '',
+    pd ? `**PagerDuty:** ${pd.url}` : '',
+    '',
     'This issue was auto-created by `agent-event-router` when the alert started firing — ' +
       'it tracks the incident record. Complete the full write-up in ' +
       '`docs/postmortem-template.md` within 48 hours of resolution.',
+    '',
+    // Machine-readable state. Everything downstream (rehydrate, the postmortem
+    // workflow, incident-mcp-server) reads this rather than parsing the prose
+    // table above.
+    renderMarker({
+      v: 1,
+      fingerprint,
+      incidentId: id,
+      severity: priority,
+      rawSeverity: severity,
+      service,
+      startsAt,
+      pagerdutyUrl: pd?.url ?? null,
+    }),
   ].filter(line => line !== '').join('\n');
 
   const fetchImpl = config.fetchImpl ?? fetch;
@@ -159,7 +192,10 @@ export async function createIncidentIssue(
     body: JSON.stringify({
       title: `[INCIDENT] ${name} — ${service} (${id})`,
       body,
-      labels: ['incident', 'incident:open', `severity:${severity}`],
+      // Both vocabularies for one release: incident-mcp-server's
+      // get_open_incidents still filters on severity:<prometheus value>, and
+      // breaking it would take the incident-agent's triage with it.
+      labels: ['incident', 'incident:open', `severity:${priority}`, `severity:${severity}`],
     }),
   });
 
@@ -167,7 +203,13 @@ export async function createIncidentIssue(
     console.error(`[event-router] failed to create incident issue: HTTP ${res.status}`);
     return null;
   }
-  const json = (await res.json()) as { number: number };
+  const json = (await res.json()) as { number: number; html_url?: string };
+
+  // Cross-link back from PagerDuty, so an on-call engineer paged by PD can find
+  // the tracked record without searching GitHub.
+  if (pd && pagerduty && json.html_url) {
+    await addPagerDutyNote(pd.id, `Tracked incident record: ${json.html_url}`, pagerduty);
+  }
   return json.number;
 }
 
@@ -210,7 +252,14 @@ export async function routeAlertManager(
   postFn: PostFn,
   counter?: EventCounter,
   github?: GitHubIncidentConfig,
-  openIncidents?: Map<string, OpenIncident>,
+  // Was a plain Map, which meant a restart mid-incident lost every dedupe key
+  // and re-filed a duplicate issue for each still-firing alert. The store keeps
+  // the same in-memory speed but falls through to GitHub on a miss.
+  store?: IncidentStore,
+  pagerduty?: PagerDutyConfig,
+  // Which severities get a tracked issue. Defaults to critical only: on a noisy
+  // cluster, filing for warnings buries the repo.
+  severities: string[] = ['critical'],
 ): Promise<void> {
   const alerts = (payload.alerts as Record<string, unknown>[]) ?? [];
 
@@ -224,9 +273,9 @@ export async function routeAlertManager(
     const fingerprint = (alert.fingerprint as string) ?? `${name}:${namespace}`;
 
     if (status === 'resolved') {
-      const record = openIncidents?.get(fingerprint);
-      if (github && openIncidents && record) {
-        openIncidents.delete(fingerprint);
+      const record = store ? await store.get(fingerprint) : undefined;
+      if (github && store && record) {
+        store.delete(fingerprint);
         try {
           await resolveIncidentIssue(record, alert, github);
           counter?.inc({ source: 'alertmanager', event_type: 'incident_resolved', agent: 'github', outcome: 'routed' });
@@ -246,12 +295,14 @@ export async function routeAlertManager(
     // Critical alerts get a tracked GitHub issue *before* routing, so the target
     // agent's message can reference the issue number directly.
     let issueNumber: number | undefined;
-    if (github && openIncidents && severity === 'critical' && !openIncidents.has(fingerprint)) {
+    const tracked = severities.includes(severity);
+    const existing = github && store && tracked ? await store.get(fingerprint) : undefined;
+    if (github && store && tracked && !existing) {
       try {
-        const created = await createIncidentIssue(alert, github);
+        const created = await createIncidentIssue(alert, github, pagerduty);
         if (created) {
           issueNumber = created;
-          openIncidents.set(fingerprint, {
+          store.put(fingerprint, {
             issueNumber: created,
             alertname: name,
             startsAt: (alert.startsAt as string) ?? new Date().toISOString(),
@@ -319,14 +370,38 @@ export interface AppOptions {
   postFn?: PostFn;
   counter?: EventCounter;
   github?: GitHubIncidentConfig;
+  pagerduty?: PagerDutyConfig;
+  /** Severities that get a tracked issue. Default: critical only. */
+  severities?: string[];
+  /** Injectable for tests; defaults to a GitHubIncidentStore over `github`. */
+  store?: IncidentStore;
 }
 
 export function createApp(opts: AppOptions = {}): express.Application {
-  const { githubSecret, webhookToken, postFn, counter, github } = opts;
+  const { githubSecret, webhookToken, postFn, counter, github, pagerduty } = opts;
+  const severities = opts.severities ?? ['critical'];
 
   const defaultPostFn: PostFn = async () => {};
   const effectivePostFn = postFn ?? defaultPostFn;
-  const openIncidents = new Map<string, OpenIncident>();
+
+  const store = opts.store ?? (github ? new GitHubIncidentStore(github) : undefined);
+
+  // Rehydrate without blocking listen(): the pod should become ready promptly,
+  // and an alert arriving before this finishes still falls through to the
+  // GitHub search inside store.get(). Failure is logged loudly rather than
+  // swallowed, because a silent failure here means duplicate issues.
+  if (store) {
+    store
+      .rehydrate()
+      .then(n => console.log(`[event-router] rehydrated ${n} open incident(s) from GitHub`))
+      .catch(err =>
+        console.error(
+          '[event-router] incident rehydrate FAILED — duplicates are possible until the ' +
+            'first successful GitHub search:',
+          err,
+        ),
+      );
+  }
 
   const app = express();
 
@@ -360,7 +435,9 @@ export function createApp(opts: AppOptions = {}): express.Application {
   app.post('/webhook/alertmanager', async (req: Request, res: Response) => {
     if (!verifyBearerToken(req, res, webhookToken)) return;
     res.json({ status: 'accepted' });
-    try { await routeAlertManager(req.body, effectivePostFn, counter, github, openIncidents); } catch (err) {
+    try {
+      await routeAlertManager(req.body, effectivePostFn, counter, github, store, pagerduty, severities);
+    } catch (err) {
       console.error('[event-router] alertmanager routing error:', err);
     }
   });
