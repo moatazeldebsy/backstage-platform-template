@@ -16,7 +16,10 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   name: failover-runbook
-  namespace: argo
+  # Must match where the controller is installed (bootstrap.sh, bootstrap-local.sh
+  # both use --namespace argo-workflows). This said "argo", a namespace nothing in
+  # the repo ever creates, so the documented `argo submit` could never have worked.
+  namespace: argo-workflows
   labels:
     idp.platform/type: dr-runbook
     idp.platform/version: v2

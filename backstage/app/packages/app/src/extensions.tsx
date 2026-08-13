@@ -2570,6 +2570,12 @@ function DoraMetricCard({ title, value, unit, series, band, metricKey }: {
   );
 }
 
+// The DORA exporter emits a synthetic platform-wide row under this service label
+// alongside the real per-repo series. It is a Prometheus label, not a catalog entity —
+// query it, never link to it. Grafana filters it the same way (service!="all-services"
+// in kubernetes/monitoring/grafana-dora-dashboard-configmap.yaml).
+const DORA_AGGREGATE_SERVICE = 'all-services';
+
 // dataSource tracks where metrics came from so the UI can be honest about it.
 // 'service' = per-entity Prometheus data (best)
 // 'aggregate' = all-services Prometheus aggregate (real but platform-wide)
@@ -2644,7 +2650,7 @@ function DoraEntityContent() {
       }
       // 2. Fall back to platform aggregate (real data, but org-wide not per-service)
       try {
-        const agg = await fetchForService('all-services');
+        const agg = await fetchForService(DORA_AGGREGATE_SERVICE);
         if (hasData(agg)) { setMetrics(agg); setSource('aggregate'); setLoading(false); return; }
       } catch { anyQueryFailed = true; /* fall through */ }
       // 3. No usable data — distinguish "unreachable" from "reachable but empty"
@@ -3297,6 +3303,17 @@ function DoraPage() {
   const [unreachable, setUnreachable] = useState(false);
   const [perService, setPerService] = useState<Array<{name:string; freq:number; lead:number; cfr:number; mttr:number}>>([]);
   const [loading, setLoading]     = useState(true);
+  // Component names that actually exist in the catalog. The exporter reports GitHub
+  // repos, which do not all have an entity, so a row is only clickable when its
+  // target resolves — otherwise the click lands on "Entity not found".
+  const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
+      .catch(() => setCatalogNames(new Set())); // no catalog → no rows link, table still renders
+  }, [base, fetchApi]);
 
   useEffect(() => {
     const pq = (expr: string) =>
@@ -3331,10 +3348,12 @@ function DoraPage() {
         });
         setIsDemo(false);
         // Build per-service table
-        const names = new Set([
+        // Drop the synthetic aggregate — it is already rendered in the cards above,
+        // and listing it here both double-counts it and offers a dead catalog link.
+        const names = new Set<string>([
           ...(freqSeries as any[]).map((r:any) => r.metric?.service),
           ...(leadSeries as any[]).map((r:any) => r.metric?.service),
-        ].filter(Boolean));
+        ].filter(Boolean).filter((n: string) => n !== DORA_AGGREGATE_SERVICE));
         const toMap = (arr: any[]) => Object.fromEntries(arr.map((r:any) => [r.metric?.service, parseFloat(r.value?.[1] ?? 'NaN')]));
         const fMap = toMap(freqSeries as any[]);
         const lMap = toMap(leadSeries as any[]);
@@ -3413,9 +3432,11 @@ function DoraPage() {
                     )}
                     {perService.map(row => {
                       const band = doraBand('freq', row.freq);
+                      const linkable = catalogNames.has(row.name);
                       return (
-                        <TableRow key={row.name} hover style={{ cursor: 'pointer' }}
-                          onClick={() => window.location.href = `/catalog/default/component/${row.name}/dora`}>
+                        <TableRow key={row.name} hover={linkable} style={{ cursor: linkable ? 'pointer' : 'default' }}
+                          title={linkable ? undefined : `${row.name} has DORA metrics but no catalog entity — register its repo to open its service page.`}
+                          onClick={linkable ? () => { window.location.href = `/catalog/default/component/${row.name}/dora`; } : undefined}>
                           <TableCell style={{ fontWeight: 500 }}>{row.name}</TableCell>
                           <TableCell align="right">{fmt('freq', row.freq)}</TableCell>
                           <TableCell align="right">{fmt('lead', row.lead)}</TableCell>
@@ -3600,6 +3621,16 @@ function SloPage() {
   const [slos, setSlos]       = useState<Array<{service:string; id:string; label:string; objective:number; errorRatio:number|null}>>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo]   = useState(false);
+  // Sloth's sloth_service label (and the demo rows below) need not correspond to a
+  // catalog entity, so only link a row when its target actually resolves.
+  const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
+      .catch(() => setCatalogNames(new Set()));
+  }, [base, fetchApi]);
 
   useEffect(() => {
     const pq = (expr: string) =>
@@ -3682,9 +3713,11 @@ function SloPage() {
                       const pct = budgetPct(row.objective, row.errorRatio);
                       const color = pct == null ? '#9e9e9e' : pct > 50 ? '#4caf50' : pct > 10 ? '#ff9800' : '#f44336';
                       const status = pct == null ? 'No data' : pct > 50 ? 'Healthy' : pct > 10 ? 'Burning fast' : 'Critical';
+                      const linkable = catalogNames.has(row.service);
                       return (
-                        <TableRow key={i} hover style={{ cursor: 'pointer' }}
-                          onClick={() => window.location.href = `/catalog/default/component/${row.service}/slo`}>
+                        <TableRow key={i} hover={linkable} style={{ cursor: linkable ? 'pointer' : 'default' }}
+                          title={linkable ? undefined : `${row.service} has SLO metrics but no catalog entity — register it to open its service page.`}
+                          onClick={linkable ? () => { window.location.href = `/catalog/default/component/${row.service}/slo`; } : undefined}>
                           <TableCell style={{ fontWeight: 500 }}>{row.service}</TableCell>
                           <TableCell><Typography variant="body2">{row.label}</Typography></TableCell>
                           <TableCell align="right"><Typography variant="body2" style={{ fontFamily: 'monospace' }}>{row.objective}%</Typography></TableCell>

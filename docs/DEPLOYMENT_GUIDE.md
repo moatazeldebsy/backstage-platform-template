@@ -265,7 +265,7 @@ backend:
 ```bash
 cd services/hello-service
 docker buildx build --platform linux/amd64 \
-  -t 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service:latest \
+  -t "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/idp-mvp/hello-service:latest" \
   --push .
 ```
 

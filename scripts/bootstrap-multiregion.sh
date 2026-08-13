@@ -82,6 +82,18 @@ done
 aws sts get-caller-identity &>/dev/null || err "AWS credentials not configured"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 log "AWS account: ${ACCOUNT_ID}"
+
+# Both Terraform modules use a partial backend, so the bucket and lock table must
+# exist before any init. Idempotent — reuses them when setup.sh already ran.
+if [[ ! -f "${TF_DIR}/backend.hcl" ]]; then
+  # The per-region cluster names come from terraform outputs, which are not
+  # readable until after init — so the state scope is the install-wide
+  # CLUSTER_NAME that setup.sh wrote, not either cluster's name. Both regions
+  # share one bucket and lock table via Terraform workspaces.
+  load_idp_config
+  log "No terraform/backend.hcl — creating the state bucket and lock table..."
+  ensure_tf_state_backend "$PRIMARY_REGION" "${CLUSTER_NAME:-idp-mvp}"
+fi
 log "Primary region: ${PRIMARY_REGION}"
 log "Standby region: ${STANDBY_REGION}"
 
@@ -104,7 +116,10 @@ if [[ "$SKIP_GLOBAL" == "true" ]]; then
 else
   step "Phase 1: Global Terraform module"
   cd "$GLOBAL_TF_DIR"
-  terraform init -upgrade
+  # Same bucket and lock table as the root module, different state key.
+  terraform init -upgrade \
+    -backend-config="${TF_DIR}/backend.hcl" \
+    -backend-config="key=platform/global/terraform.tfstate"
   terraform apply -auto-approve \
     -var "primary_region=${PRIMARY_REGION}" \
     -var "standby_region=${STANDBY_REGION}"
@@ -128,7 +143,7 @@ timer_start "2. Primary Terraform + EKS"
 step "Phase 2: Primary cluster — ${PRIMARY_REGION}"
 
 cd "$TF_DIR"
-terraform init -upgrade
+terraform init -upgrade -backend-config=backend.hcl
 terraform workspace new "$PRIMARY_REGION" 2>/dev/null || terraform workspace select "$PRIMARY_REGION"
 terraform apply -auto-approve \
   -var-file="tfvars/${PRIMARY_REGION}.tfvars"

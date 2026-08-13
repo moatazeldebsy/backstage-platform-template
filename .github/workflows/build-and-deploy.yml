@@ -36,12 +36,33 @@ jobs:
       staging_promoted: ${{ steps.staging-filter.outputs.staging_promoted }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      # The filter list used to name hello-service alone, so it was the only
+      # service this workflow ever built — the ten MCP/platform services had no
+      # image in ECR unless someone ran bootstrap-ai.sh from a laptop, which is
+      # why they are excluded from the ArgoCD ApplicationSets. Generating the
+      # list from the filesystem keeps it from drifting again when a service is
+      # added. Every services/* directory already carries a Dockerfile and a
+      # helm-values-aws.yaml, and the build job below creates the ECR repository
+      # on demand, so no other job needs to change.
+      - name: Generate path filters from services/*/Dockerfile
+        id: gen
+        run: |
+          set -euo pipefail
+          {
+            echo 'filters<<GHA_EOF'
+            for d in services/*/; do
+              [[ -f "${d}Dockerfile" ]] || continue
+              n="$(basename "$d")"
+              printf '%s:\n  - "services/%s/**"\n' "$n" "$n"
+            done
+            echo 'GHA_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: filter
         with:
-          filters: |
-            hello-service:
-              - 'services/hello-service/**'
+          filters: ${{ steps.gen.outputs.filters }}
 
       # Separate boolean-only filter: true when this push is itself the merge of a
       # staging promotion PR (i.e. it touched helm-values-staging.yaml). Used to gate

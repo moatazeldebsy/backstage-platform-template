@@ -1409,6 +1409,12 @@ EOF
       kubectl get configmap backstage-config -n backstage -o json \
         | sed "s|KAGENT_ALB_URL|${KAGENT_URL}|g" \
         | kubectl apply -f -
+      # The scaffolder actions read KAGENT_EXTERNAL_URL from the deployment's env
+      # (idpDeployAgent.ts, idpSetupContractTesting.ts), which the configmap patch
+      # above does not touch — it stayed as the literal "http://KAGENT_ALB_URL",
+      # so every scaffolded agent reported an unreachable UI. Observed 2026-08-13.
+      kubectl set env deployment/backstage -n backstage \
+        KAGENT_EXTERNAL_URL="http://${KAGENT_URL}" >/dev/null
       kubectl rollout restart deployment/backstage -n backstage
       check "externalLinks.kagent patched with ALB hostname"
     else

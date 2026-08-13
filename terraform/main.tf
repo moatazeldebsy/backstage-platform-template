@@ -30,14 +30,16 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket               = "idp-mvp-terraform-state-967825954374"
-    key                  = "terraform.tfstate"
-    workspace_key_prefix = "platform"  # state path: platform/<workspace>/terraform.tfstate
-    region               = "us-east-1" # state bucket always in us-east-1
-    dynamodb_table       = "idp-mvp-terraform-locks"
-    encrypt              = true
-  }
+  # Partial backend: every value is supplied at init time from terraform/backend.hcl,
+  # which scripts/setup.sh generates after creating the bucket and lock table.
+  #
+  # These used to be hardcoded to the template maintainer's own bucket and account
+  # id. That is not a YOUR_* placeholder, so scripts/placeholders.conf never
+  # rewrote it, and anyone else cloning this template hit AccessDenied on their
+  # very first `terraform init` -- about thirty seconds into a forty-minute script.
+  # Terraform also cannot create its own backend, so the bucket has to exist before
+  # init: see ensure_tf_state_backend() in scripts/lib.sh.
+  backend "s3" {}
 }
 
 provider "aws" {

@@ -1,7 +1,9 @@
 # Helm overrides for hello-service — dev environment
 # image.tag is updated automatically by CI when pushed to main
 image:
-  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service
+  # Seed value only — bootstrap.sh rewrites this line with the real ECR registry,
+  # and CI's update-image-tag job owns it from then on.
+  repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/idp-mvp/hello-service
   tag: src-9345b7e7abc5
 replicaCount: 1
 service:
