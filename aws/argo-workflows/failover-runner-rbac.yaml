@@ -9,7 +9,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: failover-runner
-  namespace: argo
+  namespace: argo-workflows
   annotations:
     eks.amazonaws.com/role-arn: "REPLACE_WITH_FAILOVER_RUNNER_ROLE_ARN"
 ---
@@ -38,18 +38,18 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: failover-runner
-    namespace: argo
+    namespace: argo-workflows
 ---
 # ArgoCD manager token secret — used by the failover runbook to authenticate
 # against the ArgoCD API server when enabling sync on standby applications.
 # Created by: argocd account generate-token --account failover-runner
 # Stored in: kubectl create secret generic argocd-failover-token \
-#              --from-literal=token=<TOKEN> -n argo
+#              --from-literal=token=<TOKEN> -n argo-workflows
 apiVersion: v1
 kind: Secret
 metadata:
   name: argocd-failover-token
-  namespace: argo
+  namespace: argo-workflows
   annotations:
     # Placeholder — populate via the command above after bootstrapping ArgoCD
     idp.platform/setup-required: "true"

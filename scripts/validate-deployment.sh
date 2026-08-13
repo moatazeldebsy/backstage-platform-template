@@ -15,11 +15,18 @@ log()    { echo "✓ $*"; PASSED_TESTS=$((PASSED_TESTS+1)); }
 err()    { echo "✗ $*"; FAILED_TESTS=$((FAILED_TESTS+1)); }
 header() { echo ""; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "  $*"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; }
 
-# Parse flags
+# Parse flags. Unknown flags used to be silently shifted away, so a typo like
+# --detail ran the default validation and reported success for something the
+# caller never asked for.
+usage() {
+  echo "Usage: $0 [--detailed]"
+  echo "  --detailed   Print per-check detail instead of a summary."
+}
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --detailed) DETAILED=true; shift ;;
-    *) shift ;;
+    -h|--help)  usage; exit 0 ;;
+    *) echo "✗ Unknown flag: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
@@ -288,7 +295,10 @@ if [[ $FAILED_TESTS -eq 0 ]]; then
   echo "✅ DEPLOYMENT VALIDATION PASSED"
   echo ""
   echo "Next steps:"
-  echo "  1. Access Backstage: ./scripts/bootstrap.sh --print-urls"
+  # bootstrap.sh has no --print-urls (that flag is bootstrap-local.sh only), so
+  # the old hint here died with "Unknown flag". Read the hostname directly.
+  echo "  1. Access Backstage: http://$(kubectl get svc backstage -n backstage \
+       -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo '<pending>')"
   echo "  2. Configure GitHub OAuth in Backstage settings"
   echo "  3. Create first service using a template"
   echo "  4. Monitor via Grafana dashboard"

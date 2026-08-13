@@ -36,30 +36,16 @@ spec:
     groupInterval: 5m
     repeatInterval: 4h
     receiver: slack-platform
+    # Alertmanager evaluates sibling routes in order and STOPS at the first match
+    # whose `continue` is false — and false is the default. The critical and warning
+    # Slack routes below used to omit it, which silently terminated every alert
+    # before it reached the agent-event-router route: no alert had ever reached the
+    # router, so no incident issue was ever opened automatically, and the SLO routes
+    # were dead too. Every route here except the last therefore sets continue: true,
+    # and ordering runs most-specific first. Observed 2026-08-13.
     routes:
-      # Critical alerts go to PagerDuty (pages on-call) AND Slack
-      - matchers:
-          - name: severity
-            value: critical
-        receiver: pagerduty-critical
-        continue: true   # also send to Slack below
-      - matchers:
-          - name: severity
-            value: critical
-        receiver: slack-platform
-      # Warning alerts go to Slack only
-      - matchers:
-          - name: severity
-            value: warning
-        receiver: slack-platform
-      # All firing alerts are also routed to the event router for agent triage
-      - matchers:
-          - name: severity
-            matchType: =~
-            value: "critical|warning"
-        receiver: agent-event-router
-        continue: false
-      # SLO burn-rate fast-burn pages via PagerDuty immediately (short group wait)
+      # SLO burn-rate fast-burn pages via PagerDuty immediately (0s group wait)
+      # rather than waiting out the default 30s.
       - matchers:
           - name: category
             value: slo
@@ -75,6 +61,39 @@ spec:
           - name: severity
             value: critical
         receiver: slack-platform
+        continue: true
+      # Critical alerts go to PagerDuty (pages on-call) AND Slack. category != slo
+      # keeps them from double-paging the SLO routes above; `!=` also matches alerts
+      # that carry no category label at all, which is the common case.
+      - matchers:
+          - name: severity
+            value: critical
+          - name: category
+            matchType: "!="
+            value: slo
+        receiver: pagerduty-critical
+        continue: true
+      - matchers:
+          - name: severity
+            value: critical
+          - name: category
+            matchType: "!="
+            value: slo
+        receiver: slack-platform
+        continue: true
+      # Warning alerts go to Slack only
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: slack-platform
+        continue: true
+      # All firing alerts are also routed to the event router for agent triage.
+      # This MUST stay last: it is the only route that may terminate matching.
+      - matchers:
+          - name: severity
+            matchType: =~
+            value: "critical|warning"
+        receiver: agent-event-router
 
   receivers:
     - name: slack-platform

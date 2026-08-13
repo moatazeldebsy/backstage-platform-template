@@ -101,7 +101,10 @@ jobs:
             echo "go-service=$(match '^services/hello-service/')"
             echo "cli=$(match '^cli/')"
             echo "helm=$(match '^helm/')"
-            echo "k8s=$(match '^kubernetes/')"
+            # observability/alertmanager/ holds AlertmanagerConfig and PrometheusRule
+            # CRs. It matched only python-obs, which runs py_compile and never parses
+            # YAML, so those manifests were never validated by anything.
+            echo "k8s=$(match '^(kubernetes/|observability/alertmanager/|aws/argo-workflows/)')"
             echo "backstage=$(match '^backstage/(app/|app-config.*\.yaml|Dockerfile)')"
             # This filter is deliberately wider than backstage/catalog/:
             #  - kubernetes/kagent/modelconfig*.yaml, because check 7 compares
@@ -121,8 +124,12 @@ jobs:
             echo "terraform=$(match '^terraform/')"
             echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/)')"
             echo "contract-mcp=$(match '^services/contract-mcp-server/')"
-            # Every MCP server except contract (which has its own job above).
-            echo "mcp-servers=$(match '^services/(idp|qa|github|argocd|cost|incident|security)-mcp-server/')"
+            # Every MCP server except contract (which has its own job above), plus
+            # agent-event-router and approval-service. Those two are not named
+            # "*-mcp-server" and so matched no filter at all: they have a tsc build,
+            # jest.config.js and src/__tests__/, and every change to them ran zero
+            # jobs and reported green. Observed 2026-08-13.
+            echo "mcp-servers=$(match '^services/((idp|qa|github|argocd|cost|incident|security)-mcp-server|agent-event-router|approval-service)/')"
             echo "scripts=$(match '^scripts/.*\.sh$')"
           } >> "$GITHUB_OUTPUT"
 
@@ -325,6 +332,37 @@ jobs:
             -ignore-filename-pattern 'values-.*\.yaml' \
             kubernetes/kagent/
 
+      # These four directories are all CRD-backed and none of them were validated:
+      # the Argo Rollouts AnalysisTemplate, the Argo Workflows RBAC, the ML platform
+      # manifests and the Alertmanager/Prometheus CRs could ship malformed and CI
+      # stayed green. The ignore pattern covers both values-*.yaml and *-values.yaml,
+      # which are Helm inputs rather than manifests.
+      - name: Validate Argo Rollouts and Argo Workflows manifests
+        run: |
+          kubeconform -strict -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            -ignore-filename-pattern '.*values\.yaml' \
+            kubernetes/argo-rollouts/ kubernetes/argo-workflows/ aws/argo-workflows/
+
+      - name: Validate ML platform manifests
+        run: |
+          kubeconform -strict -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            -ignore-filename-pattern '.*values\.yaml' \
+            kubernetes/ml-platform/
+
+      - name: Validate Alertmanager and Prometheus rules
+        run: |
+          kubeconform -strict -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            observability/alertmanager/
+
   backstage-compile:
     needs: changes
     if: needs.changes.outputs.backstage == 'true'
@@ -411,6 +449,9 @@ jobs:
           - cost-mcp-server
           - incident-mcp-server
           - security-mcp-server
+          # Not MCP servers, but same Node/tsc/jest shape and same gate.
+          - agent-event-router
+          - approval-service
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
