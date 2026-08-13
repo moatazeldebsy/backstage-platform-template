@@ -125,6 +125,20 @@ command -v kubectl >/dev/null || die "kubectl not found"
 command -v helm    >/dev/null || die "helm not found"
 command -v docker  >/dev/null || die "docker not found"
 
+# jq, curl and python3 are used by both modes (Langfuse key replication, the
+# headless project init, the MCP readiness probes). The --aws path additionally
+# shells out to the AWS CLI for ECR, Secrets Manager and RDS/S3 lookups. None of
+# these were checked, so a missing tool surfaced as a confusing failure deep into
+# a long run rather than immediately.
+_missing=()
+for _c in jq curl python3; do
+  command -v "$_c" >/dev/null || _missing+=("$_c")
+done
+if [[ "$DEPLOY_MODE" == "aws" ]]; then
+  command -v aws >/dev/null || _missing+=(aws)
+fi
+[[ ${#_missing[@]} -eq 0 ]] || die "Missing required tools: ${_missing[*]}"
+
 # ── Langfuse key distribution ─────────────────────────────────────────────────
 #
 # The project key pair is minted in-cluster by the headless init into
