@@ -563,8 +563,13 @@ jobs:
           #    \b[0-9]{12}\b false-positives on yarn.lock checksums. The canonical
           #    documentation dummies are allowed; the docs page describing this
           #    very incident is excluded.
+          # services/*/helm-values-*.yaml are GitOps state, not template source:
+          # the update-image-tag job writes the real ECR registry into them on every
+          # deploy and ArgoCD syncs from them, so they legitimately carry the
+          # deploying account's id. Excluding them is why this check can be strict
+          # about everything else.
           if git grep -nEI '(arn:aws:[a-z0-9-]*:[a-z0-9-]*:[0-9]{12}|[0-9]{12}\.dkr\.ecr|terraform-state-[0-9]{12})' \
-               -- ':!docs/aws-install-failure-modes.md' \
+               -- ':!docs/aws-install-failure-modes.md' ':!services/*/helm-values-*.yaml' \
              | grep -vE '123456789012|000000000000|111111111111' ; then
             echo "::error::A real AWS account id is committed. Use YOUR_AWS_ACCOUNT_ID so setup.sh can substitute it."
             fail=1
