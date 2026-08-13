@@ -833,7 +833,26 @@ _p44_log=$(mktemp); _p44a2_log=$(mktemp); _p44a_log=$(mktemp); _p44b_log=$(mktem
   kubectl create configmap tech-insights-exporter-script \
     --from-file=exporter.py=observability/tech-insights-exporter/exporter.py \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-  kubectl apply -f observability/tech-insights-exporter/cronjob.yaml
+  # The exporter reads the catalog API with this token. bootstrap-local.sh creates
+  # the same secret (from the static token in app-config.local.yaml) but nothing
+  # created it on AWS, and the cronjob's secretKeyRef is optional: true — so the
+  # token resolved to an empty string and every run failed with
+  #   401 Client Error: Unauthorized for .../api/catalog/entities?filter=kind=Component
+  # rather than anything pointing at a missing secret. On AWS the value is the
+  # random BACKSTAGE_CATALOG_TOKEN generated in Phase 3.7 and synced to
+  # backstage-secrets by External Secrets. Observed 2026-08-13.
+  _ti_catalog_token=$(kubectl get secret backstage-secrets -n backstage \
+    -o jsonpath='{.data.BACKSTAGE_CATALOG_TOKEN}' 2>/dev/null | base64 -d 2>/dev/null || true)
+  if [[ -n "${_ti_catalog_token}" ]]; then
+    kubectl create secret generic backstage-catalog-exporter-token \
+      --from-literal=token="${_ti_catalog_token}" \
+      -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+    log "  backstage-catalog-exporter-token secret ready (exporters can read the catalog API)."
+  else
+    log "  WARNING: BACKSTAGE_CATALOG_TOKEN not found in backstage-secrets — Tech Insights exporter will 401."
+  fi
+  sed "s|BACKSTAGE_URL_PLACEHOLDER|http://backstage.backstage.svc.cluster.local:80|g" \
+    observability/tech-insights-exporter/cronjob.yaml | kubectl apply -f -
   log "  Tech Insights Exporter deployed (pushes scorecard metrics to Pushgateway every 15m)."
   # Deploy team budget ConfigMap so the exporter can reference it and AlertManager
   # fires TeamBudgetWarning/TeamBudgetExceeded PrometheusRules correctly.
@@ -864,7 +883,8 @@ _p44_pid=$!
     --from-file=exporter.py=observability/flaky-test-exporter/exporter.py \
     --from-file=quarantine.py=observability/flaky-test-exporter/quarantine.py \
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-  kubectl apply -f observability/flaky-test-exporter/cronjob.yaml
+  sed "s|BACKSTAGE_URL_PLACEHOLDER|http://backstage.backstage.svc.cluster.local:80|g" \
+    observability/flaky-test-exporter/cronjob.yaml | kubectl apply -f -
   kubectl apply -f observability/flaky-test-exporter/quarantine-cronjob.yaml
   log "  Flaky-Test Exporter deployed (scans GitHub Actions artifacts every 30m)."
   log "  Flaky-Test Quarantine Sync deployed (opens quarantine PRs daily at 06:00)."

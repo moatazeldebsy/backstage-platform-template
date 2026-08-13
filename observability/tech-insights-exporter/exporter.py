@@ -150,10 +150,29 @@ def fetch_facts(entity_ref: str):
     return data.get("idp-entity-facts", {}).get("facts", {})
 
 
+def _fact_value(facts: dict, check: str):
+    """Read one fact, tolerating both shapes the Tech Insights API returns.
+
+    Facts come back either as a wrapper object ({"value": true, "type": "boolean"})
+    or as the bare value (true). The code assumed the wrapper unconditionally and
+    called .get("value") on whatever was there, so against a backend returning bare
+    booleans EVERY entity raised
+
+        'bool' object has no attribute 'get'
+
+    which score_entity's caller caught and logged as "Skipping <name>", ending in
+    "No metrics collected — exiting". The job exited 0 the whole time, so it looked
+    healthy while publishing nothing and the Tech Insights scorecard stayed empty.
+    Observed 2026-08-13.
+    """
+    raw = facts.get(check)
+    return raw.get("value") if isinstance(raw, dict) else raw
+
+
 def score_entity(facts: dict) -> dict:
-    passed = sum(1 for c in SCORECARD_CHECKS if facts.get(c, {}).get("value") is True)
+    passed = sum(1 for c in SCORECARD_CHECKS if _fact_value(facts, c) is True)
     # Per-check booleans so the dashboard can drill into which gate failed.
-    check_results = {c: facts.get(c, {}).get("value") is True for c in SCORECARD_CHECKS}
+    check_results = {c: _fact_value(facts, c) is True for c in SCORECARD_CHECKS}
     tier = "none"
     for t, threshold in sorted(TIER_THRESHOLDS.items(), key=lambda x: x[1]):
         if passed >= threshold:

@@ -29,6 +29,40 @@ module "eks" {
       most_recent              = true
       service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
     }
+    # metrics-server. bootstrap-local.sh installs this for Kind at Step 4b
+    # ("required for CPU/memory in Backstage") but nothing installed it on EKS, so
+    # the metrics.k8s.io API simply did not exist there. Backstage's Kubernetes tab
+    # queries it for every entity and reported, on every page,
+    #   Error fetching Kubernetes resource:
+    #   '/apis/metrics.k8s.io/v1beta1/namespaces/<ns>/pods', NOT_FOUND, 404
+    # while warning that the Error Reporting card might be inaccurate. The
+    # backstage-read ClusterRole already granted metrics.k8s.io — the permission was
+    # never the problem, the API was absent. `kubectl top` also returned nothing, and
+    # any HPA using resource metrics could not have scaled. Observed 2026-08-13.
+    #
+    # Delivered as an EKS managed addon rather than the upstream manifest local uses,
+    # so AWS keeps it patched the same way it does coredns and vpc-cni.
+    metrics-server = { most_recent = true }
+  }
+
+  # The Kubernetes aggregation layer calls metrics-server FROM the control plane to
+  # the node, and the EKS-managed addon serves on 10251. The module's default node
+  # rules cover 4443 and 10250 but not 10251, so the APIService sat at
+  #   Available=False (FailedDiscoveryCheck): failing or missing response from
+  #   https://<node-ip>:10251/apis/metrics.k8s.io/v1beta1 — request canceled
+  # with metrics-server itself healthy at 2/2 and `kubectl top` reporting
+  # "Metrics API not available". The only wide rule on the node SG (3000-31141) is
+  # sourced from the LOAD BALANCER security group, not the cluster one, so it does
+  # not help here. Observed 2026-08-13.
+  node_security_group_additional_rules = {
+    metrics_server_from_control_plane = {
+      description                   = "Control plane to metrics-server (aggregation layer)"
+      protocol                      = "tcp"
+      from_port                     = 10251
+      to_port                       = 10251
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
   }
 
   # Platform node group (on-demand, always present) — runs ArgoCD, Crossplane,
