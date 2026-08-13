@@ -65,7 +65,11 @@ spec:
             - name: BACKSTAGE_READONLY_MODE
               value: "true"
             - name: NODE_OPTIONS
-              value: "--require dd-trace/init"
+              # --no-node-snapshot is REQUIRED by the scaffolder backend on Node 20+.
+              # It is baked into the image (backstage/Dockerfile), but setting NODE_OPTIONS
+              # here replaces that value wholesale rather than appending — so dd-trace must
+              # carry it forward or every scaffolder task fails before its first step.
+              value: "--no-node-snapshot --require dd-trace/init"
             - name: DD_AGENT_HOST
               valueFrom:
                 fieldRef:

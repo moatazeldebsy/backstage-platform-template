@@ -1227,7 +1227,11 @@ kubectl create configmap rds-ca-bundle -n backstage \
 # Substitute the real ECR image (pinned to the SHA tag just pushed) into the
 # deployment manifest before applying.
 apply_backstage_configmaps
-sed "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}|g" \
+# The second expression catches the standalone BACKSTAGE_IMAGE_TAG placeholders
+# (DD_VERSION), which the image-line pattern above does not match — they used to
+# reach the cluster as the literal string "BACKSTAGE_IMAGE_TAG". Observed 2026-08-13.
+sed -e "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}|g" \
+    -e "s|BACKSTAGE_IMAGE_TAG|${BACKSTAGE_IMAGE_TAG}|g" \
   aws/backstage/deployment.yaml | kubectl apply -f -
 
 # Wait for the Backstage, ArgoCD and Grafana load balancers to be assigned
@@ -1276,6 +1280,12 @@ if [[ "$BACKSTAGE_URL" != "PENDING" ]]; then
     | sed "s|GRAFANA_ALB_URL|${GRAFANA_URL:-GRAFANA_ALB_URL}|g" \
     | kubectl apply -f -
   _cm_after=$(kubectl get configmap backstage-config -n backstage -o jsonpath='{.data}' 2>/dev/null || echo "")
+  # APP_BASE_URL lives in the deployment's env, not the configmap, so the sed above
+  # never reached it and it stayed as the literal "http://BACKSTAGE_ALB_URL".
+  # kubectl set env is idempotent — an unchanged value leaves the pod template alone
+  # and triggers no rollout, so this is safe on every warm run.
+  kubectl set env deployment/backstage -n backstage \
+    APP_BASE_URL="http://${BACKSTAGE_URL}" >/dev/null
   if [[ "$_cm_before" != "$_cm_after" ]]; then
     log "  Backstage config changed — restarting the deployment."
     kubectl rollout restart deployment/backstage -n backstage
