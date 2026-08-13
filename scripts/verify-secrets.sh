@@ -119,7 +119,10 @@ if aws secretsmanager get-secret-value --secret-id "${CLUSTER_NAME}/slack-webhoo
     check_pass "Slack webhook configured"
 else
     check_warn "Slack webhook not configured (optional for cost alerts)"
-    echo "         To add: aws secretsmanager create-secret --name ${CLUSTER_NAME}/slack --secret-string '{\"SLACK_WEBHOOK_URL\":\"https://hooks.slack.com/...\"}' --region $AWS_REGION"
+    # Must match the secret id checked above. This hint still said "/slack" after
+    # the check itself was corrected to "/slack-webhook", so anyone following it
+    # created the secret under a name nothing reads and kept getting this warning.
+    echo "         To add: aws secretsmanager create-secret --name ${CLUSTER_NAME}/slack-webhook --secret-string '{\"SLACK_WEBHOOK_URL\":\"https://hooks.slack.com/...\"}' --region $AWS_REGION"
 fi
 
 echo ""
@@ -293,6 +296,43 @@ for tool in "${tools[@]}"; do
         check_fail "$tool: not installed"
     fi
 done
+
+echo ""
+echo "┌─────────────────────────────────────────────────────────┐"
+echo "│ 10. Terraform state backend                             │"
+echo "└─────────────────────────────────────────────────────────┘"
+
+# Terraform cannot create the bucket its own state lives in, so this has to exist
+# before the first `terraform init`. setup.sh and bootstrap.sh both provision it
+# via ensure_tf_state_backend(); checking it here turns "AccessDenied thirty
+# seconds into a forty-minute run" into a pre-flight failure.
+if _acct=$(aws sts get-caller-identity --query Account --output text 2>/dev/null); then
+    _bucket="${CLUSTER_NAME}-terraform-state-${_acct}"
+    _table="${CLUSTER_NAME}-terraform-locks"
+
+    if aws s3api head-bucket --bucket "$_bucket" &>/dev/null; then
+        check_pass "Terraform state bucket s3://${_bucket}"
+    else
+        check_warn "Terraform state bucket s3://${_bucket} does not exist yet"
+        echo "         It is created automatically on the first run of:"
+        echo "              ./scripts/setup.sh   (or ./scripts/bootstrap.sh)"
+    fi
+
+    if aws dynamodb describe-table --table-name "$_table" --region "$AWS_REGION" &>/dev/null; then
+        check_pass "Terraform lock table ${_table}"
+    else
+        check_warn "Terraform lock table ${_table} does not exist yet (created with the bucket)"
+    fi
+
+    if [[ -f "$REPO_ROOT/terraform/backend.hcl" ]]; then
+        check_pass "terraform/backend.hcl present"
+    else
+        check_warn "terraform/backend.hcl not generated yet (setup.sh writes it)"
+    fi
+else
+    check_fail "Cannot read the AWS account id — configure credentials before deploying"
+    echo "         Fix: aws configure    (or export AWS_PROFILE=<profile>)"
+fi
 
 echo ""
 echo "┌─────────────────────────────────────────────────────────┐"

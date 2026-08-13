@@ -27,6 +27,7 @@ nav:
   - AWS Deployment:
     - Pre-Deployment Checklist: PRE_DEPLOYMENT_CHECKLIST.md
     - Deployment Guide: DEPLOYMENT_GUIDE.md
+    - Known Failure Modes: aws-install-failure-modes.md
   - Troubleshooting: TROUBLESHOOTING.md
   - Docker Recovery: docker-recovery.md
   - CLI Reference: cli-reference.md

@@ -539,3 +539,49 @@ jobs:
       - name: terraform validate
         working-directory: terraform
         run: terraform validate
+
+      # terraform/global/ was never validated by anything, which is how it kept a
+      # backend block naming a bucket in a shape nothing creates -- the module
+      # could not have initialised at all.
+      - name: terraform init + validate (global module)
+        working-directory: terraform/global
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      # Guards the two regressions that made this template unusable for anyone
+      # other than its author. Both are cheap string checks and need no AWS
+      # credentials; a real `terraform plan` would, and is deliberately not run
+      # here (see docs/aws-install-failure-modes.md, "What still is not covered").
+      - name: No hardcoded account ids or backend values
+        run: |
+          set -euo pipefail
+          fail=0
+
+          # 1. A real AWS account id committed anywhere. Matched only in AWS-shaped
+          #    contexts (ARNs, ECR registries, the state bucket name) -- a bare
+          #    \b[0-9]{12}\b false-positives on yarn.lock checksums. The canonical
+          #    documentation dummies are allowed; the docs page describing this
+          #    very incident is excluded.
+          # services/*/helm-values-*.yaml are GitOps state, not template source:
+          # the update-image-tag job writes the real ECR registry into them on every
+          # deploy and ArgoCD syncs from them, so they legitimately carry the
+          # deploying account's id. Excluding them is why this check can be strict
+          # about everything else.
+          if git grep -nEI '(arn:aws:[a-z0-9-]*:[a-z0-9-]*:[0-9]{12}|[0-9]{12}\.dkr\.ecr|terraform-state-[0-9]{12})' \
+               -- ':!docs/aws-install-failure-modes.md' ':!services/*/helm-values-*.yaml' \
+             | grep -vE '123456789012|000000000000|111111111111' ; then
+            echo "::error::A real AWS account id is committed. Use YOUR_AWS_ACCOUNT_ID so setup.sh can substitute it."
+            fail=1
+          fi
+
+          # 2. A backend "s3" block that carries inline values. Both modules must
+          #    stay partial and take everything from terraform/backend.hcl.
+          if grep -rEA6 'backend "s3"' terraform/main.tf terraform/global/main.tf \
+             | grep -E '^\S*[-:]?\s*(bucket|dynamodb_table)\s*=' ; then
+            echo "::error::A terraform backend block has inline values. Keep it partial: backend \"s3\" {} plus terraform/backend.hcl."
+            fail=1
+          fi
+
+          [[ $fail -eq 0 ]] && echo "No hardcoded account ids or backend values."
+          exit $fail

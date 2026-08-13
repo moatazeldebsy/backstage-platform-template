@@ -57,6 +57,34 @@ done
 
 aws sts get-caller-identity &>/dev/null || err "AWS credentials not configured"
 
+# jq is used throughout (tf_output parses the outputs JSON with it, among others)
+# but was never checked.
+command -v jq &>/dev/null || err "'jq' not found in PATH"
+
+# VPC service-quota pre-flight. A fresh account is capped at 5 VPCs per region and
+# this stack creates one. Hitting the cap does not fail fast — Terraform creates
+# what it can and the node group dies ~20 minutes later with a NodeCreationFailure
+# that says nothing about quotas.
+#
+# A warning, never an error: the quota API is not available in every partition and
+# a failed lookup must not block a legitimate run.
+#
+# Deliberately only VPCs. An Elastic IP check was tried and removed: the count from
+# `ec2 describe-addresses` is not comparable to the EC2-VPC Elastic IP quota,
+# because EIPs allocated by ALB/NLB, NAT gateways and Global Accelerator do not
+# count against it. Measured on a healthy account: 34 addresses against a reported
+# quota of 5, which would have warned on every single run.
+_vpc_used=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+              --query 'length(Vpcs)' --output text 2>/dev/null || echo "")
+_vpc_limit=$(aws service-quotas get-service-quota --service-code vpc \
+              --quota-code L-F678F1CE --region "$AWS_REGION" \
+              --query 'Quota.Value' --output text 2>/dev/null || echo "")
+# Bash has no floats; the quota API returns e.g. "5.0".
+_vpc_limit="${_vpc_limit%%.*}"
+if [[ "$_vpc_used" =~ ^[0-9]+$ && "$_vpc_limit" =~ ^[0-9]+$ ]] && (( _vpc_used >= _vpc_limit )); then
+  warn "  VPCs: ${_vpc_used}/${_vpc_limit} in ${AWS_REGION} — at quota. Request an increase first, or the node group fails ~20 min into the run."
+fi
+
 log "Starting IDP MVP bootstrap (cluster=$CLUSTER_NAME, region=$AWS_REGION)"
 
 # ── Phase 1: Terraform — EKS + ECR + IAM + RDS + S3 + Secrets Manager ────────
