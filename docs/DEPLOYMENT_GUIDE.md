@@ -111,13 +111,23 @@ After bootstrap completes, the Backstage ALB URL is printed. Update your GitHub 
 1. Go to https://github.com/settings/developers → your OAuth app → Edit
 2. Update callback URL: `http://<BACKSTAGE_ALB_HOSTNAME>/api/auth/github/handler/frame`
 
-### Step 4: Optional — Deploy AI/ML Stack
+### Step 4: AI/ML stack — already deployed
+
+`bootstrap.sh` runs the AI/ML stack itself in Phase 6 (MLflow, KAgent,
+idp-assistant, Langfuse and the MCP servers), so there is nothing to do here unless
+you passed `--skip-ai`. It requires `ANTHROPIC_API_KEY` in Secrets Manager.
+
+This step used to say to run `./scripts/bootstrap-ai.sh`, which was wrong twice
+over: the stack was already installed, and without `--aws` that command targets your
+local Kind context rather than EKS.
+
+The one thing `bootstrap.sh` does **not** install is the agentic development
+platform. To add it:
 
 ```bash
-./scripts/bootstrap-ai.sh
+./scripts/bootstrap-ai.sh --aws --adp \
+  --region <region> --cluster <cluster-name>
 ```
-
-Deploys MLflow, KAgent, idp-assistant, and MCP servers. Requires `ANTHROPIC_API_KEY`.
 
 ---
 
@@ -194,7 +204,13 @@ import sys,json; d=json.load(sys.stdin); print('QA series:', len(d.get('data',{}
 
 ## Known Issues & Fixes
 
-All issues below are **already fixed in the codebase**. This section documents them for reference if you encounter them on a fresh environment.
+All issues below are **already fixed in the codebase**. This section is history, not
+live advice — it is here so a symptom on an older checkout is searchable.
+
+For the failures found during the 2026-08 AWS runs, grouped by the *class* of
+mistake that allowed them and naming the file that now prevents each one, see
+[AWS install: known failure modes](aws-install-failure-modes.md). For debugging a
+run right now, start at [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ---
 

@@ -389,6 +389,9 @@ If it shows failures, fix them before running `bootstrap.sh`. The script checks 
 
 ### Terraform
 
+> For *why* each of these was possible — and which file now prevents it — see
+> [AWS install: known failure modes](aws-install-failure-modes.md).
+
 #### Symptom: `terraform init` fails — "Backend configuration required" or no such bucket
 
 `terraform/main.tf` declares a **partial** backend — it holds no bucket name. Every

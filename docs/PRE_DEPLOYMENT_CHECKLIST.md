@@ -225,22 +225,35 @@ kubectl rollout restart deployment/kagent-controller -n kagent
 ## Deployment Order
 
 ```bash
-# 1. Verify secrets
+# 1. Personalise FIRST (first time only — replaces moatazeldebsy and the other
+#    placeholders, creates the Terraform state bucket, writes .idp-config.env).
+#    This has to come before verify-secrets.sh: that script looks secrets up by
+#    "<cluster-name>/kagent" and friends, and the cluster name is one of the
+#    values setup.sh substitutes. Run it the other way round on a fresh clone and
+#    every check reports a missing secret under the template's default name.
+./scripts/setup.sh
+# → answer "skip" if you want to review before deploying
+
+# 2. Verify secrets (now that the cluster name is yours)
 ./scripts/verify-secrets.sh
 
-# 2. Personalise (first time only — replaces moatazeldebsy placeholders)
-./scripts/setup.sh
-
-# 3. Deploy full stack (~40–70 min)
+# 3. Deploy the full stack (~40–70 min). This INCLUDES the AI/ML stack —
+#    KAgent, MLflow, Langfuse and the MCP servers — unless you pass --skip-ai.
 ./scripts/bootstrap.sh
 
-# 4. Update GitHub OAuth callback URL with the printed ALB hostname
+# 4. Update the GitHub OAuth callback URL with the printed ALB hostname
 
 # 5. Run validation
 ./scripts/validate-deployment.sh
+```
 
-# 6. Optional: deploy AI/ML stack
-./scripts/bootstrap-ai.sh
+To add the agentic development platform, which `bootstrap.sh` does **not** install,
+run `bootstrap-ai.sh` again with `--adp`. Note the `--aws` flag: without it the
+script targets your local Kind context, not EKS.
+
+```bash
+./scripts/bootstrap-ai.sh --aws --adp \
+  --region <region> --cluster <cluster-name>
 ```
 
 See `docs/DEPLOYMENT_GUIDE.md` for full details, known issues, and troubleshooting.

@@ -345,6 +345,19 @@ Shipped work and what's next are tracked on the **[GitHub Project board](https:/
 | `ImagePullBackOff` after scaffold | Image hasn't been pushed to the local registry yet. See [docs/runbooks/image-pull-backoff.md](docs/runbooks/image-pull-backoff.md) |
 | Backstage K8s tab shows "unknown" for CPU/memory | metrics-server not running (auto-installed by `bootstrap-local.sh`) |
 
+## Known Issues (AWS)
+
+| Issue | Workaround |
+|---|---|
+| `terraform init` fails with `AccessDenied` or "Backend configuration required" | `terraform/backend.hcl` has not been generated. Run `./scripts/setup.sh`, or let `bootstrap.sh` create it on first run |
+| Nodes fail with `NodeCreationFailure: Instances failed to join the kubernetes cluster` ~20 min in | Usually a VPC/quota issue, or a cold-start apply that reached EKS without the NAT route. `bootstrap.sh` targets `module.vpc` alongside `module.eks` to prevent the latter |
+| `Error acquiring the state lock` | An interrupted apply left a stale lock: `cd terraform && terraform force-unlock <lock-id>` |
+| Scaffolder tasks fail with "requires `--no-node-snapshot`" | `NODE_OPTIONS` in the deployment replaced the image's value instead of appending. Fixed — it must contain both `--no-node-snapshot` and `--require dd-trace/init` |
+| Tearing down leaves resources behind | Use `./scripts/cleanup.sh`, not `terraform destroy` — orphaned ALBs hold the subnets Terraform is trying to delete |
+
+Why each of these was possible, and which file now prevents it:
+[docs/aws-install-failure-modes.md](docs/aws-install-failure-modes.md).
+
 ---
 
 ## Working on this repo with Claude Code

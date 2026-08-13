@@ -112,8 +112,8 @@ aws sts get-caller-identity  # verify
 ### 2. Bootstrap the platform
 
 ```bash
-git clone https://github.com/moatazeldebsy/idp-mvp
-cd idp-mvp
+git clone https://github.com/moatazeldebsy/backstage-platform-template
+cd backstage-platform-template
 
 # Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)
 ./scripts/setup.sh
@@ -136,17 +136,7 @@ After `bootstrap.sh` completes, run the validation script to verify all componen
 ./scripts/validate-deployment.sh
 ```
 
-This runs 50+ automated tests across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.
-
-### 4. Clean up (when done)
-
-To safely tear down all AWS resources:
-
-```bash
-./scripts/cleanup.sh --cluster-name idp-mvp
-```
-
-This script deletes orphaned load balancers first, then runs `terraform destroy` with verification.
+This runs ~40 automated checks across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.
 
 ---
 
@@ -161,7 +151,7 @@ This script deletes orphaned load balancers first, then runs `terraform destroy`
 
 **Cost:** ~$248/month for a development environment (4 nodes running continuously).
 
-### 3. GitHub Actions secrets
+### 4. GitHub Actions secrets
 
 Add these secrets to any scaffolded service repo to enable AWS CD:
 
@@ -186,7 +176,7 @@ Add this to the **platform repo** to enable Datadog deployment markers in `build
 |--------|-------|
 | `DD_API_KEY` | Datadog API key — https://app.datadoghq.eu/organization-settings/api-keys |
 
-### 4. Team namespace setup
+### 5. Team namespace setup
 
 After the platform is bootstrapped, onboard teams using the **Provision Team Namespace** scaffold template (tagged `blessed`). Each team gets:
 - An isolated `team-<name>` namespace with quota, LimitRange, NetworkPolicy
@@ -199,7 +189,7 @@ For the full walkthrough, see [docs/team-management.md](team-management.md).
 > **Path convention**: Team service values files go under `teams/<teamName>/services/<serviceName>/`,
 > **not** `services/<teamName>/`. The `services/` path is reserved for legacy platform-owned services.
 
-### 4. Verify
+### 6. Verify
 
 ```bash
 kubectl get pods -n services              # hello-service running
@@ -220,17 +210,24 @@ Visit the ALB hostname:
 >
 > OPA/Gatekeeper enforces all five golden-path policies (`require-health-probes`, `require-resource-limits`, `require-labels`, `deny-latest-tag`, `require-cost-tags`). The bootstrap waits for CRDs to be established before applying constraints rather than sleeping.
 
-### 5. Deploy Backstage to AWS (optional)
+### 7. Backstage on AWS
+
+Nothing to do — `bootstrap.sh` already did it. Phase 5.6 builds the image, pushes it
+to ECR under a content-hash tag, applies `aws/backstage/deployment.yaml` with that
+tag substituted, waits for the ExternalSecret to sync and for the ALB hostname, then
+patches the config with the real URLs.
+
+This section used to describe a manual `docker build` ending in
+`# Deploy (Kubernetes manifests TBD)`. The manifests have existed for some time and
+the whole flow is automated; following the old steps would have pushed an image that
+nothing deployed.
+
+To rebuild and roll out after changing Backstage, re-run the bootstrap — the image
+fingerprint changes, so it rebuilds and redeploys, and skips everything else that is
+unchanged:
 
 ```bash
-# Build the Backstage backend bundle first
-cd backstage/app && yarn install && yarn build:backend && cd ../..
-
-# Build and push the production image
-docker build -t <ECR_URI>/backstage:latest ./backstage
-docker push <ECR_URI>/backstage:latest
-
-# Deploy (Kubernetes manifests TBD)
+./scripts/bootstrap.sh --region <region> --cluster-name <name>
 ```
 
 ## Adding AWS CD to a Scaffolded Service
@@ -284,10 +281,11 @@ deploy:
 ## Teardown
 
 ```bash
-# Remove all deployed services first
-helm uninstall hello-service -n services
-helm uninstall grafana -n monitoring
-
-# Destroy infrastructure
-cd terraform && terraform destroy
+./scripts/cleanup.sh --cluster-name idp-mvp
 ```
+
+Use `cleanup.sh` rather than a bare `terraform destroy`. It deletes orphaned load
+balancers first — AWS Load Balancer Controller creates ALBs that Terraform does not
+own, and they hold the subnets and security groups `destroy` is trying to remove, so
+it fails partway and leaves the account in a half-torn-down state. The script also
+verifies the teardown afterwards.

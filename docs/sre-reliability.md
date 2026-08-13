@@ -288,7 +288,7 @@ Datadog dashboards/APM traces with exactly when a revision went live, so an inci
 spike, an error-rate jump) can be correlated with "which deploy caused it."
 
 - Requires the `DD_API_KEY` repository secret on the platform repo (see
-  [docs/getting-started.md](getting-started.md#3-github-actions-secrets)); the step no-ops if it's
+  [docs/getting-started.md](getting-started.md#4-github-actions-secrets)); the step no-ops if it's
   unset, and is `continue-on-error: true` regardless — deployment tracking is observability, not a
   release gate.
 - No production marker today: production promotion only opens a PR
