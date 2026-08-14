@@ -1,0 +1,406 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: langgraph-agent
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    idp.io/experience-level: intermediate
+    idp.io/topic: golden-path
+    idp.io/tutorial-type: template
+  title: LangGraph Agent (Python)
+  description: >
+    Scaffold a Python agent built on a LangGraph StateGraph — plan, select tools, act, reflect —
+    that loads its tools from the platform's MCP servers rather than reimplementing them, and
+    traces every node to Langfuse so a run appears as one nested trace across the agent and the
+    servers it called. Use this when an agent needs branching or state you control in code; use the
+    KAgent AI Agent template when a declarative, platform-owned agent will do.
+  tags:
+    - llm
+    - ai
+    - agent
+    - langgraph
+    - mcp
+    - langfuse
+    - python
+    - fastapi
+    - golden-path
+    - local
+    - aws
+    - v1
+    - blessed
+spec:
+  owner: platform-team
+  type: ai-agent
+
+  parameters:
+    - title: Service Details
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Service Name
+          type: string
+          description: Unique service name (lowercase, hyphens only)
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          description: Team or user owning this service
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Model & Tracing
+      properties:
+        modelBackend:
+          title: Model backend
+          type: string
+          default: anthropic
+          enum: [anthropic, ollama]
+          enumNames:
+            - 'Anthropic (hosted — needs ANTHROPIC_API_KEY)'
+            - 'Ollama (in-cluster, no API key — needs bootstrap-ai.sh --ollama)'
+          description: >-
+            Anthropic is the default so the golden path works before anybody tunes a
+            small model. A 1.5B model via Ollama will struggle with multi-tool loops.
+        model:
+          title: Claude Model
+          type: string
+          default: claude-opus-5
+          description: >
+            Opus 5 is the current default for complex work. Sonnet 5 trades some capability for
+            cost; Haiku 4.5 is for simple, latency-sensitive calls.
+          enum:
+            - claude-opus-5
+            - claude-sonnet-5
+            - claude-haiku-4-5
+          enumNames:
+            - Claude Opus 5 (most capable)
+            - Claude Sonnet 5 (balanced)
+            - Claude Haiku 4.5 (fastest, cheapest)
+        effort:
+          title: Effort Level
+          type: string
+          default: medium
+          description: >
+            How much the model thinks before answering. Raise it for hard reasoning, lower it for
+            latency-sensitive endpoints.
+          enum: [low, medium, high, xhigh, max]
+        captureIo:
+          title: Capture prompt and completion text in traces
+          type: boolean
+          description: >
+            Records the actual prompts and model outputs on each Langfuse span. Leave OFF unless
+            you are certain the service never handles personal or otherwise sensitive data.
+          default: false
+        sampleRate:
+          title: Trace sample rate
+          type: number
+          description: Fraction of root traces to record, 0.0–1.0.
+          default: 1.0
+          minimum: 0
+          maximum: 1
+
+    - title: Infrastructure
+      properties:
+        port:
+          title: Container Port
+          type: integer
+          default: 8000
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Team cost center code for OpenCost attribution (e.g. eng-platform, eng-product)"
+          default: eng-platform
+
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: GitHub Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:help: "Repository name must not already exist on GitHub. If you get a 'name already exists' error, choose a different name."
+          ui:options:
+            allowedHosts:
+              - github.com
+            allowedOwners:
+              - moatazeldebsy
+
+    # The AWS-only inputs live under `dependencies` so they are not rendered at
+
+    # all when Local is selected. They used to be shown unconditionally with
+
+    # "(AWS only)" in the title and "Leave blank for local deployments" in the
+
+    # help — which reads like a required field you are being told to skip, and
+
+    # asks somebody deploying to Kind for an IAM role ARN.
+
+    - title: Deployment Target
+
+      required:
+
+        - deployTarget
+
+      properties:
+
+        deployTarget:
+
+          title: Where will this service run?
+
+          type: string
+
+          default: local
+
+          enum: [local, aws]
+
+          enumNames: ['Local (Kind / Rancher Desktop)', 'AWS (EKS)']
+
+          ui:widget: radio
+
+      dependencies:
+
+        deployTarget:
+
+          oneOf:
+
+            # Local: nothing further to ask.
+
+            - properties:
+
+                deployTarget:
+
+                  enum: [local]
+
+            - properties:
+
+                deployTarget:
+
+                  enum: [aws]
+
+                awsRoleArn:
+
+                  title: AWS IAM Role ARN for CI/CD
+
+                  type: string
+
+                  description: >-
+
+                    The OIDC role GitHub Actions assumes to push images to ECR.
+
+                    Get it from the platform repo with:
+
+                    cd terraform && terraform output -raw github_actions_role_arn
+
+                  # Fails at the form rather than three minutes into the first CI
+
+                  # run with an opaque STS error.
+
+                  pattern: '^arn:aws:iam::[0-9]{12}:role/.+$'
+
+                  ui:help: "terraform output -raw github_actions_role_arn"
+
+                  ui:placeholder: 'arn:aws:iam::123456789012:role/idp-mvp-github-actions'
+
+                clusterName:
+
+                  title: Cluster Name
+
+                  type: string
+
+                  default: idp-mvp
+
+                  description: "Matches the ECR repo naming used by CI: <clusterName>/<serviceName>"
+
+                  ui:help: "The cluster_name you set in terraform.tfvars during setup."
+
+                awsRegion:
+
+                  title: AWS Region
+
+                  type: string
+
+                  default: us-east-1
+
+                  ui:help: "Must match the region the cluster and its ECR repos live in."
+
+              required:
+
+                - awsRoleArn
+
+                - clusterName
+
+                - awsRegion
+
+  steps:
+    # Resolve the platform URLs for THIS environment. The skeleton used to
+    # hardcode *.idp.local, so every service scaffolded on AWS got catalog
+    # links pointing at DNS that only resolves on a laptop.
+    - id: platform-urls
+      name: Resolve Platform URLs
+      action: idp:platform-urls
+
+    - id: fetch-template
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          port: ${{ parameters.port }}
+          model: ${{ parameters.model }}
+          modelBackend: ${{ parameters.modelBackend }}
+          effort: ${{ parameters.effort }}
+          captureIo: ${{ parameters.captureIo }}
+          sampleRate: ${{ parameters.sampleRate }}
+          costCenter: ${{ parameters.costCenter }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
+          argocdUrl: ${{ steps["platform-urls"].output.argocd }}
+          langfuseUrl: ${{ steps["platform-urls"].output.langfuse }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: "chore: initial scaffold via IDP"
+        topics:
+          - python
+          - llm
+          - langfuse
+          - idp-service
+
+    - id: provision-ecr
+      name: Provision ECR Repository
+      if: ${{ parameters.deployTarget === 'aws' }}
+      action: idp:provision-ecr
+      input:
+        serviceName: ${{ parameters.name }}
+        clusterName: ${{ parameters.clusterName }}
+        awsRegion: ${{ parameters.awsRegion }}
+
+    - id: set-repo-secrets
+      name: Configure CI/CD Secrets
+      # Guarded like provision-ecr: awsRoleArn only exists when AWS is
+      # selected, so a local scaffold wrote an empty AWS_ROLE_ARN secret.
+      if: ${{ parameters.deployTarget === 'aws' }}
+      action: idp:repo:set-secrets
+      input:
+        repoUrl: ${{ steps.publish.output.remoteUrl }}
+        secrets:
+          AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
+
+    - id: register-local
+      name: Register in Local Catalog (fallback when no GitHub token)
+      if: ${{ parameters.deployTarget === 'local' }}
+      action: idp:catalog-register-local
+      input:
+        entityName: ${{ parameters.name }}
+        entityKind: Component
+        entityType: service
+        owner: ${{ parameters.owner }}
+        description: ${{ parameters.description }}
+        annotations:
+          backstage.io/source-location: ${{ parameters.repoUrl }}
+          backstage.io/techdocs-ref: dir:.
+          langfuse.com/service-name: ${{ parameters.name }}
+
+    - id: fetch-platform-values
+      name: Prepare Platform GitOps Values
+      action: fetch:template
+      input:
+        url: ./platform-values
+        targetPath: ./platform-values
+        values:
+          name: ${{ parameters.name }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          port: ${{ parameters.port }}
+          owner: ${{ parameters.owner }}
+          costCenter: ${{ parameters.costCenter }}
+          captureIo: ${{ parameters.captureIo }}
+          sampleRate: ${{ parameters.sampleRate }}
+
+    - id: platform-pr
+      name: Open Platform GitOps PR
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        title: "feat: onboard ${{ parameters.name }} to GitOps"
+        branchName: feat/onboard-${{ parameters.name }}
+        description: |
+          Adds `services/${{ parameters.name }}/` to the platform repo.
+
+          ArgoCD ApplicationSet auto-discovers and deploys this service to the `services-dev`
+          namespace once merged. That namespace is already labelled `idp.io/langfuse=enabled`, so
+          the service picks up `secret/langfuse-otel` and starts tracing on first rollout.
+        sourcePath: ./platform-values
+        targetPath: services/${{ parameters.name }}
+
+    - id: seed-image
+      name: Seed placeholder image in local registry
+      if: ${{ parameters.deployTarget === 'local' }}
+      action: idp:seed-image
+      input:
+        serviceName: ${{ parameters.name }}
+
+    # LAST on purpose. A failing step aborts the whole task — Backstage has no
+    # per-step "continue on error" (TaskStep is only id/name/action/input/if, so
+    # a `continueOnError:` key is silently ignored), and catalog:register is the
+    # most failure-prone step here: it validates the rendered entity, needs a
+    # GitHub token, and talks to two services.
+    #
+    # Ordering is therefore the only real mitigation. Registration last means a
+    # failure leaves a fully scaffolded service — repo pushed, secrets set,
+    # GitOps PR open, image seeded, local catalog entry written — needing only
+    # `catalog:register` re-run by hand, instead of killing every step after it.
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    text:
+      - title: Before it will answer a request
+        content: |
+          The service needs an Anthropic API key. It is **not** created for you — create it once
+          in the target namespace:
+
+          ```
+          kubectl create secret generic ${{ parameters.name }}-secrets \
+            --namespace services-dev \
+            --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+          ```
+
+          Langfuse credentials are separate and already handled: `services-dev` carries the
+          `idp.io/langfuse=enabled` label, so `./scripts/bootstrap-ai.sh --langfuse-keys-only`
+          puts `secret/langfuse-otel` there. Both are mounted with `optional: true`, so the pod
+          starts either way — it just answers 500s without the API key, and traces nothing
+          without Langfuse.
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+      - title: Open Platform GitOps PR
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
+      - title: Langfuse (AI Observability)
+        url: http://langfuse.idp.local
