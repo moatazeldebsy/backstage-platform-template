@@ -94,6 +94,37 @@ Now scoped to `var.platform_repo`.
 
 ---
 
+### 8. A 5-second timeout on an LLM call
+
+Found by firing a synthetic critical alert through the incident pipeline on the
+live cluster, then reading the router log rather than trusting the outcome.
+
+The GitHub incident issue was created correctly — right labels, right marker. The
+log said otherwise:
+
+```
+alertmanager routing error: DOMException [AbortError]: This operation was aborted
+  at async postToAgent (file:///app/dist/index.js:64:22)
+```
+
+`agent-event-router` used one `HTTP_TIMEOUT_MS` (default **5000ms**) for every
+outbound call, including the KAgent A2A dispatch. That dispatch is an LLM turn,
+and several more once the agent starts calling MCP tools. Measured against the
+live `incident-agent`, a single-sentence answer with no tool calls took **4.3s** —
+passing by 700ms, with any real triage aborting.
+
+**The failure was near-invisible.** The incident issue is created *before*
+dispatch, so the pipeline still produced its most visible artefact while the
+agent half silently never ran. Nothing was marked failed.
+
+Agent dispatch now has its own `AGENT_TIMEOUT_MS` (default 60s), and an abort
+logs which agent timed out and that the record was still created, instead of a
+bare `DOMException`.
+
+**The general lesson:** a timeout tuned for an HTTP API is wrong for an LLM call
+by an order of magnitude, and when the slow call is the *last* step its failure
+does not look like failure.
+
 ## What still is not covered
 
 Being explicit about the gaps, because a green CI run should not imply more than it

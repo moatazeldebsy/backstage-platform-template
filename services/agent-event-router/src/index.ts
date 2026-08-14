@@ -8,6 +8,16 @@ const KAGENT_A2A_URL = process.env.KAGENT_A2A_URL ?? 'http://kagent-ui.kagent.sv
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET ?? '';
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN ?? '';
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '5000', 10);
+// Agent dispatch gets its own, much longer budget. A KAgent A2A call is an LLM
+// turn — often several, once the agent starts calling MCP tools — and 5s is not
+// a plausible ceiling for that. Measured against the live incident-agent: a
+// single-sentence answer with no tool calls took 4.3s, i.e. it was passing by
+// 700ms and any multi-tool triage aborted.
+//
+// The failure was near-invisible: the incident issue is created before dispatch,
+// so the pipeline still looked like it worked while the agent half silently
+// never ran.
+const AGENT_TIMEOUT_MS = parseInt(process.env.AGENT_TIMEOUT_MS ?? '60000', 10);
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? '';
 const INCIDENT_REPO = process.env.INCIDENT_REPO ?? '';
 // Which alert severities get a tracked GitHub issue. Critical only by default:
@@ -68,7 +78,7 @@ async function postToAgent(agentName: string, message: string): Promise<void> {
   };
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), AGENT_TIMEOUT_MS);
   try {
     const resp = await fetch(url, {
       method: 'POST',
@@ -79,6 +89,18 @@ async function postToAgent(agentName: string, message: string): Promise<void> {
     if (!resp.ok) {
       console.error(`[event-router] A2A POST to ${agentName} returned HTTP ${resp.status}`);
     }
+  } catch (err) {
+    // An abort surfaced as a bare DOMException from undici, which says nothing
+    // about which agent timed out or what to change.
+    if ((err as Error)?.name === 'AbortError') {
+      console.error(
+        `[event-router] A2A POST to ${agentName} timed out after ${AGENT_TIMEOUT_MS}ms. ` +
+          'The incident record was still created; only the agent triage was skipped. ' +
+          'Raise AGENT_TIMEOUT_MS if the agent legitimately takes longer.',
+      );
+      return;
+    }
+    throw err;
   } finally {
     clearTimeout(timer);
   }

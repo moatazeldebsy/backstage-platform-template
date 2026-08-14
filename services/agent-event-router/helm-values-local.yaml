@@ -51,6 +51,12 @@ resources:
     memory: 128Mi
 
 env:
+  # A KAgent A2A call is an LLM turn, often several once the agent starts calling
+  # MCP tools. The generic HTTP_TIMEOUT_MS of 5s aborted them — measured against
+  # the live incident-agent, a single-sentence answer with no tool calls took
+  # 4.3s, so it was passing by 700ms and any real triage failed.
+  - name: AGENT_TIMEOUT_MS
+    value: "60000"
   - name: PORT
     value: "3004"
   - name: KAGENT_A2A_URL
