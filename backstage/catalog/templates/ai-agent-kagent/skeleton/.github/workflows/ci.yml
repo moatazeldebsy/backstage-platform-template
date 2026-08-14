@@ -43,6 +43,10 @@ jobs:
               "claude-anthropic",
               "default-model-config",
               "openai-prod",
+              # In-cluster Ollama. Only exists once the platform has been
+              # bootstrapped with `bootstrap-ai.sh --ollama`; an agent using it
+              # on a cluster without that will fail at runtime, not here.
+              "ollama-local",
           ]
 
           errors = []

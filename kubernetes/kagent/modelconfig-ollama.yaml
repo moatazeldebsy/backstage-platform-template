@@ -1,0 +1,29 @@
+# KAgent ModelConfig backed by the in-cluster Ollama (issue #179).
+#
+# Exists so agents can run with no hosted API key at all — the platform's other
+# five ModelConfigs all require an Anthropic or OpenAI key, which makes "try the
+# agents" gated on having a paid account.
+#
+# `provider: Ollama` and the `ollama.host` field were verified against the CRD
+# served by the pinned KAgent chart before this file was written:
+#   kubectl get crd modelconfigs.kagent.dev -o json
+# reports provider enum [Anthropic, OpenAI, AzureOpenAI, Ollama, Gemini,
+# GeminiVertexAI, AnthropicVertexAI] and an `ollama` block taking host/options.
+#
+# **No existing agent is repointed at this.** A 1.5B model cannot drive the
+# multi-tool loops incident-agent and cost-agent perform — it will loop or
+# hallucinate tool names. This is an available option and a demo backend, not a
+# drop-in replacement. Repoint one low-stakes agent to try it.
+#
+# Requires the shared server: kubernetes/ml-platform/ollama.yaml, installed by
+# `bootstrap-ai.sh --ollama`.
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: ollama-local
+  namespace: kagent
+spec:
+  provider: Ollama
+  model: qwen2.5:1.5b
+  ollama:
+    host: http://ollama.ml-platform.svc.cluster.local:11434

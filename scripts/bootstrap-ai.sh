@@ -40,6 +40,10 @@ LANGFUSE=""
 SKIP_KAGENT=false
 SKIP_MCP=false
 ADP=false
+# Self-hosted small model. Off by default: the image plus a resident model is
+# ~4GB on top of the platform, and everything runs fine against hosted APIs
+# without it. Exists so the agents can be tried with no API key at all.
+OLLAMA=false
 DESTROY=false
 FORCE_BUILD=false
 LANGFUSE_KEYS_ONLY=false
@@ -56,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --skip-kagent)  SKIP_KAGENT=true; shift ;;
     --skip-mcp)     SKIP_MCP=true; shift ;;
     --adp)          ADP=true; shift ;;
+    --ollama)       OLLAMA=true; shift ;;
     --destroy)      DESTROY=true; shift ;;
     --force-build)  FORCE_BUILD=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
@@ -383,6 +388,10 @@ if $DESTROY; then
 
   # MLflow — shared manifest + env-specific overlay
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/mlflow.yaml" 2>/dev/null || true
+  # Ollama is opt-in but must still be torn down; leaving a 6Gi-limit pod and a
+  # 10Gi PVC behind after --destroy is the sort of thing found on a bill later.
+  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/ollama.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-ollama.yaml" 2>/dev/null || true
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
   fi
@@ -974,6 +983,34 @@ else
 fi
 
 timer_end "3. MLflow (launch)"
+
+# ── 3a. Ollama (self-hosted small model) ──────────────────────────────────────
+# Opt-in via --ollama. One shared server the whole platform points at, rather
+# than one per scaffolded app: a resident model is the expensive part.
+#
+# Not part of the default AI layer — the image plus a resident model is ~4GB and
+# everything works against hosted APIs without it. It exists so the agents can be
+# tried with no API key at all.
+timer_start "3a. Ollama"
+if [[ "$OLLAMA" == "true" ]]; then
+  info "Deploying shared Ollama (qwen2.5:1.5b) to ml-platform..."
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    warn "Ollama adds ~2.7GB of image plus ~1.5GB resident on top of the full platform."
+    warn "On an 8 CPU / 16 GB machine this is tight — watch for evicted pods."
+  fi
+  kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/ollama.yaml"
+  # The first model pull runs in postStart and takes minutes on an empty volume;
+  # the startupProbe allows 10, so match that here rather than failing early.
+  kubectl rollout status deployment/ollama -n ml-platform --timeout=600s \
+    || warn "Ollama did not become ready in 10 minutes — check: kubectl logs -n ml-platform deploy/ollama"
+  kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-ollama.yaml"
+  check "Ollama deployed; KAgent ModelConfig 'ollama-local' available"
+  info "  No existing agent was repointed at it — a 1.5B model cannot drive the"
+  info "  multi-tool loops incident-agent and cost-agent perform."
+else
+  info "Skipping Ollama (pass --ollama for a self-hosted model that needs no API key)."
+fi
+timer_end "3a. Ollama"
 
 # ── 3b. Langfuse (LLM observability) ──────────────────────────────────────────
 timer_start "3b. Langfuse (launch)"
