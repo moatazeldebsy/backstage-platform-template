@@ -17,7 +17,7 @@ metadata:
     - kagent
     - ${{ values.language }}
   links:
-    - url: http://kagent.idp.local
+    - url: ${{ values.kagentUrl }}
       title: KAgent UI
 spec:
   type: mcp-server

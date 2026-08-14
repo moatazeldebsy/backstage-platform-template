@@ -189,6 +189,13 @@ spec:
                 - awsRegion
 
   steps:
+    # Resolve the platform URLs for THIS environment. The skeleton used to
+    # hardcode *.idp.local, so every service scaffolded on AWS got catalog
+    # links pointing at DNS that only resolves on a laptop.
+    - id: platform-urls
+      name: Resolve Platform URLs
+      action: idp:platform-urls
+
     - id: fetch-template
       name: Fetch Template
       action: fetch:template
@@ -204,6 +211,9 @@ spec:
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
+          argocdUrl: ${{ steps["platform-urls"].output.argocd }}
+          backstageUrl: ${{ steps["platform-urls"].output.backstage }}
 
     - id: publish
       name: Publish to GitHub

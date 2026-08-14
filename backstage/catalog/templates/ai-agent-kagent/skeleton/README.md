@@ -16,7 +16,7 @@ kubectl get agents -n kagent
 
 ## Chat with your agent
 
-Open [http://kagent.idp.local](http://kagent.idp.local) and select **${{ values.name }}** from the agent list.
+Open [${{ values.kagentUrl }}](${{ values.kagentUrl }}) and select **${{ values.name }}** from the agent list.
 
 > Requires `kagent.idp.local` in `/etc/hosts` → `127.0.0.1`. Run once:
 > ```bash

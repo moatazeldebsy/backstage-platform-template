@@ -18,7 +18,7 @@ python train.py
 
 ## View results
 
-Open [http://mlflow.idp.local](http://mlflow.idp.local) and select **${{ values.experimentName }}**.
+Open [${{ values.mlflowUrl }}](${{ values.mlflowUrl }}) and select **${{ values.experimentName }}**.
 
 ## Kubernetes training job
 

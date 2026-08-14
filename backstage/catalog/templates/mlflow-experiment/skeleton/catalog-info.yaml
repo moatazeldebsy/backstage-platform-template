@@ -25,7 +25,7 @@ metadata:
     - ${{ values.framework }}
     - python
   links:
-    - url: http://mlflow.idp.local
+    - url: ${{ values.mlflowUrl }}
       title: MLflow UI
 spec:
   type: ml-experiment

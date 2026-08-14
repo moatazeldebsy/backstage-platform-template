@@ -80,6 +80,13 @@ spec:
               - moatazeldebsy
 
   steps:
+    # Resolve the platform URLs for THIS environment. The skeleton used to
+    # hardcode *.idp.local, so every service scaffolded on AWS got catalog
+    # links pointing at DNS that only resolves on a laptop.
+    - id: platform-urls
+      name: Resolve Platform URLs
+      action: idp:platform-urls
+
     - id: fetch
       name: Generate MCP server scaffold
       action: fetch:template
@@ -94,6 +101,7 @@ spec:
           enableAuth: ${{ parameters.enableAuth }}
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+          kagentUrl: ${{ steps["platform-urls"].output.kagent }}
 
     - id: publish
       name: Publish to GitHub

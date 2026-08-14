@@ -100,6 +100,6 @@ kubectl apply -f kubernetes/agent.yaml
 
 ## Escalation
 
-1. Check [KAgent UI](http://kagent.idp.local) for active agent errors
-2. Check [Grafana](http://grafana.idp.local/d/idp-ai-agent) — `agent_invocations_total`, `agent_invocation_duration_seconds`
+1. Check [KAgent UI](${{ values.kagentUrl }}) for active agent errors
+2. Check [Grafana](${{ values.grafanaUrl }}/d/idp-ai-agent) — `agent_invocations_total`, `agent_invocation_duration_seconds`
 3. Page owner group: `${{ values.owner }}`
