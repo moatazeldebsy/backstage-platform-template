@@ -2,8 +2,16 @@
 # generated ServiceAccount with the IRSA role ARN so the provider's AWS SDK
 # picks up cluster credentials without static keys.
 #
-# IRSA_ROLE_ARN is substituted by scripts/bootstrap.sh from the Terraform
-# output `crossplane_aws_role_arn` (see terraform/iam-crossplane.tf).
+# The ARN below is the resolved value of the Terraform output
+# `crossplane_aws_role_arn` (see terraform/iam-crossplane.tf), committed the
+# same way services/*/helm-values-aws.yaml commit their resolved ECR registry.
+#
+# It used to read the literal "IRSA_ROLE_ARN", substituted by scripts/bootstrap.sh
+# on the manifest's way into `kubectl apply -f -`. That works only for the
+# script: this directory is an ArgoCD Application, and ArgoCD renders the file
+# from git as-is, so it annotated every provider ServiceAccount with the string
+# "IRSA_ROLE_ARN" — a role that cannot be assumed, leaving the providers
+# Healthy (the package installed) but unable to authenticate to AWS.
 apiVersion: pkg.crossplane.io/v1beta1
 kind: DeploymentRuntimeConfig
 metadata:
@@ -12,7 +20,7 @@ spec:
   serviceAccountTemplate:
     metadata:
       annotations:
-        eks.amazonaws.com/role-arn: "IRSA_ROLE_ARN"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::967825954374:role/idp-mvp-crossplane-aws"
   deploymentTemplate:
     spec:
       selector: {}
