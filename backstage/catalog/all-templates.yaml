@@ -18,6 +18,7 @@ spec:
     - ./templates/jvm-service/template.yaml
     - ./templates/react-frontend/template.yaml
     - ./templates/llm-app-langfuse/template.yaml
+    - ./templates/langgraph-agent/template.yaml
     # ── Blessed: Platform self-service ───────────────────────────────────────
     - ./templates/team-namespace/template.yaml
     - ./templates/create-namespace/template.yaml

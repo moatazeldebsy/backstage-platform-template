@@ -1,0 +1,96 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/${{ values.name }}
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: ${{ values.port }}
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: ${{ values.name }}.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    # Higher than a plain Python service: the OpenTelemetry SDK and the
+    # Anthropic client both carry real allocation, and a batch span processor
+    # holds spans in memory between exports.
+    memory: 384Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "${{ values.port }}"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"
+  cost-center: ${{ values.costCenter }}
+  environment: local
+
+metrics:
+  enabled: true
+
+# Both secrets are optional: true on purpose. The pod must start even when one
+# is missing, so an unconfigured secret is a degraded endpoint rather than a
+# crashloop that hides the real cause.
+#
+#   ${{ values.name }}-secrets  — ANTHROPIC_API_KEY. YOU create this:
+#       kubectl create secret generic ${{ values.name }}-secrets -n services-dev \
+#         --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+#
+#   langfuse-otel               — LANGFUSE_OTLP_ENDPOINT + project key pair.
+#       Distributed by the platform to every namespace labelled
+#       idp.io/langfuse=enabled; services-dev already carries that label.
+envFrom:
+  - secretRef:
+      name: ${{ values.name }}-secrets
+      optional: true
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+
+env:
+  # Which model backend the graph uses. anthropic is the default so the golden
+  # path works before anybody tunes a small model; ollama points at the shared
+  # in-cluster server and needs no API key (bootstrap-ai.sh --ollama).
+  - name: MODEL_BACKEND
+    value: "${{ values.modelBackend }}"
+  - name: MODEL_NAME
+    value: "${{ values.model }}"
+  # MCP servers the graph loads tools from. Service DNS rather than ALB
+  # hostnames: reachable in-cluster, no dependency on an ingress existing.
+  - name: MCP_NAMESPACE
+    value: "services-dev"
+  # A graph that can loop needs a hard stop; a small model that keeps deciding
+  # "not good enough" would otherwise run until something kills it.
+  - name: AGENT_MAX_ITERATIONS
+    value: "3"
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: local
+  # Identifies this service on every trace, and the value the Langfuse tab in
+  # Backstage filters on. Keep it equal to the langfuse.com/service-name
+  # annotation in catalog-info.yaml.
+  - name: OTEL_SERVICE_NAME
+    value: "${{ values.name }}"
+  - name: LANGFUSE_CAPTURE_IO
+    value: "${{ values.captureIo }}"
+  - name: LANGFUSE_SAMPLE_RATE
+    value: "${{ values.sampleRate }}"
+
+labels:
+  backstage.io/kubernetes-id: ${{ values.name }}

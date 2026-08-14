@@ -134,7 +134,23 @@ security-agent has no mutating tools, so it isn't gated by Phase 4 — it's read
 | Component | Path |
 |-----------|------|
 | AI/ML top billing in README/docs (doc-level only — no retagging in `all-templates.yaml`) | `README.md`, `docs/index.md` |
-| `langgraph`/`agentic-ai` entries softened to "under evaluation" (not built this cycle) | `backstage/catalog/tech-radar.json` |
+| `langgraph` promoted from *under evaluation* to built — see below | `backstage/catalog/templates/langgraph-agent/` |
+
+### KAgent or LangGraph
+
+Both are now available, and they are not competing:
+
+| | KAgent | LangGraph |
+|---|---|---|
+| Defined as | Kubernetes resources (`kind: Agent`) | Application code you own |
+| Owned by | The platform team | The service team |
+| Control flow | Declarative | Imperative — branching and state in code |
+| Reach for it when | A prompt plus tools is enough | The agent must loop, branch, or hold state |
+
+Both consume the same eight MCP servers, and both trace to the same Langfuse. The
+`langgraph-agent` template propagates the W3C `traceparent` on every MCP call, so a
+run appears as one nested trace spanning the agent and the servers it called rather
+than several unrelated ones.
 
 ---
 
