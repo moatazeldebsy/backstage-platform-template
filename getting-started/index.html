@@ -2373,8 +2373,8 @@
 <td>Cost</td>
 <td>Free</td>
 <td>Free</td>
-<td>~$8/day</td>
-<td>~$8/day</td>
+<td>~$19/day</td>
+<td>~$25/day</td>
 </tr>
 </tbody>
 </table>
@@ -2433,7 +2433,9 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 - All platform components (Prometheus, Grafana, ArgoCD, OPA/Gatekeeper, External Secrets Operator)
 - Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
 - <code>hello-service</code> reference deployment</p>
-<p><strong>Cost:</strong> ~$248/month for a development environment (4 nodes running continuously).</p>
+<p><strong>Cost:</strong> ~$565/month for the core platform, ~$760/month with the AI/ML layer — measured
+against a running cluster, not estimated. Full per-component breakdown and the ways to
+spend less: <a href="https://github.com/moatazeldebsy/backstage-platform-template#what-it-costs-on-aws">README → What it costs on AWS</a>.</p>
 <h3 id="4-github-actions-secrets">4. GitHub Actions secrets<a class="headerlink" href="#4-github-actions-secrets" title="Permanent link">&para;</a></h3>
 <p>Add these secrets to any scaffolded service repo to enable AWS CD:</p>
 <table>
