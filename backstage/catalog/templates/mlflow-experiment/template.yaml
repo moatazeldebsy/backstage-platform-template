@@ -85,6 +85,13 @@ spec:
               - moatazeldebsy
 
   steps:
+    # Resolve the platform URLs for THIS environment. The skeleton used to
+    # hardcode *.idp.local, so every service scaffolded on AWS got catalog
+    # links pointing at DNS that only resolves on a laptop.
+    - id: platform-urls
+      name: Resolve Platform URLs
+      action: idp:platform-urls
+
     - id: fetch
       name: Generate experiment scaffold
       action: fetch:template
@@ -100,6 +107,9 @@ spec:
           pythonVersion: ${{ parameters.pythonVersion }}
           registerModel: ${{ parameters.registerModel }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+          mlflowUrl: ${{ steps["platform-urls"].output.mlflow }}
+          backstageUrl: ${{ steps["platform-urls"].output.backstage }}
+          grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
           # The skeleton builds github.com/project-slug from githubOrg/repoName.
           # Without this the org renders empty, the annotation becomes
           # "/<repo>", and the entity page fetches api.github.com/repos//<repo>,

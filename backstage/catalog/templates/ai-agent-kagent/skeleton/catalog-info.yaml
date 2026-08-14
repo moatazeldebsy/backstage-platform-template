@@ -24,7 +24,7 @@ metadata:
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
     jira/project-key: "${{ values.jiraProjectKey }}"
   links:
-    - url: http://kagent.idp.local
+    - url: ${{ values.kagentUrl }}
       title: KAgent UI
 spec:
   type: ai-agent

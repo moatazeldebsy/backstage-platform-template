@@ -39,7 +39,7 @@ kubectl logs -n services-dev deploy/${{ values.name }} --tail=100 -f
 
 ### High Memory / CPU
 
-1. Check metrics in [Grafana](http://grafana.idp.local/d/idp-services) — filter to `${{ values.name }}`
+1. Check metrics in [Grafana](${{ values.grafanaUrl }}/d/idp-services) — filter to `${{ values.name }}`
 2. Manually scale if needed: `kubectl scale deploy/${{ values.name }} -n services-dev --replicas=3`
 
 ---
@@ -61,6 +61,6 @@ argocd app rollback ${{ values.name }}-dev
 
 ## Escalation
 
-1. Check [ArgoCD](http://argocd.idp.local/applications/${{ values.name }}-dev) for sync status
-2. Check [Grafana alerts](http://grafana.idp.local/alerting) for active firing alerts
+1. Check [ArgoCD](${{ values.argocdUrl }}/applications/${{ values.name }}-dev) for sync status
+2. Check [Grafana alerts](${{ values.grafanaUrl }}/alerting) for active firing alerts
 3. Raise an incident and page the on-call: owner group `${{ values.owner }}`
