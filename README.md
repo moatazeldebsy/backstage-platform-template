@@ -152,6 +152,49 @@ Active-standby across eu-central-1 (primary) and us-east-1 (warm standby), deplo
 
 Topology, DR tiers, and the six rollout phases: [docs/multi-region.md](docs/multi-region.md).
 
+## What it costs on AWS
+
+Measured against a running `idp-mvp` cluster in `us-east-1` on 2026-08-14, at
+on-demand list prices. **Local is free** — this is only the EKS path.
+
+| Component | Qty | ~$/month |
+|---|---:|---:|
+| EKS control plane | 1 | 73 |
+| Worker nodes (`t3.large`) | 6 | 364 |
+| NAT gateway | 1 | 33 + data |
+| Application Load Balancers — core | 4 | 66 |
+| RDS for Backstage (`db.t3.micro`) | 1 | 12 |
+| S3 / ECR / Secrets Manager / CloudWatch | — | ~15 |
+| **Core platform subtotal** | | **~565** |
+| Application Load Balancers — AI/ML | 11 | 181 |
+| RDS for Langfuse (`db.t4g.micro`) | 1 | 11 |
+| S3 for MLflow + Langfuse artifacts | 2 | ~2 |
+| **AI/ML layer subtotal** (`--with-ai`) | | **~195** |
+| **Total with AI/ML** | | **~760** |
+
+**The load balancers are the surprise.** Every ALB is ~$16/month before traffic,
+and the AI/ML layer creates **eleven** of the fifteen — one per MCP server, plus
+KAgent, the IDP assistant, MLflow and Langfuse. That is more than the RDS
+instances and S3 combined, and it is why the AI layer is opt-in
+(`./scripts/bootstrap.sh --with-ai`) rather than default.
+
+Ways to spend less, roughly in order of effect:
+
+- **Skip the AI/ML layer.** Saves ~$195/month. `enable_ai` and `enable_langfuse`
+  gate the infrastructure too, so nothing is provisioned for it.
+- **Leave `enable_cost_optimizer = true`** (the default). Scales nodes to zero
+  and stops RDS overnight — roughly halves the node and RDS lines if you only
+  work office hours.
+- **Drop the node count.** Six `t3.large` is sized for the full stack including
+  AI; the core platform alone fits in fewer. Note the constraint documented on
+  `node_instance_types`: nodes are sized by **pod IP capacity**, not CPU/RAM.
+- **Tear down when idle.** `./scripts/cleanup.sh` removes everything including
+  the orphaned ALBs that a bare `terraform destroy` leaves behind.
+
+Prices exclude data transfer, which depends entirely on your traffic. Verify
+against the [AWS pricing calculator](https://calculator.aws) for your region
+before committing — this table is a measurement of one cluster, not a quote.
+
 ## How It Works — Interaction Flows
 
 ![Interaction Flows](docs/assets/interaction-flows.jpg)

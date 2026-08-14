@@ -13,7 +13,7 @@
 kubectl get pods -n ml-platform -l app=${{ values.name }}
 
 # Check MLflow is reachable
-curl -s http://mlflow.idp.local/health
+curl -s ${{ values.mlflowUrl }}/health
 ```
 
 ---
@@ -41,7 +41,7 @@ kubectl get pods -n ml-platform -l app=mlflow
 ```bash
 kubectl delete job ${{ values.name }}-initial-run -n ml-platform 2>/dev/null || true
 # Then re-apply the job from the IDP scaffolder or run locally:
-export MLFLOW_TRACKING_URI=http://mlflow.idp.local
+export MLFLOW_TRACKING_URI=${{ values.mlflowUrl }}
 python train.py
 ```
 
@@ -49,6 +49,6 @@ python train.py
 
 ## Escalation
 
-1. Check [MLflow UI](http://mlflow.idp.local) for experiment runs
-2. Check [Grafana](http://grafana.idp.local) for ml-platform namespace metrics
+1. Check [MLflow UI](${{ values.mlflowUrl }}) for experiment runs
+2. Check [Grafana](${{ values.grafanaUrl }}) for ml-platform namespace metrics
 3. Page owner: `${{ values.owner }}`

@@ -120,31 +120,120 @@ spec:
             allowedOwners:
               - moatazeldebsy
 
+    # The AWS-only inputs live under `dependencies` so they are not rendered at
+
+    # all when Local is selected. They used to be shown unconditionally with
+
+    # "(AWS only)" in the title and "Leave blank for local deployments" in the
+
+    # help — which reads like a required field you are being told to skip, and
+
+    # asks somebody deploying to Kind for an IAM role ARN.
+
     - title: Deployment Target
+
+      required:
+
+        - deployTarget
+
       properties:
+
         deployTarget:
+
           title: Where will this service run?
+
           type: string
+
           default: local
+
           enum: [local, aws]
+
           enumNames: ['Local (Kind / Rancher Desktop)', 'AWS (EKS)']
+
           ui:widget: radio
-        awsRoleArn:
-          title: AWS IAM Role ARN for CI/CD (AWS only)
-          type: string
-          description: "OIDC role ARN used by GitHub Actions to push images to ECR."
-          ui:help: "Leave blank for local deployments."
-        clusterName:
-          title: Cluster Name (AWS only)
-          type: string
-          default: idp-mvp
-        awsRegion:
-          title: AWS Region (AWS only)
-          type: string
-          default: us-east-1
-          ui:help: "Leave blank for local deployments."
+
+      dependencies:
+
+        deployTarget:
+
+          oneOf:
+
+            # Local: nothing further to ask.
+
+            - properties:
+
+                deployTarget:
+
+                  enum: [local]
+
+            - properties:
+
+                deployTarget:
+
+                  enum: [aws]
+
+                awsRoleArn:
+
+                  title: AWS IAM Role ARN for CI/CD
+
+                  type: string
+
+                  description: >-
+
+                    The OIDC role GitHub Actions assumes to push images to ECR.
+
+                    Get it from the platform repo with:
+
+                    cd terraform && terraform output -raw github_actions_role_arn
+
+                  # Fails at the form rather than three minutes into the first CI
+
+                  # run with an opaque STS error.
+
+                  pattern: '^arn:aws:iam::[0-9]{12}:role/.+$'
+
+                  ui:help: "terraform output -raw github_actions_role_arn"
+
+                  ui:placeholder: 'arn:aws:iam::123456789012:role/idp-mvp-github-actions'
+
+                clusterName:
+
+                  title: Cluster Name
+
+                  type: string
+
+                  default: idp-mvp
+
+                  description: "Matches the ECR repo naming used by CI: <clusterName>/<serviceName>"
+
+                  ui:help: "The cluster_name you set in terraform.tfvars during setup."
+
+                awsRegion:
+
+                  title: AWS Region
+
+                  type: string
+
+                  default: us-east-1
+
+                  ui:help: "Must match the region the cluster and its ECR repos live in."
+
+              required:
+
+                - awsRoleArn
+
+                - clusterName
+
+                - awsRegion
 
   steps:
+    # Resolve the platform URLs for THIS environment. The skeleton used to
+    # hardcode *.idp.local, so every service scaffolded on AWS got catalog
+    # links pointing at DNS that only resolves on a laptop.
+    - id: platform-urls
+      name: Resolve Platform URLs
+      action: idp:platform-urls
+
     - id: fetch-template
       name: Fetch Template
       action: fetch:template
@@ -162,6 +251,9 @@ spec:
           costCenter: ${{ parameters.costCenter }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
+          argocdUrl: ${{ steps["platform-urls"].output.argocd }}
+          langfuseUrl: ${{ steps["platform-urls"].output.langfuse }}
 
     - id: publish
       name: Publish to GitHub
@@ -188,6 +280,9 @@ spec:
 
     - id: set-repo-secrets
       name: Configure CI/CD Secrets
+      # Guarded like provision-ecr: awsRoleArn only exists when AWS is
+      # selected, so a local scaffold wrote an empty AWS_ROLE_ARN secret.
+      if: ${{ parameters.deployTarget === 'aws' }}
       action: idp:repo:set-secrets
       input:
         repoUrl: ${{ steps.publish.output.remoteUrl }}
