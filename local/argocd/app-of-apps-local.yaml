@@ -21,19 +21,21 @@ spec:
               revision: HEAD
               directories:
                 - path: services/*
-                # The services below are AI-stack-only: bootstrap-ai.sh builds
-                # their images and creates the secrets/ConfigMaps they mount.
-                # Excluding them prevents ArgoCD from auto-deploying before any
-                # of that exists — and prevents the reverse problem, where a
-                # Deployment already carrying an ArgoCD tracking-id forces
-                # bootstrap-ai.sh to skip its own Helm install to avoid an
-                # ownership conflict.
-                # bootstrap-local.sh's build loop already skips these two for
-                # the same reason, so ArgoCD deployed them with images that were
-                # never built → ImagePullBackOff on every fresh bootstrap.
-                # Mounts the approval-service-policy ConfigMap, which only
-                # bootstrap-ai.sh --adp creates; without it the pod is stuck in
-                # ContainerCreating indefinitely.
+                # No exclusions — the ten AI/MCP services take the same GitOps
+                # path as everything else, matching aws/argocd/app-of-apps.yaml.
+                #
+                # They used to be excluded here because bootstrap-ai.sh owned
+                # them via Helm and two systems cannot own one release. Removing
+                # the exclusions required two things on the local side that AWS
+                # got for free, because ECR images outlive a cluster while the
+                # local registry is recreated with it:
+                #   - bootstrap-local.sh must build idp-mcp-server and
+                #     qa-mcp-server (it used to skip them), or ArgoCD deploys
+                #     images that were never pushed to localhost:5003.
+                #   - approval-service's policy ConfigMap volume must be
+                #     optional, since only bootstrap-ai.sh --adp creates it.
+                # Both are in place; do not re-add exclusions without reverting
+                # those, or a core bootstrap breaks.
           # Generator 2: one entry per environment
           - list:
               elements:

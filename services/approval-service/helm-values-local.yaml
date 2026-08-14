@@ -74,6 +74,15 @@ extraVolumes:
   - name: policy
     configMap:
       name: approval-service-policy
+      # optional: the ConfigMap is created only by bootstrap-ai.sh --adp. Without
+      # this flag the pod sits in ContainerCreating forever on any cluster that
+      # has not had --adp run, which is every core bootstrap now that ArgoCD
+      # creates an Application for each services/* directory. The service falls
+      # back to DEFAULT_POLICY (services/approval-service/src/policy.ts), which
+      # is strictly stricter than the shipped policy.json — sync_app requires
+      # approval for every target rather than auto-approving non-prod — so the
+      # fallback fails safe rather than open.
+      optional: true
 extraVolumeMounts:
   - name: policy
     mountPath: /etc/approval-service
