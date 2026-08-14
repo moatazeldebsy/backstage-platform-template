@@ -299,6 +299,30 @@ jobs:
       - name: Lint with required values
         run: helm lint helm/service-template --set image.repository=test --set image.tag=abc1234
 
+      # The ArgoCD ApplicationSets generate one Application per services/*
+      # directory and point it at services/<name>/helm-values-aws.yaml. Those
+      # sources set ignoreMissingValueFiles: true — required for the optional
+      # progressive-delivery overlay, but it applies to every entry in
+      # valueFiles, including the primary one. So a services/* directory with no
+      # helm-values-aws.yaml does not fail: it silently deploys the chart's bare
+      # defaults, which carry none of the cost-allocation labels Gatekeeper
+      # requires, and the Application sits permanently OutOfSync.
+      #
+      # That is exactly how services/demo-aws-react reached the cluster as a
+      # broken Application. Fail here instead.
+      - name: Every services/* has an AWS values file
+        run: |
+          missing=0
+          for d in services/*/; do
+            [ -d "$d" ] || continue
+            if [ ! -f "${d}helm-values-aws.yaml" ]; then
+              echo "::error::${d} has no helm-values-aws.yaml — the ArgoCD ApplicationSet would deploy it with chart defaults"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] && echo "all services/* carry helm-values-aws.yaml"
+          exit "$missing"
+
   k8s-dry-run:
     needs: changes
     if: needs.changes.outputs.k8s == 'true'
