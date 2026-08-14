@@ -1,7 +1,5 @@
 fullnameOverride: approval-service
-
 replicaCount: 2
-
 image:
   # Resolved by scripts/setup.sh during personalisation, exactly like
   # hello-service. It used to be ECR_REGISTRY_PLACEHOLDER, substituted by
@@ -9,14 +7,12 @@ image:
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/approval-service
-  tag: "0.1.0"
+  tag: "latest"
   pullPolicy: Always
-
 service:
   type: ClusterIP
   port: 3009
   targetPort: 3009
-
 ingress:
   enabled: true
   className: alb
@@ -30,21 +26,18 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
-
 livenessProbe:
   httpGet:
     path: /healthz
     port: http
   initialDelaySeconds: 10
   periodSeconds: 15
-
 readinessProbe:
   httpGet:
     path: /ready
     port: http
   initialDelaySeconds: 5
   periodSeconds: 10
-
 resources:
   requests:
     cpu: 50m
@@ -52,7 +45,6 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 env:
   - name: PORT
     value: "3009"
@@ -89,7 +81,6 @@ env:
     value: "true"
   - name: POLICY_FILE
     value: "/etc/approval-service/policy.json"
-
 extraVolumes:
   - name: policy
     configMap:
@@ -107,17 +98,14 @@ extraVolumeMounts:
   - name: policy
     mountPath: /etc/approval-service
     readOnly: true
-
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 4
   targetCPUUtilizationPercentage: 70
-
 # Required by the Gatekeeper constraint require-cost-allocation-labels, which
 # denies any workload missing team / cost-center / environment. Without these the
 # admission webhook rejected the release outright:
