@@ -841,20 +841,41 @@ jobs:
             echo "total_7d=$(printf '%.2f' "$TOTAL")" >> "$GITHUB_OUTPUT"
           fi
 
+      # The dashboard link used to be hardcoded to http://grafana.idp.local,
+      # which only resolves on a maintainer's laptop — every PR comment on the
+      # AWS cluster carried a dead link. Resolve the real ALB hostname from the
+      # cluster we already have a kubeconfig for, exactly as bootstrap.sh does
+      # when it populates externalLinks.grafana. Empty when the ingress has no
+      # address yet, in which case the comment simply omits the link rather
+      # than pointing somewhere wrong.
+      - name: Resolve Grafana URL
+        if: steps.kubeconfig.outcome == 'success' && steps.cost.outputs.found == 'true'
+        id: grafana
+        continue-on-error: true
+        run: |
+          HOST=$(kubectl get ingress prometheus-grafana -n monitoring \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+          echo "url=${HOST:+http://$HOST}" >> "$GITHUB_OUTPUT"
+
       - name: Post cost context PR comment
         if: steps.kubeconfig.outcome == 'success' && steps.cost.outputs.found == 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           SERVICE: ${{ matrix.service }}
           TOTAL_7D: ${{ steps.cost.outputs.total_7d }}
+          GRAFANA_URL: ${{ steps.grafana.outputs.url }}
         with:
           script: |
             const service = process.env.SERVICE;
             const total = process.env.TOTAL_7D;
+            const grafana = process.env.GRAFANA_URL;
+            const finops = grafana
+              ? `See the [FinOps dashboard](${grafana}/d/idp-finops) for team-level budget status.`
+              : `The FinOps dashboard is at \`/d/idp-finops\` on this cluster's Grafana.`;
             const body = `## 💰 Cost Context — \`${service}\`\n\n` +
               `\`services-dev\` namespace total compute cost (last 7 days, all services): **$${total}**\n\n` +
               `<sub>Namespace-level only — cost-mcp-server doesn't yet support per-service cost attribution. ` +
-              `See the [FinOps dashboard](http://grafana.idp.local/d/idp-finops) for team-level budget status.</sub>`;
+              `${finops}</sub>`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
