@@ -58,6 +58,7 @@ nav:
   - SRE & Reliability: sre-reliability.md
   - Runbooks:
     - Overview: runbooks/index.md
+    - Incident Severity: runbooks/incident-severity.md
     - Deployment Rollback: runbooks/deployment-rollback.md
     - Pod Crash Loop: runbooks/pod-crash-loop.md
     - High Memory: runbooks/high-memory.md

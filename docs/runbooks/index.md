@@ -20,6 +20,10 @@ Operational procedures for the Internal Developer Platform. Each runbook maps to
 | `TeamBudgetExceeded` | Critical | `finops` | [Cost Budget Exceeded](cost-budget-exceeded.md) |
 | `ScaffoldServiceHighRate` | Warning | `ai-ops` | [KAgent Guardrails](kagent-guardrails.md) |
 | `McpToolErrorRateHigh` | Warning | `ai-ops` | [KAgent Guardrails](kagent-guardrails.md) |
+
+**Severity vocabulary:** every `Critical`/`Warning` above maps onto P1/P2/P3 — see
+[Incident Severity](incident-severity.md) for the mapping and which severities get a
+tracked incident record.
 | `SLOErrorBudgetFastBurn` | Critical | `slo` | [Deployment Rollback](deployment-rollback.md) |
 | `SLOErrorBudgetSlowBurn` | Warning | `slo` | [Deployment Rollback](deployment-rollback.md) |
 | Regional outage (multi-region V2 only) | Critical | `dr` | [DR Region Failover](dr-region-failover.md) |

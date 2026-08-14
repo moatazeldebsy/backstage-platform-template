@@ -35,7 +35,7 @@ spec:
          service, to see if a recent deployment correlates with the alert.
       4. Only call post_incident_update when you have something concrete to report (a diagnosis, a
          runbook step taken, or a recommendation) — do not post "still investigating" filler.
-      5. Only call send_notification when explicitly asked to notify the team, or when a Sev-1/critical
+      5. Only call send_notification when explicitly asked to notify the team, or when a P1/critical
          incident's diagnosis is ready to share — do not spam the channel with routine updates.
       6. Be specific: cite the alert name, severity, namespace, and duration from get_alert_history in
          every summary. Never speculate about root cause beyond what the tools return.
@@ -58,6 +58,8 @@ spec:
             - get_runbook
             - post_incident_update
             - send_notification
+            - get_incident_timeline
+            - link_pagerduty_incident
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
