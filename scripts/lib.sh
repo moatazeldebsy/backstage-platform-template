@@ -1150,7 +1150,36 @@ apply_backstage_configmaps() {
   kubectl create configmap backstage-base-config -n backstage \
     --from-file=app-config.yaml="$base" \
     --dry-run=client -o yaml | kubectl apply ${ctx_args[@]+"${ctx_args[@]}"} -f -
-  kubectl create configmap backstage-config -n backstage \
-    --from-file=app-config.aws.yaml="$aws" \
-    --dry-run=client -o yaml | kubectl apply ${ctx_args[@]+"${ctx_args[@]}"} -f -
+  # Render the AWS config rather than applying it verbatim.
+  #
+  # Applying the repo file directly is correct on a cold bootstrap, because the
+  # substitutions follow immediately. It is wrong on every warm re-run: three of
+  # the six *_ALB_URL placeholders and the whole AI enabled-state are owned by
+  # bootstrap-ai.sh, which only runs with --with-ai. So `bootstrap.sh` against a
+  # cluster that already has the AI layer would reset the KAgent/MLflow/Langfuse
+  # URLs to literal placeholders, flip aiStack.enabled back to false and
+  # re-disable the AI pages — hiding features that are still installed and
+  # running. Observed against a live cluster 2026-08-14.
+  #
+  # The renderer carries those values forward from the ConfigMap already in the
+  # cluster. Whatever this run does re-derive still overwrites afterwards, and on
+  # a cold bootstrap there is no live ConfigMap so it is a straight passthrough.
+  local live_dump rendered
+  live_dump="$(mktemp)"; rendered="$(mktemp)"
+  kubectl get configmap backstage-config -n backstage ${ctx_args[@]+"${ctx_args[@]}"} \
+    -o jsonpath='{.data.app-config\.aws\.yaml}' 2>/dev/null > "$live_dump" || true
+
+  if python3 "${root}/scripts/render-backstage-config.py" \
+       --repo-file "$aws" --live-file "$live_dump" > "$rendered"; then
+    kubectl create configmap backstage-config -n backstage \
+      --from-file=app-config.aws.yaml="$rendered" \
+      --dry-run=client -o yaml | kubectl apply ${ctx_args[@]+"${ctx_args[@]}"} -f -
+  else
+    # Never fall back to the raw file — that is the clobber this exists to
+    # prevent. Leaving the existing ConfigMap in place is the safe failure.
+    rm -f "$live_dump" "$rendered"
+    err "Could not render app-config.aws.yaml — leaving the existing ConfigMap untouched."
+    return 1
+  fi
+  rm -f "$live_dump" "$rendered"
 }
