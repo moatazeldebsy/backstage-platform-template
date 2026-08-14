@@ -38,7 +38,20 @@ AWS_REGION         = os.environ.get("AWS_REGION", "us-east-1")
 LOOKBACK_HOURS     = int(os.environ.get("LOOKBACK_HOURS", "24"))
 CW_NAMESPACE       = os.environ.get("CLOUDWATCH_NS", "IDP/DORA")
 SKIP_CLOUDWATCH    = os.environ.get("SKIP_CLOUDWATCH", "false").lower() == "true"
-REPO_FILTER_TOPIC  = os.environ.get("REPO_FILTER_TOPIC", "idp-app")
+# Comma-separated list of GitHub topics. Defaults to the same pair the Backstage
+# catalog discovers on (`catalog.providers.github.*.filters.topic.include` in
+# app-config.yaml / app-config.aws.yaml): scaffolder templates tag new repos
+# `idp-app`, while hand-registered and platform repos carry `idp`.
+#
+# This used to default to "idp-app" alone, which silently excluded every repo
+# tagged only `idp` — including the platform repo itself, the one repo whose
+# build-and-deploy workflow actually runs. The result was a DORA dashboard
+# reporting 0.00 across the board while the exporter logged success, and it
+# contradicted the empty-state text the UI already shows, which tells the user
+# to check for the "idp" or "idp-app" topic.
+REPO_FILTER_TOPICS = [
+    t.strip() for t in os.environ.get("REPO_FILTER_TOPIC", "idp,idp-app").split(",") if t.strip()
+]
 REPO_INCLUDE       = os.environ.get("REPO_INCLUDE", "")
 # JSON map of repo name → team name, e.g. '{"orders-service":"payments","auth-api":"platform"}'
 # Repos not in the map fall back to the team-name embedded in the GitHub topic "team:<name>".
@@ -86,7 +99,9 @@ def get_service_repos() -> list:
 
     Priority:
     1. REPO_INCLUDE — explicit comma-separated allowlist.
-    2. REPO_FILTER_TOPIC (default: "idp-app") — GitHub topic set by all scaffold templates.
+    2. REPO_FILTER_TOPIC (default: "idp,idp-app") — comma-separated GitHub topics,
+       matching what the Backstage catalog discovers on. Scaffolder templates tag
+       new repos "idp-app"; platform and hand-registered repos carry "idp".
     3. Fallback — repos containing build-and-deploy.yml.
     """
     if REPO_INCLUDE:
@@ -94,14 +109,24 @@ def get_service_repos() -> list:
         log.info("Using explicit REPO_INCLUDE allowlist (%d repos): %s", len(repos), repos)
         return repos
 
-    if REPO_FILTER_TOPIC:
-        log.info("Filtering repos by GitHub topic '%s'", REPO_FILTER_TOPIC)
-        results = gh_get(
-            "https://api.github.com/search/repositories",
-            {"q": f"user:{GITHUB_ORG} topic:{REPO_FILTER_TOPIC}", "per_page": 100},
-        )
-        repos = [r["name"] for r in results]
-        log.info("Found %d repos with topic '%s': %s", len(repos), REPO_FILTER_TOPIC, repos)
+    if REPO_FILTER_TOPICS:
+        log.info("Filtering repos by GitHub topics %s", REPO_FILTER_TOPICS)
+        # GitHub's search API ANDs repeated topic: qualifiers, so a single query
+        # for "topic:idp topic:idp-app" would return only repos carrying BOTH.
+        # Query each topic separately and union the results, de-duplicating by
+        # name (a repo tagged with both must not be measured twice).
+        repos: list[str] = []
+        for topic in REPO_FILTER_TOPICS:
+            results = gh_get(
+                "https://api.github.com/search/repositories",
+                {"q": f"user:{GITHUB_ORG} topic:{topic}", "per_page": 100},
+            )
+            found = [r["name"] for r in results]
+            log.info("  topic '%s': %d repo(s)", topic, len(found))
+            for name in found:
+                if name not in repos:
+                    repos.append(name)
+        log.info("Found %d distinct repo(s) across topics %s: %s", len(repos), REPO_FILTER_TOPICS, repos)
         return repos
 
     org_url  = f"https://api.github.com/orgs/{GITHUB_ORG}/repos"
