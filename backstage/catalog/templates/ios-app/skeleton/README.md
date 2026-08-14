@@ -86,4 +86,4 @@ This project uses Swift Package Manager. Source lives in `Sources/${{ values.nam
 
 ## Documentation
 
-TechDocs are at [Backstage](http://backstage.idp.local/catalog/default/component/${{ values.name }}/docs).
+TechDocs are at [Backstage](${{ values.backstageUrl }}/catalog/default/component/${{ values.name }}/docs).

@@ -98,6 +98,13 @@ spec:
               - moatazeldebsy
 
   steps:
+    # Resolve the platform URLs for THIS environment. The skeleton used to
+    # hardcode *.idp.local, so every service scaffolded on AWS got catalog
+    # links pointing at DNS that only resolves on a laptop.
+    - id: platform-urls
+      name: Resolve Platform URLs
+      action: idp:platform-urls
+
     - id: fetch
       name: Generate agent manifests
       action: fetch:template
@@ -115,6 +122,9 @@ spec:
           enableMetrics: ${{ parameters.enableMetrics }}
           enableScaffolding: ${{ parameters.enableScaffolding }}
           repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
+          kagentUrl: ${{ steps["platform-urls"].output.kagent }}
+          backstageUrl: ${{ steps["platform-urls"].output.backstage }}
+          grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
           # Required by the skeleton's github.com/project-slug annotation; see
           # the note in mlflow-experiment/template.yaml. Comes from the repo
           # URL, not parameters.owner (a Backstage group ref).

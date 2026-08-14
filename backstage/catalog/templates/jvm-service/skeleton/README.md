@@ -170,6 +170,6 @@ independently without breaking each other silently.
 
 ## Links
 
-- [Backstage catalog entry](http://backstage.idp.local/catalog/default/component/${{ values.name }})
+- [Backstage catalog entry](${{ values.backstageUrl }}/catalog/default/component/${{ values.name }})
 - [GitHub repository](https://github.com/${{ values.githubOrg }}/${{ values.repoName }})
-- [ArgoCD app](http://argocd.idp.local)
+- [ArgoCD app](${{ values.argocdUrl }})

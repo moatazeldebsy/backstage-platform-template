@@ -74,7 +74,7 @@ crashlooping the pod.
 ## Tracing against Langfuse from your laptop
 
 ```bash
-export LANGFUSE_OTLP_ENDPOINT=http://langfuse.idp.local/api/public/otel/v1/traces
+export LANGFUSE_OTLP_ENDPOINT=${{ values.langfuseUrl }}/api/public/otel/v1/traces
 export LANGFUSE_PUBLIC_KEY=$(kubectl get secret langfuse-init -n ml-platform \
   -o jsonpath='{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}' | base64 -d)
 export LANGFUSE_SECRET_KEY=$(kubectl get secret langfuse-init -n ml-platform \
@@ -89,7 +89,7 @@ append `/v1/traces` to that variable, producing `.../otel/v1/traces/v1/traces` a
 - **Per service** — the **Langfuse** tab on this service's Backstage entity page, filtered by the
   `langfuse.com/service-name` annotation in `catalog-info.yaml`.
 - **Platform-wide** — the **AI Observability** page in Backstage.
-- **Raw** — Langfuse's own UI at `http://langfuse.idp.local`.
+- **Raw** — Langfuse's own UI at `${{ values.langfuseUrl }}`.
 
 Traces appear with latency and token counts. Prompt and completion text appear only when
 `LANGFUSE_CAPTURE_IO=true` — leave it off unless the data is safe for anyone with Langfuse access

@@ -84,6 +84,7 @@ spec:
               - moatazeldebsy
 
   steps:
+
     - id: fetch
       name: Generate model server skeleton
       action: fetch:template

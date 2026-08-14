@@ -24,7 +24,7 @@ kubectl apply -f kubernetes/agent.yaml
 kubectl get agents -n kagent
 
 # Open KAgent UI
-open http://kagent.idp.local
+open ${{ values.kagentUrl }}
 ```
 
 ## Model
@@ -38,6 +38,6 @@ open http://kagent.idp.local
 
 ## Links
 
-- [KAgent UI](http://kagent.idp.local)
-- [Backstage catalog](http://backstage.idp.local/catalog/default/component/${{ values.name }})
+- [KAgent UI](${{ values.kagentUrl }})
+- [Backstage catalog](${{ values.backstageUrl }}/catalog/default/component/${{ values.name }})
 - [Runbook](runbooks/agent.md)

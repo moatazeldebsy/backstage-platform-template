@@ -20,10 +20,10 @@ metadata:
     jira/project-key: "${{ values.jiraProjectKey }}"
   links:
     - title: Grafana Dashboard
-      url: http://grafana.idp.local/d/idp-services/idp-services-overview
+      url: ${{ values.grafanaUrl }}/d/idp-services/idp-services-overview
       icon: dashboard
     - title: ArgoCD App
-      url: http://argocd.idp.local/applications/${{ values.name }}-dev
+      url: ${{ values.argocdUrl }}/applications/${{ values.name }}-dev
       icon: web
     - title: Runbook
       url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbooks/service.md
