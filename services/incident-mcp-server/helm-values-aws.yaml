@@ -1,17 +1,13 @@
 fullnameOverride: incident-mcp-server
-
 replicaCount: 2
-
 image:
-  repository: ECR_REGISTRY_PLACEHOLDER/incident-mcp-server
-  tag: "0.1.0"
+  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/incident-mcp-server
+  tag: "latest"
   pullPolicy: Always
-
 service:
   type: ClusterIP
   port: 3008
   targetPort: 3008
-
 ingress:
   enabled: true
   className: alb
@@ -25,21 +21,18 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
-
 livenessProbe:
   httpGet:
     path: /healthz
     port: http
   initialDelaySeconds: 10
   periodSeconds: 15
-
 readinessProbe:
   httpGet:
     path: /ready
     port: http
   initialDelaySeconds: 5
   periodSeconds: 10
-
 resources:
   requests:
     cpu: 50m
@@ -47,7 +40,6 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 env:
   - name: PORT
     value: "3008"
@@ -64,17 +56,14 @@ env:
         name: incident-mcp-server-secrets
         key: slack-webhook-url
         optional: true
-
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 4
   targetCPUUtilizationPercentage: 70
-
 # Langfuse tracing for src/telemetry.ts. The langfuse-otel secret carries
 # LANGFUSE_OTLP_ENDPOINT / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY and is
 # created per-namespace by bootstrap-ai.sh (namespaces labelled
@@ -84,7 +73,6 @@ envFrom:
   - secretRef:
       name: langfuse-otel
       optional: true
-
 # Required by the Gatekeeper constraint require-cost-allocation-labels, which
 # denies any workload missing team / cost-center / environment. Without these the
 # admission webhook rejected the release outright:
