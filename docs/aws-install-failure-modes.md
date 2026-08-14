@@ -109,17 +109,34 @@ alertmanager routing error: DOMException [AbortError]: This operation was aborte
 
 `agent-event-router` used one `HTTP_TIMEOUT_MS` (default **5000ms**) for every
 outbound call, including the KAgent A2A dispatch. That dispatch is an LLM turn,
-and several more once the agent starts calling MCP tools. Measured against the
-live `incident-agent`, a single-sentence answer with no tool calls took **4.3s** —
-passing by 700ms, with any real triage aborting.
+and several more once the agent starts calling MCP tools.
+
+Measured on the live `incident-agent` rather than guessed:
+
+| Prompt | Time |
+|---|---|
+| Trivial, no tool calls | **4.3s** |
+| Real triage, multi-tool | **42.9s** |
+
+So 5s aborted even the trivial case, by a 700ms margin.
+
+**60s was tried next and still failed.** KAgent's `message/send` is synchronous
+and concurrent alerts serialise: two alerts 35s apart put the second past the
+limit while the first was still thinking. That is the behaviour under any alert
+burst, which is exactly when incident triage matters.
 
 **The failure was near-invisible.** The incident issue is created *before*
 dispatch, so the pipeline still produced its most visible artefact while the
 agent half silently never ran. Nothing was marked failed.
 
-Agent dispatch now has its own `AGENT_TIMEOUT_MS` (default 60s), and an abort
-logs which agent timed out and that the record was still created, instead of a
-bare `DOMException`.
+Agent dispatch now has its own `AGENT_TIMEOUT_MS` (default **180s** — a
+multi-tool turn plus a couple queued behind it), and an abort logs which agent
+timed out and that the record was still created, instead of a bare
+`DOMException`.
+
+**That is a mitigation, not the fix.** The real fix is to stop awaiting the whole
+agent turn in a webhook handler — the router's job is to dispatch, not to wait
+for an LLM to finish. Left as a follow-up rather than done blind.
 
 **The general lesson:** a timeout tuned for an HTTP API is wrong for an LLM call
 by an order of magnitude, and when the slow call is the *last* step its failure
