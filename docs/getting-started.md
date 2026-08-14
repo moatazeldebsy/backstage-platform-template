@@ -80,7 +80,7 @@ Adding the AI/ML stack on AWS takes an additional **15–20 minutes**:
 | First run | ~15–20 min | ~25–35 min | ~40–70 min | ~60–80 min |
 | Re-bootstrap | ~5–8 min | ~10–15 min | ~15–20 min | ~20–25 min |
 | Prerequisites | Docker, Kind | + `ANTHROPIC_API_KEY` | AWS account, Terraform | + `ANTHROPIC_API_KEY` |
-| Cost | Free | Free | ~$8/day | ~$8/day |
+| Cost | Free | Free | ~$19/day | ~$25/day |
 
 ---
 
@@ -149,7 +149,9 @@ This runs ~40 automated checks across 10 categories (AWS infrastructure, Kuberne
 - Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
 - `hello-service` reference deployment
 
-**Cost:** ~$248/month for a development environment (4 nodes running continuously).
+**Cost:** ~$565/month for the core platform, ~$760/month with the AI/ML layer — measured
+against a running cluster, not estimated. Full per-component breakdown and the ways to
+spend less: [README → What it costs on AWS](https://github.com/moatazeldebsy/backstage-platform-template#what-it-costs-on-aws).
 
 ### 4. GitHub Actions secrets
 
