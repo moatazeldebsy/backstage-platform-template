@@ -2245,15 +2245,41 @@ log said otherwise:</p>
 </code></pre></div></td></tr></table></div>
 <p><code>agent-event-router</code> used one <code>HTTP_TIMEOUT_MS</code> (default <strong>5000ms</strong>) for every
 outbound call, including the KAgent A2A dispatch. That dispatch is an LLM turn,
-and several more once the agent starts calling MCP tools. Measured against the
-live <code>incident-agent</code>, a single-sentence answer with no tool calls took <strong>4.3s</strong> —
-passing by 700ms, with any real triage aborting.</p>
+and several more once the agent starts calling MCP tools.</p>
+<p>Measured on the live <code>incident-agent</code> rather than guessed:</p>
+<table>
+<thead>
+<tr>
+<th>Prompt</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trivial, no tool calls</td>
+<td><strong>4.3s</strong></td>
+</tr>
+<tr>
+<td>Real triage, multi-tool</td>
+<td><strong>42.9s</strong></td>
+</tr>
+</tbody>
+</table>
+<p>So 5s aborted even the trivial case, by a 700ms margin.</p>
+<p><strong>60s was tried next and still failed.</strong> KAgent's <code>message/send</code> is synchronous
+and concurrent alerts serialise: two alerts 35s apart put the second past the
+limit while the first was still thinking. That is the behaviour under any alert
+burst, which is exactly when incident triage matters.</p>
 <p><strong>The failure was near-invisible.</strong> The incident issue is created <em>before</em>
 dispatch, so the pipeline still produced its most visible artefact while the
 agent half silently never ran. Nothing was marked failed.</p>
-<p>Agent dispatch now has its own <code>AGENT_TIMEOUT_MS</code> (default 60s), and an abort
-logs which agent timed out and that the record was still created, instead of a
-bare <code>DOMException</code>.</p>
+<p>Agent dispatch now has its own <code>AGENT_TIMEOUT_MS</code> (default <strong>180s</strong> — a
+multi-tool turn plus a couple queued behind it), and an abort logs which agent
+timed out and that the record was still created, instead of a bare
+<code>DOMException</code>.</p>
+<p><strong>That is a mitigation, not the fix.</strong> The real fix is to stop awaiting the whole
+agent turn in a webhook handler — the router's job is to dispatch, not to wait
+for an LLM to finish. Left as a follow-up rather than done blind.</p>
 <p><strong>The general lesson:</strong> a timeout tuned for an HTTP API is wrong for an LLM call
 by an order of magnitude, and when the slow call is the <em>last</em> step its failure
 does not look like failure.</p>
