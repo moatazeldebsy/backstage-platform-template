@@ -2592,10 +2592,23 @@ regenerate and commit the rules</strong>, or the cluster keeps applying the stal
 <h3 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h3>
 <ol>
 <li>For any P1 or P2 incident, a postmortem must be filed within <strong>48 hours</strong> of resolution.</li>
-<li>Copy the template into <code>docs/postmortems/&lt;YYYY-MM-DD&gt;-&lt;incident-title&gt;.md</code>.</li>
-<li>Fill in the five sections: timeline, impact, root cause, contributing factors, action items.</li>
-<li>Open a PR — the platform team reviews within 24 hours.</li>
-<li>Action items are tracked as GitHub Issues with the <code>postmortem</code> label.</li>
+<li>
+<p><strong>A draft is opened for you.</strong> When <code>agent-event-router</code> swaps <code>incident:open</code>
+   for <code>incident:needs-postmortem</code>, the <strong>Postmortem</strong> workflow
+   (<code>.github/workflows/postmortem.yml</code>) renders
+   <code>docs/postmortems/&lt;INC-id&gt;-&lt;service&gt;.md</code> and opens a PR. The identifiers, the
+   timeline reconstructed from the issue and its comments, and the MTTR
+   arithmetic are filled in; every section marked <code>_TODO_</code> needs a human.</p>
+<p>The root cause is deliberately left blank rather than guessed — a
+ plausible-sounding wrong root cause is worse than an empty heading. A daily
+ job comments on any incident still lacking a draft after 48 hours, so the SLA
+ below is enforced by something other than memory.</p>
+<p>To regenerate, re-apply the label, or run the workflow manually with the issue
+ number.
+3. Fill in the five sections: timeline, impact, root cause, contributing factors, action items.
+4. Open a PR — the platform team reviews within 24 hours.
+5. Action items are tracked as GitHub Issues with the <code>postmortem</code> label.</p>
+</li>
 </ol>
 <p><strong>Key principle:</strong> The template explicitly focuses on <em>what happened</em> and <em>what we change</em>, not <em>who was at fault</em>.</p>
 <h3 id="incident-record-automation">Incident Record Automation<a class="headerlink" href="#incident-record-automation" title="Permanent link">&para;</a></h3>
