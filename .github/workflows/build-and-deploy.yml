@@ -443,18 +443,34 @@ jobs:
         env:
           SERVICE: ${{ matrix.service }}
         run: |
-          # Do not assume port 80 — only hello-service listens there. Every
-          # MCP service uses its own port (3001-3010), so resolve it from the
-          # Service. Hardcoding 80 failed the gate for 10 of 11 services and
-          # silently blocked promote-to-staging, which needs this job.
-          PORT=$(kubectl get "svc/${SERVICE}" -n services-dev \
-            -o jsonpath='{.spec.ports[0].port}')
-          if [ -z "${PORT}" ]; then
-            echo "::error::Could not resolve a port for svc/${SERVICE} in services-dev"
+          # Resolve both the Service name and its port; neither is safe to
+          # assume.
+          #
+          # Port: only hello-service listens on 80. The MCP services use
+          # 3001-3010, so hardcoding 80 failed the gate for 10 of 11 services
+          # and silently blocked promote-to-staging, which needs this job.
+          #
+          # Name: the Service is not uniformly named ${SERVICE} either.
+          # hello-service renders as hello-service-dev-service-template
+          # (release-chart) because, unlike the others, its values set no
+          # fullnameOverride. The app.kubernetes.io/instance label is the one
+          # thing consistent across all 11, so select on that and fall back to
+          # the literal name for anything deployed outside the chart.
+          read -r SVC PORT <<<"$(kubectl get svc -n services-dev \
+            -l "app.kubernetes.io/instance=${SERVICE}-dev" \
+            -o jsonpath='{.items[0].metadata.name} {.items[0].spec.ports[0].port}' \
+            2>/dev/null || true)"
+          if [ -z "${SVC:-}" ]; then
+            read -r SVC PORT <<<"$(kubectl get "svc/${SERVICE}" -n services-dev \
+              -o jsonpath='{.metadata.name} {.spec.ports[0].port}' 2>/dev/null || true)"
+          fi
+          if [ -z "${SVC:-}" ] || [ -z "${PORT:-}" ]; then
+            echo "::error::No Service for ${SERVICE} in services-dev (looked for label app.kubernetes.io/instance=${SERVICE}-dev, then svc/${SERVICE})"
+            kubectl get svc -n services-dev || true
             exit 1
           fi
-          echo "Resolved svc/${SERVICE} -> port ${PORT}"
-          kubectl port-forward "svc/${SERVICE}" "8080:${PORT}" \
+          echo "Resolved ${SERVICE} -> svc/${SVC}:${PORT}"
+          kubectl port-forward "svc/${SVC}" "8080:${PORT}" \
             -n services-dev &>/tmp/pf.log &
           PF_PID=$!
           # Poll rather than sleeping a flat 3s: port-forward needs a moment to
@@ -677,15 +693,23 @@ jobs:
         env:
           SERVICE: ${{ matrix.service }}
         run: |
-          # See the dev smoke test for why the port is resolved, not assumed.
-          PORT=$(kubectl get "svc/${SERVICE}" -n services-staging \
-            -o jsonpath='{.spec.ports[0].port}')
-          if [ -z "${PORT}" ]; then
-            echo "::error::Could not resolve a port for svc/${SERVICE} in services-staging"
+          # See the dev smoke test for why neither the Service name nor its
+          # port is assumed.
+          read -r SVC PORT <<<"$(kubectl get svc -n services-staging \
+            -l "app.kubernetes.io/instance=${SERVICE}-staging" \
+            -o jsonpath='{.items[0].metadata.name} {.items[0].spec.ports[0].port}' \
+            2>/dev/null || true)"
+          if [ -z "${SVC:-}" ]; then
+            read -r SVC PORT <<<"$(kubectl get "svc/${SERVICE}" -n services-staging \
+              -o jsonpath='{.metadata.name} {.spec.ports[0].port}' 2>/dev/null || true)"
+          fi
+          if [ -z "${SVC:-}" ] || [ -z "${PORT:-}" ]; then
+            echo "::error::No Service for ${SERVICE} in services-staging (looked for label app.kubernetes.io/instance=${SERVICE}-staging, then svc/${SERVICE})"
+            kubectl get svc -n services-staging || true
             exit 1
           fi
-          echo "Resolved svc/${SERVICE} -> port ${PORT}"
-          kubectl port-forward "svc/${SERVICE}" "8080:${PORT}" \
+          echo "Resolved ${SERVICE} -> svc/${SVC}:${PORT}"
+          kubectl port-forward "svc/${SVC}" "8080:${PORT}" \
             -n services-staging &>/tmp/pf.log &
           PF_PID=$!
           HTTP_STATUS=000
