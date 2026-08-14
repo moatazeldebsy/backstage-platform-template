@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import request from 'supertest';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { MemoryIncidentStore } from '../incidents';
+import { MemoryIncidentStore, renderMarker } from '../incidents';
 import {
   verifyGitHubSignature,
   verifyBearerToken,
@@ -485,6 +485,52 @@ describe('createIncidentIssue', () => {
 });
 
 describe('resolveIncidentIssue', () => {
+  it('records endsAt and duration back into the marker so MTTR is computable', async () => {
+    const marker = renderMarker({
+      v: 1,
+      fingerprint: 'fp1',
+      incidentId: 'INC-1',
+      severity: 'P1',
+      rawSeverity: 'critical',
+      service: 'checkout',
+      startsAt: '2026-07-25T10:00:00Z',
+    });
+    const fetchImpl = mockFetch([
+      { ok: true },                                      // comment
+      { ok: true },                                      // add label
+      { ok: true },                                      // delete label
+      { ok: true, json: { body: `text\n${marker}` } },   // read back
+      { ok: true },                                      // patch body
+    ]);
+    const config: GitHubIncidentConfig = { token: 't', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+    const record: OpenIncident = { issueNumber: 7, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' };
+
+    await resolveIncidentIssue(record, { endsAt: '2026-07-25T10:30:00Z' }, config);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+    const [patchUrl, patchInit] = fetchImpl.mock.calls[4];
+    expect(patchUrl).toBe('https://api.github.com/repos/org/repo/issues/7');
+    expect((patchInit as RequestInit).method).toBe('PATCH');
+    const patched = JSON.parse((patchInit as RequestInit).body as string);
+    expect(patched.body).toContain('"endsAt":"2026-07-25T10:30:00Z"');
+    expect(patched.body).toContain('"durationMinutes":30');
+    // Exactly one marker — upsert replaces rather than appending a second.
+    expect(patched.body.match(/idp-incident/g)).toHaveLength(1);
+  });
+
+  it('still resolves when the marker read-back fails', async () => {
+    const fetchImpl = mockFetch([
+      { ok: true }, { ok: true }, { ok: true },
+      { ok: false, status: 500 }, // read-back fails
+    ]);
+    const config: GitHubIncidentConfig = { token: 't', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+    const record: OpenIncident = { issueNumber: 7, alertname: 'DiskFull', startsAt: '2026-07-25T10:00:00Z' };
+
+    await expect(
+      resolveIncidentIssue(record, { endsAt: '2026-07-25T10:30:00Z' }, config),
+    ).resolves.toBeUndefined();
+  });
+
   it('posts a resolution comment and swaps the incident:open label', async () => {
     const fetchImpl = mockFetch([{ ok: true }, { ok: true }, { ok: true }]);
     const config: GitHubIncidentConfig = { token: 'gh-token', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
@@ -492,7 +538,9 @@ describe('resolveIncidentIssue', () => {
 
     await resolveIncidentIssue(record, { endsAt: '2026-07-25T10:30:00Z' }, config);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    // 4th call is the GET that reads the marker back. The mock issue body has no
+    // marker, so no PATCH follows — resolution still completes.
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     const [commentUrl, commentInit] = fetchImpl.mock.calls[0];
     expect(commentUrl).toBe('https://api.github.com/repos/org/repo/issues/7/comments');
     const commentBody = JSON.parse((commentInit as RequestInit).body as string);
@@ -595,7 +643,8 @@ describe('routeAlertManager incident tracking', () => {
 
     await routeAlertManager(payload, postFn, undefined, github, openIncidents);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    // comment + add label + delete label + read-back for the marker
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(await openIncidents.get('fp1')).toBeUndefined();
     expect(postFn).not.toHaveBeenCalled();
   });

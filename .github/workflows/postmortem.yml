@@ -1,0 +1,119 @@
+name: Postmortem
+
+# Consumes the `incident:needs-postmortem` label that agent-event-router applies
+# when an incident resolves. Until now that label was written by the router and
+# read by nothing at all, so the 48-hour SLA in docs/postmortem-template.md was
+# enforced by memory.
+on:
+  issues:
+    types: [labeled]
+  schedule:
+    # 09:00 UTC daily — nag anything past the SLA.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Incident issue number to draft a postmortem for
+        required: true
+
+permissions:
+  contents: write        # commit the draft on a branch
+  pull-requests: write   # open the PR
+  issues: write          # comment and relabel
+
+jobs:
+  draft:
+    # Only the label that means "this incident is over and needs writing up".
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.label.name == 'incident:needs-postmortem')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Render the draft
+        id: render
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/render-postmortem.py \
+            --repo "${{ github.repository }}" \
+            --issue "${{ github.event.inputs.issue || github.event.issue.number }}"
+
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.inputs.issue || github.event.issue.number }}
+          DRAFT_PATH: ${{ steps.render.outputs.path }}
+          INCIDENT_ID: ${{ steps.render.outputs.incident_id }}
+        run: |
+          set -euo pipefail
+          branch="postmortem/${INCIDENT_ID}"
+
+          # Re-labelling an issue fires this workflow again. If the branch is
+          # already there the draft exists, so stop rather than opening a second
+          # PR for the same incident.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Branch $branch already exists — draft already open, nothing to do."
+            exit 0
+          fi
+
+          git config user.name  "idp-bot"
+          git config user.email "idp-bot@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add "$DRAFT_PATH"
+          git commit -m "docs(postmortem): draft for ${INCIDENT_ID} (#${ISSUE})"
+          git push -u origin "$branch"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "docs(postmortem): ${INCIDENT_ID} (#${ISSUE})" \
+            --body "$(cat <<EOB
+          Auto-drafted from incident #${ISSUE} when it was labelled \`incident:needs-postmortem\`.
+
+          The identifiers, the timeline reconstructed from the issue and its comments, and the
+          MTTR arithmetic are filled in. **Every section marked \`_TODO_\` needs a human** — in
+          particular the root cause, which is deliberately left blank rather than guessed.
+
+          Per \`docs/postmortem-template.md\`: due within **48 hours** of resolution, blameless,
+          reviewed within 5 business days.
+
+          Closes the postmortem obligation for #${ISSUE}.
+          EOB
+          )"
+
+          gh issue comment "$ISSUE" --body "📝 Postmortem draft opened: $(gh pr view "$branch" --json url --jq .url)"
+          gh issue edit "$ISSUE" --add-label "incident:postmortem-drafted"
+
+  # The 48-hour SLA in docs/postmortem-template.md was previously enforced by
+  # nobody. This does not chase the draft PR — only incidents where no draft was
+  # ever started.
+  nag:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on incidents past the 48h SLA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '48 hours ago' +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Incidents needing a postmortem and last updated before ${cutoff}:"
+
+          gh issue list --repo "$REPO" \
+            --label "incident:needs-postmortem" \
+            --state open --limit 100 \
+            --json number,title,updatedAt,labels \
+            --jq ".[] | select(.updatedAt < \"$cutoff\")
+                      | select([.labels[].name] | index(\"incident:postmortem-drafted\") | not)
+                      | .number" \
+          | while read -r n; do
+              [ -n "$n" ] || continue
+              echo "  nagging #$n"
+              gh issue comment "$n" --repo "$REPO" --body \
+                "⏰ This incident has been awaiting a postmortem for more than 48 hours. \
+          See \`docs/postmortem-template.md\`. Re-apply the \`incident:needs-postmortem\` label \
+          to regenerate a draft, or run the **Postmortem** workflow manually."
+            done
