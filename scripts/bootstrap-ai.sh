@@ -1885,7 +1885,12 @@ else
           info "${SVC}: image and chart values unchanged — skipping Helm upgrade."
           kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
         else
-          sed "s|ECR_REGISTRY_PLACEHOLDER|${REGISTRY}|g; s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
+          # ECR_REGISTRY_PLACEHOLDER is gone from these files — the registry is
+          # now resolved by setup.sh, so the file on disk is renderable and
+          # ArgoCD can deploy these services rather than needing them excluded.
+          # The IRSA substitution stays: that ARN is a Terraform output and is
+          # not known at personalisation time.
+          sed "s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
             "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
             | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
                 --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
