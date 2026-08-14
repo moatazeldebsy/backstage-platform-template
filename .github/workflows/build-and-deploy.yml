@@ -228,9 +228,20 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
+          # Explicit priorities so `steps.meta.outputs.version` — which becomes
+          # the image_tag this workflow writes into every helm values file — is
+          # the immutable short SHA, not `latest`. type=raw defaults to priority
+          # 200 and type=sha to 100, so `latest` was winning and every GitOps
+          # values file ended up pointing at a mutable tag. That defeats the
+          # point of GitOps (you cannot tell from git what is deployed) and is
+          # rejected outright in production by the deny-latest-tag-prod
+          # Gatekeeper policy, which blocked the first prod promotion.
+          #
+          # `latest` is still pushed as an additional tag for convenience; it is
+          # just no longer what gets committed.
           tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=,format=short,priority=300
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }},priority=200
 
       - name: Build and push
         if: steps.guard.outputs.has_aws == 'true'
