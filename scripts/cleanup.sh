@@ -121,6 +121,70 @@ _cleanup_stale_k8s_security_groups() {
   warn "    Some stale k8s-* security groups could not be deleted after retries — terraform destroy retry loop will try again"
 }
 
+# ── Phase 0: Stop ArgoCD reconciling before anything is deleted ───────────────
+# Every services/* Application syncs with prune:true + selfHeal:true, and its
+# Ingress is what makes the AWS Load Balancer Controller create an ALB. Deleting
+# the ALB (Phase 1) while the Ingress and both controllers are still live just
+# makes the controller build a new one. Those ALBs are created out-of-band and
+# are not in Terraform state, so `terraform destroy` does not remove them: they
+# survive the cluster as orphans, at roughly $16/mo each.
+#
+# This was survivable when hello-service was the only ArgoCD-managed service.
+# Eleven Ingresses are ArgoCD-managed now, so ordering matters: delete the
+# ApplicationSets first (or they immediately regenerate the Applications), then
+# the Applications with cascade, which removes the Ingresses and lets the
+# controller tear its own ALBs down cleanly. Phase 1 then only has to catch
+# whatever was already orphaned.
+#
+# Entirely best-effort: the cluster may already be gone, and a destroy must
+# never abort because a teardown nicety failed.
+log "Phase 0: Stopping ArgoCD reconciliation (prevents ALB recreation)..."
+
+if kubectl cluster-info &>/dev/null && kubectl get ns argocd &>/dev/null; then
+  APPSET_COUNT=$(kubectl get applicationsets.argoproj.io -n argocd --no-headers 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "${APPSET_COUNT}" -gt 0 ]]; then
+    log "  Deleting ${APPSET_COUNT} ApplicationSet(s) so they stop regenerating Applications..."
+    kubectl delete applicationsets.argoproj.io --all -n argocd --timeout=120s 2>/dev/null || true
+  else
+    log "  No ApplicationSets found"
+  fi
+
+  # Deliberately NOT --all. The crossplane* Applications carry the Crossplane
+  # controllers, and Phase 4 depends on Claims having been finalized first — if
+  # the controllers are torn down alongside the workloads, any outstanding Claim
+  # blocks on its finalizer with nothing left to reconcile it. Only the
+  # workload Applications own Ingresses, so only they matter for the ALB
+  # problem; the crossplane ones are left to Phase 3/4 and terraform destroy.
+  WORKLOAD_APPS=$(kubectl get applications.argoproj.io -n argocd \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+    | grep -v '^crossplane' || true)
+
+  if [[ -n "${WORKLOAD_APPS}" ]]; then
+    log "  Deleting $(echo "${WORKLOAD_APPS}" | wc -l | tr -d ' ') workload Application(s) with cascade —"
+    log "  removes Ingresses, so the controller deletes its own ALBs instead of leaking them..."
+    # The finalizer blocks deletion until the managed resources are actually
+    # gone, which is exactly the wait we want, but it can hang if a controller
+    # is already unhealthy — hence the timeout and the finalizer strip.
+    for app in ${WORKLOAD_APPS}; do
+      kubectl delete application "${app}" -n argocd --timeout=120s 2>/dev/null || {
+        warn "  ${app} did not delete in time — stripping finalizer"
+        kubectl patch application "${app}" -n argocd --type merge \
+          -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+        kubectl delete application "${app}" -n argocd --ignore-not-found 2>/dev/null || true
+      }
+    done
+
+    # The controller needs a moment to observe the Ingress deletions and issue
+    # the corresponding elbv2 delete calls before Phase 1 counts what is left.
+    log "  Waiting 45s for the load-balancer controller to release its ALBs..."
+    sleep 45
+  else
+    log "  No ArgoCD Applications found"
+  fi
+else
+  log "  ArgoCD not reachable (cluster already gone?) — skipping"
+fi
+
 # ── Phase 1: Delete Load Balancers created by Kubernetes services ─────────────
 log "Phase 1: Cleaning up Load Balancers..."
 
