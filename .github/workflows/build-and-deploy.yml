@@ -406,15 +406,39 @@ jobs:
         env:
           SERVICE: ${{ matrix.service }}
         run: |
-          kubectl port-forward "svc/${SERVICE}" 8080:80 \
+          # Do not assume port 80 — only hello-service listens there. Every
+          # MCP service uses its own port (3001-3010), so resolve it from the
+          # Service. Hardcoding 80 failed the gate for 10 of 11 services and
+          # silently blocked promote-to-staging, which needs this job.
+          PORT=$(kubectl get "svc/${SERVICE}" -n services-dev \
+            -o jsonpath='{.spec.ports[0].port}')
+          if [ -z "${PORT}" ]; then
+            echo "::error::Could not resolve a port for svc/${SERVICE} in services-dev"
+            exit 1
+          fi
+          echo "Resolved svc/${SERVICE} -> port ${PORT}"
+          kubectl port-forward "svc/${SERVICE}" "8080:${PORT}" \
             -n services-dev &>/tmp/pf.log &
           PF_PID=$!
-          sleep 3
-          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/healthz || echo "000")
+          # Poll rather than sleeping a flat 3s: port-forward needs a moment to
+          # bind, and a just-rolled pod may not be serving yet.
+          HTTP_STATUS=000
+          for _ in $(seq 1 15); do
+            sleep 2
+            # No -f: it makes curl exit non-zero on 4xx/5xx, and the old
+            # `|| echo 000` then appended to the code -w had already printed,
+            # producing the nonsense "000000" in the logs.
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/healthz) || true
+            # `[ ... ] && break` would be the loop body's last command, so on a
+            # non-200 it returns non-zero and `bash -e` aborts the whole step.
+            if [ "${HTTP_STATUS}" = "200" ]; then break; fi
+          done
           kill $PF_PID 2>/dev/null || true
           echo "Health check status: ${HTTP_STATUS}"
           if [ "${HTTP_STATUS}" != "200" ]; then
             echo "::error::Smoke test failed — /healthz returned ${HTTP_STATUS}"
+            cat /tmp/pf.log || true
             exit 1
           fi
 
@@ -616,15 +640,31 @@ jobs:
         env:
           SERVICE: ${{ matrix.service }}
         run: |
-          kubectl port-forward "svc/${SERVICE}" 8080:80 \
+          # See the dev smoke test for why the port is resolved, not assumed.
+          PORT=$(kubectl get "svc/${SERVICE}" -n services-staging \
+            -o jsonpath='{.spec.ports[0].port}')
+          if [ -z "${PORT}" ]; then
+            echo "::error::Could not resolve a port for svc/${SERVICE} in services-staging"
+            exit 1
+          fi
+          echo "Resolved svc/${SERVICE} -> port ${PORT}"
+          kubectl port-forward "svc/${SERVICE}" "8080:${PORT}" \
             -n services-staging &>/tmp/pf.log &
           PF_PID=$!
-          sleep 3
-          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/healthz || echo "000")
+          HTTP_STATUS=000
+          for _ in $(seq 1 15); do
+            sleep 2
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/healthz) || true
+            # `[ ... ] && break` would be the loop body's last command, so on a
+            # non-200 it returns non-zero and `bash -e` aborts the whole step.
+            if [ "${HTTP_STATUS}" = "200" ]; then break; fi
+          done
           kill $PF_PID 2>/dev/null || true
           echo "Health check status: ${HTTP_STATUS}"
           if [ "${HTTP_STATUS}" != "200" ]; then
             echo "::error::Smoke test failed — /healthz returned ${HTTP_STATUS} in staging"
+            cat /tmp/pf.log || true
             exit 1
           fi
 
