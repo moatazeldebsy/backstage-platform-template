@@ -1208,6 +1208,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#kagent-or-langgraph" class="md-nav__link">
+    <span class="md-ellipsis">
+      KAgent or LangGraph
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2417,11 +2426,48 @@ is policy-exempt (it blocks merge rather than enabling it) and <code>sync_app</c
 <td><code>README.md</code>, <code>docs/index.md</code></td>
 </tr>
 <tr>
-<td><code>langgraph</code>/<code>agentic-ai</code> entries softened to "under evaluation" (not built this cycle)</td>
-<td><code>backstage/catalog/tech-radar.json</code></td>
+<td><code>langgraph</code> promoted from <em>under evaluation</em> to built — see below</td>
+<td><code>backstage/catalog/templates/langgraph-agent/</code></td>
 </tr>
 </tbody>
 </table>
+<h3 id="kagent-or-langgraph">KAgent or LangGraph<a class="headerlink" href="#kagent-or-langgraph" title="Permanent link">&para;</a></h3>
+<p>Both are now available, and they are not competing:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>KAgent</th>
+<th>LangGraph</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Defined as</td>
+<td>Kubernetes resources (<code>kind: Agent</code>)</td>
+<td>Application code you own</td>
+</tr>
+<tr>
+<td>Owned by</td>
+<td>The platform team</td>
+<td>The service team</td>
+</tr>
+<tr>
+<td>Control flow</td>
+<td>Declarative</td>
+<td>Imperative — branching and state in code</td>
+</tr>
+<tr>
+<td>Reach for it when</td>
+<td>A prompt plus tools is enough</td>
+<td>The agent must loop, branch, or hold state</td>
+</tr>
+</tbody>
+</table>
+<p>Both consume the same eight MCP servers, and both trace to the same Langfuse. The
+<code>langgraph-agent</code> template propagates the W3C <code>traceparent</code> on every MCP call, so a
+run appears as one nested trace spanning the agent and the servers it called rather
+than several unrelated ones.</p>
 <hr />
 <h2 id="opting-in">Opting In<a class="headerlink" href="#opting-in" title="Permanent link">&para;</a></h2>
 <ol>
