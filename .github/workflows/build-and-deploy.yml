@@ -306,7 +306,27 @@ jobs:
           git add services/${{ matrix.service }}/helm-values-aws.yaml
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore(gitops): ${{ matrix.service }} → ${IMAGE_TAG} [dev] [skip ci]"
-          git push
+
+          # This job runs once per changed service, in parallel, and every copy
+          # pushes to main. A bare `git push` therefore races: the first wins and
+          # the rest die on "! [rejected] (fetch first)". It stayed hidden while
+          # hello-service was the only service this workflow built (one job, no
+          # race) and surfaced the moment the matrix covered every services/*.
+          #
+          # Each job only ever touches its own services/<name>/helm-values-aws.yaml,
+          # so the commits never conflict in content — they only conflict on the
+          # ref. Rebase and retry with a jittered backoff.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "push rejected (attempt ${attempt}) — rebasing onto origin/main"
+            git pull --rebase --autostash origin main
+            sleep $(( (RANDOM % 8) + 2 ))
+          done
+          echo "::error::could not push image tag after 5 attempts"
+          exit 1
 
       - name: Notify Slack on success
         if: success()
