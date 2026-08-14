@@ -1098,6 +1098,30 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#self-hosted-models-no-api-key-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      Self-hosted models (no API key required)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Self-hosted models (no API key required)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scaffolding-a-model-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaffolding a model server
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       Architecture
@@ -2681,6 +2705,60 @@ suites, contract testing, GitHub PRs, cost/budget data, ArgoCD application state
 and persistent user memory. This is the foundation the
 <a href="../agentic-platform/">Agentic Development Platform (ADP)</a> epic builds on.</p>
 <hr />
+<h2 id="self-hosted-models-no-api-key-required">Self-hosted models (no API key required)<a class="headerlink" href="#self-hosted-models-no-api-key-required" title="Permanent link">&para;</a></h2>
+<p>Every KAgent ModelConfig the platform ships needs an Anthropic or OpenAI key,
+which makes "try the agents" gated on having a paid account. <code>--ollama</code> removes
+that gate:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--ollama<span class="w">            </span><span class="c1"># local</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--ollama<span class="w">      </span><span class="c1"># AWS</span>
+</code></pre></div></td></tr></table></div>
+<p>It deploys one shared Ollama into <code>ml-platform</code> serving <code>qwen2.5:1.5b</code>, plus a
+KAgent ModelConfig named <code>ollama-local</code> pointing at it. One server, not one per
+scaffolded app — a resident model is the expensive part.</p>
+<p><strong>No existing agent is repointed at it.</strong> A 1.5B model cannot drive the
+multi-tool loops <code>incident-agent</code> and <code>cost-agent</code> perform; it will loop or
+invent tool names. Treat it as an available backend and a demo, not a
+replacement. To try it, repoint one low-stakes agent's <code>modelConfig</code>.</p>
+<p><strong>Cost on the local cluster:</strong> ~2.7GB of image and ~1.5GB resident, on top of a
+platform that already needs 8 CPU / 16 GB. It is off by default for that reason,
+and the bootstrap prints the arithmetic before installing.</p>
+<h3 id="scaffolding-a-model-server">Scaffolding a model server<a class="headerlink" href="#scaffolding-a-model-server" title="Permanent link">&para;</a></h3>
+<p>The <strong>Model Serving API</strong> template now offers three servers rather than implying
+one:</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>What it is</th>
+<th>Use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mock</code></td>
+<td>~50MB Python stub returning canned text in the OpenAI shape</td>
+<td>Demos and scaffold tests. The local default</td>
+</tr>
+<tr>
+<td><code>ollama</code></td>
+<td>Real Ollama, pinned, with a PVC so the model survives a restart</td>
+<td>CPU inference on AWS, or locally with <code>IDP_ALLOW_LOCAL_OLLAMA=true</code></td>
+</tr>
+<tr>
+<td><code>vllm</code></td>
+<td>Real vLLM, needs a GPU node</td>
+<td>GPU inference. Blocked until a GPU node group exists — see issue #184</td>
+</tr>
+</tbody>
+</table>
+<p>The mock was previously called Ollama in the code while serving none of Ollama's
+behaviour, so the scaffolder reported "Ollama" for something that returns fixed
+strings. It is now named for what it is.</p>
+<p>Both real servers fail fast rather than hanging: <code>ollama</code> on a local cluster
+refuses unless <code>IDP_ALLOW_LOCAL_OLLAMA=true</code>, and <code>vllm</code> checks for a node
+carrying an <code>accelerator</code> label and names issue #184 when there is none —
+otherwise the pod sits <code>Pending</code> forever and reads as a hang.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <p>The AI Assistant is a <strong>native React chat component</strong> embedded directly in the Backstage frontend. It is not an iframe.</p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
