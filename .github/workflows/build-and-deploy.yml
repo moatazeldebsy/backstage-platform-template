@@ -603,7 +603,13 @@ jobs:
 
           git add "services/${SERVICE}/helm-values-staging.yaml"
           git diff --staged --quiet && echo "No staging changes to promote." && exit 0
-          git commit -m "chore(gitops): promote ${SERVICE} → ${IMAGE_TAG} [staging] [skip ci]"
+          # No [skip ci] here, unlike the dev image-tag commit above. That commit
+          # pushes straight to main and needs the skip to avoid retriggering
+          # itself; this one opens a PR that has to pass branch protection.
+          # main requires helm-lint, k8s-dry-run and backstage-compile, all of
+          # which live in ci.yml — [skip ci] suppressed the entire workflow, so
+          # the PR reported no checks at all and was permanently BLOCKED.
+          git commit -m "chore(gitops): promote ${SERVICE} → ${IMAGE_TAG} [staging]"
           git push origin "${BRANCH}"
 
           {
@@ -839,7 +845,9 @@ jobs:
 
           git add "services/${SERVICE}/helm-values-prod.yaml"
           git diff --staged --quiet && echo "No production changes to promote." && exit 0
-          git commit -m "chore(gitops): promote ${SERVICE} → ${IMAGE_TAG} [production] [skip ci]"
+          # See the staging step: no [skip ci], or the PR can never satisfy
+          # branch protection.
+          git commit -m "chore(gitops): promote ${SERVICE} → ${IMAGE_TAG} [production]"
           git push origin "${BRANCH}"
 
           {
