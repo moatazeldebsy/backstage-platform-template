@@ -21,29 +21,20 @@ spec:
               revision: HEAD
               directories:
                 - path: services/*
-                # The following services are AI-stack-only (bootstrap-ai.sh manages them).
-                # Excluding them prevents ArgoCD from auto-deploying before the image
-                # exists in ECR or required secrets are created.
-                - path: services/contract-mcp-server
-                  exclude: true
-                - path: services/agent-event-router
-                  exclude: true
-                - path: services/github-mcp-server
-                  exclude: true
-                - path: services/argocd-mcp-server
-                  exclude: true
-                - path: services/cost-mcp-server
-                  exclude: true
-                - path: services/idp-mcp-server
-                  exclude: true
-                - path: services/qa-mcp-server
-                  exclude: true
-                - path: services/incident-mcp-server
-                  exclude: true
-                - path: services/security-mcp-server
-                  exclude: true
-                - path: services/approval-service
-                  exclude: true
+                # No exclusions. The ten AI/MCP services used to be excluded here
+                # because bootstrap-ai.sh helm-installed them directly and two
+                # systems cannot own the same release — which meant the platform's
+                # own services did not take the GitOps path it sells to users.
+                #
+                # bootstrap-ai.sh's AWS branch now syncs an existing ArgoCD
+                # Application instead of installing, and falls back to Helm only
+                # when there is no Application yet. So ArgoCD owns these releases
+                # and the bootstrap converges to the same state.
+                #
+                # Their images are in ECR (built by bootstrap-ai.sh and, since the
+                # build matrix was generalised, by CI on any change under
+                # services/<name>/), so an Application created here has something
+                # to pull.
           # Generator 2: one entry per environment
           - list:
               elements:

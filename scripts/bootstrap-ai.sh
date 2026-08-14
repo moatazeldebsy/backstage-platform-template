@@ -1840,6 +1840,40 @@ else
       # No build here: the images were built by the background pass launched in
       # section 0 and joined in 6a above. This loop is deploy-only.
       if [[ "$DEPLOY_MODE" == "aws" ]]; then
+        # ArgoCD first, exactly as the local branch below already does.
+        #
+        # This branch used to run `helm upgrade --install` unconditionally, which
+        # is why the ten AI/MCP services had to be excluded from the AWS
+        # ApplicationSets: two systems cannot own the same release. That exclusion
+        # is the platform failing to take the GitOps path it sells, and the
+        # ownership-conflict defence further down exists only because of it.
+        #
+        # When an ArgoCD Application exists we sync it and let ArgoCD own the
+        # release. Only when there is none do we fall back to Helm — which is
+        # still the case on a first install, before app-of-apps has been applied.
+        if argocd app get "${SVC}-dev" --grpc-web >/dev/null 2>&1; then
+          info "${SVC}-dev is ArgoCD-managed — syncing rather than installing with Helm."
+          argocd app sync "${SVC}-dev" --grpc-web 2>/dev/null || true
+          # sync can no-op or fail quietly; the app's own Automated+selfHeal
+          # policy converges it regardless. Poll for the Deployment so the
+          # rollout check below does not race a NotFound.
+          for _i in $(seq 1 18); do
+            kubectl get deployment "${SVC}" -n services-dev &>/dev/null && break
+            sleep 5
+          done
+          kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
+          check "${SVC} synced via ArgoCD"
+          exit 0
+        elif kubectl get deployment "${SVC}" -n services-dev \
+               -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null | grep -q .; then
+          # Same defence the local branch carries: `argocd app get` can
+          # false-negative on a CLI auth hiccup. Never fight ArgoCD for
+          # ownership of resources it already tracks.
+          warn "${SVC}-dev: 'argocd app get' failed but ${SVC}'s Deployment already carries an ArgoCD tracking-id — skipping the Helm install to avoid an ownership conflict."
+          kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
+          exit 0
+        fi
+
         # Skip the `helm upgrade --install --wait 3m` when neither the image nor
         # the chart values changed and Helm still reports the release deployed.
         # The rollout status check still runs on the skip path — it's ~instant
