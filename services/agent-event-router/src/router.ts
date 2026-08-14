@@ -9,8 +9,10 @@ import {
   GitHubIncidentStore,
   addPagerDutyNote,
   correlatePagerDuty,
+  parseMarker,
   renderMarker,
   toPriority,
+  upsertMarker,
 } from './incidents';
 
 export type { OpenIncident } from './incidents';
@@ -243,6 +245,38 @@ export async function resolveIncidentIssue(
     `https://api.github.com/repos/${config.repo}/issues/${record.issueNumber}/labels/incident%3Aopen`,
     { method: 'DELETE', headers: githubHeaders(config.token) },
   );
+
+  // Write the resolution back into the marker so MTTR is computable without
+  // parsing the prose comment above. scripts/render-postmortem.py reads exactly
+  // these two fields; without them it falls back to issue.closed_at, which is
+  // when somebody closed the issue rather than when the alert stopped firing.
+  //
+  // Best-effort: the label swap above is what actually marks the incident
+  // resolved, so a failure here must not undo it.
+  try {
+    const issueRes = await fetchImpl(
+      `https://api.github.com/repos/${config.repo}/issues/${record.issueNumber}`,
+      { headers: githubHeaders(config.token) },
+    );
+    if (issueRes.ok) {
+      const issue = (await issueRes.json()) as { body?: string };
+      const marker = parseMarker(issue.body);
+      if (marker) {
+        const updated = upsertMarker(issue.body ?? '', {
+          ...marker,
+          endsAt,
+          durationMinutes: durationMin ?? undefined,
+        });
+        await fetchImpl(`https://api.github.com/repos/${config.repo}/issues/${record.issueNumber}`, {
+          method: 'PATCH',
+          headers: githubHeaders(config.token),
+          body: JSON.stringify({ body: updated }),
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[event-router] failed to record resolution in the incident marker:', err);
+  }
 }
 
 // ── routeAlertManager ───────────────────────────────────────────────────────

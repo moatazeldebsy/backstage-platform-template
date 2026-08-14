@@ -86,7 +86,20 @@ The platform includes a blameless postmortem template at [`docs/postmortem-templ
 ### Process
 
 1. For any P1 or P2 incident, a postmortem must be filed within **48 hours** of resolution.
-2. Copy the template into `docs/postmortems/<YYYY-MM-DD>-<incident-title>.md`.
+2. **A draft is opened for you.** When `agent-event-router` swaps `incident:open`
+   for `incident:needs-postmortem`, the **Postmortem** workflow
+   (`.github/workflows/postmortem.yml`) renders
+   `docs/postmortems/<INC-id>-<service>.md` and opens a PR. The identifiers, the
+   timeline reconstructed from the issue and its comments, and the MTTR
+   arithmetic are filled in; every section marked `_TODO_` needs a human.
+
+   The root cause is deliberately left blank rather than guessed — a
+   plausible-sounding wrong root cause is worse than an empty heading. A daily
+   job comments on any incident still lacking a draft after 48 hours, so the SLA
+   below is enforced by something other than memory.
+
+   To regenerate, re-apply the label, or run the workflow manually with the issue
+   number.
 3. Fill in the five sections: timeline, impact, root cause, contributing factors, action items.
 4. Open a PR — the platform team reviews within 24 hours.
 5. Action items are tracked as GitHub Issues with the `postmortem` label.
