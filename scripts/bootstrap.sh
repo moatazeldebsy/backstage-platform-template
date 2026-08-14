@@ -974,7 +974,12 @@ _p44_pid=$!
     -n monitoring --dry-run=client -o yaml | kubectl apply -f -
   sed "s|BACKSTAGE_URL_PLACEHOLDER|http://backstage.backstage.svc.cluster.local:80|g" \
     observability/flaky-test-exporter/cronjob.yaml | kubectl apply -f -
-  kubectl apply -f observability/flaky-test-exporter/quarantine-cronjob.yaml
+  # quarantine-cronjob.yaml carries the same BACKSTAGE_URL_PLACEHOLDER as its
+  # sibling above and needs the same substitution — applying it raw left the
+  # literal placeholder in the CronJob and the quarantine sync could never
+  # reach Backstage.
+  sed "s|BACKSTAGE_URL_PLACEHOLDER|http://backstage.backstage.svc.cluster.local:80|g" \
+    observability/flaky-test-exporter/quarantine-cronjob.yaml | kubectl apply -f -
   log "  Flaky-Test Exporter deployed (scans GitHub Actions artifacts every 30m)."
   log "  Flaky-Test Quarantine Sync deployed (opens quarantine PRs daily at 06:00)."
 ) > "$_p44a2_log" 2>&1 &
