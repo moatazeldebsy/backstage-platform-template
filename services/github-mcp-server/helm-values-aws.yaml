@@ -3,7 +3,12 @@ fullnameOverride: github-mcp-server
 replicaCount: 2
 
 image:
-  repository: ECR_REGISTRY_PLACEHOLDER/github-mcp-server
+  # Resolved by scripts/setup.sh during personalisation, exactly like
+  # hello-service. It used to be ECR_REGISTRY_PLACEHOLDER, substituted by
+  # bootstrap-ai.sh on its way into helm stdin — which meant the file on
+  # disk was never renderable, so ArgoCD could not deploy this service and
+  # it had to be excluded from the ApplicationSets.
+  repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/idp-mvp/github-mcp-server
   tag: "0.1.0"
   pullPolicy: Always
 
