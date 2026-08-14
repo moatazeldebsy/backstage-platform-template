@@ -57,8 +57,10 @@ kubectl get secret langfuse-otel -n ${{ values.namespace }} \
 
 ## 4. Catalog annotation (for the Langfuse tab in Backstage)
 
-Add this to this repo's `catalog-info.yaml` under `metadata.annotations` so the entity page grows a
-**Langfuse** tab showing this service's traces, cost and latency:
+**Already done for you.** The same pull request that added this file also merged the
+annotation below into `catalog-info.yaml`, so the entity page's **Langfuse** tab shows
+this service's traces, cost and latency without any further edit. If the key was
+already set, it was left alone rather than overwritten:
 
 ```yaml
 metadata:

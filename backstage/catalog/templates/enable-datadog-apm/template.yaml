@@ -152,6 +152,38 @@ spec:
       input:
         url: ./skeleton-addon/lang-ruby
 
+    # Merge the annotations into the target repo's catalog-info.yaml so they land
+
+    # in this same PR. This step used to be a README telling the developer to
+
+    # paste them by hand, which is why no service ever carried them and the
+
+    # entity tabs that read them were empty everywhere.
+
+    #
+
+    # Never overwrites a value the owner already set, and leaves the rest of the
+
+    # file byte-for-byte alone rather than reformatting it.
+
+    - id: merge-annotations
+
+      name: Add catalog annotations
+
+      action: idp:merge-catalog-annotations
+
+      input:
+
+        repoUrl: ${{ parameters.targetRepoUrl }}
+
+        annotations:
+            'datadoghq.com/site': app.${{ parameters.datadogSite }}
+            'datadoghq.com/monitor-tag': service:${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+            # Empty values are dropped by the action, so an unset optional
+            # dashboard does not produce a blank annotation.
+            'datadoghq.com/dashboard-url': ${{ parameters.dashboardUrl }}
+
+
     - id: publish-pr
       name: Open Pull Request
       action: publish:github:pull-request

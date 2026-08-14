@@ -14,6 +14,7 @@
 import { createBackend } from '@backstage/backend-defaults';
 import { idpLocalDeployModule } from './modules/idpLocalDeploy';
 import { idpProvisionSecretModule } from './modules/idpProvisionSecret';
+import { idpMergeCatalogAnnotationsModule } from './modules/idpMergeCatalogAnnotations';
 import { idpPlatformUrlsModule } from './modules/idpPlatformUrls';
 import { idpProvisionEcrModule } from './modules/idpProvisionEcr';
 import { idpSetRepoSecretsModule } from './modules/idpSetRepoSecrets';
@@ -40,6 +41,7 @@ backend.add(import('@backstage/plugin-scaffolder-backend'));
 backend.add(import('@backstage/plugin-scaffolder-backend-module-github'));
 backend.add(idpLocalDeployModule);
 backend.add(idpProvisionSecretModule);
+backend.add(idpMergeCatalogAnnotationsModule);
 backend.add(idpPlatformUrlsModule);
 backend.add(idpProvisionEcrModule);
 backend.add(idpSetRepoSecretsModule);
