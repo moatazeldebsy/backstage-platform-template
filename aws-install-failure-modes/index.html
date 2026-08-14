@@ -1058,6 +1058,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#8-a-5-second-timeout-on-an-llm-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. A 5-second timeout on an LLM call
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2225,6 +2234,29 @@ Anything that reads from disk or assumes a local addon needs an explicit AWS pat
 IAMFullAccess for <em>every</em> repository in the org, including every scaffolded service.
 Now scoped to <code>var.platform_repo</code>.</p>
 <hr />
+<h3 id="8-a-5-second-timeout-on-an-llm-call">8. A 5-second timeout on an LLM call<a class="headerlink" href="#8-a-5-second-timeout-on-an-llm-call" title="Permanent link">&para;</a></h3>
+<p>Found by firing a synthetic critical alert through the incident pipeline on the
+live cluster, then reading the router log rather than trusting the outcome.</p>
+<p>The GitHub incident issue was created correctly — right labels, right marker. The
+log said otherwise:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>alertmanager routing error: DOMException [AbortError]: This operation was aborted
+  at async postToAgent (file:///app/dist/index.js:64:22)
+</code></pre></div></td></tr></table></div>
+<p><code>agent-event-router</code> used one <code>HTTP_TIMEOUT_MS</code> (default <strong>5000ms</strong>) for every
+outbound call, including the KAgent A2A dispatch. That dispatch is an LLM turn,
+and several more once the agent starts calling MCP tools. Measured against the
+live <code>incident-agent</code>, a single-sentence answer with no tool calls took <strong>4.3s</strong> —
+passing by 700ms, with any real triage aborting.</p>
+<p><strong>The failure was near-invisible.</strong> The incident issue is created <em>before</em>
+dispatch, so the pipeline still produced its most visible artefact while the
+agent half silently never ran. Nothing was marked failed.</p>
+<p>Agent dispatch now has its own <code>AGENT_TIMEOUT_MS</code> (default 60s), and an abort
+logs which agent timed out and that the record was still created, instead of a
+bare <code>DOMException</code>.</p>
+<p><strong>The general lesson:</strong> a timeout tuned for an HTTP API is wrong for an LLM call
+by an order of magnitude, and when the slow call is the <em>last</em> step its failure
+does not look like failure.</p>
 <h2 id="what-still-is-not-covered">What still is not covered<a class="headerlink" href="#what-still-is-not-covered" title="Permanent link">&para;</a></h2>
 <p>Being explicit about the gaps, because a green CI run should not imply more than it
 proves:</p>
