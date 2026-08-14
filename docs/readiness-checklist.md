@@ -22,9 +22,22 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] `AUTH_GITHUB_CLIENT_ID` and `AUTH_GITHUB_CLIENT_SECRET` are set in production environment
 
 ### Network & TLS
+
+**Ingress TLS termination** — nothing on the cluster serves HTTPS by default. This is the largest open security gap; see [security.md](security.md#ingress-tls-is-not-configured) for the full remediation and [#310](https://github.com/moatazeldebsy/backstage-platform-template/issues/310) for tracking.
+
+- [ ] `var.domain_name` is set in `terraform/terraform.tfvars` and a Route53 hosted zone exists for it
+- [ ] The ACM wildcard certificate in `terraform/acm.tf` covers Backstage and ArgoCD, not just the monitoring ALBs
+- [ ] Backstage is served through an ALB Ingress carrying `certificate-arn`, `listen-ports: [{"HTTPS":443}]` and `ssl-redirect: '443'` — not a bare `LoadBalancer` Service on port 80
+- [ ] `APP_BASE_URL`, `app.baseUrl` and `backend.baseUrl` all use `https://`
+- [ ] ArgoCD no longer runs with `--insecure` / `server.insecure: true`
+- [ ] `curl -I http://<backstage-host>` returns a 301 to HTTPS, and the HTTPS URL returns 200
+- [ ] The GitHub OAuth App callback URL was re-registered for the new hostname
+
+**Other TLS settings**
+
 - [ ] `skipTLSVerify: true` in Kubernetes config is replaced with a proper CA bundle for production clusters
 - [ ] `ssl.rejectUnauthorized: false` for PostgreSQL is enabled (set to `true`) in production
-- [ ] `upgrade-insecure-requests` is set to `true` when Backstage is served over HTTPS
+- [ ] `upgrade-insecure-requests` is set to `true` when Backstage is served over HTTPS — **do this only after ingress TLS is live**, or the app breaks
 - [ ] CSP `connect-src` is narrowed to specific upstream hostnames in production
 
 ### Infrastructure (AWS / Terraform)
