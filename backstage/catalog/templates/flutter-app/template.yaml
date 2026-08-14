@@ -109,29 +109,111 @@ spec:
             allowedOwners:
               - moatazeldebsy
 
+    # The AWS-only inputs live under `dependencies` so they are not rendered at
+
+    # all when Local is selected. They used to be shown unconditionally with
+
+    # "(AWS only)" in the title and "Leave blank for local deployments" in the
+
+    # help — which reads like a required field you are being told to skip, and
+
+    # asks somebody deploying to Kind for an IAM role ARN.
+
     - title: Deployment Target
+
+      required:
+
+        - deployTarget
+
       properties:
+
         deployTarget:
-          title: Where will this app's web build run?
+
+          title: Where will this service run?
+
           type: string
+
           default: local
+
           enum: [local, aws]
+
           enumNames: ['Local (Kind / Rancher Desktop)', 'AWS (EKS)']
+
           ui:widget: radio
-          ui:help: "Only relevant if Flutter Web deploy is enabled."
-        port:
-          title: Web Container Port
-          type: integer
-          default: 8080
-          ui:help: "Port for the Flutter Web Nginx container."
-        awsRoleArn:
-          title: AWS IAM Role ARN
-          type: string
-          description: OIDC-federated IAM role for GitHub Actions to push to ECR and deploy to EKS.
-          ui:help: "Format: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME — required when Deployment Target is AWS."
-          ui:backstage:
-            review:
-              show: false
+
+      dependencies:
+
+        deployTarget:
+
+          oneOf:
+
+            # Local: nothing further to ask.
+
+            - properties:
+
+                deployTarget:
+
+                  enum: [local]
+
+            - properties:
+
+                deployTarget:
+
+                  enum: [aws]
+
+                awsRoleArn:
+
+                  title: AWS IAM Role ARN for CI/CD
+
+                  type: string
+
+                  description: >-
+
+                    The OIDC role GitHub Actions assumes to push images to ECR.
+
+                    Get it from the platform repo with:
+
+                    cd terraform && terraform output -raw github_actions_role_arn
+
+                  # Fails at the form rather than three minutes into the first CI
+
+                  # run with an opaque STS error.
+
+                  pattern: '^arn:aws:iam::[0-9]{12}:role/.+$'
+
+                  ui:help: "terraform output -raw github_actions_role_arn"
+
+                  ui:placeholder: 'arn:aws:iam::123456789012:role/idp-mvp-github-actions'
+
+                clusterName:
+
+                  title: Cluster Name
+
+                  type: string
+
+                  default: idp-mvp
+
+                  description: "Matches the ECR repo naming used by CI: <clusterName>/<serviceName>"
+
+                  ui:help: "The cluster_name you set in terraform.tfvars during setup."
+
+                awsRegion:
+
+                  title: AWS Region
+
+                  type: string
+
+                  default: us-east-1
+
+                  ui:help: "Must match the region the cluster and its ECR repos live in."
+
+              required:
+
+                - awsRoleArn
+
+                - clusterName
+
+                - awsRegion
 
   steps:
     - id: fetch-template
@@ -153,7 +235,6 @@ spec:
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
           port: ${{ parameters.port }}
-          awsRoleArn: ${{ parameters.awsRoleArn }}
 
     - id: publish
       name: Publish to GitHub
