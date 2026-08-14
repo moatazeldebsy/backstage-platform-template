@@ -1991,6 +1991,10 @@ else
     # Flip every `disabled: true` that belongs to a custom-pages AI extension,
     # plus aiStack.enabled. The AI entries are the only ones in that list
     # carrying a custom-pages/ prefix, so page:kubernetes stays disabled.
+    #
+    # entity-content is in the alternation because the per-entity Langfuse tab
+    # is disabled by default like the AI pages, and matching only page/nav-item
+    # left it hidden on a cluster that does have the AI layer installed.
     kubectl get configmap backstage-config -n backstage -o json \
       | python3 -c '
 import json, re, sys
@@ -1998,7 +2002,7 @@ cm = json.load(sys.stdin)
 key = "app-config.aws.yaml"
 body = cm["data"][key]
 body = re.sub(
-    r"(- (?:page|nav-item):custom-pages/[\w-]+:\n\s+disabled: )true",
+    r"(- (?:page|nav-item|entity-content):custom-pages/[\w-]+:\n\s+disabled: )true",
     r"\1false",
     body,
 )
