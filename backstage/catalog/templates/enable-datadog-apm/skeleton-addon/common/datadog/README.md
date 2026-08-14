@@ -29,8 +29,9 @@ datadog:
 
 ## 2. Catalog annotations (for the Datadog tab in Backstage)
 
-Add these to this repo's `catalog-info.yaml` under `metadata.annotations` so the entity page's
-Datadog tab shows dashboard/monitor/SLO status:
+**Already done for you.** The same pull request that added this file also merged these
+annotations into `catalog-info.yaml`, so the entity page's Datadog tab reads them
+directly:
 
 ```yaml
 metadata:
@@ -40,8 +41,11 @@ metadata:
     datadoghq.com/site: "app.${{ values.datadogSite }}"
 ```
 
-(Remove the `dashboard-url` line if you left the dashboard URL parameter blank — add it later once
-you've created a dashboard.)
+Nothing to paste. If a key was already set in your `catalog-info.yaml`, it was left
+alone rather than overwritten — check the diff on this PR to see exactly what changed.
+
+`dashboard-url` is omitted when you left the dashboard parameter blank; re-run this
+template with a URL, or add the line yourself once you have created a dashboard.
 
 ## 3. Cluster-wide setup already in place
 
