@@ -583,8 +583,17 @@ jobs:
           if [ ! -f "services/${SERVICE}/helm-values-staging.yaml" ]; then
             cp "services/${SERVICE}/helm-values-aws.yaml" \
                "services/${SERVICE}/helm-values-staging.yaml"
-            sed -i 's/ENVIRONMENT: dev/ENVIRONMENT: staging/' \
-              "services/${SERVICE}/helm-values-staging.yaml" 2>/dev/null || true
+            # The old `s/ENVIRONMENT: dev/` matched nothing in any of the eleven
+            # services: podLabels use `environment: dev`, and hello-service's env
+            # var is list form (`- name: ENVIRONMENT` / `value: dev`). So every
+            # promoted file carried environment=dev — which is the label the
+            # FinOps and DORA dashboards group by, and the one Kyverno's
+            # require-cost-tags policy reads.
+            sed -i \
+              -e 's/^\([[:space:]]*\)environment: dev$/\1environment: staging/' \
+              -e '/- name: ENVIRONMENT/{n;s/^\([[:space:]]*\)value: .*$/\1value: staging/;}' \
+              -e 's/^\(#.*\)dev environment$/\1staging environment/' \
+              "services/${SERVICE}/helm-values-staging.yaml"
           fi
 
           yq -i ".image.repository = \"${IMAGE_REPO}\"" \
@@ -814,8 +823,13 @@ jobs:
           if [ ! -f "services/${SERVICE}/helm-values-prod.yaml" ]; then
             cp "services/${SERVICE}/helm-values-staging.yaml" \
                "services/${SERVICE}/helm-values-prod.yaml"
-            sed -i 's/ENVIRONMENT: staging/ENVIRONMENT: prod/' \
-              "services/${SERVICE}/helm-values-prod.yaml" 2>/dev/null || true
+            # Same dead-sed problem as the staging step, compounded: prod copies
+            # from staging, so a mislabelled staging file propagates here.
+            sed -i \
+              -e 's/^\([[:space:]]*\)environment: staging$/\1environment: prod/' \
+              -e '/- name: ENVIRONMENT/{n;s/^\([[:space:]]*\)value: .*$/\1value: prod/;}' \
+              -e 's/^\(#.*\)staging environment$/\1prod environment/' \
+              "services/${SERVICE}/helm-values-prod.yaml"
           fi
 
           yq -i ".image.repository = \"${IMAGE_REPO}\"" \
