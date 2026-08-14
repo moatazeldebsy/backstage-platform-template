@@ -1,22 +1,18 @@
 fullnameOverride: cost-mcp-server
-
 replicaCount: 2
-
 image:
   # Resolved by scripts/setup.sh during personalisation, exactly like
   # hello-service. It used to be ECR_REGISTRY_PLACEHOLDER, substituted by
   # bootstrap-ai.sh on its way into helm stdin — which meant the file on
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
-  repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/idp-mvp/cost-mcp-server
-  tag: "0.1.0"
+  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/cost-mcp-server
+  tag: "latest"
   pullPolicy: Always
-
 service:
   type: ClusterIP
   port: 3007
   targetPort: 3007
-
 ingress:
   enabled: true
   className: alb
@@ -30,7 +26,6 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
-
 resources:
   requests:
     cpu: 50m
@@ -38,7 +33,6 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 env:
   - name: PORT
     value: "3007"
@@ -47,17 +41,14 @@ env:
     value: "http://opencost.opencost.svc.cluster.local:9003"
   - name: PROMETHEUS_URL
     value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
-
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 4
   targetCPUUtilizationPercentage: 70
-
 # Langfuse tracing for src/telemetry.ts. The langfuse-otel secret carries
 # LANGFUSE_OTLP_ENDPOINT / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY and is
 # created per-namespace by bootstrap-ai.sh (namespaces labelled
@@ -67,7 +58,6 @@ envFrom:
   - secretRef:
       name: langfuse-otel
       optional: true
-
 # Required by the Gatekeeper constraint require-cost-allocation-labels, which
 # denies any workload missing team / cost-center / environment. Without these the
 # admission webhook rejected the release outright:
