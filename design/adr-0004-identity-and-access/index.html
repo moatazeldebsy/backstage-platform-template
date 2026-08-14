@@ -11,22 +11,22 @@
       
       
       
-        <link rel="prev" href="../security/">
+        <link rel="prev" href="../adr-0003-incident-management/">
       
       
-        <link rel="next" href="../demo-runbook/">
+        <link rel="next" href="../../team-management/">
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
     
     
       
-        <title>Security Scanning (SonarCloud + Snyk) - Internal Developer Platform</title>
+        <title>ADR-0004: Identity and access - Internal Developer Platform</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6543a935.min.css">
       
       
 
@@ -45,7 +45,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#security-scanning-sonarcloud-snyk" class="md-skip">
+        <a href="#adr-0004-identity-and-access" class="md-skip">
           Skip to content
         </a>
       
@@ -78,7 +78,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+    <a href="../.." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Security Scanning (SonarCloud + Snyk)
+              ADR-0004: Identity and access
             
           </span>
         </div>
@@ -140,7 +140,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
     
@@ -157,7 +157,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../getting-started/" class="md-tabs__link">
+      <a href="../../getting-started/" class="md-tabs__link">
         
   
     
@@ -174,7 +174,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../architecture/" class="md-tabs__link">
+      <a href="../../architecture/" class="md-tabs__link">
         
   
     
@@ -191,7 +191,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../multi-region/" class="md-tabs__link">
+      <a href="../../multi-region/" class="md-tabs__link">
         
   
     
@@ -208,7 +208,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../golden-path/" class="md-tabs__link">
+      <a href="../../golden-path/" class="md-tabs__link">
         
   
     
@@ -225,7 +225,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../mobile-platform/" class="md-tabs__link">
+      <a href="../../mobile-platform/" class="md-tabs__link">
         
   
     
@@ -242,7 +242,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../local-setup/" class="md-tabs__link">
+      <a href="../../local-setup/" class="md-tabs__link">
         
   
     
@@ -261,7 +261,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
+        <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
           
   
   AWS Deployment
@@ -277,7 +277,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+      <a href="../../TROUBLESHOOTING/" class="md-tabs__link">
         
   
     
@@ -294,7 +294,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../docker-recovery/" class="md-tabs__link">
+      <a href="../../docker-recovery/" class="md-tabs__link">
         
   
     
@@ -311,7 +311,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../cli-reference/" class="md-tabs__link">
+      <a href="../../cli-reference/" class="md-tabs__link">
         
   
     
@@ -328,7 +328,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../scripts-reference/" class="md-tabs__link">
+      <a href="../../scripts-reference/" class="md-tabs__link">
         
   
     
@@ -345,7 +345,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../ai-assistant/" class="md-tabs__link">
+      <a href="../../ai-assistant/" class="md-tabs__link">
         
   
     
@@ -362,7 +362,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../agentic-platform/" class="md-tabs__link">
+      <a href="../../agentic-platform/" class="md-tabs__link">
         
   
     
@@ -379,7 +379,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../agent-approvals/" class="md-tabs__link">
+      <a href="../../agent-approvals/" class="md-tabs__link">
         
   
     
@@ -396,7 +396,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../dora-finops/" class="md-tabs__link">
+      <a href="../../dora-finops/" class="md-tabs__link">
         
   
     
@@ -413,7 +413,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../contract-testing/" class="md-tabs__link">
+      <a href="../../contract-testing/" class="md-tabs__link">
         
   
     
@@ -430,7 +430,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../crossplane/" class="md-tabs__link">
+      <a href="../../crossplane/" class="md-tabs__link">
         
   
     
@@ -447,7 +447,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+      <a href="../../crossplane-vs-terraform/" class="md-tabs__link">
         
   
     
@@ -462,11 +462,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../design/adr-0001-batch-orchestration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../adr-0001-batch-orchestration/" class="md-tabs__link">
           
   
   Design Decisions
@@ -482,7 +484,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../team-management/" class="md-tabs__link">
+      <a href="../../team-management/" class="md-tabs__link">
         
   
     
@@ -499,7 +501,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../github-app-setup/" class="md-tabs__link">
+      <a href="../../github-app-setup/" class="md-tabs__link">
         
   
     
@@ -516,7 +518,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../scaling-runbook/" class="md-tabs__link">
+      <a href="../../scaling-runbook/" class="md-tabs__link">
         
   
     
@@ -535,7 +537,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../shift-left-leadership/" class="md-tabs__link">
+        <a href="../../shift-left-leadership/" class="md-tabs__link">
           
   
   Shift-Left Quality
@@ -551,7 +553,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../security/" class="md-tabs__link">
+      <a href="../../security/" class="md-tabs__link">
         
   
     
@@ -566,11 +568,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../../security-scanning/" class="md-tabs__link">
         
   
     
@@ -587,7 +587,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../demo-runbook/" class="md-tabs__link">
+      <a href="../../demo-runbook/" class="md-tabs__link">
         
   
     
@@ -604,7 +604,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../readiness-checklist/" class="md-tabs__link">
+      <a href="../../readiness-checklist/" class="md-tabs__link">
         
   
     
@@ -621,7 +621,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../sre-reliability/" class="md-tabs__link">
+      <a href="../../sre-reliability/" class="md-tabs__link">
         
   
     
@@ -640,7 +640,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../runbooks/" class="md-tabs__link">
+        <a href="../../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -656,7 +656,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../postmortem-template/" class="md-tabs__link">
+      <a href="../../postmortem-template/" class="md-tabs__link">
         
   
     
@@ -692,7 +692,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+    <a href="../.." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -722,7 +722,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -742,7 +742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/" class="md-nav__link">
+      <a href="../../getting-started/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -762,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -782,7 +782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../multi-region/" class="md-nav__link">
+      <a href="../../multi-region/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -802,7 +802,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../golden-path/" class="md-nav__link">
+      <a href="../../golden-path/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -822,7 +822,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mobile-platform/" class="md-nav__link">
+      <a href="../../mobile-platform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -842,7 +842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../local-setup/" class="md-nav__link">
+      <a href="../../local-setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -902,7 +902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
+      <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -923,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
+      <a href="../../DEPLOYMENT_GUIDE/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -944,7 +944,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../aws-install-failure-modes/" class="md-nav__link">
+      <a href="../../aws-install-failure-modes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -972,7 +972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+      <a href="../../TROUBLESHOOTING/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -992,7 +992,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../docker-recovery/" class="md-nav__link">
+      <a href="../../docker-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1012,7 +1012,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli-reference/" class="md-nav__link">
+      <a href="../../cli-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1032,7 +1032,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../scripts-reference/" class="md-nav__link">
+      <a href="../../scripts-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1052,7 +1052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ai-assistant/" class="md-nav__link">
+      <a href="../../ai-assistant/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1072,7 +1072,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../agentic-platform/" class="md-nav__link">
+      <a href="../../agentic-platform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1092,7 +1092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../agent-approvals/" class="md-nav__link">
+      <a href="../../agent-approvals/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1112,7 +1112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dora-finops/" class="md-nav__link">
+      <a href="../../dora-finops/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1132,7 +1132,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contract-testing/" class="md-nav__link">
+      <a href="../../contract-testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1152,7 +1152,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../crossplane/" class="md-nav__link">
+      <a href="../../crossplane/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1172,7 +1172,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+      <a href="../../crossplane-vs-terraform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1189,25 +1189,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" checked>
         
           
-          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1218,7 +1223,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_20">
             <span class="md-nav__icon md-icon"></span>
             Design Decisions
@@ -1232,7 +1237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
+      <a href="../adr-0001-batch-orchestration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1253,7 +1258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
+      <a href="../adr-0002-delivery-model/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1274,7 +1279,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0003-incident-management/" class="md-nav__link">
+      <a href="../adr-0003-incident-management/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1292,10 +1297,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    ADR-0004: Identity and access
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1304,6 +1329,95 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-guest-auth-is-removed-from-the-production-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Guest auth is removed from the production config
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-github-org-ingestion-is-deferred-not-adopted" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. GitHub Org ingestion is deferred, not adopted
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-authorization-stays-coarse-and-that-is-stated-plainly" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Authorization stays coarse, and that is stated plainly
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deferred
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1323,7 +1437,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../team-management/" class="md-nav__link">
+      <a href="../../team-management/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1343,7 +1457,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../github-app-setup/" class="md-nav__link">
+      <a href="../../github-app-setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1363,7 +1477,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../scaling-runbook/" class="md-nav__link">
+      <a href="../../scaling-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1423,7 +1537,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-leadership/" class="md-nav__link">
+      <a href="../../shift-left-leadership/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1444,7 +1558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left/" class="md-nav__link">
+      <a href="../../shift-left/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1465,7 +1579,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+      <a href="../../shift-left-pilot-kickoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1486,7 +1600,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+      <a href="../../shift-left-demo-cheatsheet/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1507,7 +1621,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flaky-test-quarantine/" class="md-nav__link">
+      <a href="../../flaky-test-quarantine/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1528,7 +1642,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-impact-analysis/" class="md-nav__link">
+      <a href="../../test-impact-analysis/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1556,7 +1670,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
+      <a href="../../security/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1573,30 +1687,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Security Scanning (SonarCloud + Snyk)
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../security-scanning/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1605,188 +1699,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-fits-in-the-shift-left-programme" class="md-nav__link">
-    <span class="md-ellipsis">
-      How it fits in the shift-left programme
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#one-time-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      One-time setup
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="One-time setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-create-sonarcloud-organization" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Create SonarCloud organization
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-generate-a-sonarcloud-token-for-backstage" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Generate a SonarCloud token (for Backstage)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-create-snyk-organization" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Create Snyk organization
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-generate-a-snyk-token-for-backstage-and-ci" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Generate a Snyk token (for Backstage and CI)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-store-tokens" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Store tokens
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#two-usage-paths" class="md-nav__link">
-    <span class="md-ellipsis">
-      Two usage paths
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Two usage paths">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#path-a-new-services-automatic" class="md-nav__link">
-    <span class="md-ellipsis">
-      Path A — new services (automatic)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#path-b-existing-services-brownfield" class="md-nav__link">
-    <span class="md-ellipsis">
-      Path B — existing services (brownfield)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-results-show-up" class="md-nav__link">
-    <span class="md-ellipsis">
-      Where results show up
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Where results show up">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#github-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      GitHub Actions
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#backstage-security-entity-tab" class="md-nav__link">
-    <span class="md-ellipsis">
-      Backstage — Security entity tab
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#backstage-shift-left-scorecard-tab" class="md-nav__link">
-    <span class="md-ellipsis">
-      Backstage — Shift-Left Scorecard tab
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      Troubleshooting
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reference
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1798,7 +1710,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../demo-runbook/" class="md-nav__link">
+      <a href="../../demo-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1818,7 +1730,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../readiness-checklist/" class="md-nav__link">
+      <a href="../../readiness-checklist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1838,7 +1750,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sre-reliability/" class="md-nav__link">
+      <a href="../../sre-reliability/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1898,7 +1810,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
+      <a href="../../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1919,7 +1831,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/incident-severity/" class="md-nav__link">
+      <a href="../../runbooks/incident-severity/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1940,7 +1852,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+      <a href="../../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1961,7 +1873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+      <a href="../../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1982,7 +1894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/high-memory/" class="md-nav__link">
+      <a href="../../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2003,7 +1915,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/high-cpu/" class="md-nav__link">
+      <a href="../../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2024,7 +1936,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/db-recovery/" class="md-nav__link">
+      <a href="../../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2045,7 +1957,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+      <a href="../../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2066,7 +1978,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+      <a href="../../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2087,7 +1999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+      <a href="../../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2108,7 +2020,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+      <a href="../../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2129,7 +2041,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/dr-region-failover/" class="md-nav__link">
+      <a href="../../runbooks/dr-region-failover/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2157,7 +2069,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../postmortem-template/" class="md-nav__link">
+      <a href="../../postmortem-template/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2185,7 +2097,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/security-scanning.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/design/adr-0004-identity-and-access.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2193,203 +2105,61 @@
   
 
 
-<h1 id="security-scanning-sonarcloud-snyk">Security Scanning — SonarCloud + Snyk<a class="headerlink" href="#security-scanning-sonarcloud-snyk" title="Permanent link">&para;</a></h1>
-<p>This page covers the platform's two managed code-quality / SCA integrations:</p>
-<table>
-<thead>
-<tr>
-<th>Tool</th>
-<th>What it does</th>
-<th>Where results show up</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>SonarCloud</strong></td>
-<td>Code quality, coverage, maintainability, security hotspots, <strong>quality gate</strong></td>
-<td>GitHub Actions check + Security entity tab + shift-left scorecard</td>
-</tr>
-<tr>
-<td><strong>Snyk</strong></td>
-<td>Dependency (SCA) + container + IaC vulnerability scanning</td>
-<td>GitHub Actions check + Security entity tab + shift-left scorecard</td>
-</tr>
-</tbody>
-</table>
-<p>Both integrations are <strong>opt-in but free to wire</strong>: the CI workflow steps and proxy
-endpoints are pre-configured and skip silently when tokens aren't set. Adding the
-tokens "turns them on" — no further code changes required.</p>
-<h2 id="how-it-fits-in-the-shift-left-programme">How it fits in the shift-left programme<a class="headerlink" href="#how-it-fits-in-the-shift-left-programme" title="Permanent link">&para;</a></h2>
-<p>Two new scorecard checks are added to the existing tier model in
-<a href="../shift-left/"><code>shift-left.md</code></a>:</p>
-<table>
-<thead>
-<tr>
-<th>Check</th>
-<th>Group</th>
-<th>What it means</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>has-sonar-scanning</code></td>
-<td>Security</td>
-<td>Service has <code>sonarcloud.io/project-key</code> annotation OR <code>sonar-scanning</code> in <code>idp.io/quality-gates</code></td>
-</tr>
-<tr>
-<td><code>has-snyk-scanning</code></td>
-<td>Security</td>
-<td>Service has <code>snyk.io/org-slug</code> annotation OR <code>snyk-scanning</code> in <code>idp.io/quality-gates</code></td>
-</tr>
-</tbody>
-</table>
-<p>These count toward Silver / Gold tier alongside the existing coverage, static-analysis,
-vuln-scan, contract, and e2e checks.</p>
-<h2 id="one-time-setup">One-time setup<a class="headerlink" href="#one-time-setup" title="Permanent link">&para;</a></h2>
-<h3 id="1-create-sonarcloud-organization">1. Create SonarCloud organization<a class="headerlink" href="#1-create-sonarcloud-organization" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Sign in at <a href="https://sonarcloud.io">https://sonarcloud.io</a> with your GitHub account.</li>
-<li>Click <strong>+ → Analyze new project</strong> and select your GitHub org.</li>
-<li>SonarCloud will create an <strong>organization</strong> matching your GitHub org slug.</li>
-<li>Project keys default to <code>&lt;org&gt;_&lt;repo&gt;</code> — the platform's scaffolders use the same
-   convention so no manual configuration is needed.</li>
-</ol>
-<h3 id="2-generate-a-sonarcloud-token-for-backstage">2. Generate a SonarCloud token (for Backstage)<a class="headerlink" href="#2-generate-a-sonarcloud-token-for-backstage" title="Permanent link">&para;</a></h3>
-<ol>
-<li><a href="https://sonarcloud.io/account/security">https://sonarcloud.io/account/security</a></li>
-<li><strong>Generate a User Token</strong> named e.g. <code>backstage-idp-readonly</code>.</li>
-<li>Copy the token — you won't see it again.</li>
-</ol>
-<h3 id="3-create-snyk-organization">3. Create Snyk organization<a class="headerlink" href="#3-create-snyk-organization" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Sign in at <a href="https://app.snyk.io">https://app.snyk.io</a>. The free <strong>Open Source</strong> plan covers SCA.</li>
-<li><strong>Settings → General</strong> → note your org slug (used as <code>snyk.io/org-slug</code> annotation).</li>
-<li>Optional: <strong>Integrations → GitHub</strong> → connect the GitHub org so <code>snyk monitor</code>
-   can populate projects automatically.</li>
-</ol>
-<h3 id="4-generate-a-snyk-token-for-backstage-and-ci">4. Generate a Snyk token (for Backstage and CI)<a class="headerlink" href="#4-generate-a-snyk-token-for-backstage-and-ci" title="Permanent link">&para;</a></h3>
-<ol>
-<li><a href="https://app.snyk.io/account">https://app.snyk.io/account</a> → <strong>Auth Token</strong> → reveal and copy.</li>
-</ol>
-<h3 id="5-store-tokens">5. Store tokens<a class="headerlink" href="#5-store-tokens" title="Permanent link">&para;</a></h3>
-<p><strong>Local (Backstage proxy + Security tab):</strong></p>
-<p>Add to <code>local/backstage/.env</code> (gitignored):</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">SONAR_TOKEN</span><span class="o">=</span>&lt;your-sonarcloud-token&gt;
-<span class="nv">SNYK_TOKEN</span><span class="o">=</span>&lt;your-snyk-token&gt;
-</code></pre></div></td></tr></table></div>
-<p>Restart Backstage:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
-</code></pre></div></td></tr></table></div>
-<p><strong>AWS (production):</strong></p>
-<p>Add the two tokens to AWS Secrets Manager (the existing <code>backstage-secrets</code> secret)
-and ensure they're projected into the Backstage pod via External Secrets. See
-<code>aws/external-secrets/cluster-secret-store.yaml</code> (the ClusterSecretStore; the Backstage ExternalSecret itself is applied by <code>bootstrap.sh</code>).</p>
-<p><strong>GitHub Actions (for CI):</strong></p>
-<p>Set as <strong>organization-level secrets</strong> so every scaffolded service inherits them
-without per-repo configuration:</p>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>GitHub org → Settings → Secrets and variables → Actions → New organization secret
-  SONAR_TOKEN  →  Repository access: All repositories (or selected)
-  SNYK_TOKEN   →  Repository access: All repositories (or selected)
-</code></pre></div></td></tr></table></div>
-<p>Until both org-level secrets exist, the Sonar + Snyk CI steps <strong>skip</strong> (not fail) —
-so newly scaffolded services build green out of the box.</p>
-<h2 id="two-usage-paths">Two usage paths<a class="headerlink" href="#two-usage-paths" title="Permanent link">&para;</a></h2>
-<h3 id="path-a-new-services-automatic">Path A — new services (automatic)<a class="headerlink" href="#path-a-new-services-automatic" title="Permanent link">&para;</a></h3>
-<p>Every service scaffolded via <code>go-service</code>, <code>nodejs-service</code>, or <code>python-service</code>
-ships with:</p>
+<h1 id="adr-0004-identity-and-access">ADR-0004: Identity and access<a class="headerlink" href="#adr-0004-identity-and-access" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted (partial — see Deferred) · <strong>Date:</strong> 2026-08-14</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>Users and Groups are hand-written YAML in <code>backstage/catalog/catalog-info.yaml</code>:
+seven Groups and fourteen Users. That drifts from reality the moment anyone else
+adopts the template.</p>
+<p><code>app-config.aws.yaml</code> configured a <code>githubOrg</code> entity provider intended to fix
+that — but <code>@backstage/plugin-catalog-backend-module-github-org</code> is not a
+dependency and is not installed, so the provider block had no consumer. It looked
+solved and was not.</p>
+<p>Separately, <code>auth.providers</code> on AWS carried a <code>guest:</code> block with
+<code>dangerouslyAllowOutsideDevelopment: true</code>, above a comment reading
+"DEMO ONLY — not committed". It <em>was</em> committed.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<h3 id="1-guest-auth-is-removed-from-the-production-config">1. Guest auth is removed from the production config<a class="headerlink" href="#1-guest-auth-is-removed-from-the-production-config" title="Permanent link">&para;</a></h3>
+<p><code>idpPermissionPolicy.ts</code> denies guests exactly three permissions
+(<code>scaffolder.task.create</code>, <code>scaffolder.task.cancel</code>, <code>catalog.entity.delete</code>), so
+an unauthenticated visitor could read every entity, owner, annotation and link in
+the catalog — over plain HTTP, on an internet-facing ALB.</p>
+<p>The comment made this worse than the exposure alone: it defeated review by
+telling any reader the line was a local-only edit.</p>
+<p>Local keeps guest. <code>app-config.local.yaml</code> force-enables it because <code>NODE_ENV</code> is
+not <code>development</code> inside the container, and that is a laptop.</p>
+<h3 id="2-github-org-ingestion-is-deferred-not-adopted">2. GitHub Org ingestion is deferred, not adopted<a class="headerlink" href="#2-github-org-ingestion-is-deferred-not-adopted" title="Permanent link">&para;</a></h3>
+<p>The obvious fix — install the <code>github-org</code> module and sync Users and Groups from
+the organisation — <strong>cannot work on a personal account</strong>. The provider calls the
+GraphQL <code>organization(login:)</code> API; a <code>type: User</code> account has no members and no
+teams, so it errors rather than returning empty. Verified 2026-08-14 against the
+account this template is developed on.</p>
+<p>Adopting it would mean shipping a default that fails for the maintainer and works
+only for org-backed adopters. Instead it stays unimplemented and documented, and
+the static Groups and Users remain the seed.</p>
+<h3 id="3-authorization-stays-coarse-and-that-is-stated-plainly">3. Authorization stays coarse, and that is stated plainly<a class="headerlink" href="#3-authorization-stays-coarse-and-that-is-stated-plainly" title="Permanent link">&para;</a></h3>
+<p><code>idpPermissionPolicy.ts</code> is unchanged: any authenticated user can run any of the
+63 scaffolder templates against any team's namespace. That is a real limitation
+of the current design, not an oversight, and it is written here so nobody has to
+rediscover it by reading the policy.</p>
+<h2 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h2>
+<p>Each of these is tracked, none is scheduled:</p>
 <ul>
-<li>A <code>quality</code> CI job that runs SonarCloud and Snyk, gated on token presence</li>
-<li>A <code>sonar-project.properties</code> at the repo root with <code>&lt;org&gt;_&lt;repo&gt;</code> as the project key</li>
-<li>A <code>.snyk</code> policy file (empty <code>ignore:</code> block — add CVE waivers here when needed)</li>
-<li><code>catalog-info.yaml</code> annotations: <code>sonarcloud.io/project-key</code>, <code>sonarcloud.io/organization</code>, <code>snyk.io/org-slug</code>, and the <code>sonar-scanning,snyk-scanning</code> entries in <code>idp.io/quality-gates</code></li>
+<li><strong>Install and wire <code>githubOrg</code></strong> so Users and Groups sync from a real
+  organisation. Should ship as <em>available and off by default</em>, since personal
+  accounts cannot use it.</li>
+<li><strong>Team-scoped authorization</strong> — restrict scaffolder and catalog writes to the
+  owning group. Existing issues #153 (ArgoCD RBAC per team) and #155 (catalog
+  permission policies) cover the shape.</li>
+<li><strong>OIDC / AWS IAM Identity Center</strong> as the enterprise path. Heavier, and most
+  open-source adopters will not have Identity Center, so GitHub remains the
+  default.</li>
 </ul>
-<p>When the org-level tokens exist, the first push triggers a full scan.</p>
-<h3 id="path-b-existing-services-brownfield">Path B — existing services (brownfield)<a class="headerlink" href="#path-b-existing-services-brownfield" title="Permanent link">&para;</a></h3>
-<p>Run the <strong>Enable Security Scanning (SonarCloud + Snyk)</strong> template from the Backstage
-scaffolder. It opens a PR against the target repo adding:</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>.github/workflows/security-scanning.yml</code> — standalone workflow (independent of the service's main <code>ci.yml</code>)</li>
-<li><code>sonar-project.properties</code></li>
-<li><code>.snyk</code></li>
-</ul>
-<p>After merging, update the service's <code>catalog-info.yaml</code> to add the
-<code>sonarcloud.io/project-key</code> and <code>snyk.io/org-slug</code> annotations so the Security
-entity tab can fetch data and the scorecard checks light up.</p>
-<h2 id="where-results-show-up">Where results show up<a class="headerlink" href="#where-results-show-up" title="Permanent link">&para;</a></h2>
-<h3 id="github-actions">GitHub Actions<a class="headerlink" href="#github-actions" title="Permanent link">&para;</a></h3>
-<p>The <code>quality</code> job in CI (or the standalone <code>security-scanning</code> workflow for brownfield
-adopters) shows two check runs per PR:</p>
-<ul>
-<li><strong>SonarCloud quality gate</strong> — fails the build when the quality gate is RED</li>
-<li><strong>Snyk dependency scan</strong> — fails the build at the configured severity threshold (default <code>high</code>)</li>
-</ul>
-<h3 id="backstage-security-entity-tab">Backstage — Security entity tab<a class="headerlink" href="#backstage-security-entity-tab" title="Permanent link">&para;</a></h3>
-<p>Every Component entity gets a new <strong>Security</strong> tab (<code>/security</code>) that:</p>
-<ul>
-<li>Reads the <code>sonarcloud.io/project-key</code> annotation and fetches the live quality
-  gate + coverage / bugs / vulnerabilities / hotspots / code-smells via the
-  <code>/api/proxy/sonarcloud</code> proxy.</li>
-<li>Reads the <code>snyk.io/org-slug</code> annotation and renders a card linking to the
-  project in Snyk's dashboard.</li>
-<li>Renders a "not configured" empty state with a one-click link to the
-  Enable Security Scanning template when annotations are missing.</li>
-</ul>
-<h3 id="backstage-shift-left-scorecard-tab">Backstage — Shift-Left Scorecard tab<a class="headerlink" href="#backstage-shift-left-scorecard-tab" title="Permanent link">&para;</a></h3>
-<p>The existing <strong>Scorecard</strong> tab gets two new checks under a <strong>Security</strong> group:
-<code>SonarCloud quality gate</code> and <code>Snyk SCA scan</code>. Both contribute to the entity's
-Bronze / Silver / Gold tier.</p>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>CI step shows "skipped"</td>
-<td><code>SONAR_TOKEN</code> / <code>SNYK_TOKEN</code> not set at the org level</td>
-<td>Add as org-level secrets (see "Store tokens" above)</td>
-</tr>
-<tr>
-<td>Security tab shows 401</td>
-<td>Backstage proxy can reach SonarCloud but auth failed</td>
-<td>Verify token in <code>local/backstage/.env</code> is valid; restart container</td>
-</tr>
-<tr>
-<td>Security tab shows "not configured"</td>
-<td>Entity is missing both annotations</td>
-<td>Add <code>sonarcloud.io/project-key</code> and/or <code>snyk.io/org-slug</code> to <code>catalog-info.yaml</code></td>
-</tr>
-<tr>
-<td>Sonar gate is <code>ERROR</code> and CI fails</td>
-<td>New project, no baseline yet</td>
-<td>Lower the quality gate's "new code" thresholds in SonarCloud UI, or push first scan before enforcing</td>
-</tr>
-<tr>
-<td>Snyk reports vulns that have no fix</td>
-<td>False positive or unfixable transitive</td>
-<td>Add a YAML block to <code>.snyk</code> under <code>ignore:</code> with an expiry date</td>
-</tr>
-<tr>
-<td>Scorecard checks stay red even though scans run</td>
-<td>TechInsights cache</td>
-<td>Wait up to 30 min (cadence) or restart Backstage; the retriever re-runs on startup</td>
-</tr>
-</tbody>
-</table>
-<h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
-<ul>
-<li>SonarCloud API docs: <a href="https://sonarcloud.io/web_api">https://sonarcloud.io/web_api</a></li>
-<li>Snyk API docs: <a href="https://docs.snyk.io/snyk-api">https://docs.snyk.io/snyk-api</a></li>
-<li>Platform fact retriever: <code>backstage/app/packages/backend/src/modules/idpTechInsights.ts</code></li>
-<li>Security tab UI: <code>backstage/app/packages/app/src/extensions.tsx</code> (<code>SecurityEntityContent</code>)</li>
-<li>Brownfield template: <code>backstage/catalog/templates/enable-security-scanning/</code></li>
+<li><code>backstage/app-config.aws.yaml</code> — <code>auth.providers</code></li>
+<li><code>backstage/app/packages/backend/src/modules/idpPermissionPolicy.ts</code></li>
+<li><code>backstage/catalog/catalog-info.yaml</code> — the static Groups and Users</li>
 </ul>
 
 
@@ -2420,7 +2190,7 @@ Bronze / Silver / Gold tier.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../security/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security">
+          <a href="../adr-0003-incident-management/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADR-0003: Incident management">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2430,20 +2200,20 @@ Bronze / Silver / Gold tier.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Security
+                ADR-0003: Incident management
               </div>
             </div>
           </a>
         
         
           
-          <a href="../demo-runbook/" class="md-footer__link md-footer__link--next" aria-label="Next: Demo Runbook">
+          <a href="../../team-management/" class="md-footer__link md-footer__link--next" aria-label="Next: Team Management">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Demo Runbook
+                Team Management
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2477,12 +2247,12 @@ Bronze / Silver / Gold tier.</p>
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      <script src="../../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
-        <script src="../search/main.js"></script>
+        <script src="../../search/main.js"></script>
       
     
   </body>
