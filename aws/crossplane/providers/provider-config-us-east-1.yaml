@@ -12,8 +12,9 @@ metadata:
   name: us-east-1
   annotations:
     # Same ProviderConfig-CRD ordering issue as provider-config.yaml — see
-    # that file's comment.
+    # that file's comment, including why the wave alone is not sufficient.
     argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     # Placeholder — bootstrap.sh replaces this with the actual IRSA ARN from
     # the standby cluster's Terraform output (crossplane_aws_role_arn).
     idp.platform/irsa-role: "REPLACE_WITH_STANDBY_IRSA_ARN"

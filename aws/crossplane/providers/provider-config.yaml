@@ -12,6 +12,16 @@ metadata:
     # aws.upbound.io/ProviderConfig CRD". Wave 1 waits for wave 0 (Providers)
     # to be Healthy first.
     argocd.argoproj.io/sync-wave: "1"
+    # The wave alone is not enough. ArgoCD dry-runs every resource in the
+    # Application *before* it applies wave 0, so on a cluster where the
+    # providers have never installed, that dry-run fails with
+    #   failed to discover server resources for group version
+    #   aws.upbound.io/v1beta1: the server could not find the requested resource
+    # and the whole sync aborts — including wave 0, so the CRD is never created
+    # and the Application can never converge. SkipDryRunOnMissingResource lets
+    # the dry-run pass for a kind that does not exist yet; the wave still
+    # guarantees it is applied after the Providers.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   credentials:
     source: IRSA
