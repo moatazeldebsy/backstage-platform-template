@@ -433,10 +433,28 @@ jobs:
         env:
           SERVICE: ${{ matrix.service }}
         run: |
-          kubectl rollout status "deployment/${SERVICE}" \
-            -n services-dev --timeout=5m 2>/dev/null || \
-          kubectl rollout status "rollout/${SERVICE}" \
-            -n services-dev --timeout=5m 2>/dev/null || true
+          # See the staging equivalent: the rendered workload is not named
+          # ${SERVICE}, and on a first deploy it may not exist yet, so wait for
+          # it to appear rather than letting `|| true` hide its absence.
+          SEL="app.kubernetes.io/instance=${SERVICE}-dev"
+          echo "Waiting for ArgoCD to create a workload matching ${SEL}..."
+          KIND=""
+          for _ in $(seq 1 60); do
+            for k in deployment rollout; do
+              n=$(kubectl get "$k" -n services-dev -l "$SEL" \
+                -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+              if [ -n "$n" ]; then KIND="$k/$n"; break; fi
+            done
+            if [ -n "$KIND" ]; then break; fi
+            sleep 10
+          done
+          if [ -z "$KIND" ]; then
+            echo "::error::No deployment or rollout matching ${SEL} appeared in services-dev after 10m — check the idp-services ApplicationSet"
+            kubectl get applications -n argocd | grep -i dev || true
+            exit 1
+          fi
+          echo "Found ${KIND}; waiting for rollout"
+          kubectl rollout status "${KIND}" -n services-dev --timeout=5m
 
       - name: Smoke test /healthz
         if: steps.guard.outputs.has_aws == 'true'
@@ -698,10 +716,35 @@ jobs:
         env:
           SERVICE: ${{ matrix.service }}
         run: |
-          kubectl rollout status "deployment/${SERVICE}" \
-            -n services-staging --timeout=5m 2>/dev/null || \
-          kubectl rollout status "rollout/${SERVICE}" \
-            -n services-staging --timeout=5m 2>/dev/null || true
+          # On a first-ever promotion nothing exists in this namespace yet:
+          # ArgoCD's git generator has to notice the new helm-values-staging.yaml
+          # (it polls on an interval) before it creates anything. The old step
+          # ran `rollout status deployment/${SERVICE}`, which returned instantly
+          # because no such object existed, and `|| true` hid that — so the
+          # smoke test then failed with "No Service for hello-service".
+          #
+          # Wait for the workload to actually appear, then for it to roll out.
+          # Same instance-label lookup the smoke test uses, since the rendered
+          # name is not ${SERVICE}.
+          SEL="app.kubernetes.io/instance=${SERVICE}-staging"
+          echo "Waiting for ArgoCD to create a workload matching ${SEL}..."
+          KIND=""
+          for _ in $(seq 1 60); do
+            for k in deployment rollout; do
+              n=$(kubectl get "$k" -n services-staging -l "$SEL" \
+                -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+              if [ -n "$n" ]; then KIND="$k/$n"; break; fi
+            done
+            if [ -n "$KIND" ]; then break; fi
+            sleep 10
+          done
+          if [ -z "$KIND" ]; then
+            echo "::error::No deployment or rollout matching ${SEL} appeared in services-staging after 10m — check the idp-services-staging ApplicationSet"
+            kubectl get applications -n argocd | grep -i staging || true
+            exit 1
+          fi
+          echo "Found ${KIND}; waiting for rollout"
+          kubectl rollout status "${KIND}" -n services-staging --timeout=5m
 
       - name: Smoke test /healthz
         if: steps.guard.outputs.has_aws == 'true'
