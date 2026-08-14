@@ -2234,10 +2234,21 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>AUTH_GITHUB_CLIENT_ID</code> and <code>AUTH_GITHUB_CLIENT_SECRET</code> are set in production environment</li>
 </ul>
 <h3 id="network-tls">Network &amp; TLS<a class="headerlink" href="#network-tls" title="Permanent link">&para;</a></h3>
+<p><strong>Ingress TLS termination</strong> — nothing on the cluster serves HTTPS by default. This is the largest open security gap; see <a href="../security/#ingress-tls-is-not-configured">security.md</a> for the full remediation and <a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/310">#310</a> for tracking.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>var.domain_name</code> is set in <code>terraform/terraform.tfvars</code> and a Route53 hosted zone exists for it</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> The ACM wildcard certificate in <code>terraform/acm.tf</code> covers Backstage and ArgoCD, not just the monitoring ALBs</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage is served through an ALB Ingress carrying <code>certificate-arn</code>, <code>listen-ports: [{"HTTPS":443}]</code> and <code>ssl-redirect: '443'</code> — not a bare <code>LoadBalancer</code> Service on port 80</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>APP_BASE_URL</code>, <code>app.baseUrl</code> and <code>backend.baseUrl</code> all use <code>https://</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD no longer runs with <code>--insecure</code> / <code>server.insecure: true</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>curl -I http://&lt;backstage-host&gt;</code> returns a 301 to HTTPS, and the HTTPS URL returns 200</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> The GitHub OAuth App callback URL was re-registered for the new hostname</li>
+</ul>
+<p><strong>Other TLS settings</strong></p>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>skipTLSVerify: true</code> in Kubernetes config is replaced with a proper CA bundle for production clusters</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ssl.rejectUnauthorized: false</code> for PostgreSQL is enabled (set to <code>true</code>) in production</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>upgrade-insecure-requests</code> is set to <code>true</code> when Backstage is served over HTTPS</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>upgrade-insecure-requests</code> is set to <code>true</code> when Backstage is served over HTTPS — <strong>do this only after ingress TLS is live</strong>, or the app breaks</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> CSP <code>connect-src</code> is narrowed to specific upstream hostnames in production</li>
 </ul>
 <h3 id="infrastructure-aws-terraform">Infrastructure (AWS / Terraform)<a class="headerlink" href="#infrastructure-aws-terraform" title="Permanent link">&para;</a></h3>

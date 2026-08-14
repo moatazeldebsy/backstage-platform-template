@@ -1716,6 +1716,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ingress-tls-is-not-configured" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ingress TLS is not configured
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ingress TLS is not configured">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Recommended remediation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plan-for-the-cutover" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan for the cutover
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2353,7 +2386,42 @@ with these safety defaults:</p>
 <ul>
 <li><strong>No hardcoded AWS Account ID</strong> — <code>aws/backstage/deployment.yaml</code> uses <code>${AWS_ACCOUNT_ID}</code> and <code>${AWS_REGION}</code> environment variable placeholders substituted at deploy time by <code>bootstrap.sh</code>, rather than the literal account ID.</li>
 </ul>
-<p>These settings are in effect only in the AWS config. Local Kind development still uses guest auth and skips TLS (see Local-only relaxations below).</p>
+<p>These settings are in effect only in the AWS config. Local Kind development still uses guest auth (see Local-only relaxations below).</p>
+<h3 id="ingress-tls-is-not-configured">Ingress TLS is not configured<a class="headerlink" href="#ingress-tls-is-not-configured" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>Status: open.</strong> Tracked in <a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/310">#310</a>. Read this before putting real users on the platform.</p>
+</blockquote>
+<p>The TLS hardening above covers the <em>database</em> connection. It does <strong>not</strong> cover ingress. As shipped, every ingress on the AWS cluster serves plain HTTP on port 80 — no <code>alb.ingress.kubernetes.io/certificate-arn</code> annotation, no <code>spec.tls</code> block, and no cert-manager installed:</p>
+<ul>
+<li><strong>Backstage</strong> is exposed as a bare <code>LoadBalancer</code> Service on port 80 (<code>aws/backstage/deployment.yaml</code>), with <code>APP_BASE_URL</code> set to an <code>http://</code> ALB hostname.</li>
+<li><strong>ArgoCD</strong> runs with <code>--insecure</code> and <code>server.insecure: true</code> (<code>aws/argocd/argocd-helm-values.yaml</code>), with <code>tls: []</code> on its Ingress. The comment there — <em>"Remove when TLS is terminated at ALB"</em> — anticipates the work but does not do it.</li>
+<li>The MCP services, Grafana, MLflow and Langfuse ingresses are all likewise HTTP-only.</li>
+</ul>
+<p>The practical consequence: <strong>GitHub OAuth tokens, the ArgoCD session cookie, and every MCP call cross the network in cleartext.</strong> That is acceptable for a demo or an evaluation cluster on a private VPC. It is not acceptable for a shared or internet-facing deployment.</p>
+<h4 id="recommended-remediation">Recommended remediation<a class="headerlink" href="#recommended-remediation" title="Permanent link">&para;</a></h4>
+<p>The pieces are mostly present already — <code>terraform/acm.tf</code> provisions a wildcard ACM certificate with Route53 DNS validation. It is simply scoped to the monitoring ALBs (Grafana, Prometheus, Alertmanager) and gated behind <code>var.domain_name</code>, so it never reaches Backstage or ArgoCD.</p>
+<ol>
+<li><strong>Set <code>var.domain_name</code></strong> in <code>terraform/terraform.tfvars</code> to a domain with a Route53 hosted zone in the same account, and apply. This is the prerequisite for everything below — without a real domain there is nothing for ACM to validate.</li>
+<li><strong>Extend <code>terraform/acm.tf</code></strong> beyond the monitoring ingresses so the wildcard certificate covers the Backstage and ArgoCD hostnames.</li>
+<li><strong>Convert the Backstage Service to an ALB Ingress</strong> and annotate it:
+   <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">alb.ingress.kubernetes.io/certificate-arn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;acm-cert-arn&gt;</span>
+<span class="nt">alb.ingress.kubernetes.io/listen-ports</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;[{&quot;HTTPS&quot;:443}]&#39;</span>
+<span class="nt">alb.ingress.kubernetes.io/ssl-redirect</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;443&#39;</span>
+</code></pre></div></td></tr></table></div></li>
+<li><strong>Flip the URLs to <code>https://</code></strong> — <code>APP_BASE_URL</code> and <code>app.baseUrl</code> / <code>backend.baseUrl</code> in <code>backstage/app-config.aws.yaml</code>.</li>
+<li><strong>Drop ArgoCD's plaintext flags</strong> — remove <code>--insecure</code> from <code>extraArgs</code> and set <code>server.insecure: false</code>.</li>
+<li><strong>Only then</strong> narrow the CSP: set <code>upgrade-insecure-requests: true</code> and restrict <code>connect-src</code> (<a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/316">#316</a>). Doing this before HTTPS is live will break the app.</li>
+</ol>
+<h4 id="plan-for-the-cutover">Plan for the cutover<a class="headerlink" href="#plan-for-the-cutover" title="Permanent link">&para;</a></h4>
+<p>This is not a transparent change. The Backstage URL moves from the ALB hostname to your domain, which means:</p>
+<ul>
+<li>the <strong>GitHub OAuth App callback URL must be re-registered</strong> (see <a href="../github-app-setup/">github-app-setup.md</a>) — users cannot sign in until it is;</li>
+<li>any bookmarked ALB hostnames stop working;</li>
+<li><code>catalog-info.yaml</code> annotations or dashboards that hardcode the old host need updating.</li>
+</ul>
+<p>Schedule it as a maintenance window rather than a routine deploy.</p>
 <h2 id="local-only-relaxations">Local-only relaxations<a class="headerlink" href="#local-only-relaxations" title="Permanent link">&para;</a></h2>
 <p>These exist to make the developer-loop experience usable on Kind/Rancher Desktop and <strong>must not</strong> be ported to a production cluster:</p>
 <ul>
