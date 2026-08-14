@@ -1,5 +1,12 @@
 # Platform Architecture
 
+## Design decisions
+
+Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
+
+- [ADR-0001: Where batch and pipeline work runs](design/adr-0001-batch-orchestration.md) —
+  GitHub Actions vs CronJob vs Argo Workflows, and why CI stays in Actions.
+
 ## Overview
 
 ![Platform Architecture](assets/platform-architecture.jpg)

@@ -1,0 +1,171 @@
+# LLM evaluation pipeline.
+#
+# The split with CI is deliberate and worth stating, because "why isn't this in
+# GitHub Actions?" is the obvious question:
+#
+#   PR-time smoke evals stay in GitHub Actions (the deepeval suite scaffolded by
+#   backstage/catalog/templates/deepeval-llm-eval-suite/ runs there today). They
+#   are fast, they gate the merge, and they need no cluster.
+#
+#   The full nightly / pre-promotion matrix runs HERE, because it needs
+#   in-cluster endpoints GitHub Actions cannot reach: the MCP servers, the KAgent
+#   A2A endpoint, an in-cluster model server, and Langfuse for trace export.
+#
+# See docs/design/adr-0001-batch-orchestration.md.
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: llm-eval-pipeline
+  namespace: ml-platform
+  labels:
+    idp.platform/type: eval-pipeline
+spec:
+  entrypoint: evaluate
+  serviceAccountName: ml-pipeline-runner
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  arguments:
+    parameters:
+      - name: suite-repo
+        description: Git URL of the repo holding the deepeval suite
+      - name: suite-revision
+        value: main
+      - name: python-version
+        value: "3.11"
+      # Fails the run when the pass rate drops below this. Pre-promotion gates
+      # want this high; a nightly trend run can leave it at 0.
+      - name: min-pass-rate
+        value: "0.8"
+
+  templates:
+    - name: evaluate
+      dag:
+        tasks:
+          - name: checkout
+            template: checkout
+          - name: run-deepeval
+            template: run-deepeval
+            dependencies: [checkout]
+          - name: publish
+            template: publish
+            dependencies: [run-deepeval]
+            arguments:
+              parameters:
+                - name: pass-rate
+                  value: "{{tasks.run-deepeval.outputs.parameters.pass-rate}}"
+          - name: gate
+            template: gate
+            dependencies: [publish]
+            arguments:
+              parameters:
+                - name: pass-rate
+                  value: "{{tasks.run-deepeval.outputs.parameters.pass-rate}}"
+
+    - name: checkout
+      inputs:
+        artifacts:
+          - name: suite
+            path: /work
+            git:
+              repo: "{{workflow.parameters.suite-repo}}"
+              revision: "{{workflow.parameters.suite-revision}}"
+      outputs:
+        artifacts:
+          - name: suite
+            path: /work
+      container:
+        image: alpine:3.20
+        command: ["/bin/sh", "-c"]
+        args: ["ls -la /work"]
+        resources:
+          requests: { cpu: 50m, memory: 64Mi }
+          limits: { cpu: 200m, memory: 128Mi }
+
+    - name: run-deepeval
+      inputs:
+        artifacts:
+          - name: suite
+            path: /work
+      outputs:
+        parameters:
+          - name: pass-rate
+            valueFrom:
+              path: /tmp/pass-rate
+              default: "0.0"
+      container:
+        image: python:{{workflow.parameters.python-version}}-slim
+        workingDir: /work
+        command: ["/bin/sh", "-c"]
+        args:
+          - >-
+            pip install --quiet -r requirements.txt &&
+            python -m pytest tests/ -q || true;
+            test -f /tmp/pass-rate || echo "0.0" > /tmp/pass-rate
+        env:
+          # Reaches the in-cluster endpoints that are the whole reason this runs
+          # here rather than in CI.
+          - name: KAGENT_URL
+            value: http://kagent-ui.kagent.svc.cluster.local
+          - name: IDP_MCP_URL
+            value: http://idp-mcp-server.services-dev.svc.cluster.local:3001/mcp
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.ml-platform.svc.cluster.local:5000
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://langfuse-web.ml-platform.svc.cluster.local:3000/api/public/otel
+          # KAgent's collector only accepts protobuf; http/json is silently
+          # dropped, which is how traces go missing without an error.
+          - name: OTEL_EXPORTER_OTLP_PROTOCOL
+            value: http/protobuf
+        envFrom:
+          - secretRef:
+              name: langfuse-otel
+              optional: true
+        resources:
+          requests: { cpu: 250m, memory: 512Mi }
+          limits: { cpu: "1", memory: 2Gi }
+
+    - name: publish
+      inputs:
+        parameters:
+          - name: pass-rate
+      script:
+        image: python:{{workflow.parameters.python-version}}-slim
+        command: ["/bin/sh", "-c"]
+        source: |
+          pip install --quiet "mlflow==2.16.2"
+          python - <<'PY'
+          import mlflow, os
+          mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
+          mlflow.set_experiment("llm-evals")
+          with mlflow.start_run():
+              mlflow.log_metric("pass_rate", float(os.environ["PASS_RATE"] or 0))
+          print("logged pass_rate to MLflow")
+          PY
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.ml-platform.svc.cluster.local:5000
+          - name: PASS_RATE
+            value: "{{inputs.parameters.pass-rate}}"
+        resources:
+          requests: { cpu: 100m, memory: 256Mi }
+          limits: { cpu: 500m, memory: 1Gi }
+
+    - name: gate
+      inputs:
+        parameters:
+          - name: pass-rate
+      script:
+        image: python:{{workflow.parameters.python-version}}-slim
+        command: [python]
+        source: |
+          import sys
+          rate = float("{{inputs.parameters.pass-rate}}" or 0.0)
+          threshold = float("{{workflow.parameters.min-pass-rate}}" or 0.0)
+          print(f"pass_rate={rate} threshold={threshold}")
+          sys.exit(0 if rate >= threshold else 1)
+        resources:
+          requests: { cpu: 50m, memory: 64Mi }
+          limits: { cpu: 200m, memory: 128Mi }
