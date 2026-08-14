@@ -87,10 +87,24 @@ auth:
   session:
     secret: ${AUTH_SESSION_SECRET}
   providers:
-    # DEMO ONLY — not committed. Anyone who knows the ALB hostname can enter the
-    # portal with no credentials, over plain HTTP. Remove once GitHub sign-in works.
-    guest:
-      dangerouslyAllowOutsideDevelopment: true
+    # No `guest:` provider here, deliberately.
+    #
+    # There used to be one, carrying a comment that said "DEMO ONLY — not
+    # committed". It was committed, so every adopter who bootstrapped on AWS got
+    # anonymous read access to their whole catalog over plain HTTP while the
+    # comment told any reviewer it was a local-only edit.
+    #
+    # idpPermissionPolicy.ts only denies guests three permissions
+    # (scaffolder.task.create, scaffolder.task.cancel, catalog.entity.delete), so
+    # an unauthenticated visitor could read every entity, owner, annotation and
+    # link in the catalog.
+    #
+    # Local keeps guest — see app-config.local.yaml, where it is force-enabled
+    # because NODE_ENV is not `development` inside the container. That is a
+    # laptop, not an internet-facing ALB.
+    #
+    # If you need it temporarily on AWS, add it to a local uncommitted overlay
+    # rather than here.
     github:
       production:
         clientId: ${AUTH_GITHUB_CLIENT_ID}
