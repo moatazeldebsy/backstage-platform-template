@@ -140,6 +140,15 @@ export const showSlo = (e: Entity): boolean =>
 export const showBudget = (e: Entity): boolean => isKind(e, 'group');
 
 /**
+ * Anything that can have an incident: a deployed service, or something with an
+ * on-call rotation. Records are matched by entity name against the marker the
+ * router writes, so no per-service annotation is needed for the history — the
+ * PagerDuty annotation only adds the on-call card.
+ */
+export const showIncidents = (e: Entity): boolean =>
+  isDeployed(e) || (isComponent(e) && hasAnnotation(e, ANNOTATION.PAGERDUTY_SERVICE));
+
+/**
  * These three are deliberately *not* config-aware. A blueprint `filter` is a pure
  * `(entity) => boolean` with no access to the config API, so "is the AI stack
  * enabled" and "is Datadog in demo mode" cannot be answered here.

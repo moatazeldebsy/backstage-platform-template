@@ -7,6 +7,7 @@ import type { Entity } from '@backstage/catalog-model';
 import {
   showScorecard, showSecurity, showDatadog, showTrivy, showOnCall,
   showGrafana, showJira, showDora, showBudget, showSlo, showLangfuse,
+  showIncidents,
 } from './entityFilters';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
@@ -18,6 +19,7 @@ import {
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import CancelIcon from '@material-ui/icons/Cancel';
 import GavelIcon from '@material-ui/icons/Gavel';
+import WarningIcon from '@material-ui/icons/Warning';
 import EmojiEventsIcon from '@material-ui/icons/EmojiEvents';
 import MuiTable from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -2190,6 +2192,346 @@ const pagerDutyEntityContent = EntityContentBlueprint.make({
   },
 });
 
+// ── Incidents ─────────────────────────────────────────────────────────────────
+//
+// The platform has been creating incident records as GitHub issues all along
+// (services/agent-event-router) and had nowhere to show them: the only incident
+// UI was the per-entity PagerDuty tab, and the activity feed's incident rows were
+// hardcoded mock data.
+//
+// Everything here reads the machine-readable marker the router writes into the
+// issue body rather than parsing the prose summary table, so the UI and the
+// router cannot drift on format.
+
+export interface IncidentRecord {
+  number: number;
+  title: string;
+  url: string;
+  state: 'open' | 'closed';
+  createdAt: string;
+  incidentId: string;
+  severity: 'P1' | 'P2' | 'P3' | 'unknown';
+  service: string;
+  startsAt: string;
+  endsAt?: string;
+  durationMinutes?: number;
+  pagerdutyUrl?: string | null;
+  needsPostmortem: boolean;
+}
+
+const INCIDENT_MARKER_RE = /<!--\s*idp-incident:\s*(\{[\s\S]*?\})\s*-->/;
+
+/** Mirrors parseMarker in services/agent-event-router/src/incidents.ts. */
+export function parseIncidentIssue(issue: any): IncidentRecord {
+  const labels: string[] = (issue?.labels ?? []).map((l: any) =>
+    typeof l === 'string' ? l : l?.name,
+  );
+  let marker: any = {};
+  const match = INCIDENT_MARKER_RE.exec(issue?.body ?? '');
+  if (match) {
+    try {
+      marker = JSON.parse(match[1]);
+    } catch {
+      // A hand-edited issue body degrades to a sparser row, never a crash.
+      marker = {};
+    }
+  }
+  // Fall back to the label for issues filed before the marker existed.
+  const fromLabel = labels.find(l => /^severity:P[123]$/.test(l))?.split(':')[1];
+  return {
+    number: issue?.number,
+    title: issue?.title ?? '',
+    url: issue?.html_url ?? '',
+    state: issue?.state === 'closed' ? 'closed' : 'open',
+    createdAt: issue?.created_at ?? '',
+    incidentId: marker.incidentId ?? `INC-${issue?.number}`,
+    severity: (marker.severity ?? fromLabel ?? 'unknown') as IncidentRecord['severity'],
+    service: marker.service ?? '—',
+    startsAt: marker.startsAt ?? issue?.created_at ?? '',
+    endsAt: marker.endsAt,
+    durationMinutes: marker.durationMinutes,
+    pagerdutyUrl: marker.pagerdutyUrl,
+    needsPostmortem: labels.includes('incident:needs-postmortem'),
+  };
+}
+
+const SEVERITY_COLOR: Record<string, string> = {
+  P1: '#c62828',
+  P2: '#ef6c00',
+  P3: '#1976d2',
+  unknown: '#9e9e9e',
+};
+
+function SeverityChip({ severity }: { severity: string }) {
+  return (
+    <span
+      style={{
+        background: SEVERITY_COLOR[severity] ?? SEVERITY_COLOR.unknown,
+        color: '#fff',
+        padding: '2px 8px',
+        borderRadius: 12,
+        fontSize: 11,
+        fontWeight: 700,
+      }}
+    >
+      {severity}
+    </span>
+  );
+}
+
+/**
+ * Fetch incident issues via the /github-issues proxy.
+ *
+ * `labels=incident` rather than `incident:open` on purpose: the page wants
+ * recently-closed incidents too, so MTTR is computed over something.
+ */
+function useIncidents(serviceFilter?: string) {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const base = configApi.getString('backend.baseUrl');
+  const repo = configApi.getOptionalString('externalLinks.incidentRepo') ?? '';
+
+  const [incidents, setIncidents] = useState<IncidentRecord[] | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ok' | 'unconfigured' | 'error'>('loading');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!repo) {
+      setStatus('unconfigured');
+      return;
+    }
+    fetchApi
+      .fetch(
+        `${base}/api/proxy/github-issues/repos/${repo}/issues` +
+          `?labels=incident&state=all&per_page=100&sort=created&direction=desc`,
+      )
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((items: any[]) => {
+        const parsed = (items ?? [])
+          // The issues endpoint also returns pull requests; incident records are
+          // never PRs.
+          .filter(i => !i.pull_request)
+          .map(parseIncidentIssue)
+          .filter(i => !serviceFilter || i.service === serviceFilter);
+        setIncidents(parsed);
+        setStatus('ok');
+      })
+      .catch((e: Error) => {
+        setError(e.message);
+        setStatus('error');
+      });
+  }, [base, fetchApi, repo, serviceFilter]);
+
+  return { incidents, status, error, repo };
+}
+
+function IncidentState({ incident }: { incident: IncidentRecord }) {
+  if (incident.state === 'open') {
+    return <span style={{ color: '#c62828', fontWeight: 600 }}>Open</span>;
+  }
+  if (incident.needsPostmortem) {
+    return <span style={{ color: '#ef6c00', fontWeight: 600 }}>Needs postmortem</span>;
+  }
+  return <span style={{ color: '#2e7d32' }}>Resolved</span>;
+}
+
+function IncidentTable({ incidents }: { incidents: IncidentRecord[] }) {
+  if (incidents.length === 0) {
+    return (
+      <Box p={2}>
+        <Typography variant="body2" color="textSecondary">
+          No incident records. That is the good outcome — records appear here
+          automatically when a tracked alert fires.
+        </Typography>
+      </Box>
+    );
+  }
+  return (
+    <TableContainer>
+      <MuiTable size="small">
+        <TableHead>
+          <TableRow style={{ background: '#f5f5f5' }}>
+            <TableCell><strong>Incident</strong></TableCell>
+            <TableCell><strong>Severity</strong></TableCell>
+            <TableCell><strong>Service</strong></TableCell>
+            <TableCell><strong>Started</strong></TableCell>
+            <TableCell align="right"><strong>Duration</strong></TableCell>
+            <TableCell><strong>State</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {incidents.map(inc => (
+            <TableRow key={inc.number} hover>
+              <TableCell>
+                <Link href={inc.url} target="_blank" rel="noopener">{inc.incidentId}</Link>
+                {inc.pagerdutyUrl && (
+                  <>
+                    {' · '}
+                    <Link href={inc.pagerdutyUrl} target="_blank" rel="noopener">PD</Link>
+                  </>
+                )}
+              </TableCell>
+              <TableCell><SeverityChip severity={inc.severity} /></TableCell>
+              <TableCell>{inc.service}</TableCell>
+              <TableCell>
+                <Typography variant="caption">
+                  {inc.startsAt ? new Date(inc.startsAt).toLocaleString() : '—'}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                {inc.durationMinutes !== undefined ? `${inc.durationMinutes} min` : '—'}
+              </TableCell>
+              <TableCell><IncidentState incident={inc} /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </MuiTable>
+    </TableContainer>
+  );
+}
+
+function IncidentsUnconfigured() {
+  return (
+    <Paper style={{ padding: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+      <Typography variant="body2" style={{ color: '#7c6000' }}>
+        <code>externalLinks.incidentRepo</code> is not set, so there is nowhere to read
+        incident records from. It must match <code>INCIDENT_REPO</code> on{' '}
+        <code>agent-event-router</code>, or records are filed somewhere this page cannot see.
+      </Typography>
+    </Paper>
+  );
+}
+
+function IncidentsEntityContent() {
+  const { entity } = useEntity();
+  const serviceId = entity.metadata.annotations?.['pagerduty.com/service-id'];
+  const { incidents, status, error } = useIncidents(entity.metadata.name);
+
+  return (
+    <Content>
+      {status === 'unconfigured' && <Box mb={3}><IncidentsUnconfigured /></Box>}
+      {status === 'error' && (
+        <Box mb={3}>
+          <Paper style={{ padding: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
+            <Typography variant="body2" style={{ color: '#b71c1c' }}>
+              ⚠️ Could not read incident records ({error}). Check the{' '}
+              <code>/github-issues</code> proxy and that <code>GITHUB_TOKEN</code> is set.
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+
+      {/* Each card degrades on its own — a missing PagerDuty annotation must not
+          blank the incident history, and vice versa. */}
+      <Box mb={3}>
+        <Typography variant="subtitle1" style={{ marginBottom: 8 }}>Incident history</Typography>
+        <Paper>
+          {status === 'loading' && <Box p={2}><Progress /></Box>}
+          {status === 'ok' && incidents && <IncidentTable incidents={incidents} />}
+        </Paper>
+      </Box>
+
+      {serviceId ? (
+        <PagerDutyOnCallCard serviceId={serviceId} />
+      ) : (
+        <Paper style={{ padding: 16 }}>
+          <Typography variant="body2" color="textSecondary">
+            No <code>pagerduty.com/service-id</code> annotation, so on-call cannot be shown.
+            Incident records above do not depend on it.
+          </Typography>
+        </Paper>
+      )}
+    </Content>
+  );
+}
+
+const incidentsEntityContent = EntityContentBlueprint.make({
+  name: 'incidents',
+  params: {
+    path: '/incidents',
+    title: 'Incidents',
+    filter: showIncidents,
+    loader: async () => <IncidentsEntityContent />,
+  },
+});
+
+function IncidentsPage() {
+  const { incidents, status, error } = useIncidents();
+  const [severityFilter, setSeverityFilter] = useState('All');
+
+  const filtered = (incidents ?? []).filter(
+    i => severityFilter === 'All' || i.severity === severityFilter,
+  );
+
+  // MTTR over resolved incidents only. An open incident has no duration yet, and
+  // counting it as zero would flatter the number.
+  const resolved = (incidents ?? []).filter(i => i.durationMinutes !== undefined);
+  const mttr = resolved.length
+    ? Math.round(resolved.reduce((s, i) => s + (i.durationMinutes ?? 0), 0) / resolved.length)
+    : null;
+  const open = (incidents ?? []).filter(i => i.state === 'open').length;
+  const awaitingPostmortem = (incidents ?? []).filter(i => i.needsPostmortem).length;
+
+  return (
+    <Page themeId="tool">
+      <Header title="Incidents" subtitle="Tracked incident records · auto-filed from Alertmanager" />
+      <Content>
+        {status === 'loading' && <Progress />}
+        {status === 'unconfigured' && <IncidentsUnconfigured />}
+        {status === 'error' && (
+          <Paper style={{ padding: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
+            <Typography variant="body2" style={{ color: '#b71c1c' }}>
+              ⚠️ Could not read incident records ({error}).
+            </Typography>
+          </Paper>
+        )}
+        {status === 'ok' && (
+          <>
+            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Open', value: String(open), color: '#c62828' },
+                { label: 'Awaiting postmortem', value: String(awaitingPostmortem), color: '#ef6c00' },
+                { label: 'MTTR', value: mttr !== null ? `${mttr} min` : '—', color: '#1976d2' },
+                { label: 'Total records', value: String(incidents?.length ?? 0), color: '#616161' },
+              ].map(({ label, value, color }) => (
+                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
+                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
+                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
+                </Paper>
+              ))}
+            </Box>
+
+            <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 12 }}>
+              {['All', 'P1', 'P2', 'P3'].map(s => (
+                <Button
+                  key={s}
+                  size="small"
+                  variant={severityFilter === s ? 'contained' : 'outlined'}
+                  onClick={() => setSeverityFilter(s)}
+                >
+                  {s}
+                </Button>
+              ))}
+            </Box>
+
+            <Paper><IncidentTable incidents={filtered} /></Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const incidentsRouteRef = createRouteRef();
+const incidentsPage = PageBlueprint.make({
+  name: 'incidents',
+  params: { path: '/incidents', routeRef: incidentsRouteRef, loader: async () => <IncidentsPage /> },
+});
+const incidentsNavItem = NavItemBlueprint.make({
+  name: 'incidents',
+  params: { title: 'Incidents', icon: WarningIcon as any, routeRef: incidentsRouteRef },
+});
+
 // ── Grafana Alerts tab ─────────────────────────────────────────────────────────
 // Uses the existing /grafana/api proxy. Shows firing alerts for the service
 // filtered by the grafana/alert-label-selector annotation.
@@ -4061,6 +4403,36 @@ function ActivityPage() {
   const [kindFilter, setKindFilter] = useState('All');
   const [loading, setLoading]   = useState(true);
 
+  // Real incident records, merged in alongside the ArgoCD sync events below.
+  // The feed's incident rows used to be hardcoded in DEMO_EVENTS, which meant it
+  // showed a fictional outage even on a cluster that had never had one.
+  const { incidents, status: incidentStatus } = useIncidents();
+
+  useEffect(() => {
+    if (incidentStatus !== 'ok' || !incidents?.length) return;
+    const incidentEvents: ActivityEvent[] = incidents.slice(0, 6).map(inc => {
+      const resolved = inc.state === 'closed' || inc.endsAt !== undefined;
+      return {
+        id: `incident-${inc.number}`,
+        kind: 'incident' as const,
+        emoji: resolved ? '✅' : '🔴',
+        color: resolved ? '#e8f5e9' : '#ffebee',
+        title: resolved
+          ? <>Incident resolved — <b>{inc.incidentId}</b> on {inc.service}</>
+          : <>Incident open — <b>{inc.incidentId}</b> on {inc.service}</>,
+        detail: [
+          inc.severity,
+          inc.durationMinutes !== undefined ? `${inc.durationMinutes} min` : null,
+          inc.needsPostmortem ? 'awaiting postmortem' : null,
+        ].filter(Boolean).join(' · '),
+        time: inc.startsAt ? new Date(inc.startsAt).toLocaleString() : '—',
+      };
+    });
+    // Replace only the incident rows; the ArgoCD enrichment below owns the rest.
+    setEvents(prev => [...incidentEvents, ...prev.filter(e => e.kind !== 'incident')]);
+    setIsDemo(false);
+  }, [incidents, incidentStatus]);
+
   useEffect(() => {
     // Enrich with real ArgoCD sync operations
     fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications`)
@@ -4087,8 +4459,15 @@ function ActivityPage() {
               time:   ts,
             };
           });
-        setEvents(live.length ? live : DEMO_EVENTS);
-        setIsDemo(live.length === 0);
+        // Keep any *real* incident rows the effect above merged in — they are
+        // the ones with an `incident-<issue>` id; the DEMO_EVENTS incident rows
+        // are numbered and get dropped with the rest of the demo data.
+        setEvents(prev => {
+          const realIncidents = prev.filter(e => e.id.startsWith('incident-'));
+          if (live.length === 0) return realIncidents.length ? realIncidents : DEMO_EVENTS;
+          return [...realIncidents, ...live];
+        });
+        setIsDemo(prevDemo => (live.length > 0 ? false : prevDemo));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -7279,6 +7658,8 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     argocdPage,
     argocdNavItem,
     activityPage,
+    incidentsPage,
+    incidentsNavItem,
     activityNavItem,
     apiExplorerPage,
     apiExplorerNavItem,
@@ -7323,6 +7704,7 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     datadogEntityContent,
     trivyEntityContent,
     pagerDutyEntityContent,
+    incidentsEntityContent,
     grafanaEntityContent,
     jiraEntityContent,
     teamBudgetEntityContent,

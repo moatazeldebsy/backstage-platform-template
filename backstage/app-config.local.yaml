@@ -236,6 +236,10 @@ catalog:
 # configApi.getOptionalString('externalLinks.<name>'); see app-config.aws.yaml
 # for the AWS equivalents (populated by scripts/bootstrap.sh at deploy time).
 externalLinks:
+  # owner/repo where agent-event-router files incident issues. The Incidents
+  # page and entity tab read from here; it must match INCIDENT_REPO on the
+  # router, or the UI shows an empty list while incidents are being filed.
+  incidentRepo: moatazeldebsy/backstage-platform-template
   argocd: http://argocd.idp.local
   grafana: http://grafana.idp.local
   kagent: http://kagent.idp.local
@@ -339,6 +343,18 @@ proxy:
       headers:
         DD-API-KEY: ${DD_API_KEY}
         DD-APPLICATION-KEY: ${DD_APP_KEY}
+    # Incident records are GitHub issues (see services/agent-event-router). A
+    # separate endpoint from /github-code-scanning even though both target
+    # api.github.com: reusing that one under a misleading name would make the
+    # allowedMethods and header set for two unrelated features impossible to
+    # reason about separately.
+    /github-issues:
+      target: https://api.github.com
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${GITHUB_TOKEN}
+        Accept: application/vnd.github+json
     /github-code-scanning:
       target: https://api.github.com
       allowedMethods: ['GET']
