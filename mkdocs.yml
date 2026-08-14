@@ -41,6 +41,9 @@ nav:
   - Crossplane vs Terraform: crossplane-vs-terraform.md
   - Design Decisions:
     - "ADR-0001: Batch orchestration": design/adr-0001-batch-orchestration.md
+    - "ADR-0002: Delivery model": design/adr-0002-delivery-model.md
+    - "ADR-0003: Incident management": design/adr-0003-incident-management.md
+    - "ADR-0004: Identity and access": design/adr-0004-identity-and-access.md
   - Team Management: team-management.md
   - GitHub App Setup: github-app-setup.md
   - Scaling Runbook: scaling-runbook.md
