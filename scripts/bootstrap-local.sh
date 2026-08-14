@@ -713,11 +713,22 @@ _build_local_images() {
   fi
 
   # Build and seed images for any scaffolded service in services/ that has a
-  # helm-values-local.yaml. hello-service is handled above; idp-mcp-server and
-  # qa-mcp-server are deployed by bootstrap-ai.sh — skip them here.
+  # helm-values-local.yaml. hello-service is handled above.
+  #
+  # idp-mcp-server and qa-mcp-server used to be skipped here on the grounds that
+  # bootstrap-ai.sh deploys them. That stopped being safe once the ten AI/MCP
+  # services were taken off their Helm-only path and put into the ArgoCD
+  # ApplicationSet: ArgoCD now creates an Application for every services/*
+  # directory on a plain core bootstrap, so skipping the build left it pulling
+  # localhost:5003 images that were never pushed — ImagePullBackOff on every
+  # fresh local install, before bootstrap-ai.sh is ever run.
+  #
+  # On AWS the equivalent images live in ECR and survive between clusters, so
+  # only the local path had this gap. Building them here costs one extra image
+  # per bootstrap and makes local behave like AWS.
   for svc_dir in "${ROOT_DIR}/services"/*/; do
     svc=$(basename "$svc_dir")
-    [[ "$svc" == "hello-service" || "$svc" == "idp-mcp-server" || "$svc" == "qa-mcp-server" ]] && continue
+    [[ "$svc" == "hello-service" ]] && continue
     [[ ! -f "${svc_dir}/helm-values-local.yaml" ]] && continue
     img_repo=$(grep -E '^\s+repository:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}')
     img_tag=$(grep -E '^\s+tag:' "${svc_dir}/helm-values-local.yaml" | head -1 | awk '{print $2}' | tr -d '"')

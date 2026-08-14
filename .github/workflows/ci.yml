@@ -310,17 +310,19 @@ jobs:
       #
       # That is exactly how services/demo-aws-react reached the cluster as a
       # broken Application. Fail here instead.
-      - name: Every services/* has an AWS values file
+      - name: Every services/* has per-target values files
         run: |
           missing=0
           for d in services/*/; do
             [ -d "$d" ] || continue
-            if [ ! -f "${d}helm-values-aws.yaml" ]; then
-              echo "::error::${d} has no helm-values-aws.yaml — the ArgoCD ApplicationSet would deploy it with chart defaults"
-              missing=1
-            fi
+            for target in aws local; do
+              if [ ! -f "${d}helm-values-${target}.yaml" ]; then
+                echo "::error::${d} has no helm-values-${target}.yaml — the ArgoCD ApplicationSet would deploy it with chart defaults"
+                missing=1
+              fi
+            done
           done
-          [ "$missing" -eq 0 ] && echo "all services/* carry helm-values-aws.yaml"
+          [ "$missing" -eq 0 ] && echo "all services/* carry helm-values-aws.yaml and helm-values-local.yaml"
           exit "$missing"
 
   k8s-dry-run:
