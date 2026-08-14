@@ -490,6 +490,30 @@ jobs:
         working-directory: services/${{ matrix.service }}
         run: npm run build
 
+      # tsc, jest and the container build all accept an extensionless relative
+      # import, but Node rejects it at runtime in a "type": "module" package with
+      # ERR_MODULE_NOT_FOUND. That crashlooped agent-event-router in the cluster
+      # while every gate here stayed green (jest in particular cannot catch it —
+      # its moduleNameMapper strips the .js it is meant to be checking for).
+      #
+      # Importing the built entrypoint is the cheapest check that exercises the
+      # real resolver.
+      - name: Built bundle imports (ESM resolution)
+        working-directory: services/${{ matrix.service }}
+        run: |
+          set -euo pipefail
+          type=$(node -p "require('./package.json').type || 'commonjs'")
+          if [ "$type" != "module" ]; then
+            echo "Not an ESM package — skipping."; exit 0
+          fi
+          entry=$(node -p "require('./package.json').main || 'dist/index.js'")
+          echo "Importing $entry ..."
+          # process.exit(0) is required: several of these entrypoints start an
+          # HTTP listener, so a resolved import leaves the event loop alive and
+          # the step would hang rather than pass. The import resolving at all is
+          # the signal we want.
+          node -e "import('./$entry').then(()=>{console.log('imports cleanly');process.exit(0)}).catch(e=>{console.error(e.code||e.message);process.exit(1)})"
+
       - name: Test
         working-directory: services/${{ matrix.service }}
         run: npm test
