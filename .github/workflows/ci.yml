@@ -400,6 +400,21 @@ jobs:
         working-directory: backstage/app
         run: yarn tsc
 
+      # The repo has five Backstage test files and nothing ran any of them —
+      # only tsc and the build were gated. That covered type errors and left
+      # every behavioural assertion decorative, including the permission policy
+      # that decides what an unauthenticated user may do.
+      #
+      # CI must stay truthy here. `backstage-cli package test` drops into jest
+      # watch mode when it is not set, which produces no output and never exits —
+      # note the deliberate `CI: ''` on the build step below, so the trap is one
+      # copy-paste away.
+      - name: Test
+        working-directory: backstage/app
+        env:
+          CI: 'true'
+        run: yarn test
+
       - name: Build backend bundle
         working-directory: backstage/app
         env:
