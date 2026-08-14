@@ -13,9 +13,14 @@ import {
   renderMarker,
   toPriority,
   upsertMarker,
-} from './incidents';
+// NOTE the .js extension. package.json sets "type": "module", so Node resolves
+// these as ESM at runtime and an extensionless relative import fails with
+// ERR_MODULE_NOT_FOUND — even though tsc, jest and the container build all
+// accept it. Omitting it here crashlooped the router in the cluster while every
+// CI gate stayed green. See index.ts, which had it right.
+} from './incidents.js';
 
-export type { OpenIncident } from './incidents';
+export type { OpenIncident } from './incidents.js';
 
 export type PostFn = (agentName: string, message: string) => Promise<void>;
 export type EventCounter = Counter<'source' | 'event_type' | 'agent' | 'outcome'>;
