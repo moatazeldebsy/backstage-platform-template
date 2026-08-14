@@ -10,8 +10,18 @@ import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
 const execFileAsync = promisify(execFile);
 
-function buildOllamaYaml(name: string, modelName: string): string {
-  // Uses a lightweight Python Alpine mock (~50MB) instead of Ollama (~2.7GB).
+/**
+ * A ~50MB Python Alpine stub serving the OpenAI-compatible API shape.
+ *
+ * Named `buildMockYaml`, not `buildOllamaYaml`, because that is what it is. It
+ * previously carried the Ollama name while serving none of Ollama's behaviour,
+ * so the scaffolder reported "Ollama" for something that returns canned text.
+ *
+ * Kept as the local default deliberately: real Ollama is a ~2.7GB image plus a
+ * resident model, and the local Kind cluster already runs the whole platform on
+ * a single node. See buildRealOllamaYaml below for the genuine article.
+ */
+function buildMockYaml(name: string, modelName: string): string {
   // Serves the same OpenAI-compatible API shape for demo/scaffold purposes.
   // Model name is passed via MODEL_NAME env var — never interpolated into Python source.
   const mockScript = `
@@ -217,6 +227,105 @@ spec:
 `;
 }
 
+/**
+ * Real Ollama, pinned rather than :latest — the same convention the vLLM builder
+ * and MLFLOW_CLIENT_VERSION already follow.
+ *
+ * The PVC is not optional. Without it `ollama pull` re-downloads the model on
+ * every restart, which on a 1.5B model is minutes of pointless traffic and looks
+ * exactly like a hang.
+ */
+function buildRealOllamaYaml(name: string, modelName: string): string {
+  return `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${name}-ollama-models
+  namespace: ml-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${name}
+  namespace: ml-platform
+  labels:
+    app: ${name}
+    backstage.io/kubernetes-id: ${name}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${name}
+  template:
+    metadata:
+      labels:
+        app: ${name}
+        backstage.io/kubernetes-id: ${name}
+        served_by: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:0.13.0
+          ports:
+            - containerPort: 11434
+              name: http
+          env:
+            - name: MODEL_NAME
+              value: "${modelName}"
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "ollama pull \\"$MODEL_NAME\\" || true"]
+          # The pull takes minutes on a cold PVC. A readiness probe alone would
+          # restart the pod mid-download; startupProbe gives it 10 minutes before
+          # readiness is even consulted.
+          startupProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 6Gi
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ${name}-ollama-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${name}
+  namespace: ml-platform
+spec:
+  selector:
+    app: ${name}
+  ports:
+    - port: 11434
+      targetPort: http
+      name: http
+`;
+}
+
 function buildVllmYaml(name: string, modelName: string): string {
   return `apiVersion: apps/v1
 kind: Deployment
@@ -402,6 +511,13 @@ function createDeployModelServerAction() {
         name: z => z.string().describe('Model server name (k8s-safe)'),
         modelName: z => z.string().describe('Model name (e.g., llama3.2, mistral)'),
         target: z => z.enum(['local', 'aws']).describe('Deployment target'),
+        serverType: z =>
+          z
+            .enum(['mock', 'ollama', 'vllm'])
+            .optional()
+            .describe(
+              "Which server to run. Defaults to mock on local and vllm on aws. 'ollama' serves a real small model and needs ~4GB free.",
+            ),
       },
       output: {
         serverUrl: z => z.string().describe('Model Server URL'),
@@ -442,10 +558,54 @@ function createDeployModelServerAction() {
         throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
 
-      // Build the appropriate YAML based on target
-      const yaml = target === 'local'
-        ? buildOllamaYaml(name, modelName)
-        : buildVllmYaml(name, modelName);
+      // mock on local, vllm on aws — the previous behaviour — unless asked otherwise.
+      const serverType =
+        (ctx.input['serverType'] as string | undefined) ?? (target === 'local' ? 'mock' : 'vllm');
+
+      // Real Ollama on a single-node Kind cluster is a ~2.7GB image plus a
+      // resident model, on top of the whole platform. Refuse rather than let it
+      // evict Prometheus or the ArgoCD repo-server, which looks like an
+      // unrelated platform failure.
+      if (serverType === 'ollama' && target === 'local' && process.env.IDP_ALLOW_LOCAL_OLLAMA !== 'true') {
+        throw new Error(
+          'Real Ollama needs ~2.7GB of image plus ~1.5GB resident for a 1.5B model, and the local ' +
+            'cluster already runs the full platform on one node. Set IDP_ALLOW_LOCAL_OLLAMA=true to ' +
+            'override, or use serverType "mock" locally and "ollama" on AWS.',
+        );
+      }
+
+      // vLLM needs a GPU node. There is no GPU node group in terraform/ yet
+      // (issue #184), so without this the pod sits Pending forever and looks
+      // like a hang rather than a missing prerequisite.
+      if (serverType === 'vllm') {
+        let hasGpuNode = false;
+        try {
+          const { stdout } = await execFileAsync(
+            'kubectl',
+            ['get', 'nodes', '-l', 'accelerator', '-o', 'name', '--request-timeout=10s'],
+            { env: kubeEnv, timeout: 15_000 },
+          );
+          hasGpuNode = stdout.trim().length > 0;
+        } catch {
+          hasGpuNode = false;
+        }
+        if (!hasGpuNode) {
+          throw new Error(
+            'No GPU node found (no node carries an "accelerator" label), so a vLLM pod would stay ' +
+              'Pending indefinitely. The platform has no GPU node group yet — see issue #184. Use ' +
+              'serverType "ollama" for CPU inference in the meantime.',
+          );
+        }
+      }
+
+      ctx.logger.info(`Deploying model server '${name}' as ${serverType} (target: ${target})...`);
+
+      const builders: Record<string, (n: string, m: string) => string> = {
+        mock: buildMockYaml,
+        ollama: buildRealOllamaYaml,
+        vllm: buildVllmYaml,
+      };
+      const yaml = builders[serverType](name, modelName);
 
       const tmpFile = path.join(os.tmpdir(), `model-server-${name}-${Date.now()}.yaml`);
       try {
@@ -479,7 +639,7 @@ function createDeployModelServerAction() {
             tags: [
               { key: 'model_name', value: modelName },
               { key: 'deployment_target', value: target },
-              { key: 'served_by', value: target === 'local' ? 'ollama-mock' : 'vllm' },
+              { key: 'served_by', value: serverType === 'mock' ? 'mock' : serverType },
             ],
             description: `Model server for ${modelName} deployed via IDP (${target})`,
           }),

@@ -1,0 +1,120 @@
+# Shared in-cluster Ollama.
+#
+# One model server the whole platform points at, rather than one per scaffolded
+# app: a resident model is the expensive part, and running several copies of a
+# 1.5B model to serve a handful of agents wastes the memory the local cluster
+# does not have.
+#
+# Installed only by `bootstrap-ai.sh --ollama`. It is not part of the default AI
+# layer, because the image plus a resident model is ~4GB and the platform runs
+# fine against hosted APIs without it.
+#
+# qwen2.5:1.5b is chosen for size, not quality. It exists so agents can run with
+# no hosted API key at all; it is not a replacement for Claude or GPT-4o on the
+# multi-tool loops the incident and cost agents perform.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: ml-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: ml-platform
+  labels:
+    app: ollama
+    backstage.io/kubernetes-id: ollama
+spec:
+  replicas: 1
+  # The PVC is ReadWriteOnce and the model directory is not safe to share, so a
+  # rolling update would deadlock on the volume. Recreate is correct here.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+        backstage.io/kubernetes-id: ollama
+    spec:
+      securityContext:
+        runAsNonRoot: false # ollama writes to /root/.ollama
+      containers:
+        - name: ollama
+          # Pinned, not :latest — same convention as vLLM v0.26.0 and
+          # MLFLOW_CLIENT_VERSION. A model server that silently changes version
+          # changes its answers.
+          image: ollama/ollama:0.13.0
+          ports:
+            - containerPort: 11434
+              name: http
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+            - name: MODEL_NAME
+              value: "qwen2.5:1.5b"
+            # One model resident at a time. The default keeps several loaded,
+            # which is how this pod ends up using several GB more than expected.
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "1"
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "ollama pull \"$MODEL_NAME\" || true"]
+          # The first pull is minutes on an empty PVC. Without a startupProbe the
+          # readiness probe fails first and the kubelet restarts the pod
+          # mid-download, which loops forever and reads as a broken image.
+          startupProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            # A hard ceiling matters more than usual here: without it a larger
+            # model pulled by hand can take the node down, and on a single-node
+            # cluster that is the whole platform.
+            limits:
+              cpu: "2"
+              memory: 6Gi
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: ml-platform
+  labels:
+    app: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: http
+      name: http

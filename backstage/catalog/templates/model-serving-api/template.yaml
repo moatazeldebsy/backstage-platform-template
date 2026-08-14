@@ -3,7 +3,7 @@ kind: Template
 metadata:
   name: model-serving-api
   title: Model Serving API
-  description: Deploy an ML model as a REST API using Ollama (local) or vLLM (AWS). Serve open-source LLMs for inference with auto-scaling and health probes.
+  description: Deploy an ML model as a REST API — a lightweight mock, real Ollama for CPU inference, or vLLM on a GPU node. Auto-scaling and health probes included.
   tags:
     - ai
     - ml
@@ -34,7 +34,7 @@ spec:
         modelName:
           title: Model Name
           type: string
-          description: Which model to serve — all run as a lightweight mock API for local demo
+          description: Which model to serve. With the mock server the name is cosmetic; with Ollama or vLLM it is pulled and served for real.
           default: phi
           enum:
             - phi
@@ -55,7 +55,7 @@ spec:
         target:
           title: Deployment Target
           type: string
-          description: 'local: Ollama on Kind, aws: vLLM on EKS with GPU'
+          description: 'Where the model server runs. The server itself is chosen separately below.'
           enum:
             - local
             - aws

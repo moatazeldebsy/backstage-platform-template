@@ -9,6 +9,50 @@ and persistent user memory. This is the foundation the
 
 ---
 
+## Self-hosted models (no API key required)
+
+Every KAgent ModelConfig the platform ships needs an Anthropic or OpenAI key,
+which makes "try the agents" gated on having a paid account. `--ollama` removes
+that gate:
+
+```bash
+./scripts/bootstrap-ai.sh --ollama            # local
+./scripts/bootstrap-ai.sh --aws --ollama      # AWS
+```
+
+It deploys one shared Ollama into `ml-platform` serving `qwen2.5:1.5b`, plus a
+KAgent ModelConfig named `ollama-local` pointing at it. One server, not one per
+scaffolded app — a resident model is the expensive part.
+
+**No existing agent is repointed at it.** A 1.5B model cannot drive the
+multi-tool loops `incident-agent` and `cost-agent` perform; it will loop or
+invent tool names. Treat it as an available backend and a demo, not a
+replacement. To try it, repoint one low-stakes agent's `modelConfig`.
+
+**Cost on the local cluster:** ~2.7GB of image and ~1.5GB resident, on top of a
+platform that already needs 8 CPU / 16 GB. It is off by default for that reason,
+and the bootstrap prints the arithmetic before installing.
+
+### Scaffolding a model server
+
+The **Model Serving API** template now offers three servers rather than implying
+one:
+
+| Server | What it is | Use it when |
+|---|---|---|
+| `mock` | ~50MB Python stub returning canned text in the OpenAI shape | Demos and scaffold tests. The local default |
+| `ollama` | Real Ollama, pinned, with a PVC so the model survives a restart | CPU inference on AWS, or locally with `IDP_ALLOW_LOCAL_OLLAMA=true` |
+| `vllm` | Real vLLM, needs a GPU node | GPU inference. Blocked until a GPU node group exists — see issue #184 |
+
+The mock was previously called Ollama in the code while serving none of Ollama's
+behaviour, so the scaffolder reported "Ollama" for something that returns fixed
+strings. It is now named for what it is.
+
+Both real servers fail fast rather than hanging: `ollama` on a local cluster
+refuses unless `IDP_ALLOW_LOCAL_OLLAMA=true`, and `vllm` checks for a node
+carrying an `accelerator` label and names issue #184 when there is none —
+otherwise the pod sits `Pending` forever and reads as a hang.
+
 ## Architecture
 
 The AI Assistant is a **native React chat component** embedded directly in the Backstage frontend. It is not an iframe.
