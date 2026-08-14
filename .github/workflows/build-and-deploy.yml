@@ -12,6 +12,18 @@ on:
       - main
     paths:
       - 'services/**'
+  # The concurrency group below has always referenced github.event.inputs.service,
+  # but there was no workflow_dispatch trigger, so the expression was always empty
+  # and every push to a branch shared one group named "...-all". With
+  # cancel-in-progress that meant two services changing back to back cancelled
+  # each other mid-deploy — the opposite of the "one active run per service"
+  # the comment claims. Declaring the input makes the group actually vary.
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to build and deploy (must match a services/* directory)'
+        required: true
+        type: string
 
 env:
   AWS_REGION: us-east-1
@@ -32,7 +44,7 @@ jobs:
       contents: read
       pull-requests: read   # required by dorny/paths-filter@v4 on PRs
     outputs:
-      services: ${{ steps.filter.outputs.changes }}
+      services: ${{ steps.resolve.outputs.services }}
       staging_promoted: ${{ steps.staging-filter.outputs.staging_promoted }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -61,8 +73,32 @@ jobs:
 
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: filter
+        if: github.event_name != 'workflow_dispatch'
         with:
           filters: ${{ steps.gen.outputs.filters }}
+
+      # A manual run names its service directly; there is no diff to filter on.
+      # Validate it against the filesystem so a typo fails here rather than
+      # halfway through a build against a service that does not exist.
+      - name: Resolve service list
+        id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_SERVICE: ${{ github.event.inputs.service }}
+          FILTERED: ${{ steps.filter.outputs.changes }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ ! -f "services/${INPUT_SERVICE}/Dockerfile" ]; then
+              echo "::error::No services/${INPUT_SERVICE}/Dockerfile — valid services: $(ls -d services/*/ | xargs -n1 basename | tr '\n' ' ')"
+              exit 1
+            fi
+            SERVICES=$(printf '["%s"]' "$INPUT_SERVICE")
+          else
+            SERVICES="$FILTERED"
+          fi
+          echo "services=${SERVICES}" >> "$GITHUB_OUTPUT"
+          echo "Resolved services: ${SERVICES}"
 
       # Separate boolean-only filter: true when this push is itself the merge of a
       # staging promotion PR (i.e. it touched helm-values-staging.yaml). Used to gate
@@ -70,6 +106,7 @@ jobs:
       # not on every ordinary source-code push.
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: staging-filter
+        if: github.event_name != 'workflow_dispatch'
         with:
           filters: |
             staging_promoted:
