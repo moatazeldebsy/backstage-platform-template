@@ -2,16 +2,29 @@
 # generated ServiceAccount with the IRSA role ARN so the provider's AWS SDK
 # picks up cluster credentials without static keys.
 #
-# The ARN below is the resolved value of the Terraform output
-# `crossplane_aws_role_arn` (see terraform/iam-crossplane.tf), committed the
-# same way services/*/helm-values-aws.yaml commit their resolved ECR registry.
+# IRSA_ROLE_ARN stays a placeholder in git ON PURPOSE. The real ARN is
+# account-specific, so committing it would hand every clone of this template
+# the original author's role — a role they cannot assume, which fails silently:
+# the providers still report Healthy (the package installed) while being unable
+# to authenticate to AWS.
 #
-# It used to read the literal "IRSA_ROLE_ARN", substituted by scripts/bootstrap.sh
-# on the manifest's way into `kubectl apply -f -`. That works only for the
-# script: this directory is an ArgoCD Application, and ArgoCD renders the file
-# from git as-is, so it annotated every provider ServiceAccount with the string
-# "IRSA_ROLE_ARN" — a role that cannot be assumed, leaving the providers
-# Healthy (the package installed) but unable to authenticate to AWS.
+# The value is supplied per-cluster by scripts/bootstrap.sh, which substitutes
+# `terraform output crossplane_aws_role_arn` and applies it once the
+# DeploymentRuntimeConfig CRD exists. ArgoCD does not revert that patch because
+# aws/argocd/crossplane.yaml declares, for this exact resource:
+#
+#   ignoreDifferences:
+#     - kind: DeploymentRuntimeConfig
+#       name: provider-aws-irsa
+#       jsonPointers: [/spec/serviceAccountTemplate/metadata/annotations]
+#   syncOptions: [RespectIgnoreDifferences=true]
+#
+# So: do not "fix" this by hardcoding an ARN. If the live ServiceAccounts show
+# the literal IRSA_ROLE_ARN, the bootstrap substitution never ran against this
+# cluster (it is skipped when the CRD is not yet established) — re-run it:
+#
+#   sed "s|IRSA_ROLE_ARN|$(cd terraform && terraform output -raw crossplane_aws_role_arn)|g" \
+#     aws/crossplane/providers/deployment-runtime-config.yaml | kubectl apply -f -
 apiVersion: pkg.crossplane.io/v1beta1
 kind: DeploymentRuntimeConfig
 metadata:
@@ -20,7 +33,7 @@ spec:
   serviceAccountTemplate:
     metadata:
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::967825954374:role/idp-mvp-crossplane-aws"
+        eks.amazonaws.com/role-arn: "IRSA_ROLE_ARN"
   deploymentTemplate:
     spec:
       selector: {}
