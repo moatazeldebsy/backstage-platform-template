@@ -124,7 +124,45 @@ The following hardening steps were applied to the AWS Backstage deployment in co
 
 - **No hardcoded AWS Account ID** — `aws/backstage/deployment.yaml` uses `${AWS_ACCOUNT_ID}` and `${AWS_REGION}` environment variable placeholders substituted at deploy time by `bootstrap.sh`, rather than the literal account ID.
 
-These settings are in effect only in the AWS config. Local Kind development still uses guest auth and skips TLS (see Local-only relaxations below).
+These settings are in effect only in the AWS config. Local Kind development still uses guest auth (see Local-only relaxations below).
+
+### Ingress TLS is not configured
+
+> **Status: open.** Tracked in [#310](https://github.com/moatazeldebsy/backstage-platform-template/issues/310). Read this before putting real users on the platform.
+
+The TLS hardening above covers the *database* connection. It does **not** cover ingress. As shipped, every ingress on the AWS cluster serves plain HTTP on port 80 — no `alb.ingress.kubernetes.io/certificate-arn` annotation, no `spec.tls` block, and no cert-manager installed:
+
+- **Backstage** is exposed as a bare `LoadBalancer` Service on port 80 (`aws/backstage/deployment.yaml`), with `APP_BASE_URL` set to an `http://` ALB hostname.
+- **ArgoCD** runs with `--insecure` and `server.insecure: true` (`aws/argocd/argocd-helm-values.yaml`), with `tls: []` on its Ingress. The comment there — *"Remove when TLS is terminated at ALB"* — anticipates the work but does not do it.
+- The MCP services, Grafana, MLflow and Langfuse ingresses are all likewise HTTP-only.
+
+The practical consequence: **GitHub OAuth tokens, the ArgoCD session cookie, and every MCP call cross the network in cleartext.** That is acceptable for a demo or an evaluation cluster on a private VPC. It is not acceptable for a shared or internet-facing deployment.
+
+#### Recommended remediation
+
+The pieces are mostly present already — `terraform/acm.tf` provisions a wildcard ACM certificate with Route53 DNS validation. It is simply scoped to the monitoring ALBs (Grafana, Prometheus, Alertmanager) and gated behind `var.domain_name`, so it never reaches Backstage or ArgoCD.
+
+1. **Set `var.domain_name`** in `terraform/terraform.tfvars` to a domain with a Route53 hosted zone in the same account, and apply. This is the prerequisite for everything below — without a real domain there is nothing for ACM to validate.
+2. **Extend `terraform/acm.tf`** beyond the monitoring ingresses so the wildcard certificate covers the Backstage and ArgoCD hostnames.
+3. **Convert the Backstage Service to an ALB Ingress** and annotate it:
+   ```yaml
+   alb.ingress.kubernetes.io/certificate-arn: <acm-cert-arn>
+   alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+   alb.ingress.kubernetes.io/ssl-redirect: '443'
+   ```
+4. **Flip the URLs to `https://`** — `APP_BASE_URL` and `app.baseUrl` / `backend.baseUrl` in `backstage/app-config.aws.yaml`.
+5. **Drop ArgoCD's plaintext flags** — remove `--insecure` from `extraArgs` and set `server.insecure: false`.
+6. **Only then** narrow the CSP: set `upgrade-insecure-requests: true` and restrict `connect-src` ([#316](https://github.com/moatazeldebsy/backstage-platform-template/issues/316)). Doing this before HTTPS is live will break the app.
+
+#### Plan for the cutover
+
+This is not a transparent change. The Backstage URL moves from the ALB hostname to your domain, which means:
+
+- the **GitHub OAuth App callback URL must be re-registered** (see [github-app-setup.md](github-app-setup.md)) — users cannot sign in until it is;
+- any bookmarked ALB hostnames stop working;
+- `catalog-info.yaml` annotations or dashboards that hardcode the old host need updating.
+
+Schedule it as a maintenance window rather than a routine deploy.
 
 ## Local-only relaxations
 
