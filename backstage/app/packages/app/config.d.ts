@@ -38,6 +38,21 @@ export interface Config {
      * @visibility frontend
      */
     langfuse?: string;
+    /**
+     * owner/repo that agent-event-router files incident issues into. Read by the
+     * Incidents page and the per-entity Incidents tab; it must match
+     * INCIDENT_REPO on that service or the UI reads an empty list while records
+     * are being created somewhere else.
+     *
+     * This is not a URL like its siblings, but it belongs here for the same
+     * reason: it is environment-specific configuration the frontend needs. It
+     * was added to both app-configs without this annotation, so Backstage
+     * stripped it and the page showed "incidentRepo is not set" on a cluster
+     * where it was set — exactly the failure documented on `langfuse` above.
+     *
+     * @visibility frontend
+     */
+    incidentRepo?: string;
   };
 
   /**

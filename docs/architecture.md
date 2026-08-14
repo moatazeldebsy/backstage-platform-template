@@ -6,6 +6,12 @@ Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
 
 - [ADR-0001: Where batch and pipeline work runs](design/adr-0001-batch-orchestration.md) —
   GitHub Actions vs CronJob vs Argo Workflows, and why CI stays in Actions.
+- [ADR-0002: How services get deployed](design/adr-0002-delivery-model.md) —
+  ApplicationSets as the only deploy mechanism, and Argo Rollouts as a chart feature.
+- [ADR-0003: Incident records, and where their state lives](design/adr-0003-incident-management.md) —
+  GitHub issues as the source of truth, one severity vocabulary, deterministic postmortems.
+- [ADR-0004: Identity and access](design/adr-0004-identity-and-access.md) —
+  why guest auth was removed, and why GitHub Org ingestion is deferred rather than adopted.
 
 ## Overview
 
