@@ -1,0 +1,39 @@
+# Helm overrides for hello-service — dev environment
+# image.tag is updated automatically by CI when pushed to main
+image:
+  # Seed value only — bootstrap.sh rewrites this line with the real ECR registry,
+  # and CI's update-image-tag job owns it from then on.
+  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service
+  tag: latest
+replicaCount: 1
+service:
+  port: 80
+  targetPort: 8080
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+  hosts:
+    - host: "" # match any hostname; use ALB DNS directly
+      paths:
+        - path: /
+          pathType: Prefix
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: dev
+podLabels:
+  team: platform-team
+  cost-center: CC-1000
+  environment: dev
