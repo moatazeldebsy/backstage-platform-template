@@ -4,7 +4,7 @@ image:
   # Seed value only — bootstrap.sh rewrites this line with the real ECR registry,
   # and CI's update-image-tag job owns it from then on.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/hello-service
-  tag: 811c3f0
+  tag: 254c742
 replicaCount: 1
 service:
   port: 80
