@@ -44,6 +44,7 @@ nav:
     - "ADR-0002: Delivery model": design/adr-0002-delivery-model.md
     - "ADR-0003: Incident management": design/adr-0003-incident-management.md
     - "ADR-0004: Identity and access": design/adr-0004-identity-and-access.md
+    - "ADR-0005: LLM serving and agent frameworks": design/adr-0005-llm-serving-and-agent-frameworks.md
   - Team Management: team-management.md
   - GitHub App Setup: github-app-setup.md
   - Scaling Runbook: scaling-runbook.md

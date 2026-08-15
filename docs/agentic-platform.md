@@ -164,6 +164,8 @@ than several unrelated ones.
 
 ## See Also
 
+- [design/adr-0005-llm-serving-and-agent-frameworks.md](design/adr-0005-llm-serving-and-agent-frameworks.md)
+  — the reasoning behind the KAgent/LangGraph split above, and behind the mock/Ollama/vLLM model-server choice
 - [ai-assistant.md](ai-assistant.md) — full agent/MCP server reference (Sprint 1-3 delivered history)
 - [runbooks/kagent-guardrails.md](runbooks/kagent-guardrails.md) — existing guardrails this epic extends
 - [multi-region.md](multi-region.md) — the V2 epic this doc's structure mirrors
