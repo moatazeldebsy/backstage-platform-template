@@ -45,7 +45,7 @@ jobs:
       pull-requests: read   # required by dorny/paths-filter@v4 on PRs
     outputs:
       services: ${{ steps.resolve.outputs.services }}
-      staging_promoted: ${{ steps.staging-filter.outputs.staging_promoted }}
+      promoted_services: ${{ steps.resolve.outputs.promoted_services }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -71,46 +71,71 @@ jobs:
             echo 'GHA_EOF'
           } >> "$GITHUB_OUTPUT"
 
+      # One aggregate filter with list-files, rather than per-service negation
+      # patterns. The classification below needs the actual file list, and doing
+      # it in shell keeps the rule explicit and testable instead of resting on
+      # how the action combines a `!pattern` with its siblings.
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: filter
         if: github.event_name != 'workflow_dispatch'
         with:
-          filters: ${{ steps.gen.outputs.filters }}
+          list-files: json
+          filters: |
+            any:
+              - 'services/**'
 
-      # A manual run names its service directly; there is no diff to filter on.
-      # Validate it against the filesystem so a typo fails here rather than
-      # halfway through a build against a service that does not exist.
-      - name: Resolve service list
+      # Splits the changed files into two independent signals:
+      #
+      #   services          — a service's *source* changed; build, deploy to dev,
+      #                       and open a staging promotion.
+      #   promoted_services — a staging promotion was merged; smoke test staging
+      #                       and open a production promotion. No build.
+      #
+      # Keeping these apart is what stops the promotion treadmill. Merging a
+      # promotion PR is itself a services/** change, so when one list drove
+      # everything, each promotion merge triggered a rebuild, which opened the
+      # next promotion PR, which when merged triggered another — endlessly, and
+      # the PRs raced each other into conflicts (see #344). A promotion moves an
+      # artifact that already exists and must never cause a rebuild.
+      - name: Resolve service lists
         id: resolve
         env:
           EVENT: ${{ github.event_name }}
           INPUT_SERVICE: ${{ github.event.inputs.service }}
-          FILTERED: ${{ steps.filter.outputs.changes }}
+          CHANGED: ${{ steps.filter.outputs.any_files }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = "workflow_dispatch" ]; then
+            # A manual run names its service directly; there is no diff to filter
+            # on. Validate it so a typo fails here rather than halfway through a
+            # build against a service that does not exist.
             if [ ! -f "services/${INPUT_SERVICE}/Dockerfile" ]; then
               echo "::error::No services/${INPUT_SERVICE}/Dockerfile — valid services: $(ls -d services/*/ | xargs -n1 basename | tr '\n' ' ')"
               exit 1
             fi
-            SERVICES=$(printf '["%s"]' "$INPUT_SERVICE")
-          else
-            SERVICES="$FILTERED"
+            echo "services=$(printf '["%s"]' "$INPUT_SERVICE")" >> "$GITHUB_OUTPUT"
+            echo "promoted_services=[]" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch: building ${INPUT_SERVICE}"
+            exit 0
           fi
-          echo "services=${SERVICES}" >> "$GITHUB_OUTPUT"
-          echo "Resolved services: ${SERVICES}"
 
-      # Separate boolean-only filter: true when this push is itself the merge of a
-      # staging promotion PR (i.e. it touched helm-values-staging.yaml). Used to gate
-      # smoke-test-staging / promote-to-production so they only run on that trigger,
-      # not on every ordinary source-code push.
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
-        id: staging-filter
-        if: github.event_name != 'workflow_dispatch'
-        with:
-          filters: |
-            staging_promoted:
-              - 'services/*/helm-values-staging.yaml'
+          SRC=$(mktemp); PROMO=$(mktemp)
+          for f in $(printf '%s' "${CHANGED:-[]}" | jq -r '.[]'); do
+            svc=$(printf '%s' "$f" | cut -d/ -f2)
+            [ -f "services/${svc}/Dockerfile" ] || continue
+            case "$f" in
+              services/*/helm-values-staging.yaml) echo "$svc" >> "$PROMO" ;;
+              # A merged production promotion is the end of the line — it must
+              # not build, and there is nothing further to promote it to.
+              services/*/helm-values-prod.yaml)    ;;
+              *)                                   echo "$svc" >> "$SRC" ;;
+            esac
+          done
+          to_json() { sort -u "$1" | jq -R . | jq -sc .; }
+          echo "services=$(to_json "$SRC")" >> "$GITHUB_OUTPUT"
+          echo "promoted_services=$(to_json "$PROMO")" >> "$GITHUB_OUTPUT"
+          echo "source changed:     $(to_json "$SRC")"
+          echo "staging promoted:   $(to_json "$PROMO")"
 
   # ─── Lint and test ──────────────────────────────────────────────────────────
   test:
@@ -683,13 +708,16 @@ jobs:
 
   # ─── Smoke test staging before promoting to production ────────────────────
   # Only runs when this push IS the merge of a promote-to-staging PR (detected via
-  # the staging_promoted path filter above) — not on every ordinary source push.
+  # the promotion path filter above) — not on every ordinary source push.
   smoke-test-staging:
-    needs: [detect-changes, build-and-push]
-    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' && needs.detect-changes.outputs.staging_promoted == 'true' }}
+    # Driven by promoted_services, not services: a promotion-only push does not
+    # build anything, so build-and-push neither runs nor is needed here — the
+    # image being tested is the one staging already deployed.
+    needs: [detect-changes]
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.promoted_services != '[]' }}
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+        service: ${{ fromJSON(needs.detect-changes.outputs.promoted_services) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -827,11 +855,11 @@ jobs:
   # reviews and merges (see docs/sre-reliability.md — prod requires manual approval,
   # no auto-merge); ArgoCD (idp-services-prod ApplicationSet) deploys on merge.
   promote-to-production:
-    needs: [detect-changes, build-and-push, smoke-test-staging]
-    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]' && needs.detect-changes.outputs.staging_promoted == 'true' }}
+    needs: [detect-changes, smoke-test-staging]
+    if: ${{ github.ref == 'refs/heads/main' && needs.detect-changes.outputs.promoted_services != '[]' }}
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+        service: ${{ fromJSON(needs.detect-changes.outputs.promoted_services) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -870,10 +898,34 @@ jobs:
         if: steps.guard.outputs.has_aws == 'true'
         env:
           SERVICE: ${{ matrix.service }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           IMAGE_REPO: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}
           GH_TOKEN: ${{ secrets.IDP_PLATFORM_TOKEN }}
         run: |
+          # Take the tag from the staging values file rather than from
+          # build-and-push, which does not run on a promotion-only push. This is
+          # also the more correct source: promoting to production means shipping
+          # the exact artifact that passed staging, not whatever a fresh build
+          # happens to produce.
+          IMAGE_TAG=$(yq -r '.image.tag' "services/${SERVICE}/helm-values-staging.yaml")
+          if [ -z "${IMAGE_TAG}" ] || [ "${IMAGE_TAG}" = "null" ]; then
+            echo "::error::Could not read .image.tag from services/${SERVICE}/helm-values-staging.yaml"
+            exit 1
+          fi
+          # Refuse to move production backwards. Promotion PRs can pile up and
+          # arrive out of order; without this an older tag could overwrite a
+          # newer one and silently roll production back.
+          if [ -f "services/${SERVICE}/helm-values-prod.yaml" ]; then
+            CURRENT=$(yq -r '.image.tag' "services/${SERVICE}/helm-values-prod.yaml")
+            if [ "${CURRENT}" = "${IMAGE_TAG}" ]; then
+              echo "Production is already on ${IMAGE_TAG}; nothing to promote."
+              exit 0
+            fi
+            if git merge-base --is-ancestor "${IMAGE_TAG}" "${CURRENT}" 2>/dev/null; then
+              echo "::warning::${IMAGE_TAG} is an ancestor of the deployed ${CURRENT} — refusing to roll production back."
+              exit 0
+            fi
+          fi
+          echo "Promoting ${SERVICE} ${IMAGE_TAG} to production"
           BRANCH="promote/${SERVICE}-${IMAGE_TAG}-production"
           git config user.name "idp-bot"
           git config user.email "idp-bot@platform"
