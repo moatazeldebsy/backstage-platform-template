@@ -62,7 +62,7 @@ This template ships with these security controls enabled by default:
 |---|---|---|---|
 | `react-router` / `react-router-dom` (`backstage/app`) | GHSA-wrjc-x8rr-h8h6, GHSA-337j-9hxr-rhxg, and the unpatched react-router-dom open-redirect advisory | Fix requires react-router **v7**, but the latest published `@backstage/frontend-defaults` and `@backstage/core-app-api` (re-verified 2026-08-04) still hard-pin `react-router-dom: ^6.30.2` as a peer dependency — Backstage hasn't shipped v7 support. Bumping independently is also **inert**: the root `backstage/app/package.json` pins `react-router: ^6.30.4` under `resolutions`, so a bumped dependency declaration resolves straight back to 6.x — verified by editing `packages/app/package.json` to `^8.3.0`, running a real `yarn install`, and finding **0** lockfile entries for react-router 8. `react-router-dom` is likewise unaffected, since it hard-depends on `react-router@6.x`. Dependabot is configured to `ignore` both packages for `/backstage/app` (`open-pull-requests-limit: 0` does not suppress *security* PRs). | Backstage's frontend packages drop the react-router v6 peer dependency pin — still present in the latest published `core-app-api` 1.20.3, `frontend-defaults` 0.5.4 and `core-plugin-api` 1.12.8 as of 2026-08-04. Then remove the `resolutions` pin and the Dependabot ignore together. |
 
-| `brace-expansion` (`backstage/catalog/templates/appium-mobile-suite/skeleton`) | GHSA-rgw5-rvv9-x895 (high) — **auto-dismissed by GitHub 2026-08-03, not fixed**: it no longer appears in the open-alert count, but `npm audit` still reports it in the committed lockfile | Only the nested `appium-uiautomator2-driver/node_modules/minimatch → brace-expansion@5.0.8` copy is affected; the root is already overridden to `5.0.9`. npm will not apply the override to that nested instance (verified with both `--package-lock-only` and a full `npm install`). Reachable only from Appium's own driver tooling in CI. | `appium-uiautomator2-driver` refreshes its `minimatch` pin, or npm resolves the nested override. Note the auto-dismissal means Dependabot will not re-surface this — re-check with `npm audit` in that skeleton rather than relying on the alert list. |
+| `extract-zip` (`backstage/catalog/templates/appium-mobile-suite/skeleton`) | GHSA-jmr9-qjv8-65gv (high) — unvalidated symlink path traversal. Inflates to 13 `npm audit` findings, but there is exactly one root cause | **No patched version exists.** The advisory range is `extract-zip *` and 2.0.1 (published 2020) is the newest release, so there is nothing to bump to. Reached only as `@wdio/utils → @puppeteer/browsers → extract-zip`, a `dev`-only path used to unpack a downloaded browser — an Appium mobile suite never triggers that download. npm's offered fix is `@wdio/cli@8.14.6`, a 2023 release that avoids the advisory only by predating the `@puppeteer/browsers` dependency; taking it would downgrade the whole WebdriverIO stack from v9. | `extract-zip` publishes a fix, or `@puppeteer/browsers` drops it (it is used for one unzip call). Re-check with `npm audit --package-lock-only` in that skeleton. |
 
 | `cryptography` (`backstage/catalog/templates/mlflow-experiment/skeleton`) | CVE-2026-69247 (via `mlflow`) | Transitive only. `mlflow` caps `cryptography<50`, so pinning `cryptography>=50.0.0` does not upgrade it — pip instead resolves **backwards** to `mlflow 3.2.0` and `pyarrow 21.0.0`, taking the count from **1 vulnerability to 27**. Measured, not assumed. Leaving the requirement open keeps mlflow at 3.15.1 with a single known issue. | `mlflow` relaxes its `cryptography<50` cap. Re-check with `pip-audit -r requirements.txt` on a rendered skeleton. |
 
@@ -82,6 +82,18 @@ templates npm's "fixes" are major *downgrades* to versions that merely predate t
 advisories — `appium@^3.6.0 → 1.22.3`, `newman@^6.2.2 → 2.1.2`,
 `@wdio/mocha-framework@^9.30.1 → 7.7.3`. Bump the direct dependency forward instead,
 and check `engines.node` against the `node-version` pinned in that skeleton's workflow.
+
+**An `overrides` block only takes effect if the lockfile was resolved with it present.**
+The appium skeleton carried `brace-expansion: 5.0.9` under `overrides` while its
+committed lockfile still pinned a nested `appium-uiautomator2-driver/node_modules/
+brace-expansion@5.0.8`, and this file previously recorded that as unfixable — npm
+"will not apply the override to that nested instance". That conclusion was wrong
+because both commands used to test it (`npm install --package-lock-only` and a full
+`npm install`) reuse already-resolved entries and never revisit them. Deleting
+`package-lock.json` and regenerating forces re-resolution, and the override then
+applies everywhere. When an override looks inert, delete the lockfile before
+concluding npm is at fault — and check `packages[""].overrides` in the regenerated
+lockfile to confirm it was actually recorded.
 
 ## Scope
 
