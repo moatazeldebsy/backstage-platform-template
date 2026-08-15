@@ -11,22 +11,22 @@
       
       
       
-        <link rel="prev" href="../team-management/">
+        <link rel="prev" href="../adr-0004-identity-and-access/">
       
       
-        <link rel="next" href="../scaling-runbook/">
+        <link rel="next" href="../../team-management/">
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
     
     
       
-        <title>GitHub App Setup - Internal Developer Platform</title>
+        <title>ADR-0005: LLM serving and agent frameworks - Internal Developer Platform</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6543a935.min.css">
       
       
 
@@ -45,7 +45,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#github-app-setup" class="md-skip">
+        <a href="#adr-0005-llm-serving-and-agent-frameworks" class="md-skip">
           Skip to content
         </a>
       
@@ -78,7 +78,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+    <a href="../.." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              GitHub App Setup
+              ADR-0005: LLM serving and agent frameworks
             
           </span>
         </div>
@@ -140,7 +140,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
     
@@ -157,7 +157,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../getting-started/" class="md-tabs__link">
+      <a href="../../getting-started/" class="md-tabs__link">
         
   
     
@@ -174,7 +174,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../architecture/" class="md-tabs__link">
+      <a href="../../architecture/" class="md-tabs__link">
         
   
     
@@ -191,7 +191,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../multi-region/" class="md-tabs__link">
+      <a href="../../multi-region/" class="md-tabs__link">
         
   
     
@@ -208,7 +208,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../golden-path/" class="md-tabs__link">
+      <a href="../../golden-path/" class="md-tabs__link">
         
   
     
@@ -225,7 +225,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../mobile-platform/" class="md-tabs__link">
+      <a href="../../mobile-platform/" class="md-tabs__link">
         
   
     
@@ -242,7 +242,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../local-setup/" class="md-tabs__link">
+      <a href="../../local-setup/" class="md-tabs__link">
         
   
     
@@ -261,7 +261,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
+        <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
           
   
   AWS Deployment
@@ -277,7 +277,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+      <a href="../../TROUBLESHOOTING/" class="md-tabs__link">
         
   
     
@@ -294,7 +294,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../docker-recovery/" class="md-tabs__link">
+      <a href="../../docker-recovery/" class="md-tabs__link">
         
   
     
@@ -311,7 +311,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../cli-reference/" class="md-tabs__link">
+      <a href="../../cli-reference/" class="md-tabs__link">
         
   
     
@@ -328,7 +328,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../scripts-reference/" class="md-tabs__link">
+      <a href="../../scripts-reference/" class="md-tabs__link">
         
   
     
@@ -345,7 +345,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../ai-assistant/" class="md-tabs__link">
+      <a href="../../ai-assistant/" class="md-tabs__link">
         
   
     
@@ -362,7 +362,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../agentic-platform/" class="md-tabs__link">
+      <a href="../../agentic-platform/" class="md-tabs__link">
         
   
     
@@ -379,7 +379,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../agent-approvals/" class="md-tabs__link">
+      <a href="../../agent-approvals/" class="md-tabs__link">
         
   
     
@@ -396,7 +396,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../dora-finops/" class="md-tabs__link">
+      <a href="../../dora-finops/" class="md-tabs__link">
         
   
     
@@ -413,7 +413,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../contract-testing/" class="md-tabs__link">
+      <a href="../../contract-testing/" class="md-tabs__link">
         
   
     
@@ -430,7 +430,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../crossplane/" class="md-tabs__link">
+      <a href="../../crossplane/" class="md-tabs__link">
         
   
     
@@ -447,7 +447,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
+      <a href="../../crossplane-vs-terraform/" class="md-tabs__link">
         
   
     
@@ -462,11 +462,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../design/adr-0001-batch-orchestration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../adr-0001-batch-orchestration/" class="md-tabs__link">
           
   
   Design Decisions
@@ -482,7 +484,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../team-management/" class="md-tabs__link">
+      <a href="../../team-management/" class="md-tabs__link">
         
   
     
@@ -497,11 +499,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../../github-app-setup/" class="md-tabs__link">
         
   
     
@@ -518,7 +518,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../scaling-runbook/" class="md-tabs__link">
+      <a href="../../scaling-runbook/" class="md-tabs__link">
         
   
     
@@ -537,7 +537,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../shift-left-leadership/" class="md-tabs__link">
+        <a href="../../shift-left-leadership/" class="md-tabs__link">
           
   
   Shift-Left Quality
@@ -553,7 +553,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../security/" class="md-tabs__link">
+      <a href="../../security/" class="md-tabs__link">
         
   
     
@@ -570,7 +570,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../security-scanning/" class="md-tabs__link">
+      <a href="../../security-scanning/" class="md-tabs__link">
         
   
     
@@ -587,7 +587,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../demo-runbook/" class="md-tabs__link">
+      <a href="../../demo-runbook/" class="md-tabs__link">
         
   
     
@@ -604,7 +604,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../readiness-checklist/" class="md-tabs__link">
+      <a href="../../readiness-checklist/" class="md-tabs__link">
         
   
     
@@ -621,7 +621,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../sre-reliability/" class="md-tabs__link">
+      <a href="../../sre-reliability/" class="md-tabs__link">
         
   
     
@@ -640,7 +640,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../runbooks/" class="md-tabs__link">
+        <a href="../../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -656,7 +656,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../postmortem-template/" class="md-tabs__link">
+      <a href="../../postmortem-template/" class="md-tabs__link">
         
   
     
@@ -692,7 +692,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+    <a href="../.." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -722,7 +722,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -742,7 +742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/" class="md-nav__link">
+      <a href="../../getting-started/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -762,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -782,7 +782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../multi-region/" class="md-nav__link">
+      <a href="../../multi-region/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -802,7 +802,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../golden-path/" class="md-nav__link">
+      <a href="../../golden-path/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -822,7 +822,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mobile-platform/" class="md-nav__link">
+      <a href="../../mobile-platform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -842,7 +842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../local-setup/" class="md-nav__link">
+      <a href="../../local-setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -902,7 +902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
+      <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -923,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
+      <a href="../../DEPLOYMENT_GUIDE/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -944,7 +944,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../aws-install-failure-modes/" class="md-nav__link">
+      <a href="../../aws-install-failure-modes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -972,7 +972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+      <a href="../../TROUBLESHOOTING/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -992,7 +992,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../docker-recovery/" class="md-nav__link">
+      <a href="../../docker-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1012,7 +1012,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli-reference/" class="md-nav__link">
+      <a href="../../cli-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1032,7 +1032,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../scripts-reference/" class="md-nav__link">
+      <a href="../../scripts-reference/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1052,7 +1052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ai-assistant/" class="md-nav__link">
+      <a href="../../ai-assistant/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1072,7 +1072,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../agentic-platform/" class="md-nav__link">
+      <a href="../../agentic-platform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1092,7 +1092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../agent-approvals/" class="md-nav__link">
+      <a href="../../agent-approvals/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1112,7 +1112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dora-finops/" class="md-nav__link">
+      <a href="../../dora-finops/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1132,7 +1132,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contract-testing/" class="md-nav__link">
+      <a href="../../contract-testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1152,7 +1152,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../crossplane/" class="md-nav__link">
+      <a href="../../crossplane/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1172,7 +1172,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+      <a href="../../crossplane-vs-terraform/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1189,25 +1189,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" checked>
         
           
-          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1218,7 +1223,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_20">
             <span class="md-nav__icon md-icon"></span>
             Design Decisions
@@ -1232,7 +1237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
+      <a href="../adr-0001-batch-orchestration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1253,7 +1258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
+      <a href="../adr-0002-delivery-model/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1274,7 +1279,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0003-incident-management/" class="md-nav__link">
+      <a href="../adr-0003-incident-management/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1295,7 +1300,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
+      <a href="../adr-0004-identity-and-access/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1311,54 +1316,6 @@
             
               
                 
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0005: LLM serving and agent frameworks
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../team-management/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Team Management
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
   
   
     
@@ -1377,7 +1334,7 @@
           
   
   <span class="md-ellipsis">
-    GitHub App Setup
+    ADR-0005: LLM serving and agent frameworks
   </span>
   
 
@@ -1388,7 +1345,7 @@
         
   
   <span class="md-ellipsis">
-    GitHub App Setup
+    ADR-0005: LLM serving and agent frameworks
   </span>
   
 
@@ -1410,72 +1367,105 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#github-app-vs-pat-comparison" class="md-nav__link">
+  <a href="#context" class="md-nav__link">
     <span class="md-ellipsis">
-      GitHub App vs PAT comparison
+      Context
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#create-the-github-app-personal-account" class="md-nav__link">
+  <a href="#decision" class="md-nav__link">
     <span class="md-ellipsis">
-      Create the GitHub App (personal account)
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-mock-stays-renamed-and-is-no-longer-the-only-option" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. The mock stays, renamed, and is no longer the only option
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-refuse-rather-than-degrade-on-both-constrained-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Refuse rather than degrade, on both constrained targets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-one-shared-ollama-not-one-per-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. One shared Ollama, not one per app
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-existing-agents-are-not-repointed" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Existing agents are not repointed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-langgraph-is-a-scaffolder-template-not-a-platform-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. LangGraph is a scaffolder template, not a platform service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-kagent-and-langgraph-are-complementary-and-that-is-documented" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. KAgent and LangGraph are complementary, and that is documented
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consequences
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#for-organisation-accounts" class="md-nav__link">
+  <a href="#deferred" class="md-nav__link">
     <span class="md-ellipsis">
-      For organisation accounts
+      Deferred
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#configure-for-github-actions-auto-merge" class="md-nav__link">
+  <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
-      Configure for GitHub Actions (auto-merge)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configure-for-backstage-production-aws" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configure for Backstage (production / AWS)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configure-for-backstage-local-dev" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configure for Backstage (local dev)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify-the-app-is-working" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verify the App is working
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      Troubleshooting
+      References
     </span>
   </a>
   
@@ -1488,6 +1478,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -1496,7 +1494,47 @@
   
   
     <li class="md-nav__item">
-      <a href="../scaling-runbook/" class="md-nav__link">
+      <a href="../../team-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Team Management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../github-app-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub App Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scaling-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1556,7 +1594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-leadership/" class="md-nav__link">
+      <a href="../../shift-left-leadership/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1577,7 +1615,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left/" class="md-nav__link">
+      <a href="../../shift-left/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1598,7 +1636,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+      <a href="../../shift-left-pilot-kickoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1619,7 +1657,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+      <a href="../../shift-left-demo-cheatsheet/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1640,7 +1678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flaky-test-quarantine/" class="md-nav__link">
+      <a href="../../flaky-test-quarantine/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1661,7 +1699,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-impact-analysis/" class="md-nav__link">
+      <a href="../../test-impact-analysis/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1689,7 +1727,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
+      <a href="../../security/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1709,7 +1747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../security-scanning/" class="md-nav__link">
+      <a href="../../security-scanning/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1729,7 +1767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../demo-runbook/" class="md-nav__link">
+      <a href="../../demo-runbook/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1749,7 +1787,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../readiness-checklist/" class="md-nav__link">
+      <a href="../../readiness-checklist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1769,7 +1807,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sre-reliability/" class="md-nav__link">
+      <a href="../../sre-reliability/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1829,7 +1867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
+      <a href="../../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1850,7 +1888,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/incident-severity/" class="md-nav__link">
+      <a href="../../runbooks/incident-severity/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1871,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+      <a href="../../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1892,7 +1930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+      <a href="../../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1913,7 +1951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/high-memory/" class="md-nav__link">
+      <a href="../../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1934,7 +1972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/high-cpu/" class="md-nav__link">
+      <a href="../../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1955,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/db-recovery/" class="md-nav__link">
+      <a href="../../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1976,7 +2014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+      <a href="../../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1997,7 +2035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+      <a href="../../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2018,7 +2056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+      <a href="../../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2039,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+      <a href="../../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2060,7 +2098,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/dr-region-failover/" class="md-nav__link">
+      <a href="../../runbooks/dr-region-failover/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2088,7 +2126,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../postmortem-template/" class="md-nav__link">
+      <a href="../../postmortem-template/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2116,7 +2154,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/github-app-setup.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/design/adr-0005-llm-serving-and-agent-frameworks.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2124,230 +2162,171 @@
   
 
 
-<h1 id="github-app-setup">GitHub App Setup<a class="headerlink" href="#github-app-setup" title="Permanent link">&para;</a></h1>
-<p>The IDP uses a <strong>GitHub App</strong> in two places:</p>
-<ol>
-<li>
-<p><strong>Backstage scaffolder integration</strong> (<code>app-config.aws.yaml</code>) — all catalog fetching,
-   Pull-Request creation, and scaffolder API calls use per-installation tokens instead
-   of a shared PAT. Rate limit: 5 000 req/hr <strong>per installation</strong> vs 5 000/hr total for a PAT.</p>
-</li>
-<li>
-<p><strong>Auto-merge CI</strong> (<code>.github/workflows/auto-merge-onboarding.yml</code>) — short-lived token
-   from <code>actions/create-github-app-token@v2</code> approves onboarding PRs without self-approval.</p>
-</li>
-</ol>
-<hr />
-<h2 id="github-app-vs-pat-comparison">GitHub App vs PAT comparison<a class="headerlink" href="#github-app-vs-pat-comparison" title="Permanent link">&para;</a></h2>
+<h1 id="adr-0005-llm-serving-and-agent-frameworks">ADR-0005: LLM serving and agent frameworks<a class="headerlink" href="#adr-0005-llm-serving-and-agent-frameworks" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted · <strong>Date:</strong> 2026-08-15</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>Two questions had been deferred rather than decided, and both were recorded in
+<code>docs/agentic-platform.md</code> as "under evaluation" — which meant the code shipped
+one answer while the docs implied none had been chosen.</p>
+<p><strong>Model serving.</strong> <code>idpDeployModelServer.ts</code> had a single code path, and its
+builder was called <code>buildOllamaYaml()</code>. It did not deploy Ollama. It deployed a
+~50MB Python Alpine stub serving canned responses, tagging the result
+<code>served_by: ollama-mock</code>. The name was the whole problem: a reader auditing the
+platform for "do we self-host models" found a function called <code>buildOllamaYaml</code>
+and reasonably concluded yes.</p>
+<p>Every agent therefore required a hosted API key. <code>ANTHROPIC_API_KEY</code> was a hard
+prerequisite for the AI layer to do anything at all, which is a poor default for
+an open-source template — an adopter evaluating the platform had to hand over a
+paid credential before a single agent would answer.</p>
+<p><strong>Agent frameworks.</strong> KAgent gives declarative <code>kind: Agent</code> resources. It has no
+answer for an agent that must branch, loop, or hold state across turns, and
+LangGraph is the obvious complement — but adding it raised a placement question
+this repo has a standing rule about: CLAUDE.md says agent capabilities belong in
+MCP servers, not new services.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<h3 id="1-the-mock-stays-renamed-and-is-no-longer-the-only-option">1. The mock stays, renamed, and is no longer the only option<a class="headerlink" href="#1-the-mock-stays-renamed-and-is-no-longer-the-only-option" title="Permanent link">&para;</a></h3>
+<p><code>buildOllamaYaml</code> was renamed to <code>buildMockYaml</code>, byte-for-byte otherwise. It
+keeps its <code>ThreadingHTTPServer</code> fix, which is a real bug fix and not incidental.</p>
+<p><code>modelServerType</code> is now <code>mock | ollama | vllm</code>, and a genuine <code>buildOllamaYaml()</code>
+was written alongside: pinned <code>ollama/ollama:0.13.0</code>, a PVC for model storage,
+a <code>startupProbe</code> on <code>/api/tags</code>, and hard memory limits.</p>
+<p>The PVC is not optional. Without it <code>ollama pull</code> re-downloads the model on every
+restart, which on a laptop reads as a hang rather than a download.</p>
+<h3 id="2-refuse-rather-than-degrade-on-both-constrained-targets">2. Refuse rather than degrade, on both constrained targets<a class="headerlink" href="#2-refuse-rather-than-degrade-on-both-constrained-targets" title="Permanent link">&para;</a></h3>
+<p>Two guards, both of which fail loudly at scaffold time instead of leaving a
+broken pod:</p>
+<ul>
+<li><strong>Ollama on Kind</strong> is refused unless <code>IDP_ALLOW_LOCAL_OLLAMA=true</code>, and the
+  error prints the memory arithmetic. An 8-CPU/16GB Mac already running Kind,
+  Backstage, Prometheus, ArgoCD and KAgent has no room for a 2.7GB image plus a
+  resident model. That is an eviction, not a tuning exercise.</li>
+<li><strong>vLLM</strong> preflights <code>kubectl get nodes -l accelerator</code> and fails with a message
+  naming issue #184 (GPU nodegroup) if no node carries the label. Previously this
+  would have produced a <code>Pending</code> pod with an unhelpful scheduling event.</li>
+</ul>
+<p>A refusal that explains itself is more useful than a deployment that technically
+succeeds and then dies.</p>
+<h3 id="3-one-shared-ollama-not-one-per-app">3. One shared Ollama, not one per app<a class="headerlink" href="#3-one-shared-ollama-not-one-per-app" title="Permanent link">&para;</a></h3>
+<p><code>kubernetes/ml-platform/ollama.yaml</code> deploys a single platform-wide Ollama
+(<code>qwen2.5:1.5b</code>) that KAgent and LangGraph apps both point at, rather than each
+scaffolded app carrying its own.</p>
+<p>The resident model is the expensive part. Several copies of the same 1.5B model
+serving a handful of agents wastes exactly the memory that is scarce.</p>
+<p><code>kubernetes/kagent/modelconfig-ollama.yaml</code> exposes it to KAgent. <code>provider: Ollama</code>
+and the <code>ollama.host</code> field were <strong>verified against the pinned KAgent CRD</strong> rather
+than assumed — the CRD's provider enum is
+<code>[Anthropic, OpenAI, AzureOpenAI, Ollama, Gemini, GeminiVertexAI, AnthropicVertexAI]</code>.
+The fallback plan, had <code>Ollama</code> been absent, was <code>provider: OpenAI</code> against
+Ollama's <code>/v1</code> endpoint.</p>
+<h3 id="4-existing-agents-are-not-repointed">4. Existing agents are not repointed<a class="headerlink" href="#4-existing-agents-are-not-repointed" title="Permanent link">&para;</a></h3>
+<p>The Ollama ModelConfig ships as <em>available</em>, not as a new default. No existing
+agent was moved onto it.</p>
+<p>A 1.5B model cannot drive <code>incident-agent</code>'s multi-tool loop. Repointing the
+agents would have made the platform look key-free while quietly making it worse
+at its job — the failure would show up as bad triage, not as an error.</p>
+<h3 id="5-langgraph-is-a-scaffolder-template-not-a-platform-service">5. LangGraph is a scaffolder template, not a platform service<a class="headerlink" href="#5-langgraph-is-a-scaffolder-template-not-a-platform-service" title="Permanent link">&para;</a></h3>
+<p><code>backstage/catalog/templates/langgraph-agent/</code> — no new <code>services/*</code> app.</p>
+<p>A graph runtime is an <em>application</em>, owned by the team that writes the graph.
+MCP servers are platform capabilities, owned by the platform team. Adding
+<code>services/langgraph-runtime/</code> would have inverted that ownership and put the
+platform team on the hook for every team's agent logic.</p>
+<p>The skeleton loads its tools from the existing eight MCP servers via
+<code>langchain-mcp-adapters</code>. <strong>No tool is reimplemented.</strong> It propagates the W3C
+<code>traceparent</code> on every MCP call, so a run appears in Langfuse as one nested trace
+spanning the agent and the servers it called. Using the Langfuse SDK directly
+would have broken that nesting — the skeleton copies the raw-OTEL/protobuf
+approach the MCP servers already use, for the same reason KAgent's exporter
+protocol must be <code>http/protobuf</code>.</p>
+<p><code>modelBackend</code> defaults to <code>anthropic</code>, not <code>ollama</code>, so the golden path works
+before anyone tunes a small model.</p>
+<h3 id="6-kagent-and-langgraph-are-complementary-and-that-is-documented">6. KAgent and LangGraph are complementary, and that is documented<a class="headerlink" href="#6-kagent-and-langgraph-are-complementary-and-that-is-documented" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th></th>
-<th>Personal Access Token (PAT)</th>
-<th>GitHub App</th>
+<th>KAgent</th>
+<th>LangGraph</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Rate limit</td>
-<td>5 000 req/hr (shared)</td>
-<td>5 000 req/hr per installation</td>
+<td>Defined as</td>
+<td>Kubernetes resources (<code>kind: Agent</code>)</td>
+<td>Application code you own</td>
 </tr>
 <tr>
-<td>Expiry</td>
-<td>90 days (classic), 1 year (fine-grained)</td>
-<td>Never — private key rotates independently</td>
+<td>Owned by</td>
+<td>Platform team</td>
+<td>Service team</td>
 </tr>
 <tr>
-<td>Scope</td>
-<td>User-level (all repos the user can access)</td>
-<td>Installation-level (only repos you install on)</td>
+<td>Control flow</td>
+<td>Declarative</td>
+<td>Imperative — branching and state in code</td>
 </tr>
 <tr>
-<td>Works on personal account</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>Works on org account</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>CI approval of own PRs</td>
-<td>❌ (GitHub blocks self-approval)</td>
-<td>✅ (App is a different identity)</td>
+<td>Reach for it when</td>
+<td>A prompt plus tools is enough</td>
+<td>The agent must loop, branch, or hold state</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="create-the-github-app-personal-account">Create the GitHub App (personal account)<a class="headerlink" href="#create-the-github-app-personal-account" title="Permanent link">&para;</a></h2>
-<ol>
-<li>
-<p>Go to <strong>github.com/settings/apps/new</strong></p>
-</li>
-<li>
-<p>Fill in:</p>
+<p>Both consume the same MCP servers; both trace to the same Langfuse.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
+<p>Defaults per target:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Local (8CPU/16GB)</th>
+<th>AWS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mock model server</td>
+<td>default</td>
+<td>available</td>
+</tr>
+<tr>
+<td>Ollama + 1.5B</td>
+<td>opt-in, warned</td>
+<td>default with the AI layer</td>
+</tr>
+<tr>
+<td>vLLM + GPU</td>
+<td>blocked, clear error</td>
+<td>blocked until #184</td>
+</tr>
+<tr>
+<td>LangGraph app</td>
+<td>default (hosted keys)</td>
+<td>default</td>
+</tr>
+</tbody>
+</table>
+<p>Ollama is opt-in on both targets via <code>bootstrap-ai.sh --ollama</code>; it is not
+installed by the base AI layer.</p>
+<p>The platform can now run agents with no hosted API key, which matters for
+evaluation. It is not the recommended configuration for the agents that do real
+work — see decision 4.</p>
+<h2 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>GitHub App name</strong>: <code>idp-backstage-&lt;yourname&gt;</code> (must be globally unique)</li>
-<li><strong>Homepage URL</strong>: your Backstage URL or repo URL</li>
-<li><strong>Webhook</strong>: uncheck "Active" (not needed for scaffolding)</li>
+<li><strong>Bedrock</strong> as a managed alternative — issues #168–#177. Worth retriaging now
+  that a self-hosted path exists.</li>
+<li><strong>GPU nodegroup</strong> — #184. vLLM stays blocked until it lands.</li>
+<li><strong>Larger self-hosted models.</strong> <code>qwen2.5:1.5b</code> was chosen to fit alongside the
+  platform, not on quality. A GPU nodegroup changes that calculation.</li>
 </ul>
-</li>
-<li>
-<p>Set <strong>Permissions</strong> (Repository):
-   | Permission | Level |
-   |---|---|
-   | Contents | Read &amp; write |
-   | Pull requests | Read &amp; write |
-   | Metadata | Read-only (auto-selected) |
-   | Members | Read-only |</p>
-</li>
-<li>
-<p>Click <strong>Create GitHub App</strong></p>
-</li>
-<li>
-<p>Note the <strong>App ID</strong> (numeric) from the app page</p>
-</li>
-<li>
-<p>Scroll to <strong>Private keys</strong> → <strong>Generate a private key</strong> → download the <code>.pem</code> file</p>
-</li>
-<li>
-<p>Note the <strong>Client ID</strong> and generate a <strong>Client secret</strong> under "OAuth App" section</p>
-</li>
-<li>
-<p>Click <strong>Install App</strong> → install on your platform repo (and any team repos Backstage should access)</p>
-</li>
-</ol>
-<hr />
-<h2 id="for-organisation-accounts">For organisation accounts<a class="headerlink" href="#for-organisation-accounts" title="Permanent link">&para;</a></h2>
-<p>Go to <strong>github.com/organizations/\&lt;org>/settings/apps/new</strong> — same steps as above.
-Install the App on the organisation to give it access to all org repos.</p>
-<hr />
-<h2 id="configure-for-github-actions-auto-merge">Configure for GitHub Actions (auto-merge)<a class="headerlink" href="#configure-for-github-actions-auto-merge" title="Permanent link">&para;</a></h2>
-<p>Add two <strong>repository secrets</strong> in the platform repo (<code>Settings → Secrets → Actions</code>):</p>
-<table>
-<thead>
-<tr>
-<th>Secret</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>APP_ID</code></td>
-<td>Numeric App ID from step 5 above</td>
-</tr>
-<tr>
-<td><code>APP_PRIVATE_KEY</code></td>
-<td>Full contents of the downloaded <code>.pem</code> file</td>
-</tr>
-</tbody>
-</table>
-<p>The <code>auto-merge-onboarding.yml</code> workflow uses <code>actions/create-github-app-token@v2</code> with
-these secrets. It falls back to <code>GH_PAT</code> if they are absent.</p>
-<p>To complete the migration, <strong>remove the <code>GH_PAT</code> secret</strong> from repository secrets once
-the App is confirmed working.</p>
-<hr />
-<h2 id="configure-for-backstage-production-aws">Configure for Backstage (production / AWS)<a class="headerlink" href="#configure-for-backstage-production-aws" title="Permanent link">&para;</a></h2>
-<p>Add five keys to AWS Secrets Manager under <code>idp-mvp/backstage</code>:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Fetch current secret</span>
-<span class="nv">CURRENT</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="k">)</span>
-
-<span class="c1"># Merge in GitHub App credentials</span>
-<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CURRENT</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
-<span class="s2">import json, sys</span>
-<span class="s2">s = json.load(sys.stdin)</span>
-<span class="s2">s[&#39;GITHUB_APP_ID&#39;]             = &#39;YOUR_APP_ID&#39;</span>
-<span class="s2">s[&#39;GITHUB_APP_CLIENT_ID&#39;]      = &#39;YOUR_CLIENT_ID&#39;</span>
-<span class="s2">s[&#39;GITHUB_APP_CLIENT_SECRET&#39;]  = &#39;YOUR_CLIENT_SECRET&#39;</span>
-<span class="s2">s[&#39;GITHUB_APP_PRIVATE_KEY&#39;]    = open(&#39;path/to/app.private-key.pem&#39;).read()</span>
-<span class="s2">s[&#39;GITHUB_APP_WEBHOOK_SECRET&#39;] = &#39;&#39;   # leave empty if webhook is inactive</span>
-<span class="s2">print(json.dumps(s))</span>
-<span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>update-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--secret-string<span class="w"> </span>file:///dev/stdin
-</code></pre></div></td></tr></table></div>
-<p>The <code>bootstrap.sh</code> Phase 3.7 now handles this automatically if the env vars
-<code>GITHUB_APP_ID</code>, <code>GITHUB_APP_CLIENT_ID</code>, <code>GITHUB_APP_CLIENT_SECRET</code>,
-<code>GITHUB_APP_PRIVATE_KEY</code>, and <code>GITHUB_APP_WEBHOOK_SECRET</code> are set before running the script.</p>
-<p>The <code>app-config.aws.yaml</code> <code>integrations.github.apps</code> block reads these five values at
-Backstage startup. Remove <code>GITHUB_TOKEN</code> from Secrets Manager once the App is confirmed.</p>
-<hr />
-<h2 id="configure-for-backstage-local-dev">Configure for Backstage (local dev)<a class="headerlink" href="#configure-for-backstage-local-dev" title="Permanent link">&para;</a></h2>
-<p>For local development the PAT (<code>GITHUB_TOKEN</code> in <code>local/.env</code>) is sufficient and recommended.
-The GitHub App is production-only. If you want to test it locally, add the five keys to
-<code>local/backstage/.env</code> (see <code>local/backstage/.env.example</code> for the field names).</p>
-<hr />
-<h2 id="verify-the-app-is-working">Verify the App is working<a class="headerlink" href="#verify-the-app-is-working" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage (check logs for &quot;GitHub App&quot; instead of &quot;token auth&quot;)</span>
-kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>deploy/backstage<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;github app\|appId\|installation&quot;</span>
-
-<span class="c1"># GitHub Actions (check auto-merge workflow run logs)</span>
-<span class="c1"># The &quot;Generate GitHub App token&quot; step should show: &quot;Token generated&quot;</span>
-
-<span class="c1"># Rate limit check (should show higher limit for App vs PAT)</span>
-curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="k">$(</span>gh<span class="w"> </span>auth<span class="w"> </span>token<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>https://api.github.com/rate_limit<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.rate&#39;</span>
-</code></pre></div></td></tr></table></div>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Token generation failed</code> in CI</td>
-<td>Wrong <code>APP_ID</code> or <code>APP_PRIVATE_KEY</code> format</td>
-<td>Verify secret values; <code>APP_PRIVATE_KEY</code> must include <code>-----BEGIN RSA PRIVATE KEY-----</code> header</td>
-</tr>
-<tr>
-<td>Backstage scaffolder <code>401 Unauthorized</code></td>
-<td>App not installed on the target repo</td>
-<td>Install App on the repo in GitHub App settings</td>
-</tr>
-<tr>
-<td><code>Rate limit exceeded</code> after migration</td>
-<td>App not replacing PAT — both in use</td>
-<td>Remove <code>GITHUB_TOKEN</code> from Secrets Manager after App confirmed</td>
-</tr>
-<tr>
-<td>Auto-merge approval step skipped</td>
-<td>Neither App nor PAT configured</td>
-<td>Add <code>APP_ID</code> + <code>APP_PRIVATE_KEY</code> repo secrets</td>
-</tr>
-</tbody>
-</table>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>backstage/app/packages/backend/src/modules/idpDeployModelServer.ts</code></li>
+<li><code>kubernetes/ml-platform/ollama.yaml</code></li>
+<li><code>kubernetes/kagent/modelconfig-ollama.yaml</code></li>
+<li><code>backstage/catalog/templates/langgraph-agent/</code></li>
+<li><code>scripts/bootstrap-ai.sh</code> — <code>--ollama</code></li>
+<li><code>docs/agentic-platform.md</code> — the KAgent/LangGraph split, user-facing</li>
+</ul>
 
 
 
@@ -2377,7 +2356,7 @@ curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Aut
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../team-management/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Team Management">
+          <a href="../adr-0004-identity-and-access/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADR-0004: Identity and access">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2387,20 +2366,20 @@ curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Aut
                 Previous
               </span>
               <div class="md-ellipsis">
-                Team Management
+                ADR-0004: Identity and access
               </div>
             </div>
           </a>
         
         
           
-          <a href="../scaling-runbook/" class="md-footer__link md-footer__link--next" aria-label="Next: Scaling Runbook">
+          <a href="../../team-management/" class="md-footer__link md-footer__link--next" aria-label="Next: Team Management">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Scaling Runbook
+                Team Management
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2434,12 +2413,12 @@ curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Aut
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      <script src="../../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
-        <script src="../search/main.js"></script>
+        <script src="../../search/main.js"></script>
       
     
   </body>
