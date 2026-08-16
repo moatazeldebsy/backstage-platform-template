@@ -2250,8 +2250,8 @@ incidents/security, and a human-in-the-loop approval layer — needed to trust a
 
   Real (non-dry-run) sync_app / rollback_app / approve_pr calls are rejected by their MCP
   server unless they carry an approval_id whose status is &quot;approved&quot; — enforced in code, not
-  just a system-prompt convention. No-op unless APPROVAL_SERVICE_URL is set (bootstrap-ai.sh
-  --adp); without --adp these tools behave exactly as before.
+  just a system-prompt convention. On by default: APPROVAL_SERVICE_URL is declared in each
+  server&#39;s helm values. Unset it and the tools run ungated, with a warning per call.
 
                               ▲
                               │  budget alerts → cost-agent
@@ -2383,7 +2383,7 @@ UI, how to test the gate, and troubleshooting.</p>
 <td><code>services/idp-mcp-server/src/server.ts</code></td>
 </tr>
 <tr>
-<td>Tool-server-level enforcement — <code>sync_app</code>/<code>rollback_app</code>/<code>approve_pr</code> reject a real call without an <code>approval_id</code> whose recorded status is <code>approved</code>, once <code>APPROVAL_SERVICE_URL</code> is set (opt-in via <code>bootstrap-ai.sh --adp</code>)</td>
+<td>Tool-server-level enforcement — <code>sync_app</code>/<code>rollback_app</code>/<code>approve_pr</code> reject a real call without an <code>approval_id</code> whose recorded status is <code>approved</code>, unless <code>APPROVAL_SERVICE_URL</code> is unset (on by default — declared in each server's helm values)</td>
 <td><code>services/argocd-mcp-server/src/server.ts</code>, <code>services/github-mcp-server/src/server.ts</code></td>
 </tr>
 <tr>

@@ -2267,7 +2267,8 @@
 </table>
 <p>The <code>agent_approvals</code> table lives on the <strong>existing Backstage Postgres</strong> — Aurora/RDS on AWS, the docker-compose pgvector container locally (reached from Kind pods via <code>host.docker.internal</code>). No new database.</p>
 <h3 id="enforcement-is-opt-in-and-silent-when-off">Enforcement is opt-in, and silent when off<a class="headerlink" href="#enforcement-is-opt-in-and-silent-when-off" title="Permanent link">&para;</a></h3>
-<p><code>requireApproval()</code> returns immediately if <code>APPROVAL_SERVICE_URL</code> is unset. That is deliberate — the tool servers ship in every install, but the gate only activates once <code>bootstrap-ai.sh --adp</code> deploys <code>approval-service</code> and patches the env var into <code>idp-</code>, <code>argocd-</code>, and <code>github-mcp-server</code>. <strong>An unset <code>APPROVAL_SERVICE_URL</code> means mutating tools run ungated with no warning</strong>, so it is the first thing to check when the gate appears not to work.</p>
+<p><code>requireApproval()</code> returns immediately if <code>APPROVAL_SERVICE_URL</code> is unset, so a tool server running without the gate still works. <strong>An unset <code>APPROVAL_SERVICE_URL</code> means mutating tools run ungated</strong> — it is the first thing to check when the gate appears not to work. The servers log a warning naming the action and target on every such call, so it leaves a trace in the pod logs rather than passing silently.</p>
+<p><code>APPROVAL_SERVICE_URL</code> is declared in each server's <code>helm-values-aws.yaml</code> and <code>helm-values-local.yaml</code>, which means <strong>the gate is on by default</strong>. It was previously patched in by <code>bootstrap-ai.sh --adp</code> with <code>kubectl set env</code>, making it opt-in. That stopped working when the MCP services were adopted into ArgoCD: <code>set env</code> is an out-of-band mutation, so <code>selfHeal</code> reconciled the Deployments back to their git-declared spec and stripped the variable. Every mutating agent tool ran ungated for as long as that went unnoticed, while every Application reported <code>Synced/Healthy</code>. Anything that must reach a pod belongs in a values file, not in a <code>kubectl</code> call after the fact.</p>
 <h3 id="what-the-gate-actually-verifies">What the gate actually verifies<a class="headerlink" href="#what-the-gate-actually-verifies" title="Permanent link">&para;</a></h3>
 <p>Beyond "is it approved", <code>requireApproval()</code> rejects a mismatched <code>action</code>/<code>target</code> pair — an approval issued for <code>sync_app</code> on <code>dev-hello-service</code> cannot be replayed against <code>prod-payments-api</code>. Without that check the gate would be a rubber stamp.</p>
 <hr />
@@ -2481,7 +2482,7 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.id
 <tbody>
 <tr>
 <td>Mutating tools succeed with no approval</td>
-<td><code>APPROVAL_SERVICE_URL</code> unset on that tool server — re-run <code>bootstrap-ai.sh --adp</code></td>
+<td><code>APPROVAL_SERVICE_URL</code> unset on that tool server. Check the pod's env, not the values file — a live sync can differ from git. Look for the "approval gate disabled" warning in the pod logs</td>
 </tr>
 <tr>
 <td><code>/approvals</code> 404s or is missing from the nav</td>
