@@ -574,7 +574,7 @@ install_argo_workflows() {
     # has never worked. archiveLogs is then actively harmful: every workflow
     # tries to upload its logs and fails. Turn it off rather than ship a broken
     # default, and say so. Tracked for the Terraform side; see the issue linked
-    # from docs/aws-install-failure-modes.md. Observed 2026-08-16.
+    # from docs/aws-install-failure-modes.md (issue #357). Observed 2026-08-16.
     local archive_logs=true
     if [[ -z "$argo_role_arn" ]]; then
       warn "No argo_workflows_role_arn Terraform output — S3 artifact upload is unavailable."

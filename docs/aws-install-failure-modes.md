@@ -171,7 +171,7 @@ times in a row, each on a different fault:
    patches it. Nothing did. The install now disables `archiveLogs` when the ARN
    is missing (otherwise every workflow fails trying to upload its logs) and
    *removes* the annotation rather than leaving a placeholder that reads as a
-   configured role. The Terraform role is tracked separately.
+   configured role. The Terraform role is tracked in [#357](https://github.com/moatazeldebsy/backstage-platform-template/issues/357).
 
 **The general lesson**, and it is the same one as the approval gate in
 `docs/agent-approvals.md`: an install path that has never run is not "probably
