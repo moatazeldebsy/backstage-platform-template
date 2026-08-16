@@ -1440,7 +1440,10 @@ _P6A_LOG=$(mktemp)
   if [[ "$WITH_AI" == "true" ]]; then
     log "Phase 6a: Installing Argo Workflows for ML orchestration..."
     # Shared with bootstrap-ai.sh and bootstrap-local.sh — see scripts/lib.sh.
-    install_argo_workflows aws
+    # Non-fatal: the function warns loudly and returns non-zero on failure,
+    # and this block runs under `set -e`. The rest of the platform does not
+    # depend on Argo Workflows being up.
+    install_argo_workflows aws || true
   else
     log "Phase 6a: Skipping Argo Workflows (AI/ML layer not requested — pass --with-ai)"
   fi
