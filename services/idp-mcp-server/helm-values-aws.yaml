@@ -1,8 +1,6 @@
 # Helm overrides for idp-mcp-server — AWS dev environment
 fullnameOverride: idp-mcp-server
-
 replicaCount: 1
-
 image:
   # Resolved by scripts/setup.sh during personalisation, exactly like
   # hello-service. It used to be ECR_REGISTRY_PLACEHOLDER, substituted by
@@ -10,14 +8,12 @@ image:
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/idp-mcp-server
-  tag: "0.1.0"
+  tag: "e366a6a"
   pullPolicy: Always
-
 service:
   type: ClusterIP
   port: 3001
   targetPort: 3001
-
 ingress:
   enabled: true
   className: alb
@@ -26,26 +22,23 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
   hosts:
-    - host: ""   # match any hostname; use ALB DNS directly
+    - host: "" # match any hostname; use ALB DNS directly
       paths:
         - path: /
           pathType: Prefix
   tls: []
-
 livenessProbe:
   httpGet:
     path: /healthz
     port: http
   initialDelaySeconds: 10
   periodSeconds: 15
-
 readinessProbe:
   httpGet:
     path: /ready
     port: http
   initialDelaySeconds: 5
   periodSeconds: 10
-
 resources:
   requests:
     cpu: 50m
@@ -53,12 +46,11 @@ resources:
   limits:
     cpu: 200m
     memory: 256Mi
-
 env:
   - name: BACKSTAGE_URL
     value: "http://backstage.backstage.svc.cluster.local:7007"
   - name: BACKSTAGE_EXTERNAL_URL
-    value: ""   # set to real domain when DNS is configured
+    value: "" # set to real domain when DNS is configured
   - name: BACKSTAGE_TOKEN
     valueFrom:
       secretKeyRef:
@@ -79,11 +71,9 @@ env:
   # Observed 2026-08-16.
   - name: APPROVAL_SERVICE_URL
     value: "http://approval-service.services-dev.svc.cluster.local:3009"
-
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
-
 rbac:
   create: true
   rules:
@@ -93,16 +83,13 @@ rbac:
   capabilities:
     drop:
       - ALL
-
 backstage:
   kubernetesId: idp-mcp-server
-
 podLabels:
   backstage.io/kubernetes-id: idp-mcp-server
   team: platform-team
   cost-center: CC-1000
   environment: dev
-
 # Langfuse tracing for src/telemetry.ts. The langfuse-otel secret carries
 # LANGFUSE_OTLP_ENDPOINT / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY and is
 # created per-namespace by bootstrap-ai.sh (namespaces labelled
