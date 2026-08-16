@@ -529,6 +529,103 @@ helm_upgrade_cached() {
   helm_record_fingerprint "$fp_file" "$desired"
 }
 
+# Install Argo Workflows plus its RBAC and WorkflowTemplates.
+#
+#   install_argo_workflows local
+#   install_argo_workflows aws
+#
+# Lives here because it has three callers with one behaviour. It used to be
+# inlined in bootstrap.sh (AWS, behind --with-ai) and bootstrap-local.sh
+# (behind --install-argo-workflows), and bootstrap-ai.sh — which owns the whole
+# AI/ML layer on both targets — had no copy at all. So `bootstrap-ai.sh --aws`
+# brought up KAgent, MLflow and the MCP servers but never Argo Workflows, and
+# the live cluster had no argo-workflows namespace: the ML training pipeline and
+# the DR failover runbook were both unavailable there. Phase 6 of the hardening
+# plan called for this extraction and only half landed.
+#
+# The AWS branch additionally creates the artifact bucket, resolves the IRSA
+# role from Terraform outputs, and substitutes the placeholders in
+# aws/argo-workflows/values.yaml. Callers must have run tf_outputs_load first
+# for the role ARN to resolve; an empty ARN is tolerated (artifact upload is
+# the only thing that degrades).
+install_argo_workflows() {
+  local mode="${1:-local}"
+  local root="${ROOT_DIR:-${REPO_ROOT:-$(pwd)}}"
+  local values_file
+
+  # Self-contained rather than relying on the caller's up-front repo list:
+  # bootstrap.sh and bootstrap-local.sh already pass `argo` to
+  # ensure_helm_repos, but bootstrap-ai.sh has no such call at all, and a
+  # missing repo here fails as an opaque "chart not found".
+  ensure_helm_repos argo
+
+  if [[ "$mode" == "aws" ]]; then
+    local argo_bucket="argo-workflows-artifacts-${CLUSTER_NAME}"
+    if ! aws s3 ls "s3://${argo_bucket}/" --region "${AWS_REGION}" &>/dev/null; then
+      log "Creating S3 bucket for Argo Workflows artifacts..."
+      aws s3 mb "s3://${argo_bucket}" --region "${AWS_REGION}" 2>/dev/null || true
+    fi
+
+    local argo_role_arn
+    argo_role_arn=$(tf_output argo_workflows_role_arn)
+
+    # aws/argo-workflows/values.yaml builds its ingress host as
+    # "argo-workflows.${BACKSTAGE_URL}". bootstrap.sh sets BACKSTAGE_URL before
+    # it gets here; bootstrap-ai.sh does not, and an empty value renders the
+    # host as a bare "argo-workflows." that the ALB controller rejects. Derive
+    # it the same way bootstrap.sh does rather than depending on caller order.
+    local backstage_url="${BACKSTAGE_URL:-}"
+    if [[ -z "$backstage_url" || "$backstage_url" == "PENDING" ]]; then
+      backstage_url=$(kubectl get svc backstage -n backstage \
+        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+    fi
+    if [[ -z "$backstage_url" ]]; then
+      warn "Backstage LoadBalancer hostname not resolvable — Argo Workflows ingress host will be incomplete."
+    fi
+
+    # Rendered to a temp file rather than piped, so the substituted values are
+    # inspectable after a failed run.
+    values_file="/tmp/argo-values-${CLUSTER_NAME}.yaml"
+    sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; \
+         s|REGION_PLACEHOLDER|${AWS_REGION}|g; \
+         s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${argo_role_arn}|g; \
+         s|BACKSTAGE_ALB_URL_PLACEHOLDER|${backstage_url}|g" \
+      "${root}/aws/argo-workflows/values.yaml" > "$values_file"
+  else
+    values_file="${root}/local/argo-workflows/values.yaml"
+  fi
+
+  helm_upgrade_cached argo-workflows argo-workflows argo/argo-workflows \
+    --namespace argo-workflows \
+    --create-namespace \
+    -f "$values_file" \
+    --wait \
+    --timeout 300s \
+    || warn "Argo Workflows Helm install had issues (non-critical for platform operation)"
+
+  kubectl apply -f "${root}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
+
+  # Patch the pipeline runner SA with the IRSA role so workflow artifacts can
+  # reach the bucket created above. Non-fatal: pipelines still run without
+  # artifact upload.
+  if [[ "$mode" == "aws" && -n "${argo_role_arn:-}" ]]; then
+    kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
+      "eks.amazonaws.com/role-arn=${argo_role_arn}" --overwrite 2>/dev/null || true
+  fi
+
+  # WorkflowTemplates. Without these the training pipeline has nothing to
+  # reference and idp:run-training-job silently falls back to a bare Job,
+  # losing the accuracy gate and the approval step.
+  kubectl apply -f "${root}/kubernetes/argo-workflows/workflowtemplates/" 2>/dev/null \
+    || warn "Could not apply WorkflowTemplates — idp:run-training-job will fall back to a Job"
+
+  if [[ "$mode" == "aws" ]]; then
+    check "Argo Workflows deployed — UI pending ALB provisioning"
+  else
+    check "Argo Workflows installed — UI at http://argo-workflows.idp.local"
+  fi
+}
+
 # Content hash of a source directory, used to decide whether a Docker image
 # needs rebuilding. Prefers `git ls-files -s` (already-computed blob SHAs — no
 # re-hashing of file contents, and it honours .gitignore so node_modules/dist

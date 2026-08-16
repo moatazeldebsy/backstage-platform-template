@@ -51,7 +51,9 @@ The `agent_approvals` table lives on the **existing Backstage Postgres** — Aur
 
 ### Enforcement is opt-in, and silent when off
 
-`requireApproval()` returns immediately if `APPROVAL_SERVICE_URL` is unset. That is deliberate — the tool servers ship in every install, but the gate only activates once `bootstrap-ai.sh --adp` deploys `approval-service` and patches the env var into `idp-`, `argocd-`, and `github-mcp-server`. **An unset `APPROVAL_SERVICE_URL` means mutating tools run ungated with no warning**, so it is the first thing to check when the gate appears not to work.
+`requireApproval()` returns immediately if `APPROVAL_SERVICE_URL` is unset, so a tool server running without the gate still works. **An unset `APPROVAL_SERVICE_URL` means mutating tools run ungated** — it is the first thing to check when the gate appears not to work. The servers log a warning naming the action and target on every such call, so it leaves a trace in the pod logs rather than passing silently.
+
+`APPROVAL_SERVICE_URL` is declared in each server's `helm-values-aws.yaml` and `helm-values-local.yaml`, which means **the gate is on by default**. It was previously patched in by `bootstrap-ai.sh --adp` with `kubectl set env`, making it opt-in. That stopped working when the MCP services were adopted into ArgoCD: `set env` is an out-of-band mutation, so `selfHeal` reconciled the Deployments back to their git-declared spec and stripped the variable. Every mutating agent tool ran ungated for as long as that went unnoticed, while every Application reported `Synced/Healthy`. Anything that must reach a pod belongs in a values file, not in a `kubectl` call after the fact.
 
 ### What the gate actually verifies
 
@@ -173,7 +175,7 @@ Cases worth asserting, because each is a different failure mode:
 
 | Symptom | Cause |
 |---|---|
-| Mutating tools succeed with no approval | `APPROVAL_SERVICE_URL` unset on that tool server — re-run `bootstrap-ai.sh --adp` |
+| Mutating tools succeed with no approval | `APPROVAL_SERVICE_URL` unset on that tool server. Check the pod's env, not the values file — a live sync can differ from git. Look for the "approval gate disabled" warning in the pod logs |
 | `/approvals` 404s or is missing from the nav | AI overlay written with the layer off, or Backstage not restarted since |
 | Approvals page shows an HTTP error | `approval-service` not running, or the proxy target in `app-config.local.yaml` / `app-config.aws.yaml` unreachable |
 | Pod crash-loops on start | Postgres unreachable — locally the compose Postgres must be up and reachable at `host.docker.internal:5432`; on AWS `approval-service-db` is copied from `backstage-secrets`, which requires `bootstrap.sh` to have run |

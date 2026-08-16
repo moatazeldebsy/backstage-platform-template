@@ -34,11 +34,19 @@ export function auditLog(event: Record<string, unknown>): void {
 }
 
 // Enforces the ADP Phase 4 HiTL gate at the tool-server layer — not just a
-// system-prompt convention. If APPROVAL_SERVICE_URL isn't configured, this is a
-// no-op (Phase 4 not deployed). Otherwise a real, non-dry-run call MUST carry an
-// approval_id whose recorded status is "approved" for this exact action/target.
+// system-prompt convention. A real, non-dry-run call MUST carry an approval_id
+// whose recorded status is "approved" for this exact action/target.
+//
+// If APPROVAL_SERVICE_URL isn't configured the call proceeds ungated, so a
+// deployment without approval-service still works — but it is recorded first.
+// Passing silently is how this went unnoticed on a live cluster for two days
+// after ArgoCD selfHeal stripped the variable (see docs/agent-approvals.md).
 async function requireApproval(action: string, target: string, approvalId?: string): Promise<void> {
-  if (!APPROVAL_SERVICE_URL) return;
+  if (!APPROVAL_SERVICE_URL) {
+    auditLog({ event: 'approval_gate_disabled', action, target,
+      warning: 'APPROVAL_SERVICE_URL is unset — this mutating call ran without human approval' });
+    return;
+  }
   if (!approvalId) {
     throw new Error(`Approval required for ${action} on "${target}". Call request_approval first (idp-mcp-server), then retry with approval_id.`);
   }

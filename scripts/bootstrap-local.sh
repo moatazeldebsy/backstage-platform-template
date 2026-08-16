@@ -1257,23 +1257,8 @@ fi
 # ── Step 8b: Argo Workflows (optional) ────────────────────────────────────────
 if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
   log "Step 8b: Installing Argo Workflows..."
-  (
-    set -e
-
-    helm_upgrade_cached argo-workflows argo-workflows argo/argo-workflows \
-      --namespace argo-workflows \
-      --create-namespace \
-      -f "${ROOT_DIR}/local/argo-workflows/values.yaml" \
-      --wait \
-      --timeout 300s || err "Argo Workflows Helm install failed"
-
-    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml"
-    # WorkflowTemplates — without these idp:run-training-job silently falls back
-    # to a bare Job, losing the accuracy gate and the approval step.
-    kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/workflowtemplates/" \
-      || warn "Could not apply WorkflowTemplates — idp:run-training-job will fall back to a Job"
-    check "Argo Workflows installed — UI at http://argo-workflows.idp.local"
-  )
+  # Shared with bootstrap.sh and bootstrap-ai.sh — see scripts/lib.sh.
+  install_argo_workflows local
 else
   log "Step 8b: Skipping Argo Workflows (use --install-argo-workflows to enable)."
 fi

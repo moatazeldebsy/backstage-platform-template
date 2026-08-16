@@ -4,16 +4,17 @@ import fetch, { RequestInit } from 'node-fetch';
 import { Counter, Histogram } from 'prom-client';
 import { instrumentTools } from './telemetry.js';
 
-// approve_pr / request_changes default to dry_run: true — there is no HiTL
-// approval gate wired up yet (see docs/agentic-platform.md Phase 4). Once that
-// gate lands, agents can be trusted to flip dry_run off; until then these tools
-// only preview what they would do.
+// approve_pr / request_changes default to dry_run: true. approve_pr is also
+// behind the HiTL approval gate (docs/agent-approvals.md) — a non-dry-run call
+// needs an approval_id approved for this exact repo#pr. request_changes is not
+// gated: it posts a review comment and merges nothing.
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? '';
 const GITHUB_API = process.env.GITHUB_API ?? 'https://api.github.com';
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '8000', 10);
-// Set once the ADP Phase 4 approval-service is deployed (see docs/agentic-platform.md).
-// Unset by default so this gate is opt-in.
+// Declared in helm-values-{aws,local}.yaml, so the gate is on by default. The
+// empty fallback keeps a deployment without approval-service working, and
+// requireApproval() audits every call that takes it (docs/agent-approvals.md).
 const APPROVAL_SERVICE_URL = process.env.APPROVAL_SERVICE_URL ?? '';
 export const SERVER_NAME = 'github-mcp-server';
 
@@ -32,10 +33,18 @@ export function auditLog(event: Record<string, unknown>): void {
   console.log('[AUDIT] ' + JSON.stringify({ ts: new Date().toISOString(), server: SERVER_NAME, ...event }));
 }
 
-// Enforces the ADP Phase 4 HiTL gate at the tool-server layer for approve_pr —
-// no-op when APPROVAL_SERVICE_URL isn't configured (Phase 4 not deployed).
+// Enforces the ADP Phase 4 HiTL gate at the tool-server layer for approve_pr.
+//
+// If APPROVAL_SERVICE_URL isn't configured the call proceeds ungated, so a
+// deployment without approval-service still works — but it is recorded first.
+// Passing silently is how this went unnoticed on a live cluster for two days
+// after ArgoCD selfHeal stripped the variable (see docs/agent-approvals.md).
 async function requireApproval(action: string, target: string, approvalId?: string): Promise<void> {
-  if (!APPROVAL_SERVICE_URL) return;
+  if (!APPROVAL_SERVICE_URL) {
+    auditLog({ event: 'approval_gate_disabled', action, target,
+      warning: 'APPROVAL_SERVICE_URL is unset — this mutating call ran without human approval' });
+    return;
+  }
   if (!approvalId) {
     throw new Error(`Approval required for ${action} on "${target}". Call request_approval first (idp-mcp-server), then retry with approval_id.`);
   }
@@ -189,13 +198,13 @@ export function createServer(agentId: string = 'unknown') {
 
   server.tool(
     'approve_pr',
-    'Approve a GitHub pull request review. Defaults to dry_run: true (no HiTL approval gate exists yet — see docs/agentic-platform.md Phase 4); pass dry_run: false only when the user has explicitly confirmed the approval.',
+    'Approve a GitHub pull request review. Defaults to dry_run: true; a non-dry-run call requires an approval_id approved for this exact repo#pr (see docs/agent-approvals.md).',
     {
       repo: z.string().describe('Full repo name e.g. org/my-service'),
       pr_number: z.number().int().describe('Pull request number'),
       body: z.string().optional().describe('Optional markdown review summary'),
       dry_run: z.boolean().optional().describe('If true (default), preview only — no review is posted'),
-      approval_id: z.string().optional().describe('Required for a real (non-dry-run) approval once the HiTL approval gate is deployed — obtain via request_approval'),
+      approval_id: z.string().optional().describe('Required for a real (non-dry-run) approval — obtain via request_approval on idp-mcp-server'),
     },
     async ({ repo, pr_number, body, dry_run = true, approval_id }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'approve_pr' });
@@ -231,7 +240,7 @@ export function createServer(agentId: string = 'unknown') {
 
   server.tool(
     'request_changes',
-    'Request changes on a GitHub pull request review. Defaults to dry_run: true (no HiTL approval gate exists yet — see docs/agentic-platform.md Phase 4); pass dry_run: false only when the user has explicitly confirmed.',
+    'Request changes on a GitHub pull request review. Defaults to dry_run: true; pass dry_run: false only when the user has explicitly confirmed. Not behind the approval gate — it posts a review comment and merges nothing.',
     {
       repo: z.string().describe('Full repo name e.g. org/my-service'),
       pr_number: z.number().int().describe('Pull request number'),
