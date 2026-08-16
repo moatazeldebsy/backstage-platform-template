@@ -999,7 +999,10 @@ log "Step 3-bis: Installing Argo Workflows..."
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
   tf_outputs_load "${REPO_ROOT}/terraform"
 fi
-install_argo_workflows "$DEPLOY_MODE"
+# Non-fatal: the function warns loudly and returns non-zero on failure, and
+# this script runs under `set -euo pipefail`. The AI/ML layer still comes up
+# without Argo Workflows; only the two pipelines and the DR runbook are lost.
+install_argo_workflows "$DEPLOY_MODE" || true
 timer_end "3-bis. Argo Workflows"
 
 # ── 3a. Ollama (self-hosted small model) ──────────────────────────────────────
