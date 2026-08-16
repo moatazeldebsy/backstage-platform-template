@@ -569,48 +569,69 @@ install_argo_workflows() {
     local argo_role_arn
     argo_role_arn=$(tf_output argo_workflows_role_arn)
 
-    # aws/argo-workflows/values.yaml builds its ingress host as
-    # "argo-workflows.${BACKSTAGE_URL}". bootstrap.sh sets BACKSTAGE_URL before
-    # it gets here; bootstrap-ai.sh does not, and an empty value renders the
-    # host as a bare "argo-workflows." that the ALB controller rejects. Derive
-    # it the same way bootstrap.sh does rather than depending on caller order.
-    local backstage_url="${BACKSTAGE_URL:-}"
-    if [[ -z "$backstage_url" || "$backstage_url" == "PENDING" ]]; then
-      backstage_url=$(kubectl get svc backstage -n backstage \
-        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+    # There is no argo_workflows_role_arn output and no Argo Workflows IAM role
+    # in terraform/ — this has always resolved to empty, so S3 artifact upload
+    # has never worked. archiveLogs is then actively harmful: every workflow
+    # tries to upload its logs and fails. Turn it off rather than ship a broken
+    # default, and say so. Tracked for the Terraform side; see the issue linked
+    # from docs/aws-install-failure-modes.md (issue #357). Observed 2026-08-16.
+    local archive_logs=true
+    if [[ -z "$argo_role_arn" ]]; then
+      warn "No argo_workflows_role_arn Terraform output — S3 artifact upload is unavailable."
+      warn "  Disabling archiveLogs so workflows still run. Artifacts stay in-pod."
+      archive_logs=false
     fi
-    if [[ -z "$backstage_url" ]]; then
-      warn "Backstage LoadBalancer hostname not resolvable — Argo Workflows ingress host will be incomplete."
-    fi
+
 
     # Rendered to a temp file rather than piped, so the substituted values are
     # inspectable after a failed run.
     values_file="/tmp/argo-values-${CLUSTER_NAME}.yaml"
     sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; \
          s|REGION_PLACEHOLDER|${AWS_REGION}|g; \
-         s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${argo_role_arn}|g; \
-         s|BACKSTAGE_ALB_URL_PLACEHOLDER|${backstage_url}|g" \
+         s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${argo_role_arn}|g" \
       "${root}/aws/argo-workflows/values.yaml" > "$values_file"
   else
     values_file="${root}/local/argo-workflows/values.yaml"
   fi
 
+  # Failure here is non-fatal to the wider bootstrap, but it must not be
+  # reported as success: the first real run of this install failed to render
+  # the chart and still printed "✓ Argo Workflows deployed", which is the same
+  # healthy-while-broken reporting this whole change exists to remove.
+  local helm_ok=true
   helm_upgrade_cached argo-workflows argo-workflows argo/argo-workflows \
     --namespace argo-workflows \
     --create-namespace \
     -f "$values_file" \
+    ${archive_logs:+--set artifactRepository.archiveLogs=$archive_logs} \
     --wait \
     --timeout 300s \
-    || warn "Argo Workflows Helm install had issues (non-critical for platform operation)"
+    || helm_ok=false
+
+  if [[ "$helm_ok" != "true" ]]; then
+    warn "Argo Workflows Helm install FAILED — the ML training pipeline, the LLM eval"
+    warn "  pipeline and the DR failover runbook will be unavailable on this cluster."
+    warn "  Bootstrap continues; re-run once the cause above is fixed."
+  fi
 
   kubectl apply -f "${root}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
 
   # Patch the pipeline runner SA with the IRSA role so workflow artifacts can
   # reach the bucket created above. Non-fatal: pipelines still run without
   # artifact upload.
-  if [[ "$mode" == "aws" && -n "${argo_role_arn:-}" ]]; then
-    kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
-      "eks.amazonaws.com/role-arn=${argo_role_arn}" --overwrite 2>/dev/null || true
+  if [[ "$mode" == "aws" ]]; then
+    if [[ -n "${argo_role_arn:-}" ]]; then
+      kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
+        "eks.amazonaws.com/role-arn=${argo_role_arn}" --overwrite 2>/dev/null || true
+    else
+      # rbac.yaml ships the literal REPLACE_WITH_ARGO_WORKFLOWS_ROLE_ARN, whose
+      # comment claims this function patches it. When the ARN is empty that
+      # placeholder lands verbatim on a live ServiceAccount, where it reads as
+      # a configured role and is not one. Remove it instead — an absent
+      # annotation is honest, a placeholder one is not.
+      kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
+        "eks.amazonaws.com/role-arn-" 2>/dev/null || true
+    fi
   fi
 
   # WorkflowTemplates. Without these the training pipeline has nothing to
@@ -619,7 +640,9 @@ install_argo_workflows() {
   kubectl apply -f "${root}/kubernetes/argo-workflows/workflowtemplates/" 2>/dev/null \
     || warn "Could not apply WorkflowTemplates — idp:run-training-job will fall back to a Job"
 
-  if [[ "$mode" == "aws" ]]; then
+  if [[ "$helm_ok" != "true" ]]; then
+    return 1
+  elif [[ "$mode" == "aws" ]]; then
     check "Argo Workflows deployed — UI pending ALB provisioning"
   else
     check "Argo Workflows installed — UI at http://argo-workflows.idp.local"

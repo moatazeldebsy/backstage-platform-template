@@ -71,8 +71,11 @@ metadata:
   name: ml-pipeline-runner
   namespace: ml-platform
   annotations:
-    # Patched by bootstrap-ai.sh --aws with the Terraform argo_workflows_role_arn
-    # so artifact upload to the S3 bucket works via IRSA. Harmless on local.
+    # PLACEHOLDER — nothing substitutes this string, because there is no
+    # argo_workflows_role_arn Terraform output and no Argo Workflows IAM role
+    # (issue #357). install_argo_workflows() strips this annotation on AWS
+    # rather than leave a literal that reads as a configured role; it only
+    # sets a real value once the Terraform output exists. Inert on local.
     eks.amazonaws.com/role-arn: "REPLACE_WITH_ARGO_WORKFLOWS_ROLE_ARN"
 
 ---
