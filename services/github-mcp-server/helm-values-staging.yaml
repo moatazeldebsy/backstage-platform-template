@@ -53,6 +53,10 @@ env:
       secretKeyRef:
         name: github-mcp-server-token
         key: token
+        # See helm-values-aws.yaml: without this the first promotion into
+        # services-staging left every replica in CreateContainerConfigError,
+        # because bootstrap-ai.sh created the secret only in services-dev.
+        optional: true
   # Human-in-the-loop approval gate for approve_pr (docs/agent-approvals.md).
   # Declared here rather than patched in by bootstrap-ai.sh: `kubectl set env`
   # does not survive ArgoCD selfHeal, which silently reverted it and left

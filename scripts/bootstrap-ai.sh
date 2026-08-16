@@ -877,13 +877,27 @@ fi
 
 kubectl create namespace services-dev --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
+# Namespaces the MCP server secrets must exist in. dev is where bootstrap
+# deploys; staging and prod are where build-and-deploy.yml's promotion chain
+# moves the same workloads. Secrets are namespace-scoped, so a promotion into a
+# namespace without them produces CreateContainerConfigError, not a warning.
+MCP_SECRET_NAMESPACES=(services-dev services-staging services-prod)
+
 # github-mcp-server token (same GITHUB_TOKEN already used by Backstage scaffolder)
 if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  info "Creating github-mcp-server-token secret in services-dev..."
-  kubectl create secret generic github-mcp-server-token \
-    --namespace services-dev \
-    --from-literal=token="${GITHUB_TOKEN}" \
-    --dry-run=client -o yaml | kubectl apply -f -
+  # Every services-* namespace, not just dev. The promotion chain now moves the
+  # MCP servers into services-staging (and can into services-prod), and a
+  # namespace without this secret leaves every replica in
+  # CreateContainerConfigError. Only namespaces that already exist are touched,
+  # so this stays a no-op on an install that has no staging/prod tier.
+  for _mcp_ns in "${MCP_SECRET_NAMESPACES[@]}"; do
+    kubectl get namespace "$_mcp_ns" &>/dev/null || continue
+    info "Creating github-mcp-server-token secret in ${_mcp_ns}..."
+    kubectl create secret generic github-mcp-server-token \
+      --namespace "$_mcp_ns" \
+      --from-literal=token="${GITHUB_TOKEN}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+  done
   check "Secret github-mcp-server-token ready"
 else
   warn "GITHUB_TOKEN not set — github-mcp-server will start without a GitHub token (PR tools will fail). Add GITHUB_TOKEN to local/.env."
@@ -1800,10 +1814,13 @@ else
       warn "BACKSTAGE_CATALOG_TOKEN not set in Secrets Manager — MCP servers won't authenticate to Backstage."
       warn "Update the secret: aws secretsmanager update-secret --secret-id ${CLUSTER_NAME}/backstage ..."
     fi
-    kubectl create secret generic mcp-backstage-token \
-      --from-literal=token="${MCP_BS_TOKEN}" \
-      --namespace services-dev --dry-run=client -o yaml | kubectl apply -f -
-    check "mcp-backstage-token secret created in services-dev"
+    for _mcp_ns in "${MCP_SECRET_NAMESPACES[@]}"; do
+      kubectl get namespace "$_mcp_ns" &>/dev/null || continue
+      kubectl create secret generic mcp-backstage-token \
+        --from-literal=token="${MCP_BS_TOKEN}" \
+        --namespace "$_mcp_ns" --dry-run=client -o yaml | kubectl apply -f -
+    done
+    check "mcp-backstage-token secret created in every services-* namespace"
   fi
 
   if [[ "$DEPLOY_MODE" == "aws" ]]; then

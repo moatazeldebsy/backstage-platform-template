@@ -56,6 +56,12 @@ env:
       secretKeyRef:
         name: mcp-backstage-token
         key: token
+        # optional: true so a missing token DEGRADES the server rather than
+        # preventing it from starting — same reasoning as argocd-mcp-server.
+        # bootstrap-ai.sh created this secret only in services-dev, so the
+        # first promotion into services-staging left every replica in
+        # CreateContainerConfigError. Observed 2026-08-16.
+        optional: true
   - name: PROMETHEUS_URL
     value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
   - name: K8S_API
