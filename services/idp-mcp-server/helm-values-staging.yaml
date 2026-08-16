@@ -56,6 +56,10 @@ env:
       secretKeyRef:
         name: mcp-backstage-token
         key: token
+        # See helm-values-aws.yaml: without this the first promotion into
+        # services-staging left every replica in CreateContainerConfigError,
+        # because bootstrap-ai.sh created the secret only in services-dev.
+        optional: true
   - name: PROMETHEUS_URL
     value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
   - name: K8S_API

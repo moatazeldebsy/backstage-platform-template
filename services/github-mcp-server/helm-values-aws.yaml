@@ -53,6 +53,14 @@ env:
       secretKeyRef:
         name: github-mcp-server-token
         key: token
+        # optional: true so a missing token DEGRADES the server rather than
+        # preventing it from starting — the same reasoning already spelled out
+        # at length in argocd-mcp-server/helm-values-aws.yaml. Secrets are
+        # namespace-scoped and bootstrap-ai.sh created this one only in
+        # services-dev, so the first promotion into services-staging left every
+        # replica in CreateContainerConfigError and the app Degraded.
+        # Observed 2026-08-16.
+        optional: true
   # Human-in-the-loop approval gate for approve_pr (docs/agent-approvals.md).
   # Declared here rather than patched in by bootstrap-ai.sh: `kubectl set env`
   # does not survive ArgoCD selfHeal, which silently reverted it and left
