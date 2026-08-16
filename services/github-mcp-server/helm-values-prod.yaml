@@ -1,0 +1,95 @@
+fullnameOverride: github-mcp-server
+replicaCount: 2
+image:
+  # Resolved by scripts/setup.sh during personalisation, exactly like
+  # hello-service. It used to be ECR_REGISTRY_PLACEHOLDER, substituted by
+  # bootstrap-ai.sh on its way into helm stdin — which meant the file on
+  # disk was never renderable, so ArgoCD could not deploy this service and
+  # it had to be excluded from the ApplicationSets.
+  repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/github-mcp-server
+  tag: "776b86b"
+  pullPolicy: Always
+service:
+  type: ClusterIP
+  port: 3005
+  targetPort: 3005
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: github-mcp-server.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+env:
+  - name: PORT
+    value: "3005"
+  - name: GITHUB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: github-mcp-server-token
+        key: token
+        # See helm-values-aws.yaml: without this the first promotion into
+        # services-staging left every replica in CreateContainerConfigError,
+        # because bootstrap-ai.sh created the secret only in services-dev.
+        optional: true
+  # Human-in-the-loop approval gate for approve_pr (docs/agent-approvals.md).
+  # Declared here rather than patched in by bootstrap-ai.sh: `kubectl set env`
+  # does not survive ArgoCD selfHeal, which silently reverted it and left
+  # approve_pr ungated while all 16 Applications reported Synced/Healthy.
+  # Observed 2026-08-16.
+  - name: APPROVAL_SERVICE_URL
+    value: "http://approval-service.services-dev.svc.cluster.local:3009"
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+# Langfuse tracing for src/telemetry.ts. The langfuse-otel secret carries
+# LANGFUSE_OTLP_ENDPOINT / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY and is
+# created per-namespace by bootstrap-ai.sh (namespaces labelled
+# idp.io/langfuse=enabled). optional: true because Langfuse is opt-in — without
+# it, every MCP server would fail to start on a cluster deployed without Langfuse.
+envFrom:
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+# Required by the Gatekeeper constraint require-cost-allocation-labels, which
+# denies any workload missing team / cost-center / environment. Without these the
+# admission webhook rejected the release outright:
+#   admission webhook "validation.gatekeeper.sh" denied the request:
+#   [require-cost-allocation-labels] Missing required cost label 'team'
+# so this service could never deploy on AWS. Observed 2026-08-12 — 7 of 11 services
+# were affected; idp/qa/contract-mcp-server and hello-service already had them.
+podLabels:
+  backstage.io/kubernetes-id: github-mcp-server
+  team: platform-team
+  cost-center: CC-1000
+  environment: prod
