@@ -11,18 +11,35 @@ server:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
-    hosts:
-      - argo-workflows.BACKSTAGE_ALB_URL_PLACEHOLDER
+    # No host rule, matching every other public ALB ingress on this platform
+    # (argocd-server, kagent-ui, mlflow, langfuse, grafana all render HOSTS=*).
+    # This used to be "argo-workflows.BACKSTAGE_ALB_URL_PLACEHOLDER", which
+    # prefixes a subdomain onto an ALB's own DNS name — a hostname that cannot
+    # resolve and a rule no request ever matches, so the UI was unreachable
+    # through the ALB the ingress had just provisioned. Observed 2026-08-16.
+    #
+    # server.ingress.paths is a list of PATH STRINGS, with pathType as a
+    # sibling scalar — not a list of {path, pathType} objects. The object form
+    # renders as `path: map[path:/ pathType:Prefix]` and the API server rejects
+    # the Ingress with "must be an absolute path".
     paths:
-      - path: /
-        pathType: Prefix
+      - /
+    pathType: Prefix
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
     allowPrivilegeEscalation: false
+  # useSDKCreds above resolves credentials from the AWS SDK chain, which on EKS
+  # means the projected IRSA token — so the ServiceAccount must carry the role.
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER
 
 controller:
   replicas: 2
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER
   resources:
     requests:
       cpu: 200m
@@ -53,9 +70,26 @@ workflow:
   rbac:
     create: true
 
+# Artifacts reach S3 through IRSA, not an access key pair. The chart's own
+# comment on useStaticCredentials reads "Use static credentials for S3 (eg. when
+# not using AWS IRSA)" — it defaults to true, and the config-map template then
+# dereferences .artifactRepository.s3.accessKeySecret.key unconditionally. With
+# no such secret in these values that is a nil pointer, and the whole release
+# fails to render:
+#
+#   Error: argo-workflows/templates/server/server-deployment.yaml:36:24
+#     ... nil pointer evaluating interface {}.key
+#
+# So both settings are load-bearing: useStaticCredentials: false skips the
+# accessKeySecret block, and useSDKCreds: true tells the controller to use the
+# AWS SDK credential chain, which is what picks up the projected IRSA token.
+# Observed on the first real run of this install, 2026-08-16.
+useStaticCredentials: false
+
 artifactRepository:
   s3:
     bucket: argo-workflows-artifacts-CLUSTER_NAME_PLACEHOLDER
     region: REGION_PLACEHOLDER
     roleARN: ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER
+    useSDKCreds: true
   archiveLogs: true

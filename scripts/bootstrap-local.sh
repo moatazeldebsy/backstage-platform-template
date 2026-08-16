@@ -1258,7 +1258,8 @@ fi
 if [[ "$INSTALL_ARGO_WORKFLOWS" == "true" ]]; then
   log "Step 8b: Installing Argo Workflows..."
   # Shared with bootstrap.sh and bootstrap-ai.sh — see scripts/lib.sh.
-  install_argo_workflows local
+  # Non-fatal: the function warns loudly and returns non-zero on failure.
+  install_argo_workflows local || true
 else
   log "Step 8b: Skipping Argo Workflows (use --install-argo-workflows to enable)."
 fi
