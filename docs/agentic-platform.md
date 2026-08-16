@@ -44,8 +44,8 @@ Backstage — chat UI (/ai-assistant), semantic search (/ai-search), approval UI
 
   Real (non-dry-run) sync_app / rollback_app / approve_pr calls are rejected by their MCP
   server unless they carry an approval_id whose status is "approved" — enforced in code, not
-  just a system-prompt convention. No-op unless APPROVAL_SERVICE_URL is set (bootstrap-ai.sh
-  --adp); without --adp these tools behave exactly as before.
+  just a system-prompt convention. On by default: APPROVAL_SERVICE_URL is declared in each
+  server's helm values. Unset it and the tools run ungated, with a warning per call.
 
                               ▲
                               │  budget alerts → cost-agent
@@ -107,7 +107,7 @@ UI, how to test the gate, and troubleshooting.
 | `approval-service` — REST API, `agent_approvals` table on the existing Backstage Postgres (Aurora/RDS in AWS, docker-compose pgvector image locally, reached via `host.docker.internal` from Kind pods) | `services/approval-service/` |
 | Policy-as-Prompt rules (e.g. "sync_app on `prod-*` requires approval; rollback_app always does") | `kubernetes/kagent/policies/configmap.yaml`, evaluated by `services/approval-service/src/policy.ts` |
 | `check_policy`/`request_approval`/`get_approval_status` tools (proxy to approval-service) | `services/idp-mcp-server/src/server.ts` |
-| Tool-server-level enforcement — `sync_app`/`rollback_app`/`approve_pr` reject a real call without an `approval_id` whose recorded status is `approved`, once `APPROVAL_SERVICE_URL` is set (opt-in via `bootstrap-ai.sh --adp`) | `services/argocd-mcp-server/src/server.ts`, `services/github-mcp-server/src/server.ts` |
+| Tool-server-level enforcement — `sync_app`/`rollback_app`/`approve_pr` reject a real call without an `approval_id` whose recorded status is `approved`, unless `APPROVAL_SERVICE_URL` is unset (on by default — declared in each server's helm values) | `services/argocd-mcp-server/src/server.ts`, `services/github-mcp-server/src/server.ts` |
 | System-prompt updates (request approval before a real mutating call, wait for the human decision) | `kubernetes/kagent/release-agent.yaml`, `kubernetes/kagent/qa-agent.yaml` |
 | Approval UI (list pending/all, approve/deny) at `/approvals`, proxied via `/api/proxy/approval-service` | `backstage/app/packages/app/src/extensions.tsx` (`ApprovalsPage`) |
 | Audit log: approval-service emits its own `[AUDIT]` lines (`approval_requested`/`approval_auto_approved`/`approval_decided`) with `approval_id`, `decision`, `decided_by`; gated tools' own `[AUDIT]` entries now carry `approval_id` too | `docs/ai-assistant.md` § Structured audit log |

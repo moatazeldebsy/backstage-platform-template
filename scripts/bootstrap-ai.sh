@@ -984,6 +984,24 @@ fi
 
 timer_end "3. MLflow (launch)"
 
+# ── 3-bis. Argo Workflows ─────────────────────────────────────────────────────
+# The ML training pipeline and the LLM eval pipeline are WorkflowTemplates, and
+# idp:run-training-job falls back to a bare Job without them — so Argo Workflows
+# belongs to the AI/ML layer and installs with it on both targets.
+#
+# It used to be installed only by bootstrap.sh (behind --with-ai) and
+# bootstrap-local.sh (behind --install-argo-workflows), never here. On AWS that
+# left the live cluster with no argo-workflows namespace after a
+# `bootstrap-ai.sh --aws` run, so both pipelines and the DR failover runbook
+# were unavailable. Observed 2026-08-16.
+timer_start "3-bis. Argo Workflows"
+log "Step 3-bis: Installing Argo Workflows..."
+if [[ "$DEPLOY_MODE" == "aws" ]]; then
+  tf_outputs_load "${REPO_ROOT}/terraform"
+fi
+install_argo_workflows "$DEPLOY_MODE"
+timer_end "3-bis. Argo Workflows"
+
 # ── 3a. Ollama (self-hosted small model) ──────────────────────────────────────
 # Opt-in via --ollama. One shared server the whole platform points at, rather
 # than one per scaffolded app: a resident model is the expensive part.
@@ -2011,20 +2029,19 @@ else
     done
   fi
 
-  # Wire the HiTL approval gate into the tool servers whose mutating tools it
-  # gates (argocd-mcp-server, github-mcp-server) and idp-mcp-server (which
-  # exposes check_policy/request_approval/get_approval_status). Patched via
-  # kubectl set env rather than baked into the default helm-values, so plain
-  # `bootstrap-ai.sh` (no --adp) leaves these tools ungated exactly as before.
-  if $ADP && [[ -d "${REPO_ROOT}/services/approval-service" ]] && kubectl get deployment approval-service -n services-dev &>/dev/null; then
-    APPROVAL_URL="http://approval-service.services-dev.svc.cluster.local:3009"
-    for _svc in idp-mcp-server argocd-mcp-server github-mcp-server; do
-      if kubectl get deployment "$_svc" -n services-dev &>/dev/null; then
-        kubectl set env deployment/"$_svc" -n services-dev APPROVAL_SERVICE_URL="$APPROVAL_URL" >/dev/null
-      fi
-    done
-    check "APPROVAL_SERVICE_URL wired into idp/argocd/github-mcp-server"
-  fi
+  # The HiTL approval gate (docs/agent-approvals.md) used to be wired in here
+  # with `kubectl set env` on idp-/argocd-/github-mcp-server, so that a plain
+  # `bootstrap-ai.sh` (no --adp) left those tools ungated. That model broke when
+  # the MCP services were adopted into ArgoCD: `set env` is an out-of-band
+  # mutation, and selfHeal reconciled the Deployments back to their git-declared
+  # spec, stripping APPROVAL_SERVICE_URL. Because requireApproval() returns
+  # early when the variable is unset, every mutating agent tool then ran ungated
+  # while all 16 Applications reported Synced/Healthy. Observed 2026-08-16.
+  #
+  # APPROVAL_SERVICE_URL is now declared in each service's helm-values-*.yaml,
+  # so the gate is on by default and survives reconciliation. approval-service
+  # is itself a GitOps Application now, so it is always present — the old
+  # opt-in no longer described reality.
 fi
 
 timer_end "6b. Deploy MCP servers"

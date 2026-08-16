@@ -61,6 +61,13 @@ env:
       secretKeyRef:
         name: github-mcp-server-token
         key: token
+  # Human-in-the-loop approval gate for approve_pr (docs/agent-approvals.md).
+  # Declared here rather than patched in by bootstrap-ai.sh: `kubectl set env`
+  # does not survive ArgoCD selfHeal, which silently reverted it and left
+  # approve_pr ungated while all 16 Applications reported Synced/Healthy.
+  # Observed 2026-08-16.
+  - name: APPROVAL_SERVICE_URL
+    value: "http://approval-service.services-dev.svc.cluster.local:3009"
 
 securityContext:
   allowPrivilegeEscalation: false

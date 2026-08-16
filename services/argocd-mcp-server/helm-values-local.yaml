@@ -61,6 +61,12 @@ env:
         name: argocd-mcp-server-token
         key: token
         optional: true  # warns on startup if missing
+  # Human-in-the-loop approval gate for sync_app / rollback_app
+  # (docs/agent-approvals.md). Declared here rather than patched in by
+  # bootstrap-ai.sh: `kubectl set env` does not survive ArgoCD selfHeal.
+  # Keep in step with helm-values-aws.yaml.
+  - name: APPROVAL_SERVICE_URL
+    value: "http://approval-service.services-dev.svc.cluster.local:3009"
 
 securityContext:
   allowPrivilegeEscalation: false

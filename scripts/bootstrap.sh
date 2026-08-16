@@ -1439,49 +1439,8 @@ _P6A_LOG=$(mktemp)
   set -e
   if [[ "$WITH_AI" == "true" ]]; then
     log "Phase 6a: Installing Argo Workflows for ML orchestration..."
-    (
-      set -e
-
-      # Create S3 bucket for Argo artifacts if needed
-      ARGO_BUCKET="argo-workflows-artifacts-${CLUSTER_NAME}"
-      if ! aws s3 ls "s3://${ARGO_BUCKET}/" --region "${AWS_REGION}" &>/dev/null; then
-        log "Creating S3 bucket for Argo Workflows artifacts..."
-        aws s3 mb "s3://${ARGO_BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true
-      fi
-
-      # Get the Argo Workflows IRSA role ARN from Terraform (if it exists)
-      ARGO_ROLE_ARN=$(tf_output argo_workflows_role_arn)
-
-      # Install Argo Workflows with AWS values
-      VALUES_FILE="${ROOT_DIR}/aws/argo-workflows/values.yaml"
-      sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; s|REGION_PLACEHOLDER|${AWS_REGION}|g; s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${ARGO_ROLE_ARN}|g; s|BACKSTAGE_ALB_URL_PLACEHOLDER|${BACKSTAGE_URL}|g" \
-        "$VALUES_FILE" > /tmp/argo-values-${CLUSTER_NAME}.yaml
-
-      helm_upgrade_cached argo-workflows argo-workflows argo/argo-workflows \
-        --namespace argo-workflows \
-        --create-namespace \
-        -f /tmp/argo-values-${CLUSTER_NAME}.yaml \
-        --wait \
-        --timeout 300s || log "WARNING: Argo Workflows Helm install had issues (non-critical for platform operation)"
-
-      # Apply RBAC if ServiceAccount creation succeeded
-      kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/rbac.yaml" 2>/dev/null || true
-
-      # Patch the pipeline runner SA with the IRSA role so workflow artifacts can
-      # reach the S3 bucket created above. Non-fatal: the pipelines still run
-      # without artifact upload.
-      if [[ -n "${ARGO_ROLE_ARN:-}" ]]; then
-        kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
-          "eks.amazonaws.com/role-arn=${ARGO_ROLE_ARN}" --overwrite 2>/dev/null || true
-      fi
-
-      # WorkflowTemplates. Without these the training pipeline has nothing to
-      # reference and idp:run-training-job silently falls back to a bare Job.
-      kubectl apply -f "${ROOT_DIR}/kubernetes/argo-workflows/workflowtemplates/" 2>/dev/null \
-        || log "WARNING: could not apply WorkflowTemplates — idp:run-training-job will fall back to a Job"
-
-      log "Argo Workflows deployed — UI pending ALB provisioning"
-    )
+    # Shared with bootstrap-ai.sh and bootstrap-local.sh — see scripts/lib.sh.
+    install_argo_workflows aws
   else
     log "Phase 6a: Skipping Argo Workflows (AI/ML layer not requested — pass --with-ai)"
   fi
