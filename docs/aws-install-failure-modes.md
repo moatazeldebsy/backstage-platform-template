@@ -142,6 +142,43 @@ for an LLM to finish. Left as a follow-up rather than done blind.
 by an order of magnitude, and when the slow call is the *last* step its failure
 does not look like failure.
 
+### Argo Workflows: four faults behind one install that had never run on AWS
+
+Until 2026-08-16 nothing installed Argo Workflows during `bootstrap-ai.sh`, so
+the live cluster had no `argo-workflows` namespace and the AWS values file had
+never been rendered against a real cluster. The first real run failed four
+times in a row, each on a different fault:
+
+1. **`nil pointer evaluating interface {}.key`.** The chart's
+   `useStaticCredentials` defaults to `true`, and its config-map template then
+   dereferences `artifactRepository.s3.accessKeySecret.key` unconditionally.
+   With IRSA there is no such secret. Fix: `useStaticCredentials: false` plus
+   `artifactRepository.s3.useSDKCreds: true`.
+2. **`spec.rules[0].http.paths[0].path: Invalid value: "map[path:/ pathType:Prefix]"`.**
+   `server.ingress.paths` is a list of path *strings* with `pathType` as a
+   sibling scalar, not a list of objects.
+3. **An ingress host that can never resolve.** The values file built its host as
+   `argo-workflows.${BACKSTAGE_ALB_URL}` — a subdomain prefixed onto an ALB's
+   own DNS name. The ALB was provisioned and every request missed the rule.
+   Every other public ingress on this platform renders `HOSTS=*`; this one now
+   does too, which also deletes a placeholder from the substitution chain.
+4. **`argo_workflows_role_arn` does not exist.** `bootstrap.sh` had been reading
+   that Terraform output since the feature was written, and there is no such
+   output and no Argo Workflows IAM role in `terraform/`. It resolved to empty
+   every time, so S3 artifact upload has never worked — and
+   `kubernetes/argo-workflows/rbac.yaml` ships a literal
+   `REPLACE_WITH_ARGO_WORKFLOWS_ROLE_ARN` whose comment claims the bootstrap
+   patches it. Nothing did. The install now disables `archiveLogs` when the ARN
+   is missing (otherwise every workflow fails trying to upload its logs) and
+   *removes* the annotation rather than leaving a placeholder that reads as a
+   configured role. The Terraform role is tracked separately.
+
+**The general lesson**, and it is the same one as the approval gate in
+`docs/agent-approvals.md`: an install path that has never run is not "probably
+fine", and a placeholder that nothing substitutes is indistinguishable from a
+real value until something tries to use it. Three of these four faults were
+invisible to `helm lint`, CI, and every dashboard.
+
 ## What still is not covered
 
 Being explicit about the gaps, because a green CI run should not imply more than it
