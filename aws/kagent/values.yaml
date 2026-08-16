@@ -20,6 +20,35 @@ ui:
   # to avoid direct in-cluster DNS calls that cause crashes.
   backendInternalUrl: "http://127.0.0.1:8080/api"
 
+# Grafana MCP server. Two chart defaults are wrong for this platform and the
+# combination left the RemoteMCPServer stuck at ACCEPTED=False, so grafana-agent
+# had no tools:
+#
+#  1. mcp-grafana runs DNS-rebinding protection over its HTTP transport and
+#     --allowed-hosts "defaults to loopback variants of --address". The KAgent
+#     controller dials the Service name, so every initialize was answered
+#     "403 forbidden: host not allowed" — and the server logs nothing for a
+#     rejected request, so the pod looked perfectly healthy.
+#  2. The chart's default GRAFANA_URL is grafana.kagent:3000/api, which is a
+#     Grafana that does not exist here. Ours is the kube-prometheus-stack one
+#     in the monitoring namespace.
+#
+# Observed 2026-08-17.
+grafana-mcp:
+  args:
+    # Named hosts rather than "*": the flag's own help warns that disabling
+    # validation is only safe behind a trusted reverse proxy that rewrites Host.
+    - --allowed-hosts
+    - kagent-grafana-mcp.kagent:8000,kagent-grafana-mcp.kagent.svc:8000,kagent-grafana-mcp.kagent.svc.cluster.local:8000,kagent-grafana-mcp:8000,localhost:8000,127.0.0.1:8000
+  grafana:
+    url: "http://prometheus-grafana.monitoring/api"
+    # Viewer-role service account token. Created in Grafana and synced from
+    # AWS Secrets Manager (idp-mvp/kagent -> GRAFANA_SERVICE_ACCOUNT_TOKEN) by
+    # kubernetes/kagent/external-secret-grafana-mcp.yaml. secretRef keeps the
+    # token out of git — setting grafana.serviceAccountToken here would put it
+    # in plain text in this file.
+    secretRef: kagent-grafana-mcp-token
+
 postgres:
   # Enable pgvector so the controller can create the memory table (vector(768)).
   vectorEnabled: true
