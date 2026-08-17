@@ -2,7 +2,7 @@ fullnameOverride: incident-mcp-server
 replicaCount: 2
 image:
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/incident-mcp-server
-  tag: "latest"
+  tag: "fb98151"
   pullPolicy: Always
 service:
   type: ClusterIP
