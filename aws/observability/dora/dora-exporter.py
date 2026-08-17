@@ -53,6 +53,26 @@ REPO_FILTER_TOPICS = [
     t.strip() for t in os.environ.get("REPO_FILTER_TOPIC", "idp,idp-app").split(",") if t.strip()
 ]
 REPO_INCLUDE       = os.environ.get("REPO_INCLUDE", "")
+# Repos that hold more than one deployable service. For these, one repo-level
+# DORA number is meaningless: the platform repo deploys hello-service and ten
+# MCP servers from a single matrix workflow, so every one of those services had
+# NO DORA series at all and its Backstage tab rendered empty, while the repo
+# itself showed an average that belonged to no service in particular.
+#
+# GitHub names a matrix job "<job> (<service>)", so the per-service attribution
+# is already in the run history — it just was never read. Costs one extra API
+# call per workflow run, which is why it is opt-in per repo rather than global.
+MONOREPO_REPOS = [
+    r.strip() for r in os.environ.get("MONOREPO_REPOS", "backstage-platform-template").split(",") if r.strip()
+]
+# Only these workflows count as deployments for the per-service split. Without
+# it, every matrix job in the repo is treated as a deploy: CI's
+# `mcp-servers-build (qa-mcp-server)` inflates deployment frequency with test
+# runs, and CodeQL's `Analyze (go)` invents services named "go" and
+# "javascript-typescript". Deployment frequency has to mean deployments.
+DEPLOY_WORKFLOW_NAMES = [
+    w.strip() for w in os.environ.get("DEPLOY_WORKFLOW_NAMES", "Build and Deploy").split(",") if w.strip()
+]
 # JSON map of repo name → team name, e.g. '{"orders-service":"payments","auth-api":"platform"}'
 # Repos not in the map fall back to the team-name embedded in the GitHub topic "team:<name>".
 TEAM_MAP: dict = json.loads(os.environ.get("TEAM_MAP", "{}"))
@@ -75,6 +95,12 @@ def gh_get(url: str, params: dict = None) -> list:
             results.extend(data)
         elif "workflow_runs" in data:
             results.extend(data["workflow_runs"])
+        elif "jobs" in data:
+            # /actions/runs/{id}/jobs wraps its list as {"total_count":N,"jobs":[...]}.
+            # Without this branch it fell through to the append-the-whole-dict case
+            # below, so callers iterated over a single envelope object and every
+            # field lookup came back empty — silently, with no error to notice.
+            results.extend(data["jobs"])
         elif "items" in data:
             results.extend(data["items"])
         else:
@@ -154,6 +180,68 @@ def get_workflow_runs(repo: str, since: datetime) -> list:
         f"https://api.github.com/repos/{GITHUB_ORG}/{repo}/actions/runs",
         {"per_page": 100, "created": f">={since_str}"}
     )
+
+
+def get_runs_by_service(repo: str, runs: list) -> dict:
+    """Group a monorepo's deploy runs by the service each matrix job targeted.
+
+    GitHub renders a matrix job as "<job-name> (<matrix-value>)", e.g.
+    "promote-to-production (github-mcp-server)", so the per-service attribution
+    already exists in the run history — it just was never read.
+
+    Returns synthetic run records per service rather than the raw runs, because
+    a monorepo run has ONE conclusion covering every service in it. Attributing
+    that shared conclusion to each service blames a service for an unrelated
+    matrix leg failing: services with no deploys at all came out at CFR=100%,
+    since every run they appeared in had failed for someone else's reason. Each
+    service is judged on its own jobs, and its finish time is its own last job's,
+    so lead time measures that service's pipeline rather than the slowest one in
+    the run.
+    """
+    by_service: dict = {}
+    for run in runs:
+        run_id = run.get("id")
+        if not run_id:
+            continue
+        if DEPLOY_WORKFLOW_NAMES and run.get("name") not in DEPLOY_WORKFLOW_NAMES:
+            continue
+        try:
+            jobs = gh_get(
+                f"https://api.github.com/repos/{GITHUB_ORG}/{repo}/actions/runs/{run_id}/jobs",
+                {"per_page": 100},
+            )
+        except Exception as exc:                      # noqa: BLE001 - best effort
+            log.warning("Could not read jobs for run %s: %s", run_id, exc)
+            continue
+
+        per_service_jobs: dict = {}
+        for job in jobs:
+            name = job.get("name", "").rstrip()
+            if "(" not in name or not name.endswith(")"):
+                continue
+            svc = name[name.rindex("(") + 1:-1].strip()
+            # A skipped job is not evidence the service was deployed.
+            if not svc or job.get("conclusion") in (None, "skipped"):
+                continue
+            per_service_jobs.setdefault(svc, []).append(job)
+
+        for svc, svc_jobs in per_service_jobs.items():
+            conclusions = [j.get("conclusion") for j in svc_jobs]
+            if any(c in ("failure", "cancelled") for c in conclusions):
+                conclusion = "failure"
+            elif any(c == "success" for c in conclusions):
+                conclusion = "success"
+            else:
+                continue
+            completions = [j.get("completed_at") for j in svc_jobs if j.get("completed_at")]
+            by_service.setdefault(svc, []).append({
+                "id":          run_id,
+                "conclusion":  conclusion,
+                "created_at":  run.get("created_at"),
+                "updated_at":  max(completions) if completions else run.get("updated_at"),
+                "head_branch": run.get("head_branch"),
+            })
+    return by_service
 
 
 def compute_deploy_frequency(prod_runs: list, window_hours: int) -> float:
@@ -303,6 +391,13 @@ def main():
 
     repos = get_service_repos()
     all_deploy_freq, all_lead_times, all_cfr, all_mttr = [], [], [], []
+    # Services published from inside a monorepo. They are not GitHub repos, so
+    # they must be recorded here or prune_stale_services deletes each one
+    # moments after it is pushed — which is exactly what happened to
+    # hello-service: pushed, then "Pruned stale DORA series for removed
+    # service: hello-service" in the same run, leaving Backstage with nothing
+    # to query. Observed 2026-08-17.
+    monorepo_services: set = set()
 
     for repo in repos:
         log.info("Processing repo: %s", repo)
@@ -311,6 +406,27 @@ def main():
             team      = get_team_for_repo(repo, topics)
             runs      = get_workflow_runs(repo, since)
             prod_runs = [r for r in runs if r.get("head_branch") == "main"]
+
+            # A monorepo deploys several services from one workflow, so publish a
+            # series per service as well as the repo-level roll-up. Without this
+            # every service inside this repo has no DORA series at all and its
+            # Backstage entity tab is blank — which is the state hello-service
+            # and all ten MCP servers were in.
+            if repo in MONOREPO_REPOS:
+                for svc, svc_runs in sorted(get_runs_by_service(repo, prod_runs).items()):
+                    s_freq = compute_deploy_frequency(svc_runs, LOOKBACK_HOURS)
+                    s_lead = compute_lead_time(svc_runs)
+                    s_cfr  = compute_change_failure_rate(svc_runs)
+                    s_mttr = compute_mttr(svc_runs)
+                    log.info("  %s/%s (team=%s) — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm",
+                             repo, svc, team, s_freq, s_lead, s_cfr, s_mttr)
+                    push_to_gateway("dora-exporter", svc, {
+                        "dora_deploy_frequency_per_day":     (s_freq, "DORA deployment frequency (deploys per day)", "gauge"),
+                        "dora_lead_time_minutes":            (s_lead, "DORA lead time for changes (minutes)",        "gauge"),
+                        "dora_change_failure_rate_percent":  (s_cfr,  "DORA change failure rate (percent)",          "gauge"),
+                        "dora_mttr_minutes":                 (s_mttr, "DORA mean time to restore (minutes)",         "gauge"),
+                    }, team=team)
+                    monorepo_services.add(svc)
 
             deploy_freq = compute_deploy_frequency(prod_runs, LOOKBACK_HOURS)
             lead_time   = compute_lead_time(prod_runs)
@@ -324,7 +440,12 @@ def main():
             push_to_gateway("dora-exporter", repo, {
                 "dora_deploy_frequency_per_day": (deploy_freq, "DORA deployment frequency (deploys per day)", "gauge"),
                 "dora_lead_time_minutes":        (lead_time,   "DORA lead time for changes (minutes)",        "gauge"),
-                "dora_change_failure_rate":      (cfr,         "DORA change failure rate (percent)",          "gauge"),
+                # _percent suffix is required: the Backstage DORA tab and the platform
+                # DORA page both query dora_change_failure_rate_percent. This was pushed
+                # as dora_change_failure_rate, so the CFR panel could never find a series
+                # and rendered blank even when the exporter had just published a real
+                # value. The other three names already matched. Observed 2026-08-17.
+                "dora_change_failure_rate_percent": (cfr,   "DORA change failure rate (percent)",          "gauge"),
                 "dora_mttr_minutes":             (mttr,        "DORA mean time to restore (minutes)",         "gauge"),
             }, team=team)
 
@@ -368,7 +489,7 @@ def main():
         log.info("Published aggregate metrics for %d services.", len(repos))
 
     # Reconcile: drop anything Pushgateway still holds that is no longer a service.
-    prune_stale_services(set(repos))
+    prune_stale_services(set(repos) | monorepo_services)
 
 
 if __name__ == "__main__":
