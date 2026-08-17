@@ -324,7 +324,20 @@ jobs:
     strategy:
       matrix:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+      # These jobs all commit to the same branch. Running them in parallel means
+      # N racing pushes to main, and the loser retries against a ref that the
+      # next winner has already moved. A base-image change touches all ten
+      # services at once and five of them lost the race outright, leaving those
+      # services pinned to the previous image tag while their new images sat in
+      # ECR unused. The rebase-and-retry loop below handles two or three
+      # contenders, not ten. Observed 2026-08-17.
+      max-parallel: 1
     runs-on: ubuntu-latest
+    # Serialise against any other run of this workflow too: two pushes to main in
+    # quick succession would otherwise interleave their tag commits.
+    concurrency:
+      group: update-image-tag-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: write   # needed to push the image tag commit
