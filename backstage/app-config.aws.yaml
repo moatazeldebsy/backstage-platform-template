@@ -109,6 +109,15 @@ auth:
       production:
         clientId: ${AUTH_GITHUB_CLIENT_ID}
         clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+        # Without this, Backstage mints no session of its own and delegates token
+        # refresh to GitHub. GitHub OAuth Apps do not issue refresh tokens unless
+        # "Expiration of user authorization tokens" is enabled, so
+        # GET /api/auth/github/refresh returned 401 on every call. The frontend
+        # reads that as signed-out and re-opens the sign-in popup — which surfaced
+        # as being logged out the moment you opened Catalog or Announcements, the
+        # first routes that fetch with a token. Requires auth.session.secret, set
+        # above from ${AUTH_SESSION_SECRET}. Observed 2026-08-17.
+        sessionDuration: { days: 7 }
         signIn:
           resolvers:
             - resolver: usernameMatchingUserEntityName
