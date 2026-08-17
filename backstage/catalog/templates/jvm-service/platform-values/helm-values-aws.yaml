@@ -1,7 +1,21 @@
-replicaCount: 1
+# AWS/EKS values for the platform's ArgoCD ApplicationSet.
+#
+# The filename matters: aws/argocd/app-of-apps.yaml sets
+# `valuesFile: helm-values-aws.yaml` for the dev tier, so a service whose
+# directory lacks this exact name is deployed with bare chart defaults. The
+# templates used to emit helm-values-dev.yaml, which nothing reads — every
+# scaffolded service therefore opened a GitOps PR that CI rejected with
+# "has no helm-values-aws.yaml", and would have mis-deployed if merged.
+# Observed 2026-08-17.
+
+replicaCount: 2
 
 image:
-  repository: ghcr.io/${{ values.githubOrg }}/${{ values.repoName }}
+  # Set by the provision-ecr scaffolder step. Empty when the service was
+  # scaffolded with deployTarget=local, in which case this file is inert
+  # until someone fills it in — it still has to exist for the
+  # ApplicationSet to find it.
+  repository: ${{ values.ecrRepositoryUri }}
   tag: "latest"
   pullPolicy: IfNotPresent
 

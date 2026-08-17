@@ -253,6 +253,10 @@ spec:
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
           owner: ${{ parameters.owner }}
           costCenter: ${{ parameters.costCenter }}
+          # Full ECR URI from the provision-ecr step. That step is guarded on
+          # deployTarget == 'aws', so this renders empty for a local scaffold —
+          # helm-values-aws.yaml still has to exist for the ApplicationSet.
+          ecrRepositoryUri: ${{ steps['provision-ecr'].output.repositoryUri }}
 
     - id: platform-pr
       name: Open Platform GitOps PR
