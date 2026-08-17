@@ -1,0 +1,50 @@
+# AWS/EKS values for the platform's ArgoCD ApplicationSet.
+#
+# The filename matters: aws/argocd/app-of-apps.yaml sets
+# `valuesFile: helm-values-aws.yaml` for the dev tier, so a service whose
+# directory lacks this exact name is deployed with bare chart defaults. The
+# templates used to emit helm-values-dev.yaml, which nothing reads — every
+# scaffolded service therefore opened a GitOps PR that CI rejected with
+# "has no helm-values-aws.yaml", and would have mis-deployed if merged.
+# Observed 2026-08-17.
+
+replicaCount: 2
+
+image:
+  # Set by the provision-ecr scaffolder step. Empty when the service was
+  # scaffolded with deployTarget=local, in which case this file is inert
+  # until someone fills it in — it still has to exist for the
+  # ApplicationSet to find it.
+  repository: ${{ values.ecrRepositoryUri }}
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: ${{ values.port }}
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+  hosts: []   # no DNS in front of the ALB yet; matches every other ingress here
+  paths:
+    - path: /
+      pathType: Prefix
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+podLabels:
+  team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') }}"
+  cost-center: "${{ values.costCenter }}"
+  environment: dev
+  app.kubernetes.io/part-of: internal-developer-platform
