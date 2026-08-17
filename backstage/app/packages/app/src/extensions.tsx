@@ -3330,7 +3330,7 @@ const teamBudgetEntityContent = EntityContentBlueprint.make({
 // ── SLO / Error Budget entity tab (kind:component) ────────────────────────────
 // Reads idp.io/slo-availability-target and idp.io/slo-latency-target annotations.
 // Queries Prometheus for Sloth-generated recording rules (sloth_slo_info +
-// slo:slo_error_ratio:ratio_rate5m) to show live error budget gauges per SLO.
+// slo:sli_error:ratio_rate5m) to show live error budget gauges per SLO.
 
 interface SlothSloInfo {
   sloth_id: string;
@@ -3416,7 +3416,12 @@ function SloEntityContent() {
         setHasSloth(infos.length > 0);
 
         // Fetch current error ratios for each SLO
-        const ratioResult = await promQuery(`slo:slo_error_ratio:ratio_rate5m{sloth_service="${slothService}"}`);
+        // slo:sli_error:ratio_rate5m is the name Sloth actually generates.
+        // slo:slo_error_ratio:ratio_rate5m does not exist and never has, so this
+        // query returned nothing and every SLO rendered "Error Budget Remaining
+        // 0.0% / Critical" even for a service with a completely untouched budget.
+        // Observed 2026-08-17.
+        const ratioResult = await promQuery(`slo:sli_error:ratio_rate5m{sloth_service="${slothService}"}`);
         const ratios: Record<string, number> = {};
         for (const r of ratioResult?.data?.result ?? []) {
           const id = r.metric.sloth_id ?? '';

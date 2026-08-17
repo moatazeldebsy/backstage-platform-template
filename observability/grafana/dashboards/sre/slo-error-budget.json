@@ -47,7 +47,7 @@
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "targets": [{ "expr": "count(slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"} > 0.01) or vector(0)", "refId": "A", "legendFormat": "Burning Fast" }],
+      "targets": [{ "expr": "count(slo:sli_error:ratio_rate5m{sloth_service=~\"$service\"} > 0.01) or vector(0)", "refId": "A", "legendFormat": "Burning Fast" }],
       "fieldConfig": { "defaults": { "unit": "short", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 3 }] } } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
     },
@@ -57,7 +57,7 @@
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "targets": [{ "expr": "max(slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"}) or vector(0)", "refId": "A", "legendFormat": "Max Error Ratio" }],
+      "targets": [{ "expr": "max(slo:sli_error:ratio_rate5m{sloth_service=~\"$service\"}) or vector(0)", "refId": "A", "legendFormat": "Max Error Ratio" }],
       "fieldConfig": { "defaults": { "unit": "percentunit", "noValue": "0", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.005 }, { "color": "red", "value": 0.01 }] } } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
     },
@@ -68,7 +68,7 @@
       "type": "bargauge",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 4 },
-      "targets": [{ "expr": "sort_desc(slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"})", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "targets": [{ "expr": "sort_desc(slo:sli_error:ratio_rate5m{sloth_service=~\"$service\"})", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -88,7 +88,7 @@
       "gridPos": { "h": 10, "w": 12, "x": 12, "y": 4 },
       "targets": [
         { "expr": "sloth_slo_info{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "", "instant": true },
-        { "expr": "slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"}", "refId": "B", "legendFormat": "", "instant": true }
+        { "expr": "slo:sli_error:ratio_rate5m{sloth_service=~\"$service\"}", "refId": "B", "legendFormat": "", "instant": true }
       ],
       "transformations": [
         { "id": "merge", "options": {} },
@@ -119,7 +119,7 @@
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 14 },
-      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate5m{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "targets": [{ "expr": "slo:sli_error:ratio_rate5m{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -138,7 +138,7 @@
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 14 },
-      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate30m{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "targets": [{ "expr": "slo:sli_error:ratio_rate30m{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -158,7 +158,7 @@
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 23 },
-      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate1h{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "targets": [{ "expr": "slo:sli_error:ratio_rate1h{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -177,7 +177,7 @@
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 23 },
-      "targets": [{ "expr": "slo:slo_error_ratio:ratio_rate6h{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
+      "targets": [{ "expr": "slo:sli_error:ratio_rate6h{sloth_service=~\"$service\"}", "refId": "A", "legendFormat": "{{sloth_service}} / {{sloth_id}}" }],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
