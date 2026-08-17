@@ -56,7 +56,13 @@ resources:
 
 env:
   - name: BACKSTAGE_URL
-    value: "http://backstage.backstage.svc.cluster.local:7007"
+  # Port 80, not 7007. The backstage Service is type LoadBalancer listening on
+  # port 80 with targetPort 7007 — 7007 is the CONTAINER port and nothing
+  # listens on it at the Service. Every call from this server to Backstage
+  # therefore hung until it timed out, and the Backstage AI Assistant answered
+  # "the catalog is currently unreachable" / "both search attempts timed out"
+  # for anything that needed the catalog. Observed 2026-08-17.
+    value: "http://backstage.backstage.svc.cluster.local"
   - name: BACKSTAGE_EXTERNAL_URL
     value: ""   # set to real domain when DNS is configured
   - name: BACKSTAGE_TOKEN
