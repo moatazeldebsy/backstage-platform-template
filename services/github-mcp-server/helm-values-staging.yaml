@@ -7,7 +7,7 @@ image:
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/github-mcp-server
-  tag: "776b86b"
+  tag: "79f4236"
   pullPolicy: Always
 service:
   type: ClusterIP
