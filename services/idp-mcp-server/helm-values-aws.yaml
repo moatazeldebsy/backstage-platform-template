@@ -8,7 +8,7 @@ image:
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/idp-mcp-server
-  tag: "776b86b"
+  tag: "038d850"
   pullPolicy: Always
 service:
   type: ClusterIP
@@ -48,12 +48,12 @@ resources:
     memory: 256Mi
 env:
   - name: BACKSTAGE_URL
-  # Port 80, not 7007. The backstage Service is type LoadBalancer listening on
-  # port 80 with targetPort 7007 — 7007 is the CONTAINER port and nothing
-  # listens on it at the Service. Every call from this server to Backstage
-  # therefore hung until it timed out, and the Backstage AI Assistant answered
-  # "the catalog is currently unreachable" / "both search attempts timed out"
-  # for anything that needed the catalog. Observed 2026-08-17.
+    # Port 80, not 7007. The backstage Service is type LoadBalancer listening on
+    # port 80 with targetPort 7007 — 7007 is the CONTAINER port and nothing
+    # listens on it at the Service. Every call from this server to Backstage
+    # therefore hung until it timed out, and the Backstage AI Assistant answered
+    # "the catalog is currently unreachable" / "both search attempts timed out"
+    # for anything that needed the catalog. Observed 2026-08-17.
     value: "http://backstage.backstage.svc.cluster.local"
   - name: BACKSTAGE_EXTERNAL_URL
     value: "" # set to real domain when DNS is configured
