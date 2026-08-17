@@ -292,10 +292,18 @@ def push_to_gateway(job: str, service: str, metrics: dict, team: str = "unknown"
 
     url = f"{PUSHGATEWAY_URL}/metrics/job/{job}/service/{service}"
     try:
+        # PUT, not POST. POST merges into an existing Pushgateway group and
+        # leaves behind any metric no longer in the payload, so renaming
+        # dora_change_failure_rate to dora_change_failure_rate_percent left 28
+        # orphaned series of the old name sitting at their last value forever,
+        # with nothing to ever update or expire them. PUT replaces the group,
+        # which is the correct semantic here: this exporter owns
+        # job=dora-exporter entirely and always publishes the full metric set
+        # for a service in one call. Observed 2026-08-17.
         req = urllib.request.Request(
             url,
             data=payload.encode("utf-8"),
-            method="POST",
+            method="PUT",
             headers={"Content-Type": "text/plain; version=0.0.4"},
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -475,7 +483,7 @@ def main():
         push_to_gateway("dora-exporter", "all-services", {
             "dora_deploy_frequency_per_day": (agg_deploy_freq, "DORA deployment frequency (deploys per day)", "gauge"),
             "dora_lead_time_minutes":        (agg_lead_time,   "DORA lead time for changes (minutes)",        "gauge"),
-            "dora_change_failure_rate":      (agg_cfr,         "DORA change failure rate (percent)",          "gauge"),
+            "dora_change_failure_rate_percent": (agg_cfr,      "DORA change failure rate (percent)",          "gauge"),
             "dora_mttr_minutes":             (agg_mttr,        "DORA mean time to restore (minutes)",         "gauge"),
         })
 
