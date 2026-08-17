@@ -8,7 +8,7 @@ image:
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/qa-mcp-server
-  tag: "fb98151"
+  tag: "79f4236"
   pullPolicy: Always
 service:
   type: ClusterIP
