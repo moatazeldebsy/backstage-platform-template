@@ -1,4 +1,7 @@
-replicaCount: 1
+# Renamed from helm-values-dev.yaml and reshaped for AWS: the ArgoCD
+# ApplicationSet reads helm-values-aws.yaml, and the original was
+# nginx/ghcr/idp.local shaped. See PR #379 for the template-side fix.
+replicaCount: 2
 
 image:
   repository: ghcr.io/moatazeldebsy/llm-app-langfuse
@@ -11,15 +14,18 @@ service:
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-  hosts:
-    - host: llm-app-langfuse.idp.local
-      paths:
-        - path: /
-          pathType: Prefix
+  hosts: []   # no DNS in front of the ALB yet
+  paths:
+    - path: /
+      pathType: Prefix
   tls: []
 
 resources:
