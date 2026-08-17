@@ -20,6 +20,13 @@ prometheus:
     servicePort: 9090
   prometheusSpec:
     retention: 6h
+    # Cap by size as well as time. A time-only limit lets Prometheus fill the
+    # volume and then stop ingesting entirely while still reporting every target
+    # "up" — the AWS cluster wedged that way on 2026-08-17 and the only symptom
+    # was Grafana showing "no data". 6h of local series is far below 2Gi, so this
+    # should never bind; it exists so the failure mode is impossible rather than
+    # merely unlikely. Keep in step with aws/observability/prometheus-stack-values.yaml.
+    retentionSize: 1500MB
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}
     podMonitorSelector: {}

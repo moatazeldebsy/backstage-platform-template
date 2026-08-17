@@ -3,7 +3,7 @@
 #   - ALB ingress (instead of nginx)
 #   - gp3 persistent volumes (20% cheaper than gp2)
 #   - 3-day Prometheus retention (cost-optimised; use 15d for production)
-#   - 5Gi Prometheus storage (within EBS 30Gi free tier)
+#   - 20Gi Prometheus storage with a 15GB retentionSize cap
 #   - Grafana IRSA annotation for CloudWatch datasource
 #   - All three dashboard ConfigMaps wired (IDP, DORA, QA)
 #
@@ -43,6 +43,19 @@ prometheus:
     servicePort: 9090
   prometheusSpec:
     retention: 3d
+    # retentionSize is the load-bearing setting, not retention. With only a time
+    # limit, Prometheus happily fills the volume and then stops ingesting
+    # ENTIRELY — it keeps reporting every target "up" while writing nothing:
+    #
+    #   err="write to WAL: log samples: write /prometheus/wal/00000164:
+    #        no space left on device"
+    #
+    # The 5Gi volume filled in under five days and Prometheus went silent for
+    # ~3 hours before anyone noticed, because the only symptom was Grafana and
+    # the Backstage DORA page showing "no data" — which reads as an exporter
+    # problem, not a storage one. Capping below the volume size makes Prometheus
+    # drop the oldest blocks instead of wedging. Observed 2026-08-17.
+    retentionSize: 15GB
     resources:
       requests:
         cpu: 200m
@@ -58,7 +71,11 @@ prometheus:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 5Gi
+              # 5Gi held roughly four days of this cluster's series volume and
+              # then wedged Prometheus (see retentionSize above). gp3 allows
+              # online expansion, so growing this is a patch rather than a
+              # rebuild — but a fresh install should start with headroom.
+              storage: 20Gi
 
     # ── Thanos sidecar (V2 multi-region) ──────────────────────────────────────
     # Enables long-term storage to S3 and cross-region query federation.
