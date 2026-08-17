@@ -1,6 +1,5 @@
 # Helm overrides for contract-mcp-server — AWS dev environment
 fullnameOverride: contract-mcp-server
-
 serviceAccount:
   create: true
   annotations:
@@ -10,15 +9,12 @@ serviceAccount:
     # where the ServiceAccount carried CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER
     # verbatim and IRSA never actually worked.
     eks.amazonaws.com/role-arn: arn:aws:iam::967825954374:role/idp-mvp-contract-mcp-server
-
 replicaCount: 1
-
 # The chart defaults autoscaling.enabled: true with minReplicas: 2, which
 # overrides replicaCount above via the HPA — for this single-node-group dev
 # deployment, one replica is plenty and avoids doubling pod-density pressure.
 autoscaling:
   enabled: false
-
 image:
   # Resolved by scripts/setup.sh during personalisation, exactly like
   # hello-service. It used to be ECR_REGISTRY_PLACEHOLDER, substituted by
@@ -26,14 +22,12 @@ image:
   # disk was never renderable, so ArgoCD could not deploy this service and
   # it had to be excluded from the ApplicationSets.
   repository: 967825954374.dkr.ecr.us-east-1.amazonaws.com/idp-mvp/contract-mcp-server
-  tag: "0.1.0"
+  tag: "038d850"
   pullPolicy: Always
-
 service:
   type: ClusterIP
   port: 3003
   targetPort: 3003
-
 ingress:
   enabled: true
   className: alb
@@ -42,26 +36,23 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
   hosts:
-    - host: ""   # match any hostname; use ALB DNS directly
+    - host: "" # match any hostname; use ALB DNS directly
       paths:
         - path: /
           pathType: Prefix
   tls: []
-
 livenessProbe:
   httpGet:
     path: /healthz
     port: http
   initialDelaySeconds: 10
   periodSeconds: 15
-
 readinessProbe:
   httpGet:
     path: /ready
     port: http
   initialDelaySeconds: 5
   periodSeconds: 10
-
 resources:
   requests:
     cpu: 50m
@@ -69,18 +60,17 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 env:
   - name: BACKSTAGE_URL
-  # Port 80, not 7007. The backstage Service is type LoadBalancer listening on
-  # port 80 with targetPort 7007 — 7007 is the CONTAINER port and nothing
-  # listens on it at the Service. Every call from this server to Backstage
-  # therefore hung until it timed out, and the Backstage AI Assistant answered
-  # "the catalog is currently unreachable" / "both search attempts timed out"
-  # for anything that needed the catalog. Observed 2026-08-17.
+    # Port 80, not 7007. The backstage Service is type LoadBalancer listening on
+    # port 80 with targetPort 7007 — 7007 is the CONTAINER port and nothing
+    # listens on it at the Service. Every call from this server to Backstage
+    # therefore hung until it timed out, and the Backstage AI Assistant answered
+    # "the catalog is currently unreachable" / "both search attempts timed out"
+    # for anything that needed the catalog. Observed 2026-08-17.
     value: "http://backstage.backstage.svc.cluster.local"
   - name: BACKSTAGE_EXTERNAL_URL
-    value: ""   # set to real domain when DNS is configured
+    value: "" # set to real domain when DNS is configured
   - name: BACKSTAGE_TOKEN
     valueFrom:
       secretKeyRef:
@@ -106,11 +96,9 @@ env:
     value: "contract-registry"
   - name: AWS_REGION
     value: "us-east-1"
-
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
-
 rbac:
   create: true
   rules:
@@ -120,16 +108,13 @@ rbac:
   capabilities:
     drop:
       - ALL
-
 backstage:
   kubernetesId: contract-mcp-server
-
 podLabels:
   backstage.io/kubernetes-id: contract-mcp-server
   team: platform-team
   cost-center: CC-1000
   environment: dev
-
 # Langfuse tracing for src/telemetry.ts. The langfuse-otel secret carries
 # LANGFUSE_OTLP_ENDPOINT / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY and is
 # created per-namespace by bootstrap-ai.sh (namespaces labelled
