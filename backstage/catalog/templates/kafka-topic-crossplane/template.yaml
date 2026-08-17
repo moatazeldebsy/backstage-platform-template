@@ -98,7 +98,13 @@ spec:
           replicationFactor: ${{ parameters.replicationFactor }}
           retentionHours: ${{ parameters.retentionHours }}
           cleanupPolicy: ${{ parameters.cleanupPolicy }}
-          costCenter: ${{ parameters.costCenter }}
+          # `| default(...)` mirrors the parameter's own schema default. RJSF only
+          # submits a page's fields once that page has been visited, so clicking
+          # straight past an all-optional step sends nothing for it — the scaffolder
+          # then renders `${{ values.port }}` as an empty string. That produced a bare
+          # `EXPOSE` in the generated Dockerfile and every scaffolded repo's first CI
+          # run died with "EXPOSE requires at least one argument". Observed 2026-08-17.
+          costCenter: ${{ parameters.costCenter | default("engineering") }}
 
     - id: open-pr
       name: Open PR to register Crossplane Claim

@@ -243,12 +243,18 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
-          port: ${{ parameters.port }}
+          # `| default(...)` mirrors the parameter's own schema default. RJSF only
+          # submits a page's fields once that page has been visited, so clicking
+          # straight past an all-optional step sends nothing for it — the scaffolder
+          # then renders `${{ values.port }}` as an empty string. That produced a bare
+          # `EXPOSE` in the generated Dockerfile and every scaffolded repo's first CI
+          # run died with "EXPOSE requires at least one argument". Observed 2026-08-17.
+          port: ${{ parameters.port | default(8000) }}
           model: ${{ parameters.model }}
           effort: ${{ parameters.effort }}
           captureIo: ${{ parameters.captureIo }}
           sampleRate: ${{ parameters.sampleRate }}
-          costCenter: ${{ parameters.costCenter }}
+          costCenter: ${{ parameters.costCenter | default("eng-platform") }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
           grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
@@ -314,9 +320,9 @@ spec:
           name: ${{ parameters.name }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
-          port: ${{ parameters.port }}
+          port: ${{ parameters.port | default(8000) }}
           owner: ${{ parameters.owner }}
-          costCenter: ${{ parameters.costCenter }}
+          costCenter: ${{ parameters.costCenter | default("eng-platform") }}
           captureIo: ${{ parameters.captureIo }}
           sampleRate: ${{ parameters.sampleRate }}
           # Full ECR URI from the provision-ecr step. That step is guarded on

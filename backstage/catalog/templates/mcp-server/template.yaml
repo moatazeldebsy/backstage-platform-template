@@ -96,7 +96,13 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
-          port: ${{ parameters.port }}
+          # `| default(...)` mirrors the parameter's own schema default. RJSF only
+          # submits a page's fields once that page has been visited, so clicking
+          # straight past an all-optional step sends nothing for it — the scaffolder
+          # then renders `${{ values.port }}` as an empty string. That produced a bare
+          # `EXPOSE` in the generated Dockerfile and every scaffolded repo's first CI
+          # run died with "EXPOSE requires at least one argument". Observed 2026-08-17.
+          port: ${{ parameters.port | default(3001) }}
           language: ${{ parameters.language }}
           enableAuth: ${{ parameters.enableAuth }}
           pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
@@ -128,7 +134,7 @@ spec:
       action: idp:deploy-mcp-server
       input:
         name: ${{ parameters.name }}
-        port: ${{ parameters.port }}
+        port: ${{ parameters.port | default(3001) }}
         repoName: ${{ parameters.repoUrl | parseRepoUrl | pick('repo') }}
         repoOwner: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
         # Deploy the image the scaffold commit will produce, rather than the
