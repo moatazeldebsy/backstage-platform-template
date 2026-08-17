@@ -115,8 +115,14 @@ spec:
                   value: "moatazeldebsy"
                 - name: AWS_REGION
                   value: "us-east-1"
+                # 7 days, the conventional DORA reporting window. 24h was too
+                # narrow to be meaningful here: a service that shipped four
+                # times on Tuesday and nothing on Wednesday reported 0.00
+                # deploys/day, which reads as "broken pipeline" rather than
+                # "no changes today", and left most services with no series at
+                # all for their Backstage DORA tab to query.
                 - name: LOOKBACK_HOURS
-                  value: "24"
+                  value: "168"
                 - name: CLOUDWATCH_NS
                   value: "IDP/DORA"
                 # Optional: map repo names to team names for per-team DORA metrics.
