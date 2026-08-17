@@ -48,7 +48,13 @@ resources:
     memory: 256Mi
 env:
   - name: BACKSTAGE_URL
-    value: "http://backstage.backstage.svc.cluster.local:7007"
+  # Port 80, not 7007. The backstage Service is type LoadBalancer listening on
+  # port 80 with targetPort 7007 — 7007 is the CONTAINER port and nothing
+  # listens on it at the Service. Every call from this server to Backstage
+  # therefore hung until it timed out, and the Backstage AI Assistant answered
+  # "the catalog is currently unreachable" / "both search attempts timed out"
+  # for anything that needed the catalog. Observed 2026-08-17.
+    value: "http://backstage.backstage.svc.cluster.local"
   - name: BACKSTAGE_EXTERNAL_URL
     value: "" # set to real domain when DNS is configured
   - name: BACKSTAGE_TOKEN
@@ -64,6 +70,16 @@ env:
         optional: true
   - name: PROMETHEUS_URL
     value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
+  # Node does not trust the cluster CA by default, so every call to
+  # https://kubernetes.default.svc failed with UNABLE_TO_VERIFY_LEAF_SIGNATURE
+  # and the Backstage AI Assistant reported "unreachable ... due to a
+  # certificate verification issue" for anything touching agent memory.
+  # Point Node at the ServiceAccount CA bundle rather than reaching for
+  # NODE_TLS_REJECT_UNAUTHORIZED=0, which disables verification for every
+  # outbound TLS connection this server makes, not just the API server.
+  # Observed 2026-08-17.
+  - name: NODE_EXTRA_CA_CERTS
+    value: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   - name: K8S_API
     value: "https://kubernetes.default.svc"
   - name: PORT
