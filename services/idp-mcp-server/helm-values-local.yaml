@@ -69,8 +69,18 @@ env:
     value: "https://kubernetes.default.svc"
   - name: PORT
     value: "3001"
-  - name: NODE_TLS_REJECT_UNAUTHORIZED
-    value: "0"
+  # Node does not trust the cluster CA by default, so every call to
+  # https://kubernetes.default.svc fails with UNABLE_TO_VERIFY_LEAF_SIGNATURE.
+  # Point Node at the ServiceAccount CA bundle rather than reaching for
+  # NODE_TLS_REJECT_UNAUTHORIZED=0, which disables verification for EVERY
+  # outbound TLS connection this server makes -- GitHub, Backstage, Prometheus,
+  # the Langfuse OTLP endpoint -- not just the API server.
+  #
+  # This is what helm-values-aws.yaml, -staging and -prod have done since
+  # 2026-08-17; the local file was missed and kept the blunt instrument.
+  # Observed 2026-08-18.
+  - name: NODE_EXTRA_CA_CERTS
+    value: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   - name: GITHUB_ORG
     value: "moatazeldebsy"
   # Human-in-the-loop approval gate (docs/agent-approvals.md). Declared here

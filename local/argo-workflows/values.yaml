@@ -9,9 +9,16 @@ server:
     ingressClassName: nginx
     hosts:
       - argo-workflows.idp.local
+    # server.ingress.paths is a list of PATH STRINGS, with pathType as a
+    # sibling scalar — not a list of {path, pathType} objects. The object form
+    # renders as `path: map[path:/ pathType:Prefix]` and the API server rejects
+    # the Ingress with "must be an absolute path", which failed the whole
+    # `helm install argo-workflows` and took the ML training pipeline, the LLM
+    # eval pipeline and the DR failover runbook down with it. Fixed on the AWS
+    # side 2026-08-16; this local copy was missed. Observed 2026-08-18.
     paths:
-      - path: /
-        pathType: Prefix
+      - /
+    pathType: Prefix
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
