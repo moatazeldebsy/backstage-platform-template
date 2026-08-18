@@ -819,7 +819,7 @@ wait_kyverno_webhook_ready() {
 append_hosts_file() {
   local file="$1" filter="${2:-}"
   [[ -f "$file" ]] || { warn "append_hosts_file: $file not found"; return 0; }
-  local added=false line hostname
+  local added=false failed=0 line hostname
   while IFS= read -r line; do
     [[ -z "$line" || "$line" == \#* ]] && continue
     [[ -n "$filter" ]] && ! echo "$line" | grep -qE "$filter" && continue
@@ -830,6 +830,7 @@ append_hosts_file() {
         log "  Added to /etc/hosts: $hostname"
         added=true
       else
+        failed=$((failed + 1))
         warn "  Could not add '$hostname' to /etc/hosts. Add manually:"
         warn "  echo '$line' | sudo tee -a /etc/hosts"
       fi
@@ -844,6 +845,14 @@ append_hosts_file() {
     elif command -v resolvectl &>/dev/null; then
       sudo resolvectl flush-caches 2>/dev/null || true
     fi
+  elif (( failed > 0 )); then
+    # Do not claim success here. This branch used to log "already up to date"
+    # whenever nothing was added — including the case where every single append
+    # FAILED (no tty for sudo, or the user declined). The run then continued and
+    # died much later on hostnames that never resolved, with a log that said the
+    # hosts file was fine. Observed 2026-08-18.
+    warn "  /etc/hosts NOT updated: ${failed} hostname(s) could not be added (sudo unavailable?)."
+    warn "  Every *.idp.local URL will fail to resolve until these are added — see the lines above."
   else
     log "  /etc/hosts already up to date — no changes needed."
   fi
@@ -1120,16 +1129,66 @@ Install them and re-run, or run manually:
     err "Docker daemon is not reachable. Start Docker Desktop / Rancher Desktop and re-run."
   fi
 
-  # Free disk on the partition holding Docker storage — the Backstage build
-  # alone needs ~5GB, and the cluster + observability stack chews through more.
-  local free_gb
+  # Free disk on the partition holding Docker storage.
+  #
+  # This used to warn below 10G and carry on. That was too generous and too
+  # quiet: a cold bootstrap re-pulls every platform image (ingress-nginx,
+  # kube-prometheus-stack, ArgoCD, Loki, Tempo, OpenCost, Gatekeeper, Kyverno),
+  # builds eleven service images, and then builds Backstage — whose multi-stage
+  # `yarn install` + `yarn build:backend` alone is ~5G. Measured end to end that
+  # is 18-25G, so a run starting with 14G free dies on "no space left on device"
+  # somewhere around step 5, tens of minutes in, with an error that points at
+  # whichever helm release happened to be installing. Failing in two seconds is
+  # strictly better. Observed 2026-08-18.
+  #
+  # On macOS also measure /System/Volumes/Data: `df /` reports the sealed
+  # read-only system volume, which shares the APFS container but is not what
+  # actually fills up.
+  #
+  # Set IDP_SKIP_DISK_CHECK=1 to bypass (e.g. a --skip-obs run that genuinely
+  # needs less).
+  local free_gb disk_target="/"
   if [[ "$(uname)" == "Darwin" ]]; then
-    free_gb=$(df -g / 2>/dev/null | awk 'NR==2{print $4}')
+    [[ -d /System/Volumes/Data ]] && disk_target="/System/Volumes/Data"
+    free_gb=$(df -g "$disk_target" 2>/dev/null | awk 'NR==2{print $4}')
   else
-    free_gb=$(df -BG / 2>/dev/null | awk 'NR==2{gsub("G","",$4); print $4}')
+    free_gb=$(df -BG "$disk_target" 2>/dev/null | awk 'NR==2{gsub("G","",$4); print $4}')
   fi
-  if [[ -n "${free_gb:-}" ]] && (( free_gb < 10 )); then
-    warn "Low free disk (${free_gb}G on /). Bootstrap needs ~10G headroom; consider freeing space before proceeding."
+  if [[ -n "${free_gb:-}" && "${IDP_SKIP_DISK_CHECK:-0}" != "1" ]]; then
+    if (( free_gb < 15 )); then
+      err "Only ${free_gb}G free on ${disk_target}. A cold bootstrap needs 18-25G (platform images + eleven service builds + the Backstage image) and will fail partway through with 'no space left on device'.
+
+Free up space and re-run, or set IDP_SKIP_DISK_CHECK=1 to override.
+
+If you use Rancher Desktop or Docker Desktop, check the VM disk image first —
+it is sparse and does not shrink while the VM is running, so it can hold tens of
+gigabytes the guest already freed. A clean shutdown reclaims them:
+  rdctl shutdown && rdctl start
+  du -sh ~/Library/Application\\ Support/rancher-desktop/lima/0/disk"
+    elif (( free_gb < 30 )); then
+      warn "Free disk is ${free_gb}G on ${disk_target}. That is enough to start, but a full run including the Backstage image build wants ~30G of headroom."
+    fi
+  fi
+
+  # Ports 80/443 must be free: kind maps them into the cluster via
+  # extraPortMappings (local/kind-config.yaml) AND ingress-nginx binds them with
+  # controller.hostPort.enabled=true. When something else holds them, cluster
+  # creation or the ingress install fails much later with an opaque bind error.
+  # The usual culprits are Traefik left enabled in Rancher Desktop, or a stray
+  # local web server.
+  local _busy_ports=()
+  if command -v lsof &>/dev/null; then
+    local _p
+    for _p in 80 443; do
+      lsof -nP -iTCP:"$_p" -sTCP:LISTEN >/dev/null 2>&1 && _busy_ports+=("$_p")
+    done
+  fi
+  if (( ${#_busy_ports[@]} > 0 )); then
+    err "Port(s) ${_busy_ports[*]} are already in use, but kind maps them into the cluster and ingress-nginx binds them as hostPorts.
+
+Find the holder with:  sudo lsof -nP -iTCP:${_busy_ports[0]} -sTCP:LISTEN
+
+On Rancher Desktop, the usual cause is Traefik: Preferences -> Kubernetes -> disable Traefik."
   fi
 
   # CPU/memory allocated to the Docker daemon (on Docker Desktop this is the
