@@ -337,6 +337,16 @@ if $DESTROY; then
       2>/dev/null || true
   fi
 
+  # The AI overlay is gitignored and lives on disk, so it survives the cluster it
+  # describes. bootstrap-ai.sh --destroy resets it, but the call above is guarded
+  # on all three of kagent/ml-platform/services-dev existing — so a teardown of a
+  # cluster that was already partly gone skipped it entirely and left the overlay
+  # asserting `aiStack.enabled: true` with no cluster at all behind it. Reset it
+  # here unconditionally: the cluster is being destroyed, so AI is off by
+  # definition. Idempotent and cheap. Observed 2026-08-18.
+  write_backstage_ai_overlay false
+  log "  Backstage AI overlay reset to disabled."
+
   # ── Stop compose stack, registry, and reclaim all IDP-related Docker state ─
   # Reuses _clean_docker so destroy/reset/clean paths converge: removes the
   # compose stack with --rmi all, prunes all unused images (not just dangling),
@@ -481,6 +491,16 @@ if $UPDATE_BACKSTAGE_IP; then
   exit 0
 fi
 
+# ── Helper: is the AI/ML stack actually installed on the current cluster? ────
+# Used to decide the Backstage AI overlay. Deliberately checks for a real
+# workload rather than just the namespace: `kubectl delete namespace` can leave
+# a terminating or empty kagent namespace behind, and an empty namespace must
+# not count as "AI is installed". Any failure to reach the cluster answers no,
+# which is the safe direction — it hides nav items rather than showing broken ones.
+_ai_stack_installed() {
+  kubectl get deployment -n kagent -o name 2>/dev/null | grep -q .
+}
+
 # ── --start-backstage fast path ───────────────────────────────────────────────
 # Build + start Backstage, wire nginx routing, seed QA metrics, trigger catalog
 # export. Run after 'bootstrap-local.sh' finishes, or as a day-2 restart path.
@@ -502,9 +522,28 @@ _start_backstage() {
   # build is needed. Steady-state rebuilds reuse BuildKit cache mounts.
   # The compose file bind-mounts app-config.ai.yaml unconditionally, so it has
   # to exist before `up` or Docker silently creates a directory in its place and
-  # Backstage dies parsing it. Only seed it when absent: if bootstrap-ai.sh has
-  # already turned the AI layer on, restarting Backstage must not turn it off.
-  if [[ ! -f "${ROOT_DIR}/local/backstage/app-config.ai.yaml" ]]; then
+  # Backstage dies parsing it.
+  #
+  # Decide on/off from the CLUSTER, not from whether the file happens to exist.
+  # This used to be `if [[ ! -f ... ]]; then write_backstage_ai_overlay false; fi`
+  # — seed only when absent — so that restarting Backstage on an AI-enabled
+  # cluster would not switch the AI layer back off. The intent was right but the
+  # test was wrong: the overlay is gitignored and lives on disk, so it OUTLIVES
+  # the cluster. After `--destroy` (or a bare `kind delete cluster`) followed by a
+  # fresh bootstrap, a months-old overlay still saying `aiStack.enabled: true`
+  # was left untouched, and Backstage rendered AI Assistant, AI Search,
+  # Approvals, KAgent, MLflow and Langfuse in the sidebar on a cluster with no
+  # AI stack at all — every one of them pointing at a service that did not exist.
+  # Observed 2026-08-18 on a cluster rebuilt from scratch, with an overlay dated
+  # eight days earlier.
+  #
+  # Reading the cluster instead makes this self-healing: it corrects a stale
+  # overlay no matter how the AI stack went away, and still leaves an
+  # AI-enabled cluster alone because the check then passes. bootstrap-ai.sh
+  # remains the thing that writes `true`.
+  if _ai_stack_installed; then
+    [[ -f "${ROOT_DIR}/local/backstage/app-config.ai.yaml" ]] || write_backstage_ai_overlay true
+  else
     write_backstage_ai_overlay false
   fi
 
