@@ -1374,6 +1374,30 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#consolidating-albs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consolidating ALBs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Consolidating ALBs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dns-wildcard-now-external-dns-at-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      DNS: wildcard now, external-dns at scale
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#budget-alert" class="md-nav__link">
     <span class="md-ellipsis">
       Budget alert
@@ -3092,7 +3116,9 @@ t3.large buys memory at exactly proportional cost.</p>
 <span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20Gi</span>
 </code></pre></div></td></tr></table></div></p>
 <h3 id="skip-the-aiml-stack">Skip the AI/ML stack<a class="headerlink" href="#skip-the-aiml-stack" title="Permanent link">&para;</a></h3>
-<p>KAgent + MLflow + MCP servers add 2–4 extra ALBs (~$36–72/month) and ~6 Gi EBS. Skip them unless needed:</p>
+<p>KAgent + MLflow + MCP servers add ~6 platform ALBs plus one per MCP server per
+environment (~$36–72/month for the platform pieces alone, more once the MCP
+servers are promoted to staging and prod) and ~6 Gi EBS. Skip them unless needed:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -3160,6 +3186,14 @@ Secrets (~$15). Nodes and ALBs are what actually move.</p>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>The ALB column understates a full AI deployment. Measured on the live cluster
+2026-08-17, <strong>27 ALB Ingresses</strong> existed with <code>--adp</code> and all three
+environments populated (dev/staging/prod each publish their own), not 6 — one
+per Ingress, since <code>group.name</code> is unused. Removing the six dead internal ones
+below brings that to 21. Treat the table as the core-platform baseline and
+assume roughly one ALB per service per environment on top.</p>
+</blockquote>
 <p>Where the money goes, and what has already been done about it:</p>
 <ul>
 <li><strong>Nodes</strong> dominate — 6× t3.medium is ~$182/mo on-demand. <code>enable_cost_optimizer</code>
@@ -3171,11 +3205,83 @@ Secrets (~$15). Nodes and ALBs are what actually move.</p>
   publish one — they are operator tools, reachable with <code>kubectl port-forward</code>
   (the bootstrap banner prints the exact commands). That is ~$82/mo, and it also
   took five unauthenticated endpoints off the public internet.</li>
-<li><strong>Consolidating the remaining ALBs</strong> onto one would save ~$80/mo more, but it
-  needs real DNS: they all serve <code>path: /</code> with no hostname, so a shared
-  <code>group.name</code> would make them collide. Set <code>domain_name</code> and give each a real
-  host first.</li>
+<li><strong>Six internal ALBs were pure waste</strong> and have been removed (2026-08-18).
+  <code>approval-service</code> and the <code>argocd</code>/<code>cost</code>/<code>github</code>/<code>incident</code>/<code>security</code> MCP
+  servers each published an <em>internal</em> ALB with a <code>&lt;service&gt;.internal</code> hostname.
+  No private hosted zone exists, so those names resolved nowhere, and every real
+  caller uses in-cluster Service DNS anyway — <code>app-config.aws.yaml</code> proxies
+  straight to <code>*.services-dev.svc.cluster.local</code>. They routed nothing and billed
+  ~$96/mo. Their <code>ingress.enabled</code> is now <code>false</code>, which is also <em>more</em> private
+  than an internal ALB.</li>
+<li><strong>Consolidating the eight remaining internet-facing ALBs</strong> onto one would save
+  ~$112/mo more. See <a href="#consolidating-albs">Consolidating ALBs</a> — it needs real
+  DNS, so it is a project rather than a flag.</li>
 </ul>
+<h3 id="consolidating-albs">Consolidating ALBs<a class="headerlink" href="#consolidating-albs" title="Permanent link">&para;</a></h3>
+<p>Eight services still publish their own internet-facing ALB at ~$16/mo each. They
+cannot share one today: every entry sets <code>host: ""</code> with <code>path: /</code>, so a shared
+<code>alb.ingress.kubernetes.io/group.name</code> produces colliding rules and the ALB
+controller rejects the group. Giving each a real hostname fixes that — the
+routing then keys on <code>Host</code>, not path, so no service has to move off <code>/</code> and no
+application code changes.</p>
+<p><strong>One ALB is not achievable while keeping internal services private.</strong> An
+IngressGroup maps to exactly one ALB with one scheme, so <code>internal</code> and
+<code>internet-facing</code> Ingresses cannot share a group. The realistic floor is one
+shared internet-facing ALB; anything that must stay private should publish no
+Ingress at all and be reached in-cluster, which is what the six removed above
+now do.</p>
+<p>Steps, in order:</p>
+<ol>
+<li><strong>Set <code>domain_name</code></strong> in <code>terraform/terraform.tfvars</code> (a Route 53 zone must
+   already exist for it). <code>terraform/acm.tf</code> is already gated on this and will
+   provision a wildcard <code>*.${domain_name}</code> certificate with DNS validation — no
+   new Terraform is needed for TLS.</li>
+<li><strong>Give every internet-facing service a hostname</strong> in its
+   <code>helm-values-aws.yaml</code>, e.g. <code>host: hello-service.idp.example.com</code>.</li>
+<li><strong>Add a shared group</strong> to those same annotations:
+   <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">alb.ingress.kubernetes.io/group.name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">idp-public</span>
+<span class="nt">alb.ingress.kubernetes.io/group.order</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="w">   </span><span class="c1"># lower = evaluated first</span>
+<span class="nt">alb.ingress.kubernetes.io/listen-ports</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;[{&quot;HTTP&quot;:80},{&quot;HTTPS&quot;:443}]&#39;</span>
+<span class="nt">alb.ingress.kubernetes.io/certificate-arn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;wildcard cert ARN from acm.tf&gt;</span>
+</code></pre></div></td></tr></table></div>
+   Every Ingress carrying the same <code>group.name</code> merges onto one ALB.</li>
+<li><strong>Point DNS at it</strong> — see below.</li>
+</ol>
+<h4 id="dns-wildcard-now-external-dns-at-scale">DNS: wildcard now, external-dns at scale<a class="headerlink" href="#dns-wildcard-now-external-dns-at-scale" title="Permanent link">&para;</a></h4>
+<p>For this platform, start with <strong>a single wildcard <code>ALIAS</code></strong>: one
+<code>*.idp.example.com</code> record to the shared ALB, matching the wildcard certificate
+<code>acm.tf</code> already issues. No controller, no extra IAM, and every future
+scaffolded service resolves the moment its Ingress joins the group. For a
+template repo that others adopt, that is the right default because it adds no
+prerequisites.</p>
+<p><strong>At organisation scale, the standard is <a href="https://github.com/kubernetes-sigs/external-dns">external-dns</a>
+over a delegated subdomain.</strong> The reason is lifecycle, not convenience: records
+are created and deleted with the Ingress, so a scaffolded service needs no
+ticket and no Terraform PR. If you adopt it:</p>
+<ul>
+<li><strong>Delegate, never grant apex access.</strong> NS-delegate <code>dev.idp.example.com</code> to a
+  zone the platform owns. A controller with write access to the company apex
+  zone is an unacceptable blast radius.</li>
+<li><strong>Scope the IRSA role to that hosted zone ARN only.</strong></li>
+<li><strong>Set <code>--txt-owner-id=&lt;cluster-name&gt;</code></strong> so several clusters can share a zone
+  without overwriting each other's records. This is what makes it multi-cluster
+  safe, and it is the setting most often missed.</li>
+<li><strong>Choose <code>--policy</code> deliberately.</strong> <code>sync</code> deletes records when the Ingress
+  goes; <code>upsert-only</code> is safer on day one but leaks records forever, which
+  becomes its own cleanup project.</li>
+<li><strong>Pair it with the wildcard cert or cert-manager.</strong> DNS automation without
+  matching certificate automation just moves the ticket.</li>
+</ul>
+<blockquote>
+<p><strong>Multi-region caution:</strong> the V2 active-standby design (see
+<a href="../multi-region/">multi-region.md</a>) manages Route 53 health checks and
+failover records itself. external-dns with <code>--policy=sync</code> will fight
+hand-managed records in the same zone — give them separate zones, or be strict
+with <code>--txt-owner-id</code>.</p>
+</blockquote>
 <h3 id="budget-alert">Budget alert<a class="headerlink" href="#budget-alert" title="Permanent link">&para;</a></h3>
 <p>A budget is provisioned in Terraform at <code>$100/month</code> with SNS alerts at:
 - <strong>80% actual</strong> (~$80 spent) — early warning
