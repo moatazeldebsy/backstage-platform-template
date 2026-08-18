@@ -95,6 +95,13 @@ backend:
 # Auth — enable guest provider so the UI works without GitHub OAuth credentials.
 auth:
   environment: development
+  # Required by the github provider's sessionDuration below. Unlike AWS
+  # (app-config.aws.yaml sets this from ${AUTH_SESSION_SECRET} in Secrets
+  # Manager) there is no secret store locally, so this falls back to a fixed
+  # development value. It only ever signs cookies on a localhost-only Backstage.
+  # Set AUTH_SESSION_SECRET in local/backstage/.env to override.
+  session:
+    secret: ${AUTH_SESSION_SECRET:-local-development-session-secret-not-a-credential}
   providers:
     guest:
       # NODE_ENV is not set to "development" in the Docker container, so the guest
@@ -102,6 +109,14 @@ auth:
       dangerouslyAllowOutsideDevelopment: true
     github:
       development:
+        # Same defect as the one fixed on AWS in #390: without a Backstage-minted
+        # session, token refresh is delegated to GitHub, and GitHub OAuth Apps
+        # issue no refresh token unless "Expiration of user authorization tokens"
+        # is enabled — so GET /api/auth/github/refresh 401s and the frontend
+        # re-opens the sign-in popup on the first token-fetching route. Masked
+        # locally only while you sign in as guest; it bites as soon as real
+        # AUTH_GITHUB_CLIENT_ID/SECRET are used, which local/backstage/.env now has.
+        sessionDuration: { days: 7 }
         signIn:
           resolvers:
             # Match GitHub login against entity name (works with private/no email)
