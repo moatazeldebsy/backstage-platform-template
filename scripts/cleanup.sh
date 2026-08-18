@@ -56,22 +56,43 @@ log "Starting cleanup for cluster=$CLUSTER_NAME, region=$AWS_REGION"
 # Delete all versioned objects and delete markers from an S3 bucket in batches.
 # aws s3 rm --recursive only removes current-version objects and silently
 # ignores non-current versions and delete markers in versioned buckets.
+# Two caps matter, and getting either wrong makes this run effectively forever:
+#
+#   1. --max-items. Without it the CLI auto-paginates the ENTIRE bucket on every
+#      iteration and the loop then deletes at most 1000 of what it fetched, so
+#      the work is quadratic in object count. On a 122k-object bucket that was
+#      ~2000 objects in 7.8 hours before it was capped. Observed 2026-08-18.
+#   2. delete-objects accepts at most 1000 keys per call, and Versions and
+#      DeleteMarkers share that budget — they must be sliced to 1000 COMBINED,
+#      not 1000 each. An oversized request is rejected wholesale, and because
+#      the error used to be sent to /dev/null the loop spun deleting nothing.
+#
+# Errors are surfaced and abort the function for the same reason: a silent
+# failure here looks exactly like a slow AWS operation.
 _empty_versioned_bucket() {
   local bucket="$1"
   local total=0
   while true; do
     local payload
     payload=$(aws s3api list-object-versions --bucket "$bucket" \
-      --region "${AWS_REGION}" --output json 2>/dev/null | python3 -c "
+      --region "${AWS_REGION}" --max-items 1000 --output json 2>/dev/null | python3 -c "
 import json,sys
-d=json.load(sys.stdin)
-objs=[{'Key':v['Key'],'VersionId':v['VersionId']} for v in d.get('Versions',[])[:500]]
-objs+=[{'Key':m['Key'],'VersionId':m['VersionId']} for m in d.get('DeleteMarkers',[])[:500]]
+try: d=json.load(sys.stdin)
+except Exception: print(''); sys.exit()
+objs=[{'Key':v['Key'],'VersionId':v['VersionId']} for v in d.get('Versions',[])]
+objs+=[{'Key':m['Key'],'VersionId':m['VersionId']} for m in d.get('DeleteMarkers',[])]
+objs=objs[:1000]
 print(json.dumps({'Objects':objs,'Quiet':True}) if objs else '')
 " 2>/dev/null)
     [[ -z "$payload" ]] && break
-    aws s3api delete-objects --bucket "$bucket" --region "${AWS_REGION}" \
-      --delete "$payload" >/dev/null 2>&1
+    local delete_err
+    delete_err=$(aws s3api delete-objects --bucket "$bucket" --region "${AWS_REGION}" \
+      --delete "$payload" 2>&1 >/dev/null)
+    if [[ -n "$delete_err" ]]; then
+      warn "    delete-objects failed on s3://${bucket}: ${delete_err:0:200}"
+      warn "    Emptied $total objects before failing — terraform destroy will retry."
+      return 1
+    fi
     local count
     count=$(echo "$payload" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('Objects',[])))" 2>/dev/null || echo 0)
     total=$((total + count))
@@ -139,6 +160,22 @@ _cleanup_stale_k8s_security_groups() {
 # Entirely best-effort: the cluster may already be gone, and a destroy must
 # never abort because a teardown nicety failed.
 log "Phase 0: Stopping ArgoCD reconciliation (prevents ALB recreation)..."
+
+# Loki, promtail and loki-canary are installed directly by bootstrap.sh via
+# Helm into `monitoring`, so nothing below touches them — Phase 0 only cascades
+# ArgoCD-managed *service* Applications. Left running they keep shipping chunks
+# into the very S3 bucket Phase 5 is trying to empty, which is a race Phase 5
+# cannot win: the bucket count went UP while it was being drained.
+# Observed 2026-08-18. Best-effort — the cluster may already be gone.
+if kubectl cluster-info &>/dev/null && kubectl get ns monitoring &>/dev/null; then
+  log "  Stopping Loki write path so it stops refilling its S3 bucket..."
+  kubectl delete daemonset promtail loki-canary -n monitoring \
+    --ignore-not-found --timeout=60s 2>/dev/null || true
+  kubectl scale statefulset loki-write loki-backend -n monitoring \
+    --replicas=0 --timeout=60s 2>/dev/null || true
+  kubectl scale deployment loki-read loki-gateway -n monitoring \
+    --replicas=0 --timeout=60s 2>/dev/null || true
+fi
 
 if kubectl cluster-info &>/dev/null && kubectl get ns argocd &>/dev/null; then
   APPSET_COUNT=$(kubectl get applicationsets.argoproj.io -n argocd --no-headers 2>/dev/null | wc -l | tr -d ' ')
@@ -301,7 +338,7 @@ while IFS= read -r bucket_arn; do
   [[ -z "$bucket_arn" || "$bucket_arn" == "None" ]] && continue
   bucket_name="${bucket_arn##*:::}"
   log "    Emptying and deleting s3://${bucket_name}"
-  _empty_versioned_bucket "${bucket_name}"
+  _empty_versioned_bucket "${bucket_name}" || true
   aws s3api delete-bucket --bucket "${bucket_name}" --region "${AWS_REGION}" 2>/dev/null || true
   log "    Deleted: ${bucket_name}"
 done < <(_crossplane_arns "s3" | tr '\t' '\n')
@@ -378,17 +415,22 @@ while IFS= read -r bucket; do
     continue
   }
   log "    Emptying s3://${bucket}"
-  _empty_versioned_bucket "${bucket}"
+  _empty_versioned_bucket "${bucket}" || true
 done <<< "$TF_BUCKETS"
 
 # ── 5b: ECR repositories ─────────────────────────────────────────────────────
 # Match both flat names (idp-mvp-foo) and nested paths (idp-mvp/foo) since
 # bootstrap-ai.sh creates repos under ${CLUSTER_NAME}/<service> path.
 log "  5b: Deleting ECR repositories..."
+# `--output text` returns the whole list on ONE tab-separated line, so a bare
+# `while read -r repo` bound every name into a single string and every delete
+# failed as "repo not found" — silently, because the failure branch just logs
+# "Already gone". Ten repos (128 images) survived a teardown that way.
+# Observed 2026-08-18. _crossplane_arns already does this; 5b was missed.
 ECR_REPOS=$(aws ecr describe-repositories \
   --region "${AWS_REGION}" \
   --query "repositories[?contains(repositoryName, '${CLUSTER_NAME}')].repositoryName" \
-  --output text 2>/dev/null || true)
+  --output text 2>/dev/null | tr '\t' '\n' || true)
 
 while IFS= read -r repo; do
   [[ -z "$repo" || "$repo" == "None" ]] && continue
@@ -465,12 +507,29 @@ for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
     while IFS= read -r bucket; do
       [[ -z "$bucket" ]] && continue
       log "    Re-emptying s3://${bucket}"
-      _empty_versioned_bucket "${bucket}"
+      _empty_versioned_bucket "${bucket}" || true
     done < <(grep -oE "deleting S3 Bucket \(${CLUSTER_NAME}-[a-z0-9-]+\)" "$TF_DESTROY_LOG" \
       | sed -E 's/.*\((.*)\)/\1/' | sort -u)
   elif grep -qi "DependencyViolation\|has a dependent object\|security group" "$TF_DESTROY_LOG"; then
     log "  Dependency violation detected — re-running stale security group cleanup..."
     _cleanup_stale_k8s_security_groups
+  elif grep -q "invalid provider configuration" "$TF_DESTROY_LOG"; then
+    # The kubernetes/helm/kubectl providers in main.tf take their host from
+    # module.eks.cluster_endpoint. Once the EKS cluster itself is destroyed that
+    # is empty, and Terraform cannot even PLAN — so a destroy interrupted after
+    # the cluster goes but before the VPC does can never be resumed normally.
+    # A `coalesce()` fallback on host is not enough; the CA data is empty too.
+    # -target does skip configuring providers no targeted resource needs, so
+    # walk what is left one resource at a time. Observed 2026-08-18.
+    log "  EKS is gone, so the k8s providers cannot configure — falling back to targeted destroy..."
+    while IFS= read -r res; do
+      [[ -z "$res" ]] && continue
+      log "    destroy -target=${res}"
+      terraform destroy -auto-approve \
+        -var "aws_region=${AWS_REGION}" \
+        -var "cluster_name=${CLUSTER_NAME}" \
+        -target="$res" >/dev/null 2>&1 || true
+    done < <(terraform state list 2>/dev/null | grep -v '^data\.' | grep -v '\.data\.')
   else
     err "terraform destroy failed with an unhandled error — see output above"
   fi
