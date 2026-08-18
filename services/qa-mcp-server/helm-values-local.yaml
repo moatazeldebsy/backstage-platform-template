@@ -67,8 +67,6 @@ env:
     value: "http://prometheus-kube-prometheus-prometheus.monitoring:9090"
   - name: PORT
     value: "3002"
-  - name: NODE_TLS_REJECT_UNAUTHORIZED
-    value: "0"
   - name: GITHUB_ORG
     value: "moatazeldebsy"
 
