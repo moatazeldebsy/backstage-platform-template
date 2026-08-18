@@ -14,7 +14,16 @@ service:
   port: 3010
   targetPort: 3010
 ingress:
-  enabled: true
+  # Disabled: this provisioned an internal ALB (~$16/mo) that nothing could reach.
+  # The `<service>.internal` hostname below has no DNS record anywhere — there is
+  # no private hosted zone — and every actual caller uses in-cluster Service DNS
+  # instead, e.g. backstage/app-config.aws.yaml proxies to
+  #   http://security-mcp-server.services-dev.svc.cluster.local:<port>
+  # So the ALB routed nothing while still billing. Six of these existed; removing
+  # them saves ~$96/mo and leaves the service *more* private, not less.
+  # Re-enable only alongside a real hostname + shared group.name — see
+  # docs/DEPLOYMENT_GUIDE.md#consolidating-albs. Observed 2026-08-18.
+  enabled: false
   className: alb
   annotations:
     kubernetes.io/ingress.class: alb
