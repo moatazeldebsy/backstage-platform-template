@@ -542,7 +542,8 @@ _start_backstage() {
   # AI-enabled cluster alone because the check then passes. bootstrap-ai.sh
   # remains the thing that writes `true`.
   if _ai_stack_installed; then
-    [[ -f "${ROOT_DIR}/local/backstage/app-config.ai.yaml" ]] || write_backstage_ai_overlay true
+    [[ -f "${ROOT_DIR}/local/backstage/app-config.ai.yaml" ]] || \
+      write_backstage_ai_overlay true "$(langfuse_installed && echo true || echo false)"
   else
     write_backstage_ai_overlay false
   fi
