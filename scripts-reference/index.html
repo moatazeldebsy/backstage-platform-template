@@ -2199,7 +2199,7 @@
 </tr>
 <tr>
 <td><code>cleanup.sh</code></td>
-<td>Safe AWS teardown: 8 ordered phases, removes scaffolded services from ArgoCD + Git before <code>terraform destroy</code></td>
+<td>Safe AWS teardown: 9 ordered phases (0–8), removes scaffolded services from ArgoCD + Git before <code>terraform destroy</code></td>
 </tr>
 <tr>
 <td><code>recover-docker-restart.sh</code></td>
@@ -2258,7 +2258,7 @@
 </tr>
 <tr>
 <td><code>cleanup.sh</code></td>
-<td><strong>Safe teardown.</strong> Runs eight ordered phases: delete ALBs → disable RDS protection → clean Crossplane resources → empty S3/ECR → <strong>remove scaffolded services from ArgoCD + Helm + git</strong> → terraform destroy → delete CloudWatch log groups → verify. Use <code>--force</code> to skip prompts.</td>
+<td><strong>Safe teardown.</strong> Runs nine ordered phases (0–8): stop ArgoCD + Loki writers → delete orphaned ALBs and stale SGs → disable RDS protection → <strong>remove scaffolded services from ArgoCD + Helm + git</strong> → clean Crossplane-tagged resources → empty S3/ECR → terraform destroy → delete CloudWatch log groups → verify. Order matters: ALBs and Crossplane resources are created by in-cluster controllers, so <code>terraform destroy</code> alone leaves them orphaned — see <a href="../DEPLOYMENT_GUIDE/#what-terraform-owns-and-what-it-cannot-destroy">DEPLOYMENT_GUIDE.md</a>. Use <code>--force</code> to skip prompts.</td>
 <td>When tearing down AWS resources</td>
 </tr>
 <tr>

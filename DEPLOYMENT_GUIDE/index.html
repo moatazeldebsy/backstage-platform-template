@@ -1398,6 +1398,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#further-cost-optimisations-proposed-not-yet-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      Further cost optimisations (proposed, not yet implemented)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#budget-alert" class="md-nav__link">
     <span class="md-ellipsis">
       Budget alert
@@ -1477,6 +1486,21 @@
       Cleanup &amp; Destroy
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Cleanup & Destroy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-terraform-owns-and-what-it-cannot-destroy" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Terraform owns, and what it cannot destroy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2573,11 +2597,11 @@
 <li><a href="#pre-deployment-checklist">Pre-Deployment Checklist</a></li>
 <li><a href="#deployment-steps">Deployment Steps</a></li>
 <li><a href="#post-deployment-validation">Post-Deployment Validation</a></li>
-<li><a href="#known-issues-fixes">Known Issues &amp; Fixes</a></li>
+<li><a href="#known-issues--fixes">Known Issues &amp; Fixes</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 <li><a href="#cost-optimization">Cost Optimization</a></li>
 <li><a href="#production-hardening">Production Hardening</a></li>
-<li><a href="#cleanup-destroy">Cleanup &amp; Destroy</a></li>
+<li><a href="#cleanup--destroy">Cleanup &amp; Destroy</a></li>
 </ol>
 <hr />
 <h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
@@ -3282,6 +3306,86 @@ failover records itself. external-dns with <code>--policy=sync</code> will fight
 hand-managed records in the same zone — give them separate zones, or be strict
 with <code>--txt-owner-id</code>.</p>
 </blockquote>
+<h3 id="further-cost-optimisations-proposed-not-yet-implemented">Further cost optimisations (proposed, not yet implemented)<a class="headerlink" href="#further-cost-optimisations-proposed-not-yet-implemented" title="Permanent link">&para;</a></h3>
+<p>Measured against the real August 2026 bill, for a cluster that ran six days
+(2026-08-12 to 08-18) at <strong>$45–51/day</strong>:</p>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>  79.04  EKS control plane        (fixed, $0.10/hr per cluster)
+  67.99  EC2 - Compute            (the nodes)
+  56.26  Elastic Load Balancing   (one ALB per Ingress)
+  29.02  VPC                      (NAT gateway)
+  27.54  EC2 - Other              (EBS)
+   5.28  RDS
+</code></pre></div></td></tr></table></div>
+<p><strong>Already implemented</strong> — single NAT gateway, Karpenter with a spot-first
+NodePool and spot-interruption handling, managed node group scaled to
+<code>desired_size = 1</code> with Karpenter taking the burst, overnight scale-to-zero,
+7-day EKS log retention, Prometheus storage limits, and eleven ALBs removed
+(five operator tools, then <a href="#consolidating-albs">six dead internal ones</a>).</p>
+<p>Ranked by what is actually left:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Proposal</th>
+<th>Est. saving</th>
+<th>Effort / risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Destroy between sessions.</strong> Nothing else comes close — the platform costs ~$48/day running and ~$1.60/month destroyed. The state bucket and lock table are preserved precisely so a rebuild is cheap.</td>
+<td>~$1,400/mo vs always-on</td>
+<td>None; already the practice</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong><a href="#consolidating-albs">Consolidate the eight internet-facing ALBs</a></strong> onto one host-routed ALB</td>
+<td>~$112/mo</td>
+<td>Medium — needs <code>domain_name</code>, DNS, ACM</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Drop the NAT gateway in dev.</strong> ~$32/mo plus data processing, purely so private nodes can reach the internet. A dev cluster can run nodes in public subnets, or keep NAT and add S3/ECR/STS VPC endpoints so image pulls stop crossing it.</td>
+<td>$29–32/mo</td>
+<td>Medium; endpoints have their own hourly cost, so measure first</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Force <code>gp3</code> EBS.</strong> No <code>volume_type</code> is set anywhere in <code>terraform/</code>, so volumes land on the driver default. <code>gp3</code> is ~20% cheaper than <code>gp2</code> and decouples IOPS from size.</td>
+<td>~$5/mo at current usage</td>
+<td>Low — a StorageClass change</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Set retention on non-EKS log groups.</strong> Only <code>eks.tf</code> sets <code>retention_in_days</code>; the Lambda log group had none, meaning <em>never expire</em>.</td>
+<td>Small now, grows forever</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Right-size the memory-optimized node group.</strong> It defaults to <code>desired_size = 0</code> and only scales for AI workloads — confirm it returns to zero after <code>bootstrap-ai.sh</code> runs, rather than idling.</td>
+<td>Up to ~$60/mo if it idles</td>
+<td>Low — verification, not code</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Avoid a second EKS control plane.</strong> At $73/mo each, the V2 multi-region active-standby design doubles this line before a single workload runs. Worth confirming the standby needs a live control plane rather than being rebuilt on failover.</td>
+<td>$73/mo</td>
+<td>Design decision</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Not ours, but the largest residual line in this account</strong> once the platform is
+destroyed: a 50 GB RDS snapshot (<code>infra-landscape-dev-postgres-final-snapshot</code>,
+~$4.75/mo) and a disabled KMS key (<code>alias/mokey</code>, created 2021, ~$1/mo) — both
+left over from an unrelated project. Together they cost roughly 3.5× everything
+this platform leaves behind.</p>
 <h3 id="budget-alert">Budget alert<a class="headerlink" href="#budget-alert" title="Permanent link">&para;</a></h3>
 <p>A budget is provisioned in Terraform at <code>$100/month</code> with SNS alerts at:
 - <strong>80% actual</strong> (~$80 spent) — early warning
@@ -3371,7 +3475,8 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Safe teardown — runs all phases in the correct order</span>
 ./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp<span class="w"> </span>--force
 </code></pre></div></td></tr></table></div>
-<p><code>cleanup.sh</code> runs eight ordered phases:</p>
+<p><code>cleanup.sh</code> runs nine ordered phases (0–8). <strong>The order is the whole point</strong> —
+see <a href="#what-terraform-owns-and-what-it-cannot-destroy">why <code>terraform destroy</code> alone is not enough</a>.</p>
 <table>
 <thead>
 <tr>
@@ -3381,41 +3486,121 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class
 </thead>
 <tbody>
 <tr>
+<td>0 — Stop the writers</td>
+<td>Deletes ArgoCD ApplicationSets, then workload Applications with cascade, so the load balancer controller tears down its own ALBs instead of leaking them. Also scales the Loki write path to zero — Loki is Helm-installed, not ArgoCD-managed, and will otherwise keep writing into the S3 bucket Phase 5 is trying to empty.</td>
+</tr>
+<tr>
 <td>1 — ALBs</td>
-<td>Deletes Kubernetes-managed ALBs (<code>k8s-*</code> prefix) — they block VPC deletion</td>
+<td>Deletes any orphaned Kubernetes-managed ALBs (<code>k8s-*</code>) and stale <code>k8s-*</code> security groups. Both block VPC deletion, and the security groups only release asynchronously, so this retries.</td>
 </tr>
 <tr>
 <td>2 — RDS protection</td>
 <td>Disables deletion protection on the Backstage RDS instance</td>
 </tr>
 <tr>
-<td>3 — Crossplane resources</td>
-<td>Finds all resources tagged <code>idp:provisioner=crossplane</code> via Resource Groups Tagging API and deletes them: S3 buckets (all versions + delete markers), RDS instances, DynamoDB tables, SQS queues. MSK topics are destroyed implicitly with the cluster in Phase 5.</td>
+<td>3 — Scaffolded services</td>
+<td>Auto-discovers user-scaffolded services in <code>services/</code> (excludes built-ins). Deletes their ArgoCD Applications, uninstalls Helm releases, removes <code>services/&lt;name&gt;/</code> and commits the deletion. Runs while EKS is still up so ArgoCD can cascade cleanly.</td>
 </tr>
 <tr>
-<td>4 — S3 + ECR empty</td>
-<td>Empties Terraform-managed S3 buckets (TechDocs, MLflow artifacts) and ECR repos — AWS blocks <code>terraform destroy</code> if either contains objects/images</td>
+<td>4 — Crossplane resources</td>
+<td>Finds everything tagged <code>idp:provisioner=crossplane</code> via the Resource Groups Tagging API and deletes it: S3 buckets (all versions + delete markers), RDS instances, DynamoDB tables, SQS queues. MSK topics go with the cluster in Phase 6.</td>
 </tr>
 <tr>
-<td>4.5 — Scaffolded services</td>
-<td>Auto-discovers all user-scaffolded services in <code>services/</code> (excludes built-ins: <code>hello-service</code>, <code>idp-mcp-server</code>, <code>qa-mcp-server</code>, <code>contract-mcp-server</code>). Deletes their ArgoCD Applications (cascade-deletes K8s resources), uninstalls Helm releases, removes <code>services/&lt;name&gt;/</code> directories from the repo, and commits + pushes the deletion. Runs while EKS is still up so ArgoCD can cascade-delete cleanly.</td>
+<td>5 — S3 + ECR empty</td>
+<td>Empties Terraform-managed S3 buckets and force-deletes <code>&lt;cluster&gt;</code>-prefixed ECR repos. AWS blocks bucket deletion when non-empty and <code>force_destroy = false</code>, which is the case for every bucket here.</td>
 </tr>
 <tr>
-<td>5 — Terraform destroy</td>
-<td>Destroys all Terraform-managed resources: EKS, VPC, IAM, Backstage RDS, ECR repos, Secrets Manager</td>
+<td>6 — Terraform destroy</td>
+<td>Destroys all Terraform-managed resources: EKS, VPC, IAM/IRSA, RDS, ECR, KMS, Secrets Manager. Retried, because <code>BucketNotEmpty</code> and security-group <code>DependencyViolation</code> are both expected and self-healing.</td>
 </tr>
 <tr>
-<td>6 — CloudWatch</td>
-<td>Deletes EKS-generated log groups (<code>/aws/eks/&lt;cluster&gt;</code>, <code>/aws/containerinsights/&lt;cluster&gt;</code>) — these persist and accumulate cost after cluster deletion</td>
+<td>7 — CloudWatch</td>
+<td>Deletes log groups EKS and Lambda create at runtime (<code>/aws/eks/&lt;cluster&gt;</code>, <code>/aws/containerinsights/&lt;cluster&gt;</code>, <code>/aws/lambda/&lt;cluster&gt;-*</code>) — these survive the cluster and keep billing</td>
 </tr>
 <tr>
-<td>7 — Verify</td>
-<td>Checks EKS, RDS, ALBs, Crossplane-tagged resources, and CloudWatch log groups are all zero</td>
+<td>8 — Verify</td>
+<td>Checks EKS, RDS, ALBs, Crossplane-tagged resources and log groups are all zero</td>
 </tr>
 </tbody>
 </table>
-<p><strong>What gets deleted:</strong> Everything above<br />
-<strong>What's preserved:</strong> S3 Terraform state bucket (<code>&lt;cluster&gt;-terraform-state-*</code>), local code and config</p>
+<p><strong>Preserved deliberately:</strong> the Terraform state bucket
+(<code>&lt;cluster&gt;-terraform-state-*</code>), its DynamoDB lock table
+(<code>&lt;cluster&gt;-terraform-locks</code>), and any ECR repo whose name does <strong>not</strong> contain
+the cluster name. Those bare-named repos were never Terraform-managed, so a
+teardown leaves them — see the ownership table below.</p>
+<h3 id="what-terraform-owns-and-what-it-cannot-destroy">What Terraform owns, and what it cannot destroy<a class="headerlink" href="#what-terraform-owns-and-what-it-cannot-destroy" title="Permanent link">&para;</a></h3>
+<p><strong>No, <code>terraform destroy</code> on its own will not clean up this platform</strong>, and the
+gap is not an oversight — it follows from how the platform is built. Terraform
+owns the account and cluster foundation. Controllers running <em>inside</em> the
+cluster create AWS resources of their own in response to Kubernetes objects, and
+Terraform has never heard of those.</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Owner</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EKS, VPC, subnets, NAT, IAM/IRSA, OIDC provider, RDS, KMS, Secrets Manager, budgets, ACM</td>
+<td><strong>Terraform</strong> (<code>terraform/</code>, ~270 resources)</td>
+<td>Account/cluster foundation, applied once by <code>bootstrap.sh</code></td>
+</tr>
+<tr>
+<td>ECR repos named <code>&lt;cluster&gt;/&lt;service&gt;</code></td>
+<td><strong>Terraform</strong> (<code>force_delete = true</code>)</td>
+<td>Declared in <code>ecr.tf</code>; images are removed with the repo</td>
+</tr>
+<tr>
+<td><strong>ALBs, target groups, <code>k8s-*</code> security groups</strong></td>
+<td><strong>AWS Load Balancer Controller</strong></td>
+<td>Created at runtime from <code>Ingress</code> objects. They exist in no state file, and they <em>block VPC deletion</em>. Delete the Ingress and the controller cleans up after itself; delete the cluster first and they orphan at ~$16/mo each, invisible to Terraform. This is why Phase 0 runs before Phase 6.</td>
+</tr>
+<tr>
+<td><strong>S3/RDS/DynamoDB/SQS/MSK from Claims</strong></td>
+<td><strong>Crossplane</strong></td>
+<td>Provisioned from Claims committed to Git. Compositions set <code>deletionPolicy: Orphan</code> <em>on purpose</em> — a deleted Claim must not silently destroy a team's data. They are found by the <code>idp:provisioner=crossplane</code> tag instead.</td>
+</tr>
+<tr>
+<td>ECR repos created by <code>bootstrap-ai.sh</code></td>
+<td><strong>The script</strong>, imperatively</td>
+<td>AI/MCP service repos are created on demand, not declared in Terraform</td>
+</tr>
+<tr>
+<td><strong>Contents</strong> of S3 buckets and ECR repos</td>
+<td>Nobody — runtime data</td>
+<td>Terraform can delete a bucket but AWS refuses while it holds objects and <code>force_destroy = false</code>. Contents must be emptied first, which is Phase 5.</td>
+</tr>
+<tr>
+<td><code>/aws/eks/*</code>, <code>/aws/lambda/*</code> log groups</td>
+<td><strong>EKS / Lambda</strong>, at runtime</td>
+<td>Created by the services themselves and outlive the cluster</td>
+</tr>
+<tr>
+<td>Kubeconfig contexts</td>
+<td>Local machine</td>
+<td>Not an AWS resource; prune with <code>kubectl config delete-context</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two more reasons ordering matters, both learned the hard way:</p>
+<ul>
+<li><strong>KMS keys and Secrets Manager secrets are never deleted immediately.</strong>
+  Terraform "destroys" them, but AWS only <em>schedules</em> deletion — 7–30 days for a
+  KMS key, 7–30 for a secret. They keep billing (~$1/mo and ~$0.40/mo) until the
+  window closes. This is AWS behaviour, not a bug in the teardown.</li>
+<li><strong>Once EKS is gone, Terraform cannot even plan.</strong> The <code>kubernetes</code>, <code>helm</code> and
+  <code>kubectl</code> providers in <code>main.tf</code> take their host from
+  <code>module.eks.cluster_endpoint</code>. With the cluster destroyed that value is empty
+  and the provider fails to configure, so a destroy interrupted <em>after</em> the
+  cluster goes but <em>before</em> the VPC does cannot simply be re-run.
+  <code>cleanup.sh</code> detects this and falls back to per-resource <code>-target</code> destroys.</li>
+</ul>
+<p><strong>If a teardown stalls</strong>, check the object count of the bucket being emptied
+rather than the log — <code>_empty_versioned_bucket</code> only logs when it finishes, so a
+slow phase and a wedged one look identical from the output.</p>
 <blockquote>
 <p><strong>Note on Crossplane resources:</strong> Because all Compositions use
 <code>deletionPolicy: Orphan</code>, Crossplane resources survive Claim deletion.
