@@ -1232,7 +1232,18 @@ On Rancher Desktop, the usual cause is Traefik: Preferences -> Kubernetes -> dis
 # Writes local/backstage/app-config.ai.yaml, the third --config layer that the
 # Backstage container always loads (see local/backstage/docker-compose.yml).
 #
-# Usage: write_backstage_ai_overlay true|false
+# Is Langfuse actually deployed on the current cluster?
+#
+# Checks for a real Deployment rather than the namespace: ml-platform also holds
+# MLflow, so the namespace exists whenever the AI layer is on, with or without
+# Langfuse. Any failure to reach the cluster answers no, which is the safe
+# direction — it hides a nav item rather than publishing a broken one.
+langfuse_installed() {
+  kubectl get deployment -n ml-platform -l app.kubernetes.io/name=langfuse -o name 2>/dev/null | grep -q . \
+    || kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -q langfuse
+}
+
+# Usage: write_backstage_ai_overlay true|false [langfuse_enabled]
 #
 # One implementation on purpose: bootstrap-local.sh writes it with the AI layer
 # off, bootstrap-ai.sh writes it on (and `--destroy` writes it off again). Two
@@ -1241,11 +1252,29 @@ On Rancher Desktop, the usual cause is Traefik: Preferences -> Kubernetes -> dis
 # Backstage does NOT deep-merge arrays — this app.extensions list replaces the
 # one in backstage/app-config.yaml wholesale, so it must repeat every entry
 # that file declares, not just the ones being flipped.
+#
+# $2 gates the Langfuse page/nav-item separately, and defaults to $1 to keep
+# every existing caller behaving as before. It exists because "the AI layer is
+# on" does NOT imply "Langfuse is installed": Langfuse is always deployed on
+# --aws but is OPT-IN locally behind --langfuse (the chart pulls Postgres,
+# ClickHouse, Valkey and MinIO — 6 pods / ~2.4Gi — which a single-node Kind
+# cluster does not have spare). Driving all thirteen entries off one boolean
+# therefore published a Langfuse nav item pointing at a service that was never
+# installed, on the documented local default. That is an AWS/local asymmetry
+# baked into the writer, not a missing edit in a values file. Observed
+# 2026-08-18.
 write_backstage_ai_overlay() {
   local enabled="${1:?write_backstage_ai_overlay requires true|false}"
-  local disabled
+  local langfuse_enabled="${2:-$enabled}"
+  local disabled lf_disabled
   # A page is disabled exactly when the AI layer is not enabled.
   if [[ "$enabled" == "true" ]]; then disabled=false; else disabled=true; fi
+  # Langfuse additionally requires Langfuse itself to be present.
+  if [[ "$enabled" == "true" && "$langfuse_enabled" == "true" ]]; then
+    lf_disabled=false
+  else
+    lf_disabled=true
+  fi
 
   # bootstrap-local.sh calls the repo root ROOT_DIR, bootstrap-ai.sh calls it
   # REPO_ROOT. Accept either so this helper works unchanged from both.
@@ -1288,9 +1317,9 @@ app:
     - nav-item:custom-pages/mlflow-platform:
         disabled: ${disabled}
     - page:custom-pages/langfuse-platform:
-        disabled: ${disabled}
+        disabled: ${lf_disabled}
     - nav-item:custom-pages/langfuse-platform:
-        disabled: ${disabled}
+        disabled: ${lf_disabled}
 
 aiStack:
   enabled: ${enabled}
