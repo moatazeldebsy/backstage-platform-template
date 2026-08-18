@@ -510,7 +510,9 @@ storage: 20Gi
 
 ### Skip the AI/ML stack
 
-KAgent + MLflow + MCP servers add 2–4 extra ALBs (~$36–72/month) and ~6 Gi EBS. Skip them unless needed:
+KAgent + MLflow + MCP servers add ~6 platform ALBs plus one per MCP server per
+environment (~$36–72/month for the platform pieces alone, more once the MCP
+servers are promoted to staging and prod) and ~6 Gi EBS. Skip them unless needed:
 
 ```bash
 # Core platform only (no AI/ML)
@@ -539,6 +541,13 @@ Secrets (~$15). Nodes and ALBs are what actually move.
 | Always-on + AI | 6× t3.medium | Off | On | 6 | ~$430–490 |
 | Production | per `profiles/medium.tfvars` | Off | Optional | 6 | ~$700–900 |
 
+> The ALB column understates a full AI deployment. Measured on the live cluster
+> 2026-08-17, **27 ALB Ingresses** existed with `--adp` and all three
+> environments populated (dev/staging/prod each publish their own), not 6 — one
+> per Ingress, since `group.name` is unused. Removing the six dead internal ones
+> below brings that to 21. Treat the table as the core-platform baseline and
+> assume roughly one ALB per service per environment on top.
+
 Where the money goes, and what has already been done about it:
 
 - **Nodes** dominate — 6× t3.medium is ~$182/mo on-demand. `enable_cost_optimizer`
@@ -550,10 +559,84 @@ Where the money goes, and what has already been done about it:
   publish one — they are operator tools, reachable with `kubectl port-forward`
   (the bootstrap banner prints the exact commands). That is ~$82/mo, and it also
   took five unauthenticated endpoints off the public internet.
-- **Consolidating the remaining ALBs** onto one would save ~$80/mo more, but it
-  needs real DNS: they all serve `path: /` with no hostname, so a shared
-  `group.name` would make them collide. Set `domain_name` and give each a real
-  host first.
+- **Six internal ALBs were pure waste** and have been removed (2026-08-18).
+  `approval-service` and the `argocd`/`cost`/`github`/`incident`/`security` MCP
+  servers each published an *internal* ALB with a `<service>.internal` hostname.
+  No private hosted zone exists, so those names resolved nowhere, and every real
+  caller uses in-cluster Service DNS anyway — `app-config.aws.yaml` proxies
+  straight to `*.services-dev.svc.cluster.local`. They routed nothing and billed
+  ~$96/mo. Their `ingress.enabled` is now `false`, which is also *more* private
+  than an internal ALB.
+- **Consolidating the eight remaining internet-facing ALBs** onto one would save
+  ~$112/mo more. See [Consolidating ALBs](#consolidating-albs) — it needs real
+  DNS, so it is a project rather than a flag.
+
+### Consolidating ALBs
+
+Eight services still publish their own internet-facing ALB at ~$16/mo each. They
+cannot share one today: every entry sets `host: ""` with `path: /`, so a shared
+`alb.ingress.kubernetes.io/group.name` produces colliding rules and the ALB
+controller rejects the group. Giving each a real hostname fixes that — the
+routing then keys on `Host`, not path, so no service has to move off `/` and no
+application code changes.
+
+**One ALB is not achievable while keeping internal services private.** An
+IngressGroup maps to exactly one ALB with one scheme, so `internal` and
+`internet-facing` Ingresses cannot share a group. The realistic floor is one
+shared internet-facing ALB; anything that must stay private should publish no
+Ingress at all and be reached in-cluster, which is what the six removed above
+now do.
+
+Steps, in order:
+
+1. **Set `domain_name`** in `terraform/terraform.tfvars` (a Route 53 zone must
+   already exist for it). `terraform/acm.tf` is already gated on this and will
+   provision a wildcard `*.${domain_name}` certificate with DNS validation — no
+   new Terraform is needed for TLS.
+2. **Give every internet-facing service a hostname** in its
+   `helm-values-aws.yaml`, e.g. `host: hello-service.idp.example.com`.
+3. **Add a shared group** to those same annotations:
+   ```yaml
+   alb.ingress.kubernetes.io/group.name: idp-public
+   alb.ingress.kubernetes.io/group.order: "10"   # lower = evaluated first
+   alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+   alb.ingress.kubernetes.io/certificate-arn: <wildcard cert ARN from acm.tf>
+   ```
+   Every Ingress carrying the same `group.name` merges onto one ALB.
+4. **Point DNS at it** — see below.
+
+#### DNS: wildcard now, external-dns at scale
+
+For this platform, start with **a single wildcard `ALIAS`**: one
+`*.idp.example.com` record to the shared ALB, matching the wildcard certificate
+`acm.tf` already issues. No controller, no extra IAM, and every future
+scaffolded service resolves the moment its Ingress joins the group. For a
+template repo that others adopt, that is the right default because it adds no
+prerequisites.
+
+**At organisation scale, the standard is [external-dns](https://github.com/kubernetes-sigs/external-dns)
+over a delegated subdomain.** The reason is lifecycle, not convenience: records
+are created and deleted with the Ingress, so a scaffolded service needs no
+ticket and no Terraform PR. If you adopt it:
+
+- **Delegate, never grant apex access.** NS-delegate `dev.idp.example.com` to a
+  zone the platform owns. A controller with write access to the company apex
+  zone is an unacceptable blast radius.
+- **Scope the IRSA role to that hosted zone ARN only.**
+- **Set `--txt-owner-id=<cluster-name>`** so several clusters can share a zone
+  without overwriting each other's records. This is what makes it multi-cluster
+  safe, and it is the setting most often missed.
+- **Choose `--policy` deliberately.** `sync` deletes records when the Ingress
+  goes; `upsert-only` is safer on day one but leaks records forever, which
+  becomes its own cleanup project.
+- **Pair it with the wildcard cert or cert-manager.** DNS automation without
+  matching certificate automation just moves the ticket.
+
+> **Multi-region caution:** the V2 active-standby design (see
+> [multi-region.md](multi-region.md)) manages Route 53 health checks and
+> failover records itself. external-dns with `--policy=sync` will fight
+> hand-managed records in the same zone — give them separate zones, or be strict
+> with `--txt-owner-id`.
 
 ### Budget alert
 
