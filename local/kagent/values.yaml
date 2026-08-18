@@ -45,6 +45,40 @@ cilium-manager-agent:
 cilium-debug-agent:
   enabled: false
 
+# Grafana MCP server. Two chart defaults are wrong for this platform and the
+# combination leaves the RemoteMCPServer stuck at ACCEPTED=False, so
+# grafana-agent has no tools:
+#
+#  1. mcp-grafana runs DNS-rebinding protection over its HTTP transport and
+#     --allowed-hosts "defaults to loopback variants of --address". The KAgent
+#     controller dials the Service name, so every initialize is answered
+#     "403 forbidden: host not allowed" — and the server logs nothing for a
+#     rejected request, so the pod looks perfectly healthy.
+#  2. The chart's default GRAFANA_URL is grafana.kagent:3000/api, which is a
+#     Grafana that does not exist here. Ours is the kube-prometheus-stack one
+#     in the monitoring namespace, same as on AWS.
+#
+# Fixed on the AWS side 2026-08-17 (aws/kagent/values.yaml); this local copy was
+# missed, and the defect applies identically — verified on the live local
+# cluster, where the deployment's args were just ["--transport","streamable-http"]
+# with no --allowed-hosts. Observed 2026-08-18.
+grafana-mcp:
+  args:
+    # Named hosts rather than "*": the flag's own help warns that disabling
+    # validation is only safe behind a trusted reverse proxy that rewrites Host.
+    - --allowed-hosts
+    - kagent-grafana-mcp.kagent:8000,kagent-grafana-mcp.kagent.svc:8000,kagent-grafana-mcp.kagent.svc.cluster.local:8000,kagent-grafana-mcp:8000,localhost:8000,127.0.0.1:8000
+  grafana:
+    url: "http://prometheus-grafana.monitoring/api"
+    # NOTE: no token is wired here. The AWS file sets
+    # `secretRef: kagent-grafana-mcp`, but the external-secret manifest its
+    # comment points at (kubernetes/kagent/external-secret-grafana-mcp.yaml)
+    # does not exist, so that secret is empty on both targets. Locally
+    # bootstrap-local.sh already provisions a Grafana service-account token
+    # (GRAFANA_TOKEN in local/backstage/.env) that could populate it. Wiring
+    # that up is tracked separately; the two defects above are what block the
+    # RemoteMCPServer from being ACCEPTED at all.
+
 postgres:
   # Enable pgvector so the controller can create the memory table (vector(768)).
   vectorEnabled: true

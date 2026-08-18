@@ -49,6 +49,31 @@ grafana-mcp:
     # in plain text in this file.
     secretRef: kagent-grafana-mcp-token
 
+# ── Built-in agents that cannot function on this cluster ─────────────────────
+# The chart ships an agent per ecosystem it knows about and enables them all by
+# default. Five of them have nothing to talk to: a repo-wide grep finds no
+# Cilium, Istio or kgateway anywhere in terraform/, aws/, kubernetes/ or
+# bootstrap.sh, so on EKS exactly as on Kind these five start, idle, and never
+# do anything.
+#
+# Measured on the local cluster: 866Mi RSS across 5 pods. There is no capacity
+# crisis on EKS the way there is on a 6-CPU VM, which is why this was only ever
+# done locally — but it is still five pods' worth of memory and scheduling for
+# no function, and it is the same reasoning as dropping the six ALBs that routed
+# nothing (#395).
+#
+# Re-enable any of these by flipping the flag if you add the matching component.
+kgateway-agent:
+  enabled: false
+istio-agent:
+  enabled: false
+cilium-policy-agent:
+  enabled: false
+cilium-manager-agent:
+  enabled: false
+cilium-debug-agent:
+  enabled: false
+
 postgres:
   # Enable pgvector so the controller can create the memory table (vector(768)).
   vectorEnabled: true
