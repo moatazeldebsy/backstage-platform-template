@@ -1176,8 +1176,22 @@ gigabytes the guest already freed. A clean shutdown reclaims them:
   # creation or the ingress install fails much later with an opaque bind error.
   # The usual culprits are Traefik left enabled in Rancher Desktop, or a stray
   # local web server.
+  #
+  # BUT only when we are about to CREATE the cluster. If the kind cluster already
+  # exists, it is holding 80/443 itself -- the control-plane container publishes
+  # 0.0.0.0:80->80/tcp, which on this setup surfaces as a `limactl` listener --
+  # and that is correct, not a conflict. Checking unconditionally broke the most
+  # common operation there is: re-running bootstrap-local.sh against a live
+  # cluster, which docs/scripts-reference.md calls the day-2 path. It aborted at
+  # preflight telling the user to go and disable Traefik. Regression introduced
+  # with this check; observed and fixed 2026-08-19.
+  local _cluster_exists=false
+  if [[ "${KUBERNETES_PROVIDER:-kind}" == "kind" ]] && command -v kind &>/dev/null; then
+    kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME:-idp-mvp}" && _cluster_exists=true
+  fi
+
   local _busy_ports=()
-  if command -v lsof &>/dev/null; then
+  if ! $_cluster_exists && command -v lsof &>/dev/null; then
     local _p
     for _p in 80 443; do
       lsof -nP -iTCP:"$_p" -sTCP:LISTEN >/dev/null 2>&1 && _busy_ports+=("$_p")
