@@ -92,7 +92,6 @@ func fileEntries(svcType string) []fileEntry {
 		{"shared/ci.yml.tmpl", ".github/workflows/ci.yml"},
 		{"shared/helm-values.yaml.tmpl", "helm-values.yaml"},
 		{"shared/helm-values-local.yaml.tmpl", "helm-values-local.yaml"},
-		{"shared/helm-values-dev.yaml.tmpl", "helm-values-dev.yaml"},
 		{"shared/helm-values-staging.yaml.tmpl", "helm-values-staging.yaml"},
 		{"shared/helm-values-aws.yaml.tmpl", "helm-values-aws.yaml"},
 		{"shared/catalog-info.yaml.tmpl", "catalog-info.yaml"},
