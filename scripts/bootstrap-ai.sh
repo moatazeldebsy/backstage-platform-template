@@ -2097,7 +2097,12 @@ _alb_ai() {
 # ConfigMap in place — regenerating it from the source file would put the flags
 # back to disabled, since the committed default is off.
 if [[ "$DEPLOY_MODE" == "local" ]]; then
-  write_backstage_ai_overlay true
+  # Second argument gates the Langfuse page/nav-item independently. Passing
+  # `true` here unconditionally published a Langfuse sidebar entry even on a
+  # local run without --langfuse, i.e. on the documented default, pointing at a
+  # service that was never installed. Read the cluster rather than the flag so
+  # this is also right after a --langfuse-keys-only run or a partial install.
+  write_backstage_ai_overlay true "$(langfuse_installed && echo true || echo false)"
 else
   info "Revealing Backstage AI surfaces (app.extensions + aiStack.enabled)..."
   if kubectl get configmap backstage-config -n backstage &>/dev/null; then
