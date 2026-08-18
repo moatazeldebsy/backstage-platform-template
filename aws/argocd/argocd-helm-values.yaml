@@ -107,9 +107,13 @@ configs:
   params:
     server.insecure: true   # ALB terminates TLS; ArgoCD server listens on HTTP internally
 
-  # Local user for Backstage (read-only API access)
+  # Local users. Both are apiKey-only (no password login): tokens are minted
+  # against them and handed to a specific consumer.
+  #   backstage      -> the Backstage ArgoCD tab, read-only
+  #   argocd-mcp     -> services/argocd-mcp-server, which AI agents call
   cm:
     accounts.backstage: apiKey
+    accounts.argocd-mcp: apiKey
 
   # RBAC: admin can do everything; backstage gets read-only across all apps
   rbac:
@@ -123,3 +127,15 @@ configs:
       p, role:backstage-read, clusters, get, *, allow
       p, role:backstage-read, repositories, get, *, allow
       g, backstage, role:backstage-read
+      # argocd-mcp-server needs more than read: sync_app and rollback_app are
+      # mutating tools (both gated behind the human-in-the-loop approval service,
+      # see docs/agent-approvals.md). It is deliberately NOT role:admin -- no
+      # create, delete or update on Applications, and no write on repositories,
+      # so an agent can roll a deployment forward or back but cannot redefine or
+      # remove one. ArgoCD maps the rollback API onto the `sync` action.
+      p, role:argocd-mcp, applications, get, */*, allow
+      p, role:argocd-mcp, applications, sync, */*, allow
+      p, role:argocd-mcp, applications, action/*, */*, allow
+      p, role:argocd-mcp, clusters, get, *, allow
+      p, role:argocd-mcp, repositories, get, *, allow
+      g, argocd-mcp, role:argocd-mcp

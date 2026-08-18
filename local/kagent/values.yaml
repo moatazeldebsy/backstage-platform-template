@@ -45,6 +45,38 @@ cilium-manager-agent:
 cilium-debug-agent:
   enabled: false
 
+# ── Generic chart agents, disabled for capacity ──────────────────────────────
+# These five DO have something to talk to here, unlike the five above -- they
+# are simply more than this machine can run. On a 6-CPU / 13GiB VM (75% of an
+# 8-core / 16GiB Mac, with the host itself at load average 10-13) the full set
+# never converges: the agents' containers start, log one line, and never open
+# :8080, so readiness probes fail with "connection refused" indefinitely.
+# Measured 2026-08-18 after a full bootstrap-ai run: 11 of 19 kagent pods ready,
+# flat for over five minutes, with the Kind worker pinned at 300-490% CPU.
+#
+# What is kept is the platform's OWN agents, declared in kubernetes/kagent/
+# (idp, platform, qa, contract, cost, incident, onboarding, release, security) --
+# those are the golden path. What is dropped is the generic per-ecosystem set the
+# chart ships, whose ground is already covered by the MCP servers: k8s/helm by
+# idp-mcp-server, promql/observability by the Grafana and Prometheus integrations,
+# argo-rollouts by argocd-mcp-server.
+#
+# NOTE: the chart key is argo-rollouts-agent; the pod it creates is named
+# argo-rollouts-conversion-agent. Setting the pod name here would silently do
+# nothing.
+#
+# These are safe to re-enable on AWS or on a larger local machine.
+k8s-agent:
+  enabled: false
+helm-agent:
+  enabled: false
+promql-agent:
+  enabled: false
+observability-agent:
+  enabled: false
+argo-rollouts-agent:
+  enabled: false
+
 # Grafana MCP server. Two chart defaults are wrong for this platform and the
 # combination leaves the RemoteMCPServer stuck at ACCEPTED=False, so
 # grafana-agent has no tools:
