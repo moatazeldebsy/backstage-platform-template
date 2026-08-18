@@ -24,13 +24,21 @@ service:
   targetPort: ${{ values.port }}
 
 ingress:
-  enabled: true
+  # Disabled by default. An ALB Ingress provisions a dedicated load balancer at
+  # ~$16/mo, and most services only ever need in-cluster reachability via
+  # <name>.<namespace>.svc.cluster.local. Turn this on when the service really
+  # does need to take public traffic -- and read
+  # docs/DEPLOYMENT_GUIDE.md#consolidating-albs first if you are adding several.
+  enabled: false
   className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/ssl-redirect: false
+  # The chart iterates ingress.hosts[].paths[]. A top-level `paths:` key is
+  # silently ignored and `hosts: []` renders an Ingress with NO rules -- an ALB
+  # that provisions, bills, and routes nothing. Keep paths nested under a host.
   hosts:
-    - host: ${{ values.name }}.idp.local
+    - host: ""   # match any hostname; reach it on the ALB's own DNS name
       paths:
         - path: /
           pathType: Prefix
