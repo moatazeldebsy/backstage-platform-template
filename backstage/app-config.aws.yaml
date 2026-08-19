@@ -238,7 +238,10 @@ proxy:
         Authorization: Token token=${PAGERDUTY_TOKEN}
         Accept: application/vnd.pagerduty+json;version=2
     /jira:
-      target: ${JIRA_URL:-https://your-company.atlassian.net}
+      # Default is an RFC 2606 .invalid host on purpose: when JIRA_URL is unset the
+      # proxy must not resolve. A real-looking placeholder domain would send portal
+      # requests to a third party nobody here controls.
+      target: ${JIRA_URL:-https://jira.invalid}
       allowedMethods: ['GET']
       changeOrigin: true
       headers:
