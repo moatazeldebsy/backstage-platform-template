@@ -2400,8 +2400,20 @@ other.</p>
 <td><code>15m</code></td>
 <td>Used for the ArgoCD retry — the first attempt uses <code>HELM_WAIT_SHORT</code>, and only a failure escalates to this.</td>
 </tr>
+<tr>
+<td><code>HELM_WAIT_XL</code></td>
+<td><code>25m</code></td>
+<td>Charts whose <em>first</em> install legitimately runs past <code>HELM_WAIT_LONG</code>. Currently Langfuse, which pulls Postgres, ClickHouse, Valkey and MinIO at once — on a slow link those pods are still healthily pulling well past 15m.</td>
+</tr>
 </tbody>
 </table>
+<p>These four now cover <strong>every</strong> <code>helm --wait</code> in the bootstrap scripts. They used
+to be honoured by only two call sites in <code>bootstrap-local.sh</code> (both ArgoCD)
+while the other twelve hardcoded their own <code>--timeout</code>, so raising
+<code>HELM_WAIT_SHORT</code> on a slow connection appeared to do nothing and installs
+still failed at the hardcoded budget. If you are on a slow link, measure your
+throughput first and then raise these — a chart that is still pulling images is
+not a chart that has failed.</p>
 <p>The timing summary prints even when a run fails, so it is the fastest way to see
 which step is actually costing you time before trying to tune anything.</p>
 <p><strong>AWS image builds and Apple Silicon.</strong> The AWS scripts build <code>linux/amd64</code>
