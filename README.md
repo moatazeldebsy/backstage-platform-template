@@ -122,6 +122,34 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **Traces (Tempo)** / **Argo Rollouts** | Traces via Grafana Explore → Tempo datasource (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
 | **Local registry** | localhost:5003 | — (no auth) |
 
+### Third-party integrations — bring your own accounts
+
+**You do not need any third-party account to run this platform.** Every
+integration below is optional and fails soft: the portal boots, the cluster comes
+up, and the relevant tab renders an empty state rather than an error. Nothing is
+stubbed or mocked — the config, proxy wiring and secret plumbing are real, so if
+you *do* have an account, filling in one variable is all that's needed.
+
+Credentials are supplied by `local/backstage/.env` locally (start from
+`local/backstage/.env.example`, which documents each one) and by AWS Secrets
+Manager → External Secrets on EKS.
+
+| Integration | What you need | Without it |
+|---|---|---|
+| **GitHub** (catalog, scaffolder) | PAT in `GITHUB_TOKEN`, scopes `repo`, `read:org`, `workflow`, `delete_repo` | Catalog import and scaffolding to real repos don't work — the rest of the portal is unaffected. In practice this is the one worth setting. |
+| **GitHub OAuth** | OAuth App → `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET` | Guest mode only — no "Sign in with GitHub" |
+| **SonarCloud** / **Snyk** | Free-tier tokens → `SONAR_TOKEN` / `SNYK_TOKEN` | Security tab renders empty; scaffolded CI skips those steps and stays green |
+| **Datadog** | `DD_API_KEY` + `DD_APP_KEY` | Datadog tab renders empty. On AWS these also drive the Datadog Agent and APM |
+| **PagerDuty** | Read-only REST API key → `PAGERDUTY_TOKEN` | On-call tab renders empty. *Wired for local only today — not yet plumbed through Secrets Manager on AWS ([#407](https://github.com/moatazeldebsy/backstage-platform-template/issues/407))* |
+| **Jira** | `JIRA_URL` + `JIRA_TOKEN` = Base64(`email:api_token`) | Issues tab renders empty. *Wired for local only today — not yet plumbed through Secrets Manager on AWS ([#407](https://github.com/moatazeldebsy/backstage-platform-template/issues/407))* |
+| **Voyage AI** | `VOYAGE_API_KEY` (free tier: 200M tokens/month) | `/ai-search` returns HTTP 503. Everything else in the AI layer still works |
+| **Firebase Test Lab / GCP** | Service-account JSON, base64 → `GCP_SERVICE_ACCOUNT_KEY` | The mobile device-farm and Flutter test-suite templates scaffold fine but their CI can't authenticate |
+| **Grafana**, **ArgoCD** | — | Auto-populated by `bootstrap-local.sh`; no account needed |
+
+> The screenshots throughout these docs were taken on an instance with several of
+> these configured, so some tabs show live data that will be empty on a fresh
+> install until you add your own credentials.
+
 ## Platform Summary
 
 | Layer | Local | AWS |
