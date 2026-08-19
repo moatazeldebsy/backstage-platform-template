@@ -7,6 +7,19 @@
 # Enable the dashboard (read-only UI at http://argo-rollouts.idp.local)
 dashboard:
   enabled: true
+  # Resource limits are REQUIRED here, not optional tuning. The dashboard ships
+  # with no resources block, so it lands in BestEffort QoS with no CPU cap, and
+  # it busy-loops: observed pinning a full core (100% CPU) indefinitely on an
+  # idle cluster, which is ~16% of a 6-CPU local VM. That starves the API server
+  # enough to break scheduler/controller-manager lease renewal. Capping it
+  # dropped node load average from 112 to 36.
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
   ingress:
     enabled: true
     ingressClassName: nginx
