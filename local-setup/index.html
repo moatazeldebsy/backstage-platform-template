@@ -2440,7 +2440,7 @@ settled (measured with <code>kubectl top</code>, not estimated):</p>
 </tr>
 <tr>
 <td><strong>Langfuse (LLM observability, 6 pods)</strong></td>
-<td><code>bootstrap-ai.sh --langfuse</code></td>
+<td><code>bootstrap-ai.sh</code> (on by default)</td>
 <td align="right">~500m</td>
 <td align="right"><strong>~2.4 GB</strong></td>
 </tr>
@@ -2452,11 +2452,18 @@ settled (measured with <code>kubectl top</code>, not estimated):</p>
 </tr>
 </tbody>
 </table>
-<p>Langfuse is opt-in precisely because of that last row — it is the single most
-expensive layer after core Kubernetes, and <code>langfuse-web</code> will not run under a
-1 GB limit (Node sizes its heap from the container limit and OOMs at ~503 MB;
-2 GB is the floor). Leave <code>--langfuse</code> off unless you are actually working on
-LLM tracing.</p>
+<p>Langfuse now installs by default on local as well as AWS, so the local stack
+matches what you ship — the AI Observability page and every MCP server's tracing
+have a real backend on both targets. Budget for it: that last row is the single
+most expensive layer after core Kubernetes, and <code>langfuse-web</code> will not run under
+a 1 GB limit (Node sizes its heap from the container limit and OOMs at ~503 MB;
+2 GB is the floor).</p>
+<p>Read the total honestly before you run it. <strong>~11.4 GB against a 13 GB VM leaves
+almost nothing spare</strong>, and on a 6-core allocation the startup burst is what
+hurts, not the steady state — several charts' <code>--wait</code> timeouts can expire while
+images are still pulling on a slow link, which fails the run on timing rather
+than on anything being wrong. If you do not need LLM tracing, run
+<code>./scripts/bootstrap-ai.sh --skip-langfuse</code> for a materially lighter cluster.</p>
 <p>Give the container VM (Docker Desktop → Settings → Resources, or Rancher Desktop
 → Virtual Machine) at least:</p>
 <table>

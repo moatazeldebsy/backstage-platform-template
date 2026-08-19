@@ -3949,11 +3949,15 @@ scorecard item above is satisfied by Git versioning of the CRD, not by a separat
 <p>Prometheus counts <em>that</em> a tool was called. Langfuse records <em>what the model
 actually did</em>: the prompt, the completion, token counts, cost, latency, and the
 tool calls inside each agent run.</p>
-<p>Deployed opt-in, because the chart brings Postgres, ClickHouse, Valkey and MinIO
-with it (6 pods, ~2.4Gi) and the local Kind node has little to spare:</p>
+<p>On by default on both targets, so local matches what you ship. The chart brings
+Postgres, ClickHouse, Valkey and MinIO with it (6 pods, ~2.4Gi), which is a real
+cost on a single-node Kind cluster — see
+<a href="../local-setup/#what-runs-where-and-what-it-costs">docs/local-setup.md</a>:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse<span class="w">      </span><span class="c1"># local: opt-in</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w">           </span><span class="c1"># AWS: on by default (--skip-langfuse to opt out)</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w">                 </span><span class="c1"># local: Langfuse included</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w">           </span><span class="c1"># AWS: Langfuse included</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-langfuse<span class="w"> </span><span class="c1"># either target: lighter cluster, no LLM tracing</span>
 </code></pre></div></td></tr></table></div>
 <p>Then open <strong>AI Observability</strong> in the Backstage sidebar, or
 <a href="http://langfuse.idp.local">http://langfuse.idp.local</a> directly. The admin login is printed during
