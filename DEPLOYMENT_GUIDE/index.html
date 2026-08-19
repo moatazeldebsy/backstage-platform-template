@@ -1467,6 +1467,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#set-pagerduty-jira-credentials-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set PagerDuty / Jira credentials (optional)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#pod-disruption-budgets" class="md-nav__link">
     <span class="md-ellipsis">
       Pod Disruption Budgets
@@ -3444,6 +3453,51 @@ this platform leaves behind.</p>
 kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>backstage-secrets<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
 </code></pre></div></td></tr></table></div>
+<h3 id="set-pagerduty-jira-credentials-optional">Set PagerDuty / Jira credentials (optional)<a class="headerlink" href="#set-pagerduty-jira-credentials-optional" title="Permanent link">&para;</a></h3>
+<p>Both are optional — left unset, the On-Call and Issues tabs render their empty
+state rather than erroring, exactly as they do locally. Supply them either
+through Terraform:</p>
+<div class="language-hcl highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># terraform.tfvars</span>
+<span class="na">pagerduty_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-read-only-rest-api-key&quot;</span>
+<span class="na">jira_token</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;base64-of-email:api_token&quot;</span>
+<span class="na">jira_url</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://your-company.atlassian.net&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>...or by patching the existing secret in place, which avoids a Terraform apply:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>get-secret-value<span class="w"> </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span>SecretString<span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import sys, json</span>
+<span class="s2">d = json.load(sys.stdin)</span>
+<span class="s2">d[&#39;PAGERDUTY_TOKEN&#39;] = &#39;YOUR_PAGERDUTY_KEY&#39;</span>
+<span class="s2">d[&#39;JIRA_TOKEN&#39;]      = &#39;YOUR_BASE64_EMAIL_COLON_TOKEN&#39;</span>
+<span class="s2">d[&#39;JIRA_URL&#39;]        = &#39;https://your-company.atlassian.net&#39;</span>
+<span class="s2">print(json.dumps(d))</span>
+<span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>secretsmanager<span class="w"> </span>put-secret-value<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-id<span class="w"> </span>idp-mvp/backstage<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span>--secret-string<span class="w"> </span>file:///dev/stdin
+
+kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>backstage-secrets<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage
+</code></pre></div></td></tr></table></div>
+<p><code>JIRA_TOKEN</code> is <code>base64(email:api_token)</code>, not the raw API token. Generate the
+token at <a href="https://id.atlassian.com/manage-profile/security/api-tokens">https://id.atlassian.com/manage-profile/security/api-tokens</a>, then
+<code>printf 'you@example.com:TOKEN' | base64</code>.</p>
+<p>Leaving <code>JIRA_URL</code> empty keeps <code>app-config.aws.yaml</code> on its RFC 2606
+<code>https://jira.invalid</code> default, which never resolves — deliberate, so an
+unconfigured proxy cannot send requests to a domain nobody here controls.</p>
 <h3 id="pod-disruption-budgets">Pod Disruption Budgets<a class="headerlink" href="#pod-disruption-budgets" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
