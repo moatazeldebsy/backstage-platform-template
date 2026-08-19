@@ -732,6 +732,45 @@ kubectl annotate externalsecret backstage-secrets -n backstage force-sync=$(date
 kubectl rollout restart deployment/backstage -n backstage
 ```
 
+### Set PagerDuty / Jira credentials (optional)
+
+Both are optional — left unset, the On-Call and Issues tabs render their empty
+state rather than erroring, exactly as they do locally. Supply them either
+through Terraform:
+
+```hcl
+# terraform.tfvars
+pagerduty_token = "your-read-only-rest-api-key"
+jira_token      = "base64-of-email:api_token"
+jira_url        = "https://your-company.atlassian.net"
+```
+
+...or by patching the existing secret in place, which avoids a Terraform apply:
+
+```bash
+aws secretsmanager get-secret-value --secret-id idp-mvp/backstage --region us-east-1 \
+  --query SecretString --output text | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+d['PAGERDUTY_TOKEN'] = 'YOUR_PAGERDUTY_KEY'
+d['JIRA_TOKEN']      = 'YOUR_BASE64_EMAIL_COLON_TOKEN'
+d['JIRA_URL']        = 'https://your-company.atlassian.net'
+print(json.dumps(d))
+" | aws secretsmanager put-secret-value \
+  --secret-id idp-mvp/backstage --region us-east-1 --secret-string file:///dev/stdin
+
+kubectl annotate externalsecret backstage-secrets -n backstage force-sync=$(date +%s) --overwrite
+kubectl rollout restart deployment/backstage -n backstage
+```
+
+`JIRA_TOKEN` is `base64(email:api_token)`, not the raw API token. Generate the
+token at <https://id.atlassian.com/manage-profile/security/api-tokens>, then
+`printf 'you@example.com:TOKEN' | base64`.
+
+Leaving `JIRA_URL` empty keeps `app-config.aws.yaml` on its RFC 2606
+`https://jira.invalid` default, which never resolves — deliberate, so an
+unconfigured proxy cannot send requests to a domain nobody here controls.
+
 ### Pod Disruption Budgets
 
 ```bash

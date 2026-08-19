@@ -287,3 +287,27 @@ variable "datadog_app_key" {
   sensitive   = true
   default     = "REPLACE_ME"
 }
+
+# ── Incident / issue tracker variables ────────────────────────────────────────
+# All optional. Left at REPLACE_ME the corresponding Backstage tab renders its
+# empty state rather than erroring — the same soft-fail behaviour the local
+# path has via a blank value in local/backstage/.env.
+variable "pagerduty_token" {
+  description = "PagerDuty REST API key (read-only is sufficient). Used by the Backstage /pagerduty proxy in app-config.aws.yaml. Leave at REPLACE_ME to render the On-Call tab's empty state."
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
+
+variable "jira_token" {
+  description = "Jira credential for the Backstage /jira proxy: Base64(email:api_token). Leave at REPLACE_ME to render the Issues tab's empty state."
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
+
+variable "jira_url" {
+  description = "Base URL of the Jira instance, e.g. https://your-company.atlassian.net. Not a secret, but travels with JIRA_TOKEN so the proxy gets both from one place. Empty leaves app-config.aws.yaml on its RFC 2606 .invalid default, which never resolves."
+  type        = string
+  default     = ""
+}

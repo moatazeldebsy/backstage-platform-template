@@ -140,8 +140,8 @@ Manager → External Secrets on EKS.
 | **GitHub OAuth** | OAuth App → `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET` | Guest mode only — no "Sign in with GitHub" |
 | **SonarCloud** / **Snyk** | Free-tier tokens → `SONAR_TOKEN` / `SNYK_TOKEN` | Security tab renders empty; scaffolded CI skips those steps and stays green |
 | **Datadog** | `DD_API_KEY` + `DD_APP_KEY` | Datadog tab renders empty. On AWS these also drive the Datadog Agent and APM |
-| **PagerDuty** | Read-only REST API key → `PAGERDUTY_TOKEN` | On-call tab renders empty. *Wired for local only today — not yet plumbed through Secrets Manager on AWS ([#407](https://github.com/moatazeldebsy/backstage-platform-template/issues/407))* |
-| **Jira** | `JIRA_URL` + `JIRA_TOKEN` = Base64(`email:api_token`) | Issues tab renders empty. *Wired for local only today — not yet plumbed through Secrets Manager on AWS ([#407](https://github.com/moatazeldebsy/backstage-platform-template/issues/407))* |
+| **PagerDuty** | Read-only REST API key → `PAGERDUTY_TOKEN` | On-call tab renders empty. |
+| **Jira** | `JIRA_URL` + `JIRA_TOKEN` = Base64(`email:api_token`) | Issues tab renders empty. |
 | **Voyage AI** | `VOYAGE_API_KEY` (free tier: 200M tokens/month) | `/ai-search` returns HTTP 503. Everything else in the AI layer still works |
 | **Firebase Test Lab / GCP** | Service-account JSON, base64 → `GCP_SERVICE_ACCOUNT_KEY` | The mobile device-farm and Flutter test-suite templates scaffold fine but their CI can't authenticate |
 | **Grafana**, **ArgoCD** | — | Auto-populated by `bootstrap-local.sh`; no account needed |
