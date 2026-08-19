@@ -96,6 +96,28 @@ spec:
                   name: backstage
                   key: DD_APP_KEY
                   optional: true
+            # PagerDuty / Jira for the /pagerduty and /jira proxies in
+            # app-config.aws.yaml (issue #407). optional:true on purpose —
+            # absent or empty, the tabs render their empty state instead of the
+            # pod failing to start, matching the local behaviour.
+            - name: PAGERDUTY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: PAGERDUTY_TOKEN
+                  optional: true
+            - name: JIRA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: JIRA_TOKEN
+                  optional: true
+            - name: JIRA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backstage
+                  key: JIRA_URL
+                  optional: true
           readinessProbe:
             httpGet:
               path: /healthcheck

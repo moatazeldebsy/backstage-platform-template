@@ -39,6 +39,14 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     # for the cluster-wide Datadog Agent (see aws_secretsmanager_secret.datadog below).
     DD_API_KEY = var.datadog_api_key
     DD_APP_KEY = var.datadog_app_key
+    # PagerDuty / Jira — used by the /pagerduty and /jira proxies in
+    # app-config.aws.yaml. These were referenced by that config but never
+    # supplied on EKS, so both proxies got empty auth headers with no supported
+    # way to populate them while the local path worked (issue #407). Optional:
+    # left at REPLACE_ME the tabs render their empty state, matching local.
+    PAGERDUTY_TOKEN = var.pagerduty_token
+    JIRA_TOKEN      = var.jira_token
+    JIRA_URL        = var.jira_url
     # V2: Aurora Global endpoints — POSTGRES_HOST_READER is used by standby Backstage.
     # After Aurora Global failover, us-east-1 cluster endpoint becomes the writer.
     # bootstrap.sh (or the post-failover runbook) updates POSTGRES_HOST to the new writer.
