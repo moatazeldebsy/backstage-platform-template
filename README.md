@@ -155,7 +155,11 @@ Topology, DR tiers, and the six rollout phases: [docs/multi-region.md](docs/mult
 ## What it costs on AWS
 
 Measured against a running `idp-mvp` cluster in `us-east-1` on 2026-08-14, at
-on-demand list prices. **Local is free** — this is only the EKS path.
+on-demand list prices, for continuous 24/7 running — that is, before the
+overnight scale-down `enable_cost_optimizer` performs by default.
+**Local is free** — this is only the EKS path. These are **AWS infrastructure
+charges only**; see [what the table excludes](#what-the-table-excludes) below
+before treating the total as your bill.
 
 | Component | Qty | ~$/month |
 |---|---:|---:|
@@ -184,16 +188,31 @@ Ways to spend less, roughly in order of effect:
   gate the infrastructure too, so nothing is provisioned for it.
 - **Leave `enable_cost_optimizer = true`** (the default). Scales nodes to zero
   and stops RDS overnight — roughly halves the node and RDS lines if you only
-  work office hours.
+  work office hours. Because it is on by default, a stock deployment on an
+  office-hours schedule already lands well under the table above, which measures
+  the optimizer-disabled case.
 - **Drop the node count.** Six `t3.large` is sized for the full stack including
   AI; the core platform alone fits in fewer. Note the constraint documented on
   `node_instance_types`: nodes are sized by **pod IP capacity**, not CPU/RAM.
 - **Tear down when idle.** `./scripts/cleanup.sh` removes everything including
   the orphaned ALBs that a bare `terraform destroy` leaves behind.
 
-Prices exclude data transfer, which depends entirely on your traffic. Verify
-against the [AWS pricing calculator](https://calculator.aws) for your region
-before committing — this table is a measurement of one cluster, not a quote.
+### What the table excludes
+
+The total is the platform's own AWS footprint. It is not an all-in run rate:
+
+| Not counted | Why it can matter |
+|---|---|
+| **Data transfer and NAT data processing** | Charged per GB on top of the NAT hourly rate. Image pulls and cross-AZ traffic dominate it, so it scales with your workload, not with the platform |
+| **LLM API spend** | KAgent runs Claude and GPT-4o, and AI Search needs a `VOYAGE_API_KEY`. Those are Anthropic / OpenAI / Voyage bills, not AWS — and on an agent-heavy platform they can exceed the infrastructure. This is precisely what the [Langfuse](docs/ai-assistant.md#llm-observability-langfuse) page exists to show you |
+| **Datadog** | Third-party SaaS priced per host and per ingested GB, alongside the Prometheus/Grafana stack that is included |
+| **Multi-region V2** | A standby region is close to a second copy of the infrastructure. See [docs/multi-region.md](docs/multi-region.md) |
+| **Your own services** | Everything above is the platform. Whatever your teams scaffold onto it is additional |
+| **Savings Plans / Reserved Instances** | List prices only. Committed-use discounts take a meaningful cut off the node line |
+
+Verify against the [AWS pricing calculator](https://calculator.aws) for your
+region before committing — this table is a measurement of one cluster, not a
+quote.
 
 ## How It Works — Interaction Flows
 
