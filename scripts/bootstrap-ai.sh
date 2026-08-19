@@ -1297,7 +1297,7 @@ else
       --version "$LANGFUSE_CHART_VERSION" \
       --namespace ml-platform \
       --values "$_LF_VALUES" \
-      --wait --timeout 25m
+      --wait --timeout "${HELM_WAIT_XL}"
     kubectl rollout status deployment/langfuse-web -n ml-platform --timeout=600s
     if [[ "$DEPLOY_MODE" == "aws" ]]; then
       check "Langfuse deployed (Postgres → RDS, blobs → s3://${LANGFUSE_BUCKET})"
@@ -1381,7 +1381,7 @@ EOF
       --namespace kagent \
       --create-namespace \
       --wait \
-      --timeout 5m
+      --timeout "${HELM_WAIT_SHORT}"
     helm_record_fingerprint "$_crds_fp_file" "$_crds_fp"
   fi
 
@@ -2061,7 +2061,7 @@ else
           sed "s|CONTRACT_MCP_IRSA_ROLE_ARN_PLACEHOLDER|${CONTRACT_MCP_ROLE_ARN:-}|g" \
             "${REPO_ROOT}/services/${SVC}/helm-values-aws.yaml" \
             | helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
-                --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout 3m
+                --namespace services-dev --create-namespace --values /dev/stdin --wait --timeout "${HELM_WAIT_SHORT}"
           helm_record_fingerprint "$_svc_fp_file" "$_svc_fp"
         fi
         check "${SVC} deployed → ALB"
@@ -2098,7 +2098,7 @@ else
           helm upgrade --install "${SVC}" "${REPO_ROOT}/helm/service-template" \
             --namespace services-dev --create-namespace \
             --values "${REPO_ROOT}/services/${SVC}/helm-values-local.yaml" \
-            --wait --timeout 3m
+            --wait --timeout "${HELM_WAIT_SHORT}"
         fi
         kubectl rollout status deployment/"${SVC}" -n services-dev --timeout 90s
         check "${SVC} deployed to services-dev"

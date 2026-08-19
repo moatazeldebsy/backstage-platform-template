@@ -228,7 +228,7 @@ if $INSTALL_ARGOCD; then
     --create-namespace \
     --version 9.5.13 \
     --values "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml" \
-    --wait --timeout 10m
+    --wait --timeout "${HELM_WAIT_MED}"
   helm_record_fingerprint "${ROOT_DIR}/.idp-cache/argocd.fingerprint" \
     "9.5.13:$(_sha256 "${ROOT_DIR}/local/argocd/argocd-helm-values-local.yaml")"
 
@@ -288,7 +288,7 @@ if $INSTALL_PUSHGATEWAY; then
     --set serviceMonitor.enabled=true \
     --set serviceMonitor.additionalLabels.release=prometheus \
     --set "extraArgs[0]=--web.enable-admin-api" \
-    --wait --timeout 5m
+    --wait --timeout "${HELM_WAIT_SHORT}"
   kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
   kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
   log "Pushgateway ready. Seeding QA metrics..."
@@ -924,7 +924,7 @@ helm_upgrade_cached ingress-nginx ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.resources.limits.cpu=500m \
   --set controller.resources.limits.memory=256Mi \
   ${_INGRESS_EXTRA_ARGS[@]+"${_INGRESS_EXTRA_ARGS[@]}"} \
-  --wait --timeout 5m
+  --wait --timeout "${HELM_WAIT_SHORT}"
 
 # ── Step 4c: Backstage K8s Service, Endpoints, and nginx Ingress ─────────────
 # Wires the nginx controller to the Backstage Docker Compose container so that
@@ -1004,7 +1004,7 @@ if ! $SKIP_OBS; then
   helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
     --namespace monitoring \
     --values "$(dirname "$0")/../local/observability/prometheus-stack-values.yaml" \
-    --wait --timeout 10m
+    --wait --timeout "${HELM_WAIT_MED}"
 
   kubectl apply -f "${ROOT_DIR}/observability/alertmanager/prometheus-rules.yaml"
   log "  PrometheusRules applied (SLO burn-rate, DORA anomalies, team budgets, KAgent guardrails)."
@@ -1114,7 +1114,7 @@ if ! $SKIP_OBS; then
       --set opencost.prometheus.external.enabled=true \
       --set "opencost.prometheus.external.url=http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090" \
       --set opencost.exporter.defaultClusterId="${CLUSTER_NAME}" \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
     log "  Step 5b: OpenCost installed. UI: http://opencost.idp.local"
   ) > "$_s5b_log" 2>&1 &
   _s5b_pid=$!
@@ -1126,7 +1126,7 @@ if ! $SKIP_OBS; then
     helm_upgrade_cached argo-rollouts argo-rollouts argo/argo-rollouts \
       --namespace argo-rollouts \
       --values "${ROOT_DIR}/local/argocd/argo-rollouts-values.yaml" \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
     kubectl apply -f "${ROOT_DIR}/kubernetes/argo-rollouts/analysis-template.yaml"
     log "  Step 5b-pre: Argo Rollouts installed. Dashboard: http://argo-rollouts.idp.local"
     log "  Step 5b-pre: To opt a service into canary: set rollout.enabled: true in its helm-values-local.yaml"
@@ -1138,7 +1138,7 @@ if ! $SKIP_OBS; then
     helm_upgrade_cached loki monitoring grafana/loki \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/loki/loki-values.yaml" \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
     # Loki is installed but not run on this node — see the capacity note in
     # loki-values.yaml. It cannot be expressed as a value: the chart's
     # singleBinaryReplicas helper hardcodes 1 unless object storage is in use,
@@ -1148,7 +1148,7 @@ if ! $SKIP_OBS; then
     helm_upgrade_cached promtail monitoring grafana/promtail \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/loki/promtail-values.yaml" \
-      --wait --timeout 3m
+      --wait --timeout "${HELM_WAIT_SHORT}"
     log "  Step 5c: Loki + Promtail installed (scaled to 0 — see loki-values.yaml)."
   ) > "$_s5c_log" 2>&1 &
   _s5c_pid=$!
@@ -1158,7 +1158,7 @@ if ! $SKIP_OBS; then
     helm_upgrade_cached tempo monitoring grafana/tempo \
       --namespace monitoring \
       --values "${ROOT_DIR}/local/observability/tempo/tempo-values.yaml" \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
     kubectl apply -f "${ROOT_DIR}/local/observability/tempo/tempo-ingress.yaml"
     log "  Step 5d: Tempo installed. OTLP HTTP: http://tempo.idp.local/v1/traces | gRPC: tempo.monitoring.svc.cluster.local:4317"
     log "  Step 5d: Traces available in Grafana → Explore → Tempo datasource."
@@ -1346,7 +1346,7 @@ if ! $SKIP_POLICIES; then
       --set audit.resources.requests.memory=128Mi \
       --set audit.resources.limits.cpu=500m \
       --set audit.resources.limits.memory=512Mi \
-      --wait --timeout 10m
+      --wait --timeout "${HELM_WAIT_MED}"
 
     log "Applying OPA ConstraintTemplates..."
     kubectl apply \
@@ -1417,7 +1417,7 @@ if ! $SKIP_POLICIES; then
       --set cleanupJobs.clusterEphemeralReports.enabled=false \
       --set policyReportsCleanup.enabled=false \
       --set webhooksCleanup.enabled=false \
-      --wait --timeout 5m
+      --wait --timeout "${HELM_WAIT_SHORT}"
     # The 6 lines above disable Kyverno's optional report/webhook GC jobs rather
     # than pointing them at registry.k8s.io/kubectl (as a previous pass tried):
     # that image has no shell at all (`/bin/sh`, `/bin/bash` both missing), but
@@ -1479,7 +1479,7 @@ if ! $SKIP_DORA; then
         --set serviceMonitor.enabled=true \
         --set serviceMonitor.additionalLabels.release=prometheus \
         --set "extraArgs[0]=--web.enable-admin-api" \
-        --wait --timeout 5m
+        --wait --timeout "${HELM_WAIT_SHORT}"
 
       kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
       log "Pushgateway ingress: http://pushgateway.idp.local"

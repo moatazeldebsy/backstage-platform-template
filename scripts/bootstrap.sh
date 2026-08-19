@@ -834,7 +834,7 @@ _p44pre_pid=$!
   helm_upgrade_cached promtail monitoring grafana/promtail \
     --namespace monitoring \
     --values "${ROOT_DIR}/aws/observability/loki/promtail-values.yaml" \
-    --wait --timeout 3m || log "WARNING: Promtail install had issues — non-fatal, log shipping just won't be active yet."
+    --wait --timeout "${HELM_WAIT_SHORT}" || log "WARNING: Promtail install had issues — non-fatal, log shipping just won't be active yet."
   log "  Loki + Promtail installed. Logs available in Grafana → Explore → Loki datasource."
 ) > "$_p44preb_log" 2>&1 &
 _p44preb_pid=$!
@@ -1066,6 +1066,9 @@ if ! helm_upgrade_cached argocd argocd argo/argo-cd \
   case "$_argocd_status" in
     pending-install|failed)
       log "  Release in ${_argocd_status} — uninstalling before retry so the retry starts clean."
+      # Deliberately a literal budget, not HELM_WAIT_*: this is the recovery path,
+      # and it should stay bounded even when a user has raised the install
+      # timeouts for a slow link. Both calls are best-effort (|| true) anyway.
       helm uninstall argocd -n argocd --wait --timeout 5m >/dev/null 2>&1 || true
       ;;
     pending-upgrade|pending-rollback)
