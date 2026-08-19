@@ -107,6 +107,15 @@ other.
 | `HELM_WAIT_SHORT` | `5m` | `helm --wait` budget for the quick installs. Raise it on a cold AWS account where ALB and EBS provisioning is slow. |
 | `HELM_WAIT_MED` | `10m` | Same, for the heavier charts (kube-prometheus-stack, Loki, Tempo). |
 | `HELM_WAIT_LONG` | `15m` | Used for the ArgoCD retry — the first attempt uses `HELM_WAIT_SHORT`, and only a failure escalates to this. |
+| `HELM_WAIT_XL` | `25m` | Charts whose *first* install legitimately runs past `HELM_WAIT_LONG`. Currently Langfuse, which pulls Postgres, ClickHouse, Valkey and MinIO at once — on a slow link those pods are still healthily pulling well past 15m. |
+
+These four now cover **every** `helm --wait` in the bootstrap scripts. They used
+to be honoured by only two call sites in `bootstrap-local.sh` (both ArgoCD)
+while the other twelve hardcoded their own `--timeout`, so raising
+`HELM_WAIT_SHORT` on a slow connection appeared to do nothing and installs
+still failed at the hardcoded budget. If you are on a slow link, measure your
+throughput first and then raise these — a chart that is still pulling images is
+not a chart that has failed.
 
 The timing summary prints even when a run fails, so it is the fastest way to see
 which step is actually costing you time before trying to tune anything.

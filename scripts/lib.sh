@@ -10,6 +10,11 @@ _IDP_LIB_LOADED=1
 HELM_WAIT_SHORT="${HELM_WAIT_SHORT:-5m}"
 HELM_WAIT_MED="${HELM_WAIT_MED:-10m}"
 HELM_WAIT_LONG="${HELM_WAIT_LONG:-15m}"
+# Extra-long tier for charts whose FIRST install legitimately outlasts LONG.
+# Langfuse is the case that forced it: the chart pulls Postgres, ClickHouse,
+# Valkey and MinIO at once, and on a slow link the pods are still healthily
+# pulling well past 15m, so a shorter budget fails a release that is fine.
+HELM_WAIT_XL="${HELM_WAIT_XL:-25m}"
 
 BOLD='\033[1m'
 GREEN='\033[0;32m'
