@@ -2418,6 +2418,19 @@ Data layer:
 <li>Karpenter <code>EC2NodeClass</code> + <code>NodePool</code> per cluster (spot + on-demand mix, Graviton preferred)</li>
 <li>Backstage warm-standby wiring: Aurora Global read replica in us-east-1 serves read-only during failover</li>
 </ul>
+<p><strong>Standby credentials.</strong> The standby Backstage reads the same <code>backstage-secrets</code>
+Secret as the hub. <code>idp-mvp/backstage</code> is replicated into the standby region by
+Terraform (<code>aws_secretsmanager_secret.backstage</code> carries a <code>replica</code> block), and
+<code>bootstrap-multiregion.sh</code> applies the SecretStore/ExternalSecret to the standby
+cluster with <strong>that cluster's</strong> region substituted — the primary region's value
+would not resolve there.</p>
+<p>Order matters and is enforced by the script: namespaces → Backstage
+ServiceAccount + IRSA → ExternalSecret (waited on) → Deployment. The standby
+Deployment's <code>POSTGRES_*</code> and <code>AUTH_SESSION_SECRET</code> references are deliberately
+<strong>not</strong> <code>optional</code>, so if the secret is missing the pod stays in
+<code>CreateContainerConfigError</code> rather than starting up misconfigured and only
+revealing the problem during an actual failover. Only the optional integrations
+(Datadog, PagerDuty, Jira) are marked optional.</p>
 <hr />
 <h2 id="crossplane-xrds-v2">Crossplane XRDs (V2)<a class="headerlink" href="#crossplane-xrds-v2" title="Permanent link">&para;</a></h2>
 <h3 id="new-xrds">New XRDs<a class="headerlink" href="#new-xrds" title="Permanent link">&para;</a></h3>
