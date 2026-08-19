@@ -25,6 +25,15 @@
 #                       scaffolded service's tracing start working.
 #   --skip-kagent      Skip KAgent CRDs and Helm install
 #   --skip-mcp         Skip IDP/QA/Contract MCP Server build and deploy
+#   --agents <list>    Comma-separated KAgent agents to install. Default is the
+#                       six historical agents: idp,qa,release,cost,platform,contract
+#                       Also available (not installed by default):
+#                       incident,security,onboarding
+#                       Special values: "all" (every agent), "none" (KAgent
+#                       runtime with no agents at all), "list" (print and exit).
+#                       Each agent is one pod; narrow this on a small machine.
+#                       Agents not selected are pruned, so re-running with a
+#                       shorter list removes the ones you dropped.
 #   --adp              Also deploy Agentic Development Platform (ADP) components
 #                       (see docs/agentic-platform.md) on top of the base AI/ML stack
 #   --destroy          Remove AI/ML components only (keeps core platform running)
@@ -46,6 +55,13 @@ ADP=false
 # ~4GB on top of the platform, and everything runs fine against hosted APIs
 # without it. Exists so the agents can be tried with no API key at all.
 OLLAMA=false
+# Which KAgent agents to install. Empty means "not specified" -> the historical
+# default set (see AGENTS_DEFAULT below). Each agent is one Deployment running a
+# Python runtime, so this is the main lever for fitting the AI layer on a small
+# machine: on an 8-CPU laptop the full default set can saturate the node and
+# leave agents stuck un-ready. Toolservers are RemoteMCPServer CRs (zero pods),
+# so they are always applied and never need selecting.
+AGENTS=""
 DESTROY=false
 FORCE_BUILD=false
 LANGFUSE_KEYS_ONLY=false
@@ -61,11 +77,58 @@ while [[ $# -gt 0 ]]; do
     --langfuse-keys-only) LANGFUSE_KEYS_ONLY=true; shift ;;
     --skip-kagent)  SKIP_KAGENT=true; shift ;;
     --skip-mcp)     SKIP_MCP=true; shift ;;
+    --agents)
+      # Guard the value: bare "--agents" would otherwise die with an opaque
+      # "$2: unbound variable" under set -u.
+      if [[ $# -lt 2 || "$2" == --* ]]; then
+        echo "--agents requires a value, e.g. --agents idp,qa (or: all, none, list)" >&2
+        exit 1
+      fi
+      AGENTS="$2"; shift 2 ;;
     --adp)          ADP=true; shift ;;
     --ollama)       OLLAMA=true; shift ;;
     --destroy)      DESTROY=true; shift ;;
     --force-build)  FORCE_BUILD=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
+  esac
+done
+
+# ── Agent selection: resolve and validate before doing any work ──────────────
+# Every agent is one Deployment running a Python runtime, so this is the main
+# lever for fitting the AI layer on a small machine. Toolservers are
+# RemoteMCPServer CRs (zero pods) and are derived from the selection further
+# down, so they never need selecting.
+# Resolved here rather than at install time so that a typo fails in the first
+# second instead of twenty minutes into MLflow and Langfuse.
+AGENTS_DEFAULT="idp,qa,release,cost,platform,contract"
+AGENTS_ALL="idp,qa,release,cost,platform,contract,incident,security,onboarding"
+
+if [[ "${AGENTS:-}" == "list" ]]; then
+  echo "Available KAgent agents (one pod each):"
+  for _a in ${AGENTS_ALL//,/ }; do
+    case ",$AGENTS_DEFAULT," in
+      *",$_a,"*) echo "  $_a  (installed by default)" ;;
+      *)         echo "  $_a" ;;
+    esac
+  done
+  echo
+  echo "Usage: --agents idp,qa   |   --agents all   |   --agents none"
+  exit 0
+fi
+
+case "${AGENTS:-}" in
+  "")   AGENTS_SELECTED="$AGENTS_DEFAULT" ;;
+  all)  AGENTS_SELECTED="$AGENTS_ALL" ;;
+  none) AGENTS_SELECTED="" ;;
+  *)    AGENTS_SELECTED="$AGENTS" ;;
+esac
+
+for _a in ${AGENTS_SELECTED//,/ }; do
+  case ",$AGENTS_ALL," in
+    *",$_a,"*) ;;
+    *) echo "Unknown agent '$_a'. Valid: $AGENTS_ALL" >&2
+       echo "Run './scripts/bootstrap-ai.sh --agents list' to see them." >&2
+       exit 1 ;;
   esac
 done
 
@@ -1444,6 +1507,36 @@ EOF
   # contract-toolserver is required, not optional: idp-agent and platform-agent
   # both reference contract-mcp-server as a tool source, so without it those
   # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
+  # Toolservers each selected agent needs, beyond the always-applied base
+  # (toolserver.yaml provides idp-mcp-server plus kagent's own tool server).
+  # Selection itself was resolved and validated at the top of this script.
+  _agent_toolservers() {
+    case "$1" in
+      idp|platform)  echo "qa-toolserver.yaml argocd-toolserver.yaml cost-toolserver.yaml contract-toolserver.yaml" ;;
+      qa)            echo "qa-toolserver.yaml github-toolserver.yaml" ;;
+      release)       echo "argocd-toolserver.yaml" ;;
+      cost)          echo "cost-toolserver.yaml" ;;
+      contract)      echo "contract-toolserver.yaml" ;;
+      incident)      echo "incident-toolserver.yaml" ;;
+      security)      echo "security-toolserver.yaml" ;;
+      onboarding)    echo "" ;;
+      *)             echo "" ;;
+    esac
+  }
+
+  _agents_selected="$AGENTS_SELECTED"
+  for _a in ${_agents_selected//,/ }; do
+    [[ -f "${REPO_ROOT}/kubernetes/kagent/${_a}-agent.yaml" ]] || {
+      err "Agent '$_a' has no manifest at kubernetes/kagent/${_a}-agent.yaml"; exit 1; }
+  done
+
+  if [[ -n "$_agents_selected" ]]; then
+    info "KAgent agents: $_agents_selected"
+  else
+    info "KAgent agents: none (--agents none) — runtime installs, no agent pods"
+  fi
+
+  # Base: model configs, RBAC, and the always-present toolserver. Never selectable.
   _kagent_manifests=(
     modelconfig.yaml
     modelconfig-haiku.yaml
@@ -1451,18 +1544,25 @@ EOF
     modelconfig-opus.yaml
     idp-mcp-server-rbac.yaml
     toolserver.yaml
-    idp-agent.yaml
-    qa-toolserver.yaml
-    qa-agent.yaml
-    github-toolserver.yaml
-    argocd-toolserver.yaml
-    cost-toolserver.yaml
-    release-agent.yaml
-    cost-agent.yaml
-    platform-agent.yaml
-    contract-toolserver.yaml
-    contract-agent.yaml
   )
+
+  # Toolservers for the selected agents, de-duplicated. Applied before the
+  # agents themselves: an Agent whose RemoteMCPServer is absent fails to compile
+  # with "RemoteMCPServer.kagent.dev <name> not found".
+  _ts_seen=""
+  for _a in ${_agents_selected//,/ }; do
+    for _ts in $(_agent_toolservers "$_a"); do
+      case " $_ts_seen " in
+        *" $_ts "*) ;;
+        *) _ts_seen="$_ts_seen $_ts"; _kagent_manifests+=("$_ts") ;;
+      esac
+    done
+  done
+
+  # The agents themselves.
+  for _a in ${_agents_selected//,/ }; do
+    _kagent_manifests+=("${_a}-agent.yaml")
+  done
   # Conditional — the OpenAI ModelConfig is only functional with a key present.
   [[ -n "${OPENAI_API_KEY:-}" ]] && _kagent_manifests+=(modelconfig-openai.yaml)
 
@@ -1471,6 +1571,27 @@ EOF
     _kagent_apply_args+=(-f "${REPO_ROOT}/kubernetes/kagent/${_m}")
   done
   kubectl apply "${_kagent_apply_args[@]}"
+
+  # Prune agents that are no longer selected, so re-running with a shorter
+  # --agents list actually removes them instead of silently leaving the previous
+  # run's pods consuming CPU. The Agent CR name does not match its filename
+  # (idp-agent.yaml declares "idp-assistant", cost-agent.yaml declares
+  # "cost-agent"), so read the real name out of each manifest rather than
+  # guessing it. Deleting the Agent CR is enough -- the kagent controller owns
+  # the Deployment and garbage-collects it.
+  for _a in ${AGENTS_ALL//,/ }; do
+    case ",${_agents_selected}," in
+      *",$_a,"*) continue ;;   # still selected, keep it
+    esac
+    _mf="${REPO_ROOT}/kubernetes/kagent/${_a}-agent.yaml"
+    [[ -f "$_mf" ]] || continue
+    _cr=$(awk '/^kind: Agent/{k=1} k&&/^  name:/{print $2; exit}' "$_mf")
+    [[ -n "$_cr" ]] || continue
+    if kubectl get agents.kagent.dev -n kagent "$_cr" >/dev/null 2>&1; then
+      info "  Pruning deselected agent: $_cr"
+      kubectl delete agents.kagent.dev -n kagent "$_cr" --wait=false >/dev/null 2>&1 || true
+    fi
+  done
 
   if $ADP; then
     info "Applying Agentic Development Platform (ADP) components (docs/agentic-platform.md)..."

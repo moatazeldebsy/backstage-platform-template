@@ -97,6 +97,18 @@ Trim from the bottom of the value/cost list. Each flag is independent:
 # Or install AI/ML piecemeal — KAgent is the expensive part
 ./scripts/bootstrap-ai.sh --skip-kagent    # keeps MLflow + MCP servers
 
+# Finer-grained: keep KAgent but choose which agents run.
+# Each agent is ONE pod running a Python runtime, and the six installed by
+# default are the single biggest CPU consumer in the AI layer — on an 8-CPU
+# machine the full set can saturate the node so thoroughly that the agents
+# never finish booting and the control plane starts losing lease renewals.
+./scripts/bootstrap-ai.sh --agents list    # show what's available
+./scripts/bootstrap-ai.sh --agents idp     # just the IDP assistant (1 pod)
+./scripts/bootstrap-ai.sh --agents idp,qa  # a useful pair
+./scripts/bootstrap-ai.sh --agents none    # KAgent runtime + UI, no agent pods
+./scripts/bootstrap-ai.sh --agents all     # all nine, including the three that
+                                           # are not installed by default
+
 # Drop the metrics stack                   → saves ~1.6 GB
 #   (Backstage's Grafana/DORA/FinOps tabs go blank)
 ./scripts/bootstrap-local.sh --skip-obs
@@ -111,6 +123,34 @@ Trim from the bottom of the value/cost list. Each flag is independent:
 
 If you're below the "core only" tier, don't run the platform locally — use a
 cloud dev box, or deploy to AWS with `./scripts/bootstrap.sh`.
+
+### Choosing which KAgent agents run
+
+`bootstrap-ai.sh` installs six agents by default — `idp`, `qa`, `release`,
+`cost`, `platform`, `contract`. Three more ship in the repo but are **not**
+installed unless asked for: `incident`, `security`, `onboarding`.
+
+Each agent is one Deployment running the `kagent/app` Python image, so the
+count maps directly to CPU pressure. Narrow it with `--agents`:
+
+| Value | Result |
+|---|---|
+| *(omitted)* | The six defaults — unchanged behaviour |
+| `--agents idp` | One agent |
+| `--agents idp,qa` | Any comma-separated subset |
+| `--agents all` | All nine |
+| `--agents none` | KAgent runtime and UI install, zero agent pods |
+| `--agents list` | Print the available agents and exit |
+
+Two things worth knowing:
+
+- **Toolservers are free and automatic.** They are `RemoteMCPServer` custom
+  resources pointing at the MCP Services in `services-dev` — they create no
+  pods. The script derives the ones your selection needs, so agents are
+  genuinely independent: enabling one can never break another.
+- **Deselected agents are pruned.** Re-running with a shorter list deletes the
+  agents you dropped rather than leaving the previous run's pods consuming CPU.
+  An unknown agent name fails immediately, before anything is installed.
 
 ### Loki and Tempo ship disabled
 
