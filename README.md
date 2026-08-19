@@ -207,7 +207,7 @@ before committing — this table is a measurement of one cluster, not a quote.
 
 ## Screenshots
 
-All shots are from a live local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh` — no mock-ups.
+All shots are from live clusters — mostly a local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh`, plus a few from the AWS EKS path. No mock-ups.
 
 ### The portal
 
@@ -237,6 +237,13 @@ Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA,
 | ![Scaffolder task](docs/assets/screenshots/scaffolder-task-run.jpg) | ![Scaffolded repo](docs/assets/screenshots/scaffolded-repo-github.jpg) |
 | Generate → push to GitHub → register in catalog → run the first job | CI workflow, Dockerfile, `catalog-info.yaml`, TechDocs — all wired |
 
+Templates are wizards, not a wall of fields — and the last step opens the GitOps PR that puts the new service under ArgoCD:
+
+| Template wizard (LLM App) | The GitOps PR it opened |
+|---|---|
+| ![LLM App template](docs/assets/screenshots/template-llm-app-langfuse.jpg) | ![GitOps onboarding PR](docs/assets/screenshots/gitops-onboarding-pr.jpg) |
+| Model, effort level, trace sampling — chosen up front, wired into the skeleton | An ApplicationSet auto-discovers the service into `services-dev` on merge |
+
 Self-service infrastructure is the same flow — a Crossplane Claim committed to Git instead of a Terraform PR:
 
 ![Crossplane templates](docs/assets/screenshots/templates-crossplane.jpg)
@@ -256,6 +263,10 @@ Bronze / Silver / Gold tiers across every service, with the cheapest unfilled ch
 | ![SLOs](docs/assets/screenshots/slos.jpg) | ![QA metrics](docs/assets/screenshots/grafana-qa-metrics.jpg) |
 | Sloth multi-window burn-rate, live from Prometheus | E2E pass rate, k6 p95 latency and error rate per run |
 
+Those SLOs aren't hand-written YAML — a template generates the Sloth definitions and burn-rate alerts and opens the PR:
+
+![Define Service SLOs template](docs/assets/screenshots/template-define-slos.jpg)
+
 ### AI/ML platform and agents
 
 The **AI Assistant** answers in plans, not prose — it maps your intent onto the actual templates on the platform and asks for exactly the inputs they need:
@@ -263,6 +274,10 @@ The **AI Assistant** answers in plans, not prose — it maps your intent onto th
 | Ask it anything | It plans the scaffold |
 |---|---|
 | ![AI Assistant](docs/assets/screenshots/ai-assistant.jpg) | ![AI Assistant scaffold plan](docs/assets/screenshots/ai-assistant-scaffold-plan.jpg) |
+
+…and then it actually runs the scaffolder — repo, deploy target, task ID and the suggested next steps come back in the same chat:
+
+![AI Assistant scaffold result](docs/assets/screenshots/ai-assistant-scaffold-done.jpg)
 
 | KAgent agents | MCP servers and model configs |
 |---|---|
@@ -300,8 +315,12 @@ Prometheus tells you *that* an agent ran. **Langfuse** tells you what it cost �
 | ![Cost Calculator](docs/assets/screenshots/cost-calculator.jpg) | ![Grafana IDP services](docs/assets/screenshots/grafana-idp-services.jpg) |
 | Estimate a service's monthly cost *before* scaffolding it | Request rate, CPU/memory and restarts, filtered by catalog entity |
 
+Incidents are records, not Slack threads — auto-filed from Alertmanager, severity-filtered, and feeding MTTR back into DORA:
+
+![Incidents](docs/assets/screenshots/incidents.jpg)
+
 <details>
-<summary><b>More screens</b> — Tech Radar, onboarding, Learning Center, API explorer, Copilot metrics, admin, activity feed</summary>
+<summary><b>More screens</b> — Tech Radar, onboarding, Learning Center, API explorer, Copilot metrics, admin, activity feed, search, support</summary>
 
 <br>
 
@@ -320,6 +339,10 @@ Prometheus tells you *that* an agent ran. **Langfuse** tells you what it cost �
 | Admin | Activity feed |
 |---|---|
 | ![Admin](docs/assets/screenshots/admin.jpg) | ![Activity feed](docs/assets/screenshots/activity-feed.jpg) |
+
+| Search | Support |
+|---|---|
+| ![Search](docs/assets/screenshots/search.jpg) | ![Support](docs/assets/screenshots/support.jpg) |
 
 </details>
 
