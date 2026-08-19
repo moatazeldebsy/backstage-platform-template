@@ -925,6 +925,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#choosing-which-kagent-agents-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      Choosing which KAgent agents run
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loki-and-tempo-ship-disabled" class="md-nav__link">
     <span class="md-ellipsis">
       Loki and Tempo ship disabled
@@ -2550,11 +2559,35 @@ kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </sp
 <span class="normal">13</span>
 <span class="normal">14</span>
 <span class="normal">15</span>
-<span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Don&#39;t run bootstrap-ai.sh at all         → saves ~2.9 GB (the single biggest win)</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Don&#39;t run bootstrap-ai.sh at all         → saves ~2.9 GB (the single biggest win)</span>
 ./scripts/bootstrap-local.sh
 
 <span class="c1"># Or install AI/ML piecemeal — KAgent is the expensive part</span>
 ./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-kagent<span class="w">    </span><span class="c1"># keeps MLflow + MCP servers</span>
+
+<span class="c1"># Finer-grained: keep KAgent but choose which agents run.</span>
+<span class="c1"># Each agent is ONE pod running a Python runtime, and the six installed by</span>
+<span class="c1"># default are the single biggest CPU consumer in the AI layer — on an 8-CPU</span>
+<span class="c1"># machine the full set can saturate the node so thoroughly that the agents</span>
+<span class="c1"># never finish booting and the control plane starts losing lease renewals.</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">    </span><span class="c1"># show what&#39;s available</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w">     </span><span class="c1"># just the IDP assistant (1 pod)</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,qa<span class="w">  </span><span class="c1"># a useful pair</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>none<span class="w">    </span><span class="c1"># KAgent runtime + UI, no agent pods</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>all<span class="w">     </span><span class="c1"># all nine, including the three that</span>
+<span class="w">                                           </span><span class="c1"># are not installed by default</span>
 
 <span class="c1"># Drop the metrics stack                   → saves ~1.6 GB</span>
 <span class="c1">#   (Backstage&#39;s Grafana/DORA/FinOps tabs go blank)</span>
@@ -2569,6 +2602,56 @@ kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </sp
 </code></pre></div></td></tr></table></div>
 <p>If you're below the "core only" tier, don't run the platform locally — use a
 cloud dev box, or deploy to AWS with <code>./scripts/bootstrap.sh</code>.</p>
+<h3 id="choosing-which-kagent-agents-run">Choosing which KAgent agents run<a class="headerlink" href="#choosing-which-kagent-agents-run" title="Permanent link">&para;</a></h3>
+<p><code>bootstrap-ai.sh</code> installs six agents by default — <code>idp</code>, <code>qa</code>, <code>release</code>,
+<code>cost</code>, <code>platform</code>, <code>contract</code>. Three more ship in the repo but are <strong>not</strong>
+installed unless asked for: <code>incident</code>, <code>security</code>, <code>onboarding</code>.</p>
+<p>Each agent is one Deployment running the <code>kagent/app</code> Python image, so the
+count maps directly to CPU pressure. Narrow it with <code>--agents</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(omitted)</em></td>
+<td>The six defaults — unchanged behaviour</td>
+</tr>
+<tr>
+<td><code>--agents idp</code></td>
+<td>One agent</td>
+</tr>
+<tr>
+<td><code>--agents idp,qa</code></td>
+<td>Any comma-separated subset</td>
+</tr>
+<tr>
+<td><code>--agents all</code></td>
+<td>All nine</td>
+</tr>
+<tr>
+<td><code>--agents none</code></td>
+<td>KAgent runtime and UI install, zero agent pods</td>
+</tr>
+<tr>
+<td><code>--agents list</code></td>
+<td>Print the available agents and exit</td>
+</tr>
+</tbody>
+</table>
+<p>Two things worth knowing:</p>
+<ul>
+<li><strong>Toolservers are free and automatic.</strong> They are <code>RemoteMCPServer</code> custom
+  resources pointing at the MCP Services in <code>services-dev</code> — they create no
+  pods. The script derives the ones your selection needs, so agents are
+  genuinely independent: enabling one can never break another.</li>
+<li><strong>Deselected agents are pruned.</strong> Re-running with a shorter list deletes the
+  agents you dropped rather than leaving the previous run's pods consuming CPU.
+  An unknown agent name fails immediately, before anything is installed.</li>
+</ul>
 <h3 id="loki-and-tempo-ship-disabled">Loki and Tempo ship disabled<a class="headerlink" href="#loki-and-tempo-ship-disabled" title="Permanent link">&para;</a></h3>
 <p>The log and trace backends — <strong>Loki</strong>, <strong>Promtail</strong>, and <strong>Tempo</strong> — are
 installed as Helm releases but run <strong>zero pods</strong> locally. Prometheus, Grafana,
