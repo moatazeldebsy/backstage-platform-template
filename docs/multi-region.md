@@ -91,6 +91,21 @@ Data layer:
 - Karpenter `EC2NodeClass` + `NodePool` per cluster (spot + on-demand mix, Graviton preferred)
 - Backstage warm-standby wiring: Aurora Global read replica in us-east-1 serves read-only during failover
 
+**Standby credentials.** The standby Backstage reads the same `backstage-secrets`
+Secret as the hub. `idp-mvp/backstage` is replicated into the standby region by
+Terraform (`aws_secretsmanager_secret.backstage` carries a `replica` block), and
+`bootstrap-multiregion.sh` applies the SecretStore/ExternalSecret to the standby
+cluster with **that cluster's** region substituted — the primary region's value
+would not resolve there.
+
+Order matters and is enforced by the script: namespaces → Backstage
+ServiceAccount + IRSA → ExternalSecret (waited on) → Deployment. The standby
+Deployment's `POSTGRES_*` and `AUTH_SESSION_SECRET` references are deliberately
+**not** `optional`, so if the secret is missing the pod stays in
+`CreateContainerConfigError` rather than starting up misconfigured and only
+revealing the problem during an actual failover. Only the optional integrations
+(Datadog, PagerDuty, Jira) are marked optional.
+
 ---
 
 ## Crossplane XRDs (V2)

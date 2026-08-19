@@ -544,7 +544,11 @@ else
 fi
 log "Backstage image pushed: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}"
 
-kubectl apply -f aws/backstage/external-secret.yaml --context hub
+# AWS_REGION_PLACEHOLDER must be substituted or the SecretStore is created with
+# a literal placeholder as its region and ESO can never read the secret.
+# bootstrap.sh has always done this; the multi-region path applied the file raw.
+sed "s|AWS_REGION_PLACEHOLDER|${PRIMARY_REGION}|g" \
+  aws/backstage/external-secret.yaml | kubectl apply -f - --context hub
 
 _backstage_secret_synced_hub() {
   [[ "$(kubectl get externalsecret backstage-secrets -n backstage \
@@ -685,14 +689,46 @@ else
   # Argo Rollouts on standby (1 replica)
   kubectl apply -f aws/argo-rollouts/argocd-application.yaml --context standby
 
-  # Backstage warm standby
-  sed "s|image: REPLACE_WITH_ECR_IMAGE|image: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}|g" \
-    aws/backstage/deployment-standby.yaml | kubectl apply -f - --context standby
-
-  # Namespaces + RBAC
+  # Namespaces + RBAC. These MUST precede the Backstage standby deployment:
+  # namespaces.yaml creates the backstage namespace, and applying the Deployment
+  # into a namespace that does not exist yet fails outright. They used to run
+  # three lines later, so a fresh standby cluster never got Backstage at all.
   kubectl apply -f kubernetes/namespaces/namespaces.yaml     --context standby
   kubectl apply -f kubernetes/rbac/cluster-roles.yaml        --context standby
   kubectl apply -f kubernetes/network-policies/default-deny.yaml --context standby
+
+  # Backstage ServiceAccount + IRSA on standby. The SecretStore below
+  # authenticates as this ServiceAccount, so without it ESO cannot reach
+  # Secrets Manager and the standby Backstage has no credentials.
+  kubectl apply -f kubernetes/backstage/rbac.yaml --context standby
+  kubectl annotate serviceaccount backstage \
+    -n backstage \
+    "eks.amazonaws.com/role-arn=${BACKSTAGE_ROLE_STANDBY}" \
+    --overwrite --context standby
+
+  # ExternalSecret on standby. idp-mvp/backstage is replicated into the standby
+  # region by terraform (aws_secretsmanager_secret.backstage has a replica block),
+  # so the same secret name resolves locally here -- but the SecretStore must
+  # point at the STANDBY region, not the primary one.
+  sed "s|AWS_REGION_PLACEHOLDER|${STANDBY_REGION}|g" \
+    aws/backstage/external-secret.yaml | kubectl apply -f - --context standby
+
+  _backstage_secret_synced_standby() {
+    [[ "$(kubectl get externalsecret backstage-secrets -n backstage \
+          --context standby -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null)" == "SecretSynced" ]]
+  }
+  if poll_until "ExternalSecret sync (standby)" 60 5 _backstage_secret_synced_standby; then
+    log "  Standby ExternalSecret synced."
+  else
+    warn "Standby ExternalSecret not synced — standby Backstage will not start until it is."
+  fi
+
+  # Backstage warm standby. Applied after the secret exists: its POSTGRES_* and
+  # AUTH_SESSION_SECRET refs are deliberately NOT optional, so the pod stays in
+  # CreateContainerConfigError until the secret is present rather than coming up
+  # silently misconfigured.
+  sed "s|image: REPLACE_WITH_ECR_IMAGE|image: ${BACKSTAGE_IMAGE}:${IMAGE_TAG}|g" \
+    aws/backstage/deployment-standby.yaml | kubectl apply -f - --context standby
 
   log "Standby cluster provisioned."
 fi
