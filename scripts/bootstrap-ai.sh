@@ -10,11 +10,13 @@
 #   --cluster <name>   EKS cluster name (default: idp-mvp, used with --aws)
 #   --skip-mlflow      Skip MLflow tracking server
 #   --langfuse         Deploy Langfuse (LLM observability) and export KAgent
-#                       traces to it. Opt-in locally — the chart pulls Postgres,
-#                       ClickHouse, Valkey and MinIO (6 pods / ~2.4Gi), which a
-#                       single-node Kind cluster does not have spare. Always on
-#                       for --aws; use --skip-langfuse to opt out there.
-#   --skip-langfuse    Skip Langfuse (only meaningful with --aws)
+#                       traces to it. ON BY DEFAULT on both local and --aws, so
+#                       the local stack matches what you ship. The chart pulls
+#                       Postgres, ClickHouse, Valkey and MinIO (6 pods / ~2.4Gi);
+#                       budget for that on a single-node Kind cluster. The flag
+#                       is kept for explicitness and for re-enabling after a
+#                       --skip-langfuse run.
+#   --skip-langfuse    Skip Langfuse on either target (lighter cluster)
 #   --langfuse-keys-only
 #                      Do nothing except (re)distribute the Langfuse project key
 #                       pair into every namespace labelled idp.io/langfuse=enabled,
@@ -67,11 +69,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Resolve the Langfuse default now that DEPLOY_MODE is known: on by default for
-# AWS (EKS has the headroom and the Terraform-backed RDS/S3 to make it durable),
-# off by default locally (see the --langfuse note in the usage block above).
+# Langfuse is part of the platform on BOTH targets. It used to default off
+# locally, purely on resource grounds, but that made the local stack quietly
+# different from AWS: the AI Observability page and every MCP server's tracing
+# had a backend on EKS and nothing behind them on Kind, which is exactly the
+# local/AWS asymmetry this repo keeps having to hunt down. A developer running
+# the documented local path should get the same platform they ship to.
+#
+# It is not free -- the chart brings Postgres, ClickHouse, Valkey and MinIO
+# (6 pods / ~2.4Gi) -- so --skip-langfuse still works on either target for a
+# deliberately lighter cluster.
 if [[ -z "$LANGFUSE" ]]; then
-  [[ "$DEPLOY_MODE" == "aws" ]] && LANGFUSE=true || LANGFUSE=false
+  LANGFUSE=true
 fi
 
 # Pinned chart version. app 3.224.1. Bump deliberately: the chart carries four

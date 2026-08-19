@@ -807,12 +807,15 @@ Prometheus counts *that* a tool was called. Langfuse records *what the model
 actually did*: the prompt, the completion, token counts, cost, latency, and the
 tool calls inside each agent run.
 
-Deployed opt-in, because the chart brings Postgres, ClickHouse, Valkey and MinIO
-with it (6 pods, ~2.4Gi) and the local Kind node has little to spare:
+On by default on both targets, so local matches what you ship. The chart brings
+Postgres, ClickHouse, Valkey and MinIO with it (6 pods, ~2.4Gi), which is a real
+cost on a single-node Kind cluster — see
+[docs/local-setup.md](local-setup.md#what-runs-where-and-what-it-costs):
 
 ```bash
-./scripts/bootstrap-ai.sh --langfuse      # local: opt-in
-./scripts/bootstrap-ai.sh --aws           # AWS: on by default (--skip-langfuse to opt out)
+./scripts/bootstrap-ai.sh                 # local: Langfuse included
+./scripts/bootstrap-ai.sh --aws           # AWS: Langfuse included
+./scripts/bootstrap-ai.sh --skip-langfuse # either target: lighter cluster, no LLM tracing
 ```
 
 Then open **AI Observability** in the Backstage sidebar, or

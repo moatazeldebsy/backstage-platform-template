@@ -30,14 +30,22 @@ settled (measured with `kubectl top`, not estimated):
 | GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts) | `bootstrap-local.sh` | ~310m | ~0.8 GB |
 | Your services (`services-dev`) | `bootstrap-local.sh` | ~200m | ~0.4 GB |
 | **AI/ML (KAgent, MLflow, MCP servers)** | `bootstrap-ai.sh` | ~300m | **~2.9 GB** |
-| **Langfuse (LLM observability, 6 pods)** | `bootstrap-ai.sh --langfuse` | ~500m | **~2.4 GB** |
+| **Langfuse (LLM observability, 6 pods)** | `bootstrap-ai.sh` (on by default) | ~500m | **~2.4 GB** |
 | **Total, everything on** | | **~4.1 cores** | **~11.4 GB** |
 
-Langfuse is opt-in precisely because of that last row — it is the single most
-expensive layer after core Kubernetes, and `langfuse-web` will not run under a
-1 GB limit (Node sizes its heap from the container limit and OOMs at ~503 MB;
-2 GB is the floor). Leave `--langfuse` off unless you are actually working on
-LLM tracing.
+Langfuse now installs by default on local as well as AWS, so the local stack
+matches what you ship — the AI Observability page and every MCP server's tracing
+have a real backend on both targets. Budget for it: that last row is the single
+most expensive layer after core Kubernetes, and `langfuse-web` will not run under
+a 1 GB limit (Node sizes its heap from the container limit and OOMs at ~503 MB;
+2 GB is the floor).
+
+Read the total honestly before you run it. **~11.4 GB against a 13 GB VM leaves
+almost nothing spare**, and on a 6-core allocation the startup burst is what
+hurts, not the steady state — several charts' `--wait` timeouts can expire while
+images are still pulling on a slow link, which fails the run on timing rather
+than on anything being wrong. If you do not need LLM tracing, run
+`./scripts/bootstrap-ai.sh --skip-langfuse` for a materially lighter cluster.
 
 Give the container VM (Docker Desktop → Settings → Resources, or Rancher Desktop
 → Virtual Machine) at least:

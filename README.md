@@ -56,7 +56,7 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
-| **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Opt-in on both targets: `bootstrap-ai.sh --langfuse` locally, and part of `--with-ai` on AWS. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
+| **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Installed by default on both targets by `bootstrap-ai.sh` (part of `--with-ai` on AWS); `--skip-langfuse` opts out. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
 | **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
 | **Infrastructure** | Terraform for foundation (EKS, VPC, ECR, IAM/OIDC, RDS, S3) + Crossplane for per-service resources (S3, RDS, MSK, DynamoDB, SQS) via ArgoCD-reconciled Claims. See [docs/crossplane-vs-terraform.md](docs/crossplane-vs-terraform.md) |
@@ -135,7 +135,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | Deployment | Helm (`helm/service-template`) | Helm (`helm/service-template`) |
 | Developer portal | Backstage (Docker Compose) | Backstage (EKS) |
 | Observability | Prometheus + Grafana | CloudWatch + Grafana + Datadog Agent (infra/APM) |
-| LLM observability | Langfuse (opt-in) — in-cluster Postgres + ClickHouse + MinIO | Langfuse (default) — RDS + S3 via Terraform, IRSA-scoped |
+| LLM observability | Langfuse (default) — in-cluster Postgres + ClickHouse + MinIO | Langfuse (default) — RDS + S3 via Terraform, IRSA-scoped |
 
 ### AWS Architecture
 
@@ -207,7 +207,7 @@ before committing — this table is a measurement of one cluster, not a quote.
 
 ## Screenshots
 
-All shots are from a live local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh` — no mock-ups.
+All shots are from live clusters — mostly a local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh`, plus a few from the AWS EKS path. No mock-ups.
 
 ### The portal
 
@@ -237,6 +237,13 @@ Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA,
 | ![Scaffolder task](docs/assets/screenshots/scaffolder-task-run.jpg) | ![Scaffolded repo](docs/assets/screenshots/scaffolded-repo-github.jpg) |
 | Generate → push to GitHub → register in catalog → run the first job | CI workflow, Dockerfile, `catalog-info.yaml`, TechDocs — all wired |
 
+Templates are wizards, not a wall of fields — and the last step opens the GitOps PR that puts the new service under ArgoCD:
+
+| Template wizard (LLM App) | The GitOps PR it opened |
+|---|---|
+| ![LLM App template](docs/assets/screenshots/template-llm-app-langfuse.jpg) | ![GitOps onboarding PR](docs/assets/screenshots/gitops-onboarding-pr.jpg) |
+| Model, effort level, trace sampling — chosen up front, wired into the skeleton | An ApplicationSet auto-discovers the service into `services-dev` on merge |
+
 Self-service infrastructure is the same flow — a Crossplane Claim committed to Git instead of a Terraform PR:
 
 ![Crossplane templates](docs/assets/screenshots/templates-crossplane.jpg)
@@ -256,6 +263,10 @@ Bronze / Silver / Gold tiers across every service, with the cheapest unfilled ch
 | ![SLOs](docs/assets/screenshots/slos.jpg) | ![QA metrics](docs/assets/screenshots/grafana-qa-metrics.jpg) |
 | Sloth multi-window burn-rate, live from Prometheus | E2E pass rate, k6 p95 latency and error rate per run |
 
+Those SLOs aren't hand-written YAML — a template generates the Sloth definitions and burn-rate alerts and opens the PR:
+
+![Define Service SLOs template](docs/assets/screenshots/template-define-slos.jpg)
+
 ### AI/ML platform and agents
 
 The **AI Assistant** answers in plans, not prose — it maps your intent onto the actual templates on the platform and asks for exactly the inputs they need:
@@ -263,6 +274,10 @@ The **AI Assistant** answers in plans, not prose — it maps your intent onto th
 | Ask it anything | It plans the scaffold |
 |---|---|
 | ![AI Assistant](docs/assets/screenshots/ai-assistant.jpg) | ![AI Assistant scaffold plan](docs/assets/screenshots/ai-assistant-scaffold-plan.jpg) |
+
+…and then it actually runs the scaffolder — repo, deploy target, task ID and the suggested next steps come back in the same chat:
+
+![AI Assistant scaffold result](docs/assets/screenshots/ai-assistant-scaffold-done.jpg)
 
 | KAgent agents | MCP servers and model configs |
 |---|---|
@@ -300,8 +315,12 @@ Prometheus tells you *that* an agent ran. **Langfuse** tells you what it cost �
 | ![Cost Calculator](docs/assets/screenshots/cost-calculator.jpg) | ![Grafana IDP services](docs/assets/screenshots/grafana-idp-services.jpg) |
 | Estimate a service's monthly cost *before* scaffolding it | Request rate, CPU/memory and restarts, filtered by catalog entity |
 
+Incidents are records, not Slack threads — auto-filed from Alertmanager, severity-filtered, and feeding MTTR back into DORA:
+
+![Incidents](docs/assets/screenshots/incidents.jpg)
+
 <details>
-<summary><b>More screens</b> — Tech Radar, onboarding, Learning Center, API explorer, Copilot metrics, admin, activity feed</summary>
+<summary><b>More screens</b> — Tech Radar, onboarding, Learning Center, API explorer, Copilot metrics, admin, activity feed, search, support</summary>
 
 <br>
 
@@ -320,6 +339,10 @@ Prometheus tells you *that* an agent ran. **Langfuse** tells you what it cost �
 | Admin | Activity feed |
 |---|---|
 | ![Admin](docs/assets/screenshots/admin.jpg) | ![Activity feed](docs/assets/screenshots/activity-feed.jpg) |
+
+| Search | Support |
+|---|---|
+| ![Search](docs/assets/screenshots/search.jpg) | ![Support](docs/assets/screenshots/support.jpg) |
 
 </details>
 
