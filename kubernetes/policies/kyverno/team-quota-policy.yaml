@@ -18,6 +18,30 @@ metadata:
       Generates a tier-matched ResourceQuota in every team-* namespace.
       Tiers: small (4 CPU / 8Gi), medium (16 CPU / 32Gi), large (LimitRange defaults only).
 spec:
+  # Ignore, not the Fail default, and deliberately so.
+  #
+  # Every rule below is `generate` — this policy validates nothing and denies
+  # nothing, so failing closed buys no security whatsoever. What it did buy was a
+  # deadlock: Kyverno compiles these rules into a webhook that intercepts
+  # CREATE/UPDATE on *all* namespaces (the `names: ["team-*"]` filter is applied
+  # inside Kyverno, after the request has already been sent to it). With the
+  # default Fail policy, an unhealthy admission controller therefore rejected
+  # every namespace write in the cluster — including the platform namespaces
+  # `bootstrap-local.sh` applies at Step 3. Re-running the bootstrap is the
+  # documented way to recover a degraded cluster, and it could not get past
+  # Step 3, so the only remaining option was to destroy the cluster.
+  #
+  # Observed 2026-08-20 on a CPU-starved local cluster: the admission controller
+  # was OOM/probe-killed in a restart loop, and three consecutive bootstrap runs
+  # died with `failed calling webhook "validate.kyverno.svc-fail": connection
+  # refused`.
+  #
+  # The cost of Ignore is bounded: if Kyverno is down when a team namespace is
+  # created, its ResourceQuota is not generated at that moment. `generateExisting:
+  # true` below back-fills it as soon as Kyverno recovers.
+  #
+  # A policy that actually *validates* something should keep the Fail default.
+  failurePolicy: Ignore
   generateExisting: true
   rules:
     # ── Small tier ─────────────────────────────────────────────────────────────

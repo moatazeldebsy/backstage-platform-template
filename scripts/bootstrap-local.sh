@@ -133,6 +133,39 @@ _clean_docker() {
   log "Docker clean complete."
 }
 
+# kubectl apply, but when the failure is an admission webhook refusing the
+# request, say what that means and how to get out of it. The raw error is a wall
+# of Go error text ending in "connection refused", which reads like a network
+# problem rather than "your policy engine is down and is now blocking its own
+# repair".
+_apply_or_explain() {
+  local manifest="$1" out rc
+  out=$(kubectl apply -f "$manifest" 2>&1); rc=$?
+  [[ -n "$out" ]] && printf '%s\n' "$out"
+  (( rc == 0 )) && return 0
+
+  if grep -qE 'failed calling webhook|admission webhook .* denied' <<< "$out"; then
+    local hook
+    hook=$(grep -oE 'webhook "[^"]+"' <<< "$out" | head -1 | cut -d'"' -f2)
+    # Deliberately not err(): that exits immediately, which would swallow every
+    # line of guidance below. The non-zero return propagates under `set -e`.
+    warn "Applying $(basename "$manifest") was rejected by admission webhook '${hook:-unknown}'."
+    warn "  A fail-closed webhook whose backend is unhealthy blocks this apply, and"
+    warn "  therefore blocks the bootstrap that would repair it."
+    warn ""
+    warn "  Check the policy engines:"
+    warn "    kubectl -n kyverno get pods"
+    warn "    kubectl -n gatekeeper-system get pods"
+    warn ""
+    warn "  If pods are crashlooping, they are usually starved rather than broken —"
+    warn "  free CPU/memory on the host and let them settle, then re-run."
+    warn "  To inspect what is fail-closed:"
+    warn "    kubectl get validatingwebhookconfiguration -o custom-columns=\\"
+    warn "      NAME:.metadata.name,POLICY:.webhooks[*].failurePolicy"
+  fi
+  return "$rc"
+}
+
 # ── URL banner helper (used by --print-urls and the final Done section) ───────
 _print_url_banner() {
   local argocd_pass=""
@@ -890,10 +923,15 @@ log "Step 3: Creating platform namespaces..."
 for _ns in services services-dev monitoring argocd ingress-nginx gatekeeper-system opencost argo-workflows; do
   wait_namespace_clear "$_ns" 60
 done
-kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
-kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
-kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
-kubectl apply -f "$(dirname "$0")/../kubernetes/network-policies/default-deny.yaml"
+# Applied through _apply_or_explain so a fail-closed admission webhook produces
+# an actionable message instead of a raw `failed calling webhook` dump. This is
+# the first step that writes cluster resources, so it is where a wedged policy
+# engine surfaces — and re-running this script is the documented way to recover a
+# degraded cluster, which makes an opaque failure here especially expensive.
+_apply_or_explain "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
+_apply_or_explain "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
+_apply_or_explain "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
+_apply_or_explain "$(dirname "$0")/../kubernetes/network-policies/default-deny.yaml"
 
 timer_end "3. Namespaces"
 
