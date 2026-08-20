@@ -101,8 +101,12 @@ timing table at the end of a run lines up with this one.
 **Total: ~40–70 minutes cold.** A repeat run against an existing cluster is far
 shorter — the image builds, helm releases and Terraform providers all skip when
 nothing has changed. Set `IDP_FORCE=1` to override every skip check, and
-`HELM_WAIT_SHORT`/`HELM_WAIT_MED`/`HELM_WAIT_LONG` to raise the helm timeouts on
-a slow account.
+`HELM_WAIT_SHORT`/`HELM_WAIT_MED`/`HELM_WAIT_LONG`/`HELM_WAIT_XL` to raise the
+helm timeouts on a slow account — these four now cover every `helm --wait` in the
+bootstrap. Defaults are 5m/10m/15m/25m; see
+[Scripts Reference](scripts-reference.md#re-running-the-bootstrap-scripts-caching-and-parallelism).
+On a slow link, measure throughput first, then raise them — the defaults turn a
+slow network into what looks like a hard failure.
 
 ### Step 3: Update GitHub OAuth Callback URL
 
@@ -549,8 +553,12 @@ Secrets (~$15). Nodes and ALBs are what actually move.
 > 2026-08-17, **27 ALB Ingresses** existed with `--adp` and all three
 > environments populated (dev/staging/prod each publish their own), not 6 — one
 > per Ingress, since `group.name` is unused. Removing the six dead internal ones
-> below brings that to 21. Treat the table as the core-platform baseline and
-> assume roughly one ALB per service per environment on top.
+> below brings that to 21. Treat the table as the core-platform baseline.
+>
+> Scaffolded services no longer add to this by default: since #397 their
+> `helm-values-aws.yaml` ships `ingress.enabled: false`, so a new service
+> publishes no ALB unless you opt in. The 27 measured above predate that change
+> and reflect environments whose services all had ingress enabled.
 
 Where the money goes, and what has already been done about it:
 

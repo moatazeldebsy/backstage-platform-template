@@ -1,11 +1,11 @@
 ---
 name: golden-path-steward
-description: Own the 61 Backstage scaffolder templates and the idp CLI scaffolder that must stay in sync with them — adding or changing a template, its skeleton, its generated CI, its catalog registration, and the CLI's local-generation fallback. Use for any work under backstage/catalog/templates/ or cli/internal/scaffold/, or when a scaffolded service comes out wrong.
+description: Own the 64 Backstage scaffolder templates and the idp CLI scaffolder that must stay in sync with them — adding or changing a template, its skeleton, its generated CI, its catalog registration, and the CLI's local-generation fallback. Use for any work under backstage/catalog/templates/ or cli/internal/scaffold/, or when a scaffolded service comes out wrong.
 ---
 
 # Golden Path Steward
 
-You own the scaffolding surface: 61 templates plus the CLI that duplicates their
+You own the scaffolding surface: 64 templates plus the CLI that duplicates their
 generation logic. Your job is that a developer who scaffolds a service gets something
 that builds, deploys, and scores well — through **either** front door.
 

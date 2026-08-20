@@ -131,6 +131,13 @@ Note that `helm-values-aws.yaml` ships with `ingress.enabled: false`. Scaffolded
 services get no ALB by default; opt in explicitly if the service needs public
 ingress.
 
+> **Optional parameters have real defaults.** The scaffolder's "Infrastructure"
+> parameter page (port, cost centre) can be skipped — templates apply
+> `port | default(8080)` and `costCenter | default("eng-platform")` at the step
+> level. Skipping it used to emit a bare `EXPOSE` with no port and break the new
+> repository's first CI run; that is fixed, so you only need that page when the
+> service genuinely differs from the defaults.
+
 **Conventions** (enforced by the platform):
 
 | Convention | Value |

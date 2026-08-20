@@ -67,8 +67,8 @@ Before endorsing a design, state its effect on each of:
 - **Multi-region** — active-standby `eu-central-1` primary + `us-east-1` standby, live
   on `main` behind `scripts/bootstrap-multiregion.sh`. Does the design assume one region?
   Check `docs/multi-region.md` for the hub-spoke ApplicationSet matrix and XRD extensions.
-- **The 61 scaffolder templates** — does this change what a scaffolded service must
-  contain? If so it's 61 skeletons plus the CLI, not one file.
+- **The 64 scaffolder templates** — does this change what a scaffolded service must
+  contain? If so it's 64 skeletons plus the CLI, not one file.
 - **ADP** — `scripts/bootstrap-ai.sh --adp` adds agents behind a human-in-the-loop
   approval gate. Does this design give an agent a new capability that should be gated?
 

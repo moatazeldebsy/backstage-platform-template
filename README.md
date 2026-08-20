@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
-A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
+A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (services, QA, mobile, AI/ML, multi-region), an AI/ML platform (KAgent + MLflow + MCP servers), a shift-left quality programme, and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
@@ -38,9 +38,9 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 | Helm | 3.x / 4.x |
 | Kind | ≥ 0.27 |
 | ArgoCD | v3.4 (chart 9.5.13) |
-| Terraform | ≥ 1.5 |
+| Terraform | ≥ 1.5 (CI pins 1.10.5) |
 | Go (hello-service) | 1.26 |
-| Node.js (Backstage) | 24 LTS |
+| Node.js (Backstage) | 22 or 24 (CI builds on 24; the MCP servers run on Node 20) |
 
 ---
 
@@ -48,13 +48,13 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 
 | Capability | Details |
 |---|---|
-| **Developer portal** | Backstage v1.50.4 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
-| **Software templates** | 63 templates: 11 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, LLM App, Team namespace, Create namespace, Add-secret, Decommission) + 52 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (62 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
+| **Developer portal** | Backstage v1.50.4 — catalog, TechDocs, Tech Radar (92 entries), custom scaffolder actions |
+| **Software templates** | 64 templates: 12 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, LLM App, LangGraph Agent, Team namespace, Create namespace, Add-secret, Decommission) + 52 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (63 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
-| **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 5 mobile scorecard checks. See [docs/mobile-platform.md](docs/mobile-platform.md) |
+| **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + 9 mobile Tech Insights facts (collected, not yet surfaced on the Scorecard tab). See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
-| **Shift-left quality** | Bronze/Silver/Gold scorecard (11 + 5 mobile checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
+| **Shift-left quality** | Bronze/Silver/Gold scorecard (17 checks — 14 for non-AI entities, plus 3 AI-governance checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
 | **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Installed by default on both targets by `bootstrap-ai.sh` (part of `--with-ai` on AWS); `--skip-langfuse` opts out. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
@@ -116,12 +116,16 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **Grafana** | http://grafana.idp.local | `admin` / `admin` |
 | **ArgoCD** | http://argocd.idp.local | `admin` / *(run `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" \| base64 -d`)* |
 | **Prometheus** | http://prometheus.idp.local | — |
+| **AlertManager** | http://alertmanager.idp.local | — |
+| **Pushgateway** | http://pushgateway.idp.local | — |
+| **Argo Workflows** | http://argo-workflows.idp.local | — |
 | **OpenCost** | http://opencost.idp.local | — |
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
 | **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local (also surfaced in Backstage at `/kagent` · `/mlflow`) | requires `bootstrap-ai.sh` |
 | **AI Observability** / **Langfuse UI** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | installed by default by `bootstrap-ai.sh` (`--skip-langfuse` opts out); Langfuse admin password in the `langfuse-init` Secret |
-| **IDP / QA / Contract MCP Servers** | `http://<name>-mcp-server.idp.local/healthz` | requires `bootstrap-ai.sh` |
-| **Traces (Tempo)** / **Argo Rollouts** | Traces via Grafana Explore → Tempo datasource (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
+| **MCP Servers** (8) | `http://<name>-mcp-server.idp.local/healthz` — `idp`, `qa`, `contract`, `github`, `cost`, `argocd`, `incident`, `security` | requires `bootstrap-ai.sh` |
+| **Approval Service** / **Agent Event Router** | http://approval-service.idp.local · http://agent-event-router.idp.local | requires `bootstrap-ai.sh --adp` |
+| **Traces (Tempo)** / **Logs (Loki)** / **Argo Rollouts** | Traces and logs via Grafana Explore (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh`, but **Loki and Tempo are scaled to 0 locally by default** — scale up to use them ([Local Setup](docs/local-setup.md)) |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 ### Third-party integrations — bring your own accounts
@@ -191,6 +195,13 @@ overnight scale-down `enable_cost_optimizer` performs by default.
 charges only**; see [what the table excludes](#what-the-table-excludes) below
 before treating the total as your bill.
 
+> **This is a measurement, not the repo default.** The table reflects a running
+> `idp-mvp` cluster with the node group scaled up to six `t3.large`.
+> `terraform/variables.tf` ships `node_group_desired_size = 1` (min 0, max 2), so
+> a bootstrap using the defaults costs substantially less — and will not fit the
+> full stack. Scale the node group deliberately rather than inferring it from
+> this table.
+
 | Component | Qty | ~$/month |
 |---|---:|---:|
 | EKS control plane | 1 | 73 |
@@ -251,7 +262,7 @@ quote.
 | Channel | Who | Entry point |
 |---------|-----|-------------|
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
-| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 63 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 64 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
 
 ## Screenshots
@@ -277,7 +288,7 @@ Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA,
 
 ### Golden path — scaffold → repo → deploy
 
-63 templates in the Scaffolder, filtered by category, tag or owner:
+64 templates in the Scaffolder, filtered by category, tag or owner:
 
 ![Scaffolder templates](docs/assets/screenshots/scaffolder-templates.jpg)
 
@@ -373,7 +384,7 @@ Incidents are records, not Slack threads — auto-filed from Alertmanager, sever
 
 <br>
 
-| Tech Radar (63 entries) | API Explorer |
+| Tech Radar (92 entries) | API Explorer |
 |---|---|
 | ![Tech Radar](docs/assets/screenshots/tech-radar.jpg) | ![API Explorer](docs/assets/screenshots/api-explorer.jpg) |
 
@@ -402,7 +413,7 @@ backstage-platform-template/
 ├── scripts/                    # setup.sh · bootstrap-local.sh · bootstrap-ai.sh · cleanup.sh
 ├── backstage/
 │   ├── app/                    # Backstage monorepo (v1.50.4)
-│   ├── catalog/templates/      # 63 golden-path templates
+│   ├── catalog/templates/      # 64 golden-path templates
 │   ├── app-config.yaml         # base config
 │   ├── app-config.local.yaml   # Kind overrides
 │   └── app-config.aws.yaml     # EKS overrides
@@ -459,7 +470,7 @@ The AWS path went effectively untested between May and August 2026. Bringing a r
 - **71 template files hardcoded `*.idp.local`**, so every service scaffolded on AWS got catalog links that only resolve on a laptop.
 - CI reported green on paths that ran no jobs at all, including two services with full test suites.
 
-Design decisions from that work are recorded as [ADRs](docs/design/) rather than left implicit: [batch orchestration](docs/design/adr-0001-batch-orchestration.md), [delivery model](docs/design/adr-0002-delivery-model.md), [incident management](docs/design/adr-0003-incident-management.md), [identity and access](docs/design/adr-0004-identity-and-access.md).
+Design decisions from that work are recorded as [ADRs](docs/design/) rather than left implicit: [batch orchestration](docs/design/adr-0001-batch-orchestration.md), [delivery model](docs/design/adr-0002-delivery-model.md), [incident management](docs/design/adr-0003-incident-management.md), [identity and access](docs/design/adr-0004-identity-and-access.md), [LLM serving and agent frameworks](docs/design/adr-0005-llm-serving-and-agent-frameworks.md).
 
 ### Known limitations
 
@@ -467,15 +478,14 @@ Stated plainly, because finding these by surprise is worse than reading them her
 
 | Limitation | Detail |
 |---|---|
-| **Coarse authorization** | Any authenticated user can run any of the 63 templates against any namespace. [ADR-0004](docs/design/adr-0004-identity-and-access.md), issues #153 and #155 |
+| **Coarse authorization** | Any authenticated user can run any of the 64 templates against any namespace. [ADR-0004](docs/design/adr-0004-identity-and-access.md), issues #153 and #155 |
 | **Users and Groups are static YAML** | GitHub Org ingestion is deferred — it cannot work on a personal account |
 | **Sloth has no in-cluster operator** | SLO rules are vendored; editing a source file without the `sloth` binary silently changes nothing |
-| **The 10 MCP servers bypass GitOps** | They are excluded from the ApplicationSets and deployed by `helm upgrade`. [ADR-0002](docs/design/adr-0002-delivery-model.md) |
 | **No CI exercises an AWS bootstrap** | `terraform validate` and a guard against committed account ids is all that gates it |
 
 ### Next
 
-Multi-team production hardening, Amazon Bedrock integration, self-hosted small-model serving, and a LangGraph agent template. See the board.
+Multi-team production hardening, Amazon Bedrock integration, and self-hosted small-model serving. See the board. (The LangGraph agent template shipped — it is one of the 12 blessed templates.)
 
 ---
 
@@ -516,7 +526,7 @@ behaves inside this repo.
 | `platform-architect` | Deciding *where* a change belongs — Terraform vs Crossplane vs Helm vs `kubernetes/`, which of the three interaction channels exposes a capability, which app-config layer |
 | `platform-engineer` | Actually building the change across components; knows the per-component CI gate and runs it |
 | `platform-reviewer` | Reviewing a diff against this repo's conventions (dual local/AWS coverage, both template front doors, accepted risks) |
-| `golden-path-steward` | The 63 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
+| `golden-path-steward` | The 64 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
 | `qa-shift-left` | Test strategy, the Bronze/Silver/Gold scorecard, contract testing, flaky-test quarantine |
 | `security-advisor` | Kyverno/PSS, IRSA and least-privilege IAM, External Secrets, Dependabot triage |
 | `sre-responder` | Live incidents, SLOs and burn-rate alerts, rollback, DR failover, postmortems |

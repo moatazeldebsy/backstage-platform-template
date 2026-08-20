@@ -120,6 +120,19 @@ in the docs that mentions a `bootstrap-ai.sh` flag should defer to this table.
 | `--region <region>` | from `.idp-config.env` | AWS region to target. |
 | `--destroy` | — | Remove the AI/ML stack. |
 
+### Helper scripts (not invoked directly)
+
+These live in `scripts/` but are libraries or build-time helpers rather than
+entry points, which is why they are absent from the tables above.
+
+| Script | What it is |
+|---|---|
+| `lib.sh` | Shared bash library sourced by every bootstrap script — logging, the `HELM_WAIT_*` timeouts, the port 80/443 preflight, retry/skip helpers. Not executable on its own. |
+| `render-backstage-config.py` | Renders the Backstage app-config layer for the target environment. |
+| `render-postmortem.py` | Fills `docs/postmortem-template.md` from an incident's data. |
+| `sync-agent-prompts.py` | Pushes versioned KAgent prompts to Langfuse and fails CI on drift. |
+| `validate-catalog-templates.py` | CI gate — checks every template is registered and parses. |
+
 ## Re-running the bootstrap scripts — caching and parallelism
 
 `bootstrap-local.sh`, `bootstrap.sh`, `bootstrap-ai.sh` and

@@ -147,7 +147,7 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 | `helm/values-tiers/` | Manual | Small/Medium/Large Helm value tiers for Backstage and ArgoCD |
 | `services/<svc>/` | Per-service CI | Legacy flat service values: `helm-values-local.yaml` (Kind), `helm-values-aws.yaml` (EKS) |
 | `teams/<teamName>/services/<svc>/` | Per-team CI | Team-scoped service values (auto-discovered by per-team ApplicationSet) |
-| `backstage/catalog/all-templates.yaml` | Both | Single Location file indexing the 62 AWS-shared templates (the 63rd, `deploy-to-kind`, is local-only and registered in `app-config.local.yaml`); replaces the individual URL entries previously listed in `app-config.aws.yaml` |
+| `backstage/catalog/all-templates.yaml` | Both | Single Location file indexing the 63 AWS-shared templates (the 64th, `deploy-to-kind`, is local-only and registered in `app-config.local.yaml`); replaces the individual URL entries previously listed in `app-config.aws.yaml` |
 | `observability/` | Both | Shared alerting rules, Grafana dashboards (`grafana-helm-values.yaml` with sidecar enabled), DORA/tech-insights exporters |
 | `backstage/` | Both | Portal source, `app-config.yaml` (base), `app-config.local.yaml` (local overrides), catalog templates (all tagged `v1` + `blessed`/`advanced`) |
 | `scripts/` | Both | `bootstrap-local.sh` (local), `bootstrap.sh` (AWS), `bootstrap-ai.sh` (both), shared `lib.sh` |
@@ -230,7 +230,7 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | `idp:deploy-local` action | `backstage/app/packages/backend/src/modules/idpLocalDeploy.ts` | Custom scaffolder action |
 | Backstage image | `backstage/Dockerfile` | Production image (pre-built bundle) |
 | kube-prometheus-stack values (local) | `local/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (nginx, local storage) |
-| kube-prometheus-stack values (AWS) | `aws/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention) |
+| kube-prometheus-stack values (AWS) | `aws/observability/prometheus-stack-values.yaml` | Prometheus + Grafana + AlertManager (gp3, 3d retention capped by `retentionSize: 15GB` on a 20Gi volume; no ALB — Prometheus and AlertManager are cluster-internal) |
 | ClusterSecretStore | `aws/external-secrets/cluster-secret-store.yaml` | Global ESO → AWS Secrets Manager backend |
 | Per-team SecretStore | `kubernetes/teams/<name>/secret-store.yaml` (scaffold) | Namespace-scoped SecretStore; access restricted to `/<team>/*` in Secrets Manager |
 | Per-team ESO IRSA roles | `terraform/iam-team-secret-store.tf` | One IAM role per team; `secretsmanager:GetSecretValue` on `/<team>/*` only |
@@ -242,7 +242,7 @@ For the full deep-dive see [docs/ai-assistant.md](ai-assistant.md).
 | Tech Insights Exporter | `observability/tech-insights-exporter/cronjob.yaml` | Scorecard metrics → Pushgateway (both envs) |
 | DORA exporter (local) | `local/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway; `team=` label via `TEAM_MAP` or GitHub topic |
 | DORA exporter (AWS) | `aws/observability/dora/dora-cronjob.yaml` | DORA metrics → Pushgateway + CloudWatch; `TEAM_MAP` from Secrets Manager |
-| Template catalog | `backstage/catalog/all-templates.yaml` | Single Location file for the 62 AWS-shared templates (tagged `v1` + `blessed`/`advanced`); `deploy-to-kind` is local-only, giving 63 in the local catalog |
+| Template catalog | `backstage/catalog/all-templates.yaml` | Single Location file for the 63 AWS-shared templates (tagged `v1` + `blessed`/`advanced`); `deploy-to-kind` is local-only, giving 64 in the local catalog |
 | Permission framework | `backstage/app-config.aws.yaml` | `permission.enabled: true`; blocks unauthenticated scaffolder access |
 | hello-service | `services/hello-service/` | Reference Go implementation |
 | material-table patch | `backstage/app/.yarn/patches/` | Fixes `uuid` v10 compatibility crash in catalog, api-docs, and techdocs pages |
@@ -331,7 +331,7 @@ AWS Region: us-east-1
 | **S3** | `idp-mvp-terraform-state-*` | Terraform remote state |
 | **IAM / OIDC** | OIDC provider for EKS, IRSA module | Keyless pod-level AWS access |
 | **AWS Load Balancer Controller** | Installed via Helm in `kube-system` | Creates ALBs from `ingressClassName: alb` resources |
-| **EBS CSI Driver** | Managed addon | Persistent volumes (gp2) for Prometheus, Grafana, MLflow |
+| **EBS CSI Driver** | Managed addon | Persistent volumes (gp3) for Prometheus, Grafana, MLflow |
 | **CloudWatch** | `IDP/DORA` namespace | Secondary DORA metrics destination (alerting) |
 
 ### EKS Namespace Map
@@ -400,7 +400,7 @@ EKS Cluster: idp-mvp (us-east-1)
 │   └── deployment/mlflow             (tracking server, ALB ingress)
 │
 ├── opencost                          (FinOps)
-│   └── deployment/opencost           (cost visibility, ALB ingress)
+│   └── deployment/opencost           (cost visibility, cluster-internal only)
 │
 ├── crossplane-system                 (Crossplane)
 │   ├── crossplane                    (core controller)
@@ -416,7 +416,9 @@ EKS Cluster: idp-mvp (us-east-1)
 Terraform
   └── creates placeholders in AWS Secrets Manager
         idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
-                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET
+                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET,
+                               PAGERDUTY_TOKEN, JIRA_TOKEN, JIRA_URL,
+                               DD_API_KEY, DD_APP_KEY
         idp-mvp/dora-exporter → GITHUB_TOKEN
         idp-mvp/kagent      → ANTHROPIC_API_KEY
         idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
@@ -479,8 +481,8 @@ External Secrets Operator (ESO)
   │
   ├── Phase 4 — Observability (~10 min)
   │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
-  │     Pushgateway + ALB ingress
-  │     OpenCost + ALB ingress
+  │     Pushgateway (cluster-internal)
+  │     OpenCost (cluster-internal)
   │     DORA exporter CronJob
   │     seed-qa-metrics.sh (seeds demo QA metrics into Pushgateway)
   │

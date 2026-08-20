@@ -144,6 +144,26 @@ Populates both `idp-mvp/datadog` (Datadog Agent) and `idp-mvp/backstage` (Backst
 proxy + dd-trace) Secrets Manager secrets — `scripts/bootstrap.sh` installs the Agent
 automatically once these are set.
 
+### PagerDuty and Jira (optional)
+
+**Why:** the Backstage On-Call and Issues entity tabs. Without these the tabs render
+their empty state; nothing else breaks.
+
+**Get it:** a read-only PagerDuty REST API key, and for Jira a Base64 encoding of
+`email:api_token`.
+
+```bash
+# Set in terraform/terraform.tfvars before running terraform apply
+pagerduty_token = "YOUR_PAGERDUTY_READ_ONLY_KEY"
+jira_token      = "BASE64_OF_email:api_token"
+jira_url        = "https://your-company.atlassian.net"
+```
+
+All three land in the `idp-mvp/backstage` Secrets Manager secret and reach Backstage
+on EKS as `PAGERDUTY_TOKEN`, `JIRA_TOKEN` and `JIRA_URL`. `pagerduty_token` and
+`jira_token` default to `REPLACE_ME`; `jira_url` defaults to empty, which leaves
+`app-config.aws.yaml` pointing at an RFC 2606 `.invalid` host that never resolves.
+
 **Status:** ☐ Optional / ☐ Set if using Datadog
 
 ---
@@ -175,6 +195,8 @@ Credentials:
   [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
   [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
   [ ] datadog_api_key / datadog_app_key set in terraform.tfvars (if using Datadog)
+  [ ] pagerduty_token set in terraform.tfvars (if using the On-Call tab)
+  [ ] jira_token / jira_url set in terraform.tfvars (if using the Issues tab)
 
 Verification:
   [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!

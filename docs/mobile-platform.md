@@ -142,7 +142,15 @@ Scaffolds a standalone cross-device test suite:
 
 ## Tech Insights: Mobile Scorecard
 
-Five mobile-specific quality checks are visible on every mobile app's Backstage entity page (Scorecard tab):
+Five mobile-specific quality checks are defined below.
+
+> **Not yet rendered.** These are collected as Tech Insights *facts* by
+> `idpTechInsights.ts`, but none of the mobile fact ids appear in the frontend
+> `CHECKS` array in `backstage/app/packages/app/src/extensions.tsx`, so they do
+> **not** currently show on the Scorecard tab of a mobile entity. The facts are
+> queryable; the scorecard rendering is still to be wired up. Treat the tiers
+> below as the intended design, not as something you can read off the portal
+> today.
 
 | Check | ID | Bronze | Silver | Gold |
 |---|---|---|---|---|

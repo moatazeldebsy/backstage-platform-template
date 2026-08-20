@@ -58,7 +58,7 @@ kubectl set resources deployment/<service-name> \
   --requests=memory=<new-request>Mi
 ```
 
-Update `helm-values.yaml` with the new values and open a PR to make this permanent.
+Update `helm-values-<env>.yaml` with the new values and open a PR to make this permanent.
 
 ## Root Cause Analysis
 
@@ -81,7 +81,7 @@ Common causes:
 1. Scale out immediately if at critical threshold
 2. If a specific deploy caused the spike: roll back (see [Deployment Rollback](deployment-rollback.md))
 3. If it's a gradual leak: page the service owner to profile and fix
-4. Update `helm-values.yaml` with a higher memory limit as a short-term mitigation
+4. Update `helm-values-<env>.yaml` with a higher memory limit as a short-term mitigation
 5. Track the fix in a GitHub issue labelled `memory-leak`
 
 ## Escalation
@@ -92,5 +92,5 @@ Common causes:
 ## Post-Incident
 
 - Add memory profiling results to the incident thread
-- Verify memory limits in `helm-values.yaml` reflect actual usage patterns + 30% headroom
+- Verify memory limits in `helm-values-<env>.yaml` reflect actual usage patterns + 30% headroom
 - Consider adding memory-based HPA if load is bursty

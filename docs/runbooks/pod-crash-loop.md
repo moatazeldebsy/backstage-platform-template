@@ -44,7 +44,7 @@ kubectl logs <pod-name> -n services --previous
 # Confirm OOMKilled
 kubectl describe pod <pod-name> -n services | grep -A5 "Last State"
 
-# Temporary fix: patch the deployment (edit helm-values.yaml for a permanent fix)
+# Temporary fix: patch the deployment (edit helm-values-<env>.yaml for a permanent fix)
 kubectl set resources deployment/<service-name> \
   -n services \
   --limits=memory=512Mi \
@@ -94,7 +94,7 @@ kubectl get events -n services --sort-by='.lastTimestamp' | grep -i "secret\|con
 1. Identify the root cause using the table above
 2. Apply the immediate fix (rollback, resource patch, or secret fix)
 3. Verify pods stabilise: `kubectl get pods -n services -w`
-4. For a permanent fix: update `helm-values.yaml` and open a PR
+4. For a permanent fix: update `helm-values-<env>.yaml` and open a PR
 
 ## Escalation
 

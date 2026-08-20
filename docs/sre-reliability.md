@@ -139,7 +139,7 @@ metadata:
 Verify a manifest before applying:
 
 ```bash
-helm template my-svc helm/service-template --values helm-values.yaml | \
+helm template my-svc helm/service-template --values helm-values-local.yaml | \
   kubectl apply --dry-run=server -f -
 ```
 

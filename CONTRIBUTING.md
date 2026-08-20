@@ -32,7 +32,7 @@ See `README.md` for the full getting-started guide.
 1. Create a directory under `backstage/catalog/templates/<template-name>/`
 2. Add `template.yaml` following the Backstage Software Templates spec
 3. Add a `skeleton/` directory with the generated code
-4. Register the template in `backstage/app-config.yaml` under `catalog.locations`
+4. Register the template with a single line in `backstage/catalog/all-templates.yaml` (**not** `app-config.yaml` — it deliberately registers no templates, so local and AWS do not double-register every one). Local-only templates go in `backstage/app-config.local.yaml` instead and should carry the `local-only` tag.
 5. Open a PR with a brief description of what the template generates
 
 ## Platform Skills (Claude Code)
@@ -49,7 +49,7 @@ invocations for one part of the platform, so a session doesn't have to re-derive
 | `/platform-reviewer` | Reviewing a diff against this platform's conventions. Run **after** `/code-review`, which covers general correctness |
 | `/security-advisor` | Admission policies, PSS, network policies, IRSA/IAM, secrets, gitleaks/CodeQL, vulnerability triage |
 | `/sre-responder` | Something is broken or degraded — routes symptoms to `docs/runbooks/`; also SLOs, PDBs, postmortems |
-| `/golden-path-steward` | Any work under `backstage/catalog/templates/` or `cli/internal/scaffold/` — keeps the 61 templates and the CLI scaffolder in sync |
+| `/golden-path-steward` | Any work under `backstage/catalog/templates/` or `cli/internal/scaffold/` — keeps the 64 templates and the CLI scaffolder in sync |
 | `/qa-shift-left` | Test strategy, the Bronze/Silver/Gold scorecard, contract testing, flaky-test quarantine |
 
 Supporting files:
