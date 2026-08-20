@@ -174,7 +174,8 @@ other.
 |---|---|---|
 | `IDP_FORCE` | `0` | Set to `1` to bypass every skip-if-unchanged check and reinstall/rebuild everything. Applies to all four scripts. |
 | `--force-build` | off | `bootstrap-ai.sh` only — same idea, scoped to MCP server images and their Helm releases. |
-| `IDP_BUILD_JOBS` | `4` | `bootstrap-ai.sh` only — max concurrent image builds. Lower it if Docker Desktop has few CPUs; raising it past your core count usually makes the batch slower. |
+| `IDP_BUILD_JOBS` | `ncpu/3`, min 1, max 4 | `bootstrap-ai.sh` only — max concurrent image builds, probed from the Docker VM's CPU count (falls back to 2 if the probe fails). Raising it is a known-bad move on a small host: these builds run on the same CPUs as the cluster they are building for. |
+| `IDP_HELM_REPO_TTL` | `3600` | Seconds a cached chart repo index is considered fresh. `ensure_helm_repos` reads Helm's own repository cache and only runs `helm repo update` when one of the indexes it needs is older than this (or missing). Set to `0`, or use `IDP_FORCE=1`, to refresh on every run. Typically saves ~10s per bootstrap, but far more on a slow or contended link — the seven indexes total tens of MB, and one measured run spent 1m57s here. |
 | `IDP_TIMING` | `1` | Per-step timings plus a slowest-first summary table on exit. Set to `0` to silence. |
 | `HELM_WAIT_SHORT` | `5m` | `helm --wait` budget for the quick installs. Raise it on a cold AWS account where ALB and EBS provisioning is slow. |
 | `HELM_WAIT_MED` | `10m` | Same, for the heavier charts (kube-prometheus-stack, Loki, Tempo). |

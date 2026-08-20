@@ -133,6 +133,52 @@ _clean_docker() {
   log "Docker clean complete."
 }
 
+# kubectl apply, but when the failure is an admission webhook refusing the
+# request, say what that means and how to get out of it. The raw error is a wall
+# of Go error text ending in "connection refused", which reads like a network
+# problem rather than "your policy engine is down and is now blocking its own
+# repair".
+_apply_or_explain() {
+  local manifest="$1" out rc
+  out=$(kubectl apply -f "$manifest" 2>&1); rc=$?
+  [[ -n "$out" ]] && printf '%s\n' "$out"
+  (( rc == 0 )) && return 0
+
+  if grep -qE 'failed calling webhook|admission webhook .* denied' <<< "$out"; then
+    local hook
+    hook=$(grep -oE 'webhook "[^"]+"' <<< "$out" | head -1 | cut -d'"' -f2)
+    # Deliberately not err(): that exits immediately, which would swallow every
+    # line of guidance below. The non-zero return propagates under `set -e`.
+    warn "Applying $(basename "$manifest") was rejected by admission webhook '${hook:-unknown}'."
+    warn "  A fail-closed webhook whose backend is unhealthy blocks this apply, and"
+    warn "  therefore blocks the bootstrap that would repair it."
+    warn ""
+    warn "  Check the policy engines:"
+    warn "    kubectl -n kyverno get pods"
+    warn "    kubectl -n gatekeeper-system get pods"
+    warn ""
+    warn "  If pods are crashlooping, they are usually starved rather than broken —"
+    warn "  free CPU/memory on the host and let them settle, then re-run."
+    warn "  To inspect what is fail-closed:"
+    warn "    kubectl get validatingwebhookconfiguration -o custom-columns=\\"
+    warn "      NAME:.metadata.name,POLICY:.webhooks[*].failurePolicy"
+  fi
+  return "$rc"
+}
+
+# One row of the URL banner, padded to the box's 77-character interior. The
+# AI/ML rows used to be hand-padded and sat 2 characters short of every other
+# row, so the right-hand border was visibly ragged.
+_box_row() {
+  local text="$1" chars bytes
+  # printf pads by BYTES, but the banner contains multibyte characters (the em
+  # dash in the title), so a plain %-73s renders those rows short and leaves the
+  # right border ragged. Widen the pad by the byte/character difference.
+  chars=${#text}
+  bytes=$(LC_ALL=C printf '%s' "$text" | wc -c)
+  printf '║  %-*s║\n' "$(( 73 + bytes - chars ))" "$text"
+}
+
 # ── URL banner helper (used by --print-urls and the final Done section) ───────
 _print_url_banner() {
   local argocd_pass=""
@@ -141,23 +187,28 @@ _print_url_banner() {
 
   echo ""
   echo "╔═══════════════════════════════════════════════════════════════════════════╗"
-  echo "║                    IDP Platform — Service URLs                           ║"
+  # Centred via the same helper as every other row, so the border stays flush.
+  _box_row "                  IDP Platform — Service URLs"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Core Platform                                                            ║"
-  echo "║  Backstage        http://backstage.idp.local                             ║"
-  echo "║  hello-service    http://hello-service.idp.local                         ║"
+  _box_row "Backstage        http://backstage.idp.local"
+  _box_row "hello-service    http://hello-service.idp.local"
   if kubectl get svc argocd-server -n argocd &>/dev/null 2>&1; then
     if [[ -n "$argocd_pass" ]]; then
-  echo "║  ArgoCD           http://argocd.idp.local          admin/${argocd_pass}  ║"
+  _box_row "ArgoCD           http://argocd.idp.local          admin/${argocd_pass}"
     else
-  echo "║  ArgoCD           http://argocd.idp.local                                ║"
+  _box_row "ArgoCD           http://argocd.idp.local"
     fi
   fi
-  if kubectl get ns argo-rollouts &>/dev/null 2>&1; then
-  echo "║  Argo Rollouts    http://argo-rollouts.idp.local                          ║"
+  # Both gate on the workload, not the namespace: `helm uninstall` leaves the
+  # namespace behind, and a namespace check would then keep advertising a URL
+  # that 404s. (This is the same trap the AI/ML section fell into below, where
+  # namespaces.yaml pre-creates `kagent` on every run.)
+  if kubectl -n argo-rollouts get deploy -o name 2>/dev/null | grep -q .; then
+  _box_row "Argo Rollouts    http://argo-rollouts.idp.local"
   fi
-  if kubectl get deploy argo-workflows-server -n argo-workflows &>/dev/null 2>&1; then
-  echo "║  Argo Workflows   http://argo-workflows.idp.local                         ║"
+  if kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1; then
+  _box_row "Argo Workflows   http://argo-workflows.idp.local"
   fi
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Observability                                                            ║"
@@ -178,17 +229,58 @@ _print_url_banner() {
   fi
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
-  if kubectl get ns kagent &>/dev/null 2>&1; then
-  echo "║  AI / ML Platform                                                         ║"
-  echo "║  KAgent UI           http://kagent.idp.local                            ║"
-  echo "║  AI Assistant        http://backstage.idp.local/ai-assistant            ║"
-  echo "║  MLflow              http://mlflow.idp.local                            ║"
-  echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz            ║"
-  echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz             ║"
-  echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz       ║"
+  # Advertise what is actually deployed, not what a namespace's existence
+  # implies. This used to gate on `kubectl get ns kagent`, but
+  # kubernetes/namespaces/namespaces.yaml creates the kagent namespace at Step 3
+  # of *every* bootstrap-local run — so the check was true on a cluster where
+  # bootstrap-ai.sh had never run, and the banner then advertised a KAgent UI and
+  # an MLflow that did not exist. It also hardcoded three MCP servers when there
+  # are eight.
+  #
+  # The MCP servers are a genuinely different case: ArgoCD deploys everything
+  # under services/* on every run, so they really are up and listing them is
+  # correct. They are discovered rather than hardcoded so the list cannot go
+  # stale again.
+  _ai_rows=(); _ai_n=0
+  if kubectl -n kagent get deploy -o name 2>/dev/null | grep -q .; then
+    _ai_rows+=("KAgent UI|http://kagent.idp.local"); _ai_n=$((_ai_n + 1))
+    _ai_rows+=("AI Assistant|http://backstage.idp.local/ai-assistant"); _ai_n=$((_ai_n + 1))
+  fi
+  if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q mlflow; then
+    _ai_rows+=("MLflow|http://mlflow.idp.local"); _ai_n=$((_ai_n + 1))
+  fi
+  while read -r _dep; do
+    [[ -z "$_dep" ]] && continue
+    _dep="${_dep#deployment.apps/}"
+    _ai_rows+=("${_dep}|http://${_dep}.idp.local/healthz"); _ai_n=$((_ai_n + 1))
+  done < <(kubectl -n services-dev get deploy -o name 2>/dev/null | grep -- '-mcp-server$' | sort)
+
+  if (( _ai_n > 0 )); then
+  _box_row "AI / ML Platform"
+  for _row in ${_ai_rows[@]+"${_ai_rows[@]}"}; do
+    _box_row "$(printf '%-21s %s' "${_row%%|*}" "${_row#*|}")"
+  done
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   fi
-  echo "║  Local registry   localhost:5003                                          ║"
+  # Say what is deliberately absent. Every section above hides components that
+  # are not deployed, which is correct but indistinguishable from something
+  # having gone wrong — the question "why is Argo Workflows not in the list?"
+  # has no answer anywhere in this output otherwise.
+  _optional=()
+  kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1 \
+    || _optional+=("Argo Workflows (--install-argo-workflows)")
+  kubectl -n kagent get deploy -o name 2>/dev/null | grep -q . \
+    || _optional+=("KAgent + MLflow (./scripts/bootstrap-ai.sh)")
+  # No leading separator: one is always printed immediately above this point,
+  # either by the Observability section or by the AI/ML section's trailer.
+  if (( ${#_optional[@]} > 0 )); then
+  _box_row "Available, not installed"
+  for _opt in ${_optional[@]+"${_optional[@]}"}; do
+  _box_row "  ${_opt}"
+  done
+  echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  fi
+  _box_row "Local registry   localhost:5003"
   echo "╚═══════════════════════════════════════════════════════════════════════════╝"
   echo ""
   if [[ -n "$argocd_pass" ]]; then
@@ -890,10 +982,15 @@ log "Step 3: Creating platform namespaces..."
 for _ns in services services-dev monitoring argocd ingress-nginx gatekeeper-system opencost argo-workflows; do
   wait_namespace_clear "$_ns" 60
 done
-kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
-kubectl apply -f "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
-kubectl apply -f "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
-kubectl apply -f "$(dirname "$0")/../kubernetes/network-policies/default-deny.yaml"
+# Applied through _apply_or_explain so a fail-closed admission webhook produces
+# an actionable message instead of a raw `failed calling webhook` dump. This is
+# the first step that writes cluster resources, so it is where a wedged policy
+# engine surfaces — and re-running this script is the documented way to recover a
+# degraded cluster, which makes an opaque failure here especially expensive.
+_apply_or_explain "$(dirname "$0")/../kubernetes/namespaces/namespaces.yaml"
+_apply_or_explain "$(dirname "$0")/../kubernetes/namespaces/services-quota.yaml"
+_apply_or_explain "$(dirname "$0")/../kubernetes/rbac/github-actions.yaml"
+_apply_or_explain "$(dirname "$0")/../kubernetes/network-policies/default-deny.yaml"
 
 timer_end "3. Namespaces"
 

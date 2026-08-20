@@ -6880,6 +6880,7 @@ function LangfuseEntityContent() {
   const { entity } = useEntity();
   const fetchApi = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
+  const aiEnabled = useAiStackEnabled();
   const base = configApi.getString('backend.baseUrl');
   const langfuseUrl = configApi.getOptionalString('externalLinks.langfuse') ?? 'http://langfuse.idp.local';
 
@@ -6903,6 +6904,16 @@ function LangfuseEntityContent() {
   };
 
   useEffect(() => {
+    // Nothing deployed to reach. The tab filter matches on the
+    // langfuse.com/service-name annotation, which is a statement of intent by
+    // the service — it says nothing about whether the platform's Langfuse is
+    // installed. Without this, any annotated service showed a red "Couldn't
+    // reach Langfuse (HTTP 404)" on a cluster where bootstrap-ai.sh had simply
+    // never been run, which reads as a broken service rather than an absent
+    // optional component. Matches the platform-wide Langfuse page and the
+    // AI Observability page, which have both gated on this all along.
+    if (!aiEnabled) { showDemo(); return; }
+
     // No annotation: this component is an AI/ML type that the tab filter matched
     // on spec.type, so show what tracing would look like rather than nothing.
     if (!serviceName) { showDemo(); return; }
@@ -6931,7 +6942,7 @@ function LangfuseEntityContent() {
       });
     // showDemo is stable for the lifetime of this component.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceName, base, fetchApi]);
+  }, [aiEnabled, serviceName, base, fetchApi]);
 
   const demoBanner = status === 'demo' && (
     <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>

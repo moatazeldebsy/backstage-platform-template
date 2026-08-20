@@ -13,6 +13,15 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      # Fail fast rather than retrying into a wall. These exporters read the
+      # Backstage API, which on a plain `bootstrap-local.sh` run (no
+      # --start-backstage) is not running at all. Without these two the job
+      # inherits backoffLimit=6 and no deadline, so a run against an absent
+      # Backstage retries six times and can stay Active indefinitely — burning
+      # CPU on a local cluster that has none spare, every 15 minutes. Matches
+      # local/observability/dora/dora-cronjob.yaml, which already had them.
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
       template:
         metadata:
           labels:

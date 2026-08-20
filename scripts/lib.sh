@@ -288,16 +288,69 @@ _helm_repo_url() {
 # repo ever added on the machine, not just the ones this run touches.
 #   $@ = repo short-names (must be known to _helm_repo_url)
 ensure_helm_repos() {
-  local repo url
+  local repo url wanted=()
   for repo in "$@"; do
     url=$(_helm_repo_url "$repo")
     if [[ -z "$url" ]]; then
       warn "ensure_helm_repos: unknown repo '${repo}' — skipping"
       continue
     fi
+    # `helm repo add` is local-only apart from the initial index fetch, which is
+    # exactly what we want: a repo that is new to this machine lands with a
+    # fresh index and therefore needs no update below.
     helm repo add "$repo" "$url" 2>/dev/null || true
+    wanted+=("$repo")
   done
-  helm repo update "$@"
+
+  (( ${#wanted[@]} > 0 )) || return 0
+
+  # Refresh the indexes only when at least one is older than the TTL.
+  #
+  # Measured on a warm local bootstrap: this single `helm repo update` across
+  # seven repos took 1m57s of a 5m39s run — 35% of the whole thing — and it ran
+  # on every invocation regardless of how recently the indexes had been fetched.
+  #
+  # Freshness is read from Helm's own repository cache rather than a stamp file
+  # we maintain, so the check cannot drift out of step with reality: a repo
+  # whose index is missing (never added, or the cache was cleared) always
+  # triggers an update, and so does a newly-added repo the moment its index
+  # ages out. IDP_HELM_REPO_TTL=0 or IDP_FORCE=1 restores the old behaviour.
+  local ttl="${IDP_HELM_REPO_TTL:-3600}"
+  if [[ "${IDP_FORCE:-0}" == "1" || "$ttl" == "0" ]]; then
+    helm repo update "${wanted[@]}"
+    return 0
+  fi
+
+  local cache_dir now idx oldest="" age stale=0
+  cache_dir=$(helm env HELM_REPOSITORY_CACHE 2>/dev/null | tr -d '"')
+  # No readable cache path means we cannot prove freshness — update, don't guess.
+  if [[ -z "$cache_dir" || ! -d "$cache_dir" ]]; then
+    helm repo update "${wanted[@]}"
+    return 0
+  fi
+
+  now=$(date +%s)
+  for repo in "${wanted[@]}"; do
+    idx="${cache_dir}/${repo}-index.yaml"
+    if [[ ! -f "$idx" ]]; then
+      stale=1
+      oldest="$repo (no index)"
+      break
+    fi
+    age=$(( now - $(_mtime "$idx") ))
+    if (( age > ttl )); then
+      stale=1
+      oldest="$repo ($(( age / 60 ))m old)"
+      break
+    fi
+  done
+
+  if (( stale )); then
+    log "  Refreshing chart repo indexes (${oldest} exceeds ${ttl}s TTL)..."
+    helm repo update "${wanted[@]}"
+  else
+    log "  Chart repo indexes are under ${ttl}s old — skipping helm repo update (IDP_FORCE=1 to refresh)."
+  fi
 }
 
 # Load every `terraform output` value for the current stack once, cached in
@@ -430,6 +483,13 @@ EOF
 
 # sha256 of a file, portable across macOS (no sha256sum by default, has shasum)
 # and Linux (has sha256sum, may lack shasum).
+# Epoch mtime of $1. BSD stat (macOS) and GNU stat (Linux) take different flags;
+# this is the same portability split as _sha256 below. Prints 0 when the file is
+# unreadable, which callers treat as "infinitely old".
+_mtime() {
+  stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+}
+
 _sha256() {
   if command -v sha256sum &>/dev/null; then
     sha256sum "$1" | awk '{print $1}'
