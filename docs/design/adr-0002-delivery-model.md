@@ -71,15 +71,25 @@ such file puts the entire ApplicationSet into `ComparisonError`.
 
 ## Still outstanding
 
-The ten AI/MCP services remain excluded from the ApplicationSets. The exclusions
-are currently *correct*: CI has never built those images, so removing them
-produces `ImagePullBackOff`. The order is (1) CI build matrix reaches ECR,
-(2) invert `bootstrap-ai.sh` to `argocd app sync` when an Application exists,
-(3) move the KAgent policy ConfigMap into GitOps, (4) delete the exclusions.
+**Resolved (2026-08).** This section previously recorded that the ten AI/MCP
+services remained excluded from the ApplicationSets, behind a four-step plan:
+(1) CI build matrix reaches ECR, (2) invert `bootstrap-ai.sh` to `argocd app
+sync` when an Application exists, (3) move the KAgent policy ConfigMap into
+GitOps, (4) delete the exclusions.
 
-The payoff is deleting ~120 lines of ownership-conflict defence in
-`bootstrap-ai.sh` that exists only because two systems fight over the same
-releases.
+All four are done. Both `aws/argocd/app-of-apps.yaml` and
+`local/argocd/app-of-apps-local.yaml` now discover `services/*` with **no
+exclusions**, so the AI/MCP services take the same GitOps path as everything
+else and the platform's own services no longer bypass the model it sells.
+
+Two constraints keep that true, and re-adding exclusions without reverting them
+will break a core bootstrap:
+
+- `bootstrap-local.sh` must build `idp-mcp-server` and `qa-mcp-server`. ECR
+  images outlive a cluster, but the local registry is recreated with it, so
+  ArgoCD would otherwise deploy images never pushed to `localhost:5003`.
+- `approval-service`'s policy ConfigMap volume must stay `optional`, since only
+  `bootstrap-ai.sh --adp` creates it.
 
 ## References
 

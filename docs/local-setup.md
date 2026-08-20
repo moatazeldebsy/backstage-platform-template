@@ -52,8 +52,8 @@ Give the container VM (Docker Desktop → Settings → Resources, or Rancher Des
 
 | Setup | VM CPU | VM memory | Notes |
 |---|---:|---:|---|
-| **Recommended** | 8 | 16 GB | Full stack including AI/ML, with headroom to build images and run Backstage at the same time. **Not with `--langfuse` as well** — at ~11.4 GB there is no headroom left, and rebuilding Backstage while Langfuse runs will destabilise the control plane. Scale the 6 Langfuse workloads to 0 first, rebuild, then scale back. |
-| **Full stack + Langfuse** | 10 | 20 GB | What `--langfuse` actually wants if you need to build images without scaling anything down |
+| **Recommended** | 10 | 20 GB | The default full stack, which **includes Langfuse** — `bootstrap-ai.sh` installs it unless you pass `--skip-langfuse`. Room to build images without scaling anything down. |
+| **Full stack, no Langfuse** | 8 | 16 GB | `bootstrap-ai.sh --skip-langfuse`. Everything else including AI/ML, with headroom to build images and run Backstage at the same time. At the default (~11 GB, with Langfuse) this tier has no headroom left, and rebuilding Backstage while Langfuse runs will destabilise the control plane — scale the 6 Langfuse workloads to 0 first, rebuild, then scale back. |
 | **Minimum for the full stack** | 6 | 12 GB | Works, but sits at ~75% memory with no headroom — see the symptoms below |
 | **Without AI/ML** | 4 | 8 GB | `bootstrap-local.sh` only; don't run `bootstrap-ai.sh` |
 | **Core only** | 2 | 6 GB | Add `--skip-obs --skip-policies` (see below) |
@@ -455,12 +455,12 @@ helm upgrade --install my-svc ./helm/service-template \
 
 | Concern | Local | AWS |
 |---------|-------|-----|
-| Ingress class | `nginx` | `alb` |
+| Ingress class | `nginx` | `alb` (but `ingress.enabled: false` by default — scaffolded services get no ALB unless opted in) |
 | Image pull | `localhost:5003/<name>` | `<account>.dkr.ecr.<region>.amazonaws.com/idp-mvp/<name>` |
 | Auth | none | OIDC (GitHub Actions), IRSA (pods) |
 | CD trigger | `idp:deploy-local` Backstage action | GitHub Actions push to `main` |
 | Observability | Prometheus in-cluster | CloudWatch + Grafana |
-| Helm values file | `helm-values-local.yaml` | `helm-values.yaml` |
+| Helm values file | `helm-values-local.yaml` | `helm-values-aws.yaml` |
 | Persistent storage | hostPath / emptyDir | EBS (gp2/gp3) |
 
 The Helm chart (`helm/service-template`) is **identical** for both. Only the values file differs.

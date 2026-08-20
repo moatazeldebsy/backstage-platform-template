@@ -328,6 +328,12 @@ Optional locally (warns on startup if missing), required in AWS.
 
 **Secret:** `argocd-mcp-server-token` in `services-dev` namespace. Optional locally (warns and 401s on tool calls if missing), required in AWS.
 
+The token belongs to the dedicated `argocd-mcp` account, not `admin`. That account
+is declared in `local/argocd/argocd-helm-values-local.yaml` and
+`aws/argocd/argocd-helm-values.yaml` as `apiKey`-only, scoped to `get`, `sync` and
+`action/*` on applications — no create, update or delete. Generate with
+`argocd account generate-token --account argocd-mcp`.
+
 **Used by:** `release-agent`, proactively triggered on ArgoCD `OutOfSync`/`Degraded` webhooks.
 
 #### `cost-mcp-server` (port 3007)
@@ -984,7 +990,23 @@ that is not deployed.
 
 ## Re-applying after a cluster rebuild
 
-`bootstrap-ai.sh` applies all agents, MCP servers, and ModelConfigs automatically.
+`bootstrap-ai.sh` applies the MCP servers, ModelConfigs, and the **default agent
+set** automatically — `idp`, `qa`, `release`, `cost`, `platform`, `contract`. The
+remaining three (`incident`, `security`, `onboarding`) install only when you ask
+for them:
+
+```bash
+./scripts/bootstrap-ai.sh --agents all          # all nine
+./scripts/bootstrap-ai.sh --agents idp,security # an explicit subset
+./scripts/bootstrap-ai.sh --agents list         # print what is available
+```
+
+Re-running **prunes** agents outside the selection, so `--agents idp` on a cluster
+that has all nine will remove the other eight. Each agent is one pod; see
+[Local Setup](local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them)
+for why that matters on a small machine, and
+[Scripts Reference](scripts-reference.md#bootstrap-aish-flags) for the full flag list.
+
 To target specific resources manually:
 
 ```bash

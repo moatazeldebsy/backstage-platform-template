@@ -77,7 +77,7 @@ go tool pprof cpu.prof
 
 1. Scale out immediately if throttling is causing visible latency
 2. If a deploy caused it: roll back (see [Deployment Rollback](deployment-rollback.md))
-3. If it's sustained legitimate growth: increase CPU limits in `helm-values.yaml` and/or expand the HPA `maxReplicas`
+3. If it's sustained legitimate growth: increase CPU limits in `helm-values-<env>.yaml` and/or expand the HPA `maxReplicas`
 4. For a code-level fix: capture a CPU profile and share with the service team
 
 ## Escalation
@@ -87,6 +87,6 @@ go tool pprof cpu.prof
 
 ## Post-Incident
 
-- Update `helm-values.yaml` CPU limits to reflect actual peak usage + 20% headroom
+- Update `helm-values-<env>.yaml` CPU limits to reflect actual peak usage + 20% headroom
 - If HPA wasn't scaling: verify `metrics-server` is running and HPA thresholds are sensible
 - Document findings in the incident thread

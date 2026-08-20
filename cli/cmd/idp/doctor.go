@@ -45,13 +45,17 @@ type toolCheck struct {
 	installHint string
 }
 
+// Floors track the prerequisites table in README.md. They are deliberately the
+// versions the repo actually needs to build and bootstrap, not the oldest
+// version that happens to run: doctor exists to fail early on a toolchain that
+// would otherwise break several minutes into a bootstrap. Keep the two in sync.
 var toolChecks = []toolCheck{
-	{name: "go", required: "1.21.0", args: []string{"version"}, versionRE: regexp.MustCompile(`go(\d+\.\d+(\.\d+)?)`), installHint: "brew install go"},
-	{name: "node", required: "18.0.0", args: []string{"--version"}, versionRE: regexp.MustCompile(`v?(\d+\.\d+\.\d+)`), installHint: "brew install node@18"},
+	{name: "go", required: "1.26.0", args: []string{"version"}, versionRE: regexp.MustCompile(`go(\d+\.\d+(\.\d+)?)`), installHint: "brew install go"},
+	{name: "node", required: "22.0.0", args: []string{"--version"}, versionRE: regexp.MustCompile(`v?(\d+\.\d+\.\d+)`), installHint: "brew install node@24"},
 	{name: "docker", required: "20.0.0", args: []string{"--version"}, versionRE: regexp.MustCompile(`(\d+\.\d+\.\d+)`), installHint: "brew install --cask docker"},
-	{name: "kubectl", required: "1.27.0", args: []string{"version", "--client", "-o", "yaml"}, versionRE: regexp.MustCompile(`gitVersion:\s*v?(\d+\.\d+\.\d+)`), installHint: "brew install kubectl"},
-	{name: "helm", required: "3.12.0", args: []string{"version", "--short"}, versionRE: regexp.MustCompile(`v?(\d+\.\d+\.\d+)`), installHint: "brew install helm"},
-	{name: "kind", required: "", args: []string{"--version"}, versionRE: regexp.MustCompile(`(\d+\.\d+\.\d+)`), installHint: "brew install kind"},
+	{name: "kubectl", required: "1.29.0", args: []string{"version", "--client", "-o", "yaml"}, versionRE: regexp.MustCompile(`gitVersion:\s*v?(\d+\.\d+\.\d+)`), installHint: "brew install kubectl"},
+	{name: "helm", required: "3.14.0", args: []string{"version", "--short"}, versionRE: regexp.MustCompile(`v?(\d+\.\d+\.\d+)`), installHint: "brew install helm"},
+	{name: "kind", required: "0.27.0", args: []string{"--version"}, versionRE: regexp.MustCompile(`(\d+\.\d+\.\d+)`), installHint: "brew install kind"},
 }
 
 // clusterCheck is a cheap `kubectl get ns <name>` reachability probe.

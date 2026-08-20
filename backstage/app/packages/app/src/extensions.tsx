@@ -1279,16 +1279,22 @@ const CHECKS: CheckDef[] = [
 
 type TierName = 'none' | 'bronze' | 'silver' | 'gold';
 
-// Thresholds for non-AI entities (11 checks) and AI entities (14 checks)
+// Thresholds for non-AI entities (14 checks) and AI entities (17 checks).
+// CHECKS above holds 17 entries; 3 are AI-only, so non-AI entities are scored
+// against 14. The absolute cutoffs below have not moved since the array held
+// 11/14, so the effective bar has drifted down (gold was ~82% of 11, it is now
+// ~64% of 14). Raising them is a deliberate policy change — it will demote
+// services overnight — so it is left alone here rather than folded into a
+// docs correction. Revisit with the scorecard owners.
 const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 4,   // ~36% of 11 checks
-  silver: 7,   // ~64% of 11 checks
-  gold:   9,   // ~82% of 11 checks
+  bronze: 4,   // ~29% of 14 checks
+  silver: 7,   // ~50% of 14 checks
+  gold:   9,   // ~64% of 14 checks
 };
 const AI_TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 5,   // ~36% of 14 checks
-  silver: 9,   // ~64% of 14 checks
-  gold:   12,  // ~86% of 14 checks
+  bronze: 5,   // ~29% of 17 checks
+  silver: 9,   // ~53% of 17 checks
+  gold:   12,  // ~71% of 17 checks
 };
 
 interface ScorecardResult {

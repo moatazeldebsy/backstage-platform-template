@@ -83,6 +83,14 @@ grep -rl "moatazeldebsy\|moatazeldebsy" \
 
 **Cause:** Port 80 or 443 is bound by another process on the host.
 
+> `scripts/lib.sh` runs a preflight check for this and **aborts a fresh install**
+> before creating the cluster if either port is bound, printing Rancher
+> Desktop/Traefik-specific advice. The check is deliberately **skipped when the
+> Kind cluster already exists** — at that point the bound port is usually the
+> cluster's own ingress controller, and failing would block every day-2 re-run.
+> So if you hit this symptom on an existing cluster, the preflight will not warn
+> you; work through the checks below.
+
 ```bash
 # Check what's using port 80
 lsof -i :80 -sTCP:LISTEN

@@ -47,7 +47,7 @@ the static Groups and Users remain the seed.
 ### 3. Authorization stays coarse, and that is stated plainly
 
 `idpPermissionPolicy.ts` is unchanged: any authenticated user can run any of the
-63 scaffolder templates against any team's namespace. That is a real limitation
+64 scaffolder templates against any team's namespace. That is a real limitation
 of the current design, not an oversight, and it is written here so nobody has to
 rediscover it by reading the policy.
 
