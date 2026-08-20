@@ -32,8 +32,8 @@ function createSetRepoVariablesAction(options: { integrations: ScmIntegrations }
     },
 
     async handler(ctx) {
-      const repoUrl = ctx.input['repoUrl'] as string;
-      const variables = ctx.input['variables'] as Record<string, string>;
+      const repoUrl = ctx.input.repoUrl as string;
+      const variables = ctx.input.variables as Record<string, string>;
 
       let owner: string;
       let repo: string;

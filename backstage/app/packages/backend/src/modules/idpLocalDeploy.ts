@@ -250,7 +250,7 @@ function createCatalogRegisterLocalAction() {
       const annotationLines = Object.entries(annotations)
         .map(([k, v]) => `    ${k}: ${JSON.stringify(v)}`)
         .join('\n');
-      const yaml = [
+      const yaml = `${[
         'apiVersion: backstage.io/v1alpha1',
         `kind: ${entityKind}`,
         'metadata:',
@@ -265,7 +265,7 @@ function createCatalogRegisterLocalAction() {
         `  owner: ${owner}`,
       ]
         .filter(Boolean)
-        .join('\n') + '\n';
+        .join('\n')}\n`;
 
       await fs.mkdir(entityDir, { recursive: true });
       await fs.writeFile(catalogInfoPath, yaml, 'utf8');

@@ -260,15 +260,15 @@ function createRunTrainingJobAction() {
     },
 
     async handler(ctx) {
-      const name = ctx.input['name'] as string;
-      const experimentName = ctx.input['experimentName'] as string;
-      const framework = (ctx.input['framework'] as string | undefined) ?? 'sklearn';
-      const pythonVersion = (ctx.input['pythonVersion'] as string | undefined) ?? '3.11';
+      const name = ctx.input.name as string;
+      const experimentName = ctx.input.experimentName as string;
+      const framework = (ctx.input.framework as string | undefined) ?? 'sklearn';
+      const pythonVersion = (ctx.input.pythonVersion as string | undefined) ?? '3.11';
       // Default true to match the template's parameter default, so an older
       // template revision that omits the input still registers.
-      const registerModel = (ctx.input['registerModel'] as boolean | undefined) ?? true;
+      const registerModel = (ctx.input.registerModel as boolean | undefined) ?? true;
 
-      const deps = frameworkDeps[framework] ?? frameworkDeps['sklearn'];
+      const deps = frameworkDeps[framework] ?? frameworkDeps.sklearn;
       const trainScript = buildTrainScript(framework, name, registerModel);
       const jobName = `${name}-initial-run`;
 
@@ -284,7 +284,7 @@ function createRunTrainingJobAction() {
       }
 
       const useWorkflow = await workflowsAvailable();
-      const minAccuracy = (ctx.input['minAccuracy'] as number | undefined) ?? 0;
+      const minAccuracy = (ctx.input.minAccuracy as number | undefined) ?? 0;
 
       const yaml = useWorkflow
         ? buildWorkflowManifests({

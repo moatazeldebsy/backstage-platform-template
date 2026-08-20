@@ -77,17 +77,17 @@ function createDeployMcpServerAction() {
     },
 
     async handler(ctx) {
-      const name = ctx.input['name'] as string;
-      const port = (ctx.input['port'] as number | undefined) ?? 3001;
-      const repoName = (ctx.input['repoName'] as string | undefined) ?? name;
-      const repoOwner = (ctx.input['repoOwner'] as string | undefined) ?? '';
+      const name = ctx.input.name as string;
+      const port = (ctx.input.port as number | undefined) ?? 3001;
+      const repoName = (ctx.input.repoName as string | undefined) ?? name;
+      const repoOwner = (ctx.input.repoOwner as string | undefined) ?? '';
       // Precedence: an explicit tag, else the scaffold commit shortened to 8
       // chars to match the scaffolded CI's `TAG="${GITHUB_SHA::8}"`, else
       // 'latest'. publish:github emits commitHash as `commitResult?.commitHash`
       // and so can yield undefined — hence the fallback rather than building a
       // dangling "repo:" reference.
-      const explicitTag = (ctx.input['imageTag'] as string | undefined)?.trim();
-      const commitSha = (ctx.input['commitSha'] as string | undefined)?.trim();
+      const explicitTag = (ctx.input.imageTag as string | undefined)?.trim();
+      const commitSha = (ctx.input.commitSha as string | undefined)?.trim();
       const imageTag = explicitTag || (commitSha ? commitSha.slice(0, 8) : 'latest');
       if (!explicitTag && !commitSha) {
         ctx.logger.warn(

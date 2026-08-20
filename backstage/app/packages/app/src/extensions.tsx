@@ -1,4 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AI_TIER_THRESHOLDS,
+  CHECKS,
+  CheckDef,
+  CheckKey,
+  ScorecardResult,
+  TIER_ORDER,
+  TIER_THRESHOLDS,
+  TierName,
+  computeScorecard,
+  isMobileEntity,
+  missingMobileRequirement,
+  visibleChecks,
+} from './scorecard';
+import { firstMatch } from './pick';
 import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef, FrontendPlugin } from '@backstage/frontend-plugin-api';
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
@@ -119,7 +134,7 @@ function FinOpsPage() {
 
   useEffect(() => {
     setLoading(true); setError(null);
-    const steps = window_ === '1d' ? 24 : window_ === '7d' ? 7 : 30;
+    const steps = firstMatch([[window_ === '1d', 24], [window_ === '7d', 7]], 30);
     const step  = window_ === '1d' ? '1h' : '1d';
     Promise.all([
       fetchApi.fetch(`${base}/api/proxy/opencost/allocation/compute?window=${window_}&aggregate=${aggregate}&accumulate=true`),
@@ -203,7 +218,7 @@ function FinOpsPage() {
             {/* Stacked bar chart */}
             {(dailyBuckets.length > 0 || isDemo) && (
               <Paper style={{ padding: 16, marginBottom: 20 }}>
-                <Typography variant="h6" gutterBottom>Spend Over Time by {aggregate === 'namespace' ? 'Namespace' : aggregate === 'label:team' ? 'Team' : 'Container'}</Typography>
+                <Typography variant="h6" gutterBottom>Spend Over Time by {firstMatch([[aggregate === 'namespace', 'Namespace'], [aggregate === 'label:team', 'Team']], 'Container')}</Typography>
                 <Box style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 160, overflowX: 'auto', paddingBottom: 24, position: 'relative' }}>
                   {(isDemo
                     ? Array.from({ length: 7 }, (_, i) => {
@@ -275,7 +290,7 @@ function FinOpsPage() {
                         <TableCell align="right">${row.ram.toFixed(3)}</TableCell>
                         <TableCell align="right">${row.pv.toFixed(3)}</TableCell>
                         <TableCell align="right">
-                          <span style={{ color: row.efficiency > 50 ? '#388e3c' : row.efficiency > 25 ? '#f57c00' : '#c62828', fontWeight: 600 }}>
+                          <span style={{ color: firstMatch([[row.efficiency > 50, '#388e3c'], [row.efficiency > 25, '#f57c00']], '#c62828'), fontWeight: 600 }}>
                             {typeof row.efficiency === 'number' ? `${(row.efficiency * (row.efficiency <= 1 ? 100 : 1)).toFixed(0)}%` : '—'}
                           </span>
                         </TableCell>
@@ -470,8 +485,8 @@ function AiAssistantPage() {
         let sAttempt = 0;
         let lastError = '';
         while (!sessionId && Date.now() < sessionDeadline) {
-          const base = Math.min(2000, 200 * Math.pow(2, sAttempt));
-          const jitter = base * (0.8 + Math.random() * 0.4);
+          const backoffMs = Math.min(2000, 200 * Math.pow(2, sAttempt));
+          const jitter = backoffMs * (0.8 + Math.random() * 0.4);
           await new Promise(r => setTimeout(r, jitter));
           sAttempt++;
           try {
@@ -520,8 +535,8 @@ function AiAssistantPage() {
       const replyStart = Date.now();
       let rAttempt = 0;
       while (!agentReply && Date.now() < replyDeadline) {
-        const base = Math.min(3000, 500 * Math.pow(2, rAttempt));
-        const jitter = base * (0.8 + Math.random() * 0.4);
+        const backoffMs = Math.min(3000, 500 * Math.pow(2, rAttempt));
+        const jitter = backoffMs * (0.8 + Math.random() * 0.4);
         await new Promise(r => setTimeout(r, jitter));
         rAttempt++;
         const elapsed = Math.round((Date.now() - replyStart) / 1000);
@@ -1230,20 +1245,6 @@ const approvalsNavItem = NavItemBlueprint.make({
 // backstage/app/packages/backend/src/modules/idpTechInsights.ts.
 // See docs/shift-left.md for the tier model.
 
-import {
-  AI_TIER_THRESHOLDS,
-  CHECKS,
-  CheckDef,
-  CheckKey,
-  ScorecardResult,
-  TIER_ORDER,
-  TIER_THRESHOLDS,
-  TierName,
-  computeScorecard,
-  isMobileEntity,
-  missingMobileRequirement,
-  visibleChecks,
-} from './scorecard';
 
 const TIER_COLORS: Record<TierName, string> = {
   none:   '#9e9e9e',
@@ -1303,10 +1304,11 @@ function NextTierHint({ tier, results, isAiEntity, isMobile }: { tier: TierName;
       );
     }
   }
-  const target = tier === 'gold' ? null
-    : tier === 'silver' ? thresholds.gold
-    : tier === 'bronze' ? thresholds.silver
-    : thresholds.bronze;
+  const target = firstMatch<number | null>([
+    [tier === 'gold',   null],
+    [tier === 'silver', thresholds.gold],
+    [tier === 'bronze', thresholds.silver],
+  ], thresholds.bronze);
   if (target === null) {
     return (
       <Typography variant="body2" color="textSecondary">
@@ -1318,7 +1320,7 @@ function NextTierHint({ tier, results, isAiEntity, isMobile }: { tier: TierName;
   return (
     <Typography variant="body2" color="textSecondary">
       {target - passed} more check{target - passed === 1 ? '' : 's'} to reach{' '}
-      {target === thresholds.gold ? 'Gold' : target === thresholds.silver ? 'Silver' : 'Bronze'}.
+      {firstMatch([[target === thresholds.gold, 'Gold'], [target === thresholds.silver, 'Silver']], 'Bronze')}.
       Cheapest unfilled: <strong>{missing[0]?.label ?? '—'}</strong>.
     </Typography>
   );
@@ -1464,9 +1466,11 @@ function SonarCloudCard({ projectKey }: { projectKey: string }) {
   }, [fetchApi, configApi, projectKey]);
 
   const dashboardUrl = `https://sonarcloud.io/dashboard?id=${encodeURIComponent(projectKey)}`;
-  const gateColor = data?.qualityGate === 'OK' ? '#4caf50'
-    : data?.qualityGate === 'WARN' ? '#ff9800'
-    : data?.qualityGate === 'ERROR' ? '#f44336' : '#9e9e9e';
+  const gateColor = firstMatch([
+    [data?.qualityGate === 'OK',    '#4caf50'],
+    [data?.qualityGate === 'WARN',  '#ff9800'],
+    [data?.qualityGate === 'ERROR', '#f44336'],
+  ], '#9e9e9e');
 
   return (
     <Box mb={3}>
@@ -1671,7 +1675,7 @@ function DatadogMonitorsCard({ monitorTag, site }: { monitorTag: string; site: s
 
   const monitorsUrl = `https://${site}/monitors/manage?q=${encodeURIComponent(monitorTag)}`;
   const stateColor = (state: string) =>
-    state === 'OK' ? '#4caf50' : state === 'Alert' ? '#f44336' : state === 'Warn' ? '#ff9800' : '#9e9e9e';
+    firstMatch([[state === 'OK', '#4caf50'], [state === 'Alert', '#f44336'], [state === 'Warn', '#ff9800']], '#9e9e9e');
 
   return (
     <Box mb={3}>
@@ -1881,10 +1885,11 @@ function TrivyCard({ repoSlug }: { repoSlug: string }) {
   }, [fetchApi, configApi, repoSlug]);
 
   const alertsUrl = `https://github.com/${repoSlug}/security/code-scanning?query=tool%3ATrivy`;
-  const gateColor = !counts ? '#9e9e9e'
-    : counts.critical > 0 ? '#f44336'
-    : counts.high > 0 ? '#ff9800'
-    : '#4caf50';
+  const gateColor = firstMatch([
+    [!counts,                          '#9e9e9e'],
+    [(counts?.critical ?? 0) > 0,      '#f44336'],
+    [(counts?.high ?? 0) > 0,          '#ff9800'],
+  ], '#4caf50');
 
   return (
     <Box mb={3}>
@@ -2461,10 +2466,10 @@ function GrafanaAlertsCard({ labelSelector }: { labelSelector: string }) {
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => setAlerts(Array.isArray(data) ? data : []))
       .catch(e => {
-        const hint =
-          e === 401 || e === 403 ? 'Check GRAFANA_TOKEN in local/backstage/.env.' :
-          e === 502 || e === 503 || e === 504 ? 'Grafana is unreachable — is the cluster running and grafana.idp.local resolvable?' :
-          'Check the Backstage proxy config and GRAFANA_TOKEN in local/backstage/.env.';
+        const hint = firstMatch([
+          [e === 401 || e === 403, 'Check GRAFANA_TOKEN in local/backstage/.env.'],
+          [e === 502 || e === 503 || e === 504, 'Grafana is unreachable — is the cluster running and grafana.idp.local resolvable?'],
+        ], 'Check the Backstage proxy config and GRAFANA_TOKEN in local/backstage/.env.');
         setError(`Grafana alerts unavailable (${e}). ${hint}`);
       })
       .finally(() => setLoading(false));
@@ -2512,7 +2517,7 @@ function GrafanaAlertsCard({ labelSelector }: { labelSelector: string }) {
                       size="small"
                       label={a.labels?.severity ?? 'unknown'}
                       style={{
-                        background: a.labels?.severity === 'critical' ? '#d32f2f' : a.labels?.severity === 'warning' ? '#f57c00' : '#616161',
+                        background: firstMatch([[a.labels?.severity === 'critical', '#d32f2f'], [a.labels?.severity === 'warning', '#f57c00']], '#616161'),
                         color: '#fff',
                       }}
                     />
@@ -2873,13 +2878,36 @@ function Sparkline({ series, color }: { series: number[]; color: string }) {
   );
 }
 
+// DORA metrics are shown in different units per metric, and deploy frequency
+// additionally switches between per-week and per-day below 1/day. That is a
+// ternary nested inside a branch, which reads badly as an expression.
+function formatDoraValue(metricKey: string, value: number): string {
+  if (metricKey === 'freq') {
+    return value < 1 ? `${(value * 7).toFixed(1)}/wk` : `${value.toFixed(1)}/day`;
+  }
+  if (metricKey === 'cfr') return `${value.toFixed(1)}%`;
+  return value < 60 ? `${value.toFixed(0)} min` : `${(value / 60).toFixed(1)} hr`;
+}
+
+// Stand-in value for a DORA metric with no data yet, so the gauge still renders
+// something in the right ballpark instead of NaN.
+function doraPlaceholder(key: string): number {
+  if (key === 'cfr') return 0;
+  if (key === 'freq') return 0.1;
+  return 60;
+}
+
+// Budget remaining, rendered as a signed dollar amount. Kept as a function
+// because the formatting is only valid once the null check has passed.
+function formatSignedUsd(amount: number | null | undefined): string {
+  if (amount == null) return '—';
+  return amount >= 0 ? `$${amount.toFixed(2)}` : `-$${Math.abs(amount).toFixed(2)}`;
+}
+
 function DoraMetricCard({ title, value, unit, series, band, metricKey }: {
   title: string; value: number; unit: string; series: number[]; band: { label: string; color: string }; metricKey: string;
 }) {
-  const displayVal = metricKey === 'freq'
-    ? value < 1 ? `${(value * 7).toFixed(1)}/wk` : `${value.toFixed(1)}/day`
-    : metricKey === 'cfr' ? `${value.toFixed(1)}%`
-    : value < 60 ? `${value.toFixed(0)} min` : `${(value/60).toFixed(1)} hr`;
+  const displayVal = formatDoraValue(metricKey, value);
 
   return (
     <Paper style={{ padding: 16, flex: 1, minWidth: 160 }}>
@@ -3016,7 +3044,7 @@ function DoraEntityContent() {
           <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
             {CARDS.map(({ key, title, unit }) => {
               const m = metrics[key];
-              const v = isNaN(m.value) ? (key === 'cfr' ? 0 : key === 'freq' ? 0.1 : 60) : m.value;
+              const v = isNaN(m.value) ? doraPlaceholder(key) : m.value;
               const band = doraBand(key, v);
               return <DoraMetricCard key={key} title={title} value={v} unit={unit} series={m.series.length ? m.series : [v]} band={band} metricKey={key} />;
             })}
@@ -3109,7 +3137,7 @@ function TeamBudgetEntityContent() {
 
   const utilization = ratio ?? (budget != null && actual != null ? actual / budget : null);
   const pct = utilization != null ? Math.round(utilization * 100) : null;
-  const barColor = pct == null ? '#9e9e9e' : pct >= 100 ? '#f44336' : pct >= 80 ? '#ff9800' : '#4caf50';
+  const barColor = firstMatch([[pct == null, '#9e9e9e'], [pct != null && pct >= 100, '#f44336'], [pct != null && pct >= 80, '#ff9800']], '#4caf50');
   const remaining = budget != null && actual != null ? budget - actual : null;
 
   return (
@@ -3169,9 +3197,7 @@ function TeamBudgetEntityContent() {
                 Remaining
               </Typography>
               <Typography variant="h4" style={{ fontWeight: 700, marginTop: 8, color: remaining != null && remaining < 0 ? '#f44336' : '#1b5e20' }}>
-                {remaining != null
-                  ? remaining >= 0 ? `$${remaining.toFixed(2)}` : `-$${Math.abs(remaining).toFixed(2)}`
-                  : '—'}
+                {formatSignedUsd(remaining)}
               </Typography>
               <Typography variant="caption" color="textSecondary">
                 {remaining != null && remaining < 0 ? 'over budget' : 'available'}
@@ -3253,15 +3279,17 @@ function SloGauge({ label, objective, errorRatio }: { label: string; objective: 
     ? Math.max(0, (1 - errorRatio / errorBudget)) * 100
     : null;
 
-  const color = budgetRemaining == null ? '#9e9e9e'
-    : budgetRemaining > 50 ? '#4caf50'
-    : budgetRemaining > 10 ? '#ff9800'
-    : '#f44336';
+  const color = firstMatch([
+    [budgetRemaining == null,                       '#9e9e9e'],
+    [budgetRemaining != null && budgetRemaining > 50, '#4caf50'],
+    [budgetRemaining != null && budgetRemaining > 10, '#ff9800'],
+  ], '#f44336');
 
-  const status = budgetRemaining == null ? 'No data'
-    : budgetRemaining > 50 ? 'Healthy'
-    : budgetRemaining > 10 ? 'Burning fast'
-    : 'Critical';
+  const status = firstMatch([
+    [budgetRemaining == null,                       'No data'],
+    [budgetRemaining != null && budgetRemaining > 50, 'Healthy'],
+    [budgetRemaining != null && budgetRemaining > 10, 'Burning fast'],
+  ], 'Critical');
 
   return (
     <Paper style={{ padding: 16, flex: 1, minWidth: 200 }}>
@@ -3545,7 +3573,7 @@ function HomePage() {
                 { label: 'APIs',     value: counts.apis,       color: '#388e3c', href: '/catalog?filters%5Bkind%5D=api' },
                 { label: 'Teams',    value: counts.groups,     color: '#7b1fa2', href: '/catalog?filters%5Bkind%5D=group' },
               ].map(({ label, value, color, href }) => (
-                <Paper key={label} style={{ padding: '16px 24px', flex: 1, minWidth: 120, borderTop: `4px solid ${color}`, cursor: 'pointer' }} onClick={() => window.location.href = href}>
+                <Paper key={label} style={{ padding: '16px 24px', flex: 1, minWidth: 120, borderTop: `4px solid ${color}`, cursor: 'pointer' }} onClick={() => { window.location.href = href; }}>
                   <Typography variant="h3" style={{ fontWeight: 700, color }}>{value || '—'}</Typography>
                   <Typography variant="body2" color="textSecondary">{label} in catalog</Typography>
                 </Paper>
@@ -3559,7 +3587,7 @@ function HomePage() {
             <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
               {CARDS.map(({ key, title, unit }) => {
                 const m = dora[key];
-                const v = isNaN(m.value) ? (key==='cfr'?0:key==='freq'?0.1:60) : m.value;
+                const v = isNaN(m.value) ? doraPlaceholder(key) : m.value;
                 const band = doraBand(key, v);
                 return <DoraMetricCard key={key} title={title} value={v} unit={unit} series={m.series.length ? m.series : [v]} band={band} metricKey={key} />;
               })}
@@ -3587,10 +3615,10 @@ function HomePage() {
                     )}
                     {services.map((s: any) => {
                       const lc = s.spec?.lifecycle ?? 'unknown';
-                      const lcColor = lc === 'production' ? '#4caf50' : lc === 'experimental' ? '#ff9800' : '#9e9e9e';
+                      const lcColor = firstMatch([[lc === 'production', '#4caf50'], [lc === 'experimental', '#ff9800']], '#9e9e9e');
                       return (
                         <TableRow key={s.metadata.name} hover style={{ cursor: 'pointer' }}
-                          onClick={() => window.location.href = `/catalog/default/component/${s.metadata.name}`}>
+                          onClick={() => { window.location.href = `/catalog/default/component/${s.metadata.name}`; }}>
                           <TableCell style={{ fontWeight: 500 }}>{s.metadata.name}</TableCell>
                           <TableCell><Typography variant="caption">{s.spec?.owner ?? '—'}</Typography></TableCell>
                           <TableCell><Typography variant="caption">{s.spec?.type ?? '—'}</Typography></TableCell>
@@ -3731,7 +3759,7 @@ function DoraPage() {
             <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
               {CARDS.map(({ key, title, unit }) => {
                 const m = aggregate[key];
-                const v = isNaN(m.value) ? (key==='cfr'?0:key==='freq'?0.1:60) : m.value;
+                const v = isNaN(m.value) ? doraPlaceholder(key) : m.value;
                 const band = doraBand(key, v);
                 return <DoraMetricCard key={key} title={title} value={v} unit={unit} series={m.series.length ? m.series : [v,v]} band={band} metricKey={key} />;
               })}
@@ -3825,11 +3853,11 @@ function ScorecardPage() {
       .finally(() => setLoading(false));
   }, [base, fetchApi]);
 
-  const TIER_ORDER: Record<TierName, number> = { gold: 3, silver: 2, bronze: 1, none: 0 };
+  const TIER_RANK: Record<TierName, number> = { gold: 3, silver: 2, bronze: 1, none: 0 };
 
   const sorted = [...rows].sort((a, b) => {
     if (sortKey === 'score') return b.score.passed - a.score.passed;
-    if (sortKey === 'tier')  return TIER_ORDER[b.score.tier] - TIER_ORDER[a.score.tier];
+    if (sortKey === 'tier')  return TIER_RANK[b.score.tier] - TIER_RANK[a.score.tier];
     return a.entity.metadata.name.localeCompare(b.entity.metadata.name);
   });
 
@@ -3897,7 +3925,7 @@ function ScorecardPage() {
                         }).filter(c => !score.results[c.id]);
                         return (
                           <TableRow key={entity.metadata.name} hover style={{ cursor: 'pointer' }}
-                            onClick={() => window.location.href = `/catalog/default/component/${entity.metadata.name}/scorecard`}>
+                            onClick={() => { window.location.href = `/catalog/default/component/${entity.metadata.name}/scorecard`; }}>
                             <TableCell style={{ fontWeight: 500 }}>{entity.metadata.name}</TableCell>
                             <TableCell><Typography variant="caption">{entity.spec?.owner ?? '—'}</Typography></TableCell>
                             <TableCell>
@@ -4045,8 +4073,8 @@ function SloPage() {
                   <TableBody>
                     {displaySlos.map((row, i) => {
                       const pct = budgetPct(row.objective, row.errorRatio);
-                      const color = pct == null ? '#9e9e9e' : pct > 50 ? '#4caf50' : pct > 10 ? '#ff9800' : '#f44336';
-                      const status = pct == null ? 'No data' : pct > 50 ? 'Healthy' : pct > 10 ? 'Burning fast' : 'Critical';
+                      const color = firstMatch([[pct == null, '#9e9e9e'], [pct != null && pct > 50, '#4caf50'], [pct != null && pct > 10, '#ff9800']], '#f44336');
+                      const status = firstMatch([[pct == null, 'No data'], [pct != null && pct > 50, 'Healthy'], [pct != null && pct > 10, 'Burning fast']], 'Critical');
                       const linkable = catalogNames.has(row.service);
                       return (
                         <TableRow key={i} hover={linkable} style={{ cursor: linkable ? 'pointer' : 'default' }}
@@ -4586,7 +4614,7 @@ function ApiExplorerPage() {
                   <Box display="flex" alignItems="center" style={{ gap: 12, padding: '16px 16px 12px' }}>
                     <div style={{ width: 40, height: 40, borderRadius: 8, background: `${TYPE_COLORS[api.type] ?? '#455a64'}22`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                      {api.type === 'asyncapi' ? '⬡' : api.type === 'grpc' ? '⚡' : '◈'}
+                      {firstMatch([[api.type === 'asyncapi', '⬡'], [api.type === 'grpc', '⚡']], '◈')}
                     </div>
                     <Box flex={1}>
                       <Typography variant="body1" style={{ fontWeight: 600 }}>{api.name}</Typography>
@@ -4637,7 +4665,7 @@ function ApiExplorerPage() {
                     <Box style={{ padding: '10px 20px', borderBottom: i < DEMO_ENDPOINTS.length - 1 ? '1px solid #eee' : 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {ep.status.map(s => (
                         <Chip key={s} size="small" label={s}
-                          style={{ fontSize: 10, background: s.startsWith('2') ? '#e8f5e9' : s.startsWith('4') ? '#fff8e1' : '#ffebee', fontWeight: 600 }} />
+                          style={{ fontSize: 10, background: firstMatch([[s.startsWith('2'), '#e8f5e9'], [s.startsWith('4'), '#fff8e1']], '#ffebee'), fontWeight: 600 }} />
                       ))}
                     </Box>
                   </Box>
@@ -4701,18 +4729,20 @@ function OnboardingPage() {
   const advance = (to: number) => {
     const next = Math.min(to, 3);
     setStep(next);
-    try { localStorage.setItem(ONBOARDING_KEY, String(next)); } catch {}
+    // Onboarding progress is a nicety; private mode or a full quota must not
+    // break the wizard, so a failed write is deliberately ignored.
+    try { localStorage.setItem(ONBOARDING_KEY, String(next)); } catch { /* progress is best-effort */ }
   };
   const back = (to: number) => {
     const prev = Math.max(to, 0);
     setStep(prev);
-    try { localStorage.setItem(ONBOARDING_KEY, String(prev)); } catch {}
+    try { localStorage.setItem(ONBOARDING_KEY, String(prev)); } catch { /* progress is best-effort */ }
   };
 
   const STEPS = ['Profile', 'GitHub', 'First Service', 'Explore'];
 
   const stepColor = (i: number) =>
-    i < step ? '#4caf50' : i === step ? '#1976d2' : '#e0e0e0';
+    firstMatch([[i < step, '#4caf50'], [i === step, '#1976d2']], '#e0e0e0');
 
   return (
     <Page themeId="home">
@@ -4725,14 +4755,21 @@ function OnboardingPage() {
               {STEPS.map((label, i) => (
                 <Box key={i} display="flex" alignItems="center" style={{ flex: 1 }}>
                   <Box display="flex" flexDirection="column" alignItems="center" style={{ flex: 1 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%', display: 'flex',
-                      alignItems: 'center', justifyContent: 'center', marginBottom: 6,
-                      background: stepColor(i), color: '#fff', fontWeight: 700, fontSize: 13,
-                      cursor: i <= step ? 'pointer' : 'default',
-                    }} onClick={() => { if (i <= step) back(i); }}>
+                    <button
+                      type="button"
+                      disabled={i > step}
+                      aria-label={`Go to step ${i + 1}: ${label}`}
+                      aria-current={i === step ? 'step' : undefined}
+                      onClick={() => back(i)}
+                      style={{
+                        width: 32, height: 32, borderRadius: '50%', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+                        background: stepColor(i), color: '#fff', fontWeight: 700, fontSize: 13,
+                        border: 'none', padding: 0, font: 'inherit',
+                        cursor: i <= step ? 'pointer' : 'default',
+                      }}>
                       {i < step ? '✓' : i + 1}
-                    </div>
+                    </button>
                     <Typography variant="caption" style={{ fontWeight: i === step ? 600 : 400, color: stepColor(i), fontSize: 11 }}>
                       {label}
                     </Typography>
@@ -4936,7 +4973,7 @@ const LEARNING_DOCS: LearningItem[] = [
 ];
 
 function learningLevelColor(level: LearningLevel): string {
-  return level === 'beginner' ? '#4caf50' : level === 'intermediate' ? '#ff9800' : '#f44336';
+  return firstMatch([[level === 'beginner', '#4caf50'], [level === 'intermediate', '#ff9800']], '#f44336');
 }
 
 function LearningCenterPage() {
@@ -5020,7 +5057,7 @@ function LearningCenterPage() {
   const total = allItems.length;
   const doneCount = allItems.filter(i => completed.has(i.id)).length;
   const pct = total > 0 ? (doneCount / total) * 100 : 0;
-  const tier = pct >= 100 ? '🥇' : pct >= 50 ? '🥈' : pct >= 25 ? '🥉' : null;
+  const tier = firstMatch<string | null>([[pct >= 100, '🥇'], [pct >= 50, '🥈'], [pct >= 25, '🥉']], null);
 
   if (loading) {
     return (
@@ -5310,7 +5347,7 @@ function CostCalculatorPage() {
                   <Typography variant="caption">{b.team} · {fmt$(b.budget)}/mo</Typography>
                 </Box>
                 <div style={{ height: 8, borderRadius: 4, background: '#eee', overflow: 'hidden', marginBottom: 12 }}>
-                  <div style={{ height: '100%', width: `${Math.min(utilization, 100)}%`, background: utilization > 90 ? '#f44336' : utilization > 70 ? '#ff9800' : '#4caf50', borderRadius: 4, transition: 'width 0.3s' }} />
+                  <div style={{ height: '100%', width: `${Math.min(utilization, 100)}%`, background: firstMatch([[utilization > 90, '#f44336'], [utilization > 70, '#ff9800']], '#4caf50'), borderRadius: 4, transition: 'width 0.3s' }} />
                 </div>
                 <Typography variant="caption" color="textSecondary">
                   Budget used: {fmt$(b.used)} · Adding this service: ~{fmt$(newTotal)} total ({utilization.toFixed(0)}% utilization)
@@ -5769,7 +5806,7 @@ function UserProfilePage() {
                         )}
                         <div style={{ width: 28, height: 28, borderRadius: '50%', background: item.color,
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, zIndex: 1, color: item.dot, fontWeight: 700 }}>
-                          {i === 0 || i === 3 ? '✓' : i === 1 ? '★' : i === 2 ? '+' : '⚠'}
+                          {firstMatch([[i === 0 || i === 3, '✓'], [i === 1, '★'], [i === 2, '+']], '⚠')}
                         </div>
                         <Box>
                           <Typography variant="body2" style={{ fontSize: 13 }}>{item.text}</Typography>
@@ -5880,10 +5917,8 @@ function GlobalSearchPage() {
           const doc  = r.document ?? {};
           const kind = doc.kind ?? 'Component';
           const loc  = typeof doc.location === 'string' ? doc.location : '';
-          const name = typeof doc.name === 'string' ? doc.name
-            : (typeof doc.title === 'string' ? doc.title : (loc.split('/').filter(Boolean).pop() ?? '—'));
-          const description = typeof doc.text === 'string' ? doc.text.slice(0, 100)
-            : (typeof doc.description === 'string' ? doc.description : '');
+          const name = searchResultName(doc, loc);
+          const description = searchResultDescription(doc);
           return {
             kind,
             name,
@@ -5953,6 +5988,9 @@ function GlobalSearchPage() {
           {/* Search bar */}
           <Box style={{ position: 'relative', marginBottom: 12 }}>
             <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9e9e9e', fontSize: 18 }}>🔍</span>
+            {/* eslint-disable-next-line jsx-a11y/no-autofocus -- this page is a
+                search palette whose only purpose is the query box; focusing it
+                on mount is the expected behaviour, not a focus steal. */}
             <input value={query} onChange={e => setQuery(e.target.value)} autoFocus
               placeholder="Search services, APIs, docs, templates…"
               style={{ width: '100%', border: '1px solid #ddd', borderRadius: 4, padding: '12px 14px 12px 44px',
@@ -6388,7 +6426,7 @@ function KAgentPage() {
             <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
               {[
                 { label: 'Agents Running',      value: readyCount,                          sub: agents.map(a => a.name.replace('-assistant','').replace('-','‑')).join(', ') || '—', color: '#4caf50' },
-                { label: 'MCP Tool Calls (24h)', value: totalCalls > 0 ? totalCalls.toLocaleString() : isDemo ? '2,681' : '0', sub: 'across all agents', color: '#1976d2' },
+                { label: 'MCP Tool Calls (24h)', value: firstMatch([[totalCalls > 0, totalCalls.toLocaleString()], [isDemo, '2,681']], '0'), sub: 'across all agents', color: '#1976d2' },
                 { label: 'Avg Response',         value: isDemo ? '1.4s' : '—',             sub: 'p50 · p95: 3.8s',             color: '#7b1fa2' },
               ].map(({ label, value, sub, color }) => (
                 <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
@@ -6570,9 +6608,10 @@ const DEMO_LANGFUSE_TRACES: LangfuseTrace[] = [
 ];
 
 const fmtUnits = (n: number): string =>
-  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
+  firstMatch([[n >= 1_000_000, `${(n / 1_000_000).toFixed(1)}M`], [n >= 1_000, `${(n / 1_000).toFixed(1)}k`]], String(n));
 
-const fmtCost = (n: number): string => (n >= 0.01 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(4)}` : '$0.00');
+const fmtCost = (n: number): string =>
+  firstMatch([[n >= 0.01, `$${n.toFixed(2)}`], [n > 0, `$${n.toFixed(4)}`]], '$0.00');
 
 // Langfuse reports trace latency in SECONDS on the /traces endpoint (per-
 // observation latency is in ms — do not copy this formatter over to that).
@@ -7049,7 +7088,25 @@ const DEMO_REGISTERED_MODELS: RegisteredModel[] = [
   { name: 'tiny-model',        version: '3', stage: 'Production', updated: '2 days ago' },
 ];
 
-const relTime = (ms?: number): string => {
+// Search documents come back loosely typed, so each candidate is type-checked
+// rather than coerced. Note the asymmetry in the description: only `text` is
+// truncated, because `description` is already a short field. That is existing
+// behaviour, preserved deliberately.
+function searchResultName(doc: any, loc: string): string {
+  if (typeof doc.name === 'string') return doc.name;
+  if (typeof doc.title === 'string') return doc.title;
+  return loc.split('/').filter(Boolean).pop() ?? '—';
+}
+
+function searchResultDescription(doc: any): string {
+  if (typeof doc.text === 'string') return doc.text.slice(0, 100);
+  if (typeof doc.description === 'string') return doc.description;
+  return '';
+}
+
+// Declared as a function, not a const arrow: it is called from formatters
+// defined earlier in this file, and only a declaration hoists.
+function relTime(ms?: number): string {
   if (!ms || isNaN(ms)) return '—';
   const secs = Math.max(0, Math.round((Date.now() - ms) / 1000));
   if (secs < 60) return `${secs}s ago`;
@@ -7059,7 +7116,7 @@ const relTime = (ms?: number): string => {
   if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
   const days = Math.round(hours / 24);
   return `${days} day${days !== 1 ? 's' : ''} ago`;
-};
+}
 
 const fmtDuration = (start?: number, end?: number): string => {
   if (!start || !end || isNaN(start) || isNaN(end) || end < start) return '—';

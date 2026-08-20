@@ -219,10 +219,10 @@ function createSetupContractTestingAction() {
     },
 
     async handler(ctx) {
-      const targetService = ctx.input['targetService'] as string;
-      const targetNamespace = (ctx.input['targetNamespace'] as string | undefined) ?? 'services-dev';
-      const targetPort = (ctx.input['targetPort'] as number | undefined) ?? 80;
-      const skipDeploy = (ctx.input['skipDeploy'] as boolean | undefined) ?? false;
+      const targetService = ctx.input.targetService as string;
+      const targetNamespace = (ctx.input.targetNamespace as string | undefined) ?? 'services-dev';
+      const targetPort = (ctx.input.targetPort as number | undefined) ?? 80;
+      const skipDeploy = (ctx.input.skipDeploy as boolean | undefined) ?? false;
 
       // ── Step 1: Verify cluster is reachable ───────────────────────────────
       ctx.logger.info('Verifying Kubernetes cluster is reachable...');
