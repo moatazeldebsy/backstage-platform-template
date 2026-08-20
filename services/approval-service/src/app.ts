@@ -7,12 +7,47 @@ function auditLog(event: Record<string, unknown>): void {
   console.log('[AUDIT] ' + JSON.stringify({ ts: new Date().toISOString(), server: 'approval-service', ...event }));
 }
 
+// Whether the database schema has been initialised. Kept separate from process
+// liveness on purpose: Postgres lives in local/backstage/docker-compose.yml, so
+// on a plain `bootstrap-local.sh` (no --start-backstage) it does not exist at
+// all. Exiting in that case turned a missing optional dependency into a
+// CrashLoopBackOff that ArgoCD then reported as Degraded forever.
+let schemaReady = false;
+let lastSchemaError: string | null = null;
+
+export function markSchemaReady(): void {
+  schemaReady = true;
+  lastSchemaError = null;
+}
+
+export function markSchemaFailed(err: unknown): void {
+  schemaReady = false;
+  lastSchemaError = err instanceof Error ? err.message : String(err);
+}
+
+export function isSchemaReady(): boolean {
+  return schemaReady;
+}
+
 export function createApp(): Express {
   const app = express();
   app.use(express.json());
 
+  // Liveness: the process is up and serving. Deliberately independent of the
+  // database — a dependency being down is not a reason for the kubelet to kill
+  // and restart this container, which only makes recovery slower.
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', version: '0.1.0' }));
-  app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
+
+  // Readiness: only true once the schema exists, because every route below that
+  // touches storage will fail until then. Reporting ready regardless is what
+  // made the earlier failure mode silent.
+  app.get('/ready', (_req, res) => {
+    if (schemaReady) {
+      res.json({ status: 'ready' });
+      return;
+    }
+    res.status(503).json({ status: 'not-ready', reason: 'database schema not initialised', error: lastSchemaError });
+  });
   app.get('/metrics', async (_req, res) => {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
@@ -90,7 +125,52 @@ export function createApp(): Express {
   return app;
 }
 
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise<void>(resolve => {
+    const timer = setTimeout(resolve, ms);
+    // Do not let a pending retry hold the event loop open: the process should
+    // still exit promptly on SIGTERM while waiting to retry.
+    if (typeof timer === 'object' && typeof timer.unref === 'function') timer.unref();
+  });
+}
+
+// Retries schema init until it succeeds. Runs in the background so the server can
+// start listening immediately and report itself unready, rather than failing to
+// boot. Backs off linearly to a ceiling so a long outage does not spin.
+export async function initSchemaWithRetry(
+  opts: {
+    attempts?: number;
+    delayMs?: number;
+    maxDelayMs?: number;
+    // Injectable purely so tests can assert the backoff schedule without
+    // sleeping. Production always uses the real timer below.
+    sleep?: (ms: number) => Promise<void>;
+  } = {},
+): Promise<boolean> {
+  const attempts = opts.attempts ?? Infinity;
+  const baseDelay = opts.delayMs ?? 2_000;
+  const maxDelay = opts.maxDelayMs ?? 30_000;
+  const sleep = opts.sleep ?? defaultSleep;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await initSchema();
+      markSchemaReady();
+      console.log('[approval-service] database schema ready');
+      return true;
+    } catch (err) {
+      markSchemaFailed(err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[approval-service] schema init attempt ${attempt} failed: ${message}`);
+      if (attempt >= attempts) return false;
+      await sleep(Math.min(baseDelay * attempt, maxDelay));
+    }
+  }
+  return false;
+}
+
 export async function bootstrap(): Promise<Express> {
   await initSchema();
+  markSchemaReady();
   return createApp();
 }
