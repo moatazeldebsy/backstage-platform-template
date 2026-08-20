@@ -51,9 +51,9 @@ This template ships with these security controls enabled by default:
 |---------|---------------|
 | OPA/Gatekeeper policies | Deny `:latest` tags, require health probes, resource limits, and cost labels |
 | OIDC keyless auth | GitHub Actions → AWS via `aws-actions/configure-aws-credentials` — no long-lived secrets |
-| Pod Security Standards | `baseline` enforced on all service namespaces |
-| Image scanning | Trivy scan on every build (Phase 5 roadmap item) |
-| Image signing | Cosign signing after ECR push (Phase 5 roadmap item) |
+| Pod Security Standards | `restricted` enforced on the service namespaces (`services`, `services-dev`, `services-staging`, `services-prod`); `baseline` on platform namespaces (backstage, finops, opencost, ml-platform, kagent); `monitoring` runs `privileged` |
+| Image scanning | Trivy scan on every build, results uploaded as SARIF to GitHub code scanning (`.github/workflows/build-and-deploy.yml`) |
+| Image signing | Cosign keyless signing of the pushed image digest after ECR push (`.github/workflows/build-and-deploy.yml`) |
 | Secrets management | AWS Secrets Manager + External Secrets Operator; no secrets in Git |
 
 ## Known Accepted Risks
