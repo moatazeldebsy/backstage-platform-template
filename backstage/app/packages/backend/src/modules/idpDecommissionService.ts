@@ -42,9 +42,9 @@ function createDecommissionServiceAction(options: {
     },
 
     async handler(ctx) {
-      const entityRef = ctx.input['entityRef'] as string;
-      const action = ctx.input['action'] as 'archive' | 'delete';
-      const confirmationText = ctx.input['confirmationText'] as string;
+      const entityRef = ctx.input.entityRef as string;
+      const action = ctx.input.action as 'archive' | 'delete';
+      const confirmationText = ctx.input.confirmationText as string;
 
       // Parse entityRef into { kind, namespace, name }
       const refParts = entityRef.split(':');

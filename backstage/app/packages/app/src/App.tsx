@@ -1,4 +1,4 @@
-import React from 'react';
+import { createElement } from 'react';
 import { createApp } from '@backstage/frontend-defaults';
 import { createFrontendModule } from '@backstage/frontend-plugin-api';
 import catalogPlugin from '@backstage/plugin-catalog/alpha';
@@ -34,7 +34,7 @@ const appSignInModule = createFrontendModule({
     SignInPageBlueprint.make({
       params: {
         loader: async () => (props: any) =>
-          React.createElement(SignInPage, {
+          createElement(SignInPage, {
             ...props,
             providers: [
               'guest',

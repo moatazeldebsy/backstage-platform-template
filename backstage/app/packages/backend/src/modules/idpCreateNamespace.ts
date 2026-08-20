@@ -84,7 +84,7 @@ spec:
               kubernetes.io/metadata.name: kube-system`);
   }
 
-  return docs.join('\n---\n') + '\n';
+  return `${docs.join('\n---\n')}\n`;
 }
 
 function createCreateNamespaceAction() {

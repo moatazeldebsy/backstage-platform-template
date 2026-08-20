@@ -1,4 +1,4 @@
-import React from 'react';
+import { createElement } from 'react';
 import { createUnifiedTheme, palettes, UnifiedThemeProvider } from '@backstage/theme';
 import type { AppTheme } from '@backstage/frontend-plugin-api';
 
@@ -93,7 +93,7 @@ export const idpDarkTheme: AppTheme = {
   title: 'IDP Dark',
   variant: 'dark',
   Provider: ({ children }) =>
-    React.createElement(UnifiedThemeProvider, { theme: idpDarkUnifiedTheme, children }),
+    createElement(UnifiedThemeProvider, { theme: idpDarkUnifiedTheme, children }),
 };
 
 export const catppuccinTheme: AppTheme = {
@@ -101,7 +101,7 @@ export const catppuccinTheme: AppTheme = {
   title: 'Catppuccin Mocha',
   variant: 'dark',
   Provider: ({ children }) =>
-    React.createElement(UnifiedThemeProvider, { theme: catppuccinUnifiedTheme, children }),
+    createElement(UnifiedThemeProvider, { theme: catppuccinUnifiedTheme, children }),
 };
 
 export const nordTheme: AppTheme = {
@@ -109,7 +109,7 @@ export const nordTheme: AppTheme = {
   title: 'Nord',
   variant: 'dark',
   Provider: ({ children }) =>
-    React.createElement(UnifiedThemeProvider, { theme: nordUnifiedTheme, children }),
+    createElement(UnifiedThemeProvider, { theme: nordUnifiedTheme, children }),
 };
 
 export const draculaTheme: AppTheme = {
@@ -117,5 +117,5 @@ export const draculaTheme: AppTheme = {
   title: 'Dracula',
   variant: 'dark',
   Provider: ({ children }) =>
-    React.createElement(UnifiedThemeProvider, { theme: draculaUnifiedTheme, children }),
+    createElement(UnifiedThemeProvider, { theme: draculaUnifiedTheme, children }),
 };

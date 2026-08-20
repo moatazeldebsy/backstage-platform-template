@@ -50,12 +50,12 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
     },
 
     async handler(ctx) {
-      const repoUrl = ctx.input['repoUrl'] as string;
+      const repoUrl = ctx.input.repoUrl as string;
 
       // Auto-inject platform-wide secrets from the backend pod's environment.
       // GITHUB_TOKEN / SONAR_TOKEN / SNYK_TOKEN are sourced from local/backstage/.env
       // locally and K8s secret backstage-secrets (Secrets Manager: idp-mvp/backstage) on AWS.
-      const secrets: Record<string, string> = { ...(ctx.input['secrets'] as Record<string, string>) };
+      const secrets: Record<string, string> = { ...(ctx.input.secrets as Record<string, string>) };
       const autoInject: Array<[string, string | undefined]> = [
         ['IDP_PLATFORM_TOKEN',      process.env.GITHUB_TOKEN],
         ['SONAR_TOKEN',             process.env.SONAR_TOKEN],

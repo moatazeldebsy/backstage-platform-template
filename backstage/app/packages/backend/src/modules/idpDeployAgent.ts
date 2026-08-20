@@ -60,6 +60,16 @@ ${toolsBlock}
 `;
 }
 
+// Maps the scaffolder's provider + model choice onto a KAgent ModelConfig name.
+// Keep in step with the skeleton's kubernetes/agent.yaml, which renders the same
+// field for the repo's own GitOps copy.
+function resolveModelConfig(modelProvider: string, model: string): string {
+  if (modelProvider === 'openai') return 'openai-prod';
+  if (model.includes('opus')) return 'claude-opus';
+  if (model.includes('sonnet')) return 'claude-sonnet';
+  return 'claude-haiku';
+}
+
 function createDeployAgentAction() {
   return createTemplateAction({
     id: 'idp:deploy-agent',
@@ -80,12 +90,12 @@ function createDeployAgentAction() {
     },
 
     async handler(ctx) {
-      const name = ctx.input['name'] as string;
-      const description = ctx.input['description'] as string;
-      const modelProvider = (ctx.input['modelProvider'] as string | undefined) ?? 'anthropic';
-      const enableCatalogSearch = (ctx.input['enableCatalogSearch'] as boolean | undefined) ?? true;
-      const enableMetrics = (ctx.input['enableMetrics'] as boolean | undefined) ?? true;
-      const enableScaffolding = (ctx.input['enableScaffolding'] as boolean | undefined) ?? false;
+      const name = ctx.input.name as string;
+      const description = ctx.input.description as string;
+      const modelProvider = (ctx.input.modelProvider as string | undefined) ?? 'anthropic';
+      const enableCatalogSearch = (ctx.input.enableCatalogSearch as boolean | undefined) ?? true;
+      const enableMetrics = (ctx.input.enableMetrics as boolean | undefined) ?? true;
+      const enableScaffolding = (ctx.input.enableScaffolding as boolean | undefined) ?? false;
 
       // Must name a ModelConfig that exists in the kagent namespace, or KAgent
       // rejects the Agent with "ModelConfig.kagent.dev ... not found" — the CR
@@ -96,12 +106,8 @@ function createDeployAgentAction() {
       // got claude-anthropic (Haiku) whichever model the user picked. Keep this
       // mapping in step with the skeleton's kubernetes/agent.yaml, which
       // renders the same field for the repo's own GitOps copy.
-      const model = (ctx.input['model'] as string | undefined) ?? '';
-      const modelConfig = modelProvider === 'openai'
-        ? 'openai-prod'
-        : model.includes('opus') ? 'claude-opus'
-        : model.includes('sonnet') ? 'claude-sonnet'
-        : 'claude-haiku';
+      const model = (ctx.input.model as string | undefined) ?? '';
+      const modelConfig = resolveModelConfig(modelProvider, model);
 
       ctx.logger.info(`Deploying Agent '${name}' to kagent namespace (modelConfig: ${modelConfig})...`);
 

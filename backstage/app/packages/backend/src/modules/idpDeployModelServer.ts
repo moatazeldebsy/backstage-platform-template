@@ -78,7 +78,7 @@ metadata:
   namespace: ml-platform
 data:
   server.py: |
-${mockScript.split('\n').map(l => '    ' + l).join('\n')}
+${mockScript.split('\n').map(l => `    ${l}`).join('\n')}
 
 ---
 apiVersion: apps/v1
@@ -527,9 +527,9 @@ function createDeployModelServerAction() {
     },
 
     async handler(ctx) {
-      const name = ctx.input['name'] as string;
-      const modelName = ctx.input['modelName'] as string;
-      const target = ctx.input['target'] as string;
+      const name = ctx.input.name as string;
+      const modelName = ctx.input.modelName as string;
+      const target = ctx.input.target as string;
 
       // Strict input validation to prevent injection attacks
       const k8sNameRegex = /^[a-z][a-z0-9-]{2,30}$/;
@@ -560,7 +560,7 @@ function createDeployModelServerAction() {
 
       // mock on local, vllm on aws — the previous behaviour — unless asked otherwise.
       const serverType =
-        (ctx.input['serverType'] as string | undefined) ?? (target === 'local' ? 'mock' : 'vllm');
+        (ctx.input.serverType as string | undefined) ?? (target === 'local' ? 'mock' : 'vllm');
 
       // Real Ollama on a single-node Kind cluster is a ~2.7GB image plus a
       // resident model, on top of the whole platform. Refuse rather than let it
