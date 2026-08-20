@@ -141,7 +141,7 @@ This runs ~40 automated checks across 10 categories (AWS infrastructure, Kuberne
 ---
 
 **What gets provisioned:**
-- EKS cluster (4× t3.medium nodes, 1.29)
+- EKS cluster (4× t3.medium nodes, 1.32)
 - RDS PostgreSQL (for Backstage)
 - ECR repository + S3 bucket (for artifacts)
 - IAM roles + OIDC (for GitHub Actions and Crossplane)

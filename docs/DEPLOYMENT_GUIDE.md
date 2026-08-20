@@ -492,21 +492,25 @@ enable_cost_optimizer = false
 
 ```yaml
 prometheusSpec:
-  retention: 3d          # was 15d — reduce scrape history
+  retention: 3d            # time-based cap — reduce scrape history
+  retentionSize: 15GB      # size-based cap — this is the load-bearing one
   storageSpec:
     volumeClaimTemplate:
       spec:
         storageClassName: gp3   # 20% cheaper than gp2
         resources:
           requests:
-            storage: 5Gi        # was 20Gi — stays within 30Gi EBS free tier
+            storage: 20Gi       # headroom above retentionSize
 ```
 
-For production, increase retention and storage:
-```yaml
-retention: 15d
-storage: 20Gi
-```
+**Do not drop `storage` below `retentionSize` with room to spare, and do not
+remove `retentionSize`.** `retention` alone is a *time* cap, so a busy cluster can
+fill the volume long before the window expires — a previous 5Gi volume filled in
+about four days and silently wedged ingestion. `retentionSize` is what actually
+bounds the volume; `storage: 20Gi` exists to give it headroom.
+
+For longer history, raise both together (e.g. `retention: 15d`,
+`retentionSize: 45GB`, `storage: 60Gi`) and expect the EBS cost to rise with it.
 
 ### Skip the AI/ML stack
 

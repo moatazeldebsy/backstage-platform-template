@@ -33,8 +33,8 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 
 | Component | Tested version |
 |---|---|
-| Backstage | v1.49.1 |
-| Kubernetes | 1.29 (EKS) · 1.33.1 (Kind) |
+| Backstage | v1.50.4 |
+| Kubernetes | 1.32 (EKS) · 1.33.1 (Kind) |
 | Helm | 3.x / 4.x |
 | Kind | ≥ 0.27 |
 | ArgoCD | v3.4 (chart 9.5.13) |
@@ -48,7 +48,7 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 
 | Capability | Details |
 |---|---|
-| **Developer portal** | Backstage v1.49.1 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
+| **Developer portal** | Backstage v1.50.4 — catalog, TechDocs, Tech Radar (63 entries), custom scaffolder actions |
 | **Software templates** | 63 templates: 11 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, LLM App, Team namespace, Create namespace, Add-secret, Decommission) + 52 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (62 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
@@ -73,7 +73,9 @@ A Backstage developer portal, golden-path Helm chart, 63 scaffold templates (ser
 | **Local (Kind)** | `git`, `docker`, `kind` ≥ 0.27, `kubectl`, `helm` ≥ 3.14 — `brew install kind kubectl helm docker` on macOS |
 | **AWS** | Everything above, plus `aws` CLI (run `aws configure`), `terraform` ≥ 1.5, `jq` |
 
-**Local machine sizing**: the full stack is ~90 pods using **~3.6 CPU cores and ~9 GB** once settled, or **~4.1 cores and ~11.4 GB** with Langfuse (`bootstrap-ai.sh --langfuse`) as well. Give Docker/Rancher Desktop **8 CPU / 16 GB** for a comfortable run (6 CPU / 12 GB is the working minimum, and it's tight); Langfuse on top wants 10 CPU / 20 GB. Short on resources? Skip the AI/ML layer — it alone is ~2.9 GB — or pass `--skip-obs --skip-policies`. Sizing tiers, the symptoms of an under-resourced cluster, and how to trim: [Machine requirements](docs/local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them).
+**Local machine sizing**: the full stack with Langfuse — the default since `bootstrap-ai.sh` installs it on both targets — is ~90 pods using roughly **4 cores and 11 GB** once settled; passing `--skip-langfuse` takes that down to about **3.5 cores and 9 GB**. Give Docker/Rancher Desktop **10 CPU / 20 GB** to run the default comfortably, or **8 CPU / 16 GB** with `--skip-langfuse` (6 CPU / 12 GB is the working minimum, and it's tight). Short on resources? Narrow the agent set with `--agents` (each agent is one pod), skip the AI/ML layer — it alone is ~2.9 GB — or pass `--skip-obs --skip-policies`.
+
+> These figures are approximate and were measured before [#409](https://github.com/moatazeldebsy/backstage-platform-template/pull/409) gave the Argo Rollouts dashboard CPU limits, which removed a permanently busy-looping core; actual usage is likely lower. Sizing tiers, the symptoms of an under-resourced cluster, and how to trim: [Machine requirements](docs/local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them).
 
 `go` and Node.js are only needed if you want to build the `idp` CLI / run Backstage outside Docker — `setup.sh` builds the CLI for you automatically if Go is present, and skips it with a warning otherwise. Full checklists: [Local Setup](docs/local-setup.md#prerequisites) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md#required-tools).
 
@@ -117,7 +119,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **OpenCost** | http://opencost.idp.local | — |
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
 | **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local (also surfaced in Backstage at `/kagent` · `/mlflow`) | requires `bootstrap-ai.sh` |
-| **AI Observability** / **Langfuse UI** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | requires `bootstrap-ai.sh --langfuse`; Langfuse admin password in the `langfuse-init` Secret |
+| **AI Observability** / **Langfuse UI** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | installed by default by `bootstrap-ai.sh` (`--skip-langfuse` opts out); Langfuse admin password in the `langfuse-init` Secret |
 | **IDP / QA / Contract MCP Servers** | `http://<name>-mcp-server.idp.local/healthz` | requires `bootstrap-ai.sh` |
 | **Traces (Tempo)** / **Argo Rollouts** | Traces via Grafana Explore → Tempo datasource (Tempo has no UI; `tempo.idp.local/v1/traces` is a POST-only OTLP endpoint) · http://argo-rollouts.idp.local | auto-deployed by `bootstrap-local.sh` |
 | **Local registry** | localhost:5003 | — (no auth) |
@@ -154,7 +156,7 @@ Manager → External Secrets on EKS.
 
 | Layer | Local | AWS |
 |-------|-------|-----|
-| Compute | Kind (Kubernetes in Docker) | Amazon EKS 1.29 |
+| Compute | Kind (Kubernetes in Docker) | Amazon EKS 1.32 |
 | Container registry | Local registry (`localhost:5003`) | Amazon ECR |
 | Ingress | nginx ingress controller | AWS Load Balancer Controller (ALB) |
 | CI / CD | GitHub Actions → `idp:deploy-local` Backstage action | GitHub Actions (OIDC → ECR → EKS) |
@@ -399,7 +401,7 @@ Incidents are records, not Slack threads — auto-filed from Alertmanager, sever
 backstage-platform-template/
 ├── scripts/                    # setup.sh · bootstrap-local.sh · bootstrap-ai.sh · cleanup.sh
 ├── backstage/
-│   ├── app/                    # Backstage monorepo (v1.49.1)
+│   ├── app/                    # Backstage monorepo (v1.50.4)
 │   ├── catalog/templates/      # 63 golden-path templates
 │   ├── app-config.yaml         # base config
 │   ├── app-config.local.yaml   # Kind overrides

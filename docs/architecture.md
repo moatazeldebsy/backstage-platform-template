@@ -34,7 +34,7 @@ Three channels connect developers, platform engineers, and AI agents to the plat
 | 2 | **Backstage Portal** | Software Catalog, 21 software templates, 18 QA templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights | Scaffolder Backend → Catalog API → ArgoCD |
 | 3 | **AI Agent / MCP** | KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs |
 
-All three channels converge on the **Platform Control Plane**: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.29 in production.
+All three channels converge on the **Platform Control Plane**: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.32 in production.
 
 ---
 
@@ -286,7 +286,7 @@ Host ~/.kube/config         docker-compose mounts as read-only
 
 ![AWS Architecture](assets/aws-architecture.jpg)
 
-Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.29 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data & Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).
+Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.32 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data & Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).
 
 ### Network Topology
 

@@ -33,9 +33,9 @@ Every later invocation (recreate the cluster, add a flag, retry a failed step) g
 | Script | What it does |
 |---|---|
 | `setup.sh` | **Start here (once).** Guided interactive setup — replaces placeholders, creates `.env` files, then bootstraps local or AWS |
-| `bootstrap-local.sh` | Day-2: re-create Kind cluster + platform. Flags: `--start-backstage`, `--skip-obs`, `--destroy`, `--print-urls` |
-| `bootstrap-ai.sh` | Add AI/ML stack on top of a running cluster. **Local only** — on AWS, `bootstrap.sh` already runs this for you. Flags: `--skip-mlflow`, `--skip-mcp`, `--skip-kagent`, `--langfuse`, `--skip-langfuse`, `--langfuse-keys-only`, `--aws`, `--destroy` |
-| `bootstrap.sh` | AWS single-region bootstrap: Terraform → EKS → full platform **including AI/ML** (~40–70 min). Pass `--skip-ai` to opt out |
+| `bootstrap-local.sh` | Day-2: re-create Kind cluster + platform. Common flags: `--start-backstage`, `--skip-obs`, `--destroy`, `--print-urls`; full list under [bootstrap-local.sh flags](#bootstrap-localsh-flags) |
+| `bootstrap-ai.sh` | Add AI/ML stack on top of a running cluster. **Local only** — on AWS, `bootstrap.sh` already runs this for you. Full flag list below under [bootstrap-ai.sh flags](#bootstrap-aish-flags); the one worth knowing up front is `--agents`, which controls how many agent pods you install. |
+| `bootstrap.sh` | AWS single-region bootstrap: Terraform → EKS → full platform **including AI/ML** (~40–70 min). Pass `--skip-ai` to opt out; full list under [bootstrap.sh flags](#bootstrapsh-flags) |
 | `bootstrap-multiregion.sh` | AWS multi-region (V2) bootstrap: active-standby eu-central-1 + us-east-1 (~30–50 min). See [Multi-Region](multi-region.md) |
 | `verify-secrets.sh` | Pre-flight: checks all required secrets/API keys are set before an AWS deployment. Run before `bootstrap.sh` |
 | `validate-deployment.sh` | Post-deploy: 50+ automated checks across infra, K8s, Backstage, observability, GitOps, AI, security |
@@ -58,8 +58,67 @@ Every later invocation (recreate the cluster, add a flag, retry a failed step) g
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
 | `get-k8s-credentials.sh` | Creates a Backstage service account in the cluster and writes K8s credentials to `local/backstage/.env`. | `bootstrap-local.sh` (auto), or standalone |
 | `apply-catalog-exporter.sh` | Deploys the Backstage catalog CronJob to the `monitoring` namespace. | `bootstrap-local.sh` (auto), or standalone |
-| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires `ANTHROPIC_API_KEY` in `local/.env`. Options: `--skip-mlflow`, `--skip-kagent`, `--skip-mcp`, `--force-build`. Langfuse (LLM tracing) is on by default on both local and AWS (`--skip-langfuse` to opt out on either); `--langfuse-keys-only` re-distributes the Langfuse project keys to namespaces labelled `idp.io/langfuse=enabled` without deploying anything. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. See [Re-running the bootstrap scripts](#re-running-the-bootstrap-scripts-caching-and-parallelism). | **Local:** manual, run after `bootstrap-local.sh` if you want AI/ML. **AWS:** already run for you by `bootstrap.sh` — only run standalone (`--aws`) to retry a failed AI phase |
+| `bootstrap-ai.sh` | Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires `ANTHROPIC_API_KEY` in `local/.env` (or use `--ollama` to run with no API key at all). Every flag is listed under [bootstrap-ai.sh flags](#bootstrap-aish-flags). Langfuse (LLM tracing) is on by default on both local and AWS (`--skip-langfuse` to opt out on either); `--langfuse-keys-only` re-distributes the Langfuse project keys to namespaces labelled `idp.io/langfuse=enabled` without deploying anything. Optional: set `VOYAGE_API_KEY` in `local/backstage/.env` to enable semantic search at `/ai-search`. See [Re-running the bootstrap scripts](#re-running-the-bootstrap-scripts-caching-and-parallelism). | **Local:** manual, run after `bootstrap-local.sh` if you want AI/ML. **AWS:** already run for you by `bootstrap.sh` — only run standalone (`--aws`) to retry a failed AI phase |
 | `recover-docker-restart.sh` | **Post-Docker-restart recovery.** Patches Kind cluster after Docker Desktop shuffles container IPs: fixes kubelet.conf, restarts kindnet/kube-proxy, replaces ingress-nginx pods, repairs Grafana PVC permissions, restarts Backstage Docker Compose, and smoke-tests all 11 service URLs. Flags: `--skip-backstage`, `--dry-run`. See [Docker Recovery](docker-recovery.md). | After Docker Desktop restarts unexpectedly |
+
+### `bootstrap-local.sh` flags
+
+Taken from the script's own argument parser.
+
+| Flag | What it does |
+|---|---|
+| `--start-backstage` | Build and start Backstage, wire nginx, seed metrics. |
+| `--print-urls` | Print every platform URL and exit. |
+| `--destroy` | Tear everything down: remove scaffolded services from ArgoCD + Helm + git, then delete the cluster. |
+| `--full` | Install every optional component rather than the default set. |
+| `--provider <name>` | Container provider to target (Docker Desktop / Rancher Desktop). |
+| `--clean-docker` | Prune Docker build cache and dangling images before starting. Use when the host is short on disk — a Lima/Docker VM can hold tens of GB of reclaimable image layers. |
+| `--install-argocd` | Install ArgoCD (part of the default set; use to add it to an existing cluster). |
+| `--install-argo-workflows` | Install Argo Workflows. |
+| `--install-pushgateway` | Install the Prometheus Pushgateway on its own, without the rest of the DORA group. |
+| `--update-backstage-ip` | Re-point Backstage at the current Kind API-server IP after Docker shuffles container IPs. |
+| `--skip-obs` | Skip Prometheus/Grafana and the rest of the observability stack. |
+| `--skip-policies` | Skip Gatekeeper and Kyverno policy installation. |
+| `--skip-gitops` | Skip ArgoCD and the app-of-apps ApplicationSet. |
+| `--skip-dora` | Skip the DORA exporter and Pushgateway. |
+
+### `bootstrap.sh` flags
+
+| Flag | What it does |
+|---|---|
+| `--with-ai` | Install the AI/ML stack (Phase 6 runs `bootstrap-ai.sh --aws`). On by default; `--skip-ai` opts out. |
+| `--adp` | Implies `--with-ai` and adds the Agentic Development Platform. |
+| `--skip-ai` | Skip the AI/ML stack entirely. |
+| `--remove-ai-infra` | Tear down the AI-specific AWS infrastructure. |
+| `--cluster-name <name>` | EKS cluster name to create or target. |
+| `--region <region>` | AWS region. |
+| `--skip-velero` | Skip installing Velero (cluster backup/restore). Backups are on by default; skipping leaves you with no restore path. |
+| `--skip-gitops` | Skip ArgoCD and the app-of-apps ApplicationSet. |
+| `--skip-policies` | Skip Gatekeeper and Kyverno policy installation. |
+| `--skip-dora` | Skip the DORA exporter and Pushgateway. |
+| `--help` | Print usage and exit. |
+
+### `bootstrap-ai.sh` flags
+
+The authoritative list — taken from the script's own argument parser. Anywhere else
+in the docs that mentions a `bootstrap-ai.sh` flag should defer to this table.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `--agents <list>` | `idp,qa,release,cost,platform,contract` | Comma-separated KAgent agents to install; each is one pod, so this is the main lever on a small machine. Special values: `all` (all nine — adds `incident`, `security`, `onboarding`), `none` (KAgent runtime and UI, zero agent pods), `list` (print the available agents and exit). Re-running **prunes** agents outside the selection. See [Local Setup](local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them). |
+| `--adp` | off | Also install the Agentic Development Platform — dev-workflow and ops agents behind a human-in-the-loop approval gate. See [Agentic Platform](agentic-platform.md). |
+| `--ollama` | off | Run the agents against a local Ollama model instead of Anthropic, so the stack works with no `ANTHROPIC_API_KEY`. See [AI Assistant](ai-assistant.md). |
+| `--langfuse` | on | Install Langfuse LLM tracing. On by default on both local and AWS — this flag only forces it on. |
+| `--skip-langfuse` | — | Opt out of Langfuse. Saves roughly 2 GB and 6 pods locally. |
+| `--langfuse-keys-only` | — | Re-distribute the Langfuse project keys to namespaces labelled `idp.io/langfuse=enabled` without deploying anything. |
+| `--skip-mlflow` | — | Skip the MLflow tracking server and model registry. |
+| `--skip-mcp` | — | Skip the MCP servers. |
+| `--skip-kagent` | — | Skip the KAgent CRDs, runtime, and agents. |
+| `--force-build` | off | Rebuild the MCP server images and their Helm releases even when unchanged. |
+| `--aws` | off | Target the AWS cluster rather than Kind. `bootstrap.sh` passes this for you; run it standalone only to retry a failed AI phase. |
+| `--cluster <name>` | from `.idp-config.env` | Cluster name to target (AWS). |
+| `--region <region>` | from `.idp-config.env` | AWS region to target. |
+| `--destroy` | — | Remove the AI/ML stack. |
 
 ## Re-running the bootstrap scripts — caching and parallelism
 
