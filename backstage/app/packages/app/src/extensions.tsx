@@ -3,7 +3,6 @@ import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef, 
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
 import { CATALOG_FILTER_EXISTS } from '@backstage/catalog-client';
-import type { Entity } from '@backstage/catalog-model';
 import {
   showScorecard, showSecurity, showDatadog, showTrivy, showOnCall,
   showGrafana, showJira, showDora, showBudget, showSlo, showLangfuse,
@@ -1231,136 +1230,20 @@ const approvalsNavItem = NavItemBlueprint.make({
 // backstage/app/packages/backend/src/modules/idpTechInsights.ts.
 // See docs/shift-left.md for the tier model.
 
-type CheckKey =
-  | 'has-owner'
-  | 'has-techdocs'
-  | 'has-health-probes'
-  | 'has-runbook-url'
-  | 'has-api-definition'
-  | 'uses-pinned-image-tag'
-  | 'has-coverage-gate'
-  | 'has-static-analysis'
-  | 'has-vuln-scan'
-  | 'has-contract-tests'
-  | 'has-e2e-tests'
-  | 'has-model-card'
-  | 'has-eval-suite'
-  | 'has-ai-observability'
-  | 'has-sonar-scanning'
-  | 'has-snyk-scanning'
-  | 'has-trivy-scanning';
-
-interface CheckDef {
-  id: CheckKey;
-  label: string;
-  group: 'Hygiene' | 'Shift-Left CI' | 'Test Coverage' | 'AI Governance' | 'Security';
-  remediation: string;
-}
-
-const CHECKS: CheckDef[] = [
-  { id: 'has-owner',             group: 'Hygiene',       label: 'Has owner',                 remediation: 'Set spec.owner in catalog-info.yaml.' },
-  { id: 'has-techdocs',          group: 'Hygiene',       label: 'Has TechDocs',              remediation: 'Add annotation backstage.io/techdocs-ref: dir:.' },
-  { id: 'has-health-probes',     group: 'Hygiene',       label: 'Has Kubernetes probes',     remediation: 'Add annotation backstage.io/kubernetes-id (the Helm chart wires the probes).' },
-  { id: 'has-runbook-url',       group: 'Hygiene',       label: 'Has runbook URL',           remediation: 'Add annotation backstage.io/runbook-url linking to your service runbook.' },
-  { id: 'has-api-definition',    group: 'Hygiene',       label: 'Has API definition',        remediation: 'Declare providesApis in catalog-info.yaml or expose /openapi.json.' },
-  { id: 'uses-pinned-image-tag', group: 'Hygiene',       label: 'Pinned image tag (no :latest)', remediation: 'Set annotation backstage.io/image-tag to a SHA or version; avoid latest.' },
-  { id: 'has-coverage-gate',     group: 'Shift-Left CI', label: 'Coverage gate in CI',       remediation: 'Add "coverage" to idp.io/quality-gates annotation (skeleton CI already enforces 70%).' },
-  { id: 'has-static-analysis',   group: 'Shift-Left CI', label: 'Static analysis in CI',     remediation: 'Add "static-analysis" to idp.io/quality-gates annotation.' },
-  { id: 'has-vuln-scan',         group: 'Shift-Left CI', label: 'Vuln scan in CI',           remediation: 'Add "vuln-scan" to idp.io/quality-gates annotation.' },
-  { id: 'has-contract-tests',    group: 'Test Coverage', label: 'Contract tests',            remediation: 'Run the enable-contract-testing scaffolder template, or add "contract" to idp.io/quality-gates.' },
-  { id: 'has-e2e-tests',         group: 'Test Coverage', label: 'End-to-end tests',          remediation: 'Run the playwright-e2e-suite scaffolder, or tag the entity with e2e/playwright.' },
-  { id: 'has-model-card',        group: 'AI Governance', label: 'Has model card',            remediation: 'Add annotation backstage.io/model-card-url documenting the model, its training data, and performance.' },
-  { id: 'has-eval-suite',        group: 'AI Governance', label: 'LLM eval suite in CI',      remediation: 'Add "llm-eval" to idp.io/quality-gates and run the deepeval-llm-eval-suite scaffolder.' },
-  { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id and tag the entity with "ai" to enable Grafana dashboards.' },
-  { id: 'has-sonar-scanning',    group: 'Security',      label: 'SonarCloud quality gate',   remediation: 'Run the enable-security-scanning scaffolder, or add a sonarcloud.io/project-key annotation.' },
-  { id: 'has-snyk-scanning',     group: 'Security',      label: 'Snyk SCA scan',             remediation: 'Run the enable-security-scanning scaffolder, or add a snyk.io/org-slug annotation.' },
-  { id: 'has-trivy-scanning',    group: 'Security',      label: 'Trivy image scan',          remediation: 'See the Trivy tab — requires a github.com/project-slug annotation and CI to have run at least once.' },
-];
-
-type TierName = 'none' | 'bronze' | 'silver' | 'gold';
-
-// Thresholds for non-AI entities (14 checks) and AI entities (17 checks).
-// CHECKS above holds 17 entries; 3 are AI-only, so non-AI entities are scored
-// against 14. The absolute cutoffs below have not moved since the array held
-// 11/14, so the effective bar has drifted down (gold was ~82% of 11, it is now
-// ~64% of 14). Raising them is a deliberate policy change — it will demote
-// services overnight — so it is left alone here rather than folded into a
-// docs correction. Revisit with the scorecard owners.
-const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 4,   // ~29% of 14 checks
-  silver: 7,   // ~50% of 14 checks
-  gold:   9,   // ~64% of 14 checks
-};
-const AI_TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 5,   // ~29% of 17 checks
-  silver: 9,   // ~53% of 17 checks
-  gold:   12,  // ~71% of 17 checks
-};
-
-interface ScorecardResult {
-  results: Record<CheckKey, boolean>;
-  passed: number;
-  total: number;
-  tier: TierName;
-}
-
-function parseGates(raw: string | undefined): Set<string> {
-  if (!raw) return new Set();
-  return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
-}
-
-function computeScorecard(entity: Entity): ScorecardResult {
-  const annotations = entity.metadata.annotations ?? {};
-  const relations   = entity.relations ?? [];
-  const tags        = entity.metadata.tags ?? [];
-  const gates       = parseGates(annotations['idp.io/quality-gates']);
-
-  const hasOwner = Boolean(
-    entity.spec?.owner &&
-    relations.some(r => r.type === 'ownedBy'),
-  );
-  const hasApiDefinition = relations.some(r => r.type === 'providesApi');
-  const imageTag         = annotations['backstage.io/image-tag'] ?? '';
-  const hasE2eTagged     = tags.some(t =>
-    ['e2e', 'playwright', 'cypress', 'appium'].includes(t.toLowerCase()),
-  );
-
-  const hasKubernetesId = Boolean(annotations['backstage.io/kubernetes-id']);
-  const isAiEntity =
-    tags.some(t => t.toLowerCase() === 'ai') ||
-    ['ai-agent', 'model-serving', 'llm', 'ml-model'].includes(
-      ((entity.spec as any)?.type ?? '').toLowerCase(),
-    );
-
-  const results: Record<CheckKey, boolean> = {
-    'has-owner':             hasOwner,
-    'has-techdocs':          Boolean(annotations['backstage.io/techdocs-ref']),
-    'has-health-probes':     hasKubernetesId,
-    'has-runbook-url':       Boolean(annotations['backstage.io/runbook-url']),
-    'has-api-definition':    hasApiDefinition,
-    'uses-pinned-image-tag': imageTag !== '' && imageTag !== 'latest',
-    'has-coverage-gate':     gates.has('coverage'),
-    'has-static-analysis':   gates.has('static-analysis'),
-    'has-vuln-scan':         gates.has('vuln-scan'),
-    'has-contract-tests':    gates.has('contract') || hasApiDefinition,
-    'has-e2e-tests':         gates.has('e2e') || hasE2eTagged || relations.some(r => r.type === 'consumesApi'),
-    'has-model-card':        isAiEntity && Boolean(annotations['backstage.io/model-card-url']),
-    'has-eval-suite':        isAiEntity && gates.has('llm-eval'),
-    'has-ai-observability':  isAiEntity && hasKubernetesId,
-    'has-sonar-scanning':    gates.has('sonar-scanning') || Boolean(annotations['sonarcloud.io/project-key']),
-    'has-snyk-scanning':     gates.has('snyk-scanning') || Boolean(annotations['snyk.io/org-slug']),
-    'has-trivy-scanning':    gates.has('trivy-scanning') || Boolean(annotations['github.com/project-slug']),
-  };
-
-  const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
-  const activeChecks = CHECKS.filter(c => c.group !== 'AI Governance' || isAiEntity);
-  const passed = activeChecks.filter(c => results[c.id]).length;
-  let tier: TierName = 'none';
-  if (passed >= thresholds.gold)        tier = 'gold';
-  else if (passed >= thresholds.silver) tier = 'silver';
-  else if (passed >= thresholds.bronze) tier = 'bronze';
-  return { results, passed, total: activeChecks.length, tier };
-}
+import {
+  AI_TIER_THRESHOLDS,
+  CHECKS,
+  CheckDef,
+  CheckKey,
+  ScorecardResult,
+  TIER_ORDER,
+  TIER_THRESHOLDS,
+  TierName,
+  computeScorecard,
+  isMobileEntity,
+  missingMobileRequirement,
+  visibleChecks,
+} from './scorecard';
 
 const TIER_COLORS: Record<TierName, string> = {
   none:   '#9e9e9e',
@@ -1369,7 +1252,8 @@ const TIER_COLORS: Record<TierName, string> = {
   gold:   '#daa520',
 };
 
-function TierBadge({ tier, passed, total }: { tier: TierName; passed: number; total: number }) {
+function TierBadge({ tier, passed, total, isAiEntity, isMobile }: { tier: TierName; passed: number; total: number; isAiEntity: boolean; isMobile: boolean }) {
+  const t = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
   const label = tier === 'none' ? 'No tier yet' : tier.charAt(0).toUpperCase() + tier.slice(1);
   return (
     <Box display="flex" alignItems="center" style={{ gap: 16 }}>
@@ -1390,17 +1274,35 @@ function TierBadge({ tier, passed, total }: { tier: TierName; passed: number; to
           {passed} of {total} checks passing
         </Typography>
         <Typography variant="caption" color="textSecondary">
-          Thresholds — Bronze ≥4, Silver ≥7, Gold ≥10
+          Thresholds — Bronze ≥{t.bronze}, Silver ≥{t.silver}, Gold ≥{t.gold}
+          {isMobile && ', plus the mobile requirements below'}
         </Typography>
       </Box>
     </Box>
   );
 }
 
-function NextTierHint({ tier, results, isAiEntity }: { tier: TierName; results: Record<CheckKey, boolean>; isAiEntity: boolean }) {
+function NextTierHint({ tier, results, isAiEntity, isMobile }: { tier: TierName; results: Record<CheckKey, boolean>; isAiEntity: boolean; isMobile: boolean }) {
   const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
-  const activeChecks = CHECKS.filter(c => c.group !== 'AI Governance' || isAiEntity);
+  const activeChecks = visibleChecks({ isAiEntity, isMobile });
   const passed = activeChecks.filter(c => results[c.id]).length;
+
+  // A blocking mobile requirement outranks the count hint: no number of other
+  // passing checks will move the tier until it is met, so say that instead.
+  if (isMobile) {
+    const blocking = missingMobileRequirement(tier, results);
+    if (blocking) {
+      const def = CHECKS.find(c => c.id === blocking);
+      const nextName = TIER_ORDER[TIER_ORDER.indexOf(tier) + 1];
+      return (
+        <Typography variant="body2" color="textSecondary">
+          Mobile requirement blocking{' '}
+          {nextName ? nextName.charAt(0).toUpperCase() + nextName.slice(1) : 'the next tier'}:{' '}
+          <strong>{def?.label ?? blocking}</strong>. {def?.remediation}
+        </Typography>
+      );
+    }
+  }
   const target = tier === 'gold' ? null
     : tier === 'silver' ? thresholds.gold
     : tier === 'bronze' ? thresholds.silver
@@ -1433,21 +1335,22 @@ function ScorecardEntityContent() {
       ['ai-agent', 'model-serving', 'llm', 'ml-model'].includes(type.toLowerCase());
   }, [entity]);
 
+  const isMobile = useMemo(() => isMobileEntity(entity), [entity]);
+
   const grouped = useMemo(() => {
     const groups: Record<string, CheckDef[]> = {};
-    for (const c of CHECKS) {
-      if (c.group === 'AI Governance' && !isAiEntity) continue;
+    for (const c of visibleChecks({ isAiEntity, isMobile })) {
       (groups[c.group] ||= []).push(c);
     }
     return groups;
-  }, [isAiEntity]);
+  }, [isAiEntity, isMobile]);
 
   return (
     <Content>
       <Box mb={3}>
-        <TierBadge tier={score.tier} passed={score.passed} total={score.total} />
+        <TierBadge tier={score.tier} passed={score.passed} total={score.total} isAiEntity={isAiEntity} isMobile={isMobile} />
         <Box mt={2}>
-          <NextTierHint tier={score.tier} results={score.results} isAiEntity={isAiEntity} />
+          <NextTierHint tier={score.tier} results={score.results} isAiEntity={isAiEntity} isMobile={isMobile} />
         </Box>
       </Box>
 
@@ -3988,7 +3891,10 @@ function ScorecardPage() {
                     </TableHead>
                     <TableBody>
                       {sorted.map(({ entity, score }) => {
-                        const failing = CHECKS.filter(c => !score.results[c.id] && (c.group !== 'AI Governance'));
+                        const failing = visibleChecks({
+                          isAiEntity: false,
+                          isMobile: isMobileEntity(entity),
+                        }).filter(c => !score.results[c.id]);
                         return (
                           <TableRow key={entity.metadata.name} hover style={{ cursor: 'pointer' }}
                             onClick={() => window.location.href = `/catalog/default/component/${entity.metadata.name}/scorecard`}>

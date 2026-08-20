@@ -8,6 +8,15 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     backstage.io/adr-location: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/tree/main/docs/adr
     backstage.io/runbook-url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbook.md
+    # Mobile maturity scorecard (docs/mobile-platform.md). accessibility-tests and
+    # code-signing-setup start false: both are wired up by their own scaffolder
+    # (accessibility-suite / mobile-code-signing), so claiming them here would
+    # score the app for work it has not done. Flip them when you run those.
+    backstage.io/mobile-min-sdk: "${{ values.minSdk }}"
+    backstage.io/crashlytics-enabled: "${{ values.enableFirebase }}"
+    backstage.io/accessibility-tests: "false"
+    backstage.io/app-size-budget-mb: "${{ values.appSizeBudgetMb }}"
+    backstage.io/code-signing-setup: "false"
     cost-center: "${{ values.costCenter }}"
     idp.io/quality-gates: "static-analysis,vuln-scan,sonar-scanning,snyk-scanning"
     sonarcloud.io/project-key: "${{ values.githubOrg }}_${{ values.repoName }}"

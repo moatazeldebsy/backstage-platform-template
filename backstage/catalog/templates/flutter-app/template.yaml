@@ -78,6 +78,24 @@ spec:
           type: boolean
           default: false
           description: "Add Firebase Crashlytics + Analytics to the project"
+        minSdk:
+          title: Minimum Android SDK Version
+          type: integer
+          default: 26
+          enum:
+            - 26
+            - 28
+            - 33
+          enumNames:
+            - 'API 26 (Android 8.0 Oreo)'
+            - 'API 28 (Android 9.0 Pie)'
+            - 'API 33 (Android 13)'
+          description: "Android API level the Flutter app targets. The platform floor for the min-SDK scorecard check is 24."
+        appSizeBudgetMb:
+          title: App Size Budget (MB)
+          type: integer
+          default: 80
+          description: "Binary size ceiling for this app, in MB. Surfaced as the app-size-budget scorecard check and a starting point for size regression alerts."
         costCenter:
           title: Cost Center
           type: string
@@ -236,6 +254,8 @@ spec:
           platforms: ${{ parameters.platforms }}
           enableWebDeploy: ${{ parameters.enableWebDeploy }}
           enableFirebase: ${{ parameters.enableFirebase }}
+          minSdk: ${{ parameters.minSdk | default(26) }}
+          appSizeBudgetMb: ${{ parameters.appSizeBudgetMb | default(80) }}
           # `| default(...)` mirrors the parameter's own schema default. RJSF only
           # submits a page's fields once that page has been visited, so clicking
           # straight past an all-optional step sends nothing for it — the scaffolder
