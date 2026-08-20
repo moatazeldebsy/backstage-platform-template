@@ -166,6 +166,19 @@ _apply_or_explain() {
   return "$rc"
 }
 
+# One row of the URL banner, padded to the box's 77-character interior. The
+# AI/ML rows used to be hand-padded and sat 2 characters short of every other
+# row, so the right-hand border was visibly ragged.
+_box_row() {
+  local text="$1" chars bytes
+  # printf pads by BYTES, but the banner contains multibyte characters (the em
+  # dash in the title), so a plain %-73s renders those rows short and leaves the
+  # right border ragged. Widen the pad by the byte/character difference.
+  chars=${#text}
+  bytes=$(LC_ALL=C printf '%s' "$text" | wc -c)
+  printf '║  %-*s║\n' "$(( 73 + bytes - chars ))" "$text"
+}
+
 # ── URL banner helper (used by --print-urls and the final Done section) ───────
 _print_url_banner() {
   local argocd_pass=""
@@ -174,16 +187,17 @@ _print_url_banner() {
 
   echo ""
   echo "╔═══════════════════════════════════════════════════════════════════════════╗"
-  echo "║                    IDP Platform — Service URLs                           ║"
+  # Centred via the same helper as every other row, so the border stays flush.
+  _box_row "                  IDP Platform — Service URLs"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Core Platform                                                            ║"
-  echo "║  Backstage        http://backstage.idp.local                             ║"
-  echo "║  hello-service    http://hello-service.idp.local                         ║"
+  _box_row "Backstage        http://backstage.idp.local"
+  _box_row "hello-service    http://hello-service.idp.local"
   if kubectl get svc argocd-server -n argocd &>/dev/null 2>&1; then
     if [[ -n "$argocd_pass" ]]; then
-  echo "║  ArgoCD           http://argocd.idp.local          admin/${argocd_pass}  ║"
+  _box_row "ArgoCD           http://argocd.idp.local          admin/${argocd_pass}"
     else
-  echo "║  ArgoCD           http://argocd.idp.local                                ║"
+  _box_row "ArgoCD           http://argocd.idp.local"
     fi
   fi
   if kubectl get ns argo-rollouts &>/dev/null 2>&1; then
@@ -211,14 +225,37 @@ _print_url_banner() {
   fi
   echo "║  OpenCost         http://opencost.idp.local                               ║"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
-  if kubectl get ns kagent &>/dev/null 2>&1; then
-  echo "║  AI / ML Platform                                                         ║"
-  echo "║  KAgent UI           http://kagent.idp.local                            ║"
-  echo "║  AI Assistant        http://backstage.idp.local/ai-assistant            ║"
-  echo "║  MLflow              http://mlflow.idp.local                            ║"
-  echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz            ║"
-  echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz             ║"
-  echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz       ║"
+  # Advertise what is actually deployed, not what a namespace's existence
+  # implies. This used to gate on `kubectl get ns kagent`, but
+  # kubernetes/namespaces/namespaces.yaml creates the kagent namespace at Step 3
+  # of *every* bootstrap-local run — so the check was true on a cluster where
+  # bootstrap-ai.sh had never run, and the banner then advertised a KAgent UI and
+  # an MLflow that did not exist. It also hardcoded three MCP servers when there
+  # are eight.
+  #
+  # The MCP servers are a genuinely different case: ArgoCD deploys everything
+  # under services/* on every run, so they really are up and listing them is
+  # correct. They are discovered rather than hardcoded so the list cannot go
+  # stale again.
+  _ai_rows=(); _ai_n=0
+  if kubectl -n kagent get deploy -o name 2>/dev/null | grep -q .; then
+    _ai_rows+=("KAgent UI|http://kagent.idp.local"); _ai_n=$((_ai_n + 1))
+    _ai_rows+=("AI Assistant|http://backstage.idp.local/ai-assistant"); _ai_n=$((_ai_n + 1))
+  fi
+  if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q mlflow; then
+    _ai_rows+=("MLflow|http://mlflow.idp.local"); _ai_n=$((_ai_n + 1))
+  fi
+  while read -r _dep; do
+    [[ -z "$_dep" ]] && continue
+    _dep="${_dep#deployment.apps/}"
+    _ai_rows+=("${_dep}|http://${_dep}.idp.local/healthz"); _ai_n=$((_ai_n + 1))
+  done < <(kubectl -n services-dev get deploy -o name 2>/dev/null | grep -- '-mcp-server$' | sort)
+
+  if (( _ai_n > 0 )); then
+  _box_row "AI / ML Platform"
+  for _row in ${_ai_rows[@]+"${_ai_rows[@]}"}; do
+    _box_row "$(printf '%-21s %s' "${_row%%|*}" "${_row#*|}")"
+  done
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   fi
   echo "║  Local registry   localhost:5003                                          ║"
