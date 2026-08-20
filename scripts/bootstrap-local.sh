@@ -293,6 +293,12 @@ _print_url_banner() {
   if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q mlflow; then
     _ai_rows+=("MLflow|http://mlflow.idp.local"); _ai_n=$((_ai_n + 1))
   fi
+  # Langfuse ships as part of bootstrap-ai.sh (on by default, --skip-langfuse
+  # opts out) and publishes langfuse.idp.local, but the banner never listed it —
+  # README.md:125 documented a URL this output did not mention.
+  if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q langfuse-web; then
+    _ai_rows+=("Langfuse|http://langfuse.idp.local"); _ai_n=$((_ai_n + 1))
+  fi
   while read -r _dep; do
     [[ -z "$_dep" ]] && continue
     _dep="${_dep#deployment.apps/}"
@@ -314,7 +320,7 @@ _print_url_banner() {
   kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1 \
     || _optional+=("Argo Workflows (--install-argo-workflows)")
   kubectl -n kagent get deploy -o name 2>/dev/null | grep -q . \
-    || _optional+=("KAgent + MLflow (./scripts/bootstrap-ai.sh)")
+    || _optional+=("KAgent + MLflow + Langfuse (./scripts/bootstrap-ai.sh)")
   # No leading separator: one is always printed immediately above this point,
   # either by the Observability section or by the AI/ML section's trailer.
   if (( ${#_optional[@]} > 0 )); then
