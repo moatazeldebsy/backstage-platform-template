@@ -160,6 +160,12 @@ _clean_docker() {
 # What is kept: upstream images, the buildx cache, and the local registry
 # container with the images this repo built. The registry is not cluster-specific;
 # the next bootstrap finds it running and reconnects it to the new kind network.
+#
+# Keeping the buildx cache matters far more than the bootstrap numbers above
+# suggest, because those runs never built Backstage. Measured separately:
+# a cold Backstage image build is 17m07s, an unchanged rebuild is 5s, and a
+# rebuild after this teardown is 4s. Under the old `buildx prune --all` it was a
+# full 17m07s every time — the single largest cost in the whole local workflow.
 _teardown_docker() {
   log "Stopping Backstage Docker Compose stack (keeping its image)..."
   # No --rmi all: the Backstage image is expensive to rebuild (its Dockerfile
