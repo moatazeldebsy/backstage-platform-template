@@ -2759,8 +2759,12 @@ timing table at the end of a run lines up with this one.</p>
 <p><strong>Total: ~40–70 minutes cold.</strong> A repeat run against an existing cluster is far
 shorter — the image builds, helm releases and Terraform providers all skip when
 nothing has changed. Set <code>IDP_FORCE=1</code> to override every skip check, and
-<code>HELM_WAIT_SHORT</code>/<code>HELM_WAIT_MED</code>/<code>HELM_WAIT_LONG</code> to raise the helm timeouts on
-a slow account.</p>
+<code>HELM_WAIT_SHORT</code>/<code>HELM_WAIT_MED</code>/<code>HELM_WAIT_LONG</code>/<code>HELM_WAIT_XL</code> to raise the
+helm timeouts on a slow account — these four now cover every <code>helm --wait</code> in the
+bootstrap. Defaults are 5m/10m/15m/25m; see
+<a href="../scripts-reference/#re-running-the-bootstrap-scripts-caching-and-parallelism">Scripts Reference</a>.
+On a slow link, measure throughput first, then raise them — the defaults turn a
+slow network into what looks like a hard failure.</p>
 <h3 id="step-3-update-github-oauth-callback-url">Step 3: Update GitHub OAuth Callback URL<a class="headerlink" href="#step-3-update-github-oauth-callback-url" title="Permanent link">&para;</a></h3>
 <p>After bootstrap completes, the Backstage ALB URL is printed. Update your GitHub OAuth app:</p>
 <ol>
@@ -3125,29 +3129,33 @@ t3.large buys memory at exactly proportional cost.</p>
 </code></pre></div></td></tr></table></div></p>
 <h3 id="prometheus-storage-already-optimized">Prometheus storage (already optimized)<a class="headerlink" href="#prometheus-storage-already-optimized" title="Permanent link">&para;</a></h3>
 <p><code>aws/observability/prometheus-stack-values.yaml</code> ships with cost-optimized defaults:</p>
-<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">prometheusSpec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3d</span><span class="w">          </span><span class="c1"># was 15d — reduce scrape history</span>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">prometheusSpec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3d</span><span class="w">            </span><span class="c1"># time-based cap — reduce scrape history</span>
+<span class="w">  </span><span class="nt">retentionSize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15GB</span><span class="w">      </span><span class="c1"># size-based cap — this is the load-bearing one</span>
 <span class="w">  </span><span class="nt">storageSpec</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">volumeClaimTemplate</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gp3</span><span class="w">   </span><span class="c1"># 20% cheaper than gp2</span>
 <span class="w">        </span><span class="nt">resources</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">requests</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5Gi</span><span class="w">        </span><span class="c1"># was 20Gi — stays within 30Gi EBS free tier</span>
+<span class="w">            </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20Gi</span><span class="w">       </span><span class="c1"># headroom above retentionSize</span>
 </code></pre></div></td></tr></table></div>
-<p>For production, increase retention and storage:
-<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15d</span>
-<span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20Gi</span>
-</code></pre></div></td></tr></table></div></p>
+<p><strong>Do not drop <code>storage</code> below <code>retentionSize</code> with room to spare, and do not
+remove <code>retentionSize</code>.</strong> <code>retention</code> alone is a <em>time</em> cap, so a busy cluster can
+fill the volume long before the window expires — a previous 5Gi volume filled in
+about four days and silently wedged ingestion. <code>retentionSize</code> is what actually
+bounds the volume; <code>storage: 20Gi</code> exists to give it headroom.</p>
+<p>For longer history, raise both together (e.g. <code>retention: 15d</code>,
+<code>retentionSize: 45GB</code>, <code>storage: 60Gi</code>) and expect the EBS cost to rise with it.</p>
 <h3 id="skip-the-aiml-stack">Skip the AI/ML stack<a class="headerlink" href="#skip-the-aiml-stack" title="Permanent link">&para;</a></h3>
 <p>KAgent + MLflow + MCP servers add ~6 platform ALBs plus one per MCP server per
 environment (~$36–72/month for the platform pieces alone, more once the MCP
@@ -3224,8 +3232,11 @@ Secrets (~$15). Nodes and ALBs are what actually move.</p>
 2026-08-17, <strong>27 ALB Ingresses</strong> existed with <code>--adp</code> and all three
 environments populated (dev/staging/prod each publish their own), not 6 — one
 per Ingress, since <code>group.name</code> is unused. Removing the six dead internal ones
-below brings that to 21. Treat the table as the core-platform baseline and
-assume roughly one ALB per service per environment on top.</p>
+below brings that to 21. Treat the table as the core-platform baseline.</p>
+<p>Scaffolded services no longer add to this by default: since #397 their
+<code>helm-values-aws.yaml</code> ships <code>ingress.enabled: false</code>, so a new service
+publishes no ALB unless you opt in. The 27 measured above predate that change
+and reflect environments whose services all had ingress enabled.</p>
 </blockquote>
 <p>Where the money goes, and what has already been done about it:</p>
 <ul>

@@ -2399,7 +2399,16 @@
 - K8s Secret provisioned for device farm credentials</p>
 <hr />
 <h2 id="tech-insights-mobile-scorecard">Tech Insights: Mobile Scorecard<a class="headerlink" href="#tech-insights-mobile-scorecard" title="Permanent link">&para;</a></h2>
-<p>Five mobile-specific quality checks are visible on every mobile app's Backstage entity page (Scorecard tab):</p>
+<p>Five mobile-specific quality checks are defined below.</p>
+<blockquote>
+<p><strong>Not yet rendered.</strong> These are collected as Tech Insights <em>facts</em> by
+<code>idpTechInsights.ts</code>, but none of the mobile fact ids appear in the frontend
+<code>CHECKS</code> array in <code>backstage/app/packages/app/src/extensions.tsx</code>, so they do
+<strong>not</strong> currently show on the Scorecard tab of a mobile entity. The facts are
+queryable; the scorecard rendering is still to be wired up. Treat the tiers
+below as the intended design, not as something you can read off the portal
+today.</p>
+</blockquote>
 <table>
 <thead>
 <tr>

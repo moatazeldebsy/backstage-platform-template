@@ -2487,15 +2487,15 @@ than on anything being wrong. If you do not need LLM tracing, run
 <tbody>
 <tr>
 <td><strong>Recommended</strong></td>
-<td align="right">8</td>
-<td align="right">16 GB</td>
-<td>Full stack including AI/ML, with headroom to build images and run Backstage at the same time. <strong>Not with <code>--langfuse</code> as well</strong> — at ~11.4 GB there is no headroom left, and rebuilding Backstage while Langfuse runs will destabilise the control plane. Scale the 6 Langfuse workloads to 0 first, rebuild, then scale back.</td>
-</tr>
-<tr>
-<td><strong>Full stack + Langfuse</strong></td>
 <td align="right">10</td>
 <td align="right">20 GB</td>
-<td>What <code>--langfuse</code> actually wants if you need to build images without scaling anything down</td>
+<td>The default full stack, which <strong>includes Langfuse</strong> — <code>bootstrap-ai.sh</code> installs it unless you pass <code>--skip-langfuse</code>. Room to build images without scaling anything down.</td>
+</tr>
+<tr>
+<td><strong>Full stack, no Langfuse</strong></td>
+<td align="right">8</td>
+<td align="right">16 GB</td>
+<td><code>bootstrap-ai.sh --skip-langfuse</code>. Everything else including AI/ML, with headroom to build images and run Backstage at the same time. At the default (~11 GB, with Langfuse) this tier has no headroom left, and rebuilding Backstage while Langfuse runs will destabilise the control plane — scale the 6 Langfuse workloads to 0 first, rebuild, then scale back.</td>
 </tr>
 <tr>
 <td><strong>Minimum for the full stack</strong></td>
@@ -3101,7 +3101,7 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <tr>
 <td>Ingress class</td>
 <td><code>nginx</code></td>
-<td><code>alb</code></td>
+<td><code>alb</code> (but <code>ingress.enabled: false</code> by default — scaffolded services get no ALB unless opted in)</td>
 </tr>
 <tr>
 <td>Image pull</td>
@@ -3126,7 +3126,7 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <tr>
 <td>Helm values file</td>
 <td><code>helm-values-local.yaml</code></td>
-<td><code>helm-values.yaml</code></td>
+<td><code>helm-values-aws.yaml</code></td>
 </tr>
 <tr>
 <td>Persistent storage</td>

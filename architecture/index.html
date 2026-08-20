@@ -2383,7 +2383,7 @@
 </tr>
 </tbody>
 </table>
-<p>All three channels converge on the <strong>Platform Control Plane</strong>: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.29 in production.</p>
+<p>All three channels converge on the <strong>Platform Control Plane</strong>: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.32 in production.</p>
 <hr />
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
@@ -2580,7 +2580,7 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 <tr>
 <td><code>backstage/catalog/all-templates.yaml</code></td>
 <td>Both</td>
-<td>Single Location file indexing the 62 AWS-shared templates (the 63<sup>rd</sup>, <code>deploy-to-kind</code>, is local-only and registered in <code>app-config.local.yaml</code>); replaces the individual URL entries previously listed in <code>app-config.aws.yaml</code></td>
+<td>Single Location file indexing the 63 AWS-shared templates (the 64<sup>th</sup>, <code>deploy-to-kind</code>, is local-only and registered in <code>app-config.local.yaml</code>); replaces the individual URL entries previously listed in <code>app-config.aws.yaml</code></td>
 </tr>
 <tr>
 <td><code>observability/</code></td>
@@ -2787,7 +2787,7 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <tr>
 <td>kube-prometheus-stack values (AWS)</td>
 <td><code>aws/observability/prometheus-stack-values.yaml</code></td>
-<td>Prometheus + Grafana + AlertManager (ALB, gp2, 15d retention)</td>
+<td>Prometheus + Grafana + AlertManager (gp3, 3d retention capped by <code>retentionSize: 15GB</code> on a 20Gi volume; no ALB — Prometheus and AlertManager are cluster-internal)</td>
 </tr>
 <tr>
 <td>ClusterSecretStore</td>
@@ -2847,7 +2847,7 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <tr>
 <td>Template catalog</td>
 <td><code>backstage/catalog/all-templates.yaml</code></td>
-<td>Single Location file for the 62 AWS-shared templates (tagged <code>v1</code> + <code>blessed</code>/<code>advanced</code>); <code>deploy-to-kind</code> is local-only, giving 63 in the local catalog</td>
+<td>Single Location file for the 63 AWS-shared templates (tagged <code>v1</code> + <code>blessed</code>/<code>advanced</code>); <code>deploy-to-kind</code> is local-only, giving 64 in the local catalog</td>
 </tr>
 <tr>
 <td>Permission framework</td>
@@ -2917,7 +2917,7 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <hr />
 <h2 id="aws-architecture">AWS Architecture<a class="headerlink" href="#aws-architecture" title="Permanent link">&para;</a></h2>
 <p><img alt="AWS Architecture" src="../assets/aws-architecture.jpg" /></p>
-<p>Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.29 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data &amp; Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).</p>
+<p>Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.32 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data &amp; Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).</p>
 <h3 id="network-topology">Network Topology<a class="headerlink" href="#network-topology" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
@@ -3021,7 +3021,7 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <tr>
 <td><strong>EBS CSI Driver</strong></td>
 <td>Managed addon</td>
-<td>Persistent volumes (gp2) for Prometheus, Grafana, MLflow</td>
+<td>Persistent volumes (gp3) for Prometheus, Grafana, MLflow</td>
 </tr>
 <tr>
 <td><strong>CloudWatch</strong></td>
@@ -3164,7 +3164,7 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 │   └── deployment/mlflow             (tracking server, ALB ingress)
 │
 ├── opencost                          (FinOps)
-│   └── deployment/opencost           (cost visibility, ALB ingress)
+│   └── deployment/opencost           (cost visibility, cluster-internal only)
 │
 ├── crossplane-system                 (Crossplane)
 │   ├── crossplane                    (core controller)
@@ -3201,10 +3201,14 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span>
-<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code>Terraform
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span></pre></div></td><td class="code"><div><pre><span></span><code>Terraform
   └── creates placeholders in AWS Secrets Manager
         idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
-                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET
+                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET,
+                               PAGERDUTY_TOKEN, JIRA_TOKEN, JIRA_URL,
+                               DD_API_KEY, DD_APP_KEY
         idp-mvp/dora-exporter → GITHUB_TOKEN
         idp-mvp/kagent      → ANTHROPIC_API_KEY
         idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
@@ -3340,8 +3344,8 @@ External Secrets Operator (ESO)
   │
   ├── Phase 4 — Observability (~10 min)
   │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
-  │     Pushgateway + ALB ingress
-  │     OpenCost + ALB ingress
+  │     Pushgateway (cluster-internal)
+  │     OpenCost (cluster-internal)
   │     DORA exporter CronJob
   │     seed-qa-metrics.sh (seeds demo QA metrics into Pushgateway)
   │

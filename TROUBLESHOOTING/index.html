@@ -2795,6 +2795,15 @@ grep<span class="w"> </span>-rl<span class="w"> </span><span class="s2">&quot;mo
 </table>
 <h3 id="symptom-nginx-ingress-pods-pending-idplocal-not-reachable">Symptom: nginx ingress pods pending, <code>*.idp.local</code> not reachable<a class="headerlink" href="#symptom-nginx-ingress-pods-pending-idplocal-not-reachable" title="Permanent link">&para;</a></h3>
 <p><strong>Cause:</strong> Port 80 or 443 is bound by another process on the host.</p>
+<blockquote>
+<p><code>scripts/lib.sh</code> runs a preflight check for this and <strong>aborts a fresh install</strong>
+before creating the cluster if either port is bound, printing Rancher
+Desktop/Traefik-specific advice. The check is deliberately <strong>skipped when the
+Kind cluster already exists</strong> — at that point the bound port is usually the
+cluster's own ingress controller, and failing would block every day-2 re-run.
+So if you hit this symptom on an existing cluster, the preflight will not warn
+you; work through the checks below.</p>
+</blockquote>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>

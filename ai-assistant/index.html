@@ -3314,6 +3314,11 @@ Optional locally (warns on startup if missing), required in AWS.</p>
 </tbody>
 </table>
 <p><strong>Secret:</strong> <code>argocd-mcp-server-token</code> in <code>services-dev</code> namespace. Optional locally (warns and 401s on tool calls if missing), required in AWS.</p>
+<p>The token belongs to the dedicated <code>argocd-mcp</code> account, not <code>admin</code>. That account
+is declared in <code>local/argocd/argocd-helm-values-local.yaml</code> and
+<code>aws/argocd/argocd-helm-values.yaml</code> as <code>apiKey</code>-only, scoped to <code>get</code>, <code>sync</code> and
+<code>action/*</code> on applications — no create, update or delete. Generate with
+<code>argocd account generate-token --account argocd-mcp</code>.</p>
 <p><strong>Used by:</strong> <code>release-agent</code>, proactively triggered on ArgoCD <code>OutOfSync</code>/<code>Degraded</code> webhooks.</p>
 <h4 id="cost-mcp-server-port-3007"><code>cost-mcp-server</code> (port 3007)<a class="headerlink" href="#cost-mcp-server-port-3007" title="Permanent link">&para;</a></h4>
 <p><strong>File:</strong> <code>services/cost-mcp-server/src/server.ts</code> (tools), <code>services/cost-mcp-server/src/index.ts</code> (entrypoint)</p>
@@ -4146,8 +4151,22 @@ copy of <code>idp-agent.yaml</code>'s prompt, and when that copy drifts, CI grad
 that is not deployed.</p>
 <hr />
 <h2 id="re-applying-after-a-cluster-rebuild">Re-applying after a cluster rebuild<a class="headerlink" href="#re-applying-after-a-cluster-rebuild" title="Permanent link">&para;</a></h2>
-<p><code>bootstrap-ai.sh</code> applies all agents, MCP servers, and ModelConfigs automatically.
-To target specific resources manually:</p>
+<p><code>bootstrap-ai.sh</code> applies the MCP servers, ModelConfigs, and the <strong>default agent
+set</strong> automatically — <code>idp</code>, <code>qa</code>, <code>release</code>, <code>cost</code>, <code>platform</code>, <code>contract</code>. The
+remaining three (<code>incident</code>, <code>security</code>, <code>onboarding</code>) install only when you ask
+for them:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>all<span class="w">          </span><span class="c1"># all nine</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,security<span class="w"> </span><span class="c1"># an explicit subset</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">         </span><span class="c1"># print what is available</span>
+</code></pre></div></td></tr></table></div>
+<p>Re-running <strong>prunes</strong> agents outside the selection, so <code>--agents idp</code> on a cluster
+that has all nine will remove the other eight. Each agent is one pod; see
+<a href="../local-setup/#machine-requirements--and-what-to-do-if-you-dont-have-them">Local Setup</a>
+for why that matters on a small machine, and
+<a href="../scripts-reference/#bootstrap-aish-flags">Scripts Reference</a> for the full flag list.</p>
+<p>To target specific resources manually:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>

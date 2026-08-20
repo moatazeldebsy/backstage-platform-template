@@ -2227,7 +2227,7 @@ kubectl<span class="w"> </span>describe<span class="w"> </span>hpa<span class="w
 <span class="w">  </span>--limits<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>&lt;new-limit&gt;Mi<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--requests<span class="o">=</span><span class="nv">memory</span><span class="o">=</span>&lt;new-request&gt;Mi
 </code></pre></div></td></tr></table></div>
-<p>Update <code>helm-values.yaml</code> with the new values and open a PR to make this permanent.</p>
+<p>Update <code>helm-values-&lt;env&gt;.yaml</code> with the new values and open a PR to make this permanent.</p>
 <h2 id="root-cause-analysis">Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -2249,7 +2249,7 @@ helm<span class="w"> </span><span class="nb">history</span><span class="w"> </sp
 <li>Scale out immediately if at critical threshold</li>
 <li>If a specific deploy caused the spike: roll back (see <a href="../deployment-rollback/">Deployment Rollback</a>)</li>
 <li>If it's a gradual leak: page the service owner to profile and fix</li>
-<li>Update <code>helm-values.yaml</code> with a higher memory limit as a short-term mitigation</li>
+<li>Update <code>helm-values-&lt;env&gt;.yaml</code> with a higher memory limit as a short-term mitigation</li>
 <li>Track the fix in a GitHub issue labelled <code>memory-leak</code></li>
 </ol>
 <h2 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h2>
@@ -2260,7 +2260,7 @@ helm<span class="w"> </span><span class="nb">history</span><span class="w"> </sp
 <h2 id="post-incident">Post-Incident<a class="headerlink" href="#post-incident" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Add memory profiling results to the incident thread</li>
-<li>Verify memory limits in <code>helm-values.yaml</code> reflect actual usage patterns + 30% headroom</li>
+<li>Verify memory limits in <code>helm-values-&lt;env&gt;.yaml</code> reflect actual usage patterns + 30% headroom</li>
 <li>Consider adding memory-based HPA if load is bursty</li>
 </ul>
 

@@ -2745,7 +2745,7 @@ created.</p>
 </code></pre></div></td></tr></table></div>
 <p>Verify a manifest before applying:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>template<span class="w"> </span>my-svc<span class="w"> </span>helm/service-template<span class="w"> </span>--values<span class="w"> </span>helm-values.yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>template<span class="w"> </span>my-svc<span class="w"> </span>helm/service-template<span class="w"> </span>--values<span class="w"> </span>helm-values-local.yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>-f<span class="w"> </span>-
 </code></pre></div></td></tr></table></div>
 <hr />

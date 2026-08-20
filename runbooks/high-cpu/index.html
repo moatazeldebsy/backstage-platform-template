@@ -2243,7 +2243,7 @@ go<span class="w"> </span>tool<span class="w"> </span>pprof<span class="w"> </sp
 <ol>
 <li>Scale out immediately if throttling is causing visible latency</li>
 <li>If a deploy caused it: roll back (see <a href="../deployment-rollback/">Deployment Rollback</a>)</li>
-<li>If it's sustained legitimate growth: increase CPU limits in <code>helm-values.yaml</code> and/or expand the HPA <code>maxReplicas</code></li>
+<li>If it's sustained legitimate growth: increase CPU limits in <code>helm-values-&lt;env&gt;.yaml</code> and/or expand the HPA <code>maxReplicas</code></li>
 <li>For a code-level fix: capture a CPU profile and share with the service team</li>
 </ol>
 <h2 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h2>
@@ -2253,7 +2253,7 @@ go<span class="w"> </span>tool<span class="w"> </span>pprof<span class="w"> </sp
 </ul>
 <h2 id="post-incident">Post-Incident<a class="headerlink" href="#post-incident" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Update <code>helm-values.yaml</code> CPU limits to reflect actual peak usage + 20% headroom</li>
+<li>Update <code>helm-values-&lt;env&gt;.yaml</code> CPU limits to reflect actual peak usage + 20% headroom</li>
 <li>If HPA wasn't scaling: verify <code>metrics-server</code> is running and HPA thresholds are sensible</li>
 <li>Document findings in the incident thread</li>
 </ul>

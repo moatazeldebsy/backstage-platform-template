@@ -1040,6 +1040,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pagerduty-and-jira-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      PagerDuty and Jira (optional)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2352,6 +2361,23 @@ aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<s
 <p>Populates both <code>idp-mvp/datadog</code> (Datadog Agent) and <code>idp-mvp/backstage</code> (Backstage <code>/datadog</code>
 proxy + dd-trace) Secrets Manager secrets — <code>scripts/bootstrap.sh</code> installs the Agent
 automatically once these are set.</p>
+<h3 id="pagerduty-and-jira-optional">PagerDuty and Jira (optional)<a class="headerlink" href="#pagerduty-and-jira-optional" title="Permanent link">&para;</a></h3>
+<p><strong>Why:</strong> the Backstage On-Call and Issues entity tabs. Without these the tabs render
+their empty state; nothing else breaks.</p>
+<p><strong>Get it:</strong> a read-only PagerDuty REST API key, and for Jira a Base64 encoding of
+<code>email:api_token</code>.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in terraform/terraform.tfvars before running terraform apply</span>
+<span class="nv">pagerduty_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;YOUR_PAGERDUTY_READ_ONLY_KEY&quot;</span>
+<span class="nv">jira_token</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;BASE64_OF_email:api_token&quot;</span>
+<span class="nv">jira_url</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://your-company.atlassian.net&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>All three land in the <code>idp-mvp/backstage</code> Secrets Manager secret and reach Backstage
+on EKS as <code>PAGERDUTY_TOKEN</code>, <code>JIRA_TOKEN</code> and <code>JIRA_URL</code>. <code>pagerduty_token</code> and
+<code>jira_token</code> default to <code>REPLACE_ME</code>; <code>jira_url</code> defaults to empty, which leaves
+<code>app-config.aws.yaml</code> pointing at an RFC 2606 <code>.invalid</code> host that never resolves.</p>
 <p><strong>Status:</strong> ☐ Optional / ☐ Set if using Datadog</p>
 <hr />
 <h2 id="pre-deployment-checklist">Pre-Deployment Checklist<a class="headerlink" href="#pre-deployment-checklist" title="Permanent link">&para;</a></h2>
@@ -2381,7 +2407,9 @@ automatically once these are set.</p>
 <span class="normal">24</span>
 <span class="normal">25</span>
 <span class="normal">26</span>
-<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code>Tools:
   [ ] aws sts get-caller-identity   → works, shows correct account
   [ ] terraform -version            → ≥ 1.5
   [ ] kubectl version               → installed
@@ -2405,6 +2433,8 @@ Credentials:
   [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
   [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)
   [ ] datadog_api_key / datadog_app_key set in terraform.tfvars (if using Datadog)
+  [ ] pagerduty_token set in terraform.tfvars (if using the On-Call tab)
+  [ ] jira_token / jira_url set in terraform.tfvars (if using the Issues tab)
 
 Verification:
   [ ] ./scripts/verify-secrets.sh passes with ✅ All critical checks passed!

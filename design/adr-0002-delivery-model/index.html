@@ -2179,14 +2179,24 @@ such file puts the entire ApplicationSet into <code>ComparisonError</code>.</p>
   cluster with a deliberately broken image before relying on the thresholds.</li>
 </ul>
 <h2 id="still-outstanding">Still outstanding<a class="headerlink" href="#still-outstanding" title="Permanent link">&para;</a></h2>
-<p>The ten AI/MCP services remain excluded from the ApplicationSets. The exclusions
-are currently <em>correct</em>: CI has never built those images, so removing them
-produces <code>ImagePullBackOff</code>. The order is (1) CI build matrix reaches ECR,
-(2) invert <code>bootstrap-ai.sh</code> to <code>argocd app sync</code> when an Application exists,
-(3) move the KAgent policy ConfigMap into GitOps, (4) delete the exclusions.</p>
-<p>The payoff is deleting ~120 lines of ownership-conflict defence in
-<code>bootstrap-ai.sh</code> that exists only because two systems fight over the same
-releases.</p>
+<p><strong>Resolved (2026-08).</strong> This section previously recorded that the ten AI/MCP
+services remained excluded from the ApplicationSets, behind a four-step plan:
+(1) CI build matrix reaches ECR, (2) invert <code>bootstrap-ai.sh</code> to <code>argocd app
+sync</code> when an Application exists, (3) move the KAgent policy ConfigMap into
+GitOps, (4) delete the exclusions.</p>
+<p>All four are done. Both <code>aws/argocd/app-of-apps.yaml</code> and
+<code>local/argocd/app-of-apps-local.yaml</code> now discover <code>services/*</code> with <strong>no
+exclusions</strong>, so the AI/MCP services take the same GitOps path as everything
+else and the platform's own services no longer bypass the model it sells.</p>
+<p>Two constraints keep that true, and re-adding exclusions without reverting them
+will break a core bootstrap:</p>
+<ul>
+<li><code>bootstrap-local.sh</code> must build <code>idp-mcp-server</code> and <code>qa-mcp-server</code>. ECR
+  images outlive a cluster, but the local registry is recreated with it, so
+  ArgoCD would otherwise deploy images never pushed to <code>localhost:5003</code>.</li>
+<li><code>approval-service</code>'s policy ConfigMap volume must stay <code>optional</code>, since only
+  <code>bootstrap-ai.sh --adp</code> creates it.</li>
+</ul>
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>helm/service-template/</code> — <code>values.yaml</code>, <code>templates/rollout.yaml</code>, <code>values.schema.json</code></li>

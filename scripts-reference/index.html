@@ -1111,6 +1111,48 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Day-0 / Day-1 — Platform setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-localsh-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      bootstrap-local.sh flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bootstrapsh-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      bootstrap.sh flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-aish-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      bootstrap-ai.sh flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helper-scripts-not-invoked-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helper scripts (not invoked directly)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2175,15 +2217,15 @@
 </tr>
 <tr>
 <td><code>bootstrap-local.sh</code></td>
-<td>Day-2: re-create Kind cluster + platform. Flags: <code>--start-backstage</code>, <code>--skip-obs</code>, <code>--destroy</code>, <code>--print-urls</code></td>
+<td>Day-2: re-create Kind cluster + platform. Common flags: <code>--start-backstage</code>, <code>--skip-obs</code>, <code>--destroy</code>, <code>--print-urls</code>; full list under <a href="#bootstrap-localsh-flags">bootstrap-local.sh flags</a></td>
 </tr>
 <tr>
 <td><code>bootstrap-ai.sh</code></td>
-<td>Add AI/ML stack on top of a running cluster. <strong>Local only</strong> — on AWS, <code>bootstrap.sh</code> already runs this for you. Flags: <code>--skip-mlflow</code>, <code>--skip-mcp</code>, <code>--skip-kagent</code>, <code>--langfuse</code>, <code>--skip-langfuse</code>, <code>--langfuse-keys-only</code>, <code>--aws</code>, <code>--destroy</code></td>
+<td>Add AI/ML stack on top of a running cluster. <strong>Local only</strong> — on AWS, <code>bootstrap.sh</code> already runs this for you. Full flag list below under <a href="#bootstrap-aish-flags">bootstrap-ai.sh flags</a>; the one worth knowing up front is <code>--agents</code>, which controls how many agent pods you install.</td>
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~40–70 min). Pass <code>--skip-ai</code> to opt out</td>
+<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~40–70 min). Pass <code>--skip-ai</code> to opt out; full list under <a href="#bootstrapsh-flags">bootstrap.sh flags</a></td>
 </tr>
 <tr>
 <td><code>bootstrap-multiregion.sh</code></td>
@@ -2278,13 +2320,253 @@
 </tr>
 <tr>
 <td><code>bootstrap-ai.sh</code></td>
-<td>Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires <code>ANTHROPIC_API_KEY</code> in <code>local/.env</code>. Options: <code>--skip-mlflow</code>, <code>--skip-kagent</code>, <code>--skip-mcp</code>, <code>--force-build</code>. Langfuse (LLM tracing) is on by default on both local and AWS (<code>--skip-langfuse</code> to opt out on either); <code>--langfuse-keys-only</code> re-distributes the Langfuse project keys to namespaces labelled <code>idp.io/langfuse=enabled</code> without deploying anything. Optional: set <code>VOYAGE_API_KEY</code> in <code>local/backstage/.env</code> to enable semantic search at <code>/ai-search</code>. See <a href="#re-running-the-bootstrap-scripts-caching-and-parallelism">Re-running the bootstrap scripts</a>.</td>
+<td>Installs the AI/ML stack (KAgent + MLflow + IDP MCP Server) on top of an existing Kind or AWS cluster. Requires <code>ANTHROPIC_API_KEY</code> in <code>local/.env</code> (or use <code>--ollama</code> to run with no API key at all). Every flag is listed under <a href="#bootstrap-aish-flags">bootstrap-ai.sh flags</a>. Langfuse (LLM tracing) is on by default on both local and AWS (<code>--skip-langfuse</code> to opt out on either); <code>--langfuse-keys-only</code> re-distributes the Langfuse project keys to namespaces labelled <code>idp.io/langfuse=enabled</code> without deploying anything. Optional: set <code>VOYAGE_API_KEY</code> in <code>local/backstage/.env</code> to enable semantic search at <code>/ai-search</code>. See <a href="#re-running-the-bootstrap-scripts-caching-and-parallelism">Re-running the bootstrap scripts</a>.</td>
 <td><strong>Local:</strong> manual, run after <code>bootstrap-local.sh</code> if you want AI/ML. <strong>AWS:</strong> already run for you by <code>bootstrap.sh</code> — only run standalone (<code>--aws</code>) to retry a failed AI phase</td>
 </tr>
 <tr>
 <td><code>recover-docker-restart.sh</code></td>
 <td><strong>Post-Docker-restart recovery.</strong> Patches Kind cluster after Docker Desktop shuffles container IPs: fixes kubelet.conf, restarts kindnet/kube-proxy, replaces ingress-nginx pods, repairs Grafana PVC permissions, restarts Backstage Docker Compose, and smoke-tests all 11 service URLs. Flags: <code>--skip-backstage</code>, <code>--dry-run</code>. See <a href="../docker-recovery/">Docker Recovery</a>.</td>
 <td>After Docker Desktop restarts unexpectedly</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bootstrap-localsh-flags"><code>bootstrap-local.sh</code> flags<a class="headerlink" href="#bootstrap-localsh-flags" title="Permanent link">&para;</a></h3>
+<p>Taken from the script's own argument parser.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--start-backstage</code></td>
+<td>Build and start Backstage, wire nginx, seed metrics.</td>
+</tr>
+<tr>
+<td><code>--print-urls</code></td>
+<td>Print every platform URL and exit.</td>
+</tr>
+<tr>
+<td><code>--destroy</code></td>
+<td>Tear everything down: remove scaffolded services from ArgoCD + Helm + git, then delete the cluster.</td>
+</tr>
+<tr>
+<td><code>--full</code></td>
+<td>Install every optional component rather than the default set.</td>
+</tr>
+<tr>
+<td><code>--provider &lt;name&gt;</code></td>
+<td>Container provider to target (Docker Desktop / Rancher Desktop).</td>
+</tr>
+<tr>
+<td><code>--clean-docker</code></td>
+<td>Prune Docker build cache and dangling images before starting. Use when the host is short on disk — a Lima/Docker VM can hold tens of GB of reclaimable image layers.</td>
+</tr>
+<tr>
+<td><code>--install-argocd</code></td>
+<td>Install ArgoCD (part of the default set; use to add it to an existing cluster).</td>
+</tr>
+<tr>
+<td><code>--install-argo-workflows</code></td>
+<td>Install Argo Workflows.</td>
+</tr>
+<tr>
+<td><code>--install-pushgateway</code></td>
+<td>Install the Prometheus Pushgateway on its own, without the rest of the DORA group.</td>
+</tr>
+<tr>
+<td><code>--update-backstage-ip</code></td>
+<td>Re-point Backstage at the current Kind API-server IP after Docker shuffles container IPs.</td>
+</tr>
+<tr>
+<td><code>--skip-obs</code></td>
+<td>Skip Prometheus/Grafana and the rest of the observability stack.</td>
+</tr>
+<tr>
+<td><code>--skip-policies</code></td>
+<td>Skip Gatekeeper and Kyverno policy installation.</td>
+</tr>
+<tr>
+<td><code>--skip-gitops</code></td>
+<td>Skip ArgoCD and the app-of-apps ApplicationSet.</td>
+</tr>
+<tr>
+<td><code>--skip-dora</code></td>
+<td>Skip the DORA exporter and Pushgateway.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bootstrapsh-flags"><code>bootstrap.sh</code> flags<a class="headerlink" href="#bootstrapsh-flags" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--with-ai</code></td>
+<td>Install the AI/ML stack (Phase 6 runs <code>bootstrap-ai.sh --aws</code>). On by default; <code>--skip-ai</code> opts out.</td>
+</tr>
+<tr>
+<td><code>--adp</code></td>
+<td>Implies <code>--with-ai</code> and adds the Agentic Development Platform.</td>
+</tr>
+<tr>
+<td><code>--skip-ai</code></td>
+<td>Skip the AI/ML stack entirely.</td>
+</tr>
+<tr>
+<td><code>--remove-ai-infra</code></td>
+<td>Tear down the AI-specific AWS infrastructure.</td>
+</tr>
+<tr>
+<td><code>--cluster-name &lt;name&gt;</code></td>
+<td>EKS cluster name to create or target.</td>
+</tr>
+<tr>
+<td><code>--region &lt;region&gt;</code></td>
+<td>AWS region.</td>
+</tr>
+<tr>
+<td><code>--skip-velero</code></td>
+<td>Skip installing Velero (cluster backup/restore). Backups are on by default; skipping leaves you with no restore path.</td>
+</tr>
+<tr>
+<td><code>--skip-gitops</code></td>
+<td>Skip ArgoCD and the app-of-apps ApplicationSet.</td>
+</tr>
+<tr>
+<td><code>--skip-policies</code></td>
+<td>Skip Gatekeeper and Kyverno policy installation.</td>
+</tr>
+<tr>
+<td><code>--skip-dora</code></td>
+<td>Skip the DORA exporter and Pushgateway.</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>Print usage and exit.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bootstrap-aish-flags"><code>bootstrap-ai.sh</code> flags<a class="headerlink" href="#bootstrap-aish-flags" title="Permanent link">&para;</a></h3>
+<p>The authoritative list — taken from the script's own argument parser. Anywhere else
+in the docs that mentions a <code>bootstrap-ai.sh</code> flag should defer to this table.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--agents &lt;list&gt;</code></td>
+<td><code>idp,qa,release,cost,platform,contract</code></td>
+<td>Comma-separated KAgent agents to install; each is one pod, so this is the main lever on a small machine. Special values: <code>all</code> (all nine — adds <code>incident</code>, <code>security</code>, <code>onboarding</code>), <code>none</code> (KAgent runtime and UI, zero agent pods), <code>list</code> (print the available agents and exit). Re-running <strong>prunes</strong> agents outside the selection. See <a href="../local-setup/#machine-requirements--and-what-to-do-if-you-dont-have-them">Local Setup</a>.</td>
+</tr>
+<tr>
+<td><code>--adp</code></td>
+<td>off</td>
+<td>Also install the Agentic Development Platform — dev-workflow and ops agents behind a human-in-the-loop approval gate. See <a href="../agentic-platform/">Agentic Platform</a>.</td>
+</tr>
+<tr>
+<td><code>--ollama</code></td>
+<td>off</td>
+<td>Run the agents against a local Ollama model instead of Anthropic, so the stack works with no <code>ANTHROPIC_API_KEY</code>. See <a href="../ai-assistant/">AI Assistant</a>.</td>
+</tr>
+<tr>
+<td><code>--langfuse</code></td>
+<td>on</td>
+<td>Install Langfuse LLM tracing. On by default on both local and AWS — this flag only forces it on.</td>
+</tr>
+<tr>
+<td><code>--skip-langfuse</code></td>
+<td>—</td>
+<td>Opt out of Langfuse. Saves roughly 2 GB and 6 pods locally.</td>
+</tr>
+<tr>
+<td><code>--langfuse-keys-only</code></td>
+<td>—</td>
+<td>Re-distribute the Langfuse project keys to namespaces labelled <code>idp.io/langfuse=enabled</code> without deploying anything.</td>
+</tr>
+<tr>
+<td><code>--skip-mlflow</code></td>
+<td>—</td>
+<td>Skip the MLflow tracking server and model registry.</td>
+</tr>
+<tr>
+<td><code>--skip-mcp</code></td>
+<td>—</td>
+<td>Skip the MCP servers.</td>
+</tr>
+<tr>
+<td><code>--skip-kagent</code></td>
+<td>—</td>
+<td>Skip the KAgent CRDs, runtime, and agents.</td>
+</tr>
+<tr>
+<td><code>--force-build</code></td>
+<td>off</td>
+<td>Rebuild the MCP server images and their Helm releases even when unchanged.</td>
+</tr>
+<tr>
+<td><code>--aws</code></td>
+<td>off</td>
+<td>Target the AWS cluster rather than Kind. <code>bootstrap.sh</code> passes this for you; run it standalone only to retry a failed AI phase.</td>
+</tr>
+<tr>
+<td><code>--cluster &lt;name&gt;</code></td>
+<td>from <code>.idp-config.env</code></td>
+<td>Cluster name to target (AWS).</td>
+</tr>
+<tr>
+<td><code>--region &lt;region&gt;</code></td>
+<td>from <code>.idp-config.env</code></td>
+<td>AWS region to target.</td>
+</tr>
+<tr>
+<td><code>--destroy</code></td>
+<td>—</td>
+<td>Remove the AI/ML stack.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="helper-scripts-not-invoked-directly">Helper scripts (not invoked directly)<a class="headerlink" href="#helper-scripts-not-invoked-directly" title="Permanent link">&para;</a></h3>
+<p>These live in <code>scripts/</code> but are libraries or build-time helpers rather than
+entry points, which is why they are absent from the tables above.</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lib.sh</code></td>
+<td>Shared bash library sourced by every bootstrap script — logging, the <code>HELM_WAIT_*</code> timeouts, the port 80/443 preflight, retry/skip helpers. Not executable on its own.</td>
+</tr>
+<tr>
+<td><code>render-backstage-config.py</code></td>
+<td>Renders the Backstage app-config layer for the target environment.</td>
+</tr>
+<tr>
+<td><code>render-postmortem.py</code></td>
+<td>Fills <code>docs/postmortem-template.md</code> from an incident's data.</td>
+</tr>
+<tr>
+<td><code>sync-agent-prompts.py</code></td>
+<td>Pushes versioned KAgent prompts to Langfuse and fails CI on drift.</td>
+</tr>
+<tr>
+<td><code>validate-catalog-templates.py</code></td>
+<td>CI gate — checks every template is registered and parses.</td>
 </tr>
 </tbody>
 </table>
