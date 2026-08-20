@@ -2399,16 +2399,14 @@
 - K8s Secret provisioned for device farm credentials</p>
 <hr />
 <h2 id="tech-insights-mobile-scorecard">Tech Insights: Mobile Scorecard<a class="headerlink" href="#tech-insights-mobile-scorecard" title="Permanent link">&para;</a></h2>
-<p>Five mobile-specific quality checks are defined below.</p>
-<blockquote>
-<p><strong>Not yet rendered.</strong> These are collected as Tech Insights <em>facts</em> by
-<code>idpTechInsights.ts</code>, but none of the mobile fact ids appear in the frontend
-<code>CHECKS</code> array in <code>backstage/app/packages/app/src/extensions.tsx</code>, so they do
-<strong>not</strong> currently show on the Scorecard tab of a mobile entity. The facts are
-queryable; the scorecard rendering is still to be wired up. Treat the tiers
-below as the intended design, not as something you can read off the portal
-today.</p>
-</blockquote>
+<p>Five mobile-specific quality checks appear in a <strong>Mobile</strong> group on the Scorecard
+tab of any entity with <code>spec.type: mobile</code> or the <code>mobile</code> tag. Non-mobile
+entities never see them.</p>
+<p><strong>Mobile scores differently from everything else.</strong> Every other group uses count
+thresholds — pass any N checks and you reach a tier. That model is wrong for
+mobile, where specific things are non-negotiable: an app you cannot sign is not a
+Bronze app no matter how many other boxes it ticks. So each mobile tier <em>names</em>
+the checks it requires:</p>
 <table>
 <thead>
 <tr>
@@ -2457,7 +2455,26 @@ today.</p>
 </tr>
 </tbody>
 </table>
-<p>These checks are evaluated by <code>idpTechInsights.ts</code> and pushed to Prometheus via Pushgateway, making them visible in the Grafana QA dashboard as well.</p>
+<p>These are <strong>additional</strong> gates, not a replacement. A mobile entity's tier is the
+<em>lower</em> of its count-based tier (the general Hygiene / Shift-Left / Test Coverage
+/ Security checks) and its mobile tier, so it has to clear both the platform-wide
+bar and the mobile-specific one. Missing a mobile requirement is called out
+explicitly on the entity page, above the general "N more checks" hint, because no
+amount of other work will move the tier until it is met.</p>
+<p><code>accessibility-tests</code> and <code>code-signing-setup</code> are scaffolded as <code>"false"</code>: both
+are wired up by their own template (<code>accessibility-suite</code> and
+<code>mobile-code-signing</code>), so a new app does not get scored for work it has not done.
+Flip the annotation when you run those. <code>mobile-min-sdk</code> and
+<code>app-size-budget-mb</code> are populated from the scaffolder's parameters, and
+<code>crashlytics-enabled</code> follows the "Enable Firebase" option.</p>
+<blockquote>
+<p><strong>Two implementations, one contract.</strong> These checks are computed twice: by
+<code>backstage/app/packages/backend/src/modules/idpTechInsights.ts</code> as Tech Insights
+<em>facts</em> (pushed to Prometheus via Pushgateway and visible in the Grafana QA
+dashboard), and by <code>backstage/app/packages/app/src/scorecard.ts</code> client-side for
+the entity page. The Scorecard tab does not read the backend facts. Change both
+together or they will drift.</p>
+</blockquote>
 <hr />
 <h2 id="local-development">Local Development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
 <h3 id="android">Android<a class="headerlink" href="#android" title="Permanent link">&para;</a></h3>
