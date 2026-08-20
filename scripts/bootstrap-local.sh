@@ -200,11 +200,15 @@ _print_url_banner() {
   _box_row "ArgoCD           http://argocd.idp.local"
     fi
   fi
-  if kubectl get ns argo-rollouts &>/dev/null 2>&1; then
-  echo "║  Argo Rollouts    http://argo-rollouts.idp.local                          ║"
+  # Both gate on the workload, not the namespace: `helm uninstall` leaves the
+  # namespace behind, and a namespace check would then keep advertising a URL
+  # that 404s. (This is the same trap the AI/ML section fell into below, where
+  # namespaces.yaml pre-creates `kagent` on every run.)
+  if kubectl -n argo-rollouts get deploy -o name 2>/dev/null | grep -q .; then
+  _box_row "Argo Rollouts    http://argo-rollouts.idp.local"
   fi
-  if kubectl get deploy argo-workflows-server -n argo-workflows &>/dev/null 2>&1; then
-  echo "║  Argo Workflows   http://argo-workflows.idp.local                         ║"
+  if kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1; then
+  _box_row "Argo Workflows   http://argo-workflows.idp.local"
   fi
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Observability                                                            ║"
@@ -258,7 +262,25 @@ _print_url_banner() {
   done
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   fi
-  echo "║  Local registry   localhost:5003                                          ║"
+  # Say what is deliberately absent. Every section above hides components that
+  # are not deployed, which is correct but indistinguishable from something
+  # having gone wrong — the question "why is Argo Workflows not in the list?"
+  # has no answer anywhere in this output otherwise.
+  _optional=()
+  kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1 \
+    || _optional+=("Argo Workflows (--install-argo-workflows)")
+  kubectl -n kagent get deploy -o name 2>/dev/null | grep -q . \
+    || _optional+=("KAgent + MLflow (./scripts/bootstrap-ai.sh)")
+  # No leading separator: one is always printed immediately above this point,
+  # either by the Observability section or by the AI/ML section's trailer.
+  if (( ${#_optional[@]} > 0 )); then
+  _box_row "Available, not installed"
+  for _opt in ${_optional[@]+"${_optional[@]}"}; do
+  _box_row "  ${_opt}"
+  done
+  echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+  fi
+  _box_row "Local registry   localhost:5003"
   echo "╚═══════════════════════════════════════════════════════════════════════════╝"
   echo ""
   if [[ -n "$argocd_pass" ]]; then
