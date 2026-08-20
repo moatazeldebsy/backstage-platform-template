@@ -2659,8 +2659,13 @@ other.</p>
 </tr>
 <tr>
 <td><code>IDP_BUILD_JOBS</code></td>
-<td><code>4</code></td>
-<td><code>bootstrap-ai.sh</code> only — max concurrent image builds. Lower it if Docker Desktop has few CPUs; raising it past your core count usually makes the batch slower.</td>
+<td><code>ncpu/3</code>, min 1, max 4</td>
+<td><code>bootstrap-ai.sh</code> only — max concurrent image builds, probed from the Docker VM's CPU count (falls back to 2 if the probe fails). Raising it is a known-bad move on a small host: these builds run on the same CPUs as the cluster they are building for.</td>
+</tr>
+<tr>
+<td><code>IDP_HELM_REPO_TTL</code></td>
+<td><code>3600</code></td>
+<td>Seconds a cached chart repo index is considered fresh. <code>ensure_helm_repos</code> reads Helm's own repository cache and only runs <code>helm repo update</code> when one of the indexes it needs is older than this (or missing). Set to <code>0</code>, or use <code>IDP_FORCE=1</code>, to refresh on every run. Typically saves ~10s per bootstrap, but far more on a slow or contended link — the seven indexes total tens of MB, and one measured run spent 1m57s here.</td>
 </tr>
 <tr>
 <td><code>IDP_TIMING</code></td>
