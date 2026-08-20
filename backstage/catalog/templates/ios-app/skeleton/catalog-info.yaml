@@ -11,6 +11,7 @@ metadata:
     backstage.io/mobile-min-sdk: "${{ values.minIosVersion }}"
     backstage.io/crashlytics-enabled: "${{ values.enableFirebase }}"
     backstage.io/accessibility-tests: "false"
+    backstage.io/app-size-budget-mb: "${{ values.appSizeBudgetMb }}"
     backstage.io/code-signing-setup: "false"
     cost-center: "${{ values.costCenter }}"
     idp.io/quality-gates: "static-analysis,vuln-scan,sonar-scanning,snyk-scanning,mobile-fastlane"

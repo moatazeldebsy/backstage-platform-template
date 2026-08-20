@@ -70,6 +70,11 @@ spec:
           type: boolean
           default: false
           description: "Add Firebase Crashlytics + Analytics to the project"
+        appSizeBudgetMb:
+          title: App Size Budget (MB)
+          type: integer
+          default: 60
+          description: "Binary size ceiling for this app, in MB. Surfaced as the app-size-budget scorecard check and a starting point for size regression alerts."
         costCenter:
           title: Cost Center
           type: string
@@ -121,6 +126,7 @@ spec:
           packageName: ${{ parameters.packageName }}
           minSdk: ${{ parameters.minSdk }}
           enableFirebase: ${{ parameters.enableFirebase }}
+          appSizeBudgetMb: ${{ parameters.appSizeBudgetMb | default(60) }}
           # `| default(...)` mirrors the parameter's own schema default. RJSF only
           # submits a page's fields once that page has been visited, so clicking
           # straight past an all-optional step sends nothing for it — the scaffolder
