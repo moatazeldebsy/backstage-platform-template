@@ -41,6 +41,12 @@ rules:
   - apiGroups: [kagent.dev]
     resources: [agents]
     verbs: [get, list, watch]
+  # Argo Rollouts. The golden-path chart emits a Rollout instead of a Deployment
+  # when canary is enabled — hello-service does — so without this the Kubernetes
+  # tab finds the Service and Pods but no workload, which reads as "not deployed".
+  - apiGroups: [argoproj.io]
+    resources: [rollouts]
+    verbs: [get, list, watch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
