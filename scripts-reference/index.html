@@ -2350,7 +2350,7 @@
 </tr>
 <tr>
 <td><code>--destroy</code></td>
-<td>Tear everything down: remove scaffolded services from ArgoCD + Helm + git, then delete the cluster.</td>
+<td>Tear everything down: remove scaffolded services from ArgoCD + Helm + git, delete the cluster, and stop the Backstage compose stack including its database. <strong>Keeps</strong> the local registry, the Docker image cache and the buildx cache, so the next bootstrap does not re-pull every upstream image — use <code>--clean-docker</code> to reclaim that disk.</td>
 </tr>
 <tr>
 <td><code>--full</code></td>
@@ -2362,7 +2362,7 @@
 </tr>
 <tr>
 <td><code>--clean-docker</code></td>
-<td>Prune Docker build cache and dangling images before starting. Use when the host is short on disk — a Lima/Docker VM can hold tens of GB of reclaimable image layers.</td>
+<td><strong>Reclaim disk.</strong> Removes the compose stack and its images, the local registry, <em>all</em> unused images (not just dangling), unused volumes and the entire buildx cache, then exits. Use when the host is short on space — a Lima/Docker VM can hold tens of GB of reclaimable layers. This is the aggressive prune <code>--destroy</code> deliberately no longer performs, and it is expensive to undo: measured on an 8-CPU Mac, the next bootstrap costs <strong>18m52s</strong> (vs 5m39s warm) and, if you run Backstage, a further <strong>17m07s</strong> to rebuild its image — that same rebuild is <strong>4s</strong> when the buildx cache is intact.</td>
 </tr>
 <tr>
 <td><code>--install-argocd</code></td>
