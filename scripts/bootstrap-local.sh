@@ -111,6 +111,10 @@ else
 fi
 
 # ── Docker deep-clean helper ──────────────────────────────────────────────────
+# Reclaim every byte of IDP-related Docker state. This is what `--clean-docker`
+# is for, and it stays deliberately aggressive — reclaiming disk IS its purpose.
+#
+# `--destroy` used to call this too. It no longer does; see _teardown_docker.
 _clean_docker() {
   log "Stopping Backstage Docker Compose stack..."
   ${COMPOSE_CMD} \
@@ -131,6 +135,46 @@ _clean_docker() {
   docker buildx prune --all --force --builder desktop-linux 2>/dev/null || true
 
   log "Docker clean complete."
+}
+
+# Teardown for `--destroy`: remove the cluster's own state, keep the caches that
+# only make the next bootstrap slower to rebuild.
+#
+# This used to be _clean_docker, and that cost about a quarter of an hour every
+# time. Measured 2026-08-20: a cold bootstrap after the old teardown took 18m52s,
+# and every one of its slowest steps was dominated by re-pulling upstream chart
+# images that `docker image prune -a` had just deleted —
+#
+#   5. Prometheus + Grafana  7m22s     8. ArgoCD                1m53s
+#   2. Kind cluster          3m16s     9. Gatekeeper + Kyverno  1m48s
+#   5b-5d OpenCost/Loki/...  2m10s     4. Ingress               1m29s
+#
+# — while `6. Images (join)` was 0s, i.e. the images this repo builds were never
+# on the critical path at all. The prune took Docker from 20.32GB to 0 and bought
+# nothing that `--clean-docker` does not already offer on demand.
+#
+# What is still removed: the Kind cluster (by the caller), the compose stack and
+# its volumes — Backstage's Postgres data belongs to the cluster being destroyed
+# and must not outlive it.
+#
+# What is kept: upstream images, the buildx cache, and the local registry
+# container with the images this repo built. The registry is not cluster-specific;
+# the next bootstrap finds it running and reconnects it to the new kind network.
+#
+# Keeping the buildx cache matters far more than the bootstrap numbers above
+# suggest, because those runs never built Backstage. Measured separately:
+# a cold Backstage image build is 17m07s, an unchanged rebuild is 5s, and a
+# rebuild after this teardown is 4s. Under the old `buildx prune --all` it was a
+# full 17m07s every time — the single largest cost in the whole local workflow.
+_teardown_docker() {
+  log "Stopping Backstage Docker Compose stack (keeping its image)..."
+  # No --rmi all: the Backstage image is expensive to rebuild (its Dockerfile
+  # calls the yarn layer "the 8-minute install layer") and is not cluster state.
+  ${COMPOSE_CMD} \
+    down --volumes --remove-orphans 2>/dev/null || true
+
+  log "Keeping the local registry, image cache and build cache for the next bootstrap."
+  log "  Reclaim them with: ./scripts/bootstrap-local.sh --clean-docker"
 }
 
 # kubectl apply, but when the failure is an admission webhook refusing the
@@ -249,6 +293,12 @@ _print_url_banner() {
   if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q mlflow; then
     _ai_rows+=("MLflow|http://mlflow.idp.local"); _ai_n=$((_ai_n + 1))
   fi
+  # Langfuse ships as part of bootstrap-ai.sh (on by default, --skip-langfuse
+  # opts out) and publishes langfuse.idp.local, but the banner never listed it —
+  # README.md:125 documented a URL this output did not mention.
+  if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q langfuse-web; then
+    _ai_rows+=("Langfuse|http://langfuse.idp.local"); _ai_n=$((_ai_n + 1))
+  fi
   while read -r _dep; do
     [[ -z "$_dep" ]] && continue
     _dep="${_dep#deployment.apps/}"
@@ -270,7 +320,7 @@ _print_url_banner() {
   kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1 \
     || _optional+=("Argo Workflows (--install-argo-workflows)")
   kubectl -n kagent get deploy -o name 2>/dev/null | grep -q . \
-    || _optional+=("KAgent + MLflow (./scripts/bootstrap-ai.sh)")
+    || _optional+=("KAgent + MLflow + Langfuse (./scripts/bootstrap-ai.sh)")
   # No leading separator: one is always printed immediately above this point,
   # either by the Observability section or by the AI/ML section's trailer.
   if (( ${#_optional[@]} > 0 )); then
@@ -393,8 +443,12 @@ fi
 if $DESTROY; then
   # ── Confirmation guard ────────────────────────────────────────────────────
   echo ""
-  warn "This will permanently delete the local IDP cluster, all workloads, volumes,"
-  warn "the local Docker registry, and remove /etc/hosts entries."
+  warn "This will permanently delete the local IDP cluster, all workloads, the"
+  warn "Backstage compose stack and its database, and remove /etc/hosts entries."
+  echo ""
+  log  "  Kept, so the next bootstrap does not re-pull and rebuild everything:"
+  log  "    the local Docker registry, the image cache and the buildx cache."
+  log  "    Reclaim that disk with: ./scripts/bootstrap-local.sh --clean-docker"
   echo ""
   read -rp "  Type 'yes' to confirm destroy: " _CONFIRM
   if [[ "$_CONFIRM" != "yes" ]]; then
@@ -439,12 +493,11 @@ if $DESTROY; then
   write_backstage_ai_overlay false
   log "  Backstage AI overlay reset to disabled."
 
-  # ── Stop compose stack, registry, and reclaim all IDP-related Docker state ─
-  # Reuses _clean_docker so destroy/reset/clean paths converge: removes the
-  # compose stack with --rmi all, prunes all unused images (not just dangling),
-  # drops anonymous volumes left by the local registry, and clears the buildx
-  # cache (Backstage builds alone can leave several GB behind).
-  _clean_docker
+  # ── Stop the compose stack; keep the Docker caches ────────────────────────
+  # Deliberately NOT _clean_docker. Destroying a cluster is not a request to
+  # reclaim disk, and conflating the two made every rebuild pay a full cold pull
+  # of every upstream image. `--clean-docker` remains the way to ask for that.
+  _teardown_docker
 
   log "Done."
   log ""
