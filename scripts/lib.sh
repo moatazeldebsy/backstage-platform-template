@@ -1345,7 +1345,17 @@ langfuse_installed() {
     || kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -q langfuse
 }
 
-# Usage: write_backstage_ai_overlay true|false [langfuse_enabled]
+kagent_installed() {
+  kubectl get deployment -n kagent -o name 2>/dev/null | grep -q .
+}
+
+mlflow_installed() {
+  kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -q mlflow
+}
+
+# Usage: write_backstage_ai_overlay true|false [langfuse] [kagent] [mlflow]
+#   Each optional flag defaults to the first argument, so a bare `false` still
+#   disables everything.
 #
 # One implementation on purpose: bootstrap-local.sh writes it with the AI layer
 # off, bootstrap-ai.sh writes it on (and `--destroy` writes it off again). Two
@@ -1368,15 +1378,21 @@ langfuse_installed() {
 write_backstage_ai_overlay() {
   local enabled="${1:?write_backstage_ai_overlay requires true|false}"
   local langfuse_enabled="${2:-$enabled}"
-  local disabled lf_disabled
-  # A page is disabled exactly when the AI layer is not enabled.
-  if [[ "$enabled" == "true" ]]; then disabled=false; else disabled=true; fi
-  # Langfuse additionally requires Langfuse itself to be present.
-  if [[ "$enabled" == "true" && "$langfuse_enabled" == "true" ]]; then
-    lf_disabled=false
-  else
-    lf_disabled=true
-  fi
+  local kagent_enabled="${3:-$enabled}"
+  local mlflow_enabled="${4:-$enabled}"
+  local kagent_disabled mlflow_disabled lf_disabled
+
+  # Each page is gated on ITS OWN component, not on the AI layer as a whole.
+  #
+  # This used to be a single `disabled` flag driven by `enabled`, with Langfuse
+  # the only separately-gated page. bootstrap-ai.sh's --skip-* flags mean any
+  # subset can be installed, so `--langfuse --skip-kagent --skip-mlflow` lit up
+  # AI Assistant, AI Search, Approvals, KAgent and MLflow in the sidebar — five
+  # entries pointing at services that were never deployed.
+  _off() { [[ "$enabled" == "true" && "$1" == "true" ]] && echo false || echo true; }
+  kagent_disabled=$(_off "$kagent_enabled")
+  mlflow_disabled=$(_off "$mlflow_enabled")
+  lf_disabled=$(_off "$langfuse_enabled")
 
   # bootstrap-local.sh calls the repo root ROOT_DIR, bootstrap-ai.sh calls it
   # REPO_ROOT. Accept either so this helper works unchanged from both.
@@ -1399,25 +1415,25 @@ app:
     - page:kubernetes:
         disabled: true
     - page:custom-pages/ai-assistant:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - nav-item:custom-pages/ai-assistant:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - page:custom-pages/ai-search:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - nav-item:custom-pages/ai-search:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - page:custom-pages/approvals:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - nav-item:custom-pages/approvals:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - page:custom-pages/kagent-platform:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - nav-item:custom-pages/kagent-platform:
-        disabled: ${disabled}
+        disabled: ${kagent_disabled}
     - page:custom-pages/mlflow-platform:
-        disabled: ${disabled}
+        disabled: ${mlflow_disabled}
     - nav-item:custom-pages/mlflow-platform:
-        disabled: ${disabled}
+        disabled: ${mlflow_disabled}
     - page:custom-pages/langfuse-platform:
         disabled: ${lf_disabled}
     - nav-item:custom-pages/langfuse-platform:

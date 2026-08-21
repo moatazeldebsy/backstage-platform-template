@@ -2253,7 +2253,10 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
   # local run without --langfuse, i.e. on the documented default, pointing at a
   # service that was never installed. Read the cluster rather than the flag so
   # this is also right after a --langfuse-keys-only run or a partial install.
-  write_backstage_ai_overlay true "$(langfuse_installed && echo true || echo false)"
+  write_backstage_ai_overlay true \
+      "$(langfuse_installed && echo true || echo false)" \
+      "$(kagent_installed   && echo true || echo false)" \
+      "$(mlflow_installed   && echo true || echo false)"
 else
   info "Revealing Backstage AI surfaces (app.extensions + aiStack.enabled)..."
   if kubectl get configmap backstage-config -n backstage &>/dev/null; then
