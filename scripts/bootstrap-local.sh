@@ -210,18 +210,6 @@ _apply_or_explain() {
   return "$rc"
 }
 
-# One row of the URL banner, padded to the box's 77-character interior. The
-# AI/ML rows used to be hand-padded and sat 2 characters short of every other
-# row, so the right-hand border was visibly ragged.
-_box_row() {
-  local text="$1" chars bytes
-  # printf pads by BYTES, but the banner contains multibyte characters (the em
-  # dash in the title), so a plain %-73s renders those rows short and leaves the
-  # right border ragged. Widen the pad by the byte/character difference.
-  chars=${#text}
-  bytes=$(LC_ALL=C printf '%s' "$text" | wc -c)
-  printf '║  %-*s║\n' "$(( 73 + bytes - chars ))" "$text"
-}
 
 # ── URL banner helper (used by --print-urls and the final Done section) ───────
 _print_url_banner() {
@@ -232,16 +220,16 @@ _print_url_banner() {
   echo ""
   echo "╔═══════════════════════════════════════════════════════════════════════════╗"
   # Centred via the same helper as every other row, so the border stays flush.
-  _box_row "                  IDP Platform — Service URLs"
+  box_row "                  IDP Platform — Service URLs"
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Core Platform                                                            ║"
-  _box_row "Backstage        http://backstage.idp.local"
-  _box_row "hello-service    http://hello-service.idp.local"
+  box_row "Backstage        http://backstage.idp.local"
+  box_row "hello-service    http://hello-service.idp.local"
   if kubectl get svc argocd-server -n argocd &>/dev/null 2>&1; then
     if [[ -n "$argocd_pass" ]]; then
-  _box_row "ArgoCD           http://argocd.idp.local          admin/${argocd_pass}"
+  box_row "ArgoCD           http://argocd.idp.local          admin/${argocd_pass}"
     else
-  _box_row "ArgoCD           http://argocd.idp.local"
+  box_row "ArgoCD           http://argocd.idp.local"
     fi
   fi
   # Both gate on the workload, not the namespace: `helm uninstall` leaves the
@@ -249,10 +237,10 @@ _print_url_banner() {
   # that 404s. (This is the same trap the AI/ML section fell into below, where
   # namespaces.yaml pre-creates `kagent` on every run.)
   if kubectl -n argo-rollouts get deploy -o name 2>/dev/null | grep -q .; then
-  _box_row "Argo Rollouts    http://argo-rollouts.idp.local"
+  box_row "Argo Rollouts    http://argo-rollouts.idp.local"
   fi
   if kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1; then
-  _box_row "Argo Workflows   http://argo-workflows.idp.local"
+  box_row "Argo Workflows   http://argo-workflows.idp.local"
   fi
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   echo "║  Observability                                                            ║"
@@ -306,9 +294,9 @@ _print_url_banner() {
   done < <(kubectl -n services-dev get deploy -o name 2>/dev/null | grep -- '-mcp-server$' | sort)
 
   if (( _ai_n > 0 )); then
-  _box_row "AI / ML Platform"
+  box_row "AI / ML Platform"
   for _row in ${_ai_rows[@]+"${_ai_rows[@]}"}; do
-    _box_row "$(printf '%-21s %s' "${_row%%|*}" "${_row#*|}")"
+    box_row "$(printf '%-21s %s' "${_row%%|*}" "${_row#*|}")"
   done
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   fi
@@ -324,13 +312,13 @@ _print_url_banner() {
   # No leading separator: one is always printed immediately above this point,
   # either by the Observability section or by the AI/ML section's trailer.
   if (( ${#_optional[@]} > 0 )); then
-  _box_row "Available, not installed"
+  box_row "Available, not installed"
   for _opt in ${_optional[@]+"${_optional[@]}"}; do
-  _box_row "  ${_opt}"
+  box_row "  ${_opt}"
   done
   echo "╠═══════════════════════════════════════════════════════════════════════════╣"
   fi
-  _box_row "Local registry   localhost:5003"
+  box_row "Local registry   localhost:5003"
   echo "╚═══════════════════════════════════════════════════════════════════════════╝"
   echo ""
   if [[ -n "$argocd_pass" ]]; then

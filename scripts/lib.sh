@@ -486,6 +486,26 @@ EOF
 # Epoch mtime of $1. BSD stat (macOS) and GNU stat (Linux) take different flags;
 # this is the same portability split as _sha256 below. Prints 0 when the file is
 # unreadable, which callers treat as "infinitely old".
+# One row of a URL banner, padded to the box's 77-character interior.
+#
+# printf pads by BYTES, but the banners contain multibyte characters (box-drawing
+# glyphs, the em dash in a title), so a plain %-73s renders those rows short and
+# leaves the right border ragged. Widen the pad by the byte/character difference.
+#
+# Shared by bootstrap-local.sh and bootstrap-ai.sh: both drew the same box, and
+# bootstrap-ai.sh's rows had no closing border at all.
+#
+# Content longer than the interior is NOT truncated — the border is pushed right
+# instead. That is deliberate: these rows carry URLs, and a clipped AWS ALB
+# hostname cannot be copied and pasted, which is the only thing the row is for. A
+# ragged edge on a handful of AWS rows is the cheaper cost. Local rows fit.
+box_row() {
+  local text="$1" chars bytes
+  chars=${#text}
+  bytes=$(LC_ALL=C printf '%s' "$text" | wc -c)
+  printf '║  %-*s║\n' "$(( 73 + bytes - chars ))" "$text"
+}
+
 _mtime() {
   stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
 }

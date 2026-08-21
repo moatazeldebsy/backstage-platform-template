@@ -2290,38 +2290,47 @@ fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════════════════╗"
-echo "║               AI/ML Platform Bootstrap Complete                          ║"
+box_row "              AI/ML Platform Bootstrap Complete"
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
+# Rows are emitted through box_row (lib.sh) so the right border actually closes —
+# these lines used to be bare echoes 46-62 characters wide with no trailing
+# border at all, against a 77-wide box.
+#
+# The MCP servers are discovered from the cluster rather than hardcoded. The old
+# list named seven and omitted incident-mcp-server and security-mcp-server, which
+# is the same staleness the bootstrap-local.sh banner had: a hardcoded list stops
+# matching reality the moment a service is added.
 if [[ "$DEPLOY_MODE" == "aws" ]]; then
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://$(_alb_ai kagent-ui kagent)"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  IDP Assistant (A2A) http://$(_alb_ai idp-assistant kagent)"
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://$(_alb_ai mlflow ml-platform)"
-  [[ "$LANGFUSE"     == "true"  ]] && echo "║  Langfuse            http://$(_alb_ai langfuse ml-platform)"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://$(_alb_ai idp-mcp-server services-dev)"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://$(_alb_ai qa-mcp-server services-dev)"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://$(_alb_ai contract-mcp-server services-dev)"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  GitHub MCP Server   http://$(_alb_ai github-mcp-server services-dev)"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  ArgoCD MCP Server   http://$(_alb_ai argocd-mcp-server services-dev)"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Cost MCP Server     http://$(_alb_ai cost-mcp-server services-dev)"
+  [[ "$SKIP_KAGENT"  == "false" ]] && box_row "KAgent UI             http://$(_alb_ai kagent-ui kagent)"
+  [[ "$SKIP_KAGENT"  == "false" ]] && box_row "IDP Assistant (A2A)   http://$(_alb_ai idp-assistant kagent)"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && box_row "MLflow                http://$(_alb_ai mlflow ml-platform)"
+  [[ "$LANGFUSE"     == "true"  ]] && box_row "Langfuse              http://$(_alb_ai langfuse ml-platform)"
+  if [[ "$SKIP_MCP" == "false" ]]; then
+    while read -r _d; do
+      [[ -z "$_d" ]] && continue
+      _d="${_d#deployment.apps/}"
+      box_row "$(printf '%-21s %s' "$_d" "http://$(_alb_ai "$_d" services-dev)")"
+    done < <(kubectl -n services-dev get deploy -o name 2>/dev/null | grep -E 'mcp-server$|agent-event-router$' | sort)
+  fi
 else
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  KAgent UI           http://kagent.idp.local"
-  [[ "$SKIP_KAGENT"  == "false" ]] && echo "║  AI Assistant        http://backstage.idp.local/ai-assistant"
-  [[ "$SKIP_MLFLOW"  == "false" ]] && echo "║  MLflow              http://mlflow.idp.local"
-  [[ "$LANGFUSE"     == "true"  ]] && echo "║  Langfuse            http://langfuse.idp.local"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  IDP MCP Server      http://idp-mcp-server.idp.local/healthz"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  QA MCP Server       http://qa-mcp-server.idp.local/healthz"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Contract MCP Server http://contract-mcp-server.idp.local/healthz"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Event Router        http://agent-event-router.idp.local/healthz"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  GitHub MCP Server   http://github-mcp-server.idp.local/healthz"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  ArgoCD MCP Server   http://argocd-mcp-server.idp.local/healthz"
-  [[ "$SKIP_MCP"     == "false" ]] && echo "║  Cost MCP Server     http://cost-mcp-server.idp.local/healthz"
+  [[ "$SKIP_KAGENT"  == "false" ]] && box_row "KAgent UI             http://kagent.idp.local"
+  [[ "$SKIP_KAGENT"  == "false" ]] && box_row "AI Assistant          http://backstage.idp.local/ai-assistant"
+  [[ "$SKIP_MLFLOW"  == "false" ]] && box_row "MLflow                http://mlflow.idp.local"
+  [[ "$LANGFUSE"     == "true"  ]] && box_row "Langfuse              http://langfuse.idp.local"
+  if [[ "$SKIP_MCP" == "false" ]]; then
+    while read -r _d; do
+      [[ -z "$_d" ]] && continue
+      _d="${_d#deployment.apps/}"
+      box_row "$(printf '%-21s %s' "$_d" "http://${_d}.idp.local/healthz")"
+    done < <(kubectl -n services-dev get deploy -o name 2>/dev/null | grep -E 'mcp-server$|agent-event-router$' | sort)
+  fi
 fi
 echo "╠═══════════════════════════════════════════════════════════════════════════╣"
-echo "║  Model            Claude Haiku (claude-haiku-4-5-20251001)               ║"
+box_row "Model            Claude Haiku (claude-haiku-4-5-20251001)"
 if [[ "$DEPLOY_MODE" == "local" ]]; then
-echo "║  All platform URLs: ./scripts/bootstrap-local.sh --print-urls            ║"
-echo "║  Show AI pages in Backstage (config is read only at startup):            ║"
-echo "║    ./scripts/bootstrap-local.sh --start-backstage                        ║"
+box_row "All platform URLs: ./scripts/bootstrap-local.sh --print-urls"
+box_row "Show AI pages in Backstage (config is read only at startup):"
+box_row "  ./scripts/bootstrap-local.sh --start-backstage"
 fi
 echo "╚═══════════════════════════════════════════════════════════════════════════╝"
 echo ""
