@@ -646,8 +646,20 @@ fi
 # a terminating or empty kagent namespace behind, and an empty namespace must
 # not count as "AI is installed". Any failure to reach the cluster answers no,
 # which is the safe direction — it hides nav items rather than showing broken ones.
+# True when ANY part of the AI/ML layer is deployed, not just KAgent.
+#
+# This used to test the kagent namespace alone. bootstrap-ai.sh has --skip-kagent,
+# --skip-mlflow and --skip-langfuse, so any subset can legitimately be installed
+# — and `bootstrap-ai.sh --langfuse --skip-kagent` is the documented way to add
+# tracing on a small machine. On such a cluster the narrow test reported "no AI
+# stack", so _start_backstage rewrote the overlay to aiStack.enabled: false and
+# switched off the Langfuse page the operator had just installed. Worse, the
+# completion banner tells you to run --start-backstage in order to SEE the AI
+# pages, so the documented fix was the thing that hid them.
 _ai_stack_installed() {
-  kubectl get deployment -n kagent -o name 2>/dev/null | grep -q .
+  kubectl get deployment -n kagent -o name 2>/dev/null | grep -q . && return 0
+  kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -qE 'mlflow|langfuse-web' && return 0
+  return 1
 }
 
 # ── --start-backstage fast path ───────────────────────────────────────────────
@@ -691,8 +703,11 @@ _start_backstage() {
   # AI-enabled cluster alone because the check then passes. bootstrap-ai.sh
   # remains the thing that writes `true`.
   if _ai_stack_installed; then
-    [[ -f "${ROOT_DIR}/local/backstage/app-config.ai.yaml" ]] || \
-      write_backstage_ai_overlay true "$(langfuse_installed && echo true || echo false)"
+    # Rewritten every start, not only when the file is missing. The langfuse
+    # half of the overlay has to track the cluster too: adding Langfuse to an
+    # existing KAgent install left the file saying `true, langfuse=false`, and
+    # the `-f` guard meant it was never corrected.
+    write_backstage_ai_overlay true "$(langfuse_installed && echo true || echo false)"
   else
     write_backstage_ai_overlay false
   fi
