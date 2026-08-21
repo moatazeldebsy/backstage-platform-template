@@ -707,7 +707,10 @@ _start_backstage() {
     # half of the overlay has to track the cluster too: adding Langfuse to an
     # existing KAgent install left the file saying `true, langfuse=false`, and
     # the `-f` guard meant it was never corrected.
-    write_backstage_ai_overlay true "$(langfuse_installed && echo true || echo false)"
+    write_backstage_ai_overlay true \
+      "$(langfuse_installed && echo true || echo false)" \
+      "$(kagent_installed   && echo true || echo false)" \
+      "$(mlflow_installed   && echo true || echo false)"
   else
     write_backstage_ai_overlay false
   fi
