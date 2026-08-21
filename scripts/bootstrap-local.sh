@@ -1871,7 +1871,37 @@ if ! $SKIP_GITOPS; then
     done
 
     kubectl apply -f "${ROOT_DIR}/local/argocd/app-of-apps-local.yaml" -n argocd
-    log "ApplicationSet applied. ArgoCD will sync hello-service to local/dev/staging/prod."
+
+    # Wait for the Applications to actually appear, not just for the
+    # ApplicationSet object to exist.
+    #
+    # The generator is a *git* generator pointed at the GitHub remote, so after a
+    # fresh bootstrap it has to clone the repo before it can list services/*.
+    # Measured: `end reconcile in 23.2s`, with the Applications landing well
+    # after this script had already printed its banner and exited. The script
+    # therefore reported success while the ArgoCD UI was still empty, which reads
+    # exactly like a broken install.
+    #
+    # Bounded and non-fatal: the ApplicationSet is applied either way and ArgoCD
+    # re-queues every 3m, so a slow clone is a reason to say "not yet", not to
+    # fail the bootstrap.
+    log "  Waiting for ArgoCD to generate Applications (git generator clones the remote first)..."
+    _apps=0
+    for _i in {1..36}; do
+      _apps=$(kubectl get applications -n argocd --no-headers 2>/dev/null | wc -l | tr -d ' ')
+      (( _apps > 0 )) && break
+      sleep 5
+    done
+
+    if (( _apps > 0 )); then
+      log "ApplicationSet applied — ArgoCD generated ${_apps} Application(s) for the local environment."
+    else
+      warn "ApplicationSet applied, but ArgoCD has not generated any Applications yet."
+      warn "  This is usually a slow clone of the GitHub remote, not a failure. Check with:"
+      warn "    kubectl -n argocd get applicationset idp-services -o jsonpath='{.status.conditions}'"
+      warn "    kubectl -n argocd logs deploy/argocd-applicationset-controller --tail=20"
+      warn "  They typically appear within a few minutes; ArgoCD re-queues every 3m."
+    fi
   )
   _step13_rc=$?
   set -e
