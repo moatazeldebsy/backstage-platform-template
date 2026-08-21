@@ -751,19 +751,32 @@ _start_backstage() {
   echo "  Pushgateway:    http://pushgateway.idp.local"
   echo "  OpenCost:       http://opencost.idp.local"
   echo "  Local registry: localhost:5003"
-  if kubectl get ns kagent &>/dev/null 2>&1; then
-  echo "  KAgent UI:      http://kagent.idp.local"
-  echo "  AI Assistant:   http://backstage.idp.local/ai-assistant"
-  echo "  MLflow:         http://mlflow.idp.local"
-  fi
+  # Gated on the workloads, not on `kubectl get ns kagent`.
+  #
+  # kubernetes/namespaces/namespaces.yaml creates the kagent namespace at Step 3
+  # of every run, so that test was always true: this list advertised a KAgent UI,
+  # an AI Assistant and an MLflow on clusters where bootstrap-ai.sh had never been
+  # run. The inverse test further down had the mirror-image bug — the "Install
+  # AI/ML stack" hint could never appear — so the reader was simultaneously told
+  # the stack was present and never told how to install it.
+  _has_kagent=false; _has_mlflow=false; _has_langfuse=false; _has_workflows=false
+  kubectl -n kagent get deploy -o name 2>/dev/null | grep -q . && _has_kagent=true
+  kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q mlflow && _has_mlflow=true
+  kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q langfuse-web && _has_langfuse=true
+  kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1 && _has_workflows=true
+
+  $_has_workflows && echo "  Argo Workflows: http://argo-workflows.idp.local"
+  $_has_kagent    && echo "  KAgent UI:      http://kagent.idp.local"
+  $_has_kagent    && echo "  AI Assistant:   http://backstage.idp.local/ai-assistant"
+  $_has_mlflow    && echo "  MLflow:         http://mlflow.idp.local"
+  $_has_langfuse  && echo "  Langfuse:       http://langfuse.idp.local"
   echo ""
   echo -e "${BOLD}Day-2 tools:${RESET}"
   echo "  Scaffold a service:   ./bin/idp scaffold service --name my-svc --type nodejs"
   echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
   echo "  Seed QA demo metrics: ./scripts/seed-qa-metrics.sh"
-  if ! kubectl get ns kagent &>/dev/null 2>&1; then
-  echo "  Install AI/ML stack:  ./scripts/bootstrap-ai.sh"
-  fi
+  $_has_kagent    || echo "  Install AI/ML stack:    ./scripts/bootstrap-ai.sh"
+  $_has_workflows || echo "  Install Argo Workflows: ./scripts/bootstrap-local.sh --install-argo-workflows"
   echo "  Restart Backstage:    ./scripts/bootstrap-local.sh --start-backstage"
   echo "  Teardown cluster:     ./scripts/bootstrap-local.sh --destroy"
   echo ""
