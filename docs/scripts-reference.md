@@ -113,6 +113,7 @@ in the docs that mentions a `bootstrap-ai.sh` flag should defer to this table.
 | `--langfuse-keys-only` | — | Re-distribute the Langfuse project keys to namespaces labelled `idp.io/langfuse=enabled` without deploying anything. |
 | `--skip-mlflow` | — | Skip the MLflow tracking server and model registry. |
 | `--skip-mcp` | — | Skip the MCP servers. |
+| `--skip-argo-workflows` | — | Skip Argo Workflows, ~5m of the install. You lose the `ml-training-pipeline` and `llm-eval-pipeline` WorkflowTemplates, and on multi-region the DR failover runbook. `idp:run-training-job` falls back to a plain Job automatically — without the accuracy gate or the human approval step, which are the two things [ADR-0001](design/adr-0001-batch-orchestration.md) accepts Argo Workflows *for*. Note a core `bootstrap-local.sh` never installs it anyway; this flag is only for the AI/ML layer. |
 | `--skip-kagent` | — | Skip the KAgent CRDs, runtime, and agents. |
 | `--force-build` | off | Rebuild the MCP server images and their Helm releases even when unchanged. |
 | `--aws` | off | Target the AWS cluster rather than Kind. `bootstrap.sh` passes this for you; run it standalone only to retry a failed AI phase. |

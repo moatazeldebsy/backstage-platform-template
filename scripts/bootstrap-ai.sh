@@ -25,6 +25,13 @@
 #                       scaffolded service's tracing start working.
 #   --skip-kagent      Skip KAgent CRDs and Helm install
 #   --skip-mcp         Skip IDP/QA/Contract MCP Server build and deploy
+#   --skip-argo-workflows
+#                      Skip Argo Workflows. Costs ~5m of the install. You lose
+#                       the ml-training-pipeline and llm-eval-pipeline
+#                       WorkflowTemplates, and on multi-region the DR failover
+#                       runbook. idp:run-training-job falls back to a plain Job
+#                       automatically (without the accuracy gate or the human
+#                       approval step). See docs/design/adr-0001-batch-orchestration.md
 #   --agents <list>    Comma-separated KAgent agents to install. Default is the
 #                       six historical agents: idp,qa,release,cost,platform,contract
 #                       Also available (not installed by default):
@@ -44,6 +51,7 @@ DEPLOY_MODE="local"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 SKIP_MLFLOW=false
+SKIP_ARGO_WORKFLOWS=false
 # Tri-state on purpose: "" means "not specified", which resolves after flag
 # parsing to on for AWS and off for local. A plain true/false default could not
 # tell "user passed --skip-langfuse" apart from "user said nothing".
@@ -72,6 +80,7 @@ while [[ $# -gt 0 ]]; do
     --region)       AWS_REGION="$2"; shift 2 ;;
     --cluster)      CLUSTER_NAME="$2"; shift 2 ;;
     --skip-mlflow)  SKIP_MLFLOW=true; shift ;;
+    --skip-argo-workflows) SKIP_ARGO_WORKFLOWS=true; shift ;;
     --langfuse)     LANGFUSE=true; shift ;;
     --skip-langfuse) LANGFUSE=false; shift ;;
     --langfuse-keys-only) LANGFUSE_KEYS_ONLY=true; shift ;;
@@ -1081,14 +1090,26 @@ timer_end "3. MLflow (launch)"
 # `bootstrap-ai.sh --aws` run, so both pipelines and the DR failover runbook
 # were unavailable. Observed 2026-08-16.
 timer_start "3-bis. Argo Workflows"
-log "Step 3-bis: Installing Argo Workflows..."
-if [[ "$DEPLOY_MODE" == "aws" ]]; then
-  tf_outputs_load "${REPO_ROOT}/terraform"
+if [[ "$SKIP_ARGO_WORKFLOWS" == "true" ]]; then
+  info "Skipping Argo Workflows (--skip-argo-workflows)."
+  # Say what is being given up, at the moment it is given up. ADR-0001 accepts
+  # Argo Workflows specifically for the accuracy gate and the suspend-for-human
+  # step in ml-training-pipeline, and for llm-eval-pipeline needing in-cluster
+  # endpoints GitHub Actions cannot reach.
+  warn "  ml-training-pipeline and llm-eval-pipeline will not be available."
+  warn "  idp:run-training-job falls back to a plain Job — no accuracy gate, no approval step."
+  [[ "$DEPLOY_MODE" == "aws" ]] && \
+    warn "  The multi-region DR failover runbook will not be available."
+else
+  log "Step 3-bis: Installing Argo Workflows..."
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    tf_outputs_load "${REPO_ROOT}/terraform"
+  fi
+  # Non-fatal: the function warns loudly and returns non-zero on failure, and
+  # this script runs under `set -euo pipefail`. The AI/ML layer still comes up
+  # without Argo Workflows; only the two pipelines and the DR runbook are lost.
+  install_argo_workflows "$DEPLOY_MODE" || true
 fi
-# Non-fatal: the function warns loudly and returns non-zero on failure, and
-# this script runs under `set -euo pipefail`. The AI/ML layer still comes up
-# without Argo Workflows; only the two pipelines and the DR runbook are lost.
-install_argo_workflows "$DEPLOY_MODE" || true
 timer_end "3-bis. Argo Workflows"
 
 # ── 3a. Ollama (self-hosted small model) ──────────────────────────────────────
