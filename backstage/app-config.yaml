@@ -256,6 +256,13 @@ catalog:
         orphanStrategy: delete
 
 kubernetes:
+  # Without this the plugin only fetches core workload types, so a service
+  # deployed as an Argo Rollout (the chart's canary path — hello-service uses it)
+  # shows a Service and Pods but no workload on the Kubernetes tab.
+  customResources:
+    - group: 'argoproj.io'
+      apiVersion: 'v1alpha1'
+      plural: 'rollouts'
   serviceLocatorMethod:
     type: 'multiTenant'
   clusterLocatorMethods:
