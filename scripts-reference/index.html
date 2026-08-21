@@ -2506,6 +2506,11 @@ in the docs that mentions a <code>bootstrap-ai.sh</code> flag should defer to th
 <td>Skip the MCP servers.</td>
 </tr>
 <tr>
+<td><code>--skip-argo-workflows</code></td>
+<td>—</td>
+<td>Skip Argo Workflows, ~5m of the install. You lose the <code>ml-training-pipeline</code> and <code>llm-eval-pipeline</code> WorkflowTemplates, and on multi-region the DR failover runbook. <code>idp:run-training-job</code> falls back to a plain Job automatically — without the accuracy gate or the human approval step, which are the two things <a href="../design/adr-0001-batch-orchestration/">ADR-0001</a> accepts Argo Workflows <em>for</em>. Note a core <code>bootstrap-local.sh</code> never installs it anyway; this flag is only for the AI/ML layer.</td>
+</tr>
+<tr>
 <td><code>--skip-kagent</code></td>
 <td>—</td>
 <td>Skip the KAgent CRDs, runtime, and agents.</td>
