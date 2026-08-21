@@ -486,6 +486,23 @@ EOF
 # Epoch mtime of $1. BSD stat (macOS) and GNU stat (Linux) take different flags;
 # this is the same portability split as _sha256 below. Prints 0 when the file is
 # unreadable, which callers treat as "infinitely old".
+# Langfuse's seeded admin login, as "email / password", or empty when Langfuse
+# is not deployed. Headless init puts these in secret/langfuse-init, and without
+# printing them the banner offers a URL nobody can get into — the credentials are
+# generated, so there is nothing to guess and nowhere else to look.
+#
+# Consistent with the ArgoCD row, which has always printed its admin password.
+# These are local dev clusters; treat the output accordingly.
+langfuse_admin_login() {
+  local ns="${1:-ml-platform}" email pass
+  email=$(kubectl -n "$ns" get secret langfuse-init \
+    -o jsonpath='{.data.LANGFUSE_INIT_USER_EMAIL}' 2>/dev/null | base64 -d 2>/dev/null) || return 0
+  pass=$(kubectl -n "$ns" get secret langfuse-init \
+    -o jsonpath='{.data.LANGFUSE_INIT_USER_PASSWORD}' 2>/dev/null | base64 -d 2>/dev/null) || return 0
+  [[ -n "$email" && -n "$pass" ]] && printf '%s / %s' "$email" "$pass"
+  return 0
+}
+
 # One row of a URL banner, padded to the box's 77-character interior.
 #
 # printf pads by BYTES, but the banners contain multibyte characters (box-drawing
