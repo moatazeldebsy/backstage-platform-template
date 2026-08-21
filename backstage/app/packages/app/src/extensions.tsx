@@ -344,11 +344,12 @@ function uuidv4(): string {
 }
 
 // ── AI Assistant page ─────────────────────────────────────────────────────────
-// Native chat UI that talks to the platform-assistant KAgent agent via the Backstage
-// proxy (/api/proxy/kagent → kagent-ui:8080).
+// Native chat UI that talks to a KAgent agent via the Backstage proxy
+// (/api/proxy/kagent → kagent-ui:8080). The agent is discovered from
+// GET /api/agents, because --agents makes the installed set selectable.
 //
 // Flow per user turn:
-//   1. POST /a2a/kagent/platform-assistant  (KAgent Next.js route adds auth headers)
+//   1. POST /a2a/kagent/<agent>          (KAgent Next.js route adds auth headers)
 //   2. Poll GET /api/sessions           every 500 ms for up to 12 s — find session
 //   3. Poll GET /api/sessions/<id>      every 1 s for up to 90 s — wait for text
 
@@ -370,12 +371,41 @@ function AiAssistantPage() {
   const configApi = useApi(configApiRef);
   const identityApi = useApi(identityApiRef);
   const [userRef, setUserRef] = useState<string>('');
+  // Which agent to talk to, discovered rather than hardcoded.
+  //
+  // This page used to POST to /a2a/kagent/platform-assistant unconditionally.
+  // Since --agents made the installed set selectable, that is only correct when
+  // "platform" happens to be chosen: `bootstrap-ai.sh --agents idp` installs
+  // idp-assistant and nothing else, and the page then 404s on every message with
+  // no indication why. Ask KAgent what exists instead.
+  const [agents, setAgents] = useState<string[]>([]);
+  const [agent, setAgent] = useState<string>('');
+  const [agentsLoaded, setAgentsLoaded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusText, setStatusText] = useState('');
   // contextId persists the KAgent session across turns so the agent keeps history
   const contextIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const base = configApi.getString('backend.baseUrl');
+    fetchApi
+      .fetch(`${base}/api/proxy/kagent/api/agents`)
+      .then(r => (r.ok ? r.json() : { data: [] }))
+      .then((body: any) => {
+        const names: string[] = (body?.data ?? [])
+          .map((a: any) => a?.agent?.metadata?.name)
+          .filter((n: any): n is string => typeof n === 'string' && n.length > 0)
+          .sort();
+        setAgents(names);
+        // Prefer platform-assistant when present so existing installs behave
+        // exactly as before; otherwise take whatever is actually there.
+        setAgent(names.includes('platform-assistant') ? 'platform-assistant' : (names[0] ?? ''));
+      })
+      .catch(() => { setAgents([]); setAgent(''); })
+      .finally(() => setAgentsLoaded(true));
+  }, [configApi, fetchApi]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<SavedConversation[]>([]);
@@ -411,6 +441,25 @@ function AiAssistantPage() {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading) return;
+    // Refuse to send rather than POST to /a2a/kagent/ and take a 404. The old
+    // behaviour surfaced "KAgent request failed: 404" with nothing to act on.
+    if (!agent) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'user', text },
+        {
+          role: 'assistant',
+          text:
+            'No KAgent agents are installed on this cluster, so there is nothing to chat with.\n\n' +
+            'Install one with:\n' +
+            '  ./scripts/bootstrap-ai.sh --agents idp\n\n' +
+            'Pass the full set you want — re-running prunes agents left out of the list. ' +
+            '`--agents list` prints what is available.',
+        },
+      ]);
+      setInput('');
+      return;
+    }
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text }]);
     setLoading(true);
@@ -440,7 +489,7 @@ function AiAssistantPage() {
       // it well past the session's created_at and break the window check below.
       const sentAt = Date.now();
 
-      const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/platform-assistant`, {
+      const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/${agent}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...identityHeaders },
         body: JSON.stringify({
@@ -640,7 +689,16 @@ function AiAssistantPage() {
 
   return (
     <Page themeId="tool">
-      <Header title="AI Assistant" subtitle="Powered by KAgent · platform-assistant" />
+      <Header
+        title="AI Assistant"
+        subtitle={firstMatch(
+          [
+            [!agentsLoaded, 'Powered by KAgent'],
+            [Boolean(agent), `Powered by KAgent · ${agent}`],
+          ],
+          'Powered by KAgent · no agents installed',
+        )}
+      />
       <Content>
         <Box display="flex" flexDirection="column" height="calc(100vh - 180px)">
           {/* Toolbar */}
@@ -778,6 +836,21 @@ function AiAssistantPage() {
 
           {/* Input */}
           <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+            {agents.length > 1 && (
+              <Box mb={1}>
+                <Typography variant="caption" color="textSecondary">Agent:{' '}</Typography>
+                <select
+                  value={agent}
+                  onChange={e => setAgent(e.target.value)}
+                  style={{ fontSize: 12, padding: '2px 4px' }}
+                  aria-label="KAgent agent to chat with"
+                >
+                  {agents.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </Box>
+            )}
             <TextField
               fullWidth
               variant="outlined"
