@@ -2304,7 +2304,11 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "KAgent UI             http://$(_alb_ai kagent-ui kagent)"
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "IDP Assistant (A2A)   http://$(_alb_ai idp-assistant kagent)"
   [[ "$SKIP_MLFLOW"  == "false" ]] && box_row "MLflow                http://$(_alb_ai mlflow ml-platform)"
-  [[ "$LANGFUSE"     == "true"  ]] && box_row "Langfuse              http://$(_alb_ai langfuse ml-platform)"
+  if [[ "$LANGFUSE" == "true" ]]; then
+    box_row "Langfuse              http://$(_alb_ai langfuse ml-platform)"
+    _lf_login=$(langfuse_admin_login)
+    [[ -n "$_lf_login" ]] && box_row "  └ login             ${_lf_login}"
+  fi
   if [[ "$SKIP_MCP" == "false" ]]; then
     while read -r _d; do
       [[ -z "$_d" ]] && continue
@@ -2316,7 +2320,11 @@ else
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "KAgent UI             http://kagent.idp.local"
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "AI Assistant          http://backstage.idp.local/ai-assistant"
   [[ "$SKIP_MLFLOW"  == "false" ]] && box_row "MLflow                http://mlflow.idp.local"
-  [[ "$LANGFUSE"     == "true"  ]] && box_row "Langfuse              http://langfuse.idp.local"
+  if [[ "$LANGFUSE" == "true" ]]; then
+    box_row "Langfuse              http://langfuse.idp.local"
+    _lf_login=$(langfuse_admin_login)
+    [[ -n "$_lf_login" ]] && box_row "  └ login             ${_lf_login}"
+  fi
   if [[ "$SKIP_MCP" == "false" ]]; then
     while read -r _d; do
       [[ -z "$_d" ]] && continue

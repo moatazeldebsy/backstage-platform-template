@@ -286,6 +286,10 @@ _print_url_banner() {
   # README.md:125 documented a URL this output did not mention.
   if kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q langfuse-web; then
     _ai_rows+=("Langfuse|http://langfuse.idp.local"); _ai_n=$((_ai_n + 1))
+    _lf_login=$(langfuse_admin_login)
+    if [[ -n "$_lf_login" ]]; then
+      _ai_rows+=("  └ login|${_lf_login}"); _ai_n=$((_ai_n + 1))
+    fi
   fi
   while read -r _dep; do
     [[ -z "$_dep" ]] && continue
@@ -307,8 +311,20 @@ _print_url_banner() {
   _optional=()
   kubectl -n argo-workflows get deploy argo-workflows-server &>/dev/null 2>&1 \
     || _optional+=("Argo Workflows (--install-argo-workflows)")
-  kubectl -n kagent get deploy -o name 2>/dev/null | grep -q . \
-    || _optional+=("KAgent + MLflow + Langfuse (./scripts/bootstrap-ai.sh)")
+  # Name only what is genuinely absent. Lumping the three together claimed
+  # Langfuse was not installed while it was listed as installed a few rows above
+  # — bootstrap-ai.sh's --skip-* flags mean any subset can be present.
+  _missing_ai=()
+  kubectl -n kagent get deploy -o name 2>/dev/null | grep -q .            || _missing_ai+=("KAgent")
+  kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q mlflow  || _missing_ai+=("MLflow")
+  kubectl -n ml-platform get deploy -o name 2>/dev/null | grep -q langfuse-web || _missing_ai+=("Langfuse")
+  if (( ${#_missing_ai[@]} > 0 )); then
+    _joined=""
+    for _m in ${_missing_ai[@]+"${_missing_ai[@]}"}; do
+      _joined="${_joined:+${_joined} + }${_m}"
+    done
+    _optional+=("${_joined} (./scripts/bootstrap-ai.sh)")
+  fi
   # No leading separator: one is always printed immediately above this point,
   # either by the Observability section or by the AI/ML section's trailer.
   if (( ${#_optional[@]} > 0 )); then
