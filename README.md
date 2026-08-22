@@ -73,9 +73,15 @@ A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (ser
 | **Local (Kind)** | `git`, `docker`, `kind` ≥ 0.27, `kubectl`, `helm` ≥ 3.14 — `brew install kind kubectl helm docker` on macOS |
 | **AWS** | Everything above, plus `aws` CLI (run `aws configure`), `terraform` ≥ 1.5, `jq` |
 
-**Local machine sizing**: the full stack with Langfuse — the default since `bootstrap-ai.sh` installs it on both targets — is ~90 pods using roughly **4 cores and 11 GB** once settled; passing `--skip-langfuse` takes that down to about **3.5 cores and 9 GB**. Give Docker/Rancher Desktop **10 CPU / 20 GB** to run the default comfortably, or **8 CPU / 16 GB** with `--skip-langfuse` (6 CPU / 12 GB is the working minimum, and it's tight). Short on resources? Narrow the agent set with `--agents` (each agent is one pod), skip the AI/ML layer — it alone is ~2.9 GB — or pass `--skip-obs --skip-policies`.
-
-> These figures are approximate and were measured before [#409](https://github.com/moatazeldebsy/backstage-platform-template/pull/409) gave the Argo Rollouts dashboard CPU limits, which removed a permanently busy-looping core; actual usage is likely lower. Sizing tiers, the symptoms of an under-resourced cluster, and how to trim: [Machine requirements](docs/local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them).
+**Local machine sizing**: measured on an 8 CPU / 13 GB VM (2026-08-22). The core
+platform is **~6.9 GB**; Langfuse adds **~2.2 GB**, KAgent plus one agent
+**~0.5 GB** (each extra agent ~200 MB), MLflow ~0.4 GB. Everything at once is
+**~11.8 GB**, so give Docker/Rancher Desktop **16 GB (24 GB physical)** for the
+full stack, or **13 GB (16 GB physical)** for the core platform plus *one* of
+Langfuse / KAgent / MLflow — which is the realistic ceiling on a 16 GB machine.
+Both Kind nodes share one VM. Below ~200 MB available the API server stops
+answering, so stop adding components under ~1.5 GB spare. Failure thresholds,
+per-layer costs and how to trim: [Machine requirements](docs/local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them).
 
 `go` and Node.js are only needed if you want to build the `idp` CLI / run Backstage outside Docker — `setup.sh` builds the CLI for you automatically if Go is present, and skips it with a warning otherwise. Full checklists: [Local Setup](docs/local-setup.md#prerequisites) · [AWS Deployment Guide](docs/DEPLOYMENT_GUIDE.md#required-tools).
 
