@@ -11,6 +11,8 @@
  *   SONAR_TOKEN            — SonarCloud analysis upload (auto from $SONAR_TOKEN, if set)
  *   SNYK_TOKEN             — Snyk test/monitor (auto from $SNYK_TOKEN, if set)
  *   GCP_SERVICE_ACCOUNT_KEY — GCP service account JSON for Firebase Test Lab (auto from $GCP_SERVICE_ACCOUNT_KEY, if set)
+ *   LT_USERNAME / LT_ACCESS_KEY — LambdaTest device farm + browser grid (auto from $LT_USERNAME / $LT_ACCESS_KEY, if set)
+ *   BROWSERSTACK_* / SAUCE_* — BrowserStack and Sauce Labs device farms (auto, if set)
  *
  * Auto-injected secrets are pulled from the Backstage backend pod's environment
  * (local: docker-compose env file; AWS: K8s secret backstage-secrets). When the
@@ -61,6 +63,12 @@ function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) 
         ['SONAR_TOKEN',             process.env.SONAR_TOKEN],
         ['SNYK_TOKEN',              process.env.SNYK_TOKEN],
         ['GCP_SERVICE_ACCOUNT_KEY', process.env.GCP_SERVICE_ACCOUNT_KEY],
+        ['LT_USERNAME',             process.env.LT_USERNAME],
+        ['LT_ACCESS_KEY',           process.env.LT_ACCESS_KEY],
+        ['BROWSERSTACK_USERNAME',   process.env.BROWSERSTACK_USERNAME],
+        ['BROWSERSTACK_ACCESS_KEY', process.env.BROWSERSTACK_ACCESS_KEY],
+        ['SAUCE_USERNAME',          process.env.SAUCE_USERNAME],
+        ['SAUCE_ACCESS_KEY',        process.env.SAUCE_ACCESS_KEY],
       ];
       for (const [name, value] of autoInject) {
         if (value && !secrets[name]) secrets[name] = value;

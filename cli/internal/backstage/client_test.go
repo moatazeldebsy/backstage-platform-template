@@ -348,5 +348,44 @@ func TestScaffoldTestSuite(t *testing.T) {
 		if strings.Contains(body, "datadogSite") {
 			t.Error("expected no datadogSite when not set")
 		}
+		if strings.Contains(body, "deviceFarm") {
+			t.Error("expected no deviceFarm when not set")
+		}
+	})
+
+	t.Run("forwards deviceFarm for appium suites", func(t *testing.T) {
+		var capturedBody []byte
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodPost:
+				capturedBody = make([]byte, r.ContentLength)
+				r.Body.Read(capturedBody) //nolint:errcheck
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{"id":"task-appium-1"}`)) //nolint:errcheck
+			case http.MethodGet:
+				ssePayload := "data:{\"type\":\"completion\",\"body\":{\"message\":\"Run completed with status: completed\"}}\n\n"
+				w.Header().Set("Content-Type", "text/event-stream")
+				w.Write([]byte(ssePayload)) //nolint:errcheck
+			}
+		}))
+		defer srv.Close()
+		c := NewClient(srv.URL, "")
+		err := c.ScaffoldTestSuite(t.Context(), TestSuiteRequest{
+			Name:        "mobile-suite",
+			TemplateRef: "appium-mobile-suite",
+			Service:     "my-app",
+			GHOrg:       "myorg",
+			DeviceFarm:  "lambdatest",
+		})
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		body := string(capturedBody)
+		// Without this value the template silently falls back to local-emulator,
+		// which is the drift that made the cloud farms unusable before.
+		if !strings.Contains(body, `"deviceFarm":"lambdatest"`) {
+			t.Errorf("expected deviceFarm=lambdatest in request body, got: %s", body)
+		}
 	})
 }

@@ -896,12 +896,17 @@
       "id": "lambdatest",
       "title": "LambdaTest",
       "quadrant": "tools",
-      "description": "Cross-browser cloud testing grid \u2014 evaluate for Playwright/Cypress at scale.",
+      "description": "Cloud testing grid for web and mobile \u2014 Playwright browsers plus real-device Appium/Espresso/XCUITest, wired into the device-farm and e2e templates.",
       "timeline": [
         {
           "moved": 0,
           "ringId": "assess",
           "date": "2026-01-01"
+        },
+        {
+          "moved": 1,
+          "ringId": "trial",
+          "date": "2026-08-22"
         }
       ]
     },

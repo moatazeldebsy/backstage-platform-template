@@ -67,18 +67,23 @@ metadata:
   name: lambdatest
   title: LambdaTest
   description: |
-    Cross-browser cloud testing grid for running Playwright and Cypress suites
-    across 3000+ real browsers and OS combinations. Currently under assessment.
+    Cloud testing grid for both web and mobile. Runs Playwright suites across
+    3000+ real browsers and OS combinations, and Appium / Espresso / XCUITest
+    suites on real mobile hardware. Wired into the platform via the
+    mobile-device-farm, appium-mobile-suite, playwright-e2e-suite and
+    visual-regression-suite templates; credentials are injected automatically.
   tags:
     - e2e
     - cross-browser
     - cloud-testing
+    - mobile
+    - device-farm
   links:
     - title: LambdaTest Dashboard
       url: https://app.lambdatest.com
       icon: dashboard
 spec:
-  type: cross-browser-grid
+  type: device-farm
   owner: qa-team
   system: internal-developer-platform
 ---

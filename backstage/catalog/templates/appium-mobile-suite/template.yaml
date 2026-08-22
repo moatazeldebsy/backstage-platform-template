@@ -117,10 +117,12 @@ spec:
             - local-emulator
             - browserstack
             - sauce-labs
+            - lambdatest
           enumNames:
             - 'Local Emulator (GitHub Actions)'
             - 'BrowserStack (real devices)'
             - 'Sauce Labs (real devices)'
+            - 'LambdaTest (real devices)'
           ui:widget: radio
         deviceMatrix:
           title: Device Matrix
@@ -140,7 +142,7 @@ spec:
         appiumServer:
           title: Appium Server URL
           type: string
-          description: 'Appium server endpoint. Leave blank for local emulator or BrowserStack/Sauce Labs (auto-configured).'
+          description: 'Appium server endpoint. Leave blank for local emulator or any cloud device farm (auto-configured).'
           default: ''
         appBuildCommand:
           title: App Build Command (optional)
@@ -225,6 +227,17 @@ spec:
         keys:
           - SAUCE_USERNAME
           - SAUCE_ACCESS_KEY
+
+    - id: provision-lambdatest-secret
+      name: Provision LambdaTest Credentials Secret
+      if: ${{ parameters.deviceFarm === 'lambdatest' }}
+      action: idp:provision-secret
+      input:
+        name: ${{ parameters.name }}-lambdatest
+        namespace: services-dev
+        keys:
+          - LT_USERNAME
+          - LT_ACCESS_KEY
 
     - id: publish
       name: Publish to GitHub

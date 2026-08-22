@@ -1,16 +1,30 @@
 name: ${{ values.name }} Appium Mobile Tests
 
-# Hosted GitHub runners don't have a mobile device grid, so this workflow
-# runs only on demand or on a schedule. Wire APPIUM_SERVER to your grid
-# (e.g. BrowserStack / Sauce Labs) before triggering.
+{%- if values.deviceFarm === 'local-emulator' %}
+# Hosted GitHub runners have no mobile device grid, so the local-emulator
+# variant runs only on demand or on a schedule.
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 4 * * 1'
+{%- else %}
+# A cloud device farm supplies the devices, which is exactly the constraint that
+# kept this workflow on a weekly cron — so the cloud variants run per pull
+# request as well.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ['**']
+  schedule:
+    - cron: '0 4 * * 1'
+{%- endif %}
 
 env:
   APPIUM_SERVER: '${{ values.appiumServer }}'
   PLATFORM: '${{ values.platform }}'
+  # wdio.config.ts falls back to the value baked in at scaffold time, but setting
+  # it explicitly keeps the workflow readable and lets a re-run override it.
+  DEVICE_FARM: '${{ values.deviceFarm }}'
 
 jobs:
   mobile:
@@ -28,6 +42,7 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+{%- if values.deviceFarm === 'local-emulator' %}
 
       - name: Start Appium server
         run: npx appium &
@@ -36,9 +51,23 @@ jobs:
 
       - name: Wait for Appium
         run: npx wait-on http://localhost:4723/status --timeout 30000
+{%- endif %}
 
       - name: Run mobile tests
         run: npm test
+{%- if values.deviceFarm !== 'local-emulator' %}
+        env:
+{%- if values.deviceFarm === 'browserstack' %}
+          BROWSERSTACK_USERNAME: ${{ '${{ secrets.BROWSERSTACK_USERNAME }}' }}
+          BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}
+{%- elif values.deviceFarm === 'sauce-labs' %}
+          SAUCE_USERNAME: ${{ '${{ secrets.SAUCE_USERNAME }}' }}
+          SAUCE_ACCESS_KEY: ${{ '${{ secrets.SAUCE_ACCESS_KEY }}' }}
+{%- else %}
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+{%- endif %}
+{%- endif %}
 
       - name: Upload results
         uses: actions/upload-artifact@v4

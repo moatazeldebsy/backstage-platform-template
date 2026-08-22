@@ -156,6 +156,8 @@ Manager → External Secrets on EKS.
 | **Jira** | `JIRA_URL` + `JIRA_TOKEN` = Base64(`email:api_token`) | Issues tab renders empty. |
 | **Voyage AI** | `VOYAGE_API_KEY` (free tier: 200M tokens/month) | `/ai-search` returns HTTP 503. Everything else in the AI layer still works |
 | **Firebase Test Lab / GCP** | Service-account JSON, base64 → `GCP_SERVICE_ACCOUNT_KEY` | The mobile device-farm and Flutter test-suite templates scaffold fine but their CI can't authenticate |
+| **LambdaTest** | Username + access key → `LT_USERNAME` / `LT_ACCESS_KEY` | The device-farm, Appium and Playwright templates scaffold fine, but their LambdaTest jobs can't authenticate |
+| **BrowserStack** / **Sauce Labs** | Username + access key → `BROWSERSTACK_*` / `SAUCE_*` | Those device-farm providers scaffold fine but their CI can't authenticate |
 | **Grafana**, **ArgoCD** | — | Auto-populated by `bootstrap-local.sh`; no account needed |
 
 > The screenshots throughout these docs were taken on an instance with several of

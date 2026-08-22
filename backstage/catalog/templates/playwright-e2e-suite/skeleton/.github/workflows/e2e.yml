@@ -57,22 +57,42 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+{%- if values.cloudGrid === 'lambdatest' %}
 
-  # Uncomment to run on LambdaTest cloud grid
-  # Set LT_USERNAME and LT_ACCESS_KEY as repository secrets first.
-  # e2e-lambdatest:
-  #   runs-on: ubuntu-latest
-  #   needs: e2e
-  #   if: github.ref == 'refs/heads/main'
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #     - run: npm ci
-  #     - name: Run on LambdaTest
-  #       run: npx playwright test
-  #       env:
-  #         LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
-  #         LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+  # Runs after the runner-local suite and only on main, so cloud minutes are
+  # spent confirming a merge rather than on every push. Credentials arrive as
+  # repository secrets via the platform's idp:repo:set-secrets action; the grid
+  # endpoint itself is built in playwright.config.ts.
+  e2e-lambdatest:
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+    env:
+      BASE_URL: '${{ values.baseUrl }}'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run E2E tests on LambdaTest
+        run: npx playwright test
+        env:
+          CI: 'true'
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-lambdatest
+          path: playwright-report/
+          retention-days: 30
+{%- endif %}

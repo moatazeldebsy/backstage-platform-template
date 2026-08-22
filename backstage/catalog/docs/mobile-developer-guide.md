@@ -55,14 +55,16 @@ Your repo will contain:
    - `integration_test/<suite-name>/app_test.dart`
    - GitHub Actions workflow (emulator or Firebase Test Lab)
 
-### Appium Mobile Test Suite (BrowserStack / Sauce Labs)
+### Appium Mobile Test Suite (BrowserStack / Sauce Labs / LambdaTest)
 
 1. Go to **Backstage → Create** → **Appium Mobile Test Suite**
-2. Select your **Device Farm**: Local Emulator, BrowserStack, or Sauce Labs
+2. Select your **Device Farm**: Local Emulator, BrowserStack, Sauce Labs, or LambdaTest
 3. Select your **Device Matrix**: Pixel 6 / Samsung S21 / iPhone 14 / Pixel 7
 4. The scaffolder:
    - Scaffolds WebdriverIO + Appium config with multi-device support
-   - Creates a K8s Secret for your BrowserStack / Sauce Labs credentials
+   - Creates a K8s Secret for your device-farm credentials
+   - LambdaTest credentials (`LT_USERNAME` / `LT_ACCESS_KEY`) are also injected
+     into the repo automatically by the platform — nothing to set up by hand
    - Generates CI with parallel execution across selected devices
 
 ## Local Setup
@@ -137,7 +139,13 @@ If you enabled Firebase during scaffolding:
 4. For Flutter: also download `GoogleService-Info.plist` → place in `ios/Runner/`
 5. Push to `main` — Crashlytics will start collecting crashes automatically
 
-## BrowserStack Device Farm
+## Cloud Device Farms
+
+Choosing any cloud farm changes the generated CI: it skips the local Appium
+server, exports that vendor's credentials, and runs per pull request instead of
+on the weekly cron the local-emulator variant uses.
+
+### BrowserStack
 
 When using the **Appium Mobile Test Suite** with BrowserStack:
 
@@ -233,7 +241,10 @@ gh workflow run release.yml -f bump=patch
 
 ## Device Farm Testing
 
-Use the `mobile-device-farm` template to add Firebase TestLab testing to an existing app.
+Use the `mobile-device-farm` template to add cloud device testing to an existing app,
+on either **Firebase Test Lab** or **LambdaTest**. Both share the coverage tiers below;
+the provider only changes which matrix file is used and how results come back.
+LambdaTest additionally offers a **HyperExecute** mode that shards the suite itself.
 
 Device matrices available:
 
@@ -251,6 +262,18 @@ gcloud firebase test android run \
   --test app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
   --device model=Pixel6,version=31,locale=en,orientation=portrait
 ```
+
+```bash
+# Upload a build to LambdaTest manually
+curl -u "$LT_USERNAME:$LT_ACCESS_KEY" \
+  -X POST https://manual-api.lambdatest.com/app/uploadFramework \
+  -F "appFile=@app/build/outputs/apk/debug/app-debug.apk" \
+  -F "type=espresso-android"
+```
+
+`LT_USERNAME` and `LT_ACCESS_KEY` are injected into scaffolded repos by the
+platform. For local use, take them from
+**LambdaTest → Account Settings → Password & Security**.
 
 ---
 

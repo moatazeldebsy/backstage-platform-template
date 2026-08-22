@@ -109,6 +109,19 @@ spec:
           default: 0.2
 
 
+        cloudGrid:
+          title: Cloud Browser Grid
+          type: string
+          enum:
+            - none
+            - lambdatest
+          enumNames:
+            - 'None — run browsers on the GitHub runner'
+            - 'LambdaTest — run on the cloud grid'
+          default: none
+          ui:widget: radio
+          ui:help: "LambdaTest widens real-browser/OS coverage beyond what a hosted runner offers. Credentials (LT_USERNAME / LT_ACCESS_KEY) are injected by the platform — nothing to set up here."
+
     - title: Integrations
       properties:
         pagerdutyServiceId:
@@ -137,6 +150,7 @@ spec:
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           baseUrl: ${{ parameters.baseUrl }}
+          cloudGrid: ${{ parameters.cloudGrid }}
           diffThreshold: ${{ parameters.diffThreshold }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
@@ -155,6 +169,7 @@ spec:
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           baseUrl: ${{ parameters.baseUrl }}
+          cloudGrid: ${{ parameters.cloudGrid }}
           diffThreshold: ${{ parameters.diffThreshold }}
           githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}

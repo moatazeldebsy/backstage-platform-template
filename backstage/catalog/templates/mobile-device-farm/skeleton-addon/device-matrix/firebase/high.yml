@@ -20,3 +20,26 @@ androidDevices:
     version: "28"        # Android 9
     locale: en
     orientation: portrait
+
+# See the note in low.yml — the iOS run reads iosDevices from this same file.
+iosDevices:
+  - model: iphone13pro
+    version: "16.6"
+    locale: en
+    orientation: portrait
+  - model: iphone14
+    version: "16.6"
+    locale: en
+    orientation: portrait
+  - model: iphone14
+    version: "16.6"
+    locale: en
+    orientation: landscape
+  - model: ipad10
+    version: "16.6"
+    locale: en
+    orientation: landscape
+  - model: iphone11pro
+    version: "16.6"
+    locale: en
+    orientation: portrait

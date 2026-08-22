@@ -46,12 +46,22 @@ jobs:
 
       - if: steps.preflight.outputs.skip != 'true'
         run: npm ci
+{%- if values.cloudGrid !== 'lambdatest' %}
       - if: steps.preflight.outputs.skip != 'true'
         run: npx playwright install chromium --with-deps
+{%- endif %}
 
+      # On the LambdaTest grid this replaces the runner-local run rather than
+      # adding a second job: a screenshot baseline captured on one renderer will
+      # not match another, so the suite must run in exactly one place.
       - name: Run visual regression tests
         if: steps.preflight.outputs.skip != 'true'
         run: npm test
+{%- if values.cloudGrid === 'lambdatest' %}
+        env:
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+{%- endif %}
 
       - name: Upload diff artifacts
         uses: actions/upload-artifact@v4

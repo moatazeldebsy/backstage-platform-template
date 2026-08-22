@@ -38,7 +38,9 @@ const selectedDevices = (${{ JSON.stringify(values.deviceMatrix) }} as string[])
   .map((d) => ({ ...DEVICE_PROFILES[d], 'appium:app': APP_PATH }))
   .filter(Boolean);
 
-// BrowserStack / Sauce Labs cloud capabilities
+// Cloud device-farm capabilities. Each vendor reads its credentials from a
+// different vendor-prefixed options block; the platform injects all of them as
+// repository secrets, and the CI workflow exports only the pair this suite needs.
 const cloudCapabilities = selectedDevices.map((device) => {
   if (DEVICE_FARM === 'browserstack') {
     return {
@@ -64,6 +66,36 @@ const cloudCapabilities = selectedDevices.map((device) => {
       },
     };
   }
+  if (DEVICE_FARM === 'lambdatest') {
+    // DEVICE_PROFILES uses BrowserStack's vendor-prefixed names ("Google Pixel 6",
+    // "Samsung Galaxy S21"). LambdaTest names the same hardware without the
+    // manufacturer ("Pixel 6", "Galaxy S21") and rejects the prefixed form, so
+    // normalise rather than duplicating the whole profile table.
+    const ltDevice = {
+      ...device,
+      'appium:deviceName': (device as Record<string, string>)['appium:deviceName']?.replace(
+        /^(Google|Samsung|Apple) /,
+        '',
+      ),
+    };
+    return {
+      ...ltDevice,
+      'LT:Options': {
+        user: process.env.LT_USERNAME,
+        accessKey: process.env.LT_ACCESS_KEY,
+        project: '${{ values.name }}',
+        build: '${{ values.name }}-' + (process.env.GITHUB_SHA ?? 'local'),
+        name: 'Appium Mobile Suite',
+        // Real hardware, not LambdaTest's emulator pool — the whole point of
+        // choosing a device farm over the local-emulator option.
+        isRealMobile: true,
+        w3c: true,
+        deviceLog: true,
+        network: true,
+        visual: true,
+      },
+    };
+  }
   return device;
 });
 
@@ -82,7 +114,9 @@ const hostname =
     ? 'hub-cloud.browserstack.com'
     : DEVICE_FARM === 'sauce-labs'
       ? 'ondemand.us-west-1.saucelabs.com'
-      : '127.0.0.1';
+      : DEVICE_FARM === 'lambdatest'
+        ? 'mobile-hub.lambdatest.com'
+        : '127.0.0.1';
 
 export const config: WebdriverIO.Config = {
   runner: 'local',

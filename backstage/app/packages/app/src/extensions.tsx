@@ -21,7 +21,7 @@ import { CATALOG_FILTER_EXISTS } from '@backstage/catalog-client';
 import {
   showScorecard, showSecurity, showDatadog, showTrivy, showOnCall,
   showGrafana, showJira, showDora, showBudget, showSlo, showLangfuse,
-  showIncidents,
+  showIncidents, showLambdaTest,
 } from './entityFilters';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
 import {
@@ -1909,6 +1909,299 @@ const datadogEntityContent = EntityContentBlueprint.make({
     title: 'Datadog',
     filter: showDatadog,
     loader: async () => <DatadogEntityContent />,
+  },
+});
+
+// ── LambdaTest tab ──────────────────────────────────────────────────────────
+// Reads the lambdatest.com/project-name annotation and fetches recent runs via
+// the /lambdatest (browser grid) and /lambdatest-mobile (device farm) proxies —
+// LT_BASIC_AUTH never reaches the browser. Both proxies default to a
+// deliberately invalid credential, so an unconfigured platform gets a 401 and
+// falls back to demo data, exactly like the Datadog tab above.
+
+interface LambdaTestBuild {
+  build_id: number | string;
+  name: string;
+  status_ind: string;
+  platform?: string;
+  device?: string;
+  duration?: number;
+}
+
+interface LambdaTestSession {
+  test_id: number | string;
+  name: string;
+  status_ind: string;
+  browser?: string;
+  platform?: string;
+}
+
+// Demo fixtures, shaped exactly like the real API responses so the render path is
+// identical — same reasoning as DEMO_DATADOG_* above.
+//
+// GET /mobile-automation/api/v1/builds returns { data: [ ... ] }.
+const DEMO_LAMBDATEST_BUILDS: LambdaTestBuild[] = [
+  { build_id: 40122, name: 'checkout-app #218', status_ind: 'completed', platform: 'Android', device: 'Pixel 6-13', duration: 842 },
+  { build_id: 40118, name: 'checkout-app #217', status_ind: 'completed', platform: 'Android', device: 'Galaxy S21-12', duration: 795 },
+  { build_id: 40109, name: 'checkout-app #216', status_ind: 'failed', platform: 'iOS', device: 'iPhone 14-16', duration: 631 },
+];
+
+// GET /automation/api/v1/sessions returns { data: [ ... ] }.
+const DEMO_LAMBDATEST_SESSIONS: LambdaTestSession[] = [
+  { test_id: 90311, name: 'checkout flow — happy path', status_ind: 'passed', browser: 'Chrome 126', platform: 'Windows 11' },
+  { test_id: 90310, name: 'checkout flow — expired card', status_ind: 'passed', browser: 'Chrome 126', platform: 'Windows 11' },
+  { test_id: 90309, name: 'visual baseline — cart', status_ind: 'failed', browser: 'Safari 17', platform: 'macOS Ventura' },
+];
+
+// Same rule as Datadog: fall back to demo data when the integration is absent or
+// the credentials are rejected, never when LambdaTest itself is broken — a 5xx is
+// a real outage and dressing it up as demo data would hide it.
+const isLambdaTestUnconfigured = (status: number) =>
+  status === 401 || status === 403 || status === 404;
+
+const ltStatusColor = (status: string) =>
+  firstMatch(
+    [
+      [['completed', 'passed'].includes(status), '#4caf50'],
+      [['failed', 'error', 'lambda_error', 'aborted'].includes(status), '#f44336'],
+      [['running', 'queued', 'initiated'].includes(status), '#2196f3'],
+    ],
+    '#9e9e9e',
+  );
+
+/** Shared fetch+demo-fallback wiring for both LambdaTest cards. */
+function useLambdaTestData<T>(path: string, demoData: T[]) {
+  const fetchApi = useApi(fetchApiRef);
+  const configApi = useApi(configApiRef);
+  const [rows, setRows] = useState<T[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [demo, setDemo] = useState(false);
+
+  useEffect(() => {
+    const baseUrl = configApi.getString('backend.baseUrl');
+    fetchApi
+      .fetch(`${baseUrl}${path}`)
+      .then(async res => {
+        if (!res.ok) {
+          if (isLambdaTestUnconfigured(res.status)) {
+            setRows(demoData); setDemo(true); setLoading(false);
+            return;
+          }
+          throw new Error(`LambdaTest: ${res.status}`);
+        }
+        const body = await res.json();
+        setRows(Array.isArray(body) ? body : body.data ?? []);
+        setLoading(false);
+      })
+      // A network-level rejection means the proxy endpoint is not configured at
+      // all, which is the commonest case on a fresh install.
+      .catch((err: Error) => {
+        if (err instanceof TypeError) {
+          setRows(demoData); setDemo(true);
+        } else {
+          setError(err.message);
+        }
+        setLoading(false);
+      });
+    // demoData is a module-level constant; listing it would not change identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchApi, configApi, path]);
+
+  return { rows, loading, error, demo };
+}
+
+function LambdaTestBuildsCard({ project }: { project: string }) {
+  const { rows, loading, error, demo } = useLambdaTestData<LambdaTestBuild>(
+    `/api/proxy/lambdatest-mobile/mobile-automation/api/v1/builds?limit=10`,
+    DEMO_LAMBDATEST_BUILDS,
+  );
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        Device Farm Builds — <code>{project}</code>
+        {demo && <DemoChip />}
+      </Typography>
+      <Paper style={{ padding: 16 }}>
+        {loading && <Progress />}
+        {!loading && error && (
+          <Typography variant="body2" color="textSecondary">
+            Unable to load LambdaTest builds: <strong>{error}</strong>. Verify
+            <code> LT_BASIC_AUTH</code> is set on the Backstage backend.
+            <Box mt={1}>
+              <Link href="https://appautomation.lambdatest.com/build" target="_blank" rel="noopener">
+                Open in LambdaTest ↗
+              </Link>
+            </Box>
+          </Typography>
+        )}
+        {!loading && !error && rows && (
+          <Box>
+            {rows.length === 0 && (
+              <Typography variant="body2" color="textSecondary">
+                No device-farm builds yet. Run the <strong>Mobile Device Farm</strong> template
+                with provider <em>LambdaTest</em> to add one.
+              </Typography>
+            )}
+            {rows.length > 0 && (
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Build</TableCell>
+                      <TableCell>Platform</TableCell>
+                      <TableCell>Device</TableCell>
+                      <TableCell>Duration</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map(b => (
+                      <TableRow key={b.build_id}>
+                        <TableCell>{b.name}</TableCell>
+                        <TableCell>{b.platform ?? '—'}</TableCell>
+                        <TableCell><code>{b.device ?? '—'}</code></TableCell>
+                        <TableCell>{b.duration ? `${Math.round(b.duration / 60)}m` : '—'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={b.status_ind}
+                            style={{ backgroundColor: ltStatusColor(b.status_ind), color: 'white' }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            )}
+            <Box mt={1}>
+              <Link href="https://appautomation.lambdatest.com/build" target="_blank" rel="noopener">
+                Open in LambdaTest ↗
+              </Link>
+            </Box>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function LambdaTestSessionsCard({ project }: { project: string }) {
+  const { rows, loading, error, demo } = useLambdaTestData<LambdaTestSession>(
+    `/api/proxy/lambdatest/automation/api/v1/sessions?limit=10`,
+    DEMO_LAMBDATEST_SESSIONS,
+  );
+
+  return (
+    <Box mb={3}>
+      <Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+        Browser Grid Sessions — <code>{project}</code>
+        {demo && <DemoChip />}
+      </Typography>
+      <Paper style={{ padding: 16 }}>
+        {loading && <Progress />}
+        {!loading && error && (
+          <Typography variant="body2" color="textSecondary">
+            Unable to load LambdaTest sessions: <strong>{error}</strong>.
+            <Box mt={1}>
+              <Link href="https://automation.lambdatest.com/build" target="_blank" rel="noopener">
+                Open in LambdaTest ↗
+              </Link>
+            </Box>
+          </Typography>
+        )}
+        {!loading && !error && rows && (
+          <Box>
+            {rows.length === 0 && (
+              <Typography variant="body2" color="textSecondary">
+                No grid sessions yet. Re-run the Playwright or visual-regression template
+                with <strong>Cloud Browser Grid</strong> set to <em>LambdaTest</em>.
+              </Typography>
+            )}
+            {rows.length > 0 && (
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Test</TableCell>
+                      <TableCell>Browser</TableCell>
+                      <TableCell>Platform</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map(t => (
+                      <TableRow key={t.test_id}>
+                        <TableCell>{t.name}</TableCell>
+                        <TableCell>{t.browser ?? '—'}</TableCell>
+                        <TableCell>{t.platform ?? '—'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={t.status_ind}
+                            style={{ backgroundColor: ltStatusColor(t.status_ind), color: 'white' }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            )}
+            <Box mt={1}>
+              <Link href="https://automation.lambdatest.com/build" target="_blank" rel="noopener">
+                Open in LambdaTest ↗
+              </Link>
+            </Box>
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function LambdaTestEntityContent() {
+  const { entity } = useEntity();
+  const annotations = entity.metadata.annotations ?? {};
+  const project = annotations['lambdatest.com/project-name'];
+  const configured = Boolean(project);
+
+  // Same reasoning as the Datadog tab: unannotated entities still render the real
+  // layout against a placeholder project rather than an empty panel that teaches
+  // nobody what the tab is for.
+  const effectiveProject = project || entity.metadata.name;
+
+  return (
+    <Content>
+      {!configured && (
+        <Box mb={3}>
+          <Paper style={{ padding: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+            <Typography variant="body2" style={{ color: '#7c6000' }}>
+              📱 <strong>Demo data</strong> — this entity has no
+              <code> lambdatest.com/project-name</code> annotation, so the panels below show
+              representative values. Run the <strong>Mobile Device Farm</strong> template with
+              provider <em>LambdaTest</em>, or one of the test-suite templates with a cloud
+              grid, to wire up real runs.
+              <Box mt={1}><Link href="/create" target="_self">Open scaffolder ↗</Link></Box>
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+      <LambdaTestBuildsCard project={effectiveProject} />
+      <LambdaTestSessionsCard project={effectiveProject} />
+    </Content>
+  );
+}
+
+const lambdaTestEntityContent = EntityContentBlueprint.make({
+  name: 'lambdatest',
+  params: {
+    path: '/lambdatest',
+    title: 'LambdaTest',
+    filter: showLambdaTest,
+    loader: async () => <LambdaTestEntityContent />,
   },
 });
 
@@ -7760,6 +8053,7 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     scorecardEntityContent,
     securityEntityContent,
     datadogEntityContent,
+    lambdaTestEntityContent,
     trivyEntityContent,
     pagerDutyEntityContent,
     incidentsEntityContent,

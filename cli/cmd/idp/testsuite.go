@@ -68,6 +68,7 @@ var (
 	// appium
 	tsPlatform     string
 	tsAppiumServer string
+	tsDeviceFarm   string
 
 	// chaos
 	tsExperiments   string
@@ -169,6 +170,7 @@ func init() {
 	// appium
 	f.StringVar(&tsPlatform, "platform", "android", "appium: mobile platform (android|ios)")
 	f.StringVar(&tsAppiumServer, "appium-server", "http://localhost:4723", "appium: Appium server URL")
+	f.StringVar(&tsDeviceFarm, "device-farm", "local-emulator", "appium: device farm (local-emulator|browserstack|sauce-labs|lambdatest)")
 
 	// chaos
 	f.StringVar(&tsExperiments, "experiments", "pod-failure,network-latency", "chaos: comma-separated experiment types")
@@ -193,6 +195,15 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 	if _, ok := templateRef[tsType]; !ok {
 		return fmt.Errorf("unknown --type %q; supported: playwright k6 pact newman zap datadog visual accessibility cucumber appium chaos mutation testcontainers unit component iac flutter-integration deepeval", tsType)
 	}
+	// Catch a bad --device-farm here rather than emitting a wdio.config.ts that
+	// points at a hub that does not exist and only fails in CI.
+	if tsType == "appium" {
+		switch tsDeviceFarm {
+		case "local-emulator", "browserstack", "sauce-labs", "lambdatest":
+		default:
+			return fmt.Errorf("unknown --device-farm %q; supported: local-emulator browserstack sauce-labs lambdatest", tsDeviceFarm)
+		}
+	}
 
 	cfg := scaffold.TestSuiteConfig{
 		Name:          tsName,
@@ -216,6 +227,7 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		WCAGLevel:     tsWCAGLevel,
 		Platform:      tsPlatform,
 		AppiumServer:  tsAppiumServer,
+		DeviceFarm:    tsDeviceFarm,
 		Experiments:   tsExperiments,
 		ChaosDuration: tsChaosDuration,
 		MutationScore: tsMutationScore,
@@ -247,6 +259,7 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 				ConsumerName: tsConsumer,
 				ProviderName: tsProvider,
 				DDSite:       tsDDSite,
+				DeviceFarm:   tsDeviceFarm,
 			})
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")

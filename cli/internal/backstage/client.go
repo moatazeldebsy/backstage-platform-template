@@ -140,6 +140,7 @@ type TestSuiteRequest struct {
 	ConsumerName string // pact only
 	ProviderName string // pact only
 	DDSite       string // datadog only
+	DeviceFarm   string // appium only
 }
 
 // ScaffoldTestSuite creates a scaffolder task for a test suite template.
@@ -160,6 +161,9 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 	}
 	if req.DDSite != "" {
 		values["datadogSite"] = req.DDSite
+	}
+	if req.DeviceFarm != "" {
+		values["deviceFarm"] = req.DeviceFarm
 	}
 	payload := taskPayload{
 		TemplateRef: "template:default/" + req.TemplateRef,

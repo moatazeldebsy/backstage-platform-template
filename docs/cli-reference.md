@@ -112,7 +112,7 @@ Scaffold a QA/testing suite. Supports 18 test types.
 | `visual` | Screenshot regression | `--threshold` (0.2) |
 | `accessibility` | WCAG a11y audit | `--wcag` (wcag2a\|wcag2aa\|wcag21aa\|wcag22aa) |
 | `cucumber` | BDD Gherkin scenarios | — |
-| `appium` | Mobile UI tests | `--platform` (android\|ios), `--appium-server` |
+| `appium` | Mobile UI tests | `--platform` (android\|ios), `--appium-server`, `--device-farm` (local-emulator\|browserstack\|sauce-labs\|lambdatest) |
 | `chaos` | Chaos Mesh experiments | `--experiments`, `--chaos-duration` (1m) |
 | `mutation` | Stryker mutation testing | `--score` (70), `--test-runner` (jest\|mocha\|jasmine) |
 | `testcontainers` | Integration tests with containers | `--containers` (postgres) |

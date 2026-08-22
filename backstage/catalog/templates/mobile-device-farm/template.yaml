@@ -4,12 +4,13 @@ metadata:
   name: mobile-device-farm
   annotations:
     backstage.io/techdocs-ref: dir:.
-  title: Mobile Device Farm (Firebase Test Lab)
-  description: Add Firebase Test Lab device-farm testing to an existing mobile app — runs Espresso, XCUITest, or Flutter integration tests across a configurable device matrix
+  title: Mobile Device Farm
+  description: Add cloud device-farm testing to an existing mobile app — runs Espresso, XCUITest, or Flutter integration tests across a configurable real-device matrix on Firebase Test Lab or LambdaTest
   tags:
     - testing
     - devicefarm
     - firebase
+    - lambdatest
     - mobile
     - e2e
     - v1
@@ -35,11 +36,27 @@ spec:
 
     - title: Test Configuration
       required:
+        - provider
         - platform
         - testFramework
         - deviceCoverage
-        - firebaseProjectId
       properties:
+        provider:
+          title: Device Farm Provider
+          type: string
+          enum:
+            - firebase-test-lab
+            - lambdatest
+            - browserstack
+            - sauce-labs
+          enumNames:
+            - Firebase Test Lab (Google Cloud)
+            - LambdaTest (real-device cloud)
+            - BrowserStack App Automate (real-device cloud)
+            - Sauce Labs (real-device cloud, via saucectl)
+          default: firebase-test-lab
+          ui:widget: radio
+          ui:help: "Only Firebase Test Lab needs anything set up by you (a GCP project with Test Lab enabled). The three device clouds need no project — the platform injects their credentials into the repo for you."
         platform:
           title: Platform
           type: string
@@ -79,10 +96,42 @@ spec:
             - Medium — 3 devices (~15 min)
             - High — 5 devices including tablet (~30 min)
           default: medium
-        firebaseProjectId:
-          title: Firebase Project ID
-          type: string
-          description: "Google Cloud / Firebase project ID where Test Lab is enabled"
+      dependencies:
+        provider:
+          oneOf:
+            - properties:
+                provider:
+                  enum:
+                    - firebase-test-lab
+                firebaseProjectId:
+                  title: Firebase Project ID
+                  type: string
+                  description: "Google Cloud / Firebase project ID where Test Lab is enabled"
+              required:
+                - firebaseProjectId
+            - properties:
+                provider:
+                  enum:
+                    - browserstack
+                    - sauce-labs
+            - properties:
+                provider:
+                  enum:
+                    - lambdatest
+                executionMode:
+                  title: Execution Mode
+                  type: string
+                  enum:
+                    - device-grid
+                    - hyperexecute
+                  enumNames:
+                    - Device Grid — upload the build and run it on the device matrix
+                    - HyperExecute — LambdaTest orchestrates and shards the suite
+                  default: device-grid
+                  ui:widget: radio
+                  ui:help: "Device Grid is the direct equivalent of Test Lab. HyperExecute adds a hyperexecute.yaml the CLI drives instead, and is worth it for large suites."
+              required:
+                - executionMode
 
     - title: Repository
       required:
@@ -107,11 +156,42 @@ spec:
         url: ./skeleton-addon
         values:
           targetService: ${{ parameters.targetService }}
+          provider: ${{ parameters.provider }}
           platform: ${{ parameters.platform }}
           testFramework: ${{ parameters.testFramework }}
           deviceCoverage: ${{ parameters.deviceCoverage }}
           firebaseProjectId: ${{ parameters.firebaseProjectId }}
+          executionMode: ${{ parameters.executionMode }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    # HyperExecute needs its own config file, and only in that mode — a
+    # hyperexecute.yaml sitting in a repo that never runs it is just confusing.
+    # Second fetch:template with an `if:` rather than a conditional filename,
+    # matching the skeleton / skeleton-addon dual-fetch the QA templates use.
+    - id: fetch-hyperexecute
+      name: Fetch HyperExecute Config
+      if: ${{ parameters.provider === 'lambdatest' and parameters.executionMode === 'hyperexecute' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-hyperexecute
+        values:
+          platform: ${{ parameters.platform }}
+          testFramework: ${{ parameters.testFramework }}
+          deviceCoverage: ${{ parameters.deviceCoverage }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    # saucectl owns the Sauce device list, so that provider needs an extra file.
+    # Same `if:`-guarded second fetch as the HyperExecute config above.
+    - id: fetch-saucelabs
+      name: Fetch Sauce Labs Config
+      if: ${{ parameters.provider === 'sauce-labs' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-saucelabs
+        values:
+          platform: ${{ parameters.platform }}
+          deviceCoverage: ${{ parameters.deviceCoverage }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
     - id: open-pr
@@ -119,22 +199,40 @@ spec:
       action: publish:github:pull-request
       input:
         repoUrl: ${{ parameters.repoUrl }}
-        title: "feat: add Firebase Test Lab device-farm (${{ parameters.platform }}, ${{ parameters.deviceCoverage }} coverage)"
-        branchName: feat/device-farm-${{ parameters.platform }}-${{ parameters.deviceCoverage }}
+        title: "feat: add ${{ parameters.provider }} device-farm (${{ parameters.platform }}, ${{ parameters.deviceCoverage }} coverage)"
+        branchName: feat/device-farm-${{ parameters.provider }}-${{ parameters.platform }}-${{ parameters.deviceCoverage }}
         description: |
-          Adds Firebase Test Lab device-farm testing for **${{ parameters.platform }}** using **${{ parameters.testFramework }}** across a **${{ parameters.deviceCoverage }}** device matrix.
+          Adds **${{ parameters.provider }}** device-farm testing for **${{ parameters.platform }}** using **${{ parameters.testFramework }}** across a **${{ parameters.deviceCoverage }}** device matrix.
 
           ### What's included
           - GitHub Actions workflow: `.github/workflows/device-farm.yml`
-          - Device matrices: `device-matrix/low.yml`, `medium.yml`, `high.yml`
+          - Device matrices: `device-matrix/firebase/*.yml` (Firebase) and `device-matrix/lambdatest/*.json` (LambdaTest)
 
           ### Next steps
+          {% if parameters.provider === 'firebase-test-lab' %}
           1. Enable Firebase Test Lab in project `${{ parameters.firebaseProjectId }}`.
-          2. `GCP_SERVICE_ACCOUNT_KEY` is auto-injected from the platform if `GCP_SERVICE_ACCOUNT_KEY` is set in `local/backstage/.env` — verify it was set by the step below.
+          2. `GCP_SERVICE_ACCOUNT_KEY` is auto-injected from the platform when it is set in `local/backstage/.env` (local) or the `backstage-secrets` secret (AWS) — the step below reports whether it was.
           3. Merge this PR — tests will run on the next push/PR.
+          {% elif parameters.provider === 'lambdatest' %}
+          1. `LT_USERNAME` and `LT_ACCESS_KEY` are auto-injected from the platform when they are set in `local/backstage/.env` (local) or the `backstage-secrets` secret (AWS) — the step below reports whether they were. Nothing to create on the LambdaTest side.
+          2. Tune `device-matrix/lambdatest/${{ parameters.deviceCoverage }}.json` if you need different devices.
+          3. Merge this PR — tests will run on the next push/PR.
+          {% elif parameters.provider === 'browserstack' %}
+          1. `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY` are auto-injected from the platform — the step below reports whether they were. Nothing to create on the BrowserStack side.
+          2. Tune `device-matrix/browserstack/${{ parameters.deviceCoverage }}.json` if you need different devices.
+          3. Merge this PR — tests will run on the next push/PR.
+          {% else %}
+          1. `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` are auto-injected from the platform — the step below reports whether they were. Nothing to create on the Sauce Labs side.
+          2. Sauce is driven by `saucectl`, so its devices live in `.sauce/config.yml` rather than under `device-matrix/` — edit that file to change the matrix.
+          3. Merge this PR — tests will run on the next push/PR.
+          {% endif %}
 
+    # `secrets: {}` is deliberate, not a stub: idp:repo:set-secrets injects the
+    # platform-wide credentials (GCP_SERVICE_ACCOUNT_KEY, LT_USERNAME,
+    # LT_ACCESS_KEY) from the Backstage backend's own environment, so there is
+    # nothing for the template to pass in.
     - id: inject-secrets
-      name: Inject GCP credentials into repo secrets
+      name: Inject device-farm credentials into repo secrets
       action: idp:repo:set-secrets
       input:
         repoUrl: ${{ parameters.repoUrl }}

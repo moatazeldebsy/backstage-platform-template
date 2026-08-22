@@ -46,6 +46,8 @@ export const ANNOTATION = {
   MODEL_NAME: 'idp.io/model-name',
   // Cost
   COST_BUDGET: 'idp.io/cost-budget-monthly-usd',
+  // LambdaTest device farm / browser grid
+  LAMBDATEST_PROJECT: 'lambdatest.com/project-name',
 } as const;
 
 /** spec.type values that represent an AI/ML workload. */
@@ -164,6 +166,26 @@ export const showIncidents = (e: Entity): boolean =>
  * never is.
  */
 export const showDatadog = (e: Entity): boolean => isDeployed(e);
+
+/**
+ * Mirrors the Datadog exception rather than the general annotation rule: the tab
+ * falls back to demo data, so showing it on anything that could plausibly have
+ * device-farm or grid runs is useful, while an annotation-only gate would hide it
+ * from exactly the services someone is trying to onboard.
+ *
+ * Deliberately not `isDeployed`: a mobile app is never deployed to Kubernetes, so
+ * the Datadog predicate would exclude the entities this tab exists for.
+ */
+export const showLambdaTest = (e: Entity): boolean =>
+  // Component-only, like every other predicate here. Without this the tag branch
+  // below matches the "mobile" Domain, the android-team/ios-team Groups and the
+  // scaffolder Templates, none of which can ever have a device-farm run.
+  isComponent(e) &&
+  (hasAnnotation(e, ANNOTATION.LAMBDATEST_PROJECT) ||
+    isAnyType(e, 'mobile', 'test-suite') ||
+    (e.metadata.tags ?? []).some(t =>
+      ['mobile', 'e2e', 'appium', 'playwright', 'devicefarm'].includes(t.toLowerCase()),
+    ));
 
 export const showLangfuse = (e: Entity): boolean =>
   isComponent(e) &&

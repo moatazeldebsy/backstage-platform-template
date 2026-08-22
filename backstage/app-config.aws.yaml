@@ -204,6 +204,22 @@ proxy:
       changeOrigin: true
       headers:
         Authorization: token ${SNYK_TOKEN}
+    # LambdaTest — device farm (mobile-api) and browser grid (api) are separate
+    # hosts, so they need separate endpoints rather than one with a pathRewrite.
+    # The default is a deliberately invalid credential: unset, LambdaTest replies
+    # 401 and the entity tab falls back to demo data, matching /langfuse above.
+    /lambdatest:
+      target: https://api.lambdatest.com
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Basic ${LT_BASIC_AUTH:-bm90LWNvbmZpZ3VyZWQ=}
+    /lambdatest-mobile:
+      target: https://mobile-api.lambdatest.com
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Basic ${LT_BASIC_AUTH:-bm90LWNvbmZpZ3VyZWQ=}
     /datadog:
       target: https://api.datadoghq.eu
       allowedMethods: ['GET']
