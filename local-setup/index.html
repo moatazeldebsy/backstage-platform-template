@@ -907,6 +907,33 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#adding-it-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding it up
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-thresholds-that-actually-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      The thresholds that actually matter
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vm-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      VM sizing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#symptoms-of-an-under-resourced-cluster" class="md-nav__link">
     <span class="md-ellipsis">
       Symptoms of an under-resourced cluster
@@ -2399,8 +2426,8 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 <p><strong>macOS ARM64 note</strong>: The cluster is pinned to K8s <strong>1.33.1</strong> (<code>kindest/node:v1.33.1</code>) — tested stable on macOS ARM64 with Docker Desktop.</p>
 </blockquote>
 <h2 id="machine-requirements-and-what-to-do-if-you-dont-have-them">Machine requirements — and what to do if you don't have them<a class="headerlink" href="#machine-requirements-and-what-to-do-if-you-dont-have-them" title="Permanent link">&para;</a></h2>
-<p>The full platform is ~90 pods. What it actually consumes once everything has
-settled (measured with <code>kubectl top</code>, not estimated):</p>
+<p>The full platform is ~90 pods. What it actually consumes once settled, measured
+with <code>kubectl top</code> on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-22):</p>
 <table>
 <thead>
 <tr>
@@ -2414,14 +2441,14 @@ settled (measured with <code>kubectl top</code>, not estimated):</p>
 <tr>
 <td>Kubernetes itself (<code>kube-system</code>, ingress, storage)</td>
 <td>always</td>
-<td align="right">~780m</td>
-<td align="right">~1.9 GB</td>
+<td align="right">~630m</td>
+<td align="right">~1.5 GB</td>
 </tr>
 <tr>
 <td>Observability (Prometheus, Grafana, OpenCost)</td>
 <td><code>bootstrap-local.sh</code></td>
-<td align="right">~650m</td>
-<td align="right">~1.6 GB</td>
+<td align="right">~280m</td>
+<td align="right">~1.2 GB</td>
 </tr>
 <tr>
 <td>↳ Loki + Promtail + Tempo</td>
@@ -2432,91 +2459,190 @@ settled (measured with <code>kubectl top</code>, not estimated):</p>
 <tr>
 <td>GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts)</td>
 <td><code>bootstrap-local.sh</code></td>
-<td align="right">~310m</td>
-<td align="right">~0.8 GB</td>
+<td align="right">~170m</td>
+<td align="right">~1.1 GB</td>
 </tr>
 <tr>
-<td>Your services (<code>services-dev</code>)</td>
+<td>Your services + the 8 MCP servers (<code>services-dev</code>)</td>
 <td><code>bootstrap-local.sh</code></td>
-<td align="right">~200m</td>
+<td align="right">~105m</td>
+<td align="right">~0.35 GB</td>
+</tr>
+<tr>
+<td>VM overhead (kubelet, containerd, guest OS)</td>
+<td>—</td>
+<td align="right">—</td>
+<td align="right">~2.3 GB</td>
+</tr>
+<tr>
+<td><strong>Langfuse (6 pods)</strong></td>
+<td><code>bootstrap-ai.sh</code> (on by default)</td>
+<td align="right">~400m</td>
+<td align="right"><strong>~2.2 GB</strong></td>
+</tr>
+<tr>
+<td><strong>KAgent runtime + 1 agent</strong></td>
+<td><code>bootstrap-ai.sh</code></td>
+<td align="right">~40m</td>
+<td align="right">~0.5 GB</td>
+</tr>
+<tr>
+<td>↳ each additional agent</td>
+<td><code>--agents</code></td>
+<td align="right">~5m</td>
+<td align="right"><strong>~200 MB</strong></td>
+</tr>
+<tr>
+<td>MLflow</td>
+<td><code>bootstrap-ai.sh</code></td>
+<td align="right">~50m</td>
 <td align="right">~0.4 GB</td>
 </tr>
 <tr>
-<td><strong>AI/ML (KAgent, MLflow, MCP servers)</strong></td>
+<td>Argo Workflows</td>
 <td><code>bootstrap-ai.sh</code></td>
-<td align="right">~300m</td>
-<td align="right"><strong>~2.9 GB</strong></td>
-</tr>
-<tr>
-<td><strong>Langfuse (LLM observability, 6 pods)</strong></td>
-<td><code>bootstrap-ai.sh</code> (on by default)</td>
-<td align="right">~500m</td>
-<td align="right"><strong>~2.4 GB</strong></td>
-</tr>
-<tr>
-<td><strong>Total, everything on</strong></td>
-<td></td>
-<td align="right"><strong>~4.1 cores</strong></td>
-<td align="right"><strong>~11.4 GB</strong></td>
+<td align="right">~30m</td>
+<td align="right">~0.15 GB</td>
 </tr>
 </tbody>
 </table>
-<p>Langfuse now installs by default on local as well as AWS, so the local stack
-matches what you ship — the AI Observability page and every MCP server's tracing
-have a real backend on both targets. Budget for it: that last row is the single
-most expensive layer after core Kubernetes, and <code>langfuse-web</code> will not run under
-a 1 GB limit (Node sizes its heap from the container limit and OOMs at ~503 MB;
-2 GB is the floor).</p>
-<p>Read the total honestly before you run it. <strong>~11.4 GB against a 13 GB VM leaves
-almost nothing spare</strong>, and on a 6-core allocation the startup burst is what
-hurts, not the steady state — several charts' <code>--wait</code> timeouts can expire while
-images are still pulling on a slow link, which fails the run on timing rather
-than on anything being wrong. If you do not need LLM tracing, run
-<code>./scripts/bootstrap-ai.sh --skip-langfuse</code> for a materially lighter cluster.</p>
-<p>Give the container VM (Docker Desktop → Settings → Resources, or Rancher Desktop
-→ Virtual Machine) at least:</p>
+<p>Two numbers dominate and are worth knowing by name: inside Langfuse,
+<code>langfuse-clickhouse</code> is ~736 MB and <code>langfuse-web</code> ~908 MB. <code>langfuse-web</code> will
+not run under a 1 GB limit at all — Node sizes its heap from the container limit
+and OOMs at ~503 MB, so 2 GB is the floor.</p>
+<p><strong>Both Kind nodes share one VM.</strong> <code>free -m</code> inside either node reports the whole
+VM, not a per-node slice, so "the worker has 13 GB" is not a second 13 GB.</p>
+<h3 id="adding-it-up">Adding it up<a class="headerlink" href="#adding-it-up" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Selection</th>
+<th align="right">Memory</th>
+<th>Fits in a 13 GB VM?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Core only (<code>bootstrap-local.sh</code>)</td>
+<td align="right">~6.9 GB</td>
+<td>yes, comfortably</td>
+</tr>
+<tr>
+<td>+ Langfuse</td>
+<td align="right">~9.1 GB</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>+ Langfuse + KAgent with 1 agent</td>
+<td align="right"><strong>~9.6 GB</strong></td>
+<td>yes, ~3.3 GB spare</td>
+</tr>
+<tr>
+<td>Everything: + 8 more agents, MLflow, Argo Workflows</td>
+<td align="right"><strong>~11.8 GB</strong></td>
+<td><strong>no — ~1.2 GB spare, below the level where it degrades</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-thresholds-that-actually-matter">The thresholds that actually matter<a class="headerlink" href="#the-thresholds-that-actually-matter" title="Permanent link">&para;</a></h3>
+<p>These are the points at which a real cluster stopped working, not safety margins:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Observed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>&lt; ~200 MB available</strong> memory</td>
+<td>etcd returns <code>DeadlineExceeded</code>, the API server starts answering every request with <code>Handler timeout</code>, and <code>kubectl</code> fails with <code>Unable to connect to the server: EOF</code>. Backstage shows <code>ERR_EMPTY_RESPONSE</code> because nginx-ingress runs <em>inside</em> the starving cluster.</td>
+</tr>
+<tr>
+<td><strong>&gt; ~75% of VM CPU sustained</strong> (600% of 800% on 8 cores)</td>
+<td>Pods stick in <code>Terminating</code> for tens of minutes, controllers crashloop on their liveness probes, and dependent installs fail — a stuck <code>kagent-postgresql</code> is what makes the KAgent controller crashloop and Backstage 502 on <code>/api/modelconfigs</code>.</td>
+</tr>
+<tr>
+<td><strong>&gt; ~90% of VM CPU</strong></td>
+<td>The run does not complete.</td>
+</tr>
+</tbody>
+</table>
+<p>Stop adding components when available memory drops below ~1.5 GB.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-worker<span class="w"> </span>free<span class="w"> </span>-m<span class="w">        </span><span class="c1"># read &quot;available&quot;, NOT &quot;free&quot;</span>
+docker<span class="w"> </span>stats<span class="w"> </span>--no-stream<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>idp-mvp<span class="w">   </span><span class="c1"># sustained &gt;600% (of 800%) is the danger band</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>Terminating<span class="w">    </span><span class="c1"># the first visible symptom</span>
+</code></pre></div></td></tr></table></div>
+<p><code>free</code> will look alarming (a few hundred MB) while several GB are still
+reclaimable cache. <strong><code>available</code> is the number to watch.</strong></p>
+<p>Note the asymmetry: <strong>CPU binds during installation</strong> — image pulls and several
+concurrent <code>helm --wait</code>s — while <strong>memory binds at rest</strong>. An install can die on
+a cluster that would have run the same pods perfectly well once settled. Install
+incrementally on a tight machine and let each step finish.</p>
+<h3 id="vm-sizing">VM sizing<a class="headerlink" href="#vm-sizing" title="Permanent link">&para;</a></h3>
+<p>Set this in Docker Desktop → Settings → Resources, or Rancher Desktop → Virtual
+Machine. The VM gets roughly 80% of physical RAM, so the third column is what
+your machine actually needs:</p>
 <table>
 <thead>
 <tr>
 <th>Setup</th>
 <th align="right">VM CPU</th>
 <th align="right">VM memory</th>
+<th align="right">Physical RAM</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Recommended</strong></td>
-<td align="right">10</td>
-<td align="right">20 GB</td>
-<td>The default full stack, which <strong>includes Langfuse</strong> — <code>bootstrap-ai.sh</code> installs it unless you pass <code>--skip-langfuse</code>. Room to build images without scaling anything down.</td>
+<td><strong>Everything</strong></td>
+<td align="right">8</td>
+<td align="right">16 GB</td>
+<td align="right"><strong>24 GB</strong></td>
+<td>All agents, Langfuse, MLflow, Argo Workflows. ~11.8 GB of workload plus room to build images.</td>
 </tr>
 <tr>
 <td><strong>Full stack, no Langfuse</strong></td>
 <td align="right">8</td>
+<td align="right">13 GB</td>
 <td align="right">16 GB</td>
-<td><code>bootstrap-ai.sh --skip-langfuse</code>. Everything else including AI/ML, with headroom to build images and run Backstage at the same time. At the default (~11 GB, with Langfuse) this tier has no headroom left, and rebuilding Backstage while Langfuse runs will destabilise the control plane — scale the 6 Langfuse workloads to 0 first, rebuild, then scale back.</td>
+<td><code>bootstrap-ai.sh --skip-langfuse</code>. Drops the single most expensive layer.</td>
 </tr>
 <tr>
-<td><strong>Minimum for the full stack</strong></td>
-<td align="right">6</td>
-<td align="right">12 GB</td>
-<td>Works, but sits at ~75% memory with no headroom — see the symptoms below</td>
+<td><strong>Core + one AI component</strong></td>
+<td align="right">8</td>
+<td align="right">13 GB</td>
+<td align="right">16 GB</td>
+<td>The realistic ceiling on a 16 GB machine: core plus <strong>one</strong> of Langfuse, KAgent + 2 agents, or MLflow.</td>
 </tr>
 <tr>
 <td><strong>Without AI/ML</strong></td>
 <td align="right">4</td>
 <td align="right">8 GB</td>
-<td><code>bootstrap-local.sh</code> only; don't run <code>bootstrap-ai.sh</code></td>
+<td align="right">12 GB</td>
+<td><code>bootstrap-local.sh</code> only; don't run <code>bootstrap-ai.sh</code>.</td>
 </tr>
 <tr>
 <td><strong>Core only</strong></td>
 <td align="right">2</td>
 <td align="right">6 GB</td>
-<td>Add <code>--skip-obs --skip-policies</code> (see below)</td>
+<td align="right">8 GB</td>
+<td>Add <code>--skip-obs --skip-policies</code> (see below).</td>
 </tr>
 </tbody>
 </table>
+<p><strong>A 16 GB Mac cannot run the full platform.</strong> It yields a ~13 GB VM against
+~11.8 GB of workload, and the ~1.2 GB left is under the degradation threshold
+above. That is not a tuning problem — install a subset:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse<span class="w"> </span>--skip-kagent<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-argo-workflows
+./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-argo-workflows
+</code></pre></div></td></tr></table></div>
+<p><code>--agents</code> <strong>prunes</strong>: re-running with a shorter list removes the agents you left
+out, so always pass the full set you want. <code>--agents list</code> prints what is
+available.</p>
 <p>Since the VM is carved out of your host, the recommended tier wants a <strong>16 GB
 host at an absolute minimum, 24–32 GB to be comfortable</strong> — a 16 GB laptop
 giving 12 GB to the VM leaves very little for the rest of macOS.</p>
@@ -2571,17 +2697,19 @@ kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </sp
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span>
-<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Don&#39;t run bootstrap-ai.sh at all         → saves ~2.9 GB (the single biggest win)</span>
+<span class="normal">28</span>
+<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Don&#39;t run bootstrap-ai.sh at all         → saves ~3.2 GB (the single biggest win)</span>
 ./scripts/bootstrap-local.sh
 
-<span class="c1"># Or install AI/ML piecemeal — KAgent is the expensive part</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-kagent<span class="w">    </span><span class="c1"># keeps MLflow + MCP servers</span>
+<span class="c1"># Or install AI/ML piecemeal. Langfuse is the expensive part, not KAgent:</span>
+<span class="c1">#   Langfuse ~2.2 GB   ·   KAgent runtime + 1 agent ~0.5 GB   ·   MLflow ~0.4 GB</span>
+./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-langfuse<span class="w">  </span><span class="c1"># keeps KAgent + MLflow + MCP servers</span>
 
-<span class="c1"># Finer-grained: keep KAgent but choose which agents run.</span>
-<span class="c1"># Each agent is ONE pod running a Python runtime, and the six installed by</span>
-<span class="c1"># default are the single biggest CPU consumer in the AI layer — on an 8-CPU</span>
-<span class="c1"># machine the full set can saturate the node so thoroughly that the agents</span>
-<span class="c1"># never finish booting and the control plane starts losing lease renewals.</span>
+<span class="c1"># Finer-grained: keep KAgent but choose which agents run. Each agent is ONE pod</span>
+<span class="c1"># running a Python runtime, ~200 MB at idle. Memory is linear in the agent count,</span>
+<span class="c1"># but the real risk is the startup burst: on an 8-CPU machine the full set can</span>
+<span class="c1"># saturate the node so thoroughly that the agents never finish booting and the</span>
+<span class="c1"># control plane starts losing lease renewals.</span>
 ./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">    </span><span class="c1"># show what&#39;s available</span>
 ./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w">     </span><span class="c1"># just the IDP assistant (1 pod)</span>
 ./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,qa<span class="w">  </span><span class="c1"># a useful pair</span>
