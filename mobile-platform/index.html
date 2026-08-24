@@ -953,6 +953,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Mobile Device Farm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-farm-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device farm credentials
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2292,7 +2307,7 @@
 <tr>
 <td><strong>mobile-device-farm</strong></td>
 <td>Add-on</td>
-<td>Firebase TestLab cloud device testing with configurable device matrix</td>
+<td>Cloud device testing on Firebase Test Lab or LambdaTest, with a configurable device matrix</td>
 </tr>
 <tr>
 <td><strong>flutter-integration-test-suite</strong></td>
@@ -2302,7 +2317,7 @@
 <tr>
 <td><strong>appium-mobile-suite</strong></td>
 <td>Test</td>
-<td>Appium + WebdriverIO cross-device suite with BrowserStack / Sauce Labs support</td>
+<td>Appium + WebdriverIO cross-device suite with BrowserStack / Sauce Labs / LambdaTest support</td>
 </tr>
 </tbody>
 </table>
@@ -2361,19 +2376,114 @@
 </ul>
 <p><strong>Use this when:</strong> your app CI is working and you want one-click releases to the stores.</p>
 <h3 id="mobile-device-farm">Mobile Device Farm<a class="headerlink" href="#mobile-device-farm" title="Permanent link">&para;</a></h3>
-<p>Adds Firebase TestLab device-farm testing to an existing app repo:</p>
-<ul>
-<li><code>gcloud firebase test android run</code> / <code>gcloud firebase test ios run</code> integration</li>
-<li>Configurable device matrix:<ul>
-<li><strong>Low</strong> (1 device): Pixel 6 / iPhone 14</li>
-<li><strong>Medium</strong> (3 devices): Pixel 6 + Samsung S21 + Pixel 7 / iPhone 14 + iPhone 13 + iPhone SE</li>
-<li><strong>High</strong> (5 devices): broad coverage matrix</li>
-</ul>
-</li>
-<li>GitHub Actions workflow that runs on PR and nightly</li>
-<li>Test results exported to GCS and linked from CI summary</li>
-</ul>
+<p>Adds cloud device-farm testing to an existing app repo, on any of four providers.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Firebase Test Lab</th>
+<th>LambdaTest</th>
+<th>BrowserStack</th>
+<th>Sauce Labs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Credential</td>
+<td><code>GCP_SERVICE_ACCOUNT_KEY</code></td>
+<td><code>LT_USERNAME</code> + <code>LT_ACCESS_KEY</code></td>
+<td><code>BROWSERSTACK_USERNAME</code> + <code>BROWSERSTACK_ACCESS_KEY</code></td>
+<td><code>SAUCE_USERNAME</code> + <code>SAUCE_ACCESS_KEY</code></td>
+</tr>
+<tr>
+<td>Extra setup</td>
+<td>A GCP project with Test Lab enabled</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Runner integration</td>
+<td><code>gcloud firebase test android\|ios run</code></td>
+<td>REST API — upload, trigger, poll</td>
+<td>App Automate REST API — upload, trigger, poll</td>
+<td><code>saucectl</code> CLI</td>
+</tr>
+<tr>
+<td>Device matrix</td>
+<td><code>device-matrix/firebase/*.yml</code></td>
+<td><code>device-matrix/lambdatest/*.json</code></td>
+<td><code>device-matrix/browserstack/*.json</code></td>
+<td><code>.sauce/config.yml</code> — see below</td>
+</tr>
+<tr>
+<td>Execution modes</td>
+<td>Device grid</td>
+<td>Device grid, or <strong>HyperExecute</strong></td>
+<td>Device grid</td>
+<td>Device grid</td>
+</tr>
+<tr>
+<td>Results</td>
+<td>Exported to GCS, linked from the PR comment</td>
+<td>Build link in the PR comment, raw JSON artifact</td>
+<td>Build link in the PR comment, raw JSON artifact</td>
+<td>Build link in the PR comment, <code>saucectl.log</code> + JUnit XML artifact</td>
+</tr>
+</tbody>
+</table>
+<p>Device naming differs per provider and is not interchangeable — LambdaTest drops
+the manufacturer (<code>Pixel 6-13</code>), BrowserStack keeps it (<code>Google Pixel 6-13</code>), and
+Firebase uses model codes (<code>oriole</code>). An unrecognised name fails the build request
+with a 400.</p>
+<p><strong>Sauce Labs has no <code>device-matrix/</code> directory on purpose.</strong> Its supported path for
+Espresso/XCUITest is the <code>saucectl</code> CLI, which owns the device list inside
+<code>.sauce/config.yml</code>. A second file the CLI never reads would look authoritative
+and not be, so the devices live in the config the CLI actually uses.</p>
+<p>All four providers share the same coverage tiers — <strong>Low</strong> (1 device, ~5 min),
+<strong>Medium</strong> (3, ~15 min), <strong>High</strong> (5 including a tablet, ~30 min) — and the same
+generated workflow, which runs on every push and pull request.</p>
+<p>Credentials are injected into the target repository automatically by
+<code>idp:repo:set-secrets</code>, sourced from the Backstage backend's own environment.
+Nothing needs setting on the repo by hand. See <a href="#device-farm-credentials">Credentials</a>.</p>
 <p><strong>Use this when:</strong> you need to validate your app on real devices across a range of hardware/OS versions.</p>
+<h4 id="device-farm-credentials">Device farm credentials<a class="headerlink" href="#device-farm-credentials" title="Permanent link">&para;</a></h4>
+<p>All four providers' credentials follow the same path — <code>local/backstage/.env</code>
+locally, the <code>backstage-secrets</code> Kubernetes secret on AWS — and are injected into
+scaffolded repos by <code>idp:repo:set-secrets</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Keys</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Firebase Test Lab</td>
+<td><code>GCP_SERVICE_ACCOUNT_KEY</code></td>
+</tr>
+<tr>
+<td>LambdaTest</td>
+<td><code>LT_USERNAME</code>, <code>LT_ACCESS_KEY</code> (plus <code>LT_BASIC_AUTH</code> for the entity tab)</td>
+</tr>
+<tr>
+<td>BrowserStack</td>
+<td><code>BROWSERSTACK_USERNAME</code>, <code>BROWSERSTACK_ACCESS_KEY</code></td>
+</tr>
+<tr>
+<td>Sauce Labs</td>
+<td><code>SAUCE_USERNAME</code>, <code>SAUCE_ACCESS_KEY</code></td>
+</tr>
+</tbody>
+</table>
+<p>On AWS these are optional keys on the existing <code>idp-mvp/backstage</code> Secrets
+Manager secret. That secret carries <code>lifecycle { ignore_changes = [secret_string] }</code>
+in Terraform, so add them with the AWS console or CLI rather than through a
+<code>terraform apply</code> — the same route <code>SONAR_TOKEN</code> and <code>SNYK_TOKEN</code> already take.</p>
+<p>Left unset, the templates still scaffold and the scaffolder log names the secret
+it skipped; the generated workflow then fails on its first run with an explicit
+error rather than an unexplained 401.</p>
 <h3 id="mobile-sdk-library">Mobile SDK Library<a class="headerlink" href="#mobile-sdk-library" title="Permanent link">&para;</a></h3>
 <p>Scaffolds a shared mobile SDK library with:
 - <strong>Android</strong>: Kotlin library published to GitHub Packages (<code>maven-publish</code>)
@@ -2394,9 +2504,18 @@
 <h3 id="appium-mobile-test-suite">Appium Mobile Test Suite<a class="headerlink" href="#appium-mobile-test-suite" title="Permanent link">&para;</a></h3>
 <p>Scaffolds a standalone cross-device test suite:
 - WebdriverIO + Appium config with multi-device support
-- Device farm options: Local Emulator, BrowserStack, or Sauce Labs
+- Device farm options: Local Emulator, BrowserStack, Sauce Labs, or LambdaTest
 - Parallel CI execution across selected device matrix
 - K8s Secret provisioned for device farm credentials</p>
+<p>The generated workflow adapts to the choice: the local-emulator variant starts an
+Appium server on the runner and stays on a weekly cron (a hosted runner has no
+device grid), while the cloud variants skip that server, export the chosen
+vendor's credentials, and run per pull request as well.</p>
+<p>Also available from the CLI:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>idp<span class="w"> </span>testsuite<span class="w"> </span>--type<span class="w"> </span>appium<span class="w"> </span>--name<span class="w"> </span>my-mobile-suite<span class="w"> </span>--service<span class="w"> </span>my-app<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device-farm<span class="w"> </span>lambdatest
+</code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="tech-insights-mobile-scorecard">Tech Insights: Mobile Scorecard<a class="headerlink" href="#tech-insights-mobile-scorecard" title="Permanent link">&para;</a></h2>
 <p>Five mobile-specific quality checks appear in a <strong>Mobile</strong> group on the Scorecard

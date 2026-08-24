@@ -2379,7 +2379,7 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 <tr>
 <td><code>playwright</code></td>
 <td>E2E browser tests</td>
-<td>—</td>
+<td><code>--cloud-grid</code> (none|lambdatest|browserstack|sauce-labs)</td>
 </tr>
 <tr>
 <td><code>k6</code></td>
@@ -2409,7 +2409,7 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 <tr>
 <td><code>visual</code></td>
 <td>Screenshot regression</td>
-<td><code>--threshold</code> (0.2)</td>
+<td><code>--threshold</code> (0.2), <code>--cloud-grid</code> (none|lambdatest|browserstack|sauce-labs)</td>
 </tr>
 <tr>
 <td><code>accessibility</code></td>
@@ -2424,7 +2424,7 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 <tr>
 <td><code>appium</code></td>
 <td>Mobile UI tests</td>
-<td><code>--platform</code> (android|ios), <code>--appium-server</code></td>
+<td><code>--platform</code> (android|ios), <code>--appium-server</code>, <code>--device-farm</code> (local-emulator|browserstack|sauce-labs|lambdatest)</td>
 </tr>
 <tr>
 <td><code>chaos</code></td>
