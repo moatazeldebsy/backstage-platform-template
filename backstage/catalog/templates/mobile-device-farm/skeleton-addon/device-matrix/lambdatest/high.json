@@ -1,0 +1,16 @@
+{
+  "android": [
+    "Pixel 7-14",
+    "Pixel 6-13",
+    "Galaxy S21-12",
+    "Redmi Note 9-10",
+    "Galaxy Tab S8-12"
+  ],
+  "ios": [
+    "iPhone 15-17",
+    "iPhone 14-16",
+    "iPhone 13-15",
+    "iPhone 12-14",
+    "iPad Air 4-14"
+  ]
+}

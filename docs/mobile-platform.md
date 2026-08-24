@@ -12,9 +12,9 @@ The IDP provides a complete golden-path for mobile app development covering iOS,
 | **mobile-sdk** | Add-on | Shared library for Android (Kotlin), iOS (SPM), Flutter, or Kotlin Multiplatform |
 | **mobile-code-signing** | Add-on | Automated code signing — Fastlane Match (S3) for iOS, keystore + Secrets Manager for Android |
 | **mobile-app-store-deploy** | Add-on | Automated Google Play / App Store release via Fastlane deliver/supply |
-| **mobile-device-farm** | Add-on | Firebase TestLab cloud device testing with configurable device matrix |
+| **mobile-device-farm** | Add-on | Cloud device testing on Firebase Test Lab or LambdaTest, with a configurable device matrix |
 | **flutter-integration-test-suite** | Test | Flutter integration tests on Firebase TestLab or local emulator (adds to existing Flutter repo) |
-| **appium-mobile-suite** | Test | Appium + WebdriverIO cross-device suite with BrowserStack / Sauce Labs support |
+| **appium-mobile-suite** | Test | Appium + WebdriverIO cross-device suite with BrowserStack / Sauce Labs / LambdaTest support |
 
 ---
 
@@ -93,17 +93,58 @@ Adds automated release pipeline to an existing app repo:
 
 ### Mobile Device Farm
 
-Adds Firebase TestLab device-farm testing to an existing app repo:
+Adds cloud device-farm testing to an existing app repo, on any of four providers.
 
-- `gcloud firebase test android run` / `gcloud firebase test ios run` integration
-- Configurable device matrix:
-  - **Low** (1 device): Pixel 6 / iPhone 14
-  - **Medium** (3 devices): Pixel 6 + Samsung S21 + Pixel 7 / iPhone 14 + iPhone 13 + iPhone SE
-  - **High** (5 devices): broad coverage matrix
-- GitHub Actions workflow that runs on PR and nightly
-- Test results exported to GCS and linked from CI summary
+| | Firebase Test Lab | LambdaTest | BrowserStack | Sauce Labs |
+|---|---|---|---|---|
+| Credential | `GCP_SERVICE_ACCOUNT_KEY` | `LT_USERNAME` + `LT_ACCESS_KEY` | `BROWSERSTACK_USERNAME` + `BROWSERSTACK_ACCESS_KEY` | `SAUCE_USERNAME` + `SAUCE_ACCESS_KEY` |
+| Extra setup | A GCP project with Test Lab enabled | None | None | None |
+| Runner integration | `gcloud firebase test android\|ios run` | REST API — upload, trigger, poll | App Automate REST API — upload, trigger, poll | `saucectl` CLI |
+| Device matrix | `device-matrix/firebase/*.yml` | `device-matrix/lambdatest/*.json` | `device-matrix/browserstack/*.json` | `.sauce/config.yml` — see below |
+| Execution modes | Device grid | Device grid, or **HyperExecute** | Device grid | Device grid |
+| Results | Exported to GCS, linked from the PR comment | Build link in the PR comment, raw JSON artifact | Build link in the PR comment, raw JSON artifact | Build link in the PR comment, `saucectl.log` + JUnit XML artifact |
+
+Device naming differs per provider and is not interchangeable — LambdaTest drops
+the manufacturer (`Pixel 6-13`), BrowserStack keeps it (`Google Pixel 6-13`), and
+Firebase uses model codes (`oriole`). An unrecognised name fails the build request
+with a 400.
+
+**Sauce Labs has no `device-matrix/` directory on purpose.** Its supported path for
+Espresso/XCUITest is the `saucectl` CLI, which owns the device list inside
+`.sauce/config.yml`. A second file the CLI never reads would look authoritative
+and not be, so the devices live in the config the CLI actually uses.
+
+All four providers share the same coverage tiers — **Low** (1 device, ~5 min),
+**Medium** (3, ~15 min), **High** (5 including a tablet, ~30 min) — and the same
+generated workflow, which runs on every push and pull request.
+
+Credentials are injected into the target repository automatically by
+`idp:repo:set-secrets`, sourced from the Backstage backend's own environment.
+Nothing needs setting on the repo by hand. See [Credentials](#device-farm-credentials).
 
 **Use this when:** you need to validate your app on real devices across a range of hardware/OS versions.
+
+#### Device farm credentials
+
+All four providers' credentials follow the same path — `local/backstage/.env`
+locally, the `backstage-secrets` Kubernetes secret on AWS — and are injected into
+scaffolded repos by `idp:repo:set-secrets`:
+
+| Provider | Keys |
+|---|---|
+| Firebase Test Lab | `GCP_SERVICE_ACCOUNT_KEY` |
+| LambdaTest | `LT_USERNAME`, `LT_ACCESS_KEY` (plus `LT_BASIC_AUTH` for the entity tab) |
+| BrowserStack | `BROWSERSTACK_USERNAME`, `BROWSERSTACK_ACCESS_KEY` |
+| Sauce Labs | `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` |
+
+On AWS these are optional keys on the existing `idp-mvp/backstage` Secrets
+Manager secret. That secret carries `lifecycle { ignore_changes = [secret_string] }`
+in Terraform, so add them with the AWS console or CLI rather than through a
+`terraform apply` — the same route `SONAR_TOKEN` and `SNYK_TOKEN` already take.
+
+Left unset, the templates still scaffold and the scaffolder log names the secret
+it skipped; the generated workflow then fails on its first run with an explicit
+error rather than an unexplained 401.
 
 ### Mobile SDK Library
 
@@ -134,9 +175,21 @@ Use from Backstage → Create → "Flutter Integration Test Suite", select the t
 
 Scaffolds a standalone cross-device test suite:
 - WebdriverIO + Appium config with multi-device support
-- Device farm options: Local Emulator, BrowserStack, or Sauce Labs
+- Device farm options: Local Emulator, BrowserStack, Sauce Labs, or LambdaTest
 - Parallel CI execution across selected device matrix
 - K8s Secret provisioned for device farm credentials
+
+The generated workflow adapts to the choice: the local-emulator variant starts an
+Appium server on the runner and stays on a weekly cron (a hosted runner has no
+device grid), while the cloud variants skip that server, export the chosen
+vendor's credentials, and run per pull request as well.
+
+Also available from the CLI:
+
+```bash
+idp testsuite --type appium --name my-mobile-suite --service my-app \
+  --device-farm lambdatest
+```
 
 ---
 

@@ -103,16 +103,16 @@ Scaffold a QA/testing suite. Supports 18 test types.
 
 | Type | Description | Key flags |
 |------|-------------|-----------|
-| `playwright` | E2E browser tests | — |
+| `playwright` | E2E browser tests | `--cloud-grid` (none\|lambdatest\|browserstack\|sauce-labs) |
 | `k6` | Load / performance tests | `--vus` (10), `--duration` (30s), `--p95` (500) |
 | `pact` | Consumer contract tests | `--consumer`, `--provider`, `--broker-url` |
 | `newman` | Postman / API tests | — |
 | `zap` | OWASP DAST security scan | `--scan-type` (baseline\|full\|api\|graphql), `--openapi-url`, `--fail-risk` |
 | `datadog` | Datadog synthetic monitors | `--dd-site` (datadoghq.eu) |
-| `visual` | Screenshot regression | `--threshold` (0.2) |
+| `visual` | Screenshot regression | `--threshold` (0.2), `--cloud-grid` (none\|lambdatest\|browserstack\|sauce-labs) |
 | `accessibility` | WCAG a11y audit | `--wcag` (wcag2a\|wcag2aa\|wcag21aa\|wcag22aa) |
 | `cucumber` | BDD Gherkin scenarios | — |
-| `appium` | Mobile UI tests | `--platform` (android\|ios), `--appium-server` |
+| `appium` | Mobile UI tests | `--platform` (android\|ios), `--appium-server`, `--device-farm` (local-emulator\|browserstack\|sauce-labs\|lambdatest) |
 | `chaos` | Chaos Mesh experiments | `--experiments`, `--chaos-duration` (1m) |
 | `mutation` | Stryker mutation testing | `--score` (70), `--test-runner` (jest\|mocha\|jasmine) |
 | `testcontainers` | Integration tests with containers | `--containers` (postgres) |

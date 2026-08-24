@@ -41,14 +41,16 @@ Your repo will contain:
    - `integration_test/<suite-name>/app_test.dart`
    - GitHub Actions workflow (emulator or Firebase Test Lab)
 
-### Appium Mobile Test Suite (BrowserStack / Sauce Labs)
+### Appium Mobile Test Suite (BrowserStack / Sauce Labs / LambdaTest)
 
 1. Go to **Backstage → Create** → **Appium Mobile Test Suite**
-2. Select your **Device Farm**: Local Emulator, BrowserStack, or Sauce Labs
+2. Select your **Device Farm**: Local Emulator, BrowserStack, Sauce Labs, or LambdaTest
 3. Select your **Device Matrix**: Pixel 6 / Samsung S21 / iPhone 14 / Pixel 7
 4. The scaffolder:
    - Scaffolds WebdriverIO + Appium config with multi-device support
-   - Creates a K8s Secret for your BrowserStack / Sauce Labs credentials
+   - Creates a K8s Secret for your device-farm credentials
+   - LambdaTest credentials (`LT_USERNAME` / `LT_ACCESS_KEY`) are also injected
+     into the repo automatically by the platform — nothing to set up by hand
    - Generates CI with parallel execution across selected devices
 
 ## Local Setup
@@ -123,7 +125,13 @@ If you enabled Firebase during scaffolding:
 4. For Flutter: also download `GoogleService-Info.plist` → place in `ios/Runner/`
 5. Push to `main` — Crashlytics will start collecting crashes automatically
 
-## BrowserStack Device Farm
+## Cloud Device Farms
+
+Choosing any cloud farm changes the generated CI: it skips the local Appium
+server, exports that vendor's credentials, and runs per pull request instead of
+on the weekly cron the local-emulator variant uses.
+
+### BrowserStack
 
 When using the **Appium Mobile Test Suite** with BrowserStack:
 

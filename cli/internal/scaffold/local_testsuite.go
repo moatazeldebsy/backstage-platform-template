@@ -47,6 +47,10 @@ type TestSuiteConfig struct {
 	// appium
 	Platform     string
 	AppiumServer string
+	DeviceFarm   string
+
+	// playwright + visual
+	CloudGrid string
 
 	// chaos
 	Experiments   string
@@ -215,6 +219,50 @@ plugins:
 
 // ── Playwright ────────────────────────────────────────────────────────────────
 
+// GridConnect returns the Playwright `connectOptions` snippet for a cloud
+// browser grid, or "" for the runner-local case. Mirrors the connectOptions
+// wiring in the Backstage skeletons' playwright.config.ts — the two are a known
+// drift pair, so they change together.
+//
+// Sauce Labs deliberately returns "": it has no Playwright CDP endpoint and is
+// driven by saucectl reading .sauce/config.yml, so its Playwright config stays
+// in the plain local-runner form.
+// GridConnect is a method rather than a field so the Go templates can call it
+// directly — writeTSFiles renders every file against TestSuiteConfig itself.
+func (c TestSuiteConfig) GridConnect() string {
+	switch c.CloudGrid {
+	case "lambdatest":
+		return `
+      connectOptions: {
+        wsEndpoint:
+          'wss://cdp.lambdatest.com/playwright?capabilities=' +
+          encodeURIComponent(JSON.stringify({
+            browserName: 'Chrome',
+            browserVersion: 'latest',
+            'LT:Options': {
+              platform: 'Windows 11',
+              user: process.env.LT_USERNAME,
+              accessKey: process.env.LT_ACCESS_KEY,
+            },
+          })),
+      },`
+	case "browserstack":
+		return `
+      connectOptions: {
+        wsEndpoint:
+          'wss://cdp.browserstack.com/playwright?caps=' +
+          encodeURIComponent(JSON.stringify({
+            browser: 'playwright-chromium',
+            os: 'Windows',
+            os_version: '11',
+            'browserstack.username': process.env.BROWSERSTACK_USERNAME,
+            'browserstack.accessKey': process.env.BROWSERSTACK_ACCESS_KEY,
+          })),
+      },`
+	}
+	return ""
+}
+
 func genPlaywright(cfg TestSuiteConfig, dir string) error {
 	files := map[string]string{
 		"package.json": `{
@@ -245,7 +293,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'],<% .GridConnect %> } }],
 });
 `,
 		"tests/fixtures/base.fixture.ts": `import { test as base, expect } from '@playwright/test';
@@ -617,7 +665,7 @@ export default defineConfig({
     screenshot: 'on',
   },
   expect: { toHaveScreenshot: { maxDiffPixelRatio: <% .DiffThreshold %> } },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'],<% .GridConnect %> } }],
 });
 `,
 		"tests/visual.spec.ts": `import { test, expect } from '@playwright/test';
@@ -794,29 +842,81 @@ func genAppium(cfg TestSuiteConfig, dir string) error {
 		platformName = "iOS"
 	}
 
+	// Cloud farms are addressed by hub hostname; the local emulator by loopback.
+	// Mirrors the hostname ternary in the Backstage skeleton's wdio.config.ts —
+	// the two are a known drift pair, so they change together.
+	deviceFarm := cfg.DeviceFarm
+	if deviceFarm == "" {
+		deviceFarm = "local-emulator"
+	}
+	hostname := "127.0.0.1"
+	switch deviceFarm {
+	case "browserstack":
+		hostname = "hub-cloud.browserstack.com"
+	case "sauce-labs":
+		hostname = "ondemand.us-west-1.saucelabs.com"
+	case "lambdatest":
+		hostname = "mobile-hub.lambdatest.com"
+	}
+	isLocal := deviceFarm == "local-emulator"
+
 	type appiumData struct {
 		TestSuiteConfig
 		AutomationName string
 		DeviceName     string
 		PlatformName   string
+		DeviceFarm     string
+		Hostname       string
+		IsLocal        bool
 	}
-	data := appiumData{cfg, automationName, deviceName, platformName}
+	data := appiumData{cfg, automationName, deviceName, platformName, deviceFarm, hostname, isLocal}
 
 	// Render wdio.config.ts with extra fields.
-	wdioCfg := `import type { Options } from '@wdio/types';
-export const config: Options.Testrunner = {
+	wdioCfg := `// wdio 9 moved the testrunner config shape: Options.Testrunner no longer
+// carries ` + "`capabilities`" + `. WebdriverIO.Config (global, from @wdio/globals/types)
+// is the v9 equivalent.
+import '@wdio/globals/types';
+
+const DEVICE_FARM = process.env.DEVICE_FARM ?? '<% .DeviceFarm %>';
+
+const capability = {
+  platformName: '<% .PlatformName %>',
+  'appium:automationName': '<% .AutomationName %>',
+  'appium:deviceName': '<% .DeviceName %>',
+  'appium:app': process.env.APP_PATH ?? 'path/to/your.app',
+<% if not .IsLocal %><% if eq .DeviceFarm "browserstack" %>  'bstack:options': {
+    userName: process.env.BROWSERSTACK_USERNAME,
+    accessKey: process.env.BROWSERSTACK_ACCESS_KEY,
+    projectName: '<% .Name %>',
+    buildName: process.env.GITHUB_SHA ?? 'local',
+  },
+<% else if eq .DeviceFarm "sauce-labs" %>  'sauce:options': {
+    username: process.env.SAUCE_USERNAME,
+    accessKey: process.env.SAUCE_ACCESS_KEY,
+    build: '<% .Name %>-' + (process.env.GITHUB_SHA ?? 'local'),
+  },
+<% else %>  'LT:Options': {
+    user: process.env.LT_USERNAME,
+    accessKey: process.env.LT_ACCESS_KEY,
+    project: '<% .Name %>',
+    build: '<% .Name %>-' + (process.env.GITHUB_SHA ?? 'local'),
+    isRealMobile: true,
+    w3c: true,
+  },
+<% end %><% end %>};
+
+export const config: WebdriverIO.Config = {
   runner: 'local',
   specs: ['./tests/**/*.spec.ts'],
   framework: 'mocha',
   reporters: ['spec', ['junit', { outputDir: './reports' }]],
-  mochaOpts: { timeout: 60000 },
-  capabilities: [{
-    platformName: '<% .PlatformName %>',
-    'appium:automationName': '<% .AutomationName %>',
-    'appium:deviceName': '<% .DeviceName %>',
-    'appium:app': process.env.APP_PATH ?? 'path/to/your.app',
-  }],
-  services: [['appium', { command: 'appium', args: { address: '127.0.0.1', port: 4723 } }]],
+  mochaOpts: { timeout: 120000 },
+  hostname: '<% .Hostname %>',
+  port: 4723,
+  path: '<% if .IsLocal %>/<% else %>/wd/hub<% end %>',
+  maxInstances: <% if .IsLocal %>1<% else %>3<% end %>,
+  capabilities: [capability],
+  services: <% if .IsLocal %>[['appium', { command: 'appium', args: { address: '127.0.0.1', port: 4723 } }]]<% else %>[]<% end %>,
 };
 `
 	_ = os.MkdirAll(filepath.Join(dir, "tests"), 0o755)

@@ -73,6 +73,20 @@ services:
       # Datadog API/App keys — referenced by the /datadog proxy (Datadog tab).
       DD_API_KEY: ${DD_API_KEY:-}
       DD_APP_KEY: ${DD_APP_KEY:-}
+      # Firebase Test Lab service-account JSON (base64) and LambdaTest credentials.
+      # Not proxy tokens: these are read by the idp:repo:set-secrets scaffolder
+      # action out of this container's environment and injected as GitHub Actions
+      # secrets on each scaffolded repo, so the generated device-farm CI can
+      # authenticate on first push. Compose reads .env for interpolation only, so
+      # a var absent from this list is silently skipped by the action.
+      GCP_SERVICE_ACCOUNT_KEY: ${GCP_SERVICE_ACCOUNT_KEY:-}
+      LT_USERNAME: ${LT_USERNAME:-}
+      LT_ACCESS_KEY: ${LT_ACCESS_KEY:-}
+      LT_BASIC_AUTH: ${LT_BASIC_AUTH:-}
+      BROWSERSTACK_USERNAME: ${BROWSERSTACK_USERNAME:-}
+      BROWSERSTACK_ACCESS_KEY: ${BROWSERSTACK_ACCESS_KEY:-}
+      SAUCE_USERNAME: ${SAUCE_USERNAME:-}
+      SAUCE_ACCESS_KEY: ${SAUCE_ACCESS_KEY:-}
     ports:
       - "3000:3000"   # Backstage backend (Node.js) listens on port 3000
     healthcheck:

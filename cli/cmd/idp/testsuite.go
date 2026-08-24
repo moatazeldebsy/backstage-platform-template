@@ -10,24 +10,24 @@ import (
 
 // templateRef maps CLI type names to Backstage template IDs.
 var templateRef = map[string]string{
-	"playwright":           "playwright-e2e-suite",
-	"k6":                   "k6-performance-suite",
-	"pact":                 "pact-contract-suite",
-	"newman":               "newman-api-suite",
-	"zap":                  "zap-dast-suite",
-	"datadog":              "datadog-synthetic-suite",
-	"visual":               "visual-regression-suite",
-	"accessibility":        "accessibility-suite",
-	"cucumber":             "bdd-cucumber-suite",
-	"appium":               "appium-mobile-suite",
-	"chaos":                "chaos-mesh-suite",
-	"mutation":             "mutation-testing-suite",
-	"testcontainers":       "testcontainers-suite",
-	"unit":                 "unit-test-suite",
-	"component":            "component-test-suite",
-	"iac":                  "iac-test-suite",
-	"flutter-integration":  "flutter-integration-test-suite",
-	"deepeval":             "deepeval-llm-eval-suite",
+	"playwright":          "playwright-e2e-suite",
+	"k6":                  "k6-performance-suite",
+	"pact":                "pact-contract-suite",
+	"newman":              "newman-api-suite",
+	"zap":                 "zap-dast-suite",
+	"datadog":             "datadog-synthetic-suite",
+	"visual":              "visual-regression-suite",
+	"accessibility":       "accessibility-suite",
+	"cucumber":            "bdd-cucumber-suite",
+	"appium":              "appium-mobile-suite",
+	"chaos":               "chaos-mesh-suite",
+	"mutation":            "mutation-testing-suite",
+	"testcontainers":      "testcontainers-suite",
+	"unit":                "unit-test-suite",
+	"component":           "component-test-suite",
+	"iac":                 "iac-test-suite",
+	"flutter-integration": "flutter-integration-test-suite",
+	"deepeval":            "deepeval-llm-eval-suite",
 }
 
 var (
@@ -47,14 +47,14 @@ var (
 	tsP95Threshold int
 
 	// pact
-	tsConsumer    string
-	tsProvider    string
-	tsBrokerURL   string
+	tsConsumer  string
+	tsProvider  string
+	tsBrokerURL string
 
 	// zap
-	tsScanType  string
+	tsScanType   string
 	tsOpenAPIURL string
-	tsFailRisk  string
+	tsFailRisk   string
 
 	// datadog
 	tsDDSite string
@@ -62,12 +62,16 @@ var (
 	// visual
 	tsDiffThreshold string
 
+	// playwright + visual
+	tsCloudGrid string
+
 	// accessibility
 	tsWCAGLevel string
 
 	// appium
 	tsPlatform     string
 	tsAppiumServer string
+	tsDeviceFarm   string
 
 	// chaos
 	tsExperiments   string
@@ -169,6 +173,8 @@ func init() {
 	// appium
 	f.StringVar(&tsPlatform, "platform", "android", "appium: mobile platform (android|ios)")
 	f.StringVar(&tsAppiumServer, "appium-server", "http://localhost:4723", "appium: Appium server URL")
+	f.StringVar(&tsDeviceFarm, "device-farm", "local-emulator", "appium: device farm (local-emulator|browserstack|sauce-labs|lambdatest)")
+	f.StringVar(&tsCloudGrid, "cloud-grid", "none", "playwright/visual: cloud browser grid (none|lambdatest|browserstack|sauce-labs)")
 
 	// chaos
 	f.StringVar(&tsExperiments, "experiments", "pod-failure,network-latency", "chaos: comma-separated experiment types")
@@ -193,6 +199,25 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 	if _, ok := templateRef[tsType]; !ok {
 		return fmt.Errorf("unknown --type %q; supported: playwright k6 pact newman zap datadog visual accessibility cucumber appium chaos mutation testcontainers unit component iac flutter-integration deepeval", tsType)
 	}
+	// Catch a bad --device-farm here rather than emitting a wdio.config.ts that
+	// points at a hub that does not exist and only fails in CI.
+	if tsType == "appium" {
+		switch tsDeviceFarm {
+		case "local-emulator", "browserstack", "sauce-labs", "lambdatest":
+		default:
+			return fmt.Errorf("unknown --device-farm %q; supported: local-emulator browserstack sauce-labs lambdatest", tsDeviceFarm)
+		}
+	}
+	// Same reasoning for the web grid: a bad value would otherwise produce a
+	// playwright.config.ts with no connectOptions and a CI job that silently
+	// runs on the runner instead of the grid the user asked for.
+	if tsType == "playwright" || tsType == "visual" {
+		switch tsCloudGrid {
+		case "none", "lambdatest", "browserstack", "sauce-labs":
+		default:
+			return fmt.Errorf("unknown --cloud-grid %q; supported: none lambdatest browserstack sauce-labs", tsCloudGrid)
+		}
+	}
 
 	cfg := scaffold.TestSuiteConfig{
 		Name:          tsName,
@@ -216,6 +241,8 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		WCAGLevel:     tsWCAGLevel,
 		Platform:      tsPlatform,
 		AppiumServer:  tsAppiumServer,
+		DeviceFarm:    tsDeviceFarm,
+		CloudGrid:     tsCloudGrid,
 		Experiments:   tsExperiments,
 		ChaosDuration: tsChaosDuration,
 		MutationScore: tsMutationScore,
@@ -247,6 +274,8 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 				ConsumerName: tsConsumer,
 				ProviderName: tsProvider,
 				DDSite:       tsDDSite,
+				DeviceFarm:   tsDeviceFarm,
+				CloudGrid:    tsCloudGrid,
 			})
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")

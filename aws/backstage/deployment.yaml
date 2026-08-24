@@ -65,6 +65,48 @@ spec:
                   name: backstage-secrets
                   key: GCP_SERVICE_ACCOUNT_KEY
                   optional: true
+            - name: LT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: LT_USERNAME
+                  optional: true
+            - name: LT_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: LT_ACCESS_KEY
+                  optional: true
+            - name: LT_BASIC_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: LT_BASIC_AUTH
+                  optional: true
+            - name: BROWSERSTACK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: BROWSERSTACK_USERNAME
+                  optional: true
+            - name: BROWSERSTACK_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: BROWSERSTACK_ACCESS_KEY
+                  optional: true
+            - name: SAUCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: SAUCE_USERNAME
+                  optional: true
+            - name: SAUCE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: SAUCE_ACCESS_KEY
+                  optional: true
             - name: K8S_CLUSTER_URL
               valueFrom:
                 secretKeyRef:

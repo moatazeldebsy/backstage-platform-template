@@ -8,7 +8,68 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`mobile-device-farm` is provider-agnostic.** A `provider` parameter picks
+  Firebase Test Lab, LambdaTest, BrowserStack App Automate or Sauce Labs, with the
+  Firebase path unchanged as the default. Each provider uses its own native,
+  supported mechanism rather than a lowest-common-denominator wrapper: `gcloud` for
+  Firebase, REST upload/trigger/poll for LambdaTest and BrowserStack, and the
+  `saucectl` CLI for Sauce Labs. Device matrices live per provider under
+  `device-matrix/<provider>/`, except Sauce Labs whose devices belong in the
+  `.sauce/config.yml` its CLI actually reads. The LambdaTest path builds the app,
+  uploads the app and test binaries, triggers a build across the device matrix and
+  polls it to completion, then links the build from the PR comment. A `hyperexecute`
+  execution mode is available as an alternative to the device grid, adding a
+  `hyperexecute.yaml` the LambdaTest CLI drives. Device matrices moved to
+  `device-matrix/firebase/*.yml` and `device-matrix/lambdatest/*.json`.
+- **Cloud grids across the existing suites.** `appium-mobile-suite` gains a fourth
+  `deviceFarm` choice; `playwright-e2e-suite` and `visual-regression-suite` gain a
+  `cloudGrid` parameter offering LambdaTest, BrowserStack or Sauce Labs. LambdaTest
+  and BrowserStack connect over a Playwright CDP endpoint (each with its own
+  capability shape and query parameter); Sauce Labs has no such endpoint and runs
+  through `saucectl` against a generated `.sauce/config.yml`, so its Playwright
+  config stays in the plain local-runner form. The `idp` CLI gains
+  `--device-farm` for appium and `--cloud-grid` for the two Playwright suites,
+  both validated up front and honoured by the offline `--local` generators.
+- **Credential plumbing for every device farm** — `LT_*`, `BROWSERSTACK_*` and
+  `SAUCE_*` — following the
+  `GCP_SERVICE_ACCOUNT_KEY` pattern: `.env.example`, docker-compose, the
+  `idp:repo:set-secrets` auto-inject list, and the AWS Backstage deployment. Scaffolded
+  repos authenticate on first push with no manual step.
+
 ### Fixed
+
+- **BrowserStack and Sauce Labs had no credential plumbing at all.** They were
+  selectable in `appium-mobile-suite`, but nothing on the platform ever supplied
+  their credentials, so a generated suite could not authenticate on first push even
+  once its workflow wiring was fixed. Both now auto-inject like every other
+  integration.
+- **The cloud device farms in `appium-mobile-suite` had never worked.** Selecting
+  BrowserStack or Sauce Labs produced a `wdio.config.ts` pointing at the vendor's hub,
+  but the generated workflow unconditionally started a local Appium server and never
+  exported `BROWSERSTACK_*` / `SAUCE_*`, so every run authenticated with `undefined`.
+  The workflow now starts a local Appium server only for `local-emulator`, exports the
+  selected vendor's credentials, and runs on pull requests as well — the weekly-cron
+  restriction existed because hosted runners have no device grid, which is exactly what
+  a cloud farm supplies.
+- **The `add-to-existing` variant of `appium-mobile-suite` ignored the device farm
+  entirely.** Its `wdio.config.ts` was a stale copy: local-emulator only, using the
+  wdio 8 `Options.Testrunner` type, with no `deviceFarm` or `deviceMatrix` handling. It
+  is now the same file as the standalone skeleton.
+- **The documented LambdaTest path in `playwright-e2e-suite` was a no-op.** The
+  commented-out `e2e-lambdatest` job ran bare `npx playwright test` with two env vars;
+  Playwright reaches a remote grid through `connectOptions.wsEndpoint`, not environment
+  variables, so following the docs would have silently run the suite locally. Replaced
+  with real `connectOptions` wiring in `playwright.config.ts` and a job generated only
+  when the grid is selected.
+- **`GCP_SERVICE_ACCOUNT_KEY` never reached the Backstage container locally.** It was
+  documented in `.env.example` and read by `idp:repo:set-secrets`, but missing from the
+  `docker-compose.yml` environment list — Compose reads `.env` for interpolation only —
+  so the action silently skipped it on every local scaffold.
+- **The Firebase iOS device matrices could not have worked.** `gcloud firebase test ios
+  run --device-spec` reads `iosDevices`, and the matrix files defined only
+  `androidDevices`. All three tiers now carry both.
 
 - **Terraform backend was unusable by anyone but the maintainer.** `terraform/main.tf`
   pinned the S3 backend to a specific bucket and account id. It was not a `YOUR_*`

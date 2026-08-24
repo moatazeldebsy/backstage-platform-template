@@ -1,4 +1,4 @@
-name: Device Farm (Firebase Test Lab)
+name: Device Farm
 
 on:
   push:
@@ -11,13 +11,16 @@ permissions:
   pull-requests: write  # post summary comment
 
 env:
-  FIREBASE_PROJECT: "${{ values.firebaseProjectId }}"
   PLATFORM: "${{ values.platform }}"
   TEST_FRAMEWORK: "${{ values.testFramework }}"
   DEVICE_COVERAGE: "${{ values.deviceCoverage }}"
+{%- if values.provider === 'firebase-test-lab' %}
+  FIREBASE_PROJECT: "${{ values.firebaseProjectId }}"
+{%- endif %}
 
-{% if values.platform === 'android' %}
 jobs:
+{% if values.provider === 'firebase-test-lab' %}
+{% if values.platform === 'android' %}
   device-farm-android:
     name: Firebase Test Lab — Android (${{ values.testFramework }})
     runs-on: ubuntu-latest
@@ -59,11 +62,11 @@ jobs:
             --type instrumentation \
             --app android/app/build/outputs/apk/debug/app-debug.apk \
             --test android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
-            --device-spec device-matrix/${{ values.deviceCoverage }}.yml \
+            --device-spec device-matrix/firebase/${{ values.deviceCoverage }}.yml \
             --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
             --results-dir "${{ '${{ github.run_id }}' }}" \
             --timeout 10m \
-            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> $GITHUB_ENV
+            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> "$GITHUB_ENV"
 
       - name: Upload results to GCS
         if: always()
@@ -102,7 +105,6 @@ jobs:
         run: exit 1
 
 {% elif values.platform === 'ios' %}
-jobs:
   device-farm-ios:
     name: Firebase Test Lab — iOS (XCUITest)
     runs-on: macos-15
@@ -132,11 +134,11 @@ jobs:
         run: |
           gcloud firebase test ios run \
             --test XCTests.zip \
-            --device-spec device-matrix/${{ values.deviceCoverage }}.yml \
+            --device-spec device-matrix/firebase/${{ values.deviceCoverage }}.yml \
             --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
             --results-dir "${{ '${{ github.run_id }}' }}" \
             --timeout 10m \
-            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> $GITHUB_ENV
+            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> "$GITHUB_ENV"
 
       - name: Post PR comment
         if: always() && github.event_name == 'pull_request'
@@ -172,7 +174,6 @@ jobs:
         run: exit 1
 
 {% elif values.platform === 'flutter' %}
-jobs:
   device-farm-flutter:
     name: Firebase Test Lab — Flutter (integration_test)
     runs-on: ubuntu-latest
@@ -221,11 +222,11 @@ jobs:
             --type instrumentation \
             --app build/app/outputs/apk/debug/app-debug.apk \
             --test build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
-            --device-spec device-matrix/${{ values.deviceCoverage }}.yml \
+            --device-spec device-matrix/firebase/${{ values.deviceCoverage }}.yml \
             --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
             --results-dir "${{ '${{ github.run_id }}' }}" \
             --timeout 10m \
-            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> $GITHUB_ENV
+            --format json > ftl-results.json 2>&1 || echo "FTL_FAILED=true" >> "$GITHUB_ENV"
 
       - name: Post PR comment
         if: always() && github.event_name == 'pull_request'
@@ -259,5 +260,571 @@ jobs:
       - name: Fail if tests failed
         if: env.FTL_FAILED == 'true'
         run: exit 1
+{% endif %}
+{% elif values.provider === 'lambdatest' %}
+{%- if values.platform === 'ios' %}
+{%- set ltFramework = 'xcui' %}
+{%- set ltUploadType = 'xcuitest-ios' %}
+{%- set ltRunner = 'macos-15' %}
+{%- else %}
+{%- set ltFramework = 'espresso' %}
+{%- set ltUploadType = 'espresso-android' %}
+{%- set ltRunner = 'ubuntu-latest' %}
+{%- endif %}
+  device-farm-lambdatest:
+    name: LambdaTest — ${{ values.platform }} (${{ values.testFramework }})
+    runs-on: ${{ ltRunner }}
+    steps:
+      - uses: actions/checkout@v4
 
+{%- if values.platform === 'android' %}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build app + test APKs
+        run: |
+          cd android
+          ./gradlew assembleDebug assembleDebugAndroidTest
+{%- elif values.platform === 'flutter' %}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: stable
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build app + test APKs
+        run: |
+          pushd android
+          flutter build apk --debug
+          ./gradlew app:assembleAndroidTest
+          ./gradlew app:assembleDebug -Ptarget=integration_test/app_test.dart
+          popd
+{%- elif values.platform === 'ios' %}
+
+      - name: Build .ipa and XCUITest runner
+        run: |
+          xcodebuild build-for-testing \
+            -scheme "${{ values.repoName }}" \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+          # LambdaTest wants the app and the -Runner.app zipped separately.
+          PRODUCTS=DerivedData/Build/Products/Debug-iphoneos
+          ( cd "$PRODUCTS" && zip -qr "$GITHUB_WORKSPACE/app.ipa" ./*.app -x '*-Runner.app/*' )
+          ( cd "$PRODUCTS" && zip -qr "$GITHUB_WORKSPACE/tests.zip" ./*-Runner.app )
+{%- endif %}
+
+{%- if values.executionMode === 'hyperexecute' %}
+
+      # HyperExecute is LambdaTest's own orchestrator: it reads hyperexecute.yaml,
+      # shards the suite itself and reports back to the same dashboard. It replaces
+      # the upload/trigger/poll steps rather than layering on top of them.
+      - name: Run on LambdaTest HyperExecute
+        env:
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${LT_USERNAME:-}" ] || [ -z "${LT_ACCESS_KEY:-}" ]; then
+            echo "::error::LT_USERNAME / LT_ACCESS_KEY are not set on this repository."
+            echo "They are injected automatically when the platform has them; see docs/mobile-platform.md."
+            exit 1
+          fi
+{%- if values.platform === 'ios' %}
+          curl -sSL -o hyperexecute https://downloads.lambdatest.com/hyperexecute/darwin/hyperexecute
+{%- else %}
+          curl -sSL -o hyperexecute https://downloads.lambdatest.com/hyperexecute/linux/hyperexecute
+{%- endif %}
+          chmod +x hyperexecute
+          if ./hyperexecute --config hyperexecute.yaml --verbose 2>&1 | tee hyperexecute.log; then
+            echo "LT_FAILED=false" >> "$GITHUB_ENV"
+          else
+            echo "LT_FAILED=true" >> "$GITHUB_ENV"
+          fi
+          # The CLI prints the job link; surface it for the PR comment.
+          LT_BUILD_URL=$(grep -oE 'https://[^ ]*hyperexecute[^ ]*job[^ ]*' hyperexecute.log | head -1 || true)
+          echo "LT_BUILD_URL=${LT_BUILD_URL:-https://hyperexecute.lambdatest.com/hyperexecute}" >> "$GITHUB_ENV"
+          cp hyperexecute.log lambdatest-results.json 2>/dev/null || echo '{}' > lambdatest-results.json
+{%- else %}
+
+      - name: Upload build to LambdaTest
+        env:
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${LT_USERNAME:-}" ] || [ -z "${LT_ACCESS_KEY:-}" ]; then
+            echo "::error::LT_USERNAME / LT_ACCESS_KEY are not set on this repository."
+            echo "They are injected automatically when the platform has them; see docs/mobile-platform.md."
+            exit 1
+          fi
+{%- if values.platform === 'android' %}
+          APP_FILE=android/app/build/outputs/apk/debug/app-debug.apk
+          TEST_FILE=android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+{%- elif values.platform === 'flutter' %}
+          APP_FILE=build/app/outputs/apk/debug/app-debug.apk
+          TEST_FILE=build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+{%- else %}
+          APP_FILE=app.ipa
+          TEST_FILE=tests.zip
+{%- endif %}
+
+          # --fail-with-body so a 4xx still prints LambdaTest's error JSON; a bare
+          # --fail swallows it and leaves an unexplained non-zero exit.
+          upload() {
+            curl -sS --fail-with-body -u "$LT_USERNAME:$LT_ACCESS_KEY" \
+              -X POST "https://manual-api.lambdatest.com/app/uploadFramework" \
+              -F "$1=@$2" -F "type=${{ ltUploadType }}"
+          }
+
+          APP_RESP=$(upload appFile "$APP_FILE")
+          APP_ID=$(printf '%s' "$APP_RESP" | jq -r '.app_id // empty')
+          [ -n "$APP_ID" ] || { echo "::error::app upload failed: $APP_RESP"; exit 1; }
+
+          SUITE_RESP=$(upload testSuiteFile "$TEST_FILE")
+          SUITE_ID=$(printf '%s' "$SUITE_RESP" | jq -r '.test_suite_id // empty')
+          [ -n "$SUITE_ID" ] || { echo "::error::test-suite upload failed: $SUITE_RESP"; exit 1; }
+
+          echo "LT_APP_ID=$APP_ID"     >> "$GITHUB_ENV"
+          echo "LT_SUITE_ID=$SUITE_ID" >> "$GITHUB_ENV"
+
+      - name: Trigger LambdaTest build
+        env:
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          DEVICES=$(jq -c '.${{ "ios" if values.platform === "ios" else "android" }}' \
+            "device-matrix/lambdatest/$DEVICE_COVERAGE.json")
+
+          PAYLOAD=$(jq -nc \
+            --arg app "$LT_APP_ID" \
+            --arg suite "$LT_SUITE_ID" \
+            --argjson device "$DEVICES" \
+            --arg build "$GITHUB_REPOSITORY #$GITHUB_RUN_NUMBER" \
+            '{app:$app, testSuite:$suite, device:$device, build:$build, queueTimeout:900}')
+
+          RESP=$(curl -sS --fail-with-body -u "$LT_USERNAME:$LT_ACCESS_KEY" \
+            -X POST "https://mobile-api.lambdatest.com/framework/v1/${{ ltFramework }}/build" \
+            -H 'Content-Type: application/json' -d "$PAYLOAD")
+
+          BUILD_ID=$(printf '%s' "$RESP" | jq -r '.build_id // .data.build_id // empty')
+          [ -n "$BUILD_ID" ] || { echo "::error::build trigger failed: $RESP"; exit 1; }
+
+          echo "LT_BUILD_ID=$BUILD_ID" >> "$GITHUB_ENV"
+          echo "LT_BUILD_URL=https://appautomation.lambdatest.com/build?buildId=$BUILD_ID" >> "$GITHUB_ENV"
+          echo "LambdaTest build: https://appautomation.lambdatest.com/build?buildId=$BUILD_ID"
+
+      - name: Wait for LambdaTest build
+        env:
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          # 15s x 160 = 40 min ceiling, comfortably above the ~30 min the "high"
+          # coverage tier advertises. Exhausting the loop is a failure, not a pass —
+          # treating an unknown terminal state as success is how a green build
+          # stops meaning anything.
+          for _ in $(seq 1 160); do
+            RESP=$(curl -sS -u "$LT_USERNAME:$LT_ACCESS_KEY" \
+              "https://mobile-api.lambdatest.com/framework/v1/${{ ltFramework }}/build/$LT_BUILD_ID")
+            printf '%s' "$RESP" > lambdatest-results.json
+            STATUS=$(printf '%s' "$RESP" | jq -r '.data.status_ind // .status // "running"')
+            echo "status=$STATUS"
+            case "$STATUS" in
+              completed|passed)
+                echo "LT_FAILED=false" >> "$GITHUB_ENV"; exit 0 ;;
+              failed|error|timeout|lambda_error|aborted)
+                echo "LT_FAILED=true"  >> "$GITHUB_ENV"; exit 0 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::LambdaTest build $LT_BUILD_ID did not reach a terminal state in 40 minutes."
+          echo "LT_FAILED=true" >> "$GITHUB_ENV"
+{%- endif %}
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### LambdaTest Device Farm Results',
+              '',
+              `**Platform**: ${{ values.platform }} | **Framework**: ${{ values.testFramework }} | **Coverage**: ${{ values.deviceCoverage }} | **Mode**: ${{ values.executionMode }}`,
+              '',
+              process.env.LT_FAILED === 'true' ? '**Status**: FAILED' : '**Status**: PASSED',
+              '',
+              `[View full results](${process.env.LT_BUILD_URL || 'https://appautomation.lambdatest.com'})`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambdatest-results-${{ values.platform }}
+          path: lambdatest-results.json
+          retention-days: 14
+
+      - name: Fail if tests failed
+        if: env.LT_FAILED == 'true'
+        run: exit 1
+{% elif values.provider === 'browserstack' %}
+{%- if values.platform === 'ios' %}
+{%- set bsFramework = 'xcuitest' %}
+{%- set bsRunner = 'macos-15' %}
+{%- else %}
+{%- set bsFramework = 'espresso' %}
+{%- set bsRunner = 'ubuntu-latest' %}
+{%- endif %}
+  device-farm-browserstack:
+    name: BrowserStack — ${{ values.platform }} (${{ values.testFramework }})
+    runs-on: ${{ bsRunner }}
+    steps:
+      - uses: actions/checkout@v4
+
+{%- if values.platform === 'android' %}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build app + test APKs
+        run: |
+          cd android
+          ./gradlew assembleDebug assembleDebugAndroidTest
+{%- elif values.platform === 'flutter' %}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: stable
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build app + test APKs
+        run: |
+          pushd android
+          flutter build apk --debug
+          ./gradlew app:assembleAndroidTest
+          ./gradlew app:assembleDebug -Ptarget=integration_test/app_test.dart
+          popd
+{%- elif values.platform === 'ios' %}
+
+      - name: Build .ipa and XCUITest runner
+        run: |
+          xcodebuild build-for-testing \
+            -scheme "${{ values.repoName }}" \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+          # LambdaTest wants the app and the -Runner.app zipped separately.
+          PRODUCTS=DerivedData/Build/Products/Debug-iphoneos
+          ( cd "$PRODUCTS" && zip -qr "$GITHUB_WORKSPACE/app.ipa" ./*.app -x '*-Runner.app/*' )
+          ( cd "$PRODUCTS" && zip -qr "$GITHUB_WORKSPACE/tests.zip" ./*-Runner.app )
+{%- endif %}
+
+      - name: Upload build to BrowserStack
+        env:
+          BROWSERSTACK_USERNAME: ${{ '${{ secrets.BROWSERSTACK_USERNAME }}' }}
+          BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BROWSERSTACK_USERNAME:-}" ] || [ -z "${BROWSERSTACK_ACCESS_KEY:-}" ]; then
+            echo "::error::BROWSERSTACK_USERNAME / BROWSERSTACK_ACCESS_KEY are not set on this repository."
+            echo "They are injected automatically when the platform has them; see docs/mobile-platform.md."
+            exit 1
+          fi
+          AUTH="$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY"
+{%- if values.platform === 'android' %}
+          APP_FILE=android/app/build/outputs/apk/debug/app-debug.apk
+          TEST_FILE=android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+{%- elif values.platform === 'flutter' %}
+          APP_FILE=build/app/outputs/apk/debug/app-debug.apk
+          TEST_FILE=build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+{%- else %}
+          APP_FILE=app.ipa
+          TEST_FILE=tests.zip
+{%- endif %}
+
+          APP_RESP=$(curl -sS --fail-with-body -u "$AUTH" \
+            -X POST "https://api-cloud.browserstack.com/app-automate/upload" \
+            -F "file=@$APP_FILE")
+          APP_URL=$(printf '%s' "$APP_RESP" | jq -r '.app_url // empty')
+          [ -n "$APP_URL" ] || { echo "::error::app upload failed: $APP_RESP"; exit 1; }
+
+          SUITE_RESP=$(curl -sS --fail-with-body -u "$AUTH" \
+            -X POST "https://api-cloud.browserstack.com/app-automate/${{ bsFramework }}/v2/test-suite" \
+            -F "file=@$TEST_FILE")
+          SUITE_URL=$(printf '%s' "$SUITE_RESP" | jq -r '.test_suite_url // empty')
+          [ -n "$SUITE_URL" ] || { echo "::error::test-suite upload failed: $SUITE_RESP"; exit 1; }
+
+          echo "BS_APP_URL=$APP_URL"     >> "$GITHUB_ENV"
+          echo "BS_SUITE_URL=$SUITE_URL" >> "$GITHUB_ENV"
+
+      - name: Trigger BrowserStack build
+        env:
+          BROWSERSTACK_USERNAME: ${{ '${{ secrets.BROWSERSTACK_USERNAME }}' }}
+          BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          DEVICES=$(jq -c '.${{ "ios" if values.platform === "ios" else "android" }}' \
+            "device-matrix/browserstack/$DEVICE_COVERAGE.json")
+
+          PAYLOAD=$(jq -nc \
+            --arg app "$BS_APP_URL" \
+            --arg suite "$BS_SUITE_URL" \
+            --argjson devices "$DEVICES" \
+            --arg project "$GITHUB_REPOSITORY" \
+            --arg build "#$GITHUB_RUN_NUMBER" \
+            '{app:$app, testSuite:$suite, devices:$devices, project:$project, buildName:$build}')
+
+          RESP=$(curl -sS --fail-with-body -u "$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY" \
+            -X POST "https://api-cloud.browserstack.com/app-automate/${{ bsFramework }}/v2/build" \
+            -H 'Content-Type: application/json' -d "$PAYLOAD")
+
+          BUILD_ID=$(printf '%s' "$RESP" | jq -r '.build_id // empty')
+          [ -n "$BUILD_ID" ] || { echo "::error::build trigger failed: $RESP"; exit 1; }
+
+          echo "BS_BUILD_ID=$BUILD_ID" >> "$GITHUB_ENV"
+          echo "BS_BUILD_URL=https://app-automate.browserstack.com/builds/$BUILD_ID" >> "$GITHUB_ENV"
+          echo "BrowserStack build: https://app-automate.browserstack.com/builds/$BUILD_ID"
+
+      - name: Wait for BrowserStack build
+        env:
+          BROWSERSTACK_USERNAME: ${{ '${{ secrets.BROWSERSTACK_USERNAME }}' }}
+          BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          # Same 40-minute ceiling and same rule as the other providers: running
+          # out of attempts is a failure, never a silent pass.
+          for _ in $(seq 1 160); do
+            RESP=$(curl -sS -u "$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY" \
+              "https://api-cloud.browserstack.com/app-automate/${{ bsFramework }}/v2/builds/$BS_BUILD_ID")
+            printf '%s' "$RESP" > browserstack-results.json
+            STATUS=$(printf '%s' "$RESP" | jq -r '.status // "running"')
+            echo "status=$STATUS"
+            case "$STATUS" in
+              passed|done)
+                echo "BS_FAILED=false" >> "$GITHUB_ENV"; exit 0 ;;
+              failed|error|timed_out|skipped)
+                echo "BS_FAILED=true"  >> "$GITHUB_ENV"; exit 0 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::BrowserStack build $BS_BUILD_ID did not reach a terminal state in 40 minutes."
+          echo "BS_FAILED=true" >> "$GITHUB_ENV"
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### BrowserStack Device Farm Results',
+              '',
+              `**Platform**: ${{ values.platform }} | **Framework**: ${{ values.testFramework }} | **Coverage**: ${{ values.deviceCoverage }}`,
+              '',
+              process.env.BS_FAILED === 'true' ? '**Status**: FAILED' : '**Status**: PASSED',
+              '',
+              `[View full results](${process.env.BS_BUILD_URL || 'https://app-automate.browserstack.com/builds'})`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browserstack-results-${{ values.platform }}
+          path: browserstack-results.json
+          retention-days: 14
+
+      - name: Fail if tests failed
+        if: env.BS_FAILED == 'true'
+        run: exit 1
+
+{% else %}
+  device-farm-saucelabs:
+    name: Sauce Labs — ${{ values.platform }} (${{ values.testFramework }})
+    runs-on: {% if values.platform === 'ios' %}macos-15{% else %}ubuntu-latest{% endif %}
+    steps:
+      - uses: actions/checkout@v4
+
+{%- if values.platform === 'android' %}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build app + test APKs
+        run: |
+          cd android
+          ./gradlew assembleDebug assembleDebugAndroidTest
+{%- elif values.platform === 'flutter' %}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: stable
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build app + test APKs
+        run: |
+          pushd android
+          flutter build apk --debug
+          ./gradlew app:assembleAndroidTest
+          ./gradlew app:assembleDebug -Ptarget=integration_test/app_test.dart
+          popd
+{%- elif values.platform === 'ios' %}
+
+      - name: Build .ipa and XCUITest runner
+        run: |
+          xcodebuild build-for-testing \
+            -scheme "${{ values.repoName }}" \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+          # LambdaTest wants the app and the -Runner.app zipped separately.
+          PRODUCTS=DerivedData/Build/Products/Debug-iphoneos
+          ( cd "$PRODUCTS" && zip -qr "$GITHUB_WORKSPACE/app.ipa" ./*.app -x '*-Runner.app/*' )
+          ( cd "$PRODUCTS" && zip -qr "$GITHUB_WORKSPACE/tests.zip" ./*-Runner.app )
+{%- endif %}
+
+      # Sauce Labs is driven by its own CLI rather than a REST call: saucectl
+      # reads .sauce/config.yml, uploads the binaries, fans out across the
+      # devices listed there and exits non-zero on failure — so there is no
+      # separate trigger/poll pair to write.
+      - name: Run on Sauce Labs
+        env:
+          SAUCE_USERNAME: ${{ '${{ secrets.SAUCE_USERNAME }}' }}
+          SAUCE_ACCESS_KEY: ${{ '${{ secrets.SAUCE_ACCESS_KEY }}' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SAUCE_USERNAME:-}" ] || [ -z "${SAUCE_ACCESS_KEY:-}" ]; then
+            echo "::error::SAUCE_USERNAME / SAUCE_ACCESS_KEY are not set on this repository."
+            echo "They are injected automatically when the platform has them; see docs/mobile-platform.md."
+            exit 1
+          fi
+          curl -sSL https://saucelabs.github.io/saucectl/install | bash -s -- -b .
+          if ./saucectl run --config .sauce/config.yml 2>&1 | tee saucectl.log; then
+            echo "SAUCE_FAILED=false" >> "$GITHUB_ENV"
+          else
+            echo "SAUCE_FAILED=true" >> "$GITHUB_ENV"
+          fi
+          SAUCE_BUILD_URL=$(grep -oE 'https://app\.saucelabs\.com[^ ]*' saucectl.log | head -1 || true)
+          echo "SAUCE_BUILD_URL=${SAUCE_BUILD_URL:-https://app.saucelabs.com/dashboard}" >> "$GITHUB_ENV"
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### Sauce Labs Device Farm Results',
+              '',
+              `**Platform**: ${{ values.platform }} | **Framework**: ${{ values.testFramework }} | **Coverage**: ${{ values.deviceCoverage }}`,
+              '',
+              process.env.SAUCE_FAILED === 'true' ? '**Status**: FAILED' : '**Status**: PASSED',
+              '',
+              `[View full results](${process.env.SAUCE_BUILD_URL || 'https://app.saucelabs.com/dashboard'})`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saucelabs-results-${{ values.platform }}
+          path: |
+            saucectl.log
+            sauce-results/
+          retention-days: 14
+
+      - name: Fail if tests failed
+        if: env.SAUCE_FAILED == 'true'
+        run: exit 1
 {% endif %}

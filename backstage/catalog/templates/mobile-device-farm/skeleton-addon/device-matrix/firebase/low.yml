@@ -1,0 +1,15 @@
+# Low coverage — 1 device, fast feedback (~5 min)
+androidDevices:
+  - model: redfin        # Pixel 5 equivalent (widely supported)
+    version: "33"        # Android 13
+    locale: en
+    orientation: portrait
+
+# `gcloud firebase test ios run --device-spec` reads iosDevices from this same
+# file, so the iOS path needs its own list here — an androidDevices-only spec
+# makes the iOS run fail with "no devices specified".
+iosDevices:
+  - model: iphone13pro
+    version: "16.6"
+    locale: en
+    orientation: portrait
