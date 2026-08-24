@@ -23,10 +23,15 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   execution mode is available as an alternative to the device grid, adding a
   `hyperexecute.yaml` the LambdaTest CLI drives. Device matrices moved to
   `device-matrix/firebase/*.yml` and `device-matrix/lambdatest/*.json`.
-- **LambdaTest options across the existing suites.** `appium-mobile-suite` gains a
-  fourth `deviceFarm` choice; `playwright-e2e-suite` and `visual-regression-suite`
-  gain a `cloudGrid` parameter that runs their browsers on the LambdaTest grid. The
-  `idp` CLI gains `idp testsuite --type appium --device-farm`.
+- **Cloud grids across the existing suites.** `appium-mobile-suite` gains a fourth
+  `deviceFarm` choice; `playwright-e2e-suite` and `visual-regression-suite` gain a
+  `cloudGrid` parameter offering LambdaTest, BrowserStack or Sauce Labs. LambdaTest
+  and BrowserStack connect over a Playwright CDP endpoint (each with its own
+  capability shape and query parameter); Sauce Labs has no such endpoint and runs
+  through `saucectl` against a generated `.sauce/config.yml`, so its Playwright
+  config stays in the plain local-runner form. The `idp` CLI gains
+  `--device-farm` for appium and `--cloud-grid` for the two Playwright suites,
+  both validated up front and honoured by the offline `--local` generators.
 - **Credential plumbing for every device farm** — `LT_*`, `BROWSERSTACK_*` and
   `SAUCE_*` — following the
   `GCP_SERVICE_ACCOUNT_KEY` pattern: `.env.example`, docker-compose, the

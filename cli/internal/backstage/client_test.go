@@ -388,4 +388,37 @@ func TestScaffoldTestSuite(t *testing.T) {
 			t.Errorf("expected deviceFarm=lambdatest in request body, got: %s", body)
 		}
 	})
+
+	t.Run("forwards cloudGrid for playwright suites", func(t *testing.T) {
+		var capturedBody []byte
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodPost:
+				capturedBody = make([]byte, r.ContentLength)
+				r.Body.Read(capturedBody) //nolint:errcheck
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(`{"id":"task-grid-1"}`)) //nolint:errcheck
+			case http.MethodGet:
+				ssePayload := "data:{\"type\":\"completion\",\"body\":{\"message\":\"Run completed with status: completed\"}}\n\n"
+				w.Header().Set("Content-Type", "text/event-stream")
+				w.Write([]byte(ssePayload)) //nolint:errcheck
+			}
+		}))
+		defer srv.Close()
+		c := NewClient(srv.URL, "")
+		err := c.ScaffoldTestSuite(t.Context(), TestSuiteRequest{
+			Name:        "e2e-suite",
+			TemplateRef: "playwright-e2e-suite",
+			Service:     "my-service",
+			GHOrg:       "myorg",
+			CloudGrid:   "browserstack",
+		})
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if !strings.Contains(string(capturedBody), `"cloudGrid":"browserstack"`) {
+			t.Errorf("expected cloudGrid=browserstack in request body, got: %s", capturedBody)
+		}
+	})
 }

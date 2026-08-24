@@ -49,6 +49,9 @@ type TestSuiteConfig struct {
 	AppiumServer string
 	DeviceFarm   string
 
+	// playwright + visual
+	CloudGrid string
+
 	// chaos
 	Experiments   string
 	ChaosDuration string
@@ -216,6 +219,50 @@ plugins:
 
 // ── Playwright ────────────────────────────────────────────────────────────────
 
+// GridConnect returns the Playwright `connectOptions` snippet for a cloud
+// browser grid, or "" for the runner-local case. Mirrors the connectOptions
+// wiring in the Backstage skeletons' playwright.config.ts — the two are a known
+// drift pair, so they change together.
+//
+// Sauce Labs deliberately returns "": it has no Playwright CDP endpoint and is
+// driven by saucectl reading .sauce/config.yml, so its Playwright config stays
+// in the plain local-runner form.
+// GridConnect is a method rather than a field so the Go templates can call it
+// directly — writeTSFiles renders every file against TestSuiteConfig itself.
+func (c TestSuiteConfig) GridConnect() string {
+	switch c.CloudGrid {
+	case "lambdatest":
+		return `
+      connectOptions: {
+        wsEndpoint:
+          'wss://cdp.lambdatest.com/playwright?capabilities=' +
+          encodeURIComponent(JSON.stringify({
+            browserName: 'Chrome',
+            browserVersion: 'latest',
+            'LT:Options': {
+              platform: 'Windows 11',
+              user: process.env.LT_USERNAME,
+              accessKey: process.env.LT_ACCESS_KEY,
+            },
+          })),
+      },`
+	case "browserstack":
+		return `
+      connectOptions: {
+        wsEndpoint:
+          'wss://cdp.browserstack.com/playwright?caps=' +
+          encodeURIComponent(JSON.stringify({
+            browser: 'playwright-chromium',
+            os: 'Windows',
+            os_version: '11',
+            'browserstack.username': process.env.BROWSERSTACK_USERNAME,
+            'browserstack.accessKey': process.env.BROWSERSTACK_ACCESS_KEY,
+          })),
+      },`
+	}
+	return ""
+}
+
 func genPlaywright(cfg TestSuiteConfig, dir string) error {
 	files := map[string]string{
 		"package.json": `{
@@ -246,7 +293,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'],<% .GridConnect %> } }],
 });
 `,
 		"tests/fixtures/base.fixture.ts": `import { test as base, expect } from '@playwright/test';
@@ -618,7 +665,7 @@ export default defineConfig({
     screenshot: 'on',
   },
   expect: { toHaveScreenshot: { maxDiffPixelRatio: <% .DiffThreshold %> } },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'],<% .GridConnect %> } }],
 });
 `,
 		"tests/visual.spec.ts": `import { test, expect } from '@playwright/test';

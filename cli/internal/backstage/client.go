@@ -22,8 +22,8 @@ type Client struct {
 
 func NewClient(baseURL, token string) *Client {
 	return &Client{
-		base:  strings.TrimRight(baseURL, "/"),
-		token: token,
+		base:   strings.TrimRight(baseURL, "/"),
+		token:  token,
 		client: &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -141,6 +141,7 @@ type TestSuiteRequest struct {
 	ProviderName string // pact only
 	DDSite       string // datadog only
 	DeviceFarm   string // appium only
+	CloudGrid    string // playwright / visual only
 }
 
 // ScaffoldTestSuite creates a scaffolder task for a test suite template.
@@ -164,6 +165,11 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 	}
 	if req.DeviceFarm != "" {
 		values["deviceFarm"] = req.DeviceFarm
+	}
+	// "none" is a real choice, not an absent one, so it must be forwarded —
+	// omitting it would let the template fall back to its own default.
+	if req.CloudGrid != "" {
+		values["cloudGrid"] = req.CloudGrid
 	}
 	payload := taskPayload{
 		TemplateRef: "template:default/" + req.TemplateRef,
@@ -210,7 +216,9 @@ type logBody struct {
 }
 
 // Backstage scaffolder emits completion events with body:
-//   { "message": "Run completed with status: completed" | "...failed" | "...cancelled" }
+//
+//	{ "message": "Run completed with status: completed" | "...failed" | "...cancelled" }
+//
 // The actual task status is on the task row, not in the event body — so we parse
 // it from the message string. See StorageTaskBroker.complete() in
 // @backstage/plugin-scaffolder-backend.

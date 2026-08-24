@@ -115,12 +115,16 @@ spec:
           enum:
             - none
             - lambdatest
+            - browserstack
+            - sauce-labs
           enumNames:
             - 'None — run browsers on the GitHub runner'
-            - 'LambdaTest — run on the cloud grid'
+            - 'LambdaTest — cloud grid'
+            - 'BrowserStack — cloud grid'
+            - 'Sauce Labs — cloud grid (via saucectl)'
           default: none
           ui:widget: radio
-          ui:help: "LambdaTest widens real-browser/OS coverage beyond what a hosted runner offers. Credentials (LT_USERNAME / LT_ACCESS_KEY) are injected by the platform — nothing to set up here."
+          ui:help: "A cloud grid widens real-browser/OS coverage beyond what a hosted runner offers. Credentials are injected by the platform — nothing to set up here. LambdaTest and BrowserStack connect over a Playwright CDP endpoint; Sauce Labs has none and runs through its saucectl CLI instead."
 
     - title: Integrations
       properties:
@@ -173,6 +177,16 @@ spec:
           diffThreshold: ${{ parameters.diffThreshold }}
           githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-saucelabs
+      name: Fetch Sauce Labs Config
+      if: ${{ parameters.cloudGrid === 'sauce-labs' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-saucelabs
+        values:
+          name: ${{ parameters.name }}
+          baseUrl: ${{ parameters.baseUrl }}
 
     - id: publish
       name: Publish to GitHub
