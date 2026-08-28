@@ -102,6 +102,7 @@ export async function collectPrometheus(
     prCycleTime,
     ciDuration,
     buildFailure,
+    teamActualCost,
   ] = await Promise.all([
     query(`dora_deploy_frequency_per_day${EXCLUDE_ROLLUP}`),
     query(`dora_lead_time_minutes${EXCLUDE_ROLLUP}`),
@@ -121,6 +122,8 @@ export async function collectPrometheus(
     query(`devex_pr_cycle_time_hours${EXCLUDE_ROLLUP}`),
     query(`devex_ci_duration_minutes${EXCLUDE_ROLLUP}`),
     query(`devex_build_failure_ratio${EXCLUDE_ROLLUP}`),
+    // Needed only to decide whether budget utilisation means anything — see below.
+    query('idp_team_actual_cost_usd_monthly'),
   ]);
 
   if (
@@ -174,7 +177,19 @@ export async function collectPrometheus(
     push('test.passRate', safeRatio(passed, passed + failed));
   }
 
-  push('finops.budgetUtilisationRatio', vectorMean(budgetUtil));
+  // Budget utilisation is actual/budget, and the exporter publishes 0 for a team
+  // with no attributed spend rather than omitting it. The inverse-linear
+  // normaliser reads 0 as *perfectly under budget* and scores it 100, so a
+  // platform where no workload carries a `team` label reports exemplary cost
+  // discipline. Observed on a fresh local cluster 2026-08-28: eight teams, zero
+  // attributed cost, FinOps 58 against a real efficiency of 15.6%.
+  //
+  // Same rule as change failure rate over zero deploys: a ratio whose numerator
+  // was never measured is not a good ratio, it is an absent one.
+  const attributedCost = vectorSum(teamActualCost);
+  if (attributedCost !== undefined && attributedCost > 0) {
+    push('finops.budgetUtilisationRatio', vectorMean(budgetUtil));
+  }
 
   // The exporter omits a DevEx series entirely when nothing merged or nothing
   // ran, rather than pushing 0.0 — so an empty vector here means "not observed",

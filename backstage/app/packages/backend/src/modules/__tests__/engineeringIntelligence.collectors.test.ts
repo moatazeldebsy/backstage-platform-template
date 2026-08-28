@@ -211,6 +211,43 @@ describe('collectPrometheus', () => {
     expect(result.unavailable?.reason).toMatch(/not configured|No proxy/);
   });
 
+  it('withholds budget utilisation when no cost was attributed to any team', async () => {
+    // The second instance of the same bug, found on the same real cluster. The
+    // exporter publishes utilisation 0 for a team with no attributed spend, and
+    // the inverse-linear normaliser reads 0 as perfectly under budget — scoring
+    // 100 on a platform where no workload carries a `team` label.
+    mockFetchJson(url => {
+      const q = decodeURIComponent(url);
+      if (q.includes('idp_team_budget_utilization_ratio')) {
+        return vector([{ team: 'a' }, '0'], [{ team: 'b' }, '0']);
+      }
+      if (q.includes('idp_team_actual_cost_usd_monthly')) {
+        return vector([{ team: 'a' }, '0'], [{ team: 'b' }, '0']);
+      }
+      if (q.includes('dora_')) return vector([{ service: 'a' }, '1']);
+      return vector();
+    });
+
+    const result = await collectPrometheus(ctx);
+    expect(result.samples.map(s => s.metric)).not.toContain(
+      'finops.budgetUtilisationRatio',
+    );
+  });
+
+  it('reports budget utilisation once real spend is attributed', async () => {
+    mockFetchJson(url => {
+      const q = decodeURIComponent(url);
+      if (q.includes('idp_team_budget_utilization_ratio')) return vector([{ team: 'a' }, '0.82']);
+      if (q.includes('idp_team_actual_cost_usd_monthly')) return vector([{ team: 'a' }, '412.50']);
+      if (q.includes('dora_')) return vector([{ service: 'a' }, '1']);
+      return vector();
+    });
+
+    const result = await collectPrometheus(ctx);
+    const row = result.samples.find(s => s.metric === 'finops.budgetUtilisationRatio');
+    expect(row?.value).toBeCloseTo(0.82);
+  });
+
   it('withholds change failure rate and MTTR when nothing deployed', async () => {
     // Found on a real cluster, not by a test. The DORA exporter publishes 0.0
     // for a repo with no deployments rather than omitting the series, so a
