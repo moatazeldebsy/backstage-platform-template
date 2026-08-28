@@ -143,10 +143,28 @@ export async function collectPrometheus(
     samples.push({ metric, value, source: 'prometheus', observedAt });
   };
 
+  // Deploy frequency is meaningful at zero: a platform that is not deploying is
+  // a real, reportable state.
   push('dora.deployFrequencyPerDay', vectorMean(deployFreq));
-  push('dora.leadTimeMinutes', vectorMean(leadTime));
-  push('dora.changeFailureRatePercent', vectorMean(changeFailure));
-  push('dora.mttrMinutes', vectorMean(mttr));
+
+  // The other three are not. The DORA exporter publishes 0.0 for a repo with no
+  // deployments rather than omitting the series, so a platform that has never
+  // deployed reports change failure rate 0% and MTTR 0 minutes — which the
+  // banded normalisers read as *elite*, scoring Reliability 100 on a platform
+  // that has never shipped anything. Observed on a fresh local cluster
+  // 2026-08-28: ten discovered repos, zero deploys, Reliability 100.
+  //
+  // Nothing failed and nothing was restored because nothing was deployed. That
+  // is an absence of evidence, not a perfect record, so these are withheld —
+  // the same rule the devex_* series follow at the exporter end.
+  const deployTotal = vectorSum(deployFreq);
+  const deployedInWindow = deployTotal !== undefined && deployTotal > 0;
+
+  if (deployedInWindow) {
+    push('dora.leadTimeMinutes', vectorMean(leadTime));
+    push('dora.changeFailureRatePercent', vectorMean(changeFailure));
+    push('dora.mttrMinutes', vectorMean(mttr));
+  }
 
   push('test.flakinessRatio', vectorMean(flakiness));
 

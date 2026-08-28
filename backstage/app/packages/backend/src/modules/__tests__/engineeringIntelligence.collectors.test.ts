@@ -211,6 +211,50 @@ describe('collectPrometheus', () => {
     expect(result.unavailable?.reason).toMatch(/not configured|No proxy/);
   });
 
+  it('withholds change failure rate and MTTR when nothing deployed', async () => {
+    // Found on a real cluster, not by a test. The DORA exporter publishes 0.0
+    // for a repo with no deployments rather than omitting the series, so a
+    // platform that had never shipped reported CFR 0% and MTTR 0 minutes — which
+    // the banded normalisers read as elite, scoring Reliability 100.
+    //
+    // Nothing failed and nothing was restored because nothing was deployed.
+    mockFetchJson(url => {
+      const q = decodeURIComponent(url);
+      if (q.includes('dora_deploy_frequency_per_day')) {
+        return vector([{ service: 'a' }, '0'], [{ service: 'b' }, '0']);
+      }
+      if (q.includes('dora_')) return vector([{ service: 'a' }, '0']);
+      return vector();
+    });
+
+    const result = await collectPrometheus(ctx);
+    const metrics = result.samples.map(s => s.metric);
+
+    // Zero deploys per day is itself a real, reportable measurement.
+    expect(metrics).toContain('dora.deployFrequencyPerDay');
+    // These are not.
+    expect(metrics).not.toContain('dora.changeFailureRatePercent');
+    expect(metrics).not.toContain('dora.mttrMinutes');
+    expect(metrics).not.toContain('dora.leadTimeMinutes');
+  });
+
+  it('reports change failure rate and MTTR once something has deployed', async () => {
+    mockFetchJson(url => {
+      const q = decodeURIComponent(url);
+      if (q.includes('dora_deploy_frequency_per_day')) return vector([{ service: 'a' }, '1.5']);
+      if (q.includes('dora_change_failure_rate_percent')) return vector([{ service: 'a' }, '4']);
+      if (q.includes('dora_mttr_minutes')) return vector([{ service: 'a' }, '30']);
+      if (q.includes('dora_lead_time_minutes')) return vector([{ service: 'a' }, '45']);
+      return vector();
+    });
+
+    const result = await collectPrometheus(ctx);
+    const byMetric = Object.fromEntries(result.samples.map(s => [s.metric, s.value]));
+    expect(byMetric['dora.changeFailureRatePercent']).toBe(4);
+    expect(byMetric['dora.mttrMinutes']).toBe(30);
+    expect(byMetric['dora.leadTimeMinutes']).toBe(45);
+  });
+
   it('omits a metric whose query returned nothing, rather than scoring it zero', async () => {
     mockFetchJson(url =>
       decodeURIComponent(url).includes('dora_') ? vector([{ service: 'a' }, '1']) : vector(),
