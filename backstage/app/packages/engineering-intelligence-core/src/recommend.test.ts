@@ -63,7 +63,7 @@ describe('recommend', () => {
 
     const report = scoreHealth(samples);
     const rec = report.recommendations.find(
-      r => r.id === 'platform.catalog.goldenPathAdoption',
+      r => r.id === 'catalog.goldenPathAdoption',
     )!;
 
     expect(rec).toBeDefined();
@@ -93,9 +93,9 @@ describe('recommend', () => {
     const report = scoreHealth(samples);
     const ids = report.recommendations.map(r => r.id);
 
-    expect(ids[0]).toBe('reliability.dora.changeFailureRatePercent');
-    expect(ids.indexOf('platform.catalog.goldenPathAdoption')).toBeLessThan(
-      ids.indexOf('platform.catalog.ownershipCoverage'),
+    expect(ids[0]).toBe('dora.changeFailureRatePercent');
+    expect(ids.indexOf('catalog.goldenPathAdoption')).toBeLessThan(
+      ids.indexOf('catalog.ownershipCoverage'),
     );
   });
 
@@ -111,7 +111,7 @@ describe('recommend', () => {
     expect(report.dimensions.quality.score).toBeNull();
 
     const rec = report.recommendations.find(
-      r => r.id === 'quality.test.flakinessRatio',
+      r => r.id === 'test.flakinessRatio',
     )!;
     expect(rec).toBeDefined();
     expect(rec.evidence[0].value).toBe(0.19);

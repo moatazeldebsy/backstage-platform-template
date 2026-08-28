@@ -21,7 +21,10 @@ import {
   HealthReport,
   assessMaturity,
 } from '@internal/engineering-intelligence-core';
-import { engineeringIntelligencePlugin } from '../idpEngineeringIntelligence';
+import {
+  engineeringIntelligencePlugin,
+  route,
+} from '../idpEngineeringIntelligence';
 
 const OBSERVED = '2026-08-28T09:00:00.000Z';
 
@@ -278,6 +281,42 @@ describe('snapshot store', () => {
 });
 
 // ── plugin wiring ─────────────────────────────────────────────────────────────
+
+describe('route', () => {
+  // Found by curling an unauthenticated request at the running container: the
+  // request hung until the client gave up, and the backend logged an unhandled
+  // rejection. Express 4 does not await an async handler, so a rejected promise
+  // inside one never becomes a response — httpAuth.credentials() rejecting with
+  // AuthenticationError left the socket open forever instead of returning 401.
+  function call(handler: ReturnType<typeof route>) {
+    const next = jest.fn();
+    const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+    handler({} as any, res as any, next);
+    return { next, res };
+  }
+
+  it('forwards a rejection to next so Express can answer', async () => {
+    const boom = new Error('Missing credentials');
+    const { next } = call(
+      route(async () => {
+        throw boom;
+      }),
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    expect(next).toHaveBeenCalledWith(boom);
+  });
+
+  it('leaves a successful handler alone', async () => {
+    const { next, res } = call(
+      route(async (_req, response) => {
+        response.json({ ok: true });
+      }),
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    expect(next).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ ok: true });
+  });
+});
 
 describe('engineeringIntelligencePlugin', () => {
   it('constructs as a Backstage backend plugin', () => {

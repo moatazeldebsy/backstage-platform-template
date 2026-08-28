@@ -41,7 +41,11 @@ export function recommend(
       if (row.normalised >= signal.recommendBelow) continue;
 
       out.push({
-        id: `${config.id}.${signal.metric}`,
+        // The metric id alone. Prefixing the dimension produced ids that
+        // stuttered — `finops.finops.costEfficiencyRatio` — because most metric
+        // ids already carry their dimension. Uniqueness is guaranteed instead by
+        // a test asserting no metric is declared in two dimensions.
+        id: signal.metric,
         dimension: config.id,
         severity: signal.recommendation.severity,
         title: `${signal.label} is below target`,

@@ -5,7 +5,7 @@ import {
   WeightOverrides,
   evidenceGaps,
 } from '@internal/engineering-intelligence-core';
-import express, { Router } from 'express';
+import express, { NextFunction, Request, Response, Router } from 'express';
 import { collectAndScore, CollectionOutcome } from './engineeringIntelligence/collect';
 import { collectCatalog, CatalogEntity } from './engineeringIntelligence/catalog';
 import { collectLangfuse } from './engineeringIntelligence/langfuse';
@@ -30,6 +30,26 @@ import {
 // has three instances of in its Bronze/Silver/Gold logic.
 //
 // See docs/engineering-intelligence/architecture.md.
+
+/**
+ * Wrap an async route so a rejected promise reaches Express.
+ *
+ * Express 4 does not await async handlers, so a rejection inside one is never
+ * turned into a response — the request hangs open until the client times out,
+ * and Node logs an unhandled rejection. That is exactly what an unauthenticated
+ * request did here: `httpAuth.credentials()` rejects with AuthenticationError,
+ * and the caller waited forever instead of being told 401.
+ *
+ * Forwarding to `next` hands the error to Backstage's own error middleware,
+ * which maps AuthenticationError to 401 and anything else to 500.
+ */
+export function route(
+  handler: (req: Request, res: Response) => Promise<void>,
+): (req: Request, res: Response, next: NextFunction) => void {
+  return (req, res, next) => {
+    handler(req, res).catch(next);
+  };
+}
 
 const DEFAULT_REFRESH_MINUTES = 30;
 const MAX_SNAPSHOTS = 200;
@@ -183,7 +203,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         }
 
         // GET /api/engineering-intelligence/health
-        router.get('/health', async (req, res) => {
+        router.get('/health', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
           res.json({
@@ -193,10 +213,10 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
             // not a finding about the engineering organisation.
             evidenceGaps: evidenceGaps(report.dimensions),
           });
-        });
+        }));
 
         // GET /api/engineering-intelligence/dimensions/:id
-        router.get('/dimensions/:id', async (req, res) => {
+        router.get('/dimensions/:id', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const id = req.params.id as DimensionId;
           if (!DIMENSIONS.some(d => d.id === id)) {
@@ -208,30 +228,30 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
-        });
+        }));
 
         // GET /api/engineering-intelligence/maturity
-        router.get('/maturity', async (req, res) => {
+        router.get('/maturity', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
           res.json({
             generatedAt: report.generatedAt,
             ...report.maturity,
           });
-        });
+        }));
 
         // GET /api/engineering-intelligence/recommendations
-        router.get('/recommendations', async (req, res) => {
+        router.get('/recommendations', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
           res.json({
             generatedAt: report.generatedAt,
             recommendations: report.recommendations,
           });
-        });
+        }));
 
         // GET /api/engineering-intelligence/snapshots?limit=30
-        router.get('/snapshots', async (req, res) => {
+        router.get('/snapshots', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const requested = Number(req.query.limit ?? 30);
           const limit = Number.isFinite(requested)
@@ -255,10 +275,10 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
               ),
             })),
           });
-        });
+        }));
 
         // POST /api/engineering-intelligence/refresh
-        router.post('/refresh', async (req, res) => {
+        router.post('/refresh', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const outcome = await refresh();
           res.json({
@@ -267,7 +287,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
             status: outcome.report.status,
             unavailable: outcome.unavailable,
           });
-        });
+        }));
 
         // No addAuthPolicy override: the default httpRouter policy already
         // requires credentials, and every handler asserts a user principal.

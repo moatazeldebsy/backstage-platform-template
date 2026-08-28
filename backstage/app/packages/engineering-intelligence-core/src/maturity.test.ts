@@ -212,7 +212,7 @@ describe('assessMaturity', () => {
     // makes the gap unreadable.
     const recommendations: Recommendation[] = [
       {
-        id: 'platform.catalog.goldenPathAdoption',
+        id: 'catalog.goldenPathAdoption',
         dimension: 'platform',
         severity: 'warning',
         title: 'Golden-path adoption is below target',
@@ -220,7 +220,7 @@ describe('assessMaturity', () => {
         evidence: [],
       },
       {
-        id: 'finops.costEfficiency',
+        id: 'finops.costEfficiencyRatio',
         dimension: 'finops',
         severity: 'warning',
         title: 'Efficiency is below target',
@@ -235,7 +235,7 @@ describe('assessMaturity', () => {
     );
 
     expect(result.recommendedActions.map(r => r.id)).toEqual([
-      'platform.catalog.goldenPathAdoption',
+      'catalog.goldenPathAdoption',
     ]);
   });
 
