@@ -20,6 +20,7 @@
 #   ./scripts/verify-engineering-intelligence.sh              # build if needed, verify
 #   ./scripts/verify-engineering-intelligence.sh --rebuild    # force an image rebuild
 #   ./scripts/verify-engineering-intelligence.sh --screenshot # also render the page
+#                                                             # (written to $TMPDIR)
 #   ./scripts/verify-engineering-intelligence.sh --keep       # leave containers running
 set -euo pipefail
 
@@ -94,18 +95,29 @@ docker run -d --name ei-backstage --network "${NETWORK}" -p "${PORT}:7007" \
   -v "${FIXTURES}:/verify:ro" \
   "${IMAGE}" node packages/backend --config /verify/app-config.yaml >/dev/null
 
-# Fail loudly on a crashed backend rather than looping until the CI job times out.
+# Readiness is "the init line appeared"; failure is "the container is gone".
+# An earlier version also treated any log line matching /Unhandled rejection/ as
+# fatal, which made the script fail intermittently on startups that went on to
+# succeed — a flaky verification script is worse than none, because it teaches
+# you to ignore it. Container liveness is unambiguous; log greps are not.
+STARTED=false
 for _ in $(seq 1 120); do
-  if docker logs ei-backstage 2>&1 | grep -q "Plugin initialization complete"; then break; fi
-  if docker logs ei-backstage 2>&1 | grep -qE "startup failed|Unhandled rejection"; then
-    echo "Backstage failed to start:" >&2
-    docker logs ei-backstage 2>&1 | tail -30 >&2
+  if docker logs ei-backstage 2>&1 | grep -q "Plugin initialization complete"; then
+    STARTED=true
+    break
+  fi
+  if [[ "$(docker inspect -f '{{.State.Running}}' ei-backstage 2>/dev/null)" != "true" ]]; then
+    echo "Backstage exited during startup:" >&2
+    docker logs ei-backstage 2>&1 | tail -40 >&2
     exit 1
   fi
   sleep 2
 done
-docker logs ei-backstage 2>&1 | grep -q "Plugin initialization complete" \
-  || { echo "Backstage did not finish starting" >&2; docker logs ei-backstage 2>&1 | tail -30 >&2; exit 1; }
+[[ "$STARTED" == true ]] || {
+  echo "Backstage did not finish starting within 240s" >&2
+  docker logs ei-backstage 2>&1 | tail -40 >&2
+  exit 1
+}
 ok "Backstage started"
 
 # ── assertions ────────────────────────────────────────────────────────────────
@@ -222,7 +234,10 @@ COUNT=$(docker exec ei-postgres psql -U backstage -d "backstage_plugin_engineeri
 
 if [[ "$SCREENSHOT" == true ]]; then
   log "Rendering the dashboard"
-  OUT="${REPO_ROOT}/backstage/app/ei-dashboard.png"
+  # Written outside the working tree: the script runs from a clean checkout in
+  # CI, and dropping an untracked PNG into backstage/app would show up in every
+  # subsequent `git status`.
+  OUT="${TMPDIR:-/tmp}/ei-dashboard.png"
   # Run from backstage/app so @playwright/test resolves from its node_modules.
   (cd "${REPO_ROOT}/backstage/app" && node - "$OUT" <<'JS'
 import { chromium } from '@playwright/test';
