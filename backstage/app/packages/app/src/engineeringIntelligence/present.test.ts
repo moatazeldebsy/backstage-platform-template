@@ -13,8 +13,11 @@ import type {
 } from '@internal/engineering-intelligence-core';
 import {
   BAND_COLOUR,
+  DIMENSION_ORDER,
   SnapshotRow,
   band,
+  orderedDimensions,
+  trendLabel,
   formatMetricValue,
   formatScore,
   ladder,
@@ -180,6 +183,72 @@ describe('trend', () => {
       snapshot('2026-08-20T12:00:00.000Z', 78),
     ]);
     expect(movement?.delta).toBe(-8);
+  });
+});
+
+describe('trendLabel', () => {
+  // Found by screenshotting the running dashboard: two real collections that
+  // agreed rendered as "▲ 0", which reads as an improvement of nothing and
+  // points the arrow the wrong way for a figure that did not move.
+  it('says unchanged rather than showing a zero delta with an arrow', () => {
+    const label = trendLabel({ delta: 0, since: '2026-08-28T11:00:00.000Z' }, NOW);
+    expect(label).toBe('Unchanged since 60 min ago');
+    expect(label).not.toContain('▲');
+    expect(label).not.toContain('▼');
+  });
+
+  it('points the arrow with the movement', () => {
+    expect(trendLabel({ delta: 8, since: '2026-08-28T11:00:00.000Z' }, NOW)).toBe(
+      '▲ 8 since 60 min ago',
+    );
+    expect(trendLabel({ delta: -5.5, since: '2026-08-28T11:00:00.000Z' }, NOW)).toBe(
+      '▼ 5.5 since 60 min ago',
+    );
+  });
+
+  it('states the absence of history rather than implying stability', () => {
+    expect(trendLabel(undefined, NOW)).toMatch(/No trend yet/);
+  });
+});
+
+describe('orderedDimensions', () => {
+  // Found by screenshotting the running dashboard: the cards came out in an
+  // arbitrary order, because the report round-trips through a Postgres jsonb
+  // column and jsonb does not preserve object key order.
+  it('renders in the declared order regardless of the object key order', () => {
+    const scrambled: any = {
+      finops: { dimension: 'finops' },
+      devEx: { dimension: 'devEx' },
+      platform: { dimension: 'platform' },
+      security: { dimension: 'security' },
+      quality: { dimension: 'quality' },
+      aiEngineering: { dimension: 'aiEngineering' },
+      reliability: { dimension: 'reliability' },
+    };
+    expect(orderedDimensions(scrambled).map(d => d.dimension)).toEqual(
+      DIMENSION_ORDER,
+    );
+  });
+
+  it('leads with Platform Engineering', () => {
+    expect(DIMENSION_ORDER[0]).toBe('platform');
+  });
+
+  it('skips a dimension the report omitted', () => {
+    const partial: any = { platform: { dimension: 'platform' } };
+    expect(orderedDimensions(partial).map(d => d.dimension)).toEqual(['platform']);
+  });
+
+  it('still renders a dimension this build does not know about', () => {
+    // A backend one version ahead must not have its new dimension vanish.
+    const withNew: any = {
+      platform: { dimension: 'platform' },
+      somethingNew: { dimension: 'somethingNew' },
+    };
+    expect(orderedDimensions(withNew).map(d => d.dimension)).toEqual([
+      'platform',
+      'somethingNew',
+    ]);
   });
 });
 

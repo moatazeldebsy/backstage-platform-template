@@ -31,7 +31,9 @@ import {
   relativeTime,
   statusLine,
   topRisks,
+  orderedDimensions,
   trend,
+  trendLabel,
 } from './present';
 
 // The Engineering Intelligence dashboard.
@@ -112,21 +114,9 @@ function Headline({
         <Grid item xs>
           <Typography variant="body1">{maturityHeadline(report.maturity)}</Typography>
           <Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
-            {movement ? (
-              <>
-                {movement.delta >= 0 ? '▲' : '▼'} {Math.abs(movement.delta)} since{' '}
-                {relativeTime(movement.since)}
-              </>
-            ) : (
-              // Not "no change" — there is genuinely nothing to compare against.
-              // Snapshots start at first install and no source retains history
-              // to back-fill, so early on this line has to say so.
-              <>
-                No trend yet — snapshots begin at first install and cannot be
-                back-filled
-              </>
-            )}
-            {' · '}collected {relativeTime(report.generatedAt)}
+            {/* trendLabel distinguishes three cases the reader cares about:
+                no history at all, two collections that agree, and a real move. */}
+            {trendLabel(movement)} · collected {relativeTime(report.generatedAt)}
           </Typography>
           {report.status !== 'ok' && (
             <Typography variant="body2" style={{ color: BAND_COLOUR.unknown, marginTop: 4 }}>
@@ -379,7 +369,9 @@ export function EngineeringIntelligencePage() {
     load();
   }, [load]);
 
-  const dimensions = report ? Object.values(report.dimensions) : [];
+  // Explicit order, not the report's key order — the report round-trips through
+  // a Postgres jsonb column, which reorders object keys.
+  const dimensions = report ? orderedDimensions(report.dimensions) : [];
   const selectedDimension = selected ? report?.dimensions[selected] : undefined;
 
   return (

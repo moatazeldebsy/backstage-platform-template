@@ -26,6 +26,39 @@ export interface SnapshotRow {
   dimensions: Record<string, number | null>;
 }
 
+/**
+ * The order dimension cards are shown in — Platform first, then the delivery
+ * dimensions, then the cross-cutting ones.
+ *
+ * Explicit because the report cannot be trusted to carry an order: it is stored
+ * as Postgres `jsonb`, which does not preserve object key order (it sorts keys
+ * by length, then bytewise). Reading `Object.values(report.dimensions)` renders
+ * the cards in whatever order the database chose, which changes as dimension
+ * names change.
+ */
+export const DIMENSION_ORDER: DimensionId[] = [
+  'platform',
+  'devEx',
+  'quality',
+  'reliability',
+  'aiEngineering',
+  'security',
+  'finops',
+];
+
+/** Dimension scores in display order, skipping any the report omitted. */
+export function orderedDimensions(
+  dimensions: Record<string, DimensionScore>,
+): DimensionScore[] {
+  const known = DIMENSION_ORDER.map(id => dimensions[id]).filter(Boolean);
+  // Anything the backend added that this build does not know about still gets
+  // rendered, after the known ones, rather than silently disappearing.
+  const extra = Object.keys(dimensions)
+    .filter(id => !DIMENSION_ORDER.includes(id as DimensionId))
+    .map(id => dimensions[id]);
+  return [...known, ...extra];
+}
+
 export const DIMENSION_LABELS: Record<DimensionId, string> = {
   platform: 'Platform Engineering',
   devEx: 'Developer Experience',
@@ -137,6 +170,23 @@ export function relativeTime(iso: string, now: number = Date.now()): string {
 export interface Trend {
   delta: number;
   since: string;
+}
+
+/**
+ * The trend line's text.
+ *
+ * A zero delta gets its own wording. Rendering it as "▲ 0" reads as an
+ * improvement of nothing and points the arrow the wrong way for a figure that
+ * did not move at all — two real collections agreeing is worth saying plainly.
+ */
+export function trendLabel(movement: Trend | undefined, now?: number): string {
+  if (!movement) {
+    return 'No trend yet — snapshots begin at first install and cannot be back-filled';
+  }
+  const when = relativeTime(movement.since, now);
+  if (movement.delta === 0) return `Unchanged since ${when}`;
+  const arrow = movement.delta > 0 ? '▲' : '▼';
+  return `${arrow} ${Math.abs(movement.delta)} since ${when}`;
 }
 
 /**
