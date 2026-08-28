@@ -1,0 +1,219 @@
+// Renders the page against a stubbed API to pin the three things that would do
+// real damage if they regressed:
+//
+//   1. An unscored dimension showing a number.
+//   2. A failed request rendering as a healthy-looking score.
+//   3. Evidence gaps presented as risks — "we cannot measure this" is a gap in
+//      instrumentation, not a finding about the engineering organisation.
+//
+// The repo's frontend test convention is plain @testing-library/react rather
+// than renderInTestApp (see App.test.tsx), so the two Backstage APIs the page
+// uses are stubbed directly.
+
+import { render, screen, waitFor } from '@testing-library/react';
+import type { HealthResponse } from './api';
+
+const fetchMock = jest.fn();
+
+// The stubs must be stable across renders, because the real useApi returns a
+// singleton. Handing back a fresh object each call invalidates the page's
+// useMemo, which re-creates its client, which re-runs the load effect — an
+// endless refetch that exists only in the test harness.
+const fetchApiStub = { fetch: (...args: any[]) => fetchMock(...args) };
+const configApiStub = { getString: () => 'http://backstage' };
+
+jest.mock('@backstage/core-plugin-api', () => ({
+  useApi: (ref: any) => (ref === 'config' ? configApiStub : fetchApiStub),
+  fetchApiRef: 'fetch',
+  configApiRef: 'config',
+}));
+
+// The real components render a full Backstage page shell; the page's own markup
+// is what is under test here.
+jest.mock('@backstage/core-components', () => ({
+  Page: ({ children }: any) => <div>{children}</div>,
+  Header: ({ title }: any) => <h1>{title}</h1>,
+  Content: ({ children }: any) => <div>{children}</div>,
+  Progress: () => <div>loading</div>,
+}));
+
+// eslint-disable-next-line import/first
+import { EngineeringIntelligencePage } from './EngineeringIntelligencePage';
+
+function dimension(id: string, score: number | null, extra: any = {}) {
+  return {
+    dimension: id,
+    score,
+    status: score === null ? 'insufficient-evidence' : 'ok',
+    coverage: score === null ? 0.25 : 1,
+    evidence: [],
+    missing: [],
+    ...extra,
+  };
+}
+
+const REPORT: HealthResponse = {
+  generatedAt: new Date().toISOString(),
+  overallScore: 82,
+  status: 'partial',
+  dimensions: {
+    platform: dimension('platform', 75),
+    devEx: dimension('devEx', null, {
+      missing: [
+        { metric: 'devex.prCycleTimeHours', expectedFrom: 'github', reason: 'x' },
+      ],
+    }),
+    quality: dimension('quality', 89.1),
+    reliability: dimension('reliability', 100),
+    aiEngineering: dimension('aiEngineering', null),
+    security: dimension('security', null),
+    finops: dimension('finops', 63.8),
+  },
+  recommendations: [
+    {
+      id: 'catalog.goldenPathAdoption',
+      dimension: 'platform',
+      severity: 'warning',
+      title: 'Services scaffolded from a golden-path template is below target',
+      action: 'Move services onto an approved golden-path template.',
+      evidence: [
+        {
+          metric: 'catalog.goldenPathAdoption',
+          value: 0.5,
+          normalised: 50,
+          source: 'catalog',
+          observedAt: new Date().toISOString(),
+          impact: 15,
+        },
+      ],
+    },
+  ],
+  maturity: {
+    currentLevel: 3,
+    currentLevelName: 'Platform Enabled',
+    confirmed: false,
+    summary: 'Level 3 — Platform Enabled (unconfirmed above 3)',
+    targetLevel: 4,
+    gap: [],
+    recommendedActions: [],
+    levels: [
+      { level: 1, name: 'Ad Hoc', description: '', status: 'met', requirements: [] },
+      { level: 2, name: 'Standardised', description: '', status: 'met', requirements: [] },
+      { level: 3, name: 'Platform Enabled', description: '', status: 'met', requirements: [] },
+      { level: 4, name: 'AI Enabled', description: '', status: 'unconfirmed', requirements: [] },
+      {
+        level: 5,
+        name: 'Autonomous Engineering',
+        description: '',
+        status: 'unconfirmed',
+        requirements: [],
+      },
+    ],
+  },
+  evidenceGaps: [
+    {
+      dimension: 'devEx',
+      missing: ['devex.prCycleTimeHours'],
+      expectedFrom: ['github (not yet collected — phase 5)'],
+    },
+  ],
+} as unknown as HealthResponse;
+
+function respond(body: unknown, ok = true, status = 200) {
+  return Promise.resolve({ ok, status, json: async () => body } as Response);
+}
+
+beforeEach(() => {
+  fetchMock.mockReset();
+});
+
+describe('EngineeringIntelligencePage', () => {
+  it('shows the overall score and the maturity level', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
+    );
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
+    // Twice on purpose: once in the headline, once as the current rung of the
+    // maturity ladder.
+    expect(screen.getAllByText(/Level 3 — Platform Enabled/)).toHaveLength(2);
+    expect(screen.getByText(/cannot be assessed/)).toBeInTheDocument();
+  });
+
+  it('renders an unscored dimension as a dash and names the source it needs', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
+    );
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
+
+    // Three dimensions are unscored, so three dashes — never a 0.
+    expect(screen.getAllByText('—')).toHaveLength(3);
+    expect(
+      screen.getAllByText(/Insufficient evidence — needs github/).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('says there is no trend rather than reporting no change', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
+    );
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/No trend yet/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/▲ 0/)).not.toBeInTheDocument();
+  });
+
+  it('keeps evidence gaps out of the risk list', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
+    );
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('Top risks')).toBeInTheDocument());
+
+    // The one real recommendation appears as a risk...
+    expect(screen.getByText(/golden-path template is below target/)).toBeInTheDocument();
+    // ...and the unmeasurable dimension appears in its own section instead.
+    expect(screen.getByText('Cannot measure yet')).toBeInTheDocument();
+    expect(
+      screen.getByText(/needs github \(not yet collected — phase 5\)/),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error instead of a score when the report cannot be loaded', async () => {
+    // The failure this asserts: a 500 rendering as a plausible dashboard. Every
+    // other page in this app falls back to demo data; this one must not.
+    fetchMock.mockImplementation(() => respond({}, false, 500));
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Could not load the Engineering Health report/),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('82')).not.toBeInTheDocument();
+    expect(screen.queryByText('Top risks')).not.toBeInTheDocument();
+  });
+
+  it('still renders the report when only the trend query fails', async () => {
+    // The score is the point of the page; the sparkline is not.
+    fetchMock.mockImplementation((url: string) =>
+      url.includes('/snapshots') ? respond({}, false, 500) : respond(REPORT),
+    );
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
+    expect(screen.getByText(/No trend yet/)).toBeInTheDocument();
+  });
+});

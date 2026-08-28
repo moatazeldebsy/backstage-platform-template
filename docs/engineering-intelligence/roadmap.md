@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0, 1 and 2.**
+**Shipped: phases 0, 1, 2 and 3.**
 
 ---
 
@@ -38,15 +38,26 @@ Level 4 requires a Developer Experience score, so most installations report
 collector supplies — enforced approval gating and measured agent remediation —
 so it is structurally unconfirmable rather than merely unmet.
 
-## Phase 3 — Engineering Intelligence dashboard
+## Phase 3 — Engineering Intelligence dashboard ✅
 
-A Backstage page: overall score, the seven dimensions, top risks, recommended
-actions. Executive-readable in thirty seconds, defensible under a follow-up.
+`/engineering-intelligence` in Backstage: overall score, maturity headline, the
+seven dimension cards, an expandable evidence table per dimension, top risks, the
+five-level ladder, and evidence gaps in their own section.
 
-**Blocker:** none, but a scoping decision. `extensions.tsx` is already 7,700
-lines and holds a `/dora`, `/finops`, `/scorecard`, `/slo` and home page. The new
-page must aggregate and link to those, not duplicate them — and should probably
-be the first custom frontend plugin to live outside that file.
+It is **the first custom frontend plugin in this repo to live outside
+`extensions.tsx`** — `packages/app/src/engineeringIntelligence/`, registered in
+`App.tsx`'s `features` array. Its pure presentation logic sits in `present.ts`
+with tests next door that run in milliseconds, rather than being unreachable
+inside a 7,700-line module.
+
+It **aggregates rather than duplicates**: each dimension card links to the page
+that already owns its detail (`/scorecard`, `/slo`, `/finops`, `/dora`,
+`/langfuse`) instead of redrawing those series.
+
+And it has **no demo mode**. A failed request renders as an error, not as a
+plausible dashboard — the one place in this app where that convention is
+deliberately broken, for the reason in
+[ADR-0006](../design/adr-0006-engineering-intelligence.md).
 
 ## Phase 4 — Platform Engineering intelligence
 

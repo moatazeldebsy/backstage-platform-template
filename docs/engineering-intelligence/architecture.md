@@ -44,7 +44,10 @@ Snapshot store      ei_snapshots (Postgres, jsonb) — the platform's only trend
 API                 /api/engineering-intelligence/*
                                          │
                     ┌────────────────────┴────────────────────┐
-Backstage UI (phase 3)                          AI Advisor (phase 9)
+       /engineering-intelligence                AI Advisor (phase 9)
+       (its own frontend plugin,
+        links out to /dora, /finops,
+        /scorecard, /slo, /langfuse)
 ```
 
 The one architectural rule worth stating plainly: **the scoring engine imports
@@ -62,6 +65,7 @@ three instances of in its Bronze/Silver/Gold logic. See
 | `backstage/app/packages/backend/src/modules/idpEngineeringIntelligence.ts` | The plugin: scheduling, persistence, HTTP routes |
 | `.../modules/engineeringIntelligence/{prometheus,catalog,techInsights,opencost,langfuse}.ts` | One collector per source |
 | `.../modules/engineeringIntelligence/{collect,store,source}.ts` | Orchestration, snapshots, shared transport |
+| `backstage/app/packages/app/src/engineeringIntelligence/` | The dashboard. `plugin.tsx` (page + nav item), `api.ts` (typed client), `present.ts` (pure display logic, tested), `EngineeringIntelligencePage.tsx` |
 
 ### API
 
