@@ -149,6 +149,37 @@ from the first refresh, and why no history can be back-filled.
 
 ---
 
+## Verifying it
+
+```bash
+./scripts/verify-engineering-intelligence.sh --screenshot
+```
+
+Boots the real Backstage image against a real Postgres, with a stub standing in
+for Prometheus and OpenCost, and asserts every figure the fixtures imply —
+scores, evidence sums, the withheld dimensions, the maturity level, snapshot
+persistence, and a 401 on an unauthenticated request. Roughly two minutes warm,
+against ~19 for a cold `bootstrap-local.sh`.
+
+It does **not** exercise real Prometheus or OpenCost response shapes. Those are
+stubbed, and only a real cluster proves them — which is the one thing worth
+running `bootstrap-local.sh` for.
+
+On a real local install, expect several dimensions to report
+`insufficient-evidence` at first, for honest reasons:
+
+| Dimension | Needs |
+|---|---|
+| Quality | The Tech Insights retriever to have run — cadence is `*/30` |
+| Reliability, Developer Experience | `GITHUB_TOKEN` in `local/.env` **and** repos carrying the `idp-app` topic. No scaffolded services means no `dora_*` or `devex_*` series at all |
+| AI Engineering | `bootstrap-ai.sh --langfuse`, and `LANGFUSE_BASIC_AUTH` exported from the `langfuse-init` secret |
+| Security | Nothing yet — it is control-presence only |
+
+Golden-path adoption will also read near zero on a fresh install: the platform's
+own catalog entities are hand-written YAML carrying no
+`backstage.io/source-template`. That is correct, and it is what the number is
+for.
+
 ## Related
 
 - [Product vision](product-vision.md) · [Maturity model](maturity-model.md) ·

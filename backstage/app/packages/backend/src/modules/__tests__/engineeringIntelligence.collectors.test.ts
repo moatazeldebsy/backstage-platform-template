@@ -24,6 +24,7 @@ import {
 } from '../engineeringIntelligence/scaffolder';
 import {
   collectLangfuse,
+  langfuseAuth,
   rollup,
 } from '../engineeringIntelligence/langfuse';
 import {
@@ -699,10 +700,69 @@ describe('langfuse rollup', () => {
   });
 });
 
+describe('langfuseAuth', () => {
+  it('prefers an explicit key pair', () => {
+    const auth = langfuseAuth(
+      new ConfigReader({ langfuse: { publicKey: 'pk', secretKey: 'sk' } }),
+    );
+    expect(auth).toEqual({
+      header: `Basic ${Buffer.from('pk:sk').toString('base64')}`,
+    });
+  });
+
+  it('falls back to the credential already on the /langfuse proxy', () => {
+    // The fix for a real mismatch: app-config.local.yaml supplies the project
+    // key pair as one pre-encoded LANGFUSE_BASIC_AUTH value on the proxy, so
+    // demanding a second copy under different names made the collector report
+    // Langfuse unavailable on a cluster where it was demonstrably running.
+    const auth = langfuseAuth(
+      new ConfigReader({
+        proxy: {
+          endpoints: {
+            '/langfuse': {
+              target: 'http://langfuse.idp.local',
+              headers: { Authorization: 'Basic cGs6c2s=' },
+            },
+          },
+        },
+      }),
+    );
+    expect(auth).toEqual({ header: 'Basic cGs6c2s=' });
+  });
+
+  it('recognises the not-configured placeholder as "never deployed"', () => {
+    // Backstage needs *some* value there or the proxy fails to start, so the
+    // placeholder's presence means Langfuse was never installed. Sending it
+    // would earn a 401 and report the wrong reason entirely.
+    const auth = langfuseAuth(
+      new ConfigReader({
+        proxy: {
+          endpoints: {
+            '/langfuse': {
+              target: 'http://langfuse.idp.local',
+              headers: { Authorization: 'Basic bm90LWNvbmZpZ3VyZWQ=' },
+            },
+          },
+        },
+      }),
+    );
+    expect(auth).toEqual({
+      reason: expect.stringMatching(/not been deployed|not-configured/),
+    });
+  });
+
+  it('reports no credential at all when the proxy carries none', () => {
+    const auth = langfuseAuth(
+      new ConfigReader({
+        proxy: { endpoints: { '/langfuse': { target: 'http://langfuse.idp.local' } } },
+      }),
+    );
+    expect(auth).toEqual({ reason: expect.stringMatching(/No Langfuse credential/) });
+  });
+});
+
 describe('collectLangfuse', () => {
-  it('reports unavailable without server-side credentials', async () => {
-    // The frontend never holds these — the proxy injects them — so their absence
-    // means "cannot observe", not "no traces".
+  it('reports unavailable without any credential', async () => {
     const noKeys = {
       config: new ConfigReader({
         proxy: { endpoints: { '/langfuse': { target: 'http://langfuse.idp.local' } } },
@@ -711,7 +771,28 @@ describe('collectLangfuse', () => {
     };
     const result = await collectLangfuse(noKeys);
     expect(result.samples).toEqual([]);
-    expect(result.unavailable?.reason).toMatch(/publicKey|secretKey/);
+    expect(result.unavailable?.reason).toMatch(/No Langfuse credential/);
+  });
+
+  it('collects using only the proxy credential, with no langfuse.* keys set', async () => {
+    mockFetchJson(() => ({ data: [{ countTraces: 4 }] }));
+    const proxyOnly = {
+      config: new ConfigReader({
+        proxy: {
+          endpoints: {
+            '/langfuse': {
+              target: 'http://langfuse.idp.local',
+              headers: { Authorization: 'Basic cGs6c2s=' },
+            },
+          },
+        },
+      }),
+      logger: ctx.logger,
+    };
+    const result = await collectLangfuse(proxyOnly);
+    expect(result.unavailable).toBeUndefined();
+    expect(result.samples[0].metric).toBe('ai.observabilityActive');
+    expect(result.samples[0].value).toBe(1);
   });
 
   it('reports observability active when traces are flowing', async () => {

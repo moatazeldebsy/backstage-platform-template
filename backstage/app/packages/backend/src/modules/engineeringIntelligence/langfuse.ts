@@ -35,6 +35,59 @@ export interface DailyMetrics {
   }[];
 }
 
+/**
+ * Base64 of `not-configured`, the placeholder `app-config.local.yaml` substitutes
+ * when `LANGFUSE_BASIC_AUTH` is unset. Backstage needs *some* value there or the
+ * proxy fails to start, so its presence means Langfuse was never deployed —
+ * making a request with it would earn a 401 and report the wrong reason.
+ */
+const UNCONFIGURED_BASIC = 'bm90LWNvbmZpZ3VyZWQ=';
+
+export type LangfuseAuth =
+  | { header: string }
+  | { reason: string };
+
+/**
+ * The credential for Langfuse's public API.
+ *
+ * Prefers an explicit `langfuse.publicKey` / `langfuse.secretKey` pair, then
+ * falls back to the Authorization header already configured on the `/langfuse`
+ * proxy endpoint. The fallback is what makes this work on an unmodified local
+ * install: `app-config.local.yaml` supplies the project key pair as a single
+ * pre-encoded `LANGFUSE_BASIC_AUTH` value on the proxy, and requiring a second
+ * copy under different key names would mean the collector reported Langfuse
+ * unavailable on a cluster where Langfuse was demonstrably running.
+ */
+export function langfuseAuth(config: CollectorContext['config']): LangfuseAuth {
+  const publicKey = config.getOptionalString('langfuse.publicKey');
+  const secretKey = config.getOptionalString('langfuse.secretKey');
+  if (publicKey && secretKey) {
+    return {
+      header: `Basic ${Buffer.from(`${publicKey}:${secretKey}`).toString('base64')}`,
+    };
+  }
+
+  const endpoints = config.getOptional('proxy.endpoints') as
+    | Record<string, { headers?: Record<string, unknown> } | undefined>
+    | undefined;
+  const header = endpoints?.['/langfuse']?.headers?.Authorization;
+
+  if (typeof header === 'string' && header.trim() !== '') {
+    if (header.includes(UNCONFIGURED_BASIC)) {
+      return {
+        reason:
+          'The /langfuse proxy still carries the not-configured placeholder, so Langfuse has not been deployed. Set LANGFUSE_BASIC_AUTH from the langfuse-init secret.',
+      };
+    }
+    return { header };
+  }
+
+  return {
+    reason:
+      'No Langfuse credential: set langfuse.publicKey / langfuse.secretKey, or an Authorization header on the /langfuse proxy endpoint.',
+  };
+}
+
 export interface LangfuseRollup {
   traces: number;
   observations: number;
@@ -78,27 +131,15 @@ export async function collectLangfuse(
     };
   }
 
-  // Langfuse authenticates with HTTP Basic over the project key pair. The
-  // frontend never holds these — the proxy injects them — so a server-side
-  // collector needs them directly.
-  const publicKey = ctx.config.getOptionalString('langfuse.publicKey');
-  const secretKey = ctx.config.getOptionalString('langfuse.secretKey');
-  if (!publicKey || !secretKey) {
-    return {
-      samples: [],
-      unavailable: {
-        source: 'langfuse',
-        reason:
-          'langfuse.publicKey / langfuse.secretKey are not configured for server-side collection.',
-      },
-    };
+  const auth = langfuseAuth(ctx.config);
+  if ('reason' in auth) {
+    return { samples: [], unavailable: { source: 'langfuse', reason: auth.reason } };
   }
 
   const from = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  const auth = Buffer.from(`${publicKey}:${secretKey}`).toString('base64');
   const body = await getJson<DailyMetrics>(
     `${base}/api/public/metrics/daily?fromTimestamp=${encodeURIComponent(from)}`,
-    { headers: { Authorization: `Basic ${auth}` } },
+    { headers: { Authorization: auth.header } },
   );
 
   const rolled = rollup(body);
