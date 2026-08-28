@@ -149,7 +149,13 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         // The Platform Health breakdown from the most recent collection. Held in
         // memory rather than persisted: it is a current-state view, not a trend,
         // and the snapshot table exists for the numbers that need history.
+        //
+        // The consequence is that a restart which reuses an existing snapshot
+        // has no breakdown until the next collection, so `/platform` collects
+        // once on demand. `collectedThisProcess` stops that becoming a refresh
+        // on every request when the catalog source is switched off.
         let platform: { facts?: PlatformFacts; tasks?: TaskOutcome } = {};
+        let collectedThisProcess = false;
 
         async function refresh(): Promise<CollectionOutcome> {
           const collectors = [
@@ -187,6 +193,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           ].filter((c): c is () => Promise<any> => !!c);
 
           const outcome = await collectAndScore(collectors, { weights });
+          collectedThisProcess = true;
           await saveSnapshot(db as any, outcome.report);
 
           const scored = Object.values(outcome.report.dimensions).filter(
@@ -260,6 +267,9 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         router.get('/platform', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
+          if (!platform.facts && !collectedThisProcess) {
+            await refresh();
+          }
           const facts = platform.facts;
 
           if (!facts) {
