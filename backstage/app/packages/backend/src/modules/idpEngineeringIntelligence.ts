@@ -2,6 +2,7 @@ import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api
 import {
   DIMENSIONS,
   DimensionId,
+  EvaluationReport,
   MetricSample,
   WeightOverrides,
   evidenceGaps,
@@ -19,6 +20,7 @@ import {
   TaskOutcome,
 } from './engineeringIntelligence/scaffolder';
 import { collectMlflow } from './engineeringIntelligence/mlflow';
+import { collectLangfuseScores } from './engineeringIntelligence/langfuseScores';
 import { collectLangfuse } from './engineeringIntelligence/langfuse';
 import { collectOpenCost } from './engineeringIntelligence/opencost';
 import { collectPrometheus } from './engineeringIntelligence/prometheus';
@@ -166,6 +168,11 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         // every source and could return two different answers for one question.
         let lastSamples: MetricSample[] = [];
 
+        // The evaluation breakdown from the most recent collection, for
+        // /evaluation. Held alongside the samples for the same reason the
+        // platform facts are: a current-state view, not a trend.
+        let lastEvaluation: EvaluationReport | undefined;
+
         async function refresh(): Promise<CollectionOutcome> {
           const collectors = [
             enabled('prometheus') ? () => collectPrometheus(ctx) : undefined,
@@ -182,6 +189,13 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
                 }
               : undefined,
             enabled('mlflow') ? () => collectMlflow(ctx) : undefined,
+            enabled('langfuse')
+              ? async () => {
+                  const result = await collectLangfuseScores(ctx);
+                  lastEvaluation = result.evaluation;
+                  return result;
+                }
+              : undefined,
             enabled('scaffolder')
               ? async () => {
                   const result = await collectScaffolder({
@@ -272,6 +286,25 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
+        }));
+
+        // GET /api/engineering-intelligence/evaluation
+        router.get('/evaluation', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          if (!lastEvaluation && !collectedThisProcess) {
+            await refresh();
+          }
+          if (!lastEvaluation || lastEvaluation.assertions === 0) {
+            res.json({
+              generatedAt: report.generatedAt,
+              available: false,
+              reason:
+                'No evaluation results recorded. push_to_langfuse.py only reaches a publicly reachable Langfuse, so CI runs against a cluster-local instance push nothing.',
+            });
+            return;
+          }
+          res.json({ available: true, ...lastEvaluation });
         }));
 
         // GET /api/engineering-intelligence/ai-readiness

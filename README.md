@@ -468,7 +468,7 @@ Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local`
 
 Status lives on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** and in the issues — that is the single source of truth. This section is the honest summary.
 
-### Recently shipped — Engineering Intelligence, phases 0–6
+### Recently shipped — Engineering Intelligence, phases 0–7
 
 The platform now scores its own engineering health. A framework-free scoring engine
 (`backstage/app/packages/engineering-intelligence-core`) turns the telemetry four Python
@@ -526,6 +526,13 @@ measurable (governance, evaluation, observability, model management via a new ML
 registry collector, prompt management via Langfuse, and MCP reliability); six are not, and
 say so. AI architecture deliberately has no collector and never will: it is a judgement,
 and a proxy for it would be the most dishonest number on the page.
+
+Phase 7 turns "an evaluation suite exists" into "here is what it found". An extensible
+evaluation model reads Langfuse scores and organises them by *risk* — correctness,
+hallucination, PII safety, prompt injection, bias, regression — with one pattern table as
+the extension point for a second evaluation library. Privacy, Security and Testing stop
+being uncollectable as a result, though they still report insufficient evidence for an
+organisation that runs no such suite: **an untested risk is unknown, not absent.**
 
 Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
 plan and the data blocker on each in [the roadmap](docs/engineering-intelligence/roadmap.md).

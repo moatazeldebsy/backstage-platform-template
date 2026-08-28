@@ -46,11 +46,12 @@ describe('AI_READINESS_AREAS', () => {
   it('declares the areas nothing collects, rather than omitting them', () => {
     // A readiness model built only from the measurable half would flatter an
     // organisation that has done none of the hard parts.
+    //
+    // Phase 7 gave security, privacy and testing a source — an adversarial, PII
+    // or regression eval suite — so only these three remain with no collector at
+    // all.
     const undeclared: AiReadinessAreaId[] = [
-      'security',
-      'privacy',
       'architecture',
-      'testing',
       'cost',
       'incidentManagement',
     ];
@@ -63,21 +64,76 @@ describe('AI_READINESS_AREAS', () => {
     }
   });
 
-  it('names what each uncollected area is waiting on', () => {
+  it('points the eval-backed areas at evaluation results, not a future phase', () => {
+    // Phase 7's payoff: prompt injection, PII leakage and regression stop being
+    // "not collected" and become "run the suite". They still report insufficient
+    // evidence for an organisation that has not run one — an untested risk is
+    // unknown, not absent — but the gap now names an action.
+    const byId = Object.fromEntries(AI_READINESS_AREAS.map(a => [a.id, a]));
+    expect(byId.security.signals[0].expectedFrom).toMatch(/langfuse-scores/);
+    expect(byId.security.signals[0].expectedFrom).toMatch(/adversarial/);
+    expect(byId.privacy.signals[0].expectedFrom).toMatch(/PII eval suite/);
+    expect(byId.testing.signals[0].expectedFrom).toMatch(/regression evals/);
+  });
+
+  it('names what each still-uncollected area is waiting on', () => {
     // "Not measurable" is a dead end; naming the phase or the reason makes it a
     // plan. Architecture deliberately says it needs human review rather than
     // pointing at a future phase, because no metric will ever answer it.
     const byId = Object.fromEntries(AI_READINESS_AREAS.map(a => [a.id, a]));
     expect(byId.cost.signals[0].expectedFrom).toMatch(/phase 8/);
-    expect(byId.privacy.signals[0].expectedFrom).toMatch(/phase 7/);
     expect(byId.architecture.signals[0].expectedFrom).toMatch(/human review/);
   });
 
-  it('caveats the evaluation signal as presence, not results', () => {
-    // A service whose evals all fail scores identically to one whose evals all
-    // pass. Losing that caveat would turn "a suite exists" into "it works".
+  it('scores evaluation from results, with presence as the weaker fallback', () => {
+    // Before phase 7 this area could only say a suite existed. Results now carry
+    // the majority of its weight, because a declared suite that fails is worse
+    // than no suite: it looks like coverage.
     const evaluation = AI_READINESS_AREAS.find(a => a.id === 'evaluation')!;
-    expect(evaluation.signals[0].caveat).toMatch(/not results/i);
+    const results = evaluation.signals.find(
+      s => s.metric === 'ai.evalPassRatio',
+    )!;
+    const presence = evaluation.signals.find(
+      s => s.metric === 'ai.evalSuiteRatio',
+    )!;
+
+    expect(results.weight).toBeGreaterThan(presence.weight);
+    // The caveat now sits on the presence signal alone, so an area scored from
+    // real results is no longer labelled presence-only.
+    expect(presence.caveat).toMatch(/not results/i);
+    expect(results.caveat).toBeUndefined();
+  });
+
+  it('still scores evaluation when only suite presence is known', () => {
+    // The common case: push_to_langfuse.py only reaches a publicly reachable
+    // Langfuse, so most installs have suites and no results. Presence is weak
+    // evidence, not absent evidence — the area must not go dark.
+    const report = scoreAiReadiness(
+      [sample('ai.evalSuiteRatio', 0.8)],
+      OBSERVED,
+    );
+    expect(report.areas.evaluation.score).not.toBeNull();
+    expect(report.areas.evaluation.status).toBe('partial');
+  });
+
+  it('lets real results dominate the evaluation score', () => {
+    const presenceOnly = scoreAiReadiness(
+      [sample('ai.evalSuiteRatio', 1)],
+      OBSERVED,
+    );
+    const failingResults = scoreAiReadiness(
+      [
+        sample('ai.evalSuiteRatio', 1),
+        sample('ai.evalPassRatio', 0.2, 'langfuse-scores'),
+      ],
+      OBSERVED,
+    );
+
+    // A platform whose suites all exist but mostly fail must score worse than
+    // one where we simply have not seen the results.
+    expect(failingResults.areas.evaluation.score!).toBeLessThan(
+      presenceOnly.areas.evaluation.score!,
+    );
   });
 });
 

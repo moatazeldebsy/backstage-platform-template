@@ -49,3 +49,16 @@ export { LEVELS, assessMaturity } from './maturity';
 
 export type { AiReadinessAreaId, AiReadinessReport } from './aiReadiness';
 export { AI_READINESS_AREAS, scoreAiReadiness } from './aiReadiness';
+
+export type {
+  CategoryResult,
+  EvalCategory,
+  EvalScore,
+  EvaluationReport,
+} from './evaluation';
+export {
+  CATEGORY_METRIC_IDS,
+  METRIC_CATEGORIES,
+  categorise,
+  summariseEvaluation,
+} from './evaluation';

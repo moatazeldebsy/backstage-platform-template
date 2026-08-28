@@ -33,6 +33,10 @@ import {
   registryFacts,
 } from '../engineeringIntelligence/mlflow';
 import {
+  collectLangfuseScores,
+  toEvalScores,
+} from '../engineeringIntelligence/langfuseScores';
+import {
   asRatio,
   collectOpenCost,
   weightedEfficiency,
@@ -723,6 +727,113 @@ describe('collectLangfuse — prompts', () => {
     );
     const result = await collectLangfuse(ctx);
     expect(result.samples.map(s => s.metric)).not.toContain('ai.promptsManagedRatio');
+  });
+});
+
+// ── evaluation results (phase 7) ──────────────────────────────────────────────
+
+describe('toEvalScores', () => {
+  it('folds the NUMERIC and _pass BOOLEAN pair back into one assertion', () => {
+    // push_to_langfuse.py writes two Langfuse scores per assertion; this is the
+    // inverse of that.
+    const scores = toEvalScores([
+      { name: 'FaithfulnessMetric', value: 0.88, traceId: 't1', timestamp: OBSERVED },
+      { name: 'FaithfulnessMetric_pass', value: 1, traceId: 't1', timestamp: OBSERVED },
+    ]);
+
+    expect(scores).toHaveLength(1);
+    expect(scores[0]).toMatchObject({
+      metric: 'FaithfulnessMetric',
+      value: 0.88,
+      passed: true,
+    });
+  });
+
+  it('pairs on trace id, so repeats of one metric stay separate', () => {
+    // The same metric appears many times across a suite. Pairing by name alone
+    // would merge unrelated assertions and report one verdict for all of them.
+    const scores = toEvalScores([
+      { name: 'AnswerRelevancyMetric_pass', value: 1, traceId: 't1' },
+      { name: 'AnswerRelevancyMetric_pass', value: 0, traceId: 't2' },
+    ]);
+
+    expect(scores).toHaveLength(2);
+    expect(scores.filter(s => s.passed)).toHaveLength(1);
+  });
+
+  it('keeps a score with no trace id rather than risking a bad merge', () => {
+    const scores = toEvalScores([{ name: 'FaithfulnessMetric_pass', value: 1 }]);
+    expect(scores).toHaveLength(1);
+    expect(scores[0].passed).toBe(true);
+  });
+
+  it('reads a BOOLEAN 0 as a failure, not as missing', () => {
+    const scores = toEvalScores([
+      { name: 'AnswerRelevancyMetric_pass', value: 0, traceId: 't1' },
+    ]);
+    expect(scores[0].passed).toBe(false);
+  });
+});
+
+describe('collectLangfuseScores', () => {
+  it('emits an overall pass rate and one sample per evaluated category', async () => {
+    mockFetchJson(() => ({
+      data: [
+        { name: 'FaithfulnessMetric_pass', value: 1, traceId: 't1' },
+        { name: 'FaithfulnessMetric', value: 0.9, traceId: 't1' },
+        { name: 'AnswerRelevancyMetric_pass', value: 0, traceId: 't2' },
+      ],
+    }));
+
+    const result = await collectLangfuseScores(ctx);
+    const byMetric = Object.fromEntries(result.samples.map(s => [s.metric, s.value]));
+
+    expect(byMetric['ai.evalPassRatio']).toBeCloseTo(0.5);
+    expect(byMetric['ai.evalHallucinationFreeRatio']).toBe(1);
+    expect(byMetric['ai.evalCorrectnessRatio']).toBe(0);
+  });
+
+  it('emits nothing for a category nobody evaluated', async () => {
+    // The failure this guards: PII safety reading 100% because no PII test
+    // exists. An untested risk is unknown, not safe.
+    mockFetchJson(() => ({
+      data: [{ name: 'FaithfulnessMetric_pass', value: 1, traceId: 't1' }],
+    }));
+
+    const result = await collectLangfuseScores(ctx);
+    const metrics = result.samples.map(s => s.metric);
+    expect(metrics).not.toContain('ai.evalPiiSafetyRatio');
+    expect(metrics).not.toContain('ai.evalPromptInjectionRatio');
+  });
+
+  it('explains why there are no results rather than just reporting none', async () => {
+    // The reason matters: the CI push silently no-ops against a cluster-local
+    // Langfuse, so "no results" usually means unreachable, not untested.
+    mockFetchJson(() => ({ data: [] }));
+    const result = await collectLangfuseScores(ctx);
+
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.reason).toMatch(/publicly reachable Langfuse/);
+  });
+
+  it('reports unavailable when Langfuse does not answer', async () => {
+    mockFetchJson(() => undefined);
+    const result = await collectLangfuseScores(ctx);
+    expect(result.unavailable?.source).toBe('langfuse-scores');
+  });
+
+  it('returns the evaluation breakdown alongside the samples', async () => {
+    mockFetchJson(() => ({
+      data: [
+        { name: 'FaithfulnessMetric_pass', value: 1, traceId: 't1', trace: { name: 'idp-agent' } },
+        { name: 'AnswerRelevancyMetric_pass', value: 0, traceId: 't2', trace: { name: 'idp-agent' } },
+      ],
+    }));
+
+    const result = await collectLangfuseScores(ctx);
+    expect(result.evaluation?.assertions).toBe(2);
+    expect(result.evaluation?.failed).toBe(1);
+    expect(result.evaluation?.suites[0].suite).toBe('idp-agent');
   });
 });
 

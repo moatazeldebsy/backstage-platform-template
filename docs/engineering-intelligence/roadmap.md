@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0–6.**
+**Shipped: phases 0–7.**
 
 ---
 
@@ -148,17 +148,50 @@ rather than counted as zero. `Evaluation` carries a caveat that it observes suit
 *presence*, not results — a service whose evals all fail scores the same as one
 whose evals all pass. Closing that is phase 7.
 
-## Phase 7 — AI quality and evaluation
+## Phase 7 — AI quality and evaluation ✅
 
-An extensible evaluation model: correctness, hallucination, policy compliance,
-PII leakage, prompt-injection resistance, regression, latency, cost, model
-comparison.
+Turns "an evaluation suite exists" into "here is what it found", closing the
+caveat phase 6 had to carry.
 
-**Blocker:** evaluation exists for exactly one agent suite
-(`test-suites/test-deepeval/tests/test_idp_assistant.py`), pushed to Langfuse as
-scores by `.github/workflows/eval.yml` — and that push no-ops against a
-cluster-local Langfuse. Build the abstraction first; do not attempt a complete AI
-testing platform.
+`packages/engineering-intelligence-core/src/evaluation.ts` is the abstraction —
+**not a testing platform**. Nothing in it runs an evaluation or defines a good
+one; it reads results a harness already produced and organises them by *risk*:
+correctness, hallucination, policy compliance, PII safety, prompt injection,
+bias, regression, latency, cost.
+
+The extension point is one table, `METRIC_CATEGORIES`. A new evaluation library
+is taught by appending patterns there; the collector, the scoring signals and the
+dashboard all work off categories. Ordering in that table is load-bearing —
+specific risks match before generic words, so `PromptInjectionCorrectness` is a
+security failure rather than an accuracy dip.
+
+The collector reads Langfuse **scores**, reversing what `push_to_langfuse.py`
+writes: a NUMERIC score named for the metric and a BOOLEAN `<metric>_pass`,
+paired on trace id so repeated assertions of one metric stay separate.
+
+What phase 7 unlocks in the readiness model:
+
+| Area | Before | After |
+|---|---|---|
+| Evaluation | suite presence, caveated | pass rate (weight 0.7) + presence (0.3) |
+| Privacy | not collected | `ai.evalPiiSafetyRatio` |
+| Security | not collected | `ai.evalPromptInjectionRatio` |
+| Testing | not collected | `ai.evalRegressionRatio` |
+
+Those three still report `insufficient-evidence` for an organisation that runs no
+such suite — **an untested risk is unknown, not absent** — but the gap now names
+an action rather than a future phase.
+
+Two rules the tests pin. A category nobody evaluated produces no sample at all,
+so PII safety can never read 100% because no PII test exists. And a metric no
+pattern claims is surfaced in `uncategorised` rather than dropped, so a team
+cannot add a suite, have it counted nowhere, and trust a dashboard that never
+included it.
+
+**Known limit, unchanged:** `push_to_langfuse.py` only reaches a *publicly
+reachable* Langfuse. A GitHub-hosted runner cannot see the in-cluster service,
+so on most installs there are no scores and `/evaluation` says so, naming that
+reason rather than leaving a reader to wonder whether the suite is broken.
 
 ## Phase 8 — AI / LLM FinOps
 

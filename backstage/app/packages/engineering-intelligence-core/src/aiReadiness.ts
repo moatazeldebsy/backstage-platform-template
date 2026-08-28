@@ -60,19 +60,40 @@ export const AI_READINESS_AREAS: DimensionConfig<AiReadinessAreaId>[] = [
     id: 'evaluation',
     label: 'Evaluation',
     weight: 1,
-    minCoverage: 0.5,
+    // Lower than the others on purpose. Results carry 0.7 of this area's weight,
+    // so a platform with suites but no results — the common case, since
+    // push_to_langfuse.py only reaches a publicly reachable Langfuse — would
+    // otherwise fall under the usual 0.5 bar and report no score at all. Suite
+    // presence is weak evidence, not absent evidence, and it arrives caveated.
+    minCoverage: 0.3,
     signals: [
+      {
+        // Phase 7. Results, not presence — this is what the suite actually found.
+        // Weighted above presence deliberately: a declared suite that fails is
+        // worse than no suite, because it looks like coverage.
+        metric: 'ai.evalPassRatio',
+        label: 'Evaluation assertions passing',
+        weight: 0.7,
+        normaliser: { kind: 'ratio' },
+        expectedFrom: 'langfuse-scores',
+        recommendBelow: 90,
+        recommendation: {
+          severity: 'critical',
+          action:
+            'Investigate the failing evaluation assertions before shipping further model or prompt changes.',
+        },
+      },
       {
         metric: 'ai.evalSuiteRatio',
         label: 'AI services with an evaluation suite in CI',
-        weight: 1,
+        weight: 0.3,
         normaliser: { kind: 'ratio' },
         expectedFrom: 'techInsights',
-        // The honest limit of this signal, and the reason phase 7 exists: it
-        // observes that a suite is declared, not what the suite found. A service
-        // whose evals all fail scores identically to one whose evals all pass.
+        // The caveat now lives on this signal alone rather than the whole area:
+        // it observes that a suite is declared, not what it found. When
+        // ai.evalPassRatio is present the area is no longer presence-only.
         caveat:
-          'Suite presence, not results. Evaluation outcomes are not trended anywhere yet — see phase 7.',
+          'Suite presence, not results — the pass-rate signal alongside it carries the outcomes.',
         recommendBelow: 60,
         recommendation: {
           severity: 'critical',
@@ -189,11 +210,20 @@ export const AI_READINESS_AREAS: DimensionConfig<AiReadinessAreaId>[] = [
     minCoverage: 0.5,
     signals: [
       {
-        metric: 'ai.promptInjectionTested',
-        label: 'Prompt-injection resistance tested',
+        // Phase 7 gave this a source, but only for organisations that actually
+        // run adversarial evals. With none, the area still reports insufficient
+        // evidence — an untested risk is unknown, not absent.
+        metric: 'ai.evalPromptInjectionRatio',
+        label: 'Prompt-injection assertions passing',
         weight: 1,
         normaliser: { kind: 'ratio' },
-        expectedFrom: 'not collected — needs an adversarial suite (phase 7)',
+        expectedFrom: 'langfuse-scores (needs an adversarial eval suite)',
+        recommendBelow: 100,
+        recommendation: {
+          severity: 'critical',
+          action:
+            'A prompt-injection assertion is failing — treat it as a live vulnerability, not a test failure.',
+        },
       },
     ],
   },
@@ -204,11 +234,17 @@ export const AI_READINESS_AREAS: DimensionConfig<AiReadinessAreaId>[] = [
     minCoverage: 0.5,
     signals: [
       {
-        metric: 'ai.piiLeakageTested',
-        label: 'PII leakage tested',
+        metric: 'ai.evalPiiSafetyRatio',
+        label: 'PII-safety assertions passing',
         weight: 1,
         normaliser: { kind: 'ratio' },
-        expectedFrom: 'not collected — needs a PII evaluation (phase 7)',
+        expectedFrom: 'langfuse-scores (needs a PII eval suite)',
+        recommendBelow: 100,
+        recommendation: {
+          severity: 'critical',
+          action:
+            'A PII-safety assertion is failing — this is a data-protection issue, not a flaky test.',
+        },
       },
     ],
   },
@@ -237,11 +273,17 @@ export const AI_READINESS_AREAS: DimensionConfig<AiReadinessAreaId>[] = [
     minCoverage: 0.5,
     signals: [
       {
-        metric: 'ai.regressionSuiteRatio',
-        label: 'AI services with regression tests over model changes',
+        metric: 'ai.evalRegressionRatio',
+        label: 'Regression assertions passing',
         weight: 1,
         normaliser: { kind: 'ratio' },
-        expectedFrom: 'not collected — needs eval results over time (phase 7)',
+        expectedFrom: 'langfuse-scores (needs regression evals)',
+        recommendBelow: 95,
+        recommendation: {
+          severity: 'warning',
+          action:
+            'A regression assertion is failing — a model or prompt change moved behaviour that used to be pinned.',
+        },
       },
     ],
   },
