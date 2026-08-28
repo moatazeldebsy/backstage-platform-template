@@ -51,10 +51,10 @@ function missingFor(signal: Signal): MissingSignal {
  * an absent measurement is not the same as a bad one. Once coverage falls below
  * the dimension's `minCoverage` the score is withheld entirely.
  */
-export function scoreDimension(
-  config: DimensionConfig,
+export function scoreDimension<Id extends string>(
+  config: DimensionConfig<Id>,
   samples: MetricSample[],
-): DimensionScore {
+): DimensionScore<Id> {
   const evidence: Evidence[] = [];
   const missing: MissingSignal[] = [];
 

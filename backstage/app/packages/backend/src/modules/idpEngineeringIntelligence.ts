@@ -2,8 +2,10 @@ import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api
 import {
   DIMENSIONS,
   DimensionId,
+  MetricSample,
   WeightOverrides,
   evidenceGaps,
+  scoreAiReadiness,
 } from '@internal/engineering-intelligence-core';
 import express, { NextFunction, Request, Response, Router } from 'express';
 import { collectAndScore, CollectionOutcome } from './engineeringIntelligence/collect';
@@ -16,6 +18,7 @@ import {
   collectScaffolder,
   TaskOutcome,
 } from './engineeringIntelligence/scaffolder';
+import { collectMlflow } from './engineeringIntelligence/mlflow';
 import { collectLangfuse } from './engineeringIntelligence/langfuse';
 import { collectOpenCost } from './engineeringIntelligence/opencost';
 import { collectPrometheus } from './engineeringIntelligence/prometheus';
@@ -157,6 +160,12 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         let platform: { facts?: PlatformFacts; tasks?: TaskOutcome } = {};
         let collectedThisProcess = false;
 
+        // The raw samples from the most recent collection. AI readiness is a
+        // second scoring pass over the *same* samples rather than a second
+        // collection — running the collectors twice would double the load on
+        // every source and could return two different answers for one question.
+        let lastSamples: MetricSample[] = [];
+
         async function refresh(): Promise<CollectionOutcome> {
           const collectors = [
             enabled('prometheus') ? () => collectPrometheus(ctx) : undefined,
@@ -172,6 +181,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
                   return result;
                 }
               : undefined,
+            enabled('mlflow') ? () => collectMlflow(ctx) : undefined,
             enabled('scaffolder')
               ? async () => {
                   const result = await collectScaffolder({
@@ -193,6 +203,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           ].filter((c): c is () => Promise<any> => !!c);
 
           const outcome = await collectAndScore(collectors, { weights });
+          lastSamples = outcome.samples;
           collectedThisProcess = true;
           await saveSnapshot(db as any, outcome.report);
 
@@ -261,6 +272,16 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
+        }));
+
+        // GET /api/engineering-intelligence/ai-readiness
+        router.get('/ai-readiness', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          if (lastSamples.length === 0 && !collectedThisProcess) {
+            await refresh();
+          }
+          res.json(scoreAiReadiness(lastSamples, report.generatedAt));
         }));
 
         // GET /api/engineering-intelligence/platform

@@ -88,6 +88,31 @@ export function langfuseAuth(config: CollectorContext['config']): LangfuseAuth {
   };
 }
 
+export interface PromptListing {
+  data?: { name?: string; versions?: unknown[]; labels?: string[] }[];
+}
+
+/**
+ * Agent prompts under version control in Langfuse.
+ *
+ * "Managed" means the prompt carries a `production` label — that is what
+ * scripts/sync-agent-prompts.py pushes and what its drift check compares
+ * against. A prompt uploaded once with no production label is a draft, and
+ * counting it would say the platform has prompt management when what it has is
+ * a copy.
+ */
+export function promptFacts(body: PromptListing | undefined): {
+  total: number;
+  managed: number;
+} | undefined {
+  const prompts = body?.data;
+  if (!Array.isArray(prompts)) return undefined;
+  const managed = prompts.filter(p =>
+    (p.labels ?? []).includes('production'),
+  ).length;
+  return { total: prompts.length, managed };
+}
+
 export interface LangfuseRollup {
   traces: number;
   observations: number;
@@ -153,6 +178,8 @@ export async function collectLangfuse(
     };
   }
 
+  const observedAt = new Date().toISOString();
+
   // Binary by design, and labelled as such on the signal in dimensions.ts:
   // observability is either receiving traces or it is not. Anything finer would
   // require attribution Langfuse does not currently carry.
@@ -161,7 +188,7 @@ export async function collectLangfuse(
       metric: 'ai.observabilityActive',
       value: rolled.traces > 0 ? 1 : 0,
       source: 'langfuse',
-      observedAt: new Date().toISOString(),
+      observedAt,
       labels: {
         traces: String(rolled.traces),
         observations: String(rolled.observations),
@@ -170,5 +197,26 @@ export async function collectLangfuse(
       },
     },
   ];
+
+  // Prompt management, for the AI readiness model. A separate call, and a
+  // failure here must not lose the observability sample above — the two answer
+  // different questions and one being unavailable says nothing about the other.
+  const prompts = promptFacts(
+    await getJson<PromptListing>(`${base}/api/public/v2/prompts?limit=100`, {
+      headers: { Authorization: auth.header },
+    }),
+  );
+  if (prompts && prompts.total > 0) {
+    samples.push({
+      metric: 'ai.promptsManagedRatio',
+      value: prompts.managed / prompts.total,
+      source: 'langfuse',
+      observedAt,
+      labels: { total: String(prompts.total), managed: String(prompts.managed) },
+    });
+  }
+  // No prompts at all is not bad prompt management — it is a platform with no
+  // prompts, so the signal stays absent rather than scoring zero.
+
   return { samples };
 }

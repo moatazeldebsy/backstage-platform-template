@@ -468,7 +468,7 @@ Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local`
 
 Status lives on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** and in the issues — that is the single source of truth. This section is the honest summary.
 
-### Recently shipped — Engineering Intelligence, phases 0–5
+### Recently shipped — Engineering Intelligence, phases 0–6
 
 The platform now scores its own engineering health. A framework-free scoring engine
 (`backstage/app/packages/engineering-intelligence-core`) turns the telemetry four Python
@@ -519,6 +519,13 @@ The two DORA exporters are a known drift pair that cannot share a module, so
 `observability/tests/test_dora_devex.py` runs every assertion against both copies and
 compares them directly — the first behavioural test these exporters have ever had, and
 now a CI gate alongside the existing `py_compile` check.
+
+Phase 6 adds a second scored model — **AI Engineering Readiness** across twelve areas at
+`/ai-readiness` — reusing the same engine rather than reimplementing it. Six areas are
+measurable (governance, evaluation, observability, model management via a new MLflow
+registry collector, prompt management via Langfuse, and MCP reliability); six are not, and
+say so. AI architecture deliberately has no collector and never will: it is a judgement,
+and a proxy for it would be the most dishonest number on the page.
 
 Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
 plan and the data blocker on each in [the roadmap](docs/engineering-intelligence/roadmap.md).

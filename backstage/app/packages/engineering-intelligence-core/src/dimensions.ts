@@ -46,8 +46,8 @@ export interface Signal {
   };
 }
 
-export interface DimensionConfig {
-  id: DimensionId;
+export interface DimensionConfig<Id extends string = DimensionId> {
+  id: Id;
   label: string;
   signals: Signal[];
   /**

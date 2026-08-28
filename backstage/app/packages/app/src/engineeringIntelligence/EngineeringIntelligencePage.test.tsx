@@ -141,10 +141,33 @@ const PLATFORM = {
   platformScore: 75,
 };
 
-/** Route the page's three GETs; `health` decides success or failure. */
+const READINESS = {
+  generatedAt: new Date().toISOString(),
+  overallScore: 71,
+  status: 'partial',
+  measurable: 2,
+  total: 3,
+  areas: {
+    governance: { dimension: 'governance', score: 90, status: 'ok', coverage: 1, evidence: [], missing: [] },
+    evaluation: { dimension: 'evaluation', score: 52, status: 'ok', coverage: 1, evidence: [], missing: [] },
+    privacy: {
+      dimension: 'privacy',
+      score: null,
+      status: 'insufficient-evidence',
+      coverage: 0,
+      evidence: [],
+      missing: [
+        { metric: 'ai.piiLeakageTested', expectedFrom: 'not collected — needs a PII evaluation (phase 7)', reason: 'x' },
+      ],
+    },
+  },
+};
+
+/** Route the page's GETs; `health` decides success or failure. */
 function routes(health: unknown, ok = true, status = 200) {
   return (url: string) => {
     if (url.includes('/snapshots')) return respond({ snapshots: [] });
+    if (url.includes('/ai-readiness')) return respond(READINESS);
     if (url.includes('/platform')) return respond(PLATFORM);
     return respond(health, ok, status);
   };
@@ -174,8 +197,12 @@ describe('EngineeringIntelligencePage', () => {
 
     await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
 
-    // Three dimensions are unscored, so three dashes — never a 0.
-    expect(screen.getAllByText('—')).toHaveLength(3);
+    // Three dimensions are unscored, so at least three dashes — never a 0.
+    // Counted with `>=` rather than exactly: the AI readiness card renders its
+    // own unmeasurable areas as dashes on the same page, and pinning an exact
+    // total would fail for a correct change while testing nothing extra.
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
     expect(
       screen.getAllByText(/Insufficient evidence — needs github/).length,
     ).toBeGreaterThan(0);
@@ -227,6 +254,7 @@ describe('EngineeringIntelligencePage', () => {
     // 0% would say the scaffolder is broken; 100% would say it is proven.
     fetchMock.mockImplementation((url: string) => {
       if (url.includes('/snapshots')) return respond({ snapshots: [] });
+      if (url.includes('/ai-readiness')) return respond(READINESS);
       if (url.includes('/platform')) {
         return respond({ ...PLATFORM, selfService: { completed: 0, failed: 0, inFlight: 2 } });
       }
@@ -242,6 +270,7 @@ describe('EngineeringIntelligencePage', () => {
   it('still renders the report when the platform breakdown is unavailable', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url.includes('/snapshots')) return respond({ snapshots: [] });
+      if (url.includes('/ai-readiness')) return respond(READINESS);
       if (url.includes('/platform')) return respond({}, false, 500);
       return respond(REPORT);
     });
@@ -250,6 +279,21 @@ describe('EngineeringIntelligencePage', () => {
 
     await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
     expect(screen.queryByText('Platform Health')).not.toBeInTheDocument();
+  });
+
+  it('renders AI readiness and names the source an unmeasurable area needs', async () => {
+    fetchMock.mockImplementation(routes(REPORT));
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('AI Engineering Readiness')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('71')).toBeInTheDocument();
+    // The count is stated so a reader knows the score covers only part of the model.
+    expect(screen.getByText(/2 of 3 areas measurable/)).toBeInTheDocument();
+    // An unmeasurable area shows a dash plus what it is waiting on.
+    expect(screen.getByText(/needs a PII evaluation/)).toBeInTheDocument();
   });
 
   it('shows an error instead of a score when the report cannot be loaded', async () => {
@@ -272,6 +316,7 @@ describe('EngineeringIntelligencePage', () => {
     // The score is the point of the page; the sparkline is not.
     fetchMock.mockImplementation((url: string) => {
       if (url.includes('/snapshots')) return respond({}, false, 500);
+      if (url.includes('/ai-readiness')) return respond(READINESS);
       if (url.includes('/platform')) return respond(PLATFORM);
       return respond(REPORT);
     });

@@ -18,6 +18,7 @@ import type {
   Recommendation,
 } from '@internal/engineering-intelligence-core';
 import {
+  AiReadinessResponse,
   EngineeringIntelligenceApi,
   HealthResponse,
   PlatformResponse,
@@ -480,6 +481,85 @@ function PlatformHealth({ platform }: { platform: PlatformResponse }) {
   );
 }
 
+const AI_AREA_LABELS: Record<string, string> = {
+  governance: 'Governance',
+  evaluation: 'Evaluation',
+  observability: 'Observability',
+  modelManagement: 'Model mgmt',
+  promptManagement: 'Prompt mgmt',
+  reliability: 'Reliability',
+  security: 'Security',
+  privacy: 'Privacy',
+  architecture: 'Architecture',
+  testing: 'Testing',
+  cost: 'Cost',
+  incidentManagement: 'Incidents',
+};
+
+function AiReadiness({ readiness }: { readiness: AiReadinessResponse }) {
+  const areas = Object.values(readiness.areas);
+  return (
+    <Card>
+      <SectionTitle
+        hint={`${readiness.measurable} of ${readiness.total} areas measurable — the rest are reported, not averaged in`}
+      >
+        AI Engineering Readiness
+      </SectionTitle>
+
+      <Box
+        display="flex"
+        alignItems="baseline"
+        style={{ gap: 8, marginBottom: 12 }}
+      >
+        <Typography
+          style={{
+            fontSize: 34,
+            lineHeight: 1.2,
+            color: BAND_COLOUR[band(readiness.overallScore)],
+          }}
+        >
+          {formatScore(readiness.overallScore)}
+        </Typography>
+        <Typography variant="caption" color="textSecondary">
+          / 100
+        </Typography>
+      </Box>
+
+      <Grid container spacing={1}>
+        {areas.map(area => (
+          <Grid item xs={6} sm={4} md={2} key={area.dimension}>
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              style={{ display: 'block' }}
+            >
+              {AI_AREA_LABELS[area.dimension] ?? area.dimension}
+            </Typography>
+            <Typography style={{ color: BAND_COLOUR[band(area.score)] }}>
+              {formatScore(area.score)}
+            </Typography>
+            {area.score === null && (
+              <Typography
+                variant="caption"
+                style={{
+                  display: 'block',
+                  color: BAND_COLOUR.unknown,
+                  fontSize: 10,
+                }}
+              >
+                {area.missing[0]?.expectedFrom.replace(
+                  'not collected — ',
+                  '',
+                ) ?? 'no source'}
+              </Typography>
+            )}
+          </Grid>
+        ))}
+      </Grid>
+    </Card>
+  );
+}
+
 function EvidenceGaps({ report }: { report: HealthResponse }) {
   if (report.evidenceGaps.length === 0) return null;
   return (
@@ -514,6 +594,7 @@ export function EngineeringIntelligencePage() {
   const [report, setReport] = useState<HealthResponse | undefined>();
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [platform, setPlatform] = useState<PlatformResponse | undefined>();
+  const [readiness, setReadiness] = useState<AiReadinessResponse | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DimensionId | undefined>();
@@ -531,6 +612,7 @@ export function EngineeringIntelligencePage() {
       // Same rule as the trend: a failing detail query must not blank a working
       // report. The score is the point of the page.
       setPlatform(await api.platform().catch(() => undefined));
+      setReadiness(await api.aiReadiness().catch(() => undefined));
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
     } finally {
@@ -612,6 +694,12 @@ export function EngineeringIntelligencePage() {
             {platform && (
               <Grid item xs={12}>
                 <PlatformHealth platform={platform} />
+              </Grid>
+            )}
+
+            {readiness && (
+              <Grid item xs={12}>
+                <AiReadiness readiness={readiness} />
               </Grid>
             )}
 

@@ -28,6 +28,7 @@ export interface Config {
       catalog?: boolean;
       techInsights?: boolean;
       scaffolder?: boolean;
+      mlflow?: boolean;
     };
 
     /**

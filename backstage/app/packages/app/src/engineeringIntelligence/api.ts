@@ -37,6 +37,15 @@ export interface PlatformResponse {
   platformScore?: number | null;
 }
 
+export interface AiReadinessResponse {
+  generatedAt: string;
+  overallScore: number | null;
+  status: string;
+  measurable: number;
+  total: number;
+  areas: Record<string, DimensionScore & { dimension: string }>;
+}
+
 export interface FetchLike {
   fetch: typeof fetch;
 }
@@ -70,6 +79,10 @@ export class EngineeringIntelligenceApi {
 
   dimension(id: string): Promise<DimensionScore> {
     return this.get<DimensionScore>(`/dimensions/${encodeURIComponent(id)}`);
+  }
+
+  aiReadiness(): Promise<AiReadinessResponse> {
+    return this.get<AiReadinessResponse>('/ai-readiness');
   }
 
   platform(): Promise<PlatformResponse> {

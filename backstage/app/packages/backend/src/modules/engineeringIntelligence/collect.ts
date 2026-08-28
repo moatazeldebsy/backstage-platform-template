@@ -20,6 +20,13 @@ export interface CollectionOutcome {
   report: HealthReport;
   /** Sources that could not be read, with the reason, for the API to surface. */
   unavailable: { source: string; reason: string }[];
+  /**
+   * The raw samples behind the report. Returned so a second scoring model — AI
+   * readiness — can be derived from the same collection rather than triggering
+   * its own, which would double the load on every source and could answer one
+   * question two different ways.
+   */
+  samples: MetricSample[];
 }
 
 export async function collectAndScore(
@@ -55,5 +62,5 @@ export async function collectAndScore(
     weights: options.weights,
   });
 
-  return { report, unavailable };
+  return { report, unavailable, samples };
 }

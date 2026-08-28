@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0, 1, 2, 3, 4 and 5.**
+**Shipped: phases 0–6.**
 
 ---
 
@@ -112,16 +112,41 @@ now a CI gate; before it, `py_compile` was the only thing checking these files.
 to `/pulls/{n}/reviews`, and the rate-limit cost was not worth it for a first
 cut. Adding it is a contained change to the same two functions.
 
-## Phase 6 — AI Engineering readiness
+## Phase 6 — AI Engineering readiness ✅
 
-A dedicated readiness score across architecture, security, privacy, governance,
-evaluation, observability, model management, prompt management, cost, testing,
-reliability and incident management.
+A second scored model at `GET /ai-readiness`, over twelve areas, rendered as an
+AI Engineering Readiness card on the dashboard.
 
-**Blocker:** partial. Governance, observability and evaluation are measurable
-from Tech Insights, Langfuse and DeepEval. Model and prompt management are in
-MLflow and Langfuse and unread. Cost is phase 8. Reuse Langfuse — do not build a
-second AI observability stack.
+It reuses the same scoring engine rather than reimplementing it — the scoring
+functions are generic over their area id, so there is one implementation of
+normalisation, coverage, evidence and the insufficient-evidence rule serving two
+models. That is the whole lesson of the Bronze/Silver/Gold scorecard, which
+exists three times in this repo and has drifted.
+
+| Area | Source |
+|---|---|
+| Governance | `ai.modelCardRatio` — Tech Insights |
+| Evaluation | `ai.evalSuiteRatio` — Tech Insights |
+| Observability | `ai.observabilityWiredRatio` + `ai.observabilityActive` — Tech Insights, Langfuse |
+| Model management | `ai.modelVersionedRatio` — **MLflow registry (new collector)** |
+| Prompt management | `ai.promptsManagedRatio` — **Langfuse prompts (new)** |
+| Reliability | `ai.mcpToolSuccessRatio` — Prometheus |
+| Security, Privacy, Architecture, Testing, Cost, Incident management | **nothing** |
+
+The three AI-governance facts were split apart: the health model keeps its
+blended `ai.governanceChecksRatio`, while readiness reads model card, eval suite
+and observability separately — averaging them hides which one is missing.
+
+Two deliberate refusals. **Model quality is not scored**: MLflow holds run
+metrics, but a good accuracy figure on an unknown dataset says nothing about
+production readiness. **Architecture will never have a collector** — it is a
+judgement, and inventing a proxy for it would be the most dishonest number on
+the page, so it says it needs human review rather than pointing at a future phase.
+
+Six of twelve areas are unmeasurable and reported as such, excluded from the mean
+rather than counted as zero. `Evaluation` carries a caveat that it observes suite
+*presence*, not results — a service whose evals all fail scores the same as one
+whose evals all pass. Closing that is phase 7.
 
 ## Phase 7 — AI quality and evaluation
 

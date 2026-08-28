@@ -91,8 +91,16 @@ export interface MissingSignal {
   reason: string;
 }
 
-export interface DimensionScore {
-  dimension: DimensionId;
+/**
+ * One scored area.
+ *
+ * Generic over its id so a second set of areas — the AI readiness model — can be
+ * scored by exactly the same functions rather than growing a parallel
+ * implementation. `DimensionId` is the default, so every existing use is
+ * unchanged.
+ */
+export interface DimensionScore<Id extends string = DimensionId> {
+  dimension: Id;
   /** 0–100, or null when `status` is `insufficient-evidence`. */
   score: number | null;
   status: Status;

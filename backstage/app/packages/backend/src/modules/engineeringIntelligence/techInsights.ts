@@ -89,6 +89,15 @@ export function techInsightsSamples(
   push('security.scanningControlsRatio', ratioOver(SECURITY_CHECKS));
   push('ai.governanceChecksRatio', ratioOver(AI_GOVERNANCE_CHECKS));
 
+  // The same three facts again, split apart. The blended ratio above answers
+  // "how governed is AI overall" for the Engineering Health model; the AI
+  // readiness model needs them separately, because a model card, an evaluation
+  // suite and wired observability are three different kinds of maturity and
+  // averaging them hides which one is missing.
+  push('ai.modelCardRatio', ratioOver(['has-model-card']));
+  push('ai.evalSuiteRatio', ratioOver(['has-eval-suite']));
+  push('ai.observabilityWiredRatio', ratioOver(['has-ai-observability']));
+
   return samples;
 }
 

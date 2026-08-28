@@ -46,3 +46,6 @@ export type {
   RequirementStatus,
 } from './maturity';
 export { LEVELS, assessMaturity } from './maturity';
+
+export type { AiReadinessAreaId, AiReadinessReport } from './aiReadiness';
+export { AI_READINESS_AREAS, scoreAiReadiness } from './aiReadiness';

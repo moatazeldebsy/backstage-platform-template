@@ -61,9 +61,9 @@ three instances of in its Bronze/Silver/Gold logic. See
 
 | Path | Role |
 |---|---|
-| `backstage/app/packages/engineering-intelligence-core/` | The engine. `model.ts` (types), `normalize.ts` (raw → 0–100), `dimensions.ts` (declarative scoring policy), `score.ts`, `recommend.ts`, `maturity.ts` (the five levels) |
+| `backstage/app/packages/engineering-intelligence-core/` | The engine. `model.ts` (types), `normalize.ts` (raw → 0–100), `dimensions.ts` (declarative scoring policy), `score.ts`, `recommend.ts`, `maturity.ts` (the five levels), `aiReadiness.ts` (the second scored model) |
 | `backstage/app/packages/backend/src/modules/idpEngineeringIntelligence.ts` | The plugin: scheduling, persistence, HTTP routes |
-| `.../modules/engineeringIntelligence/{prometheus,catalog,techInsights,opencost,langfuse,scaffolder}.ts` | One collector per source |
+| `.../modules/engineeringIntelligence/{prometheus,catalog,techInsights,opencost,langfuse,scaffolder,mlflow}.ts` | One collector per source |
 | `.../modules/engineeringIntelligence/{collect,store,source}.ts` | Orchestration, snapshots, shared transport |
 | `backstage/app/packages/app/src/engineeringIntelligence/` | The dashboard. `plugin.tsx` (page + nav item), `api.ts` (typed client), `present.ts` (pure display logic, tested), `EngineeringIntelligencePage.tsx` |
 
@@ -77,6 +77,7 @@ All routes require an authenticated user; there is no unauthenticated surface.
 | `GET /api/engineering-intelligence/dimensions/:id` | One dimension with full evidence and `missing` |
 | `GET /api/engineering-intelligence/maturity` | Current level, whether it is confirmed, target level, gap and actions |
 | `GET /api/engineering-intelligence/platform` | Platform Health breakdown: counts, template usage, and the named services off the golden path |
+| `GET /api/engineering-intelligence/ai-readiness` | AI Engineering Readiness across twelve areas, scored by the same engine |
 | `GET /api/engineering-intelligence/recommendations` | Ranked recommendations, each carrying its evidence |
 | `GET /api/engineering-intelligence/snapshots?limit=` | Persisted history, for trends |
 | `POST /api/engineering-intelligence/refresh` | Forces a collection |

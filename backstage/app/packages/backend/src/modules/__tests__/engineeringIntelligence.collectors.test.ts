@@ -25,8 +25,13 @@ import {
 import {
   collectLangfuse,
   langfuseAuth,
+  promptFacts,
   rollup,
 } from '../engineeringIntelligence/langfuse';
+import {
+  collectMlflow,
+  registryFacts,
+} from '../engineeringIntelligence/mlflow';
 import {
   asRatio,
   collectOpenCost,
@@ -602,6 +607,125 @@ describe('collectScaffolder', () => {
   });
 });
 
+// ── model and prompt management (phase 6) ─────────────────────────────────────
+
+describe('registryFacts', () => {
+  it('counts a registered name with no versions as unmanaged', () => {
+    // The registry equivalent of an empty repository: it shows intent, not
+    // practice, and counting it as managed would flatter a platform where
+    // somebody clicked "create" once.
+    const facts = registryFacts([
+      { name: 'churn', latest_versions: [{ version: '1', current_stage: 'Production' }] },
+      { name: 'placeholder' },
+      { name: 'empty', latest_versions: [] },
+    ]);
+    expect(facts).toEqual({ registered: 3, versioned: 1 });
+  });
+});
+
+describe('collectMlflow', () => {
+  const ctxWithMlflow = {
+    config: new ConfigReader({
+      proxy: { endpoints: { '/mlflow': { target: 'http://mlflow.idp.local' } } },
+    }),
+    logger: ctx.logger,
+  };
+
+  it('reports the versioned ratio over registered models', async () => {
+    mockFetchJson(() => ({
+      registered_models: [
+        { name: 'a', latest_versions: [{ version: '1' }] },
+        { name: 'b', latest_versions: [{ version: '3' }] },
+        { name: 'c' },
+      ],
+    }));
+    const result = await collectMlflow(ctxWithMlflow);
+    const row = result.samples.find(s => s.metric === 'ai.modelVersionedRatio');
+    expect(row?.value).toBeCloseTo(2 / 3);
+    expect(row?.source).toBe('mlflow');
+  });
+
+  it('searches over POST, as the MLflow 2.x API requires', async () => {
+    // The same trap the /mlflow proxy hit: search is POST, and a GET returns 405.
+    const methods: (string | undefined)[] = [];
+    global.fetch = jest.fn(async (_url: any, init: any) => {
+      methods.push(init?.method);
+      return { ok: true, status: 200, json: async () => ({ registered_models: [] }) } as any;
+    }) as any;
+    await collectMlflow(ctxWithMlflow);
+    expect(methods[0]).toBe('POST');
+  });
+
+  it('reports unavailable for an empty registry rather than scoring zero', async () => {
+    // A platform with no models has nothing to manage. Scoring 0% would demand
+    // model governance from a team that has not shipped a model.
+    mockFetchJson(() => ({ registered_models: [] }));
+    const result = await collectMlflow(ctxWithMlflow);
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.reason).toMatch(/No models are registered/);
+  });
+
+  it('reports unavailable when MLflow does not answer', async () => {
+    mockFetchJson(() => undefined);
+    const result = await collectMlflow(ctxWithMlflow);
+    expect(result.unavailable?.source).toBe('mlflow');
+  });
+});
+
+describe('promptFacts', () => {
+  it('counts only prompts carrying the production label as managed', () => {
+    // That label is what sync-agent-prompts.py pushes and what its drift check
+    // compares against. A prompt uploaded once without it is a draft.
+    expect(
+      promptFacts({
+        data: [
+          { name: 'idp-agent', labels: ['production', 'latest'] },
+          { name: 'draft-agent', labels: ['latest'] },
+          { name: 'no-labels' },
+        ],
+      }),
+    ).toEqual({ total: 3, managed: 1 });
+  });
+
+  it('returns undefined when Langfuse did not answer', () => {
+    expect(promptFacts(undefined)).toBeUndefined();
+    expect(promptFacts({})).toBeUndefined();
+  });
+});
+
+describe('collectLangfuse — prompts', () => {
+  it('emits prompt management alongside observability', async () => {
+    mockFetchJson(url =>
+      url.includes('/prompts')
+        ? { data: [{ name: 'a', labels: ['production'] }, { name: 'b', labels: [] }] }
+        : { data: [{ countTraces: 3 }] },
+    );
+    const result = await collectLangfuse(ctx);
+    const byMetric = Object.fromEntries(result.samples.map(s => [s.metric, s.value]));
+    expect(byMetric['ai.observabilityActive']).toBe(1);
+    expect(byMetric['ai.promptsManagedRatio']).toBeCloseTo(0.5);
+  });
+
+  it('keeps the observability sample when the prompt call fails', async () => {
+    // The two answer different questions; one being unavailable says nothing
+    // about the other.
+    mockFetchJson(url =>
+      url.includes('/prompts') ? undefined : { data: [{ countTraces: 3 }] },
+    );
+    const result = await collectLangfuse(ctx);
+    expect(result.samples.map(s => s.metric)).toEqual(['ai.observabilityActive']);
+  });
+
+  it('omits prompt management when there are no prompts at all', async () => {
+    // No prompts is not bad prompt management — it is a platform with no prompts.
+    mockFetchJson(url =>
+      url.includes('/prompts') ? { data: [] } : { data: [{ countTraces: 3 }] },
+    );
+    const result = await collectLangfuse(ctx);
+    expect(result.samples.map(s => s.metric)).not.toContain('ai.promptsManagedRatio');
+  });
+});
+
 // ── tech insights ─────────────────────────────────────────────────────────────
 
 describe('techInsightsSamples', () => {
@@ -650,6 +774,21 @@ describe('techInsightsSamples', () => {
     expect(
       samples.find(s => s.metric === 'ai.governanceChecksRatio')?.value,
     ).toBeCloseTo(2 / 3);
+  });
+
+  it('also emits the three governance facts separately, for the readiness model', () => {
+    // Blended, they answer "how governed is AI overall". Apart, they say which
+    // of model cards, eval suites and observability is actually missing.
+    const samples = techInsightsSamples(
+      [{ 'has-model-card': true, 'has-eval-suite': false, 'has-ai-observability': true }],
+      OBSERVED,
+    );
+    const byMetric = Object.fromEntries(samples.map(s => [s.metric, s.value]));
+    expect(byMetric['ai.modelCardRatio']).toBe(1);
+    expect(byMetric['ai.evalSuiteRatio']).toBe(0);
+    expect(byMetric['ai.observabilityWiredRatio']).toBe(1);
+    // ...and the blended ratio the health model uses is unchanged.
+    expect(byMetric['ai.governanceChecksRatio']).toBeCloseTo(2 / 3);
   });
 
   it('produces nothing at all from an empty bundle list', () => {
@@ -902,8 +1041,19 @@ describe('collectLangfuse', () => {
   it('does not put a per-service or per-team figure on the wire', async () => {
     // Langfuse traces here carry no catalog or team attribution, so any such
     // number would be a guess. Phase 8 adds the join key at the emitting end.
+    //
+    // Asserted as "no attributed metric" rather than an exact list: phase 6
+    // legitimately added prompt management to this collector, and an exact-array
+    // assertion would have failed for a correct change while still not checking
+    // the thing the test is named for.
     mockFetchJson(() => ({ data: [{ countTraces: 5 }] }));
     const result = await collectLangfuse(ctx);
-    expect(result.samples.map(s => s.metric)).toEqual(['ai.observabilityActive']);
+
+    for (const s of result.samples) {
+      expect(s.metric).not.toMatch(/perService|perTeam|ByTeam|ByService/i);
+      expect(s.labels?.team).toBeUndefined();
+      expect(s.labels?.service).toBeUndefined();
+    }
+    expect(result.samples.map(s => s.metric)).toContain('ai.observabilityActive');
   });
 });
