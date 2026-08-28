@@ -132,8 +132,10 @@ code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "${API}/health")
 [[ "$code" == "401" ]] && ok "unauthenticated /health -> 401" \
   || fail "unauthenticated /health returned ${code}, expected 401"
 
+# `|| true` so a failed mint reaches the guard below rather than aborting the
+# script wordlessly under `set -e`.
 TOKEN=$(curl -s -X POST "http://localhost:${PORT}/api/auth/guest/refresh" \
-  -H 'Content-Type: application/json' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+  -H 'Content-Type: application/json' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p' || true)
 [[ -n "$TOKEN" ]] || { echo "could not mint a guest token" >&2; exit 1; }
 
 auth_get() { curl -s --max-time 120 -H "Authorization: Bearer ${TOKEN}" "$@"; }
@@ -147,8 +149,11 @@ auth_get() { curl -s --max-time 120 -H "Authorization: Bearer ${TOKEN}" "$@"; }
 # to ignore it.
 EXPECTED_COMPONENTS=4
 for _ in $(seq 1 60); do
+  # `|| true` on the grep is load-bearing: it exits 1 when the catalog is still
+  # empty, and with `set -e` and `pipefail` that killed the script silently at
+  # the first poll — the failure looked like a clean early exit with no message.
   count=$(auth_get "http://localhost:${PORT}/api/catalog/entities?filter=kind=component&fields=metadata.name" \
-    | grep -o '"name"' | wc -l | tr -d ' ')
+    | { grep -o '"name"' || true; } | wc -l | tr -d ' ')
   [[ "${count:-0}" -ge "$EXPECTED_COMPONENTS" ]] && break
   sleep 2
 done
