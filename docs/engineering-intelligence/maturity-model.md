@@ -4,11 +4,12 @@ Five levels, from manual to autonomous. A level is a description of how an
 organisation works, not a score threshold — the scoring engine places an
 organisation on it, but the level is the thing being described.
 
-> **Status: defined, not yet computed.** This page is the specification. Phase 2
-> wires it to the scoring engine so `/api/engineering-intelligence/maturity`
-> returns a current level, a target level, the gap and the actions to close it.
-> Until then the levels are a reference for reading the Engineering Health score,
-> not an output of it.
+> **Status: computed.** `GET /api/engineering-intelligence/maturity` returns the
+> current level, whether it is confirmed, the target level, the gap and the
+> actions that would close it. The assessment also rides on every `HealthReport`,
+> so each persisted snapshot records the level — the level is what leadership
+> tracks over time, and it cannot be recomputed later from a report that did not
+> store it. Implementation: `packages/engineering-intelligence-core/src/maturity.ts`.
 
 ---
 
@@ -73,28 +74,74 @@ be the most expensive mistake in this document.*
 
 ---
 
-## How a level will be determined (phase 2)
+## How a level is determined
 
 Deliberately **not** "overall score ÷ 20". A single average hides the shape that
 matters: an organisation with excellent Reliability and no platform at all is not
 Level 3, and averaging would say it was.
 
-The intended rule:
+The rule:
 
 1. Each level declares the dimensions it depends on and the score each must reach.
 2. An organisation is at the **highest level whose every requirement it meets** —
    levels are floors, not averages, so one weak dimension holds the level down.
+   The walk *stops* at the first level that is not fully met, so a strong Level 4
+   score cannot carry an organisation past an unmet Level 2 floor.
 3. A dimension reporting `insufficient-evidence` **cannot satisfy a requirement**.
    It does not fail it either; the level is reported as *unconfirmed above N*,
-   with the missing evidence named. Guessing a level from data you do not have is
+   with the missing metrics named. Guessing a level from data you do not have is
    exactly the failure mode this system is built to avoid.
-4. The gap is the shortest set of actions that would satisfy the next level's
-   unmet requirements, drawn from the same recommendation rules the health report
-   already uses.
+4. **A definite failure outranks missing evidence.** A level with one genuinely
+   unmet requirement is `unmet`, even if another could not be measured — knowing
+   you fall short is knowing something, and a real shortfall must not hide behind
+   a data gap.
+5. The gap is the target level's unmet requirements, plus the subset of the
+   health report's existing recommendations that bear on those dimensions.
 
-Under that rule, and given Developer Experience currently has no data source, most
-installations will report *unconfirmed above Level 3* until phase 5 lands. That
-is the correct answer, and it is a more useful one than a confident wrong number.
+### The requirements
+
+| Level | Requirement | Floor |
+|---|---|---|
+| **2 — Standardised** | Quality | 50 |
+| | Platform | 40 |
+| | Reliability | 40 |
+| **3 — Platform Enabled** | Platform | 70 |
+| | Quality | 65 |
+| | Reliability | 65 |
+| **4 — AI Enabled** | AI Engineering | 65 |
+| | Security | 60 |
+| | Developer Experience | 60 |
+| **5 — Autonomous** | AI Engineering | 80 |
+| | Reliability | 80 |
+| | *Approval-gated agent actions, enforced and measured* | not measurable |
+| | *Automated remediation with a measured success rate* | not measurable |
+
+Level 1 has no requirements. It is the floor — a Level 1 assessment is the
+absence of evidence for Level 2, not a finding in its own right.
+
+Every requirement carries a `because` string explaining why that dimension gates
+that level. A threshold with no stated reason is a number nobody can defend, and
+`maturity.test.ts` asserts none is left blank.
+
+### Two levels you cannot reach today, and why
+
+**Level 4** requires a Developer Experience score, and nothing in the platform
+produces one. Most installations therefore report *unconfirmed above Level 3*
+until phase 5 lands. That is the correct answer, and a more useful one than a
+confident wrong number.
+
+DevEx gates Level 4 rather than Level 3 on purpose: Level 3 asks whether a
+platform exists and is adopted, which the Platform, Quality and Reliability
+dimensions answer. Level 4 asks whether it is measurably *working* before AI is
+layered on top — and that claim cannot be made without DevEx data.
+
+**Level 5** declares two `capability` requirements that no collector supplies, so
+it is structurally unconfirmable rather than merely unmet. Nothing measures
+whether the human-in-the-loop approval gate is actually enforced or whether agent
+remediation resolves the incidents it was raised for. Awarding "Autonomous
+Engineering" for a high AI score would make exactly the claim there is no
+evidence for — and this platform has had that approval gate found silently
+disabled before.
 
 ---
 
@@ -102,4 +149,4 @@ is the correct answer, and it is a more useful one than a confident wrong number
 
 - [Scoring](scoring.md) — how dimension scores are produced
 - [Architecture](architecture.md) — which dimensions have real data
-- [Roadmap](roadmap.md) — phase 2 is where this becomes an API
+- [Roadmap](roadmap.md) — the phases, and the data blocker on each

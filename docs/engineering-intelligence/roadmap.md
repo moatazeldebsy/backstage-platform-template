@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0 and 1.**
+**Shipped: phases 0, 1 and 2.**
 
 ---
 
@@ -25,14 +25,18 @@ the snapshot store, and the API. Five dimensions score from real data; Security
 scores with an explicit control-presence caveat; Developer Experience reports
 `insufficient-evidence`.
 
-## Phase 2 — Maturity model
+## Phase 2 — Maturity model ✅
 
-Wire the [five levels](maturity-model.md) to the engine:
-`GET /maturity` returning current level, target, gap and actions. Levels are
-floors, not averages, and a dimension with no evidence yields *unconfirmed above
-N* rather than a guess.
+The [five levels](maturity-model.md) computed from dimension scores, served at
+`GET /maturity` and carried on every `HealthReport` so snapshots record the level.
+Levels are floors, not averages; the walk stops at the first level not fully met;
+a dimension with no evidence yields *unconfirmed above N* rather than a guess;
+and a definite failure outranks missing evidence.
 
-**Blocker:** none. The engine already produces everything this needs.
+Level 4 requires a Developer Experience score, so most installations report
+*unconfirmed above Level 3* until phase 5. Level 5 declares two requirements no
+collector supplies — enforced approval gating and measured agent remediation —
+so it is structurally unconfirmable rather than merely unmet.
 
 ## Phase 3 — Engineering Intelligence dashboard
 

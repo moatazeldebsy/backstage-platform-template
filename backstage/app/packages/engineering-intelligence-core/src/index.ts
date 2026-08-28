@@ -34,3 +34,15 @@ export type { WeightOverrides } from './score';
 export { scoreDimension, scoreHealth } from './score';
 
 export { evidenceGaps, recommend } from './recommend';
+
+export type {
+  LevelAssessment,
+  LevelDefinition,
+  LevelNumber,
+  LevelStatus,
+  MaturityAssessment,
+  Requirement,
+  RequirementResult,
+  RequirementStatus,
+} from './maturity';
+export { LEVELS, assessMaturity } from './maturity';

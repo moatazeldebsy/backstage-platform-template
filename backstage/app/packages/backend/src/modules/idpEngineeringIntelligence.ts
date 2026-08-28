@@ -148,7 +148,8 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           ).length;
           logger.info(
             `Engineering Intelligence refreshed: ${scored}/${DIMENSIONS.length} dimensions scored, ` +
-              `${outcome.unavailable.length} source(s) unavailable`,
+              `${outcome.unavailable.length} source(s) unavailable, ` +
+              `maturity ${outcome.report.maturity.summary}`,
           );
           for (const u of outcome.unavailable) {
             logger.warn(`Engineering Intelligence source ${u.source}: ${u.reason}`);
@@ -209,6 +210,16 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           res.json(report.dimensions[id]);
         });
 
+        // GET /api/engineering-intelligence/maturity
+        router.get('/maturity', async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          res.json({
+            generatedAt: report.generatedAt,
+            ...report.maturity,
+          });
+        });
+
         // GET /api/engineering-intelligence/recommendations
         router.get('/recommendations', async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
@@ -234,6 +245,11 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
               capturedAt: s.capturedAt,
               overallScore: s.report.overallScore,
               status: s.report.status,
+              // The maturity level is what leadership actually tracks over time.
+              // Reports written before phase 2 have no maturity block, so this
+              // stays optional rather than assuming every stored row has one.
+              maturityLevel: s.report.maturity?.currentLevel ?? null,
+              maturityConfirmed: s.report.maturity?.confirmed ?? null,
               dimensions: Object.fromEntries(
                 Object.entries(s.report.dimensions).map(([k, v]) => [k, v.score]),
               ),

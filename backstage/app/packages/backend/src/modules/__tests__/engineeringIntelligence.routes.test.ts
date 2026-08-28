@@ -17,7 +17,10 @@ import {
   listSnapshots,
   saveSnapshot,
 } from '../engineeringIntelligence/store';
-import { HealthReport } from '@internal/engineering-intelligence-core';
+import {
+  HealthReport,
+  assessMaturity,
+} from '@internal/engineering-intelligence-core';
 import { engineeringIntelligencePlugin } from '../idpEngineeringIntelligence';
 
 const OBSERVED = '2026-08-28T09:00:00.000Z';
@@ -120,6 +123,36 @@ describe('collectAndScore', () => {
     expect(outcome.report.generatedAt).toBe(OBSERVED);
   });
 
+  it('assesses maturity from the same collection, not a second pass', async () => {
+    // The level rides on the report so every persisted snapshot records it.
+    // Recomputing it on request instead would mean the level could never be
+    // charted over time — the thing leadership actually tracks.
+    const outcome = await collectAndScore([
+      async () =>
+        ok(
+          [
+            ['catalog.ownershipCoverage', 1],
+            ['catalog.goldenPathAdoption', 1],
+          ],
+          'catalog',
+        ),
+    ]);
+
+    expect(outcome.report.maturity).toBeDefined();
+    expect(outcome.report.maturity.levels).toHaveLength(5);
+    // Only platform could be scored, so Level 2's quality and reliability floors
+    // are unmeasurable — the assessment must say unconfirmed, not Level 1 flat.
+    expect(outcome.report.maturity.currentLevel).toBe(1);
+    expect(outcome.report.maturity.confirmed).toBe(false);
+  });
+
+  it('reports maturity as unconfirmed above 1 when nothing was collected', async () => {
+    const outcome = await collectAndScore([async () => down('prometheus')]);
+    expect(outcome.report.maturity.currentLevel).toBe(1);
+    expect(outcome.report.maturity.summary).toContain('unconfirmed above 1');
+    expect(outcome.report.maturity.recommendedActions).toEqual([]);
+  });
+
   it('applies configured dimension weights', async () => {
     const collectors = [
       async () =>
@@ -184,6 +217,7 @@ function report(generatedAt: string, overallScore: number | null): HealthReport 
     status: overallScore === null ? 'insufficient-evidence' : 'partial',
     dimensions: {} as HealthReport['dimensions'],
     recommendations: [],
+    maturity: assessMaturity({} as HealthReport['dimensions']),
   };
 }
 
@@ -220,6 +254,17 @@ describe('snapshot store', () => {
     const capped = await listSnapshots(db, 2);
     expect(capped).toHaveLength(2);
     expect(capped[0].report.overallScore).toBe(74);
+  });
+
+  it('round-trips the maturity assessment with the report', async () => {
+    // A snapshot that drops the level is a level that cannot be charted later,
+    // and there is no back-fill — no source retains the history to recompute it.
+    const db = fakeDb();
+    await saveSnapshot(db, report(OBSERVED, 74.5));
+
+    const latest = await latestSnapshot(db);
+    expect(latest?.report.maturity.currentLevel).toBe(1);
+    expect(latest?.report.maturity.levels).toHaveLength(5);
   });
 
   it('preserves a null overall score rather than coercing it', async () => {

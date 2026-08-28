@@ -93,7 +93,29 @@ Signals that measure something narrower than their name carry a `caveat` that
 travels onto every evidence row. The security signal's reads:
 *"Control presence, not finding count."*
 
-### 5. Collectors read sources directly, never the Backstage UI layer
+### 5. Maturity levels are floors, and Level 5 is deliberately out of reach
+
+The five-level model (`maturity.ts`) is computed from dimension scores, not from
+the overall average — an average would place an organisation with strong
+Reliability and no platform at Level 3. Levels are floors: the walk stops at the
+first level not fully met, so high Level 4 scores cannot carry an unmet Level 2.
+
+A dimension with `insufficient-evidence` can neither satisfy a requirement nor
+fail one, making the level *unconfirmed above N*. A definite failure outranks
+missing evidence, so a real shortfall cannot hide behind a data gap.
+
+Level 5 declares two `capability` requirements that no collector supplies —
+enforced approval gating, and agent remediation with a measured success rate — so
+it is structurally unconfirmable rather than merely unmet. Nothing in the platform
+observes whether the human-in-the-loop gate is actually enforced, and this
+platform has had that gate found silently disabled before. Awarding "Autonomous
+Engineering" from a high AI score would make exactly the claim there is no
+evidence for.
+
+Developer Experience gates Level 4 rather than Level 3, so most installations
+report *unconfirmed above Level 3* until phase 5 lands.
+
+### 6. Collectors read sources directly, never the Backstage UI layer
 
 Targets are resolved from the `proxy.endpoints` already configured for the
 frontend — the Backstage proxy is server-side, so the backend can reach

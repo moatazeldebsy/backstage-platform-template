@@ -11,6 +11,7 @@ import {
 import { DIMENSIONS, DimensionConfig, Signal } from './dimensions';
 import { normalise } from './normalize';
 import { recommend } from './recommend';
+import { assessMaturity } from './maturity';
 
 /** Optional per-dimension weight overrides, supplied from app-config. */
 export type WeightOverrides = Partial<Record<DimensionId, number>>;
@@ -159,11 +160,14 @@ export function scoreHealth(
     status = 'ok';
   }
 
+  const recommendations = recommend(dimensions);
+
   return {
     generatedAt,
     overallScore: weightSum === 0 ? null : round(weighted / weightSum),
     status,
     dimensions,
-    recommendations: recommend(dimensions),
+    recommendations,
+    maturity: assessMaturity(dimensions, recommendations),
   };
 }

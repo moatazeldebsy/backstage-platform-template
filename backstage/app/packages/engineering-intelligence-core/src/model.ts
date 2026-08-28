@@ -8,6 +8,8 @@
 // tier logic exists in three places with three different thresholds (see
 // docs/engineering-intelligence/scoring.md#why-a-separate-package).
 
+import type { MaturityAssessment } from './maturity';
+
 /** The seven dimensions of the Engineering Health model. */
 export type DimensionId =
   | 'platform'
@@ -120,4 +122,12 @@ export interface HealthReport {
   status: Status;
   dimensions: Record<DimensionId, DimensionScore>;
   recommendations: Recommendation[];
+  /**
+   * Where the organisation sits on the five-level maturity model, derived from
+   * the dimension scores above. Carried on the report rather than computed on
+   * request so that every persisted snapshot records the level too — the level
+   * is the thing leadership tracks over time, and it cannot be recomputed later
+   * from a report that did not store it.
+   */
+  maturity: MaturityAssessment;
 }
