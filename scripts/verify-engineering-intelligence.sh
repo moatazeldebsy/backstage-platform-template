@@ -22,6 +22,10 @@
 #   ./scripts/verify-engineering-intelligence.sh --screenshot # also render the page
 #                                                             # (written to $TMPDIR)
 #   ./scripts/verify-engineering-intelligence.sh --keep       # leave containers running
+#
+# The script exits non-zero on a failed check. If you pipe it (`| tail`), set
+# `pipefail` in the caller or the pipeline reports the exit status of `tail` and
+# a real failure looks like success.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -134,7 +138,27 @@ TOKEN=$(curl -s -X POST "http://localhost:${PORT}/api/auth/guest/refresh" \
 
 auth_get() { curl -s --max-time 120 -H "Authorization: Bearer ${TOKEN}" "$@"; }
 
-for path in health maturity platform recommendations snapshots dimensions/platform; do
+# Wait for the catalog to finish ingesting the fixture before collecting.
+#
+# The catalog processes its file location asynchronously, so a collection that
+# fires too early sees a partial catalog: an earlier run counted 2 of the 4
+# Components and the golden-path assertions failed against a correct build.
+# Without this the harness is a race, and a flaky verification script teaches you
+# to ignore it.
+EXPECTED_COMPONENTS=4
+for _ in $(seq 1 60); do
+  count=$(auth_get "http://localhost:${PORT}/api/catalog/entities?filter=kind=component&fields=metadata.name" \
+    | grep -o '"name"' | wc -l | tr -d ' ')
+  [[ "${count:-0}" -ge "$EXPECTED_COMPONENTS" ]] && break
+  sleep 2
+done
+ok "catalog ingested ${count:-0} Components"
+
+# Collect again now the catalog is complete — the first collection happened on
+# whatever had been ingested at the time.
+auth_get -o /dev/null -X POST "${API}/refresh"
+
+for path in health maturity platform ai-readiness recommendations snapshots dimensions/platform; do
   code=$(auth_get -o /dev/null -w '%{http_code}' "${API}/${path}")
   [[ "$code" == "200" ]] && ok "GET /${path} -> 200" || fail "GET /${path} -> ${code}"
 done
@@ -145,6 +169,7 @@ code=$(auth_get -o /dev/null -w '%{http_code}' "${API}/dimensions/nonsense")
 
 HEALTH=$(auth_get "${API}/health")
 PLATFORM=$(auth_get "${API}/platform")
+READINESS=$(auth_get "${API}/ai-readiness")
 
 log "Checking the collected numbers"
 
@@ -153,10 +178,11 @@ log "Checking the collected numbers"
 # `|| PY_STATUS=$?` rather than a bare call: `set -e` would abort the script on a
 # failing assertion before the status could be captured, losing the summary.
 PY_STATUS=0
-python3 - "$HEALTH" "$PLATFORM" <<'PY' || PY_STATUS=$?
+python3 - "$HEALTH" "$PLATFORM" "$READINESS" <<'PY' || PY_STATUS=$?
 import json, sys
 
 health, platform = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+readiness = json.loads(sys.argv[3])
 dims, failures = health["dimensions"], 0
 
 def check(label, actual, expected):
@@ -216,6 +242,18 @@ check("services counted", platform["services"], 4)
 check("not on golden path", platform["notOnGoldenPath"]["count"], 2)
 # Nothing has been scaffolded, so self-service is unmeasurable — not 0%, not 100%.
 check("self-service unmeasured", platform["selfService"], {"completed": 0, "failed": 0, "inFlight": 0})
+
+# AI readiness (phase 6). MLflow and Langfuse are not stubbed here, so only the
+# Tech-Insights-backed and Prometheus-backed areas can score — which is also the
+# realistic state of most installs.
+check("readiness areas", len(readiness["areas"]), 12)
+check("readiness total", readiness["total"], 12)
+# The six areas with no collector must withhold, never report zero.
+for area in ("security", "privacy", "architecture", "testing", "cost", "incidentManagement"):
+    check(f"readiness {area} withheld", readiness["areas"][area]["score"], None)
+# ...and each names what it is waiting on rather than just failing silently.
+arch = readiness["areas"]["architecture"]["missing"][0]["expectedFrom"]
+check("architecture needs human review", "human review" in arch, True)
 
 sys.exit(1 if failures else 0)
 PY

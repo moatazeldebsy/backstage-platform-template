@@ -34,6 +34,12 @@ const SERIES = {
   idp_test_pass_total: vec([{ service: 'orders-api' }, 940]),
   idp_test_fail_total: vec([{ service: 'orders-api' }, 60]),
   idp_team_budget_utilization_ratio: vec([{ team: 'payments' }, 0.82]),
+  // Attributed spend must exist for budget utilisation to mean anything: the
+  // exporter publishes utilisation 0 for a team with no cost, and 0 would
+  // otherwise score as *perfectly under budget*. The collector withholds
+  // utilisation unless this series is non-zero, so the fixture has to carry it
+  // for the happy path to be exercised at all.
+  idp_team_actual_cost_usd_monthly: vec([{ team: 'payments' }, 412.5]),
   idp_scorecard_tier_gold: vec([{ service: 'orders-api' }, 1], [{ service: 'auth-service' }, 0]),
   idp_scorecard_checks_passed: vec([{ service: 'orders-api' }, 11], [{ service: 'auth-service' }, 6]),
   // Phase 5 — Developer Experience, published by the same DORA exporter.
