@@ -63,7 +63,7 @@ three instances of in its Bronze/Silver/Gold logic. See
 |---|---|
 | `backstage/app/packages/engineering-intelligence-core/` | The engine. `model.ts` (types), `normalize.ts` (raw → 0–100), `dimensions.ts` (declarative scoring policy), `score.ts`, `recommend.ts`, `maturity.ts` (the five levels) |
 | `backstage/app/packages/backend/src/modules/idpEngineeringIntelligence.ts` | The plugin: scheduling, persistence, HTTP routes |
-| `.../modules/engineeringIntelligence/{prometheus,catalog,techInsights,opencost,langfuse}.ts` | One collector per source |
+| `.../modules/engineeringIntelligence/{prometheus,catalog,techInsights,opencost,langfuse,scaffolder}.ts` | One collector per source |
 | `.../modules/engineeringIntelligence/{collect,store,source}.ts` | Orchestration, snapshots, shared transport |
 | `backstage/app/packages/app/src/engineeringIntelligence/` | The dashboard. `plugin.tsx` (page + nav item), `api.ts` (typed client), `present.ts` (pure display logic, tested), `EngineeringIntelligencePage.tsx` |
 
@@ -76,6 +76,7 @@ All routes require an authenticated user; there is no unauthenticated surface.
 | `GET /api/engineering-intelligence/health` | The latest `HealthReport`, plus `evidenceGaps` |
 | `GET /api/engineering-intelligence/dimensions/:id` | One dimension with full evidence and `missing` |
 | `GET /api/engineering-intelligence/maturity` | Current level, whether it is confirmed, target level, gap and actions |
+| `GET /api/engineering-intelligence/platform` | Platform Health breakdown: counts, template usage, and the named services off the golden path |
 | `GET /api/engineering-intelligence/recommendations` | Ranked recommendations, each carrying its evidence |
 | `GET /api/engineering-intelligence/snapshots?limit=` | Persisted history, for trends |
 | `POST /api/engineering-intelligence/refresh` | Forces a collection |
@@ -107,20 +108,20 @@ verified against `main`.
 
 | Dimension | Real data today | Where from |
 |---|---|---|
-| **Platform** | Ownership coverage, golden-path adoption (`backstage.io/source-template`), Gold-tier ratio, deploy frequency | Catalog API, Tech Insights, `dora_deploy_frequency_per_day` |
+| **Platform** | Ownership coverage, golden-path adoption (`backstage.io/source-template`), Gold-tier ratio, deploy frequency, scaffolder success rate | Catalog API, Tech Insights, `dora_deploy_frequency_per_day`, scaffolder `/v2/tasks` |
 | **Quality** | Scorecard check pass ratio, test flakiness, test pass/fail counts | Tech Insights facts; `idp_test_*` from `observability/flaky-test-exporter/` |
 | **Reliability** | Change failure rate, MTTR | `dora_change_failure_rate_percent`, `dora_mttr_minutes` |
 | **FinOps** | Team budget utilisation, cost-weighted resource efficiency | `idp_team_budget_utilization_ratio`; OpenCost `/allocation/compute` |
 | **AI Engineering** | Governance checks (model card, eval suite, AI observability), MCP tool success rate, whether LLM traces are flowing | Tech Insights; `mcp_tool_calls_total`; Langfuse `/api/public/metrics/daily` |
 | **Security** | Whether Sonar/Snyk/Trivy scanning is *declared* | Tech Insights — **control presence, not findings** |
-| **Developer Experience** | Deployment lead time only | `dora_lead_time_minutes` |
+| **Developer Experience** | Deployment lead time, PR cycle time, CI duration, build failure rate | `dora_lead_time_minutes`, `devex_*` — all from the DORA exporter CronJob |
 
 ### What does not exist, and is therefore not scored
 
-- **Developer Experience**, beyond lead time. No PR cycle time, review latency,
-  CI duration, build failure rate, environment provisioning time or onboarding
-  timing is computed or stored anywhere. The dimension reports
-  `insufficient-evidence`. Phase 5.
+- **Review latency** (time to a pull request's first review). It needs a per-PR
+  call to `/pulls/{n}/reviews`; the rate-limit cost was not worth it for a first
+  cut. Environment provisioning time and onboarding timing are also unmeasured.
+  The three DevEx metrics that *are* collected landed in phase 5.
 - **Security findings.** Dependabot alerts, Kyverno PolicyReports and secret
   rotation are live-queried via `security-mcp-server` and never persisted. There
   are no `kyverno_*`, `trivy_*` or `gitleaks_*` series.

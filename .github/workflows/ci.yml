@@ -279,6 +279,18 @@ jobs:
           python -m py_compile scripts/render-postmortem.py
           python -m py_compile scripts/render-backstage-config.py
 
+      # py_compile alone left every behavioural assertion in these exporters
+      # untested. The DevEx metrics carry real edge cases — a PR closed without
+      # merging, a cancelled CI run — where returning 0.0 instead of nothing
+      # would publish a fabricated measurement. The suite also compares the
+      # local and AWS exporters directly: they cannot share a module (each ships
+      # as a single-file ConfigMap), so a test is the only thing holding the
+      # duplicated DevEx block together.
+      - name: Test observability exporters
+        run: |
+          pip install --quiet pytest
+          python -m pytest observability/tests -q
+
   helm-lint:
     needs: changes
     if: needs.changes.outputs.helm == 'true'

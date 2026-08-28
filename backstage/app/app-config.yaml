@@ -157,3 +157,4 @@ engineeringIntelligence:
     langfuse: true
     catalog: true
     techInsights: true
+    scaffolder: true

@@ -13,7 +13,15 @@
 // or OpenCost efficiency read as a percentage when it arrives as a ratio).
 
 import { ConfigReader } from '@backstage/config';
-import { catalogSamples, collectCatalog } from '../engineeringIntelligence/catalog';
+import {
+  catalogSamples,
+  collectCatalog,
+  platformFacts,
+} from '../engineeringIntelligence/catalog';
+import {
+  collectScaffolder,
+  tallyTasks,
+} from '../engineeringIntelligence/scaffolder';
 import {
   collectLangfuse,
   rollup,
@@ -296,6 +304,219 @@ describe('collectCatalog', () => {
     expect(url).toContain('filter=kind=component');
     expect(url).toContain('spec.owner');
     expect(url).toContain('metadata.annotations');
+  });
+});
+
+// ── developer experience (phase 5) ────────────────────────────────────────────
+
+describe('collectPrometheus — DevEx', () => {
+  it('excludes the all-services roll-up from the devex queries too', async () => {
+    // The exporter pushes a synthetic aggregate alongside the per-service rows,
+    // exactly as it does for DORA. Forgetting the exclusion here would average
+    // the aggregate in as if it were one more service.
+    const urls: string[] = [];
+    mockFetchJson(url => {
+      urls.push(url);
+      return vector([{ service: 'a' }, '1']);
+    });
+    await collectPrometheus(ctx);
+
+    const devexUrls = urls
+      .map(u => decodeURIComponent(u))
+      .filter(u => u.includes('devex_'));
+    expect(devexUrls).toHaveLength(3);
+    for (const url of devexUrls) {
+      expect(url).toContain('service!="all-services"');
+    }
+  });
+
+  it('maps the three series the exporter publishes', async () => {
+    mockFetchJson(url => {
+      const q = decodeURIComponent(url);
+      if (q.includes('devex_pr_cycle_time_hours')) return vector([{ service: 'a' }, '9']);
+      if (q.includes('devex_ci_duration_minutes')) return vector([{ service: 'a' }, '12']);
+      if (q.includes('devex_build_failure_ratio')) return vector([{ service: 'a' }, '0.08']);
+      if (q.includes('dora_')) return vector([{ service: 'a' }, '1']);
+      return vector();
+    });
+
+    const result = await collectPrometheus(ctx);
+    const byMetric = Object.fromEntries(result.samples.map(s => [s.metric, s.value]));
+    expect(byMetric['devex.prCycleTimeHours']).toBe(9);
+    expect(byMetric['devex.ciDurationMinutes']).toBe(12);
+    expect(byMetric['devex.buildFailureRatio']).toBeCloseTo(0.08);
+  });
+
+  it('omits a devex metric the exporter chose not to publish', async () => {
+    // The exporter leaves a series out entirely when nothing merged or nothing
+    // ran, rather than pushing 0.0. An empty vector must therefore stay absent
+    // — a zero here would claim instant CI and a flawless build.
+    mockFetchJson(url =>
+      decodeURIComponent(url).includes('dora_')
+        ? vector([{ service: 'a' }, '1'])
+        : vector(),
+    );
+    const result = await collectPrometheus(ctx);
+    const metrics = result.samples.map(s => s.metric);
+    expect(metrics).not.toContain('devex.prCycleTimeHours');
+    expect(metrics).not.toContain('devex.buildFailureRatio');
+  });
+});
+
+// ── platform facts (phase 4) ──────────────────────────────────────────────────
+
+describe('platformFacts', () => {
+  const entities = [
+    {
+      kind: 'Component',
+      metadata: {
+        name: 'orders-api',
+        annotations: { 'backstage.io/source-template': 'template:default/go-service' },
+      },
+      spec: { owner: 'team-payments' },
+    },
+    {
+      kind: 'Component',
+      metadata: {
+        name: 'auth-service',
+        annotations: { 'backstage.io/source-template': 'template:default/go-service' },
+      },
+      spec: { owner: 'team-platform' },
+    },
+    {
+      kind: 'Component',
+      metadata: {
+        name: 'billing-ui',
+        annotations: { 'backstage.io/source-template': 'template:default/react-app' },
+      },
+      spec: { owner: 'team-payments' },
+    },
+    { kind: 'Component', metadata: { name: 'legacy-cron' }, spec: { owner: 'team-data' } },
+    { kind: 'Component', metadata: { name: 'adhoc-tool' }, spec: {} },
+  ];
+
+  it('counts services, owners and golden-path provenance', () => {
+    const facts = platformFacts(entities);
+    expect(facts.serviceCount).toBe(5);
+    expect(facts.ownedCount).toBe(4);
+    expect(facts.scaffoldedCount).toBe(3);
+  });
+
+  it('ranks template usage, most used first', () => {
+    expect(platformFacts(entities).templateUsage).toEqual([
+      { template: 'go-service', count: 2 },
+      { template: 'react-app', count: 1 },
+    ]);
+  });
+
+  it('names the services that are not on a golden path', () => {
+    // The actionable half. "42 services are not on a golden path" is a
+    // statistic; naming them is something a platform team can act on.
+    expect(platformFacts(entities).unscaffolded).toEqual(['adhoc-tool', 'legacy-cron']);
+  });
+
+  it('sorts the named list so it does not reshuffle between refreshes', () => {
+    const reversed = [...entities].reverse();
+    expect(platformFacts(reversed).unscaffolded).toEqual(
+      platformFacts(entities).unscaffolded,
+    );
+  });
+
+  it('caps the named list rather than returning an unbounded catalog', () => {
+    const many = Array.from({ length: 120 }, (_, i) => ({
+      kind: 'Component',
+      metadata: { name: `svc-${String(i).padStart(3, '0')}` },
+      spec: { owner: 'team' },
+    }));
+    const facts = platformFacts(many);
+    expect(facts.serviceCount).toBe(120);
+    expect(facts.unscaffolded).toHaveLength(50);
+  });
+
+  it('survives an empty catalog without dividing by zero', () => {
+    const facts = platformFacts([]);
+    expect(facts).toEqual({
+      serviceCount: 0,
+      ownedCount: 0,
+      scaffoldedCount: 0,
+      templateUsage: [],
+      unscaffolded: [],
+    });
+  });
+});
+
+// ── scaffolder self-service (phase 4) ─────────────────────────────────────────
+
+describe('tallyTasks', () => {
+  it('separates finished tasks from those still running', () => {
+    const outcome = tallyTasks([
+      { status: 'completed' },
+      { status: 'completed' },
+      { status: 'failed' },
+      { status: 'processing' },
+      { status: 'open' },
+    ]);
+    expect(outcome).toEqual({ completed: 2, failed: 1, inFlight: 2 });
+  });
+
+  it('counts a cancelled task as neither success nor failure', () => {
+    // Someone changing their mind mid-run is not the scaffolder failing — the
+    // same distinction build failure ratio draws against change failure rate.
+    const outcome = tallyTasks([{ status: 'completed' }, { status: 'cancelled' }]);
+    expect(outcome).toEqual({ completed: 1, failed: 0, inFlight: 0 });
+  });
+});
+
+describe('collectScaffolder', () => {
+  const access = {
+    baseUrl: async () => 'http://backstage:7007/api/scaffolder',
+    token: async () => 'tok',
+  };
+
+  it('reports the success ratio over finished tasks only', async () => {
+    mockFetchJson(() => ({
+      tasks: [
+        { status: 'completed' },
+        { status: 'completed' },
+        { status: 'completed' },
+        { status: 'failed' },
+        { status: 'processing' },
+      ],
+    }));
+    const result = await collectScaffolder(access);
+    expect(result.samples).toHaveLength(1);
+    expect(result.samples[0].metric).toBe('scaffolder.taskSuccessRatio');
+    expect(result.samples[0].value).toBeCloseTo(0.75);
+    expect(result.samples[0].source).toBe('scaffolder');
+  });
+
+  it('reports unavailable on a platform where nothing has been scaffolded', async () => {
+    // 0% would say the scaffolder is broken; 100% would say it is proven.
+    // Neither is true before anyone has used it.
+    mockFetchJson(() => ({ tasks: [{ status: 'processing' }] }));
+    const result = await collectScaffolder(access);
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.reason).toMatch(/cannot be measured/);
+  });
+
+  it('reads the task list over HTTP, not out of the scaffolder database', async () => {
+    // The task rows live in another plugin's schema, which Backstage does not
+    // treat as public. Reaching into it would couple this collector to a table
+    // it does not own.
+    const urls: string[] = [];
+    mockFetchJson(url => {
+      urls.push(url);
+      return { tasks: [{ status: 'completed' }] };
+    });
+    await collectScaffolder(access);
+    expect(urls[0]).toContain('/api/scaffolder/v2/tasks');
+  });
+
+  it('reports unavailable when the scaffolder does not answer', async () => {
+    mockFetchJson(() => undefined);
+    const result = await collectScaffolder(access);
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.source).toBe('scaffolder');
   });
 });
 

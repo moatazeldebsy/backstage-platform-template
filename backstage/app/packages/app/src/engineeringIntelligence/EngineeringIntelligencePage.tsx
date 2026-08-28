@@ -17,7 +17,11 @@ import type {
   DimensionScore,
   Recommendation,
 } from '@internal/engineering-intelligence-core';
-import { EngineeringIntelligenceApi, HealthResponse } from './api';
+import {
+  EngineeringIntelligenceApi,
+  HealthResponse,
+  PlatformResponse,
+} from './api';
 import {
   BAND_COLOUR,
   DIMENSION_DETAIL_PAGE,
@@ -63,17 +67,36 @@ const SEVERITY_MARK: Record<Recommendation['severity'], string> = {
   info: '🔵',
 };
 
-function Card({ children, ...rest }: { children: React.ReactNode; [k: string]: any }) {
+function Card({
+  children,
+  ...rest
+}: {
+  children: React.ReactNode;
+  [k: string]: any;
+}) {
   return (
-    <Paper {...rest} style={{ padding: 16, height: '100%', ...(rest.style ?? {}) }}>
+    <Paper
+      {...rest}
+      style={{ padding: 16, height: '100%', ...(rest.style ?? {}) }}
+    >
       {children}
     </Paper>
   );
 }
 
-function SectionTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
+function SectionTitle({
+  children,
+  hint,
+}: {
+  children: React.ReactNode;
+  hint?: string;
+}) {
   return (
-    <Box display="flex" alignItems="baseline" style={{ gap: 8, marginBottom: 8 }}>
+    <Box
+      display="flex"
+      alignItems="baseline"
+      style={{ gap: 8, marginBottom: 8 }}
+    >
       <Typography variant="h6">{children}</Typography>
       {hint && (
         <Typography variant="caption" color="textSecondary">
@@ -112,18 +135,32 @@ function Headline({
         </Grid>
 
         <Grid item xs>
-          <Typography variant="body1">{maturityHeadline(report.maturity)}</Typography>
-          <Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
+          <Typography variant="body1">
+            {maturityHeadline(report.maturity)}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            style={{ marginTop: 4 }}
+          >
             {/* trendLabel distinguishes three cases the reader cares about:
                 no history at all, two collections that agree, and a real move. */}
-            {trendLabel(movement)} · collected {relativeTime(report.generatedAt)}
+            {trendLabel(movement)} · collected{' '}
+            {relativeTime(report.generatedAt)}
           </Typography>
           {report.status !== 'ok' && (
-            <Typography variant="body2" style={{ color: BAND_COLOUR.unknown, marginTop: 4 }}>
-              Scored from {
-                Object.values(report.dimensions).filter(d => d.score !== null).length
-              } of {Object.keys(report.dimensions).length} dimensions. Unscored
-              dimensions are excluded from the total rather than counted as zero.
+            <Typography
+              variant="body2"
+              style={{ color: BAND_COLOUR.unknown, marginTop: 4 }}
+            >
+              Scored from{' '}
+              {
+                Object.values(report.dimensions).filter(d => d.score !== null)
+                  .length
+              }{' '}
+              of {Object.keys(report.dimensions).length} dimensions. Unscored
+              dimensions are excluded from the total rather than counted as
+              zero.
             </Typography>
           )}
         </Grid>
@@ -168,7 +205,10 @@ function DimensionCard({
         {statusLine(dimension)}
       </Typography>
       {detail && (
-        <Typography variant="caption" style={{ display: 'block', marginTop: 6 }}>
+        <Typography
+          variant="caption"
+          style={{ display: 'block', marginTop: 6 }}
+        >
           <a href={detail.to} onClick={e => e.stopPropagation()}>
             {detail.label} →
           </a>
@@ -214,7 +254,9 @@ function EvidenceTable({ dimension }: { dimension: DimensionScore }) {
                 <TableCell align="right">
                   {formatMetricValue(row.metric, row.value)}
                 </TableCell>
-                <TableCell align="right">{Math.round(row.normalised)}</TableCell>
+                <TableCell align="right">
+                  {Math.round(row.normalised)}
+                </TableCell>
                 <TableCell align="right">{row.impact}</TableCell>
                 <TableCell>
                   <Tooltip title={`observed ${relativeTime(row.observedAt)}`}>
@@ -231,7 +273,9 @@ function EvidenceTable({ dimension }: { dimension: DimensionScore }) {
         <Box marginTop={2}>
           <Typography variant="caption" color="textSecondary">
             Not collected:{' '}
-            {dimension.missing.map(m => `${m.metric} (${m.expectedFrom})`).join(' · ')}
+            {dimension.missing
+              .map(m => `${m.metric} (${m.expectedFrom})`)
+              .join(' · ')}
           </Typography>
         </Box>
       )}
@@ -255,7 +299,9 @@ function MaturityLadder({ report }: { report: HealthResponse }) {
             style={{ borderTop: '1px solid rgba(128,128,128,0.2)' }}
           >
             <Box display="flex" alignItems="baseline" style={{ gap: 8 }}>
-              <Typography style={{ color: colour, fontWeight: row.current ? 700 : 400 }}>
+              <Typography
+                style={{ color: colour, fontWeight: row.current ? 700 : 400 }}
+              >
                 Level {row.level} — {row.name}
               </Typography>
               <Typography variant="caption" style={{ color: colour }}>
@@ -283,7 +329,9 @@ function Risks({ report }: { report: HealthResponse }) {
   const risks = topRisks(report);
   return (
     <Card>
-      <SectionTitle hint="derived from measured evidence only">Top risks</SectionTitle>
+      <SectionTitle hint="derived from measured evidence only">
+        Top risks
+      </SectionTitle>
       {risks.length === 0 ? (
         <Typography variant="body2" color="textSecondary">
           Nothing measured is below its target.
@@ -294,18 +342,139 @@ function Risks({ report }: { report: HealthResponse }) {
             <Typography variant="body2">
               {SEVERITY_MARK[risk.severity]} {risk.title}
             </Typography>
-            <Typography variant="caption" color="textSecondary" style={{ display: 'block' }}>
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              style={{ display: 'block' }}
+            >
               {risk.action}
             </Typography>
             {risk.evidence[0] && (
-              <Typography variant="caption" style={{ display: 'block', opacity: 0.75 }}>
+              <Typography
+                variant="caption"
+                style={{ display: 'block', opacity: 0.75 }}
+              >
                 {risk.evidence[0].metric} ={' '}
-                {formatMetricValue(risk.evidence[0].metric, risk.evidence[0].value)} ·{' '}
-                {risk.evidence[0].source}
+                {formatMetricValue(
+                  risk.evidence[0].metric,
+                  risk.evidence[0].value,
+                )}{' '}
+                · {risk.evidence[0].source}
               </Typography>
             )}
           </Box>
         ))
+      )}
+    </Card>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <Box>
+      <Typography variant="body2" color="textSecondary">
+        {label}
+      </Typography>
+      <Typography style={{ fontSize: 26, lineHeight: 1.2 }}>{value}</Typography>
+      {hint && (
+        <Typography variant="caption" color="textSecondary">
+          {hint}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+const pct = (v: number | null | undefined) =>
+  v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`;
+
+function PlatformHealth({ platform }: { platform: PlatformResponse }) {
+  if (!platform.available) {
+    return (
+      <Card style={{ borderLeft: `4px solid ${BAND_COLOUR.unknown}` }}>
+        <SectionTitle>Platform Health</SectionTitle>
+        <Typography variant="body2" color="textSecondary">
+          {platform.reason ?? 'Not collected yet.'}
+        </Typography>
+      </Card>
+    );
+  }
+
+  const gap = platform.notOnGoldenPath;
+  const self = platform.selfService;
+
+  return (
+    <Card>
+      <SectionTitle hint="counts are context, not a score — a bigger catalog is not a better one">
+        Platform Health
+      </SectionTitle>
+
+      <Grid container spacing={3}>
+        <Grid item xs={6} sm={3}>
+          <Stat label="Services" value={String(platform.services ?? 0)} />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Stat
+            label="Ownership"
+            value={pct(platform.ownershipCoverage)}
+            hint={`${platform.owned ?? 0} of ${platform.services ?? 0} owned`}
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Stat
+            label="Golden path"
+            value={pct(platform.goldenPathAdoption)}
+            hint={`${platform.scaffolded ?? 0} scaffolded`}
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Stat
+            label="Self-service"
+            value={
+              self && self.completed + self.failed > 0
+                ? pct(self.completed / (self.completed + self.failed))
+                : '—'
+            }
+            hint={
+              self && self.completed + self.failed > 0
+                ? `${self.completed} succeeded · ${self.failed} failed`
+                : 'no scaffolder task has finished yet'
+            }
+          />
+        </Grid>
+      </Grid>
+
+      {gap && gap.count > 0 && (
+        <Box marginTop={2}>
+          <Typography variant="body2">
+            <strong>{gap.count}</strong>{' '}
+            {gap.count === 1 ? 'service is' : 'services are'} not using an
+            approved golden path.
+          </Typography>
+          <Typography variant="caption" color="textSecondary">
+            {gap.named.join(', ')}
+            {gap.truncated ? ` … and ${gap.count - gap.named.length} more` : ''}
+          </Typography>
+        </Box>
+      )}
+
+      {platform.templateUsage && platform.templateUsage.length > 0 && (
+        <Box marginTop={2}>
+          <Typography variant="caption" color="textSecondary">
+            Templates in use:{' '}
+            {platform.templateUsage
+              .map(t => `${t.template} (${t.count})`)
+              .join(' · ')}
+          </Typography>
+        </Box>
       )}
     </Card>
   );
@@ -344,6 +513,7 @@ export function EngineeringIntelligencePage() {
 
   const [report, setReport] = useState<HealthResponse | undefined>();
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [platform, setPlatform] = useState<PlatformResponse | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DimensionId | undefined>();
@@ -358,6 +528,9 @@ export function EngineeringIntelligencePage() {
       // the point of the page, the sparkline is not.
       const history = await api.snapshots(30).catch(() => ({ snapshots: [] }));
       setSnapshots(history.snapshots);
+      // Same rule as the trend: a failing detail query must not blank a working
+      // report. The score is the point of the page.
+      setPlatform(await api.platform().catch(() => undefined));
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
     } finally {
@@ -421,7 +594,9 @@ export function EngineeringIntelligencePage() {
                   selected={selected === dimension.dimension}
                   onSelect={() =>
                     setSelected(
-                      selected === dimension.dimension ? undefined : dimension.dimension,
+                      selected === dimension.dimension
+                        ? undefined
+                        : dimension.dimension,
                     )
                   }
                 />
@@ -431,6 +606,12 @@ export function EngineeringIntelligencePage() {
             {selectedDimension && (
               <Grid item xs={12}>
                 <EvidenceTable dimension={selectedDimension} />
+              </Grid>
+            )}
+
+            {platform && (
+              <Grid item xs={12}>
+                <PlatformHealth platform={platform} />
               </Grid>
             )}
 

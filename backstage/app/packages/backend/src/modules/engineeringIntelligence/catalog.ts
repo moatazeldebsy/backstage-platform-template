@@ -21,6 +21,71 @@ export interface CatalogEntity {
   spec?: { owner?: string };
 }
 
+/**
+ * The Platform Health breakdown behind the Platform dimension's score.
+ *
+ * Reported, not scored. "642 services" is not better or worse than "300" — it
+ * is context a reader needs to interpret the ratios, and inventing a scoring
+ * curve for it would assert a judgement the platform has no basis for.
+ */
+export interface PlatformFacts {
+  serviceCount: number;
+  ownedCount: number;
+  scaffoldedCount: number;
+  /** Component count per source template, most used first. */
+  templateUsage: { template: string; count: number }[];
+  /** Named services with no golden-path provenance, capped for the response. */
+  unscaffolded: string[];
+}
+
+/** Cap on the named-services list, so one enormous catalog cannot bloat the API. */
+const MAX_NAMED = 50;
+
+function templateName(ref: string): string {
+  // `template:default/go-service` → `go-service`. Falls back to the raw ref so
+  // an unexpected shape is still visible rather than silently blanked.
+  const match = /(?:^|\/)([^/]+)$/.exec(ref);
+  return match ? match[1] : ref;
+}
+
+export function platformFacts(components: CatalogEntity[]): PlatformFacts {
+  const byTemplate = new Map<string, number>();
+  const unscaffolded: string[] = [];
+  let owned = 0;
+  let scaffolded = 0;
+
+  for (const entity of components) {
+    if (
+      typeof entity.spec?.owner === 'string' &&
+      entity.spec.owner.trim() !== ''
+    ) {
+      owned += 1;
+    }
+    const source = entity.metadata?.annotations?.[SOURCE_TEMPLATE_ANNOTATION];
+    if (source) {
+      scaffolded += 1;
+      const name = templateName(source);
+      byTemplate.set(name, (byTemplate.get(name) ?? 0) + 1);
+    } else if (entity.metadata?.name) {
+      unscaffolded.push(entity.metadata.name);
+    }
+  }
+
+  return {
+    serviceCount: components.length,
+    ownedCount: owned,
+    scaffoldedCount: scaffolded,
+    templateUsage: [...byTemplate.entries()]
+      .map(([template, count]) => ({ template, count }))
+      .sort(
+        (a, b) => b.count - a.count || a.template.localeCompare(b.template),
+      ),
+    // Sorted so the list is stable between refreshes; a set that reshuffles on
+    // every collection is unreadable in a UI.
+    unscaffolded: unscaffolded.sort().slice(0, MAX_NAMED),
+  };
+}
+
 /** Derive the catalog signals from a set of entities. Pure, so it is testable. */
 export function catalogSamples(
   components: CatalogEntity[],
@@ -51,9 +116,13 @@ export interface CatalogAccess {
   token(): Promise<string>;
 }
 
+export type CatalogCollectorResult = CollectorResult & {
+  facts?: PlatformFacts;
+};
+
 export async function collectCatalog(
   access: CatalogAccess,
-): Promise<CollectorResult> {
+): Promise<CatalogCollectorResult> {
   const observedAt = new Date().toISOString();
 
   let base: string;
@@ -74,7 +143,12 @@ export async function collectCatalog(
   // Ask only for the fields the signals need. The catalog holds several hundred
   // entities once GitHub discovery has run, and pulling whole entity bodies to
   // read two fields is wasteful on every scheduled refresh.
-  const fields = ['kind', 'metadata.name', 'metadata.annotations', 'spec.owner'];
+  const fields = [
+    'kind',
+    'metadata.name',
+    'metadata.annotations',
+    'spec.owner',
+  ];
   const url =
     `${base}/entities?filter=kind=component` +
     `&fields=${encodeURIComponent(fields.join(','))}` +
@@ -107,5 +181,8 @@ export async function collectCatalog(
     };
   }
 
-  return { samples: catalogSamples(body, observedAt) };
+  return {
+    samples: catalogSamples(body, observedAt),
+    facts: platformFacts(body),
+  };
 }

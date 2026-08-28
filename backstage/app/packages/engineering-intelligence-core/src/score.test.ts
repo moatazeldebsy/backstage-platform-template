@@ -29,6 +29,7 @@ function fullyCollectableSamples(): MetricSample[] {
     sample('catalog.ownershipCoverage', 0.95, 'catalog'),
     sample('catalog.goldenPathAdoption', 0.74, 'catalog'),
     sample('scorecard.goldTierRatio', 0.4, 'techInsights'),
+    sample('scaffolder.taskSuccessRatio', 0.95, 'scaffolder'),
     sample('dora.deployFrequencyPerDay', 2),
     sample('dora.leadTimeMinutes', 30),
     sample('scorecard.checksPassedRatio', 0.8, 'techInsights'),

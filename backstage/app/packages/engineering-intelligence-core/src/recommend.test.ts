@@ -23,6 +23,7 @@ function healthySamples(): MetricSample[] {
     sample('catalog.ownershipCoverage', 1, 'catalog'),
     sample('catalog.goldenPathAdoption', 0.95, 'catalog'),
     sample('scorecard.goldTierRatio', 0.9, 'techInsights'),
+    sample('scaffolder.taskSuccessRatio', 0.98, 'scaffolder'),
     sample('dora.deployFrequencyPerDay', 3),
     sample('dora.leadTimeMinutes', 25),
     sample('scorecard.checksPassedRatio', 0.95, 'techInsights'),
@@ -132,16 +133,16 @@ describe('evidenceGaps', () => {
       'devex.prCycleTimeHours',
     ]);
     expect(gaps[0].expectedFrom).toEqual([
-      'github (not yet collected — phase 5)',
+      'prometheus (devex_* from the DORA exporter)',
     ]);
   });
 
   it('is empty when every dimension scored', () => {
     const report = scoreHealth(
       healthySamples().concat([
-        sample('devex.prCycleTimeHours', 8, 'github'),
-        sample('devex.ciDurationMinutes', 9, 'github'),
-        sample('devex.buildFailureRatio', 0.03, 'github'),
+        sample('devex.prCycleTimeHours', 8),
+        sample('devex.ciDurationMinutes', 9),
+        sample('devex.buildFailureRatio', 0.03),
       ]),
     );
 

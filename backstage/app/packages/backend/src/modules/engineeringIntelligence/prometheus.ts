@@ -99,6 +99,9 @@ export async function collectPrometheus(
     scorecardTotal,
     mcpOk,
     mcpAll,
+    prCycleTime,
+    ciDuration,
+    buildFailure,
   ] = await Promise.all([
     query(`dora_deploy_frequency_per_day${EXCLUDE_ROLLUP}`),
     query(`dora_lead_time_minutes${EXCLUDE_ROLLUP}`),
@@ -112,6 +115,12 @@ export async function collectPrometheus(
     query('idp_scorecard_checks_passed'),
     query('mcp_tool_calls_total{outcome="success"}'),
     query('mcp_tool_calls_total'),
+    // Developer Experience, pushed by the same DORA exporter CronJob. These
+    // carry the synthetic all-services roll-up too, so they need the same
+    // exclusion the dora_* queries use.
+    query(`devex_pr_cycle_time_hours${EXCLUDE_ROLLUP}`),
+    query(`devex_ci_duration_minutes${EXCLUDE_ROLLUP}`),
+    query(`devex_build_failure_ratio${EXCLUDE_ROLLUP}`),
   ]);
 
   if (
@@ -148,6 +157,13 @@ export async function collectPrometheus(
   }
 
   push('finops.budgetUtilisationRatio', vectorMean(budgetUtil));
+
+  // The exporter omits a DevEx series entirely when nothing merged or nothing
+  // ran, rather than pushing 0.0 — so an empty vector here means "not observed",
+  // and vectorMean correctly returns undefined rather than a flattering zero.
+  push('devex.prCycleTimeHours', vectorMean(prCycleTime));
+  push('devex.ciDurationMinutes', vectorMean(ciDuration));
+  push('devex.buildFailureRatio', vectorMean(buildFailure));
 
   // idp_scorecard_tier_gold is 1 per service that has reached Gold and 0
   // otherwise, so the ratio is the mean — but only when the scorecard exporter

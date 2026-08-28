@@ -84,9 +84,16 @@ GH_HEADERS = {
 }
 
 
-def gh_get(url: str, params: dict = None) -> list:
-    """Paginate through all pages of a GitHub API endpoint."""
+def gh_get(url: str, params: dict = None, max_pages: int | None = None) -> list:
+    """Paginate through a GitHub API endpoint, optionally stopping after N pages.
+
+    `max_pages` exists for the pull-request query, which has no `since` filter:
+    a busy repo can hold thousands of closed PRs, and walking all of them every
+    5 minutes would burn the rate limit for a mean that a recent sample already
+    answers.
+    """
     results = []
+    pages = 0
     while url:
         resp = requests.get(url, headers=GH_HEADERS, params=params, timeout=30)
         resp.raise_for_status()
@@ -105,6 +112,9 @@ def gh_get(url: str, params: dict = None) -> list:
             results.extend(data["items"])
         else:
             results.append(data)
+        pages += 1
+        if max_pages is not None and pages >= max_pages:
+            break
         url = resp.links.get("next", {}).get("url")
         params = None
     return results
@@ -242,6 +252,86 @@ def get_runs_by_service(repo: str, runs: list) -> dict:
                 "head_branch": run.get("head_branch"),
             })
     return by_service
+
+
+# Developer Experience series. Names are the contract with the Engineering
+# Intelligence Prometheus collector (packages/backend/src/modules/
+# engineeringIntelligence/prometheus.ts) — change one and change the other.
+#
+# This block is duplicated verbatim in local/observability/dora/dora-exporter.py.
+# The two exporters are a known drift pair (different discovery, team mapping and
+# CloudWatch handling); these four functions must stay identical between them.
+DEVEX_GAUGES = {
+    "devex_pr_cycle_time_hours":  "Mean hours from pull request opened to merged",
+    "devex_ci_duration_minutes":  "Mean wall-clock minutes per CI run, queue time included",
+    "devex_build_failure_ratio":  "Failed CI runs as a fraction of runs that reached a verdict",
+}
+
+
+def get_recent_pull_requests(repo: str) -> list:
+    """The most recently updated closed PRs.
+
+    One bounded page. The GitHub pulls API has no `since` parameter, so this
+    sorts by most-recently-updated and takes the first 100; callers filter to
+    the window themselves. A repo merging more than 100 PRs inside the window
+    is sampled rather than counted exhaustively, which is fine for a mean and
+    is the trade the rate limit demands.
+    """
+    return gh_get(
+        f"https://api.github.com/repos/{GITHUB_ORG}/{repo}/pulls",
+        {"state": "closed", "sort": "updated", "direction": "desc", "per_page": 100},
+        max_pages=1,
+    )
+
+
+def compute_pr_cycle_time(prs: list, since: datetime) -> float:
+    """Mean hours from a pull request being opened to being merged.
+
+    Closed-without-merge PRs are excluded: abandoning a change is not a slow
+    review, and counting it as one would make a team look worse for cleaning up.
+    """
+    durations = []
+    for pr in prs:
+        merged_at = pr.get("merged_at")
+        if not merged_at:
+            continue
+        merged = datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
+        if merged < since:
+            continue
+        created = datetime.fromisoformat(pr["created_at"].replace("Z", "+00:00"))
+        durations.append((merged - created).total_seconds() / 3600.0)
+    return sum(durations) / len(durations) if durations else 0.0
+
+
+def compute_ci_duration(runs: list) -> float:
+    """Mean wall-clock minutes a CI run takes, queue time included.
+
+    Deliberately measured from `created_at` rather than `run_started_at`: time
+    spent waiting for a runner is time the developer waits, and excluding it
+    would flatter a platform that is starved of runners.
+    """
+    durations = []
+    for run in runs:
+        if run.get("conclusion") not in ("success", "failure"):
+            continue
+        started = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+        finished = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
+        durations.append((finished - started).total_seconds() / 60.0)
+    return sum(durations) / len(durations) if durations else 0.0
+
+
+def compute_build_failure_ratio(runs: list) -> float:
+    """Failed CI runs as a fraction of runs that reached a verdict.
+
+    Cancelled runs are excluded here, unlike in change failure rate: a cancelled
+    run is usually a person changing their mind, not the build breaking. The two
+    metrics answer different questions and deliberately count differently.
+    """
+    decided = [r for r in runs if r.get("conclusion") in ("success", "failure")]
+    if not decided:
+        return 0.0
+    failures = len([r for r in decided if r["conclusion"] == "failure"])
+    return failures / len(decided)
 
 
 def compute_deploy_frequency(prod_runs: list, window_hours: int) -> float:
@@ -399,6 +489,7 @@ def main():
 
     repos = get_service_repos()
     all_deploy_freq, all_lead_times, all_cfr, all_mttr = [], [], [], []
+    all_devex: dict = {name: [] for name in DEVEX_GAUGES}
     # Services published from inside a monorepo. They are not GitHub repos, so
     # they must be recorded here or prune_stale_services deletes each one
     # moments after it is pushed — which is exactly what happened to
@@ -441,8 +532,32 @@ def main():
             cfr         = compute_change_failure_rate(prod_runs)
             mttr        = compute_mttr(prod_runs)
 
-            log.info("%s (team=%s) — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm",
-                     repo, team, deploy_freq, lead_time, cfr, mttr)
+            # Developer Experience. CI metrics come from the runs already fetched
+            # above — all branches, not just main, because developers wait on
+            # pull-request CI too. Only the pull-request query costs an extra call.
+            #
+            # A series is omitted rather than zeroed when nothing ran: the
+            # Engineering Intelligence scoring engine reads an absent sample as
+            # reduced coverage but a zero as a real measurement, so pushing 0.0
+            # would claim instant CI and a flawless build rather than silence.
+            devex: dict = {}
+            if [r for r in runs if r.get("conclusion") in ("success", "failure")]:
+                devex["devex_ci_duration_minutes"] = (
+                    compute_ci_duration(runs), DEVEX_GAUGES["devex_ci_duration_minutes"], "gauge")
+                devex["devex_build_failure_ratio"] = (
+                    compute_build_failure_ratio(runs), DEVEX_GAUGES["devex_build_failure_ratio"], "gauge")
+
+            cycle_time = compute_pr_cycle_time(get_recent_pull_requests(repo), since)
+            if cycle_time > 0:
+                devex["devex_pr_cycle_time_hours"] = (
+                    cycle_time, DEVEX_GAUGES["devex_pr_cycle_time_hours"], "gauge")
+
+            for _name, _entry in devex.items():
+                all_devex[_name].append(_entry[0])
+
+            log.info("%s (team=%s) — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm devex=%s",
+                     repo, team, deploy_freq, lead_time, cfr, mttr,
+                     {k: round(v[0], 2) for k, v in devex.items()} or "-")
 
             # Push to Prometheus Pushgateway (names match Grafana dashboard queries)
             push_to_gateway("dora-exporter", repo, {
@@ -455,6 +570,10 @@ def main():
                 # value. The other three names already matched. Observed 2026-08-17.
                 "dora_change_failure_rate_percent": (cfr,   "DORA change failure rate (percent)",          "gauge"),
                 "dora_mttr_minutes":             (mttr,        "DORA mean time to restore (minutes)",         "gauge"),
+                # DevEx rides in the same push, and therefore the same Pushgateway
+                # group, so prune_stale_services retires it alongside DORA when a
+                # service disappears. A second job would leak stale series.
+                **devex,
             }, team=team)
 
             # Also push to CloudWatch (for AWS-native alerting)
@@ -485,6 +604,13 @@ def main():
             "dora_lead_time_minutes":        (agg_lead_time,   "DORA lead time for changes (minutes)",        "gauge"),
             "dora_change_failure_rate_percent": (agg_cfr,      "DORA change failure rate (percent)",          "gauge"),
             "dora_mttr_minutes":             (agg_mttr,        "DORA mean time to restore (minutes)",         "gauge"),
+            # Only aggregate a DevEx series when at least one service reported it,
+            # so "nothing merged anywhere this window" stays absent rather than
+            # becoming a platform-wide zero.
+            **{
+                name: (sum(values) / len(values), DEVEX_GAUGES[name], "gauge")
+                for name, values in all_devex.items() if values
+            },
         })
 
         if not SKIP_CLOUDWATCH:

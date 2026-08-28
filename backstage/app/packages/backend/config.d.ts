@@ -27,6 +27,7 @@ export interface Config {
       langfuse?: boolean;
       catalog?: boolean;
       techInsights?: boolean;
+      scaffolder?: boolean;
     };
 
     /**

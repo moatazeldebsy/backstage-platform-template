@@ -123,15 +123,40 @@ function respond(body: unknown, ok = true, status = 200) {
   return Promise.resolve({ ok, status, json: async () => body } as Response);
 }
 
+const PLATFORM = {
+  generatedAt: new Date().toISOString(),
+  available: true,
+  services: 5,
+  owned: 4,
+  scaffolded: 2,
+  ownershipCoverage: 0.8,
+  goldenPathAdoption: 0.4,
+  templateUsage: [{ template: 'go-service', count: 2 }],
+  notOnGoldenPath: {
+    count: 3,
+    named: ['adhoc-tool', 'legacy-cron', 'orphaned-tool'],
+    truncated: false,
+  },
+  selfService: { completed: 9, failed: 1, inFlight: 0 },
+  platformScore: 75,
+};
+
+/** Route the page's three GETs; `health` decides success or failure. */
+function routes(health: unknown, ok = true, status = 200) {
+  return (url: string) => {
+    if (url.includes('/snapshots')) return respond({ snapshots: [] });
+    if (url.includes('/platform')) return respond(PLATFORM);
+    return respond(health, ok, status);
+  };
+}
+
 beforeEach(() => {
   fetchMock.mockReset();
 });
 
 describe('EngineeringIntelligencePage', () => {
   it('shows the overall score and the maturity level', async () => {
-    fetchMock.mockImplementation((url: string) =>
-      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
-    );
+    fetchMock.mockImplementation(routes(REPORT));
 
     render(<EngineeringIntelligencePage />);
 
@@ -143,9 +168,7 @@ describe('EngineeringIntelligencePage', () => {
   });
 
   it('renders an unscored dimension as a dash and names the source it needs', async () => {
-    fetchMock.mockImplementation((url: string) =>
-      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
-    );
+    fetchMock.mockImplementation(routes(REPORT));
 
     render(<EngineeringIntelligencePage />);
 
@@ -159,9 +182,7 @@ describe('EngineeringIntelligencePage', () => {
   });
 
   it('says there is no trend rather than reporting no change', async () => {
-    fetchMock.mockImplementation((url: string) =>
-      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
-    );
+    fetchMock.mockImplementation(routes(REPORT));
 
     render(<EngineeringIntelligencePage />);
 
@@ -172,9 +193,7 @@ describe('EngineeringIntelligencePage', () => {
   });
 
   it('keeps evidence gaps out of the risk list', async () => {
-    fetchMock.mockImplementation((url: string) =>
-      url.includes('/snapshots') ? respond({ snapshots: [] }) : respond(REPORT),
-    );
+    fetchMock.mockImplementation(routes(REPORT));
 
     render(<EngineeringIntelligencePage />);
 
@@ -187,6 +206,50 @@ describe('EngineeringIntelligencePage', () => {
     expect(
       screen.getByText(/needs github \(not yet collected — phase 5\)/),
     ).toBeInTheDocument();
+  });
+
+  it('renders the Platform Health breakdown and names the services off the golden path', async () => {
+    // "42 services are not on a golden path" is a statistic; naming them is what
+    // a platform team can act on.
+    fetchMock.mockImplementation(routes(REPORT));
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('Platform Health')).toBeInTheDocument());
+    expect(screen.getByText('Services')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText(/services are not using an approved golden path/)).toBeInTheDocument();
+    expect(screen.getByText(/adhoc-tool, legacy-cron, orphaned-tool/)).toBeInTheDocument();
+    expect(screen.getByText(/go-service \(2\)/)).toBeInTheDocument();
+  });
+
+  it('shows a dash for self-service before any scaffolder task has finished', async () => {
+    // 0% would say the scaffolder is broken; 100% would say it is proven.
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/snapshots')) return respond({ snapshots: [] });
+      if (url.includes('/platform')) {
+        return respond({ ...PLATFORM, selfService: { completed: 0, failed: 0, inFlight: 2 } });
+      }
+      return respond(REPORT);
+    });
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('Platform Health')).toBeInTheDocument());
+    expect(screen.getByText(/no scaffolder task has finished yet/)).toBeInTheDocument();
+  });
+
+  it('still renders the report when the platform breakdown is unavailable', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/snapshots')) return respond({ snapshots: [] });
+      if (url.includes('/platform')) return respond({}, false, 500);
+      return respond(REPORT);
+    });
+
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
+    expect(screen.queryByText('Platform Health')).not.toBeInTheDocument();
   });
 
   it('shows an error instead of a score when the report cannot be loaded', async () => {
@@ -207,9 +270,11 @@ describe('EngineeringIntelligencePage', () => {
 
   it('still renders the report when only the trend query fails', async () => {
     // The score is the point of the page; the sparkline is not.
-    fetchMock.mockImplementation((url: string) =>
-      url.includes('/snapshots') ? respond({}, false, 500) : respond(REPORT),
-    );
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/snapshots')) return respond({}, false, 500);
+      if (url.includes('/platform')) return respond(PLATFORM);
+      return respond(REPORT);
+    });
 
     render(<EngineeringIntelligencePage />);
 

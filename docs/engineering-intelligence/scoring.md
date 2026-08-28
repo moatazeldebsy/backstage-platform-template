@@ -21,7 +21,7 @@ Evidence              { metric, value, normalised, source, observedAt, impact, c
 DimensionScore        { score, status, coverage, evidence[], missing[] }
    │  weighted mean over scored dimensions only
    ▼
-HealthReport          { overallScore, status, dimensions, recommendations }
+HealthReport          { overallScore, status, dimensions, recommendations, maturity }
 ```
 
 ### Normalisation
@@ -59,14 +59,14 @@ Each dimension declares a `minCoverage` (currently 0.5 everywhere). Below it:
 { "dimension": "devEx", "score": null, "status": "insufficient-evidence",
   "coverage": 0.25,
   "missing": [{ "metric": "devex.prCycleTimeHours",
-                "expectedFrom": "github (not yet collected — phase 5)",
+                "expectedFrom": "prometheus (devex_* from the DORA exporter)",
                 "reason": "No sample was collected for devex.prCycleTimeHours." }] }
 ```
 
 `score` is `null`, never a number. Unscored dimensions are **excluded** from the
-overall score rather than counted as zero — counting Developer Experience as zero
-today would understate overall health by roughly fourteen points and would keep
-doing so until phase 5.
+overall score rather than counted as zero — counting a dimension whose exporter
+has not run yet as a zero would understate overall health by roughly fourteen
+points and keep doing so until it did.
 
 Whatever *was* measured is still returned, with `impact: 0`. The reader should be
 able to see the shape of the gap, not merely be told there is one.
@@ -160,7 +160,7 @@ metric id. Nothing else needs touching.
   label: 'PR cycle time',
   weight: 0.3,
   normaliser: { kind: 'inverseLinear', min: 4, max: 120 },
-  expectedFrom: 'github',
+  expectedFrom: 'prometheus (devex_* from the DORA exporter)',
   recommendBelow: 60,
   recommendation: { severity: 'warning', action: 'Investigate review latency in the slowest repos.' },
 }
@@ -188,6 +188,12 @@ engineeringIntelligence:
   weights:
     finops: 2
 ```
+
+Signals collected from a Python exporter rather than an API carry one extra
+obligation: **omit the series rather than pushing a zero** when nothing was
+observed. `devex_pr_cycle_time_hours` is absent on a repo where nothing merged,
+because a 0.0 would be read here as "every change merges instantly". The rule is
+enforced in `observability/tests/test_dora_devex.py`.
 
 Unknown keys and non-positive values are ignored rather than throwing, so a typo
 degrades to the default weighting instead of taking the backend down at startup.

@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0, 1, 2 and 3.**
+**Shipped: phases 0, 1, 2, 3, 4 and 5.**
 
 ---
 
@@ -59,25 +59,58 @@ plausible dashboard — the one place in this app where that convention is
 deliberately broken, for the reason in
 [ADR-0006](../design/adr-0006-engineering-intelligence.md).
 
-## Phase 4 — Platform Engineering intelligence
+## Phase 4 — Platform Engineering intelligence ✅
 
-Deepen the Platform dimension: per-template usage, self-service creation rate,
-service maturity distribution, deployment success rate.
+`GET /platform` returns the breakdown behind the Platform score — service count,
+ownership, golden-path adoption, template usage ranked by use, self-service
+outcomes, and **the named services that are not on a golden path**. Surfaced as
+a Platform Health card on the dashboard.
 
-**Blocker:** partial. Template usage is derivable from
-`backstage.io/source-template`; scaffolder task history is in the scaffolder's
-own database and has never been read for analytics.
+One new scored signal: **`scaffolder.taskSuccessRatio`**, read from the
+scaffolder's `/v2/tasks` API rather than its database — the task rows live in a
+schema Backstage does not treat as public. Adoption says how many services came
+from a template; this says whether the scaffolder *works* when someone uses it.
+A cancelled task counts as neither success nor failure.
 
-## Phase 5 — Developer Experience intelligence
+Counts are reported, never scored. "642 services" is not better than "300", and
+inventing a curve for it would assert a judgement the platform cannot support.
 
-The dimension with nothing behind it. Needs a collector for PR cycle time, review
-latency, CI duration and build failure rate.
+## Phase 5 — Developer Experience intelligence ✅
 
-**Blocker:** the data is reachable but nothing computes it. The GitHub API has
-all of it, and `local/observability/dora/dora-exporter.py` already paginates
-workflow runs — so the cheapest honest path is extending that exporter rather
-than writing a fifth one. **This is the highest-value phase in the list**: until
-it lands, the platform cannot answer "are developers actually benefiting?"
+The dimension that had nothing behind it now has three series, published by the
+DORA exporter CronJob the platform already runs:
+
+| Series | From |
+|---|---|
+| `devex_pr_cycle_time_hours` | Pull request opened → merged |
+| `devex_ci_duration_minutes` | CI run created → finished, **queue time included** |
+| `devex_build_failure_ratio` | Failed runs over runs that reached a verdict |
+
+CI metrics come from the workflow runs the exporter already fetches — zero extra
+API calls, and across all branches, because developers wait on pull-request CI
+too. Only the pull-request query costs a call, and it is bounded to one page:
+the pulls API has no `since` filter, so an unbounded walk would burn the rate
+limit for a mean a recent sample already answers.
+
+Three deliberate choices worth knowing:
+
+- **A series is omitted, never zeroed**, when nothing merged or nothing ran. The
+  scoring engine reads an absent sample as reduced coverage but a zero as a real
+  measurement — pushing 0.0 would claim instant CI and a flawless build.
+- **Cancelled runs are excluded** from build failure ratio, unlike change
+  failure rate which counts them. A cancelled run is usually a person changing
+  their mind, not the build breaking.
+- **PRs closed without merging are excluded** from cycle time. Abandoning a
+  change is not a slow review.
+
+The two exporters are a known drift pair and cannot share a module — each ships
+as a single-file ConfigMap — so `observability/tests/test_dora_devex.py` runs
+every assertion against both copies and compares them directly. That suite is
+now a CI gate; before it, `py_compile` was the only thing checking these files.
+
+**Not collected:** review latency (time to first review). It needs a per-PR call
+to `/pulls/{n}/reviews`, and the rate-limit cost was not worth it for a first
+cut. Adding it is a contained change to the same two functions.
 
 ## Phase 6 — AI Engineering readiness
 

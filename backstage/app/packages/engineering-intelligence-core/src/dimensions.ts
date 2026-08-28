@@ -70,7 +70,7 @@ export const DIMENSIONS: DimensionConfig[] = [
       {
         metric: 'catalog.ownershipCoverage',
         label: 'Services with a declared owner',
-        weight: 0.3,
+        weight: 0.25,
         normaliser: { kind: 'ratio' },
         expectedFrom: 'catalog',
         recommendBelow: 90,
@@ -96,7 +96,7 @@ export const DIMENSIONS: DimensionConfig[] = [
       {
         metric: 'scorecard.goldTierRatio',
         label: 'Services at Gold scorecard tier',
-        weight: 0.2,
+        weight: 0.15,
         normaliser: { kind: 'ratio' },
         expectedFrom: 'techInsights',
         recommendBelow: 50,
@@ -109,9 +109,26 @@ export const DIMENSIONS: DimensionConfig[] = [
       {
         metric: 'dora.deployFrequencyPerDay',
         label: 'Deployment frequency',
-        weight: 0.2,
+        weight: 0.15,
         normaliser: DEPLOY_FREQUENCY_BANDS,
         expectedFrom: 'prometheus',
+      },
+      {
+        // Adoption says how many services came from a template. This says
+        // whether the scaffolder works when someone uses it — a platform whose
+        // templates fail half the time is not self-service, however good its
+        // adoption number looks.
+        metric: 'scaffolder.taskSuccessRatio',
+        label: 'Self-service scaffolder success rate',
+        weight: 0.15,
+        normaliser: { kind: 'ratio' },
+        expectedFrom: 'scaffolder',
+        recommendBelow: 90,
+        recommendation: {
+          severity: 'critical',
+          action:
+            'Investigate failing scaffolder tasks — self-service is the platform\'s front door.',
+        },
       },
     ],
   },
@@ -121,10 +138,10 @@ export const DIMENSIONS: DimensionConfig[] = [
     weight: 1,
     minCoverage: 0.5,
     signals: [
-      // Only deployment lead time is collectable today. The other three are
-      // declared so the gap is reported rather than hidden — the platform has no
-      // PR-cycle, CI-duration or build-failure metric of any kind. Phase 5 adds
-      // the collector; until then this dimension reports insufficient-evidence.
+      // All four are collected as of phase 5. The DORA exporter CronJob computes
+      // the three devex_* series from the GitHub workflow runs it already
+      // fetches plus one bounded pull-request query, and omits a series rather
+      // than pushing 0.0 when nothing merged or nothing ran.
       {
         metric: 'dora.leadTimeMinutes',
         label: 'Deployment lead time',
@@ -137,21 +154,21 @@ export const DIMENSIONS: DimensionConfig[] = [
         label: 'PR cycle time',
         weight: 0.3,
         normaliser: { kind: 'inverseLinear', min: 4, max: 120 },
-        expectedFrom: 'github (not yet collected — phase 5)',
+        expectedFrom: 'prometheus (devex_* from the DORA exporter)',
       },
       {
         metric: 'devex.ciDurationMinutes',
         label: 'CI duration',
         weight: 0.25,
         normaliser: { kind: 'inverseLinear', min: 5, max: 60 },
-        expectedFrom: 'github (not yet collected — phase 5)',
+        expectedFrom: 'prometheus (devex_* from the DORA exporter)',
       },
       {
         metric: 'devex.buildFailureRatio',
         label: 'CI build failure rate',
         weight: 0.2,
         normaliser: { kind: 'inverseLinear', min: 0.02, max: 0.3 },
-        expectedFrom: 'github (not yet collected — phase 5)',
+        expectedFrom: 'prometheus (devex_* from the DORA exporter)',
       },
     ],
   },

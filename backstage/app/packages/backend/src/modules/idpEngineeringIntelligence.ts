@@ -7,7 +7,15 @@ import {
 } from '@internal/engineering-intelligence-core';
 import express, { NextFunction, Request, Response, Router } from 'express';
 import { collectAndScore, CollectionOutcome } from './engineeringIntelligence/collect';
-import { collectCatalog, CatalogEntity } from './engineeringIntelligence/catalog';
+import {
+  collectCatalog,
+  CatalogEntity,
+  PlatformFacts,
+} from './engineeringIntelligence/catalog';
+import {
+  collectScaffolder,
+  TaskOutcome,
+} from './engineeringIntelligence/scaffolder';
 import { collectLangfuse } from './engineeringIntelligence/langfuse';
 import { collectOpenCost } from './engineeringIntelligence/opencost';
 import { collectPrometheus } from './engineeringIntelligence/prometheus';
@@ -138,17 +146,35 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
 
         const ctx = { config, logger };
 
+        // The Platform Health breakdown from the most recent collection. Held in
+        // memory rather than persisted: it is a current-state view, not a trend,
+        // and the snapshot table exists for the numbers that need history.
+        let platform: { facts?: PlatformFacts; tasks?: TaskOutcome } = {};
+
         async function refresh(): Promise<CollectionOutcome> {
           const collectors = [
             enabled('prometheus') ? () => collectPrometheus(ctx) : undefined,
             enabled('opencost') ? () => collectOpenCost(ctx) : undefined,
             enabled('langfuse') ? () => collectLangfuse(ctx) : undefined,
             enabled('catalog')
-              ? () =>
-                  collectCatalog({
+              ? async () => {
+                  const result = await collectCatalog({
                     baseUrl: () => discovery.getBaseUrl('catalog'),
                     token: () => serviceToken('catalog'),
-                  })
+                  });
+                  platform = { ...platform, facts: result.facts };
+                  return result;
+                }
+              : undefined,
+            enabled('scaffolder')
+              ? async () => {
+                  const result = await collectScaffolder({
+                    baseUrl: () => discovery.getBaseUrl('scaffolder'),
+                    token: () => serviceToken('scaffolder'),
+                  });
+                  platform = { ...platform, tasks: result.outcome };
+                  return result;
+                }
               : undefined,
             enabled('techInsights')
               ? () =>
@@ -228,6 +254,56 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
+        }));
+
+        // GET /api/engineering-intelligence/platform
+        router.get('/platform', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          const facts = platform.facts;
+
+          if (!facts) {
+            res.json({
+              generatedAt: report.generatedAt,
+              available: false,
+              reason:
+                'The catalog has not been collected yet, or holds no Components.',
+            });
+            return;
+          }
+
+          res.json({
+            generatedAt: report.generatedAt,
+            available: true,
+            services: facts.serviceCount,
+            owned: facts.ownedCount,
+            scaffolded: facts.scaffoldedCount,
+            // Ratios are repeated from the dimension score so a reader does not
+            // have to recompute them, but they come from the same facts — there
+            // is one source of truth, not two.
+            ownershipCoverage: facts.serviceCount
+              ? facts.ownedCount / facts.serviceCount
+              : null,
+            goldenPathAdoption: facts.serviceCount
+              ? facts.scaffoldedCount / facts.serviceCount
+              : null,
+            templateUsage: facts.templateUsage,
+            // The actionable half: which services to actually move.
+            notOnGoldenPath: {
+              count: facts.serviceCount - facts.scaffoldedCount,
+              named: facts.unscaffolded,
+              truncated:
+                facts.serviceCount - facts.scaffoldedCount > facts.unscaffolded.length,
+            },
+            selfService: platform.tasks
+              ? {
+                  completed: platform.tasks.completed,
+                  failed: platform.tasks.failed,
+                  inFlight: platform.tasks.inFlight,
+                }
+              : null,
+            platformScore: report.dimensions.platform.score,
+          });
         }));
 
         // GET /api/engineering-intelligence/maturity

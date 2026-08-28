@@ -468,7 +468,7 @@ Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local`
 
 Status lives on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** and in the issues — that is the single source of truth. This section is the honest summary.
 
-### Recently shipped — Engineering Intelligence, phases 0–3
+### Recently shipped — Engineering Intelligence, phases 0–5
 
 The platform now scores its own engineering health. A framework-free scoring engine
 (`backstage/app/packages/engineering-intelligence-core`) turns the telemetry four Python
@@ -506,6 +506,19 @@ and top risks. Each card links to the page that already owns its detail — `/sc
 first custom frontend plugin here to live outside the 7,700-line `extensions.tsx`, and the
 only page in the portal with no demo-data fallback: a failed request shows an error, not a
 plausible-looking score.
+
+Phases 4 and 5 closed the two biggest measurement gaps. **Developer Experience is now
+scored**: the DORA exporter CronJob publishes `devex_pr_cycle_time_hours`,
+`devex_ci_duration_minutes` and `devex_build_failure_ratio` from the workflow runs it
+already fetches plus one bounded pull-request query — and omits a series rather than
+pushing a zero when nothing merged or nothing ran. **Platform Health** gained a
+`/platform` endpoint and a dashboard card: service and ownership counts, template usage,
+scaffolder success rate, and the *named* services that are not on a golden path.
+
+The two DORA exporters are a known drift pair that cannot share a module, so
+`observability/tests/test_dora_devex.py` runs every assertion against both copies and
+compares them directly — the first behavioural test these exporters have ever had, and
+now a CI gate alongside the existing `py_compile` check.
 
 Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
 plan and the data blocker on each in [the roadmap](docs/engineering-intelligence/roadmap.md).

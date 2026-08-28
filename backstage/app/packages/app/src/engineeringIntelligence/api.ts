@@ -21,6 +21,22 @@ export interface EvidenceGap {
 
 export type HealthResponse = HealthReport & { evidenceGaps: EvidenceGap[] };
 
+/** The Platform Health breakdown behind the Platform dimension. */
+export interface PlatformResponse {
+  generatedAt: string;
+  available: boolean;
+  reason?: string;
+  services?: number;
+  owned?: number;
+  scaffolded?: number;
+  ownershipCoverage?: number | null;
+  goldenPathAdoption?: number | null;
+  templateUsage?: { template: string; count: number }[];
+  notOnGoldenPath?: { count: number; named: string[]; truncated: boolean };
+  selfService?: { completed: number; failed: number; inFlight: number } | null;
+  platformScore?: number | null;
+}
+
 export interface FetchLike {
   fetch: typeof fetch;
 }
@@ -54,6 +70,10 @@ export class EngineeringIntelligenceApi {
 
   dimension(id: string): Promise<DimensionScore> {
     return this.get<DimensionScore>(`/dimensions/${encodeURIComponent(id)}`);
+  }
+
+  platform(): Promise<PlatformResponse> {
+    return this.get<PlatformResponse>('/platform');
   }
 
   snapshots(limit = 30): Promise<{ snapshots: SnapshotRow[] }> {
