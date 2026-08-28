@@ -24,6 +24,13 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [GitHub App Setup](github-app-setup.md) — Replace PAT with GitHub App for higher rate limits and per-installation scoping
 - [Scaling Runbook](scaling-runbook.md) — Small/Medium/Large tiers, scaling signals, implementation status
 
+### Engineering Intelligence
+- [Product Vision](engineering-intelligence/product-vision.md) — What the intelligence layer answers, and for whom
+- [Architecture](engineering-intelligence/architecture.md) — How it is built, and an honest inventory of which data actually exists
+- [Maturity Model](engineering-intelligence/maturity-model.md) — Ad Hoc → Standardised → Platform Enabled → AI Enabled → Autonomous
+- [Scoring](engineering-intelligence/scoring.md) — The evidence contract: no score without evidence, no number without data
+- [Roadmap](engineering-intelligence/roadmap.md) — The thirteen phases and the data blocker on each
+
 ### Advanced Topics
 - [Contract Testing](contract-testing.md) — Self-describing, self-testing APIs with MCP
 - [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage

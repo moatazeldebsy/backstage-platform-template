@@ -26,11 +26,19 @@ Each card shows:
 Metrics are queried from Prometheus via the `/api/proxy/prometheus` Backstage proxy:
 
 ```
-/api/v1/query?query=idp_deploy_frequency{service="<name>"}
-/api/v1/query?query=idp_lead_time_seconds{service="<name>"}
-/api/v1/query?query=idp_change_failure_rate{service="<name>"}
-/api/v1/query?query=idp_mttr_seconds{service="<name>"}
+/api/v1/query?query=dora_deploy_frequency_per_day{service="<name>"}
+/api/v1/query?query=dora_lead_time_minutes{service="<name>"}
+/api/v1/query?query=dora_change_failure_rate_percent{service="<name>"}
+/api/v1/query?query=dora_mttr_minutes{service="<name>"}
 ```
+
+> These are the series `dora-exporter.py` actually pushes. This block previously
+> documented `idp_deploy_frequency`, `idp_lead_time_seconds`,
+> `idp_change_failure_rate` and `idp_mttr_seconds` — none of which exist. Build
+> queries and collectors from the exporter, not from prose.
+
+Note the units the names carry: **minutes**, not seconds, for lead time and MTTR,
+and change failure rate as a **percentage**, not a ratio.
 
 If Prometheus is unreachable or the service has no data yet, the tab falls back to realistic demo values with a yellow banner.
 

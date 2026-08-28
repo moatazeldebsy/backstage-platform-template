@@ -1,0 +1,266 @@
+import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api';
+import {
+  DIMENSIONS,
+  DimensionId,
+  WeightOverrides,
+  evidenceGaps,
+} from '@internal/engineering-intelligence-core';
+import express, { Router } from 'express';
+import { collectAndScore, CollectionOutcome } from './engineeringIntelligence/collect';
+import { collectCatalog, CatalogEntity } from './engineeringIntelligence/catalog';
+import { collectLangfuse } from './engineeringIntelligence/langfuse';
+import { collectOpenCost } from './engineeringIntelligence/opencost';
+import { collectPrometheus } from './engineeringIntelligence/prometheus';
+import { collectTechInsights } from './engineeringIntelligence/techInsights';
+import { getJson } from './engineeringIntelligence/source';
+import {
+  ensureSchema,
+  latestSnapshot,
+  listSnapshots,
+  saveSnapshot,
+} from './engineeringIntelligence/store';
+
+// Engineering Intelligence — the API over the scoring engine.
+//
+// The scoring itself lives in @internal/engineering-intelligence-core, which
+// imports nothing from Backstage. This plugin only collects samples, hands them
+// to the engine, persists the result and serves it. Keeping that split is what
+// lets the phase-3 dashboard and the phase-9 AI Advisor consume the same scores
+// instead of each growing their own copy — the failure mode this repo already
+// has three instances of in its Bronze/Silver/Gold logic.
+//
+// See docs/engineering-intelligence/architecture.md.
+
+const DEFAULT_REFRESH_MINUTES = 30;
+const MAX_SNAPSHOTS = 200;
+
+function parseWeights(raw: unknown): WeightOverrides | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const known = new Set(DIMENSIONS.map(d => d.id as string));
+  const out: WeightOverrides = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!known.has(key)) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) continue;
+    out[key as DimensionId] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+export const engineeringIntelligencePlugin = createBackendPlugin({
+  pluginId: 'engineering-intelligence',
+  register(env) {
+    env.registerInit({
+      deps: {
+        httpRouter: coreServices.httpRouter,
+        config: coreServices.rootConfig,
+        database: coreServices.database,
+        logger: coreServices.logger,
+        scheduler: coreServices.scheduler,
+        discovery: coreServices.discovery,
+        auth: coreServices.auth,
+        httpAuth: coreServices.httpAuth,
+      },
+      async init({
+        httpRouter,
+        config,
+        database,
+        logger,
+        scheduler,
+        discovery,
+        auth,
+        httpAuth,
+      }) {
+        const db = await database.getClient();
+        await ensureSchema(db as any);
+
+        const refreshMinutes =
+          config.getOptionalNumber('engineeringIntelligence.refreshMinutes') ??
+          DEFAULT_REFRESH_MINUTES;
+        const weights = parseWeights(
+          config.getOptional('engineeringIntelligence.weights'),
+        );
+        const enabled = (source: string) =>
+          config.getOptionalBoolean(
+            `engineeringIntelligence.sources.${source}`,
+          ) ?? true;
+
+        // ── Service-to-service access ────────────────────────────────────────
+
+        async function serviceToken(targetPluginId: string): Promise<string> {
+          const { token } = await auth.getPluginRequestToken({
+            onBehalfOf: await auth.getOwnServiceCredentials(),
+            targetPluginId,
+          });
+          return token;
+        }
+
+        /**
+         * Component refs, needed by the Tech Insights collector to know what to
+         * ask facts for. Fetched once per refresh and shared, rather than each
+         * collector paging the catalog for itself.
+         */
+        async function componentRefs(): Promise<string[]> {
+          const base = await discovery.getBaseUrl('catalog');
+          const token = await serviceToken('catalog');
+          const body = await getJson<CatalogEntity[]>(
+            `${base}/entities?filter=kind=component` +
+              `&fields=${encodeURIComponent('kind,metadata.name')}&limit=10000`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!Array.isArray(body)) return [];
+          return body
+            .map(e => e.metadata?.name)
+            .filter((n): n is string => !!n)
+            .map(name => `component:default/${name}`);
+        }
+
+        // ── Refresh ──────────────────────────────────────────────────────────
+
+        const ctx = { config, logger };
+
+        async function refresh(): Promise<CollectionOutcome> {
+          const collectors = [
+            enabled('prometheus') ? () => collectPrometheus(ctx) : undefined,
+            enabled('opencost') ? () => collectOpenCost(ctx) : undefined,
+            enabled('langfuse') ? () => collectLangfuse(ctx) : undefined,
+            enabled('catalog')
+              ? () =>
+                  collectCatalog({
+                    baseUrl: () => discovery.getBaseUrl('catalog'),
+                    token: () => serviceToken('catalog'),
+                  })
+              : undefined,
+            enabled('techInsights')
+              ? () =>
+                  collectTechInsights({
+                    baseUrl: () => discovery.getBaseUrl('tech-insights'),
+                    token: () => serviceToken('tech-insights'),
+                    entityRefs: componentRefs,
+                  })
+              : undefined,
+          ].filter((c): c is () => Promise<any> => !!c);
+
+          const outcome = await collectAndScore(collectors, { weights });
+          await saveSnapshot(db as any, outcome.report);
+
+          const scored = Object.values(outcome.report.dimensions).filter(
+            d => d.score !== null,
+          ).length;
+          logger.info(
+            `Engineering Intelligence refreshed: ${scored}/${DIMENSIONS.length} dimensions scored, ` +
+              `${outcome.unavailable.length} source(s) unavailable`,
+          );
+          for (const u of outcome.unavailable) {
+            logger.warn(`Engineering Intelligence source ${u.source}: ${u.reason}`);
+          }
+          return outcome;
+        }
+
+        // The initial delay lets the catalog and the tech-insights retriever
+        // finish their own startup first; collecting immediately would record a
+        // snapshot of an empty catalog as the platform's first data point.
+        await scheduler.scheduleTask({
+          id: 'engineering-intelligence-refresh',
+          frequency: { minutes: refreshMinutes },
+          initialDelay: { minutes: 2 },
+          timeout: { minutes: 5 },
+          fn: async () => {
+            await refresh();
+          },
+        });
+
+        // ── HTTP router ──────────────────────────────────────────────────────
+
+        const router = Router();
+        router.use(express.json());
+
+        /** Latest persisted report, or a fresh collection if none exists yet. */
+        async function currentReport() {
+          const snapshot = await latestSnapshot(db as any);
+          if (snapshot) return snapshot.report;
+          return (await refresh()).report;
+        }
+
+        // GET /api/engineering-intelligence/health
+        router.get('/health', async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          res.json({
+            ...report,
+            // Named separately from `recommendations` throughout: a dimension we
+            // cannot measure is work to do on the platform's instrumentation,
+            // not a finding about the engineering organisation.
+            evidenceGaps: evidenceGaps(report.dimensions),
+          });
+        });
+
+        // GET /api/engineering-intelligence/dimensions/:id
+        router.get('/dimensions/:id', async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const id = req.params.id as DimensionId;
+          if (!DIMENSIONS.some(d => d.id === id)) {
+            res.status(404).json({
+              error: `Unknown dimension '${id}'.`,
+              known: DIMENSIONS.map(d => d.id),
+            });
+            return;
+          }
+          const report = await currentReport();
+          res.json(report.dimensions[id]);
+        });
+
+        // GET /api/engineering-intelligence/recommendations
+        router.get('/recommendations', async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          res.json({
+            generatedAt: report.generatedAt,
+            recommendations: report.recommendations,
+          });
+        });
+
+        // GET /api/engineering-intelligence/snapshots?limit=30
+        router.get('/snapshots', async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const requested = Number(req.query.limit ?? 30);
+          const limit = Number.isFinite(requested)
+            ? Math.min(Math.max(Math.trunc(requested), 1), MAX_SNAPSHOTS)
+            : 30;
+          const snapshots = await listSnapshots(db as any, limit);
+          res.json({
+            // Snapshots start accumulating from first install; there is no
+            // history to back-fill, because no source retains one.
+            snapshots: snapshots.map(s => ({
+              capturedAt: s.capturedAt,
+              overallScore: s.report.overallScore,
+              status: s.report.status,
+              dimensions: Object.fromEntries(
+                Object.entries(s.report.dimensions).map(([k, v]) => [k, v.score]),
+              ),
+            })),
+          });
+        });
+
+        // POST /api/engineering-intelligence/refresh
+        router.post('/refresh', async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const outcome = await refresh();
+          res.json({
+            generatedAt: outcome.report.generatedAt,
+            overallScore: outcome.report.overallScore,
+            status: outcome.report.status,
+            unavailable: outcome.unavailable,
+          });
+        });
+
+        // No addAuthPolicy override: the default httpRouter policy already
+        // requires credentials, and every handler asserts a user principal.
+        httpRouter.use(router);
+
+        logger.info(
+          `Engineering Intelligence plugin initialized (refresh every ${refreshMinutes}m)`,
+        );
+      },
+    });
+  },
+});

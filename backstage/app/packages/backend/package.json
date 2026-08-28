@@ -2,6 +2,7 @@
   "name": "backend",
   "version": "0.0.0",
   "main": "dist/index.cjs.js",
+  "configSchema": "config.d.ts",
   "types": "src/index.ts",
   "private": true,
   "backstage": {
@@ -56,6 +57,7 @@
     "@backstage/plugin-signals-backend": "^0.3.14",
     "@backstage/plugin-tech-insights-node": "^0.6.1",
     "@backstage/plugin-techdocs-backend": "^2.1.7",
+    "@internal/engineering-intelligence-core": "^0.1.0",
     "app": "link:../app",
     "better-sqlite3": "^12.0.0",
     "dd-trace": "^5.19.0",

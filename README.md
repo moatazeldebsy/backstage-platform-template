@@ -55,6 +55,7 @@ A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (ser
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + a 5-check mobile scorecard whose tiers gate on named requirements rather than a count. See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (17 checks — 14 for non-AI entities, plus 3 AI-governance checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
+| **Engineering Intelligence** | Scores Platform, Quality, Reliability, AI Engineering, Security and FinOps health from the telemetry the platform already produces — every score decomposing into evidence that names its metric, source and timestamp. Dimensions with no data source say so and return no number rather than a plausible one. Keeps its own snapshot history, since Prometheus retains 6h locally / 30d on AWS. See [docs/engineering-intelligence/](docs/engineering-intelligence/product-vision.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
 | **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Installed by default on both targets by `bootstrap-ai.sh` (part of `--with-ai` on AWS); `--skip-langfuse` opts out. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
@@ -467,6 +468,33 @@ Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local`
 
 Status lives on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** and in the issues — that is the single source of truth. This section is the honest summary.
 
+### Recently shipped — Engineering Intelligence, phases 0–1
+
+The platform now scores its own engineering health. A framework-free scoring engine
+(`backstage/app/packages/engineering-intelligence-core`) turns the telemetry four Python
+exporters, the catalog, Tech Insights, OpenCost and Langfuse already produce into seven
+dimension scores, each decomposing into evidence that names its metric, source and
+timestamp. Served at `/api/engineering-intelligence/*`.
+
+Three things the Phase 0 assessment found, which shaped the design:
+
+- **The Bronze/Silver/Gold scorecard is implemented three times and has already drifted** —
+  gold requires 9 passing checks in `packages/app/src/scorecard.ts` and 10 in
+  `observability/tech-insights-exporter/exporter.py`, so a service can be Gold on its entity
+  page and not Gold on the Grafana dashboard. The new engine *consumes* Tech Insights facts
+  rather than becoming a fourth copy. Reconciling the existing three re-tiers live services
+  and is tracked separately.
+- **There is no long-term metric store** — Prometheus retains 6h locally and 30d on AWS, with
+  no recording rules for any custom series. Snapshots are persisted from the first refresh
+  because no history can be back-filled.
+- **Developer Experience has no data source at all.** It reports `insufficient-evidence` with
+  a null score rather than a number, and is excluded from the overall score rather than
+  counted as zero. Security scores only what it can see — that scanning is *declared* — and
+  says so in every evidence row.
+
+Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
+plan and the data blocker on each in [the roadmap](docs/engineering-intelligence/roadmap.md).
+
 ### Recently shipped — pre-open-source hardening
 
 The AWS path went effectively untested between May and August 2026. Bringing a real cluster up surfaced a run of defects that are now fixed in the scripts, Terraform and manifests rather than worked around:
@@ -563,6 +591,7 @@ Two sub-agents back them for work that would otherwise flood the main context:
 | [Agentic Development Platform (ADP)](docs/agentic-platform.md) | Agent-driven dev workflow + ops, HiTL approval gate, opt-in phases |
 | [Agent Approvals](docs/agent-approvals.md) | HiTL gate for agent-initiated mutating actions — policy, approval API, Backstage UI |
 | [DORA + FinOps](docs/dora-finops.md) | DORA entity tab, SLOs, cost budgets |
+| [Engineering Intelligence](docs/engineering-intelligence/product-vision.md) | Engineering Health scoring, maturity model, the evidence contract, and the phase roadmap |
 | [Contract Testing](docs/contract-testing.md) | MCP-driven contract gates |
 | [Mobile Platform](docs/mobile-platform.md) | Android / iOS / Flutter templates |
 | [Crossplane vs Terraform](docs/crossplane-vs-terraform.md) | When to use each |
