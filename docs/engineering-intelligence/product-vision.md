@@ -21,9 +21,10 @@ Engineering Intelligence tells the organisation whether any of it is working.
 8. What should engineering leadership focus on next?
 9. Where can we save engineering time and infrastructure cost?
 
-Today the platform can answer parts of 1, 2, 4, 6, 7 and 9 from real data. It
-cannot yet answer 3 — Developer Experience has no data source — and it answers 5
-only in terms of governance and trace volume, not value. The
+Today the platform can answer parts of 1, 2, 3, 4, 6, 7 and 9 from real data —
+question 3 since phase 5 gave Developer Experience a collector. It answers 5 only
+in terms of governance and trace volume, not value, and its answers about test
+quality are only as good as the JUnit results repositories publish. The
 [roadmap](roadmap.md) says which phase closes each gap, and why.
 
 ---

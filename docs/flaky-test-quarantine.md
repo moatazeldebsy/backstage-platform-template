@@ -8,7 +8,7 @@ number in Grafana.
 **Detection** — `observability/flaky-test-exporter/exporter.py` runs as a Kubernetes CronJob every
 30 minutes. For every Backstage `Component` with a `github.com/project-slug` annotation, it pulls the
 last `WINDOW_SIZE` (default 10) completed GitHub Actions runs on the default branch, downloads each
-run's `test-results` JUnit artifact, and classifies every test as:
+run's `test-results*` JUnit artifacts, and classifies every test as:
 
 - `stable_pass` — passed in every observed run
 - `stable_fail` — failed in every observed run (a deterministic bug, not a flake)

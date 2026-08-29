@@ -55,7 +55,7 @@ A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (ser
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + a 5-check mobile scorecard whose tiers gate on named requirements rather than a count. See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
 | **Shift-left quality** | Bronze/Silver/Gold scorecard (17 checks — 14 for non-AI entities, plus 3 AI-governance checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
-| **Engineering Intelligence** | An `/engineering-intelligence` dashboard scoring Platform, Quality, Reliability, AI Engineering, Security and FinOps health, and placing the organisation on a five-level maturity model, from the telemetry the platform already produces — every score decomposing into evidence that names its metric, source and timestamp. Dimensions with no data source say so and return no number rather than a plausible one. Keeps its own snapshot history, since Prometheus retains 6h locally / 30d on AWS. See [docs/engineering-intelligence/](docs/engineering-intelligence/product-vision.md) |
+| **Engineering Intelligence** | An `/engineering-intelligence` dashboard scoring Platform, Developer Experience, Quality, Reliability, AI Engineering, Security and FinOps health, and placing the organisation on a five-level maturity model, from the telemetry the platform already produces — every score decomposing into evidence that names its metric, source and timestamp. Dimensions with no data source say so and return no number rather than a plausible one. Keeps its own snapshot history, since Prometheus retains 6h locally / 30d on AWS. See [docs/engineering-intelligence/](docs/engineering-intelligence/product-vision.md) |
 | **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) |
 | **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Installed by default on both targets by `bootstrap-ai.sh` (part of `--with-ai` on AWS); `--skip-langfuse` opts out. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
@@ -487,10 +487,11 @@ Three things the Phase 0 assessment found, which shaped the design:
 - **There is no long-term metric store** — Prometheus retains 6h locally and 30d on AWS, with
   no recording rules for any custom series. Snapshots are persisted from the first refresh
   because no history can be back-filled.
-- **Developer Experience has no data source at all.** It reports `insufficient-evidence` with
-  a null score rather than a number, and is excluded from the overall score rather than
-  counted as zero. Security scores only what it can see — that scanning is *declared* — and
-  says so in every evidence row.
+- **Developer Experience had no data source at all.** It reported `insufficient-evidence`
+  with a null score rather than a number, and was excluded from the overall score rather
+  than counted as zero. Phase 5 closed this, and the rule it established still governs every
+  unmeasurable dimension. Security scores only what it can see — that scanning is
+  *declared* — and says so in every evidence row.
 
 On top of that, a five-level maturity model (Ad Hoc → Standardised → Platform Enabled →
 AI Enabled → Autonomous) at `/api/engineering-intelligence/maturity`. Levels are floors
@@ -521,10 +522,12 @@ compares them directly — the first behavioural test these exporters have ever 
 now a CI gate alongside the existing `py_compile` check.
 
 Phase 6 adds a second scored model — **AI Engineering Readiness** across twelve areas at
-`/ai-readiness` — reusing the same engine rather than reimplementing it. Six areas are
-measurable (governance, evaluation, observability, model management via a new MLflow
-registry collector, prompt management via Langfuse, and MCP reliability); six are not, and
-say so. AI architecture deliberately has no collector and never will: it is a judgement,
+`/ai-readiness` — reusing the same engine rather than reimplementing it. Six areas have a
+collector (governance, evaluation, observability, model management via a new MLflow
+registry collector, prompt management via Langfuse, and MCP reliability); six do not, and
+say so. How many are *measurable* on a given install is lower again — a collector whose
+source is not deployed reports nothing rather than guessing, so a platform without Langfuse
+or MLflow sees three. AI architecture deliberately has no collector and never will: it is a judgement,
 and a proxy for it would be the most dishonest number on the page.
 
 Phase 7 turns "an evaluation suite exists" into "here is what it found". An extensible
@@ -553,9 +556,28 @@ code. **Multi-tenancy** names the hierarchy a hosted deployment would need, with
 single-tenant as the one-organisation case rather than a separate path, and no artificial
 limits anywhere.
 
+Running it against a real cluster then found the failure mode unit tests structurally
+cannot: **an upstream exporter publishing `0.0` where it should publish nothing.** A repo
+that had never deployed scored 100 for reliability, because a banded normaliser reads a 0%
+change-failure rate as elite; unattributed spend scored as perfect budget discipline for the
+same reason. Both are now withheld at the collector. A third case was the summary itself —
+an "AI Readiness 97 / 100" derived from one measurable area out of twelve — so a headline
+score is withheld below a third of its model, and the page says why rather than showing a
+bare dash. Every one of these corrections moved a number *down*, which is the expected
+direction when the previous figure was borrowing confidence from data that did not exist.
+
+Quality Engineering was the last dimension with no signal, and the cause was not the
+scaffolder templates — those already publish JUnit XML. It was that the only catalogued
+repository with active CI is this one, and it uploaded a coverage profile with no per-test
+outcomes. Its three test jobs now publish JUnit as `test-results-*`, and the flaky-test
+exporter matches artifact names on prefix and reads *every* match, because
+`upload-artifact@v4` forbids two artifacts sharing a name in one run and taking only the
+first would let one language's failures pass unseen.
+
 Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
 plan and what each one could and could not measure in
-[the roadmap](docs/engineering-intelligence/roadmap.md).
+[the roadmap](docs/engineering-intelligence/roadmap.md); the collectors and their failure
+behaviour in [integrations](docs/engineering-intelligence/integrations.md).
 
 ### Recently shipped — pre-open-source hardening
 

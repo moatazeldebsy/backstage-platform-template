@@ -78,8 +78,9 @@ no back-fill and there cannot be one — no source retains the history.
 
 A dimension whose collected signals fall below its `minCoverage` returns
 `score: null`, `status: "insufficient-evidence"`, and a `missing` list naming the
-absent source. Developer Experience does exactly this today. Unscored dimensions
-are excluded from the overall score rather than counted as zero.
+absent source. Developer Experience did exactly this until phase 5 gave it a
+collector; Quality Engineering does it now, pending test signals. Unscored
+dimensions are excluded from the overall score rather than counted as zero.
 
 This departs from the `extensions.tsx` demo-fallback convention, and the existing
 pages keep their fallbacks unchanged. The distinction is audience: a fabricated
