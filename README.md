@@ -653,7 +653,7 @@ Two sub-agents back them for work that would otherwise flood the main context:
 | [Agentic Development Platform (ADP)](docs/agentic-platform.md) | Agent-driven dev workflow + ops, HiTL approval gate, opt-in phases |
 | [Agent Approvals](docs/agent-approvals.md) | HiTL gate for agent-initiated mutating actions — policy, approval API, Backstage UI |
 | [DORA + FinOps](docs/dora-finops.md) | DORA entity tab, SLOs, cost budgets |
-| [Engineering Intelligence](docs/engineering-intelligence/product-vision.md) | Engineering Health scoring, maturity model, the evidence contract, and the phase roadmap |
+| [Engineering Intelligence](docs/engineering-intelligence/product-vision.md) | Engineering Health scoring, maturity model, the evidence contract, the collector integrations, the AI Advisor's guardrails, and the phase roadmap |
 | [Contract Testing](docs/contract-testing.md) | MCP-driven contract gates |
 | [Mobile Platform](docs/mobile-platform.md) | Android / iOS / Flutter templates |
 | [Crossplane vs Terraform](docs/crossplane-vs-terraform.md) | When to use each |

@@ -29,6 +29,8 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 - [Architecture](engineering-intelligence/architecture.md) — How it is built, and an honest inventory of which data actually exists
 - [Maturity Model](engineering-intelligence/maturity-model.md) — Ad Hoc → Standardised → Platform Enabled → AI Enabled → Autonomous
 - [Scoring](engineering-intelligence/scoring.md) — The evidence contract: no score without evidence, no number without data
+- [Integrations](engineering-intelligence/integrations.md) — Every collector, its source, and what happens when that source is down
+- [AI Advisor](engineering-intelligence/ai-advisor.md) — What it may say, what it refuses to say, and why
 - [Roadmap](engineering-intelligence/roadmap.md) — The thirteen phases and the data blocker on each
 
 ### Advanced Topics

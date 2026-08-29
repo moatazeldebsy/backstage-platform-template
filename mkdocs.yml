@@ -44,6 +44,8 @@ nav:
     - Architecture: engineering-intelligence/architecture.md
     - Maturity Model: engineering-intelligence/maturity-model.md
     - Scoring: engineering-intelligence/scoring.md
+    - Integrations: engineering-intelligence/integrations.md
+    - AI Advisor: engineering-intelligence/ai-advisor.md
     - Roadmap: engineering-intelligence/roadmap.md
   - Design Decisions:
     - "ADR-0001: Batch orchestration": design/adr-0001-batch-orchestration.md
