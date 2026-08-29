@@ -152,3 +152,69 @@ def test_one_run_counts_once_however_many_artifacts(monkeypatch):
 def test_a_bad_zip_yields_nothing_rather_than_raising():
     # A truncated download must lower coverage, never fail the tick.
     assert list(mod.iter_testcases(b"not a zip")) == []
+
+
+# ── failure must not be published as zero ─────────────────────────────────────
+
+
+def svc(**kw):
+    s = mod.ServiceFlakiness(service=kw.get("name", "s"), team="t", repo="o/r")
+    s.runs_observed = kw.get("runs", 0)
+    s.artifact_errors = kw.get("errors", 0)
+    s.fetch_failed = kw.get("list_failed", False)
+    return s
+
+
+def test_unreachable_service_is_omitted_not_zeroed():
+    # The bug this prevents: GitHub unreachable published idp_test_pass_total 0,
+    # which downstream is indistinguishable from "every test failed". The scoring
+    # engine reads a zero as a measurement and an absent series as reduced
+    # coverage, so absence is the only honest signal.
+    assert not mod.measurable(svc(runs=0, errors=7))
+
+
+def test_a_service_that_simply_has_no_test_artifacts_is_still_published():
+    # Reached successfully and published nothing: that is a real fact about the
+    # repository, not an unknown, so it must not be filtered out.
+    assert mod.measurable(svc(runs=0, errors=0))
+
+
+def test_partial_failure_still_publishes_what_was_observed():
+    # Some runs fetched, some failed. The observed ones are real measurements.
+    assert mod.measurable(svc(runs=4, errors=2))
+
+
+def test_a_failed_run_listing_is_omitted():
+    assert not mod.measurable(svc(runs=0, list_failed=True))
+
+
+def test_publish_drops_unmeasurable_services(monkeypatch):
+    pushed = {}
+
+    def fake_post(url, data=None, **kw):
+        pushed["body"] = data
+        class R:
+            status_code = 200
+            ok = True
+            text = ""
+
+            def raise_for_status(self):
+                return None
+
+        return R()
+
+    # Replace the module reference the exporter holds, not the shared requests
+    # package: another test module may already have stubbed that one.
+    monkeypatch.setattr(
+        mod,
+        "requests",
+        types.SimpleNamespace(post=fake_post, delete=lambda *a, **k: None),
+    )
+    good = svc(name="reachable", runs=3)
+    good.record("suite/test_a", "suite", "pass")
+    mod.push_to_pushgateway([good, svc(name="unreachable", runs=0, errors=5)])
+
+    body = pushed.get("body", "")
+    body = body.decode() if isinstance(body, bytes) else body
+    assert "reachable" in body
+    assert 'service="unreachable"' not in body
