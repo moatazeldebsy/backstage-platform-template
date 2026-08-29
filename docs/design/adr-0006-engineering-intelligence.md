@@ -1,6 +1,6 @@
 # ADR-0006: Engineering Intelligence — where scoring lives, and what it refuses to score
 
-**Status:** Accepted · **Date:** 2026-08-28
+**Status:** Accepted · **Date:** 2026-08-28 · **Updated:** 2026-08-29 (phases 6–12)
 
 ## Context
 
@@ -127,6 +127,85 @@ Every collector degrades to *no samples* on failure. None throws, and none
 substitutes a default, so one dead source lowers the coverage of the dimensions
 that depended on it and leaves the rest intact.
 
+### 7. Evaluation categories are an extension point, not a hard-coded list
+
+`METRIC_CATEGORIES` in `evaluation.ts` maps eval metric names to categories, and
+its **ordering is load-bearing** — the first match wins, so a specific pattern
+must precede a general one. Teams name eval metrics whatever they like, and a
+closed enum would either reject those names or silently file them as "other".
+A table that can be extended without touching the scorer keeps an unrecognised
+metric visible as an uncategorised result rather than dropping it.
+
+### 8. AI cost attribution derives its join key rather than waiting for one
+
+Phase 0 recorded this as blocked: Langfuse traces carry no key joining back to a
+catalog entity. That was wrong. Trace names already encode the workload —
+`/a2a/<namespace>/<agent>` for agents and `<server>.<tool>` for MCP tools — so
+`deriveWorkload()` parses the identity that is already there.
+
+The cost of being wrong is bounded and visible: anything unparsed lands in
+`unattributedUsd`, and `ai.costAttributedRatio` reports what fraction was
+matched. A low ratio is a legible signal to fix naming at the emitting end,
+which is better than the phase-0 plan of blocking the entire feature on a
+telemetry change nobody had scheduled.
+
+### 9. The advisor answers arithmetically, and its context is a reduction
+
+`answer()` is deterministic. Every response is a lookup or a subtraction over the
+report, because a model asked "why did the score drop?" could only agree with the
+subtraction or contradict it — and only the second is a change in behaviour.
+
+What the architecture provides instead is the safe input for a model:
+`buildAdvisorContext()` strips evidence `labels` (user ids, raw trace names),
+drops `unmatchedNames` (uncontrolled text written by whatever emitted a trace)
+and reduces AI spend to team totals. `unsupportedCitations()` then rejects any
+answer citing a metric outside the context's vocabulary.
+
+Three refusals are properties of the **data**, not of the implementation, and a
+model does not make them go away: no per-team ranking (nothing here is per-team),
+no trend without two snapshots (retention is 6h/30d and history cannot be
+back-filled), and no saving figure (nothing measures workload complexity).
+
+### 10. Benchmarking ships as a data model that transmits nothing
+
+Comparing an organisation against others requires consent, an anonymisation
+guarantee somebody is accountable for, and a decision about who holds the data.
+Those are product questions that precede code, and shipping a working uploader
+first is how a platform ends up exfiltrating engineering metrics by default.
+
+What ships is the shape: `toSubmission()` reduces a report to seven scores, a
+maturity level and a day-precision date — no names, no evidence, no sources, and
+no exact timestamp, because an exact timestamp is a correlation key across
+submissions. It is pure and tested, so the claim that nothing identifying would
+leave is checkable by reading one function. `MIN_COHORT_SIZE` is enforced in this
+package rather than trusted to a future provider.
+
+### 11. Single-tenant is the one-organisation case, not a special path
+
+`DEFAULT_ORGANISATION` is a **real organisation id, not a null**. Rows written
+today carry it and need no migration if a second organisation ever appears, and
+there is no `if (multiTenant)` branch to keep working. `scopeFrom()` ignores a
+stray scope parameter rather than erroring, so a leftover query string on a
+single-tenant install does nothing instead of producing an error page.
+
+Nothing here gates a feature on tenancy. The open-source platform has no
+artificial limits.
+
+### 12. A headline score is withheld below a third of the model
+
+`MIN_SCORED_FRACTION = 1/3`. Applied to both Engineering Health and AI Readiness.
+
+This came from a live cluster showing **"AI Engineering Readiness 97 / 100"**
+derived from one measurable area out of twelve. Each individual area was scored
+correctly; the average was arithmetically right and completely misleading,
+because averaging one number is not averaging. A headline figure implies breadth
+it did not have.
+
+Below the floor the score is `null` and the UI states why — *"no overall score —
+too little of the model is measurable"* — rather than rendering a bare dash that
+reads as a rendering fault. Per-area scores stay visible; only the claim that
+they summarise something is withheld.
+
 ## Consequences
 
 - On a fresh install the report is mostly `insufficient-evidence`, and
@@ -144,22 +223,35 @@ that depended on it and leaves the rest intact.
   `scorecard.ts` and `exporter.py`. This ADR does not fix that; it only declines
   to make it worse.
 
+- Upstream sources can publish a number they should have omitted, and no unit
+  test catches it: the collector parses correctly and the scorer scores
+  correctly. Two instances were found only by comparing output against a live
+  cluster — a never-deployed repo scoring as elite reliability, and unattributed
+  spend scoring as perfect budget discipline. Both are now guarded in
+  `prometheus.ts`, and the class is documented in `integrations.md` because the
+  next collector author will meet it again.
+- Applying `MIN_SCORED_FRACTION` lowered a headline number that had previously
+  looked good. Every such correction in this subsystem has moved a score
+  downward, which is the expected direction when the prior number was borrowing
+  confidence from data that did not exist.
+
 ## Deferred
 
 - **Reconciling the three scorecard implementations** onto the core package.
   Correct end state, crosses a Python/TS boundary, and re-tiers live services.
-- **Developer Experience collectors** (phase 5). The raw material is reachable
-  through the GitHub API — `dora-exporter.py` already paginates workflow runs —
-  but nothing computes or stores it.
-- **Per-service and per-team AI cost attribution** (phase 8). Langfuse traces
-  carry a name, a session id and a user id, but no key that joins back to a
-  catalog entity or an owning team. The join key has to be added at the emitting
-  end in `services/*/src/telemetry.ts` before any such number is more than a guess.
 - **Security findings as opposed to security controls.** Needs an exporter that
   turns Dependabot, Kyverno and Trivy results into a trended series.
 - **SLO signals.** Sloth rules exist for `hello-service` alone, so a
   platform-wide SLO score would describe one service and imply it described all
   of them.
+- **Quality Engineering has no test signals.** `idp_test_*` requires a
+  `test-results` JUnit artifact; the template's CI uploads `go-coverage`
+  instead, so the dimension reports `insufficient-evidence` on a live platform.
+- **MLflow, Langfuse prompts, Langfuse scores and AI cost are fixture-tested
+  only.** The AI stack does not fit in local capacity, so those four collectors
+  have never run against a live source.
+- **Wiring a model into the advisor.** The context boundary and citation
+  guardrail exist; the generation step does not.
 
 ## References
 
@@ -167,4 +259,6 @@ that depended on it and leaves the rest intact.
 - `docs/engineering-intelligence/scoring.md` — the evidence contract
 - `docs/engineering-intelligence/maturity-model.md` — the five levels
 - `docs/engineering-intelligence/roadmap.md` — phases and their data blockers
+- `docs/engineering-intelligence/integrations.md` — collectors, sources and failure behaviour
+- `docs/engineering-intelligence/ai-advisor.md` — the advisor's context boundary and refusals
 - [ADR-0004](adr-0004-identity-and-access.md) — the authorization model these APIs inherit
