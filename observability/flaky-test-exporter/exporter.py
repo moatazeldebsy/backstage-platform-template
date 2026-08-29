@@ -24,7 +24,8 @@ Environment variables
   CLOUDWATCH_NS       — CloudWatch namespace (AWS mode)
   AWS_REGION          — AWS region (AWS mode)
   WINDOW_SIZE         — number of recent workflow runs per repo (default: 10)
-  ARTIFACT_NAME       — artifact name uploaded by skeleton CI (default: test-results)
+  ARTIFACT_NAME       — artifact name prefix uploaded by skeleton CI (default:
+                        test-results; `test-results-<job>` also matches)
 """
 import io
 import logging
@@ -153,24 +154,44 @@ def list_recent_runs(repo: str) -> list[dict]:
     return resp.json().get("workflow_runs", [])[:WINDOW_SIZE]
 
 
-def fetch_junit_artifact(repo: str, run_id: int) -> bytes | None:
-    """Download the test-results artifact ZIP for a run; None if not present."""
+def matches_artifact_name(name: str) -> bool:
+    """Whether an artifact holds test results for us.
+
+    Matched on *prefix*, not equality. A repository with more than one test job
+    cannot name two artifacts `test-results` — upload-artifact@v4 rejects a
+    duplicate name within a run — so a multi-language repo has to publish
+    `test-results-go`, `test-results-python` and so on. Exact `test-results`
+    still matches, so single-job repositories are unaffected.
+    """
+    return name == ARTIFACT_NAME or name.startswith(f"{ARTIFACT_NAME}-")
+
+
+def fetch_junit_artifacts(repo: str, run_id: int) -> list[bytes]:
+    """Download every test-results artifact ZIP for a run.
+
+    Returns all matches rather than the first: a run whose Go tests passed and
+    whose Python tests failed has to contribute both, or the failure is invisible
+    and the run scores as clean.
+    """
     url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts"
     resp = requests.get(url, headers=GITHUB_HEADERS, timeout=30)
     if not resp.ok:
-        return None
+        return []
+    blobs: list[bytes] = []
     for artifact in resp.json().get("artifacts", []):
-        if artifact.get("name") == ARTIFACT_NAME and not artifact.get("expired"):
-            dl = requests.get(
-                artifact["archive_download_url"],
-                headers=GITHUB_HEADERS,
-                timeout=60,
-                allow_redirects=True,
-            )
-            if dl.ok:
-                return dl.content
+        if not matches_artifact_name(artifact.get("name", "")) or artifact.get("expired"):
+            continue
+        dl = requests.get(
+            artifact["archive_download_url"],
+            headers=GITHUB_HEADERS,
+            timeout=60,
+            allow_redirects=True,
+        )
+        if dl.ok:
+            blobs.append(dl.content)
+        else:
             log.warning("Failed to download artifact for run %s: %s", run_id, dl.status_code)
-    return None
+    return blobs
 
 
 # ── JUnit parsing ───────────────────────────────────────────────────────────
@@ -231,15 +252,18 @@ def collect() -> list[ServiceFlakiness]:
         for run in runs:
             run_id = run["id"]
             try:
-                blob = fetch_junit_artifact(repo, run_id)
+                blobs = fetch_junit_artifacts(repo, run_id)
             except Exception as e:
                 log.debug("Skipping run %s artifact: %s", run_id, e)
                 continue
-            if blob is None:
+            if not blobs:
                 continue
+            # One run counts once however many test jobs it published, or a
+            # multi-job repo would look like it ran more often than it did.
             sf.runs_observed += 1
-            for test_id, suite, outcome in iter_testcases(blob):
-                sf.record(test_id, suite, outcome)
+            for blob in blobs:
+                for test_id, suite, outcome in iter_testcases(blob):
+                    sf.record(test_id, suite, outcome)
 
         log.info(
             "%s — %d/%d runs had artifacts; %d distinct tests; %d flaky",

@@ -118,11 +118,19 @@ Honest status on a running local platform:
 | Metric group | Status |
 |---|---|
 | DORA, DevEx, catalog, Tech Insights, OpenCost, scaffolder | Live |
-| `test.passRate`, `test.flakinessRatio` | **No data.** Requires a `test-results` JUnit artifact; the template's CI uploads `go-coverage` instead |
+| `test.passRate`, `test.flakinessRatio` | **Newly wired.** The platform's own CI now publishes JUnit XML as `test-results-*`; values appear after the next few runs give the flakiness window something to classify |
 | MLflow, Langfuse prompts, Langfuse scores, AI cost | Fixture-tested only — the AI stack is not installed locally |
 
 DevEx and DORA metrics cover repositories carrying the `idp-app` topic; a repository without
 it is invisible to the exporter.
+
+Test metrics come from the flaky-test exporter, which reads every catalog `Component`
+carrying a `github.com/project-slug` annotation and downloads each recent run's
+`test-results*` artifact. Artifact names are matched on **prefix**, because
+`upload-artifact@v4` rejects two artifacts sharing a name within one run — a repository with
+a Go job and a Python job has to publish `test-results-go` and `test-results-python`, and
+both must be read or one language's failures are invisible. Several catalog components may
+share a repository, in which case each is credited with that repository's test results.
 
 Two metrics are deliberately **not** collected: `code_coverage_percent` and `e2e_pass_rate`
 are only ever written by `scripts/seed-qa-metrics.sh`, so they are fabricated at source.

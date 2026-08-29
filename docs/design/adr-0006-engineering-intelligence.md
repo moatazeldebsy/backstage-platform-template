@@ -244,9 +244,13 @@ they summarise something is withheld.
 - **SLO signals.** Sloth rules exist for `hello-service` alone, so a
   platform-wide SLO score would describe one service and imply it described all
   of them.
-- **Quality Engineering has no test signals.** `idp_test_*` requires a
-  `test-results` JUnit artifact; the template's CI uploads `go-coverage`
-  instead, so the dimension reports `insufficient-evidence` on a live platform.
+- **Quality Engineering has only just been wired.** The scaffolder skeletons
+  already published JUnit XML; the platform's own repository did not, and it is
+  the only catalog repository with active CI. Its three test jobs now publish
+  `test-results-*`, so the dimension should leave `insufficient-evidence` once
+  the flakiness window has several runs to classify. Where several catalog
+  components share one repository they are all credited with its results, which
+  is a limitation of mapping tests by repository rather than by component.
 - **MLflow, Langfuse prompts, Langfuse scores and AI cost are fixture-tested
   only.** The AI stack does not fit in local capacity, so those four collectors
   have never run against a live source.
