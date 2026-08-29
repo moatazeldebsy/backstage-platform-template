@@ -71,6 +71,24 @@ points and keep doing so until it did.
 Whatever *was* measured is still returned, with `impact: 0`. The reader should be
 able to see the shape of the gap, not merely be told there is one.
 
+### The minimum-scored rule
+
+A score is also withheld one level up. If fewer than **a third** of a model's
+dimensions or areas could be scored, no headline number is given at all —
+`overallScore` is `null` and the status is `insufficient-evidence`.
+
+A mean over one area out of twelve is arithmetically fine and editorially a lie:
+it reads as an assessment of the whole model. Observed on a real cluster, where
+MCP tool success was the only measurable AI readiness area and the card showed a
+confident **97 / 100**.
+
+A third rather than a half because the unmeasurable areas are not evenly spread —
+several AI readiness areas have no collector by design, so a half would make that
+model permanently unscoreable rather than merely demanding.
+
+The per-area detail is still shown. Only the roll-up is withheld, because the
+individual measurements are real and it is the summary that would overclaim.
+
 ---
 
 ## The evidence contract

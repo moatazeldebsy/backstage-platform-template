@@ -157,14 +157,20 @@ describe('collectAndScore', () => {
   });
 
   it('applies configured dimension weights', async () => {
+    // Enough dimensions to clear the minimum-scored floor: below a third of the
+    // model the overall score is withheld entirely, so a two-dimension fixture
+    // would compare null against null and prove nothing.
     const collectors = [
       async () =>
         ok(
           [
+            ['dora.deployFrequencyPerDay', 2], // so CFR and MTTR are not withheld
             ['dora.changeFailureRatePercent', 40], // reliability scores low
             ['dora.mttrMinutes', 60 * 24 * 30],
             ['catalog.ownershipCoverage', 1], // platform scores high
             ['catalog.goldenPathAdoption', 1],
+            ['finops.costEfficiencyRatio', 0.9], // a third scored dimension
+            ['finops.budgetUtilisationRatio', 0.75],
           ],
           'mixed',
         ),

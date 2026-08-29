@@ -206,6 +206,36 @@ describe('scoreAiReadiness', () => {
     expect(report.areas.evaluation.score).toBe(0);
   });
 
+  it('withholds the headline score when too little of the model was measured', () => {
+    // Observed on a real cluster: MCP tool success was the only measurable area,
+    // and the card showed a confident "97 / 100" for AI readiness. A mean over
+    // one area out of twelve is arithmetically fine and editorially a lie.
+    const report = scoreAiReadiness(
+      [sample('ai.mcpToolSuccessRatio', 0.97, 'prometheus')],
+      OBSERVED,
+    );
+
+    expect(report.measurable).toBe(1);
+    expect(report.overallScore).toBeNull();
+    expect(report.status).toBe('insufficient-evidence');
+    // The area itself still scores — the detail is real, only the roll-up is not.
+    expect(report.areas.reliability.score).toBe(97);
+  });
+
+  it('gives a headline score once a third of the model is measured', () => {
+    const report = scoreAiReadiness(
+      [
+        sample('ai.mcpToolSuccessRatio', 0.9, 'prometheus'),
+        sample('ai.modelCardRatio', 0.8),
+        sample('ai.evalSuiteRatio', 0.7),
+        sample('ai.observabilityWiredRatio', 0.6),
+      ],
+      OBSERVED,
+    );
+    expect(report.measurable).toBe(4);
+    expect(report.overallScore).not.toBeNull();
+  });
+
   it('reports insufficient evidence overall when nothing was collected', () => {
     const report = scoreAiReadiness([], OBSERVED);
     expect(report.overallScore).toBeNull();

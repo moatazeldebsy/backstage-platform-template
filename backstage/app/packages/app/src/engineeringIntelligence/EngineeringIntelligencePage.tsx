@@ -549,9 +549,18 @@ function AiReadiness({ readiness }: { readiness: AiReadinessResponse }) {
         >
           {formatScore(readiness.overallScore)}
         </Typography>
-        <Typography variant="caption" color="textSecondary">
-          / 100
-        </Typography>
+        {readiness.overallScore === null ? (
+          // Saying why beats a bare dash. A reader seeing per-area scores below
+          // and no headline needs to know the roll-up was withheld deliberately,
+          // not that it failed to load.
+          <Typography variant="caption" style={{ color: BAND_COLOUR.unknown }}>
+            no overall score — too little of the model is measurable
+          </Typography>
+        ) : (
+          <Typography variant="caption" color="textSecondary">
+            / 100
+          </Typography>
+        )}
       </Box>
 
       <Grid container spacing={1}>

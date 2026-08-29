@@ -105,7 +105,12 @@ docker run -d --name ei-backstage --network "${NETWORK}" -p "${PORT}:7007" \
 # succeed — a flaky verification script is worse than none, because it teaches
 # you to ignore it. Container liveness is unambiguous; log greps are not.
 STARTED=false
-for _ in $(seq 1 120); do
+# 120 × 2s = 240s. Generous because this competes for CPU with anything else on
+# the machine: on a laptop already running a Kind cluster, Backstage startup
+# stretched past the old window and the harness reported a failure that was
+# really contention. If it times out, check what else is building before
+# assuming the code is at fault.
+for _ in $(seq 1 240); do
   if docker logs ei-backstage 2>&1 | grep -q "Plugin initialization complete"; then
     STARTED=true
     break
@@ -118,7 +123,7 @@ for _ in $(seq 1 120); do
   sleep 2
 done
 [[ "$STARTED" == true ]] || {
-  echo "Backstage did not finish starting within 240s" >&2
+  echo "Backstage did not finish starting within 480s — is something else saturating the CPU?" >&2
   docker logs ei-backstage 2>&1 | tail -40 >&2
   exit 1
 }
@@ -163,7 +168,7 @@ ok "catalog ingested ${count:-0} Components"
 # whatever had been ingested at the time.
 auth_get -o /dev/null -X POST "${API}/refresh"
 
-for path in health maturity platform ai-readiness recommendations snapshots dimensions/platform; do
+for path in health maturity platform ai-readiness evaluation ai-cost report/executive recommendations snapshots dimensions/platform; do
   code=$(auth_get -o /dev/null -w '%{http_code}' "${API}/${path}")
   [[ "$code" == "200" ]] && ok "GET /${path} -> 200" || fail "GET /${path} -> ${code}"
 done
@@ -176,6 +181,17 @@ HEALTH=$(auth_get "${API}/health")
 PLATFORM=$(auth_get "${API}/platform")
 READINESS=$(auth_get "${API}/ai-readiness")
 
+# The advisor is a POST, and the questions it refuses matter as much as the ones
+# it answers.
+ADVISOR=$(curl -s --max-time 60 -H "Authorization: Bearer ${TOKEN}" \
+  -H 'Content-Type: application/json' -X POST \
+  -d '{"question":"teams-needing-attention"}' "${API}/advisor")
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+  -H "Authorization: Bearer ${TOKEN}" -H 'Content-Type: application/json' \
+  -X POST -d '{"question":"nonsense"}' "${API}/advisor")
+[[ "$code" == "400" ]] && ok "POST /advisor with an unknown question -> 400" \
+  || fail "unknown advisor question returned ${code}, expected 400"
+
 log "Checking the collected numbers"
 
 # The fixtures make every figure below deterministic, so these are exact rather
@@ -183,11 +199,12 @@ log "Checking the collected numbers"
 # `|| PY_STATUS=$?` rather than a bare call: `set -e` would abort the script on a
 # failing assertion before the status could be captured, losing the summary.
 PY_STATUS=0
-python3 - "$HEALTH" "$PLATFORM" "$READINESS" <<'PY' || PY_STATUS=$?
+python3 - "$HEALTH" "$PLATFORM" "$READINESS" "$ADVISOR" <<'PY' || PY_STATUS=$?
 import json, sys
 
 health, platform = json.loads(sys.argv[1]), json.loads(sys.argv[2])
 readiness = json.loads(sys.argv[3])
+advisor = json.loads(sys.argv[4])
 dims, failures = health["dimensions"], 0
 
 def check(label, actual, expected):
@@ -259,6 +276,16 @@ for area in ("security", "privacy", "architecture", "testing", "cost", "incident
 # ...and each names what it is waiting on rather than just failing silently.
 arch = readiness["areas"]["architecture"]["missing"][0]["expectedFrom"]
 check("architecture needs human review", "human review" in arch, True)
+
+# The advisor's refusal is the feature: Engineering Health is platform-wide, so a
+# per-team ranking would be fabricated.
+check("advisor refuses to rank teams", advisor["insufficientEvidence"], True)
+check("advisor says why", "platform-wide" in advisor["answer"], True)
+check("advisor cites nothing it cannot support", advisor["citedMetrics"], [])
+# And the context handed to any model carries no source data.
+serialised = json.dumps(advisor["context"])
+for forbidden in ("labels", "unmatchedNames", "byWorkload"):
+    check(f"advisor context omits {forbidden}", forbidden in serialised, False)
 
 sys.exit(1 if failures else 0)
 PY

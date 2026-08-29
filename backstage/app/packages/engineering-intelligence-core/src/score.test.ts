@@ -215,6 +215,20 @@ describe('scoreHealth', () => {
     expect(report.status).toBe('partial');
   });
 
+  it('withholds the overall score when too few dimensions could be scored', () => {
+    // The same rule the AI readiness model follows, one level up. Two of seven
+    // dimensions is not a picture of engineering health, however correct the
+    // arithmetic over those two.
+    const report = scoreHealth([
+      sample('catalog.ownershipCoverage', 1, 'catalog'),
+      sample('catalog.goldenPathAdoption', 0.8, 'catalog'),
+    ]);
+
+    expect(report.dimensions.platform.score).not.toBeNull();
+    expect(report.overallScore).toBeNull();
+    expect(report.status).toBe('insufficient-evidence');
+  });
+
   it('returns a null overall score when nothing at all could be collected', () => {
     const report = scoreHealth([]);
     expect(report.overallScore).toBeNull();

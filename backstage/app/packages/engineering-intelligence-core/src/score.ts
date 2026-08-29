@@ -13,6 +13,22 @@ import { normalise } from './normalize';
 import { recommend } from './recommend';
 import { assessMaturity } from './maturity';
 
+/**
+ * The share of a model's areas that must be scored before a headline number is
+ * given at all.
+ *
+ * A mean over one area out of twelve is arithmetically fine and editorially a
+ * lie: it reads as an assessment of the whole model. The dimensions already
+ * refuse to score from too few signals; this is the same rule one level up, so
+ * "we measured a third of this" is the floor for saying anything about the whole.
+ *
+ * A third rather than a half because the unmeasurable areas are not evenly
+ * spread — six of the twelve AI readiness areas have no collector by design, so
+ * a half would make that model permanently unscoreable rather than merely
+ * demanding.
+ */
+export const MIN_SCORED_FRACTION = 1 / 3;
+
 /** Optional per-dimension weight overrides, supplied from app-config. */
 export type WeightOverrides = Partial<Record<DimensionId, number>>;
 
@@ -153,8 +169,14 @@ export function scoreHealth(
     id => dimensions[id].score !== null,
   ).length;
 
+  // Too few dimensions scored to characterise the whole. Reported the same way
+  // a dimension with too few signals is: no number, and the count so a reader
+  // can see how thin the evidence was.
+  const tooFewScored =
+    scoredCount < Math.ceil(DIMENSION_IDS.length * MIN_SCORED_FRACTION);
+
   let status: Status = 'partial';
-  if (weightSum === 0) {
+  if (weightSum === 0 || tooFewScored) {
     status = 'insufficient-evidence';
   } else if (scoredCount === DIMENSION_IDS.length) {
     status = 'ok';
@@ -164,7 +186,8 @@ export function scoreHealth(
 
   return {
     generatedAt,
-    overallScore: weightSum === 0 ? null : round(weighted / weightSum),
+    overallScore:
+      weightSum === 0 || tooFewScored ? null : round(weighted / weightSum),
     status,
     dimensions,
     recommendations,

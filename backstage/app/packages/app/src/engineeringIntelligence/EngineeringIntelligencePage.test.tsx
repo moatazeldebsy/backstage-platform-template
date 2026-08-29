@@ -489,6 +489,30 @@ describe('EngineeringIntelligencePage', () => {
     ).toBeInTheDocument();
   });
 
+  it('explains a withheld AI readiness headline rather than showing a bare dash', async () => {
+    // Found by screenshotting a real cluster: one measurable area produced a
+    // confident "97 / 100". With the roll-up now withheld, the card has to say
+    // why, or a reader takes the dash for a loading failure.
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/ai-readiness')) {
+        return respond({
+          ...READINESS,
+          overallScore: null,
+          status: 'insufficient-evidence',
+          measurable: 1,
+        });
+      }
+      return routes(REPORT)(url);
+    });
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('AI Engineering Readiness')).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/too little of the model is measurable/),
+    ).toBeInTheDocument();
+  });
   it('shows an error instead of a score when the report cannot be loaded', async () => {
     // The failure this asserts: a 500 rendering as a plausible dashboard. Every
     // other page in this app falls back to demo data; this one must not.

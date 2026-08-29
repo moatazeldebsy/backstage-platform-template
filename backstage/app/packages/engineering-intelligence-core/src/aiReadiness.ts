@@ -1,6 +1,6 @@
 import { DimensionConfig } from './dimensions';
 import { DimensionScore, MetricSample, Status } from './model';
-import { scoreDimension } from './score';
+import { MIN_SCORED_FRACTION, scoreDimension } from './score';
 
 // AI Engineering Readiness — a second scored model, over the same engine.
 //
@@ -362,15 +362,24 @@ export function scoreAiReadiness(
   );
 
   // Unscored areas are excluded, never counted as zero — the same rule the
-  // Engineering Health model follows. With five areas structurally uncollectable
-  // today, zeroing them would peg every organisation's AI readiness below 60
-  // regardless of what it had actually done.
-  const overallScore = scored.length
+  // Engineering Health model follows. With several areas structurally
+  // uncollectable today, zeroing them would peg every organisation's AI
+  // readiness low regardless of what it had actually done.
+  //
+  // But excluding them is only honest up to a point. A mean over one area out of
+  // twelve reads as an assessment of AI readiness and is nothing of the kind —
+  // observed on a real cluster, where MCP tool success alone produced a
+  // confident "97 / 100". Below a third of the model, no headline number is
+  // given and the per-area detail is left to speak for itself.
+  const enough =
+    scored.length >= Math.ceil(AI_READINESS_AREAS.length * MIN_SCORED_FRACTION);
+
+  const overallScore = enough
     ? round(scored.reduce((t, a) => t + (a.score as number), 0) / scored.length)
     : null;
 
   let status: Status = 'partial';
-  if (scored.length === 0) status = 'insufficient-evidence';
+  if (!enough) status = 'insufficient-evidence';
   else if (scored.length === AI_READINESS_AREAS.length) status = 'ok';
 
   return {
