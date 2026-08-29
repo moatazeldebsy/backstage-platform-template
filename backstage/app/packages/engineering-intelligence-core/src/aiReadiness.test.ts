@@ -48,13 +48,9 @@ describe('AI_READINESS_AREAS', () => {
     // organisation that has done none of the hard parts.
     //
     // Phase 7 gave security, privacy and testing a source — an adversarial, PII
-    // or regression eval suite — so only these three remain with no collector at
-    // all.
-    const undeclared: AiReadinessAreaId[] = [
-      'architecture',
-      'cost',
-      'incidentManagement',
-    ];
+    // or regression eval suite — and phase 8 gave cost one. Only these two now
+    // have no collector at all, and architecture never will.
+    const undeclared: AiReadinessAreaId[] = ['architecture', 'incidentManagement'];
     for (const id of undeclared) {
       const area = AI_READINESS_AREAS.find(a => a.id === id)!;
       expect(area).toBeDefined();
@@ -77,12 +73,24 @@ describe('AI_READINESS_AREAS', () => {
   });
 
   it('names what each still-uncollected area is waiting on', () => {
-    // "Not measurable" is a dead end; naming the phase or the reason makes it a
-    // plan. Architecture deliberately says it needs human review rather than
-    // pointing at a future phase, because no metric will ever answer it.
+    // "Not measurable" is a dead end; naming the reason makes it a plan.
+    // Architecture deliberately says it needs human review rather than pointing
+    // at a future phase, because no metric will ever answer it.
     const byId = Object.fromEntries(AI_READINESS_AREAS.map(a => [a.id, a]));
-    expect(byId.cost.signals[0].expectedFrom).toMatch(/phase 8/);
     expect(byId.architecture.signals[0].expectedFrom).toMatch(/human review/);
+    expect(byId.incidentManagement.signals[0].expectedFrom).toMatch(
+      /no AI classification/,
+    );
+  });
+
+  it('scores cost from attribution, caveated as convention-based', () => {
+    // Phase 8. The join is trace name → catalog entity, which works and is
+    // fragile, so the caveat travels onto every evidence row rather than living
+    // only in a doc.
+    const byId = Object.fromEntries(AI_READINESS_AREAS.map(a => [a.id, a]));
+    const signal = byId.cost.signals[0];
+    expect(signal.expectedFrom).toBe('ai-cost');
+    expect(signal.caveat).toMatch(/never redistributed/i);
   });
 
   it('scores evaluation from results, with presence as the weaker fallback', () => {

@@ -118,7 +118,23 @@ export interface CatalogAccess {
 
 export type CatalogCollectorResult = CollectorResult & {
   facts?: PlatformFacts;
+  /** Component name → owner, the join key AI cost attribution needs. */
+  owners?: Record<string, string>;
 };
+
+/** Entity name to owner, for joining a workload to the team that owns it. */
+export function ownerMap(components: CatalogEntity[]): Record<string, string> {
+  const owners: Record<string, string> = {};
+  for (const entity of components) {
+    const name = entity.metadata?.name;
+    const owner = entity.spec?.owner;
+    if (!name || typeof owner !== 'string' || owner.trim() === '') continue;
+    // Owners arrive as `group:default/team-a` or bare `team-a`; the short form is
+    // what a reader recognises and what the FinOps team labels already use.
+    owners[name] = owner.includes('/') ? owner.split('/').pop()! : owner;
+  }
+  return owners;
+}
 
 export async function collectCatalog(
   access: CatalogAccess,
@@ -184,5 +200,6 @@ export async function collectCatalog(
   return {
     samples: catalogSamples(body, observedAt),
     facts: platformFacts(body),
+    owners: ownerMap(body),
   };
 }

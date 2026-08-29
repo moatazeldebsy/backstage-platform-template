@@ -298,10 +298,18 @@ export const AI_READINESS_AREAS: DimensionConfig<AiReadinessAreaId>[] = [
         label: 'AI spend attributable to a team',
         weight: 1,
         normaliser: { kind: 'ratio' },
-        // Langfuse records cost per model and per trace, but nothing joins a
-        // trace back to an owning team. The join key has to be emitted at source
-        // in services/*/src/telemetry.ts before this is anything but a guess.
-        expectedFrom: 'not collected — needs trace attribution (phase 8)',
+        expectedFrom: 'ai-cost',
+        // Attribution is by naming convention, not an explicit key: a trace is
+        // joined to a catalog entity through its name. A workload whose name
+        // matches nothing is reported as unattributed rather than guessed at.
+        caveat:
+          'Attribution joins trace names to catalog entities by convention. Unmatched spend is reported, never redistributed.',
+        recommendBelow: 80,
+        recommendation: {
+          severity: 'warning',
+          action:
+            'Align agent and MCP trace names with their catalog entity names — unattributed AI spend has no owner to act on it.',
+        },
       },
     ],
   },

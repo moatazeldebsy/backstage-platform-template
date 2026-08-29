@@ -468,7 +468,7 @@ Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local`
 
 Status lives on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** and in the issues — that is the single source of truth. This section is the honest summary.
 
-### Recently shipped — Engineering Intelligence, phases 0–7
+### Recently shipped — Engineering Intelligence, phases 0–8
 
 The platform now scores its own engineering health. A framework-free scoring engine
 (`backstage/app/packages/engineering-intelligence-core`) turns the telemetry four Python
@@ -533,6 +533,13 @@ hallucination, PII safety, prompt injection, bias, regression — with one patte
 the extension point for a second evaluation library. Privacy, Security and Testing stop
 being uncollectable as a result, though they still report insufficient evidence for an
 organisation that runs no such suite: **an untested risk is unknown, not absent.**
+
+Phase 8 attributes AI spend to teams — which the roadmap had recorded as blocked on a join
+key that needed adding at the emitting end. It turned out one was already being written:
+KAgent and MCP trace names carry the workload, and those names are catalog entities. Spend
+whose name matches nothing is reported as an explicit **unattributed remainder**, never
+redistributed across the teams that happen to be known. The scored signal is not how much
+you spend but **how much of the bill you can explain**.
 
 Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
 plan and the data blocker on each in [the roadmap](docs/engineering-intelligence/roadmap.md).

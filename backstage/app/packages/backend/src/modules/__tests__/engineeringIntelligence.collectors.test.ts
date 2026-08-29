@@ -16,6 +16,7 @@ import { ConfigReader } from '@backstage/config';
 import {
   catalogSamples,
   collectCatalog,
+  ownerMap,
   platformFacts,
 } from '../engineeringIntelligence/catalog';
 import {
@@ -36,6 +37,11 @@ import {
   collectLangfuseScores,
   toEvalScores,
 } from '../engineeringIntelligence/langfuseScores';
+import {
+  collectAiCost,
+  modelCosts,
+  traceCosts,
+} from '../engineeringIntelligence/aiCost';
 import {
   asRatio,
   collectOpenCost,
@@ -727,6 +733,95 @@ describe('collectLangfuse — prompts', () => {
     );
     const result = await collectLangfuse(ctx);
     expect(result.samples.map(s => s.metric)).not.toContain('ai.promptsManagedRatio');
+  });
+});
+
+// ── AI cost attribution (phase 8) ─────────────────────────────────────────────
+
+describe('ownerMap', () => {
+  it('shortens a namespaced owner to the name a reader recognises', () => {
+    expect(
+      ownerMap([
+        { metadata: { name: 'idp-mcp-server' }, spec: { owner: 'group:default/team-platform' } },
+        { metadata: { name: 'cost-agent' }, spec: { owner: 'team-finops' } },
+      ]),
+    ).toEqual({ 'idp-mcp-server': 'team-platform', 'cost-agent': 'team-finops' });
+  });
+
+  it('omits an entity with no owner rather than inventing one', () => {
+    expect(ownerMap([{ metadata: { name: 'orphan' }, spec: {} }])).toEqual({});
+  });
+});
+
+describe('modelCosts', () => {
+  it('rolls the daily per-model buckets up', () => {
+    expect(
+      modelCosts({
+        data: [
+          { usage: [{ model: 'opus', totalCost: 1.5, inputUsage: 100, outputUsage: 50 }] },
+          { usage: [{ model: 'opus', totalCost: 0.5, inputUsage: 20, outputUsage: 10 }] },
+        ],
+      }),
+    ).toEqual([{ model: 'opus', costUsd: 2, inputTokens: 120, outputTokens: 60 }]);
+  });
+});
+
+describe('collectAiCost', () => {
+  const owners = () => ({ 'platform-assistant': 'team-platform' });
+
+  it('emits the attributed ratio with the figures behind it', async () => {
+    mockFetchJson(url =>
+      url.includes('/traces')
+        ? {
+            data: [
+              { name: '/a2a/kagent/platform-assistant', totalCost: 8 },
+              { name: 'unknown thing', totalCost: 2 },
+            ],
+          }
+        : { data: [] },
+    );
+
+    const result = await collectAiCost(ctx, { owners });
+    const row = result.samples.find(s => s.metric === 'ai.costAttributedRatio')!;
+    expect(row.value).toBeCloseTo(0.8);
+    expect(row.labels?.totalUsd).toBe('10');
+    expect(result.cost?.unattributedUsd).toBe(2);
+  });
+
+  it('reports unavailable when nothing was spent, rather than 100% attributed', async () => {
+    // A platform with no AI traffic has nothing to attribute. Claiming perfect
+    // attribution would assert a discipline it has never been tested on.
+    mockFetchJson(() => ({ data: [] }));
+    const result = await collectAiCost(ctx, { owners });
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.reason).toMatch(/No AI spend recorded/);
+  });
+
+  it('reports unavailable when Langfuse does not answer', async () => {
+    mockFetchJson(() => undefined);
+    const result = await collectAiCost(ctx, { owners });
+    expect(result.unavailable?.source).toBe('ai-cost');
+  });
+
+  it('does not attribute spend to a team when the catalog has no owner', async () => {
+    mockFetchJson(url =>
+      url.includes('/traces')
+        ? { data: [{ name: '/a2a/kagent/nobody-owns-me', totalCost: 5 }] }
+        : { data: [] },
+    );
+    const result = await collectAiCost(ctx, { owners });
+    expect(result.cost?.attributedUsd).toBe(0);
+    expect(result.cost?.byTeam).toEqual([]);
+  });
+});
+
+describe('traceCosts', () => {
+  it('drops a trace with no name — there is nothing to attribute it by', () => {
+    expect(traceCosts({ data: [{ totalCost: 5 }, { name: 'a.b', totalCost: 1 }] })).toHaveLength(1);
+  });
+
+  it('reads a missing cost as zero rather than NaN', () => {
+    expect(traceCosts({ data: [{ name: 'a.b' }] })[0].costUsd).toBe(0);
   });
 });
 

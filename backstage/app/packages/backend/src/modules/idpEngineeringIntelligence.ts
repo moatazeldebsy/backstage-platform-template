@@ -2,9 +2,11 @@ import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api
 import {
   DIMENSIONS,
   DimensionId,
+  AiCostReport,
   EvaluationReport,
   MetricSample,
   WeightOverrides,
+  costRecommendations,
   evidenceGaps,
   scoreAiReadiness,
 } from '@internal/engineering-intelligence-core';
@@ -21,6 +23,7 @@ import {
 } from './engineeringIntelligence/scaffolder';
 import { collectMlflow } from './engineeringIntelligence/mlflow';
 import { collectLangfuseScores } from './engineeringIntelligence/langfuseScores';
+import { collectAiCost } from './engineeringIntelligence/aiCost';
 import { collectLangfuse } from './engineeringIntelligence/langfuse';
 import { collectOpenCost } from './engineeringIntelligence/opencost';
 import { collectPrometheus } from './engineeringIntelligence/prometheus';
@@ -172,6 +175,12 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         // /evaluation. Held alongside the samples for the same reason the
         // platform facts are: a current-state view, not a trend.
         let lastEvaluation: EvaluationReport | undefined;
+        let lastCost: AiCostReport | undefined;
+
+        // Component name → owner, refreshed by the catalog collector and read by
+        // the AI cost collector. Held rather than re-fetched so attribution uses
+        // the same catalog snapshot the platform figures came from.
+        let owners: Record<string, string> = {};
 
         async function refresh(): Promise<CollectionOutcome> {
           const collectors = [
@@ -185,6 +194,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
                     token: () => serviceToken('catalog'),
                   });
                   platform = { ...platform, facts: result.facts };
+                  owners = result.owners ?? owners;
                   return result;
                 }
               : undefined,
@@ -193,6 +203,18 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
               ? async () => {
                   const result = await collectLangfuseScores(ctx);
                   lastEvaluation = result.evaluation;
+                  return result;
+                }
+              : undefined,
+            enabled('langfuse')
+              ? async () => {
+                  // Runs after the catalog collector in declaration order, but
+                  // Promise.all makes that no guarantee — `owners` may still be
+                  // the previous refresh's map on the very first collection.
+                  // Attribution is then simply lower for one cycle, which is
+                  // preferable to serialising every collector to fix it.
+                  const result = await collectAiCost(ctx, { owners: () => owners });
+                  lastCost = result.cost;
                   return result;
                 }
               : undefined,
@@ -286,6 +308,29 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
+        }));
+
+        // GET /api/engineering-intelligence/ai-cost
+        router.get('/ai-cost', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          if (!lastCost && !collectedThisProcess) {
+            await refresh();
+          }
+          if (!lastCost || lastCost.totalUsd <= 0) {
+            res.json({
+              generatedAt: report.generatedAt,
+              available: false,
+              reason:
+                'No AI spend recorded in the window. Langfuse has to be deployed and receiving traces before cost can be attributed.',
+            });
+            return;
+          }
+          res.json({
+            available: true,
+            ...lastCost,
+            recommendations: costRecommendations(lastCost),
+          });
         }));
 
         // GET /api/engineering-intelligence/evaluation

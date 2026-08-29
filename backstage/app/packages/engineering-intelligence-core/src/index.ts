@@ -62,3 +62,12 @@ export {
   categorise,
   summariseEvaluation,
 } from './evaluation';
+
+export type {
+  AiCostReport,
+  CostBucket,
+  CostRecommendation,
+  ModelCost,
+  TraceCost,
+} from './aiCost';
+export { costRecommendations, deriveWorkload, summariseAiCost } from './aiCost';

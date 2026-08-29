@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0–7.**
+**Shipped: phases 0–8.**
 
 ---
 
@@ -193,16 +193,43 @@ reachable* Langfuse. A GitHub-hosted runner cannot see the in-cluster service,
 so on most installs there are no scores and `/evaluation` says so, naming that
 reason rather than leaving a reader to wonder whether the suite is broken.
 
-## Phase 8 — AI / LLM FinOps
+## Phase 8 — AI / LLM FinOps ✅
 
-Cost by team, service, model, environment and request; token usage; trends;
-savings recommendations.
+`GET /ai-cost`: spend by workload, by owning team and by model, with token
+usage, over a 7-day window.
 
-**Blocker:** the hard one. Langfuse records cost and tokens per model and per
-trace, but traces carry **no catalog or team attribution** — a name, a session id
-and a user id, and nothing that joins back to an owning team. Per-team AI spend
-cannot be computed until a join key is emitted at source in
-`services/*/src/telemetry.ts`. Any such number before then is invented.
+**The recorded blocker turned out to be half right.** This roadmap said per-team
+AI spend needed a join key "added at the emitting end in
+`services/*/src/telemetry.ts`". There is no *explicit* key — but a derivable one
+is already being written:
+
+```
+KAgent agent turns   /a2a/kagent/platform-assistant   → platform-assistant
+MCP tool calls       idp-mcp-server.catalog_search    → idp-mcp-server
+```
+
+Both are catalog Component names, so a trace joins to an owner and therefore a
+team. No change to the emitting end was needed.
+
+What keeps that honest rather than clever is the failure mode. The join is by
+**naming convention, not a contract**, so spend whose trace name matches no
+catalog entity is reported as an explicit **unattributed remainder** — never
+dropped to make the columns add up, and never spread across the teams that
+happen to be known. Parsing a name is also not the same as knowing who owns it:
+a workload that parses but is absent from the catalog counts as unattributed too.
+
+The scored signal is `ai.costAttributedRatio` — not how much you spend, but **how
+much of the bill you can explain**. Spend itself is reported and never scored: a
+team spending more is not doing worse.
+
+This makes the readiness model's `cost` area measurable, leaving only
+architecture and incident management with no collector at all.
+
+**What is deliberately not here:** "move low-complexity summarisation workloads
+to a lower-cost model, saving €2,140/month". That requires knowing a workload's
+complexity, and nothing in this platform does. The recommendations stick to
+attribution and model concentration — both facts on the page above them — and a
+test asserts no advice ever names an invented saving.
 
 ## Phase 9 — Engineering AI Advisor
 
