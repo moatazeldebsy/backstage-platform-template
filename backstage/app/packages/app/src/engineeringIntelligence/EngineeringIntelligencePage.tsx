@@ -18,8 +18,12 @@ import type {
   Recommendation,
 } from '@internal/engineering-intelligence-core';
 import {
+  AdvisorResponse,
+  AiCostResponse,
   AiReadinessResponse,
   EngineeringIntelligenceApi,
+  EvaluationResponse,
+  ExecutiveReport,
   HealthResponse,
   PlatformResponse,
 } from './api';
@@ -108,12 +112,36 @@ function SectionTitle({
   );
 }
 
+function Movement({ exec }: { exec: ExecutiveReport }) {
+  if (exec.improved.length === 0 && exec.declined.length === 0) return null;
+  const chip = (label: string, delta: number, colour: string) => (
+    <Typography
+      key={label}
+      variant="caption"
+      style={{ color: colour, marginRight: 12 }}
+    >
+      {delta >= 0 ? '▲' : '▼'} {label} {delta >= 0 ? '+' : ''}
+      {delta}
+    </Typography>
+  );
+  return (
+    <Box marginTop={1}>
+      {/* Split rather than one signed list: what improved and what declined are
+          read by different people for different reasons. */}
+      {exec.improved.map(c => chip(c.label, c.delta, BAND_COLOUR.strong))}
+      {exec.declined.map(c => chip(c.label, c.delta, BAND_COLOUR.weak))}
+    </Box>
+  );
+}
+
 function Headline({
   report,
   snapshots,
+  exec,
 }: {
   report: HealthResponse;
   snapshots: SnapshotRow[];
+  exec?: ExecutiveReport;
 }) {
   const movement = trend(snapshots);
   const colour = BAND_COLOUR[band(report.overallScore)];
@@ -149,6 +177,7 @@ function Headline({
             {trendLabel(movement)} · collected{' '}
             {relativeTime(report.generatedAt)}
           </Typography>
+          {exec && <Movement exec={exec} />}
           {report.status !== 'ok' && (
             <Typography
               variant="body2"
@@ -560,6 +589,245 @@ function AiReadiness({ readiness }: { readiness: AiReadinessResponse }) {
   );
 }
 
+/** Shown wherever a source has not produced data, with its own reason. */
+function NotYetAvailable({
+  title,
+  reason,
+}: {
+  title: string;
+  reason?: string;
+}) {
+  return (
+    <Card style={{ borderLeft: `4px solid ${BAND_COLOUR.unknown}` }}>
+      <SectionTitle>{title}</SectionTitle>
+      <Typography variant="body2" color="textSecondary">
+        {reason ?? 'Not collected yet.'}
+      </Typography>
+    </Card>
+  );
+}
+
+function Evaluation({ evaluation }: { evaluation: EvaluationResponse }) {
+  if (!evaluation.available) {
+    return <NotYetAvailable title="AI Evaluation" reason={evaluation.reason} />;
+  }
+  return (
+    <Card>
+      <SectionTitle hint="results, not whether a suite exists">
+        AI Evaluation
+      </SectionTitle>
+
+      <Grid container spacing={3}>
+        <Grid item xs={4}>
+          <Stat label="Assertions" value={String(evaluation.assertions ?? 0)} />
+        </Grid>
+        <Grid item xs={4}>
+          <Stat label="Passed" value={String(evaluation.passed ?? 0)} />
+        </Grid>
+        <Grid item xs={4}>
+          <Stat
+            label="Failed"
+            value={String(evaluation.failed ?? 0)}
+            hint={(evaluation.failed ?? 0) > 0 ? 'needs attention' : undefined}
+          />
+        </Grid>
+      </Grid>
+
+      <Box marginTop={2}>
+        {(evaluation.categories ?? []).map(c => (
+          <Box
+            key={c.category}
+            display="flex"
+            style={{ gap: 8 }}
+            paddingY={0.25}
+          >
+            <Typography variant="body2" style={{ minWidth: 150 }}>
+              {c.category}
+            </Typography>
+            <Typography
+              variant="body2"
+              style={{
+                color:
+                  BAND_COLOUR[
+                    band(c.passRate === null ? null : c.passRate * 100)
+                  ],
+              }}
+            >
+              {c.passRate === null ? '—' : `${Math.round(c.passRate * 100)}%`}
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              {c.metrics.join(', ')}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+
+      {(evaluation.uncategorised ?? []).length > 0 && (
+        <Box marginTop={2}>
+          <Typography variant="caption" color="textSecondary">
+            {/* Surfaced rather than dropped: a suite counted nowhere is worse
+                than one that fails, because nobody notices. */}
+            Not categorised: {evaluation.uncategorised!.join(', ')} — add a
+            pattern to METRIC_CATEGORIES so these count.
+          </Typography>
+        </Box>
+      )}
+    </Card>
+  );
+}
+
+function AiSpend({ cost }: { cost: AiCostResponse }) {
+  if (!cost.available) {
+    return <NotYetAvailable title="AI Spend" reason={cost.reason} />;
+  }
+  const unattributed = cost.unattributedUsd ?? 0;
+  return (
+    <Card>
+      <SectionTitle
+        hint={`last ${cost.windowDays} days — spend is reported, never scored`}
+      >
+        AI Spend
+      </SectionTitle>
+
+      <Grid container spacing={3}>
+        <Grid item xs={6}>
+          <Stat label="Total" value={`$${cost.totalUsd ?? 0}`} />
+        </Grid>
+        <Grid item xs={6}>
+          <Stat
+            label="Attributed"
+            value={
+              cost.attributedRatio === null ||
+              cost.attributedRatio === undefined
+                ? '—'
+                : `${Math.round(cost.attributedRatio * 100)}%`
+            }
+            hint={
+              unattributed > 0
+                ? `$${unattributed} has no owner`
+                : 'every trace matched a catalog entity'
+            }
+          />
+        </Grid>
+      </Grid>
+
+      {(cost.byTeam ?? []).length > 0 && (
+        <Box marginTop={2}>
+          <Typography variant="caption" color="textSecondary">
+            By team
+          </Typography>
+          {cost.byTeam!.map(t => (
+            <Typography key={t.key} variant="body2">
+              {t.key} — ${t.costUsd}
+            </Typography>
+          ))}
+        </Box>
+      )}
+
+      {(cost.byModel ?? []).length > 0 && (
+        <Box marginTop={2}>
+          <Typography variant="caption" color="textSecondary">
+            By model:{' '}
+            {cost.byModel!.map(m => `${m.model} $${m.costUsd}`).join(' · ')}
+          </Typography>
+        </Box>
+      )}
+    </Card>
+  );
+}
+
+const ADVISOR_QUESTIONS: { id: string; label: string }[] = [
+  { id: 'biggest-risks', label: 'Biggest risks?' },
+  { id: 'why-changed', label: 'Why did the score move?' },
+  { id: 'focus-next', label: 'What next?' },
+  { id: 'teams-needing-attention', label: 'Which teams?' },
+  { id: 'ai-readiness', label: 'AI ready?' },
+  { id: 'reduce-cost', label: 'Reduce cost?' },
+];
+
+function Advisor({ api }: { api: EngineeringIntelligenceApi }) {
+  const [asked, setAsked] = useState<string | undefined>();
+  const [reply, setReply] = useState<AdvisorResponse | undefined>();
+  const [busy, setBusy] = useState(false);
+
+  const ask = async (question: string) => {
+    setBusy(true);
+    setAsked(question);
+    setReply(await api.advisor(question).catch(() => undefined));
+    setBusy(false);
+  };
+
+  return (
+    <Card>
+      <SectionTitle hint="answers computed from the report — a question the data cannot answer is refused, not guessed">
+        Ask
+      </SectionTitle>
+
+      <Box display="flex" flexWrap="wrap" style={{ gap: 8 }}>
+        {ADVISOR_QUESTIONS.map(q => (
+          <Button
+            key={q.id}
+            size="small"
+            variant={asked === q.id ? 'contained' : 'outlined'}
+            onClick={() => ask(q.id)}
+          >
+            {q.label}
+          </Button>
+        ))}
+      </Box>
+
+      {busy && (
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          style={{ marginTop: 12 }}
+        >
+          Working…
+        </Typography>
+      )}
+
+      {!busy && reply && (
+        <Box
+          marginTop={2}
+          paddingLeft={2}
+          style={{
+            // Grey, not red: "the data cannot answer this" is not a failure.
+            borderLeft: `4px solid ${
+              reply.insufficientEvidence
+                ? BAND_COLOUR.unknown
+                : BAND_COLOUR.strong
+            }`,
+          }}
+        >
+          <Typography variant="body1" style={{ whiteSpace: 'pre-line' }}>
+            {reply.answer}
+          </Typography>
+
+          {reply.actions.length > 0 && (
+            <Box marginTop={1}>
+              {reply.actions.map(a => (
+                <Typography key={a} variant="body2" color="textSecondary">
+                  → {a}
+                </Typography>
+              ))}
+            </Box>
+          )}
+
+          <Typography
+            variant="caption"
+            color="textSecondary"
+            style={{ display: 'block', marginTop: 8 }}
+          >
+            {reply.citedMetrics.length > 0
+              ? `Based on: ${reply.citedMetrics.join(', ')}`
+              : 'No metric supports an answer to this — see the text above.'}
+          </Typography>
+        </Box>
+      )}
+    </Card>
+  );
+}
+
 function EvidenceGaps({ report }: { report: HealthResponse }) {
   if (report.evidenceGaps.length === 0) return null;
   return (
@@ -595,6 +863,11 @@ export function EngineeringIntelligencePage() {
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [platform, setPlatform] = useState<PlatformResponse | undefined>();
   const [readiness, setReadiness] = useState<AiReadinessResponse | undefined>();
+  const [evaluation, setEvaluation] = useState<
+    EvaluationResponse | undefined
+  >();
+  const [cost, setCost] = useState<AiCostResponse | undefined>();
+  const [exec, setExec] = useState<ExecutiveReport | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DimensionId | undefined>();
@@ -613,6 +886,11 @@ export function EngineeringIntelligencePage() {
       // report. The score is the point of the page.
       setPlatform(await api.platform().catch(() => undefined));
       setReadiness(await api.aiReadiness().catch(() => undefined));
+      // Each detail view fails independently: one unavailable source must not
+      // blank the rest of the page.
+      setEvaluation(await api.evaluation().catch(() => undefined));
+      setCost(await api.aiCost().catch(() => undefined));
+      setExec(await api.executiveReport().catch(() => undefined));
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
     } finally {
@@ -666,7 +944,7 @@ export function EngineeringIntelligencePage() {
         {!loading && report && (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Headline report={report} snapshots={snapshots} />
+              <Headline report={report} snapshots={snapshots} exec={exec} />
             </Grid>
 
             {dimensions.map(dimension => (
@@ -702,6 +980,21 @@ export function EngineeringIntelligencePage() {
                 <AiReadiness readiness={readiness} />
               </Grid>
             )}
+
+            {evaluation && (
+              <Grid item xs={12} md={6}>
+                <Evaluation evaluation={evaluation} />
+              </Grid>
+            )}
+            {cost && (
+              <Grid item xs={12} md={6}>
+                <AiSpend cost={cost} />
+              </Grid>
+            )}
+
+            <Grid item xs={12}>
+              <Advisor api={api} />
+            </Grid>
 
             <Grid item xs={12} md={6}>
               <Risks report={report} />

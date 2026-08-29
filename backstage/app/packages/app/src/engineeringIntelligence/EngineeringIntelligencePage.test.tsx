@@ -10,7 +10,7 @@
 // than renderInTestApp (see App.test.tsx), so the two Backstage APIs the page
 // uses are stubbed directly.
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { HealthResponse } from './api';
 
 const fetchMock = jest.fn();
@@ -60,7 +60,11 @@ const REPORT: HealthResponse = {
     platform: dimension('platform', 75),
     devEx: dimension('devEx', null, {
       missing: [
-        { metric: 'devex.prCycleTimeHours', expectedFrom: 'github', reason: 'x' },
+        {
+          metric: 'devex.prCycleTimeHours',
+          expectedFrom: 'github',
+          reason: 'x',
+        },
       ],
     }),
     quality: dimension('quality', 89.1),
@@ -97,10 +101,34 @@ const REPORT: HealthResponse = {
     gap: [],
     recommendedActions: [],
     levels: [
-      { level: 1, name: 'Ad Hoc', description: '', status: 'met', requirements: [] },
-      { level: 2, name: 'Standardised', description: '', status: 'met', requirements: [] },
-      { level: 3, name: 'Platform Enabled', description: '', status: 'met', requirements: [] },
-      { level: 4, name: 'AI Enabled', description: '', status: 'unconfirmed', requirements: [] },
+      {
+        level: 1,
+        name: 'Ad Hoc',
+        description: '',
+        status: 'met',
+        requirements: [],
+      },
+      {
+        level: 2,
+        name: 'Standardised',
+        description: '',
+        status: 'met',
+        requirements: [],
+      },
+      {
+        level: 3,
+        name: 'Platform Enabled',
+        description: '',
+        status: 'met',
+        requirements: [],
+      },
+      {
+        level: 4,
+        name: 'AI Enabled',
+        description: '',
+        status: 'unconfirmed',
+        requirements: [],
+      },
       {
         level: 5,
         name: 'Autonomous Engineering',
@@ -148,8 +176,22 @@ const READINESS = {
   measurable: 2,
   total: 3,
   areas: {
-    governance: { dimension: 'governance', score: 90, status: 'ok', coverage: 1, evidence: [], missing: [] },
-    evaluation: { dimension: 'evaluation', score: 52, status: 'ok', coverage: 1, evidence: [], missing: [] },
+    governance: {
+      dimension: 'governance',
+      score: 90,
+      status: 'ok',
+      coverage: 1,
+      evidence: [],
+      missing: [],
+    },
+    evaluation: {
+      dimension: 'evaluation',
+      score: 52,
+      status: 'ok',
+      coverage: 1,
+      evidence: [],
+      missing: [],
+    },
     privacy: {
       dimension: 'privacy',
       score: null,
@@ -157,10 +199,67 @@ const READINESS = {
       coverage: 0,
       evidence: [],
       missing: [
-        { metric: 'ai.piiLeakageTested', expectedFrom: 'not collected — needs a PII evaluation (phase 7)', reason: 'x' },
+        {
+          metric: 'ai.piiLeakageTested',
+          expectedFrom: 'not collected — needs a PII evaluation (phase 7)',
+          reason: 'x',
+        },
       ],
     },
   },
+};
+
+const EVALUATION = {
+  available: true,
+  assertions: 12,
+  passed: 10,
+  failed: 2,
+  passRate: 0.833,
+  categories: [
+    {
+      category: 'hallucination',
+      metrics: ['FaithfulnessMetric'],
+      assertions: 6,
+      passed: 6,
+      passRate: 1,
+      meanScore: 0.9,
+    },
+  ],
+  uncategorised: ['WeirdCustomMetric'],
+  suites: [],
+};
+
+const COST = {
+  available: true,
+  windowDays: 7,
+  totalUsd: 10,
+  attributedUsd: 8,
+  unattributedUsd: 2,
+  attributedRatio: 0.8,
+  byTeam: [{ key: 'team-platform', costUsd: 8, traces: 4 }],
+  byModel: [{ model: 'opus', costUsd: 9, inputTokens: 10, outputTokens: 5 }],
+  recommendations: [],
+};
+
+const EXEC = {
+  generatedAt: new Date().toISOString(),
+  overallScore: 82,
+  maturity: 'Level 3 — Platform Enabled',
+  improved: [
+    { dimension: 'platform', label: 'Platform Engineering', delta: 5 },
+  ],
+  declined: [{ dimension: 'finops', label: 'FinOps', delta: -3 }],
+  trend: { delta: 2, sinceDays: 7 },
+  snapshotsAvailable: 4,
+};
+
+const ADVISOR_REFUSAL = {
+  question: 'teams-needing-attention',
+  answer:
+    'Engineering Health is measured platform-wide, not per team, so this cannot be answered from it.',
+  citedMetrics: [],
+  insufficientEvidence: true,
+  actions: [],
 };
 
 /** Route the page's GETs; `health` decides success or failure. */
@@ -168,6 +267,10 @@ function routes(health: unknown, ok = true, status = 200) {
   return (url: string) => {
     if (url.includes('/snapshots')) return respond({ snapshots: [] });
     if (url.includes('/ai-readiness')) return respond(READINESS);
+    if (url.includes('/report/executive')) return respond(EXEC);
+    if (url.includes('/evaluation')) return respond(EVALUATION);
+    if (url.includes('/ai-cost')) return respond(COST);
+    if (url.includes('/advisor')) return respond(ADVISOR_REFUSAL);
     if (url.includes('/platform')) return respond(PLATFORM);
     return respond(health, ok, status);
   };
@@ -224,10 +327,14 @@ describe('EngineeringIntelligencePage', () => {
 
     render(<EngineeringIntelligencePage />);
 
-    await waitFor(() => expect(screen.getByText('Top risks')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Top risks')).toBeInTheDocument(),
+    );
 
     // The one real recommendation appears as a risk...
-    expect(screen.getByText(/golden-path template is below target/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/golden-path template is below target/),
+    ).toBeInTheDocument();
     // ...and the unmeasurable dimension appears in its own section instead.
     expect(screen.getByText('Cannot measure yet')).toBeInTheDocument();
     expect(
@@ -242,37 +349,46 @@ describe('EngineeringIntelligencePage', () => {
 
     render(<EngineeringIntelligencePage />);
 
-    await waitFor(() => expect(screen.getByText('Platform Health')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Platform Health')).toBeInTheDocument(),
+    );
     expect(screen.getByText('Services')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText(/services are not using an approved golden path/)).toBeInTheDocument();
-    expect(screen.getByText(/adhoc-tool, legacy-cron, orphaned-tool/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/services are not using an approved golden path/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/adhoc-tool, legacy-cron, orphaned-tool/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/go-service \(2\)/)).toBeInTheDocument();
   });
 
   it('shows a dash for self-service before any scaffolder task has finished', async () => {
     // 0% would say the scaffolder is broken; 100% would say it is proven.
     fetchMock.mockImplementation((url: string) => {
-      if (url.includes('/snapshots')) return respond({ snapshots: [] });
-      if (url.includes('/ai-readiness')) return respond(READINESS);
       if (url.includes('/platform')) {
-        return respond({ ...PLATFORM, selfService: { completed: 0, failed: 0, inFlight: 2 } });
+        return respond({
+          ...PLATFORM,
+          selfService: { completed: 0, failed: 0, inFlight: 2 },
+        });
       }
-      return respond(REPORT);
+      return routes(REPORT)(url);
     });
 
     render(<EngineeringIntelligencePage />);
 
-    await waitFor(() => expect(screen.getByText('Platform Health')).toBeInTheDocument());
-    expect(screen.getByText(/no scaffolder task has finished yet/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText('Platform Health')).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/no scaffolder task has finished yet/),
+    ).toBeInTheDocument();
   });
 
   it('still renders the report when the platform breakdown is unavailable', async () => {
     fetchMock.mockImplementation((url: string) => {
-      if (url.includes('/snapshots')) return respond({ snapshots: [] });
-      if (url.includes('/ai-readiness')) return respond(READINESS);
       if (url.includes('/platform')) return respond({}, false, 500);
-      return respond(REPORT);
+      return routes(REPORT)(url);
     });
 
     render(<EngineeringIntelligencePage />);
@@ -296,6 +412,83 @@ describe('EngineeringIntelligencePage', () => {
     expect(screen.getByText(/needs a PII evaluation/)).toBeInTheDocument();
   });
 
+  it('renders evaluation results and surfaces uncategorised metrics', async () => {
+    // A suite counted nowhere is worse than one that fails, because nobody
+    // notices. The page has to name it, not quietly drop it.
+    fetchMock.mockImplementation(routes(REPORT));
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('AI Evaluation')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('Assertions')).toBeInTheDocument();
+    expect(screen.getByText('hallucination')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Not categorised: WeirdCustomMetric/),
+    ).toBeInTheDocument();
+  });
+
+  it('shows AI spend with the unattributed remainder called out', async () => {
+    // Unattributed spend is the number that makes the rest trustworthy; burying
+    // it would let a reader assume every dollar has an owner.
+    fetchMock.mockImplementation(routes(REPORT));
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('AI Spend')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('$10')).toBeInTheDocument();
+    expect(screen.getByText(/\$2 has no owner/)).toBeInTheDocument();
+    expect(screen.getByText(/team-platform — \$8/)).toBeInTheDocument();
+  });
+
+  it('explains why a source has no data instead of showing an empty card', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/evaluation')) {
+        return respond({
+          available: false,
+          reason:
+            'No evaluation results recorded. push_to_langfuse.py only reaches a publicly reachable Langfuse.',
+        });
+      }
+      return routes(REPORT)(url);
+    });
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('AI Evaluation')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/publicly reachable Langfuse/)).toBeInTheDocument();
+  });
+
+  it('splits what improved from what declined', async () => {
+    fetchMock.mockImplementation(routes(REPORT));
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('82')).toBeInTheDocument());
+    expect(screen.getByText(/Platform Engineering \+5/)).toBeInTheDocument();
+    expect(screen.getByText(/FinOps -3/)).toBeInTheDocument();
+  });
+
+  it('renders an advisor refusal in grey, citing nothing', async () => {
+    // The refusal is the feature. It must not read as an error, and it must not
+    // appear to be backed by a metric.
+    fetchMock.mockImplementation(routes(REPORT));
+    render(<EngineeringIntelligencePage />);
+
+    await waitFor(() => expect(screen.getByText('Ask')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Which teams?'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/measured platform-wide, not per team/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/No metric supports an answer to this/),
+    ).toBeInTheDocument();
+  });
+
   it('shows an error instead of a score when the report cannot be loaded', async () => {
     // The failure this asserts: a 500 rendering as a plausible dashboard. Every
     // other page in this app falls back to demo data; this one must not.
@@ -316,9 +509,7 @@ describe('EngineeringIntelligencePage', () => {
     // The score is the point of the page; the sparkline is not.
     fetchMock.mockImplementation((url: string) => {
       if (url.includes('/snapshots')) return respond({}, false, 500);
-      if (url.includes('/ai-readiness')) return respond(READINESS);
-      if (url.includes('/platform')) return respond(PLATFORM);
-      return respond(REPORT);
+      return routes(REPORT)(url);
     });
 
     render(<EngineeringIntelligencePage />);

@@ -46,6 +46,74 @@ export interface AiReadinessResponse {
   areas: Record<string, DimensionScore & { dimension: string }>;
 }
 
+export interface EvaluationResponse {
+  available: boolean;
+  reason?: string;
+  generatedAt?: string;
+  assertions?: number;
+  passed?: number;
+  failed?: number;
+  passRate?: number | null;
+  categories?: {
+    category: string;
+    metrics: string[];
+    assertions: number;
+    passed: number;
+    passRate: number | null;
+    meanScore: number | null;
+  }[];
+  uncategorised?: string[];
+  suites?: {
+    suite: string;
+    assertions: number;
+    passed: number;
+    passRate: number;
+  }[];
+}
+
+export interface AiCostResponse {
+  available: boolean;
+  reason?: string;
+  windowDays?: number;
+  totalUsd?: number;
+  attributedUsd?: number;
+  unattributedUsd?: number;
+  attributedRatio?: number | null;
+  byTeam?: { key: string; costUsd: number; traces: number }[];
+  byModel?: {
+    model: string;
+    costUsd: number;
+    inputTokens: number;
+    outputTokens: number;
+  }[];
+  recommendations?: {
+    id: string;
+    severity: string;
+    title: string;
+    action: string;
+    evidence: string;
+  }[];
+}
+
+export interface AdvisorResponse {
+  question: string;
+  answer: string;
+  citedMetrics: string[];
+  insufficientEvidence: boolean;
+  actions: string[];
+}
+
+export interface ExecutiveReport {
+  generatedAt: string;
+  overallScore: number | null;
+  maturity: string;
+  improved: { dimension: string; label: string; delta: number }[];
+  declined: { dimension: string; label: string; delta: number }[];
+  trend: { delta: number; sinceDays: number } | null;
+  trendUnavailableReason?: string;
+  snapshotsAvailable: number;
+}
+
 export interface FetchLike {
   fetch: typeof fetch;
 }
@@ -87,6 +155,31 @@ export class EngineeringIntelligenceApi {
 
   platform(): Promise<PlatformResponse> {
     return this.get<PlatformResponse>('/platform');
+  }
+
+  evaluation(): Promise<EvaluationResponse> {
+    return this.get<EvaluationResponse>('/evaluation');
+  }
+
+  aiCost(): Promise<AiCostResponse> {
+    return this.get<AiCostResponse>('/ai-cost');
+  }
+
+  executiveReport(): Promise<ExecutiveReport> {
+    return this.get<ExecutiveReport>('/report/executive');
+  }
+
+  async advisor(question: string): Promise<AdvisorResponse> {
+    const resp = await this.fetchApi.fetch(
+      `${this.baseUrl}/api/engineering-intelligence/advisor`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      },
+    );
+    if (!resp.ok) throw new Error(`advisor → HTTP ${resp.status}`);
+    return (await resp.json()) as AdvisorResponse;
   }
 
   snapshots(limit = 30): Promise<{ snapshots: SnapshotRow[] }> {
