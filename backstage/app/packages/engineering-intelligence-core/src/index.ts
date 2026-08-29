@@ -80,6 +80,28 @@ export type {
   DimensionChange,
   SnapshotSummary,
 } from './advisor';
+export type {
+  BenchmarkProvider,
+  BenchmarkResult,
+  BenchmarkSubmission,
+  Percentile,
+} from './benchmark';
+export {
+  MIN_COHORT_SIZE,
+  NO_BENCHMARK_PROVIDER,
+  placeOrWithhold,
+  toSubmission,
+} from './benchmark';
+
+export type { Organisation, OrganisationRecord, TenantScope } from './tenancy';
+export {
+  DEFAULT_ORGANISATION,
+  defaultScope,
+  isSingleTenant,
+  scopeFrom,
+  scopeKey,
+} from './tenancy';
+
 export {
   answer,
   buildAdvisorContext,

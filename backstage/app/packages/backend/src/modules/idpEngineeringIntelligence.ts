@@ -12,6 +12,7 @@ import {
   costRecommendations,
   dimensionChanges,
   evidenceGaps,
+  overallChange,
   scoreAiReadiness,
 } from '@internal/engineering-intelligence-core';
 import express, { NextFunction, Request, Response, Router } from 'express';
@@ -312,6 +313,58 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
+        }));
+
+        // GET /api/engineering-intelligence/report/executive
+        //
+        // The periodic summary: score, what moved, what is at risk, what to do.
+        // Built entirely from the snapshot history and the current report — no
+        // new collection, and no figure that is not already on another endpoint.
+        router.get('/report/executive', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const report = await currentReport();
+          const snapshots = await listSnapshots(db as any, 60);
+          const summaries = snapshots.map(s => ({
+            capturedAt: s.capturedAt,
+            overallScore: s.report.overallScore,
+            dimensions: Object.fromEntries(
+              Object.entries(s.report.dimensions).map(([k, v]) => [k, v.score]),
+            ),
+          }));
+
+          const changes = dimensionChanges(summaries);
+          const movement = overallChange(summaries);
+
+          res.json({
+            generatedAt: report.generatedAt,
+            overallScore: report.overallScore,
+            status: report.status,
+            maturity: report.maturity.summary,
+            // Split rather than a signed list, because "what improved" and "what
+            // declined" are read by different people for different reasons.
+            improved: changes.filter(c => c.delta > 0),
+            declined: changes.filter(c => c.delta < 0),
+            // Absent, not zero, until there are two collections to compare.
+            trend: movement
+              ? { delta: movement.delta, sinceDays: movement.sinceDays, since: movement.since }
+              : null,
+            trendUnavailableReason: movement
+              ? undefined
+              : 'Fewer than two scored snapshots. Snapshots begin at first install and cannot be back-filled.',
+            topRisks: report.recommendations.slice(0, 5).map(r => ({
+              severity: r.severity,
+              title: r.title,
+              action: r.action,
+              evidence: r.evidence[0]
+                ? `${r.evidence[0].metric} = ${r.evidence[0].value} (${r.evidence[0].source})`
+                : undefined,
+            })),
+            // Reported separately from risks throughout: a dimension nobody can
+            // measure is work on the platform's instrumentation, not a finding
+            // about the engineering organisation.
+            cannotMeasure: evidenceGaps(report.dimensions),
+            snapshotsAvailable: summaries.length,
+          });
         }));
 
         // POST /api/engineering-intelligence/advisor

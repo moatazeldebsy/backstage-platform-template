@@ -468,7 +468,7 @@ Scaffold a service or test suite via **Backstage** (`http://backstage.idp.local`
 
 Status lives on the **[GitHub Project board](https://github.com/users/moatazeldebsy/projects/5)** and in the issues — that is the single source of truth. This section is the honest summary.
 
-### Recently shipped — Engineering Intelligence, phases 0–8
+### Recently shipped — Engineering Intelligence, all thirteen phases
 
 The platform now scores its own engineering health. A framework-free scoring engine
 (`backstage/app/packages/engineering-intelligence-core`) turns the telemetry four Python
@@ -541,8 +541,21 @@ whose name matches nothing is reported as an explicit **unattributed remainder**
 redistributed across the teams that happen to be known. The scored signal is not how much
 you spend but **how much of the bill you can explain**.
 
+Phases 9–12 close it out. The **AI Advisor** answers leadership questions from the
+structured reports, and its deliverable is the guardrails rather than a model call: a
+sanitised context that drops evidence labels and raw trace names, and a mechanical check
+that every claim cites a metric actually present. Asked which teams need attention, it
+answers that Engineering Health is platform-wide and cannot rank teams — that refusal is
+the feature. **Executive reporting** splits what improved from what declined and reports
+no trend until two snapshots exist. **Benchmarking** ships the data model and anonymity
+floor and *transmits nothing* — consent and custody are product decisions that precede
+code. **Multi-tenancy** names the hierarchy a hosted deployment would need, with
+single-tenant as the one-organisation case rather than a separate path, and no artificial
+limits anywhere.
+
 Design decisions in [ADR-0006](docs/design/adr-0006-engineering-intelligence.md); the phase
-plan and the data blocker on each in [the roadmap](docs/engineering-intelligence/roadmap.md).
+plan and what each one could and could not measure in
+[the roadmap](docs/engineering-intelligence/roadmap.md).
 
 ### Recently shipped — pre-open-source hardening
 

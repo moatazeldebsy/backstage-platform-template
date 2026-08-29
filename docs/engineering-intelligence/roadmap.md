@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0–9.**
+**Shipped: all thirteen phases, 0–12.**
 
 ---
 
@@ -267,32 +267,65 @@ That refusal is the phase. "Team A is understaffed" is the canonical bad answer 
 fluent, plausible, backed by nothing — and the design makes it unreachable rather
 than merely discouraged.
 
-## Phase 10 — Executive reporting
+## Phase 10 — Executive reporting ✅
 
-A periodic report: overall score, what improved, what declined, top risks, top
-recommendations.
+`GET /report/executive`: overall score, maturity, what improved, what declined,
+top risks with the evidence behind each, and what cannot be measured.
 
-**Blocker:** trend data. Snapshots begin at first install and there is no
-back-fill, so "improved / declined" needs roughly a week of history before it
-says anything. Do not over-engineer PDF generation in the first pass.
+Improved and declined are split rather than presented as one signed list,
+because they are read by different people for different reasons. The trend is
+`null` with a stated reason until two scored snapshots exist — there is no
+back-fill, and a report claiming "no change" on its first run would be inventing
+a baseline.
 
-## Phase 11 — Benchmarking
+No new collection and no figure that is not already on another endpoint: this is
+a view over the snapshot history, not a second source of truth.
 
-Percentile comparison across organisations.
+## Phase 11 — Benchmarking ✅ *(data model and extension points only)*
 
-**Blocker:** deliberate. **Collect and transmit nothing external.** Build the
-data model and the extension points only. Anonymisation and consent are product
-decisions that precede any code.
+**Nothing is transmitted, and no implementation in this repo does.** That is the
+phase, not an omission. Comparing an organisation against others needs consent,
+an anonymisation guarantee somebody is accountable for, and a decision about who
+holds the data — three product questions that precede any code. Shipping a
+working uploader and asking afterwards is how a platform ends up exfiltrating
+engineering metrics by default.
 
-## Phase 12 — Multi-tenancy foundation
+What ships is the shape:
 
-Conceptual separation of Organisation → Teams → Services → Metrics → Scores →
-Recommendations, so a hosted service would not require a fork.
+- **`BenchmarkSubmission`** — the entire payload that would ever leave: seven
+  scores, a maturity level, a schema version, and a date at *day* precision
+  (an exact timestamp is a correlation key across submissions). No organisation,
+  team or service names; no metric values, evidence or sources. `toSubmission` is
+  pure and tested by serialising it and searching for what must not be there.
+- **`MIN_COHORT_SIZE` and `placeOrWithhold`** — the anonymity floor, enforced in
+  this package rather than trusted to each provider. In a cohort of three,
+  "you are 33rd percentile" tells the other two exactly where everyone sits.
+- **`BenchmarkProvider`** — the extension point, with `NO_BENCHMARK_PROVIDER` as
+  the default, so "benchmarking is off" is a named state rather than a null check
+  repeated at every call site.
 
-**Blocker:** none, but scope discipline. The open-source project must stay fully
-usable single-tenant, and no artificial limits are introduced. See
-[ADR-0004](../design/adr-0004-identity-and-access.md) for the current
-authorization model, which is coarse: any authenticated user can run any template.
+An unscored dimension is omitted rather than submitted as zero: a cohort
+averaging those zeros would conclude the industry is worse at Developer
+Experience than it is, purely because few people measure it.
+
+## Phase 12 — Multi-tenancy foundation ✅
+
+Organisation → Teams → Services → Scores → Recommendations, named so a hosted
+deployment would not require a fork.
+
+The rule that keeps it honest: **`DEFAULT_ORGANISATION` is a real organisation,
+not a null.** Single-tenant is the one-organisation case of the general model
+rather than a special path beside it — so there is no second code path to keep
+working, no `if (multiTenant)` branch to get wrong, and a row written today needs
+no migration if a second organisation ever appears.
+
+`scopeFrom` ignores an unrecognised scope parameter rather than throwing: on a
+single-tenant install a stray `?organisationId=` should do nothing, not produce
+an error page. `scopeKey` omits unset levels rather than rendering `undefined`
+into a storage key.
+
+**No artificial limits are introduced.** Nothing here gates a feature on tenancy,
+and the open-source platform stays fully usable single-tenant.
 
 ---
 
