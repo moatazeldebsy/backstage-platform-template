@@ -3,7 +3,7 @@
 Thirteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: phases 0–8.**
+**Shipped: phases 0–9.**
 
 ---
 
@@ -231,17 +231,41 @@ complexity, and nothing in this platform does. The recommendations stick to
 attribution and model concentration — both facts on the page above them — and a
 test asserts no advice ever names an invented saving.
 
-## Phase 9 — Engineering AI Advisor
+## Phase 9 — Engineering AI Advisor ✅
 
-Answer leadership questions against the Engineering Intelligence API: biggest
-risks, why a score moved, what to focus on, which teams need attention.
+`POST /advisor` with a question, answering from the structured reports.
 
-**Blocker:** none technically — KAgent and the MCP servers are in place. The
-constraint is design: the advisor reads the **structured** report, not raw source
-data, and must cite the metric behind every claim. *"PR review time rose 31% over
-30 days, correlating with PR volume in Team A"* is allowed; *"Team A is
-understaffed"* is not, unless the data says so. Where evidence is insufficient it
-must say so rather than fill the gap.
+Two things matter more here than a model call, and both are the deliverable.
+
+**What an advisor is allowed to see.** `buildAdvisorContext` produces a
+sanitised view: metric id, value and source per evidence row, and nothing else.
+Evidence `labels` are dropped — that is where user ids, raw trace names and cost
+strings live. AI spend is reduced to team totals; `byWorkload` and
+`unmatchedNames` never appear, because a trace name is uncontrolled text written
+outside the platform and has no business in a prompt. Tests assert the omissions
+by serialising the context and searching it.
+
+**What it is allowed to say.** `unsupportedCitations` rejects any claim citing a
+metric absent from the context. It is deliberately mechanical — it judges whether
+the thing pointed at exists, not whether the sentence reads well, so an invented
+`devex.moraleIndex` is caught however plausible its surroundings.
+
+**The answers are computed, not generated.** Every question here is a lookup or a
+subtraction over the report. A model asked the same thing could only agree with
+the arithmetic or contradict it, and the second is a bug. Where the data runs
+out, the advisor says so:
+
+> *"Which teams need attention?"* → Engineering Health is measured platform-wide,
+> not per team, so this cannot be answered from it. The only per-team figure
+> collected is AI spend — and that is a spend figure, not a performance one.
+
+> *"Where can we reduce cost?"* → AI spend is $X over 7 days. **No saving figure
+> is offered**: nothing here measures workload complexity, so any "move X to a
+> cheaper model" estimate would be invented.
+
+That refusal is the phase. "Team A is understaffed" is the canonical bad answer —
+fluent, plausible, backed by nothing — and the design makes it unreachable rather
+than merely discouraged.
 
 ## Phase 10 — Executive reporting
 

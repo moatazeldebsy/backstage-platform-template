@@ -61,7 +61,7 @@ three instances of in its Bronze/Silver/Gold logic. See
 
 | Path | Role |
 |---|---|
-| `backstage/app/packages/engineering-intelligence-core/` | The engine. `model.ts` (types), `normalize.ts` (raw → 0–100), `dimensions.ts` (declarative scoring policy), `score.ts`, `recommend.ts`, `maturity.ts` (the five levels), `aiReadiness.ts` (the second scored model), `evaluation.ts` (evaluation results by risk category), `aiCost.ts` (spend attribution) |
+| `backstage/app/packages/engineering-intelligence-core/` | The engine. `model.ts` (types), `normalize.ts` (raw → 0–100), `dimensions.ts` (declarative scoring policy), `score.ts`, `recommend.ts`, `maturity.ts` (the five levels), `aiReadiness.ts` (the second scored model), `evaluation.ts` (evaluation results by risk category), `aiCost.ts` (spend attribution), `advisor.ts` (context construction and the citation guardrail) |
 | `backstage/app/packages/backend/src/modules/idpEngineeringIntelligence.ts` | The plugin: scheduling, persistence, HTTP routes |
 | `.../modules/engineeringIntelligence/{prometheus,catalog,techInsights,opencost,langfuse,langfuseScores,aiCost,scaffolder,mlflow}.ts` | One collector per source |
 | `.../modules/engineeringIntelligence/{collect,store,source}.ts` | Orchestration, snapshots, shared transport |
@@ -80,6 +80,7 @@ All routes require an authenticated user; there is no unauthenticated surface.
 | `GET /api/engineering-intelligence/ai-readiness` | AI Engineering Readiness across twelve areas, scored by the same engine |
 | `GET /api/engineering-intelligence/evaluation` | Evaluation results by risk category, with per-suite pass rates |
 | `GET /api/engineering-intelligence/ai-cost` | AI spend by workload, team and model, with the unattributed remainder |
+| `POST /api/engineering-intelligence/advisor` | Answers a leadership question from the reports, with the sanitised context it used |
 | `GET /api/engineering-intelligence/recommendations` | Ranked recommendations, each carrying its evidence |
 | `GET /api/engineering-intelligence/snapshots?limit=` | Persisted history, for trends |
 | `POST /api/engineering-intelligence/refresh` | Forces a collection |

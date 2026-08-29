@@ -6,7 +6,11 @@ import {
   EvaluationReport,
   MetricSample,
   WeightOverrides,
+  AdvisorQuestion,
+  answer as answerQuestion,
+  buildAdvisorContext,
   costRecommendations,
+  dimensionChanges,
   evidenceGaps,
   scoreAiReadiness,
 } from '@internal/engineering-intelligence-core';
@@ -308,6 +312,60 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           }
           const report = await currentReport();
           res.json(report.dimensions[id]);
+        }));
+
+        // POST /api/engineering-intelligence/advisor
+        //
+        // Answers are computed from the report, not generated. Every question
+        // below is a lookup or a subtraction, and a model asked the same thing
+        // could only agree with the arithmetic or contradict it. The context is
+        // returned alongside so a caller can see exactly what the answer was
+        // derived from — and, if they choose to hand it to a model, exactly what
+        // that model would be given.
+        router.post('/advisor', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user'] });
+          const question = String(
+            (req.body ?? {}).question ?? '',
+          ) as AdvisorQuestion;
+
+          const known: AdvisorQuestion[] = [
+            'biggest-risks',
+            'why-changed',
+            'focus-next',
+            'teams-needing-attention',
+            'ai-readiness',
+            'reduce-cost',
+          ];
+          if (!known.includes(question)) {
+            res.status(400).json({
+              error: `Unknown question '${question}'.`,
+              known,
+            });
+            return;
+          }
+
+          const report = await currentReport();
+          const snapshots = await listSnapshots(db as any, 30);
+          const summaries = snapshots.map(s => ({
+            capturedAt: s.capturedAt,
+            overallScore: s.report.overallScore,
+            dimensions: Object.fromEntries(
+              Object.entries(s.report.dimensions).map(([k, v]) => [k, v.score]),
+            ),
+          }));
+
+          const context = buildAdvisorContext(report, {
+            gaps: evidenceGaps(report.dimensions),
+            cost: lastCost,
+            snapshots: summaries,
+          });
+
+          res.json({
+            ...answerQuestion(question, context, {
+              changes: dimensionChanges(summaries),
+            }),
+            context,
+          });
         }));
 
         // GET /api/engineering-intelligence/ai-cost

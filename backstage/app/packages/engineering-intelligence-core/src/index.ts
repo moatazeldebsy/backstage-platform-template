@@ -71,3 +71,20 @@ export type {
   TraceCost,
 } from './aiCost';
 export { costRecommendations, deriveWorkload, summariseAiCost } from './aiCost';
+
+export type {
+  AdvisorAnswer,
+  AdvisorContext,
+  AdvisorQuestion,
+  Change,
+  DimensionChange,
+  SnapshotSummary,
+} from './advisor';
+export {
+  answer,
+  buildAdvisorContext,
+  citableMetrics,
+  dimensionChanges,
+  overallChange,
+  unsupportedCitations,
+} from './advisor';
