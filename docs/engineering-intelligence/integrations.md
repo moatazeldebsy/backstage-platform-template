@@ -105,11 +105,16 @@ unconfigured.
    Backstage config key path.
 3. Fetch through `getJson()` so failure degrades to absence for free.
 4. Register it in `collect.ts` and add its kill switch to `config.d.ts`.
-5. Declare the signal in `dimensions.ts` with a weight and a normaliser. **Until a metric
+5. Verify it against a **real instance**, not only a fixture — see
+   `engineeringIntelligence.live.test.ts`. A fixture written by the collector's
+   author agrees with whatever that author assumed, so it cannot catch a wrong
+   endpoint, a wrong HTTP method, or a field that does not exist. Every such bug
+   found in this subsystem was found by running against something real.
+6. Declare the signal in `dimensions.ts` with a weight and a normaliser. **Until a metric
    appears there it changes no score** — collecting it and scoring on it are separate steps,
    which is what makes a new source safe to add.
-6. Test the parser against a recorded fixture, and assert that a 500 produces no samples
-   rather than a throw or a substituted value.
+7. Test the parser against a **recorded** fixture, and assert that a 500 produces no
+   samples rather than a throw or a substituted value.
 
 ## Current data availability
 
@@ -119,7 +124,8 @@ Honest status on a running local platform:
 |---|---|
 | DORA, DevEx, catalog, Tech Insights, OpenCost, scaffolder | Live |
 | `test.passRate`, `test.flakinessRatio` | **Newly wired.** The platform's own CI now publishes JUnit XML as `test-results-*`; values appear after the next few runs give the flakiness window something to classify |
-| MLflow, Langfuse prompts, Langfuse scores, AI cost | **Spec-verified, not live-verified.** Endpoints and field names are checked against Langfuse's published OpenAPI description for the version the chart pins (chart 1.5.41 → app v3.224.1), but the AI stack does not fit in local capacity, so no response has ever been parsed from a running instance |
+| MLflow | **Live-verified** against MLflow 2.13.0. Running it found the collector POSTing to `registered-models/search`, which answers `Allow: HEAD, OPTIONS, GET`; the recorded response is committed as a fixture |
+| Langfuse prompts, Langfuse scores, AI cost | **Spec-verified, not live-verified.** Endpoints and field names are checked against Langfuse's published OpenAPI description for the version the chart pins (chart 1.5.41 → app v3.224.1), but Langfuse v3 wants ClickHouse and ~2.7GB, which this host cannot spare — so no response has been parsed from a running instance |
 
 DevEx and DORA metrics cover repositories carrying the `idp-app` topic; a repository without
 it is invisible to the exporter.

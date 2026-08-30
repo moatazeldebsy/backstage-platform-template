@@ -57,19 +57,15 @@ export async function collectMlflow(
     };
   }
 
-  // The MLflow 2.x search endpoints are POST, not GET — the same trap noted on
-  // the /mlflow proxy in app-config, where the endpoint had to allow POST or
-  // every search returned 405.
+  // GET, not POST. MLflow 2.x is not consistent about this: `runs/search` and
+  // `experiments/search` are POST, but `registered-models/search` answers
+  // `Allow: HEAD, OPTIONS, GET` and returns 405 to a POST. Verified against a
+  // real MLflow 2.13.0 — the version this platform deploys.
   const body = await getJson<SearchResponse>(
-    `${base}/api/2.0/mlflow/registered-models/search`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ max_results: 1000 }),
-    },
+    `${base}/api/2.0/mlflow/registered-models/search?max_results=1000`,
   );
 
-  if (!body || !Array.isArray(body.registered_models)) {
+  if (!body) {
     return {
       samples: [],
       unavailable: {
@@ -79,7 +75,11 @@ export async function collectMlflow(
     };
   }
 
-  const facts = registryFacts(body.registered_models);
+  // An empty registry answers `{}` — the key is absent rather than an empty
+  // array. Treating a missing key as a failed call reported a reachable MLflow
+  // as unreachable, which is the opposite of the truth and hides a real
+  // "nothing registered yet" finding behind an infrastructure complaint.
+  const facts = registryFacts(body.registered_models ?? []);
 
   if (facts.registered === 0) {
     // An empty registry is not a badly managed registry. A platform with no

@@ -12,6 +12,8 @@
 // misinterpreting it (the DORA `service="all-services"` roll-up double-counted,
 // or OpenCost efficiency read as a percentage when it arrives as a ratio).
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ConfigReader } from '@backstage/config';
 import {
   catalogSamples,
@@ -636,6 +638,19 @@ describe('registryFacts', () => {
 });
 
 describe('collectMlflow', () => {
+  // Driven by a response recorded from a real MLflow 2.13.0, not a hand-written
+  // approximation. The previous fixtures here agreed with what the collector
+  // assumed and so proved nothing: they asserted a POST search, which the real
+  // API answers with 405.
+  const REAL: {
+    registered_models: { name: string; latest_versions?: unknown[] }[];
+  } = JSON.parse(
+    readFileSync(
+      join(__dirname, 'fixtures', 'mlflow-registered-models-search.json'),
+      'utf8',
+    ),
+  );
+
   const ctxWithMlflow = {
     config: new ConfigReader({
       proxy: { endpoints: { '/mlflow': { target: 'http://mlflow.idp.local' } } },
@@ -644,43 +659,45 @@ describe('collectMlflow', () => {
   };
 
   it('reports the versioned ratio over registered models', async () => {
-    mockFetchJson(() => ({
-      registered_models: [
-        { name: 'a', latest_versions: [{ version: '1' }] },
-        { name: 'b', latest_versions: [{ version: '3' }] },
-        { name: 'c' },
-      ],
-    }));
+    mockFetchJson(() => REAL);
     const result = await collectMlflow(ctxWithMlflow);
     const row = result.samples.find(s => s.metric === 'ai.modelVersionedRatio');
+    // Three registered, two carrying a version — a name with no versions shows
+    // intent, not practice.
     expect(row?.value).toBeCloseTo(2 / 3);
     expect(row?.source).toBe('mlflow');
   });
 
-  it('searches over POST, as the MLflow 2.x API requires', async () => {
-    // The same trap the /mlflow proxy hit: search is POST, and a GET returns 405.
-    const methods: (string | undefined)[] = [];
-    global.fetch = jest.fn(async (_url: any, init: any) => {
-      methods.push(init?.method);
-      return { ok: true, status: 200, json: async () => ({ registered_models: [] }) } as any;
+  it('searches over GET, which is what this endpoint allows', async () => {
+    // MLflow 2.x is not consistent: runs/search and experiments/search are POST,
+    // but registered-models/search answers `Allow: HEAD, OPTIONS, GET` and
+    // returns 405 to a POST. Verified against 2.13.0.
+    const calls: { url: string; method: string | undefined }[] = [];
+    global.fetch = jest.fn(async (url: any, init: any) => {
+      calls.push({ url: String(url), method: init?.method });
+      return { ok: true, status: 200, json: async () => REAL } as any;
     }) as any;
     await collectMlflow(ctxWithMlflow);
-    expect(methods[0]).toBe('POST');
+    expect(calls[0].method).toBeUndefined();
+    expect(calls[0].url).toContain('registered-models/search');
   });
 
-  it('reports unavailable for an empty registry rather than scoring zero', async () => {
-    // A platform with no models has nothing to manage. Scoring 0% would demand
-    // model governance from a team that has not shipped a model.
-    mockFetchJson(() => ({ registered_models: [] }));
+  it('treats an empty registry as empty, not as an unreachable MLflow', async () => {
+    // A real MLflow with nothing registered answers `{}` — the key is absent
+    // rather than an empty array. Reading that as a failed call reported a
+    // healthy MLflow as unreachable and hid the actual finding.
+    mockFetchJson(() => ({}));
     const result = await collectMlflow(ctxWithMlflow);
     expect(result.samples).toEqual([]);
     expect(result.unavailable?.reason).toMatch(/No models are registered/);
+    expect(result.facts).toEqual({ registered: 0, versioned: 0 });
   });
 
-  it('reports unavailable when MLflow does not answer', async () => {
+  it('reports unavailable when MLflow does not answer at all', async () => {
     mockFetchJson(() => undefined);
     const result = await collectMlflow(ctxWithMlflow);
     expect(result.unavailable?.source).toBe('mlflow');
+    expect(result.unavailable?.reason).toMatch(/did not answer/);
   });
 });
 
