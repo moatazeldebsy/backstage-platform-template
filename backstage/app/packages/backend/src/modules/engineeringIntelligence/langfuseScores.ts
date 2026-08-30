@@ -108,7 +108,11 @@ export async function collectLangfuseScores(
   }
 
   const body = await getJson<ScoresResponse>(
-    `${base}/api/public/scores?limit=500`,
+    // v2, not v1: `/api/public/scores` is POST-only in Langfuse v3 and the GET
+    // moved to `/api/public/v2/scores`. The old path answered 405, which
+    // `getJson` turned into "no scores" — a broken call that read as an
+    // organisation with no evaluation suite.
+    `${base}/api/public/v2/scores?limit=500`,
     { headers: { Authorization: auth.header } },
   );
 

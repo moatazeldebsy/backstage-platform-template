@@ -26,6 +26,8 @@ import {
 import {
   collectLangfuse,
   langfuseAuth,
+  metricsUrl,
+  observationsByModelQuery,
   promptFacts,
   rollup,
 } from '../engineeringIntelligence/langfuse';
@@ -705,11 +707,13 @@ describe('promptFacts', () => {
 
 describe('collectLangfuse — prompts', () => {
   it('emits prompt management alongside observability', async () => {
-    mockFetchJson(url =>
-      url.includes('/prompts')
-        ? { data: [{ name: 'a', labels: ['production'] }, { name: 'b', labels: [] }] }
-        : { data: [{ countTraces: 3 }] },
-    );
+    mockLangfuse({
+      rows: [{ providedModelName: 'm', count: 3 }],
+      traces: 3,
+      prompts: {
+        data: [{ name: 'a', labels: ['production'] }, { name: 'b', labels: [] }],
+      },
+    });
     const result = await collectLangfuse(ctx);
     const byMetric = Object.fromEntries(result.samples.map(s => [s.metric, s.value]));
     expect(byMetric['ai.observabilityActive']).toBe(1);
@@ -719,9 +723,11 @@ describe('collectLangfuse — prompts', () => {
   it('keeps the observability sample when the prompt call fails', async () => {
     // The two answer different questions; one being unavailable says nothing
     // about the other.
-    mockFetchJson(url =>
-      url.includes('/prompts') ? undefined : { data: [{ countTraces: 3 }] },
-    );
+    mockFetchJson(url => {
+      if (url.includes('/prompts')) return undefined;
+      if (url.includes('/api/public/traces')) return { meta: { totalItems: 3 } };
+      return { data: [{ providedModelName: 'm', count: 3 }] };
+    });
     const result = await collectLangfuse(ctx);
     expect(result.samples.map(s => s.metric)).toEqual(['ai.observabilityActive']);
   });
@@ -754,15 +760,29 @@ describe('ownerMap', () => {
 });
 
 describe('modelCosts', () => {
-  it('rolls the daily per-model buckets up', () => {
+  it('folds duplicate per-model rows together', () => {
+    // Langfuse v3 groups by model itself, so this only has to merge repeats.
     expect(
       modelCosts({
         data: [
-          { usage: [{ model: 'opus', totalCost: 1.5, inputUsage: 100, outputUsage: 50 }] },
-          { usage: [{ model: 'opus', totalCost: 0.5, inputUsage: 20, outputUsage: 10 }] },
+          { providedModelName: 'opus', totalCost: 1.5, inputTokens: 100, outputTokens: 50 },
+          { providedModelName: 'opus', totalCost: 0.5, inputTokens: 20, outputTokens: 10 },
         ],
       }),
     ).toEqual([{ model: 'opus', costUsd: 2, inputTokens: 120, outputTokens: 60 }]);
+  });
+
+  it('skips rows with no model rather than inventing a bucket', () => {
+    // Non-generation observations carry a null model. Attributing their cost to
+    // a made-up model would put spans in a per-model cost table.
+    expect(
+      modelCosts({
+        data: [
+          { providedModelName: null, totalCost: 9, inputTokens: 1 },
+          { providedModelName: 'opus', totalCost: 1, inputTokens: 2, outputTokens: 3 },
+        ],
+      }),
+    ).toEqual([{ model: 'opus', costUsd: 1, inputTokens: 2, outputTokens: 3 }]);
   });
 });
 
@@ -1095,23 +1115,19 @@ describe('collectOpenCost', () => {
 // ── langfuse ──────────────────────────────────────────────────────────────────
 
 describe('langfuse rollup', () => {
-  it('rolls per-day, per-model buckets up into one total', () => {
-    const rolled = rollup({
-      data: [
-        {
-          countTraces: 100,
-          countObservations: 500,
-          totalCost: 1.5,
-          usage: [{ model: 'claude-opus-5' }, { model: 'gpt-4o' }],
-        },
-        {
-          countTraces: 62,
-          countObservations: 543,
-          totalCost: 0.56,
-          usage: [{ model: 'claude-opus-5' }],
-        },
-      ],
-    });
+  // Rows are shaped as Langfuse v3's metrics API returns them for the
+  // observations view grouped by providedModelName — not as the removed
+  // /metrics/daily endpoint used to.
+  it('folds the per-model rows into one total', () => {
+    const rolled = rollup(
+      {
+        data: [
+          { providedModelName: 'claude-opus-5', count: 500, totalCost: 1.5 },
+          { providedModelName: 'gpt-4o', count: 543, totalCost: 0.56 },
+        ],
+      },
+      162,
+    );
     expect(rolled).toEqual({
       traces: 162,
       observations: 1043,
@@ -1120,9 +1136,68 @@ describe('langfuse rollup', () => {
     });
   });
 
+  it('counts a null model as observations but not as a model', () => {
+    // Langfuse files non-generation observations under a null model. They are
+    // real rows, and they are not a model — counting them as one would report a
+    // platform using more models than it does.
+    const rolled = rollup(
+      {
+        data: [
+          { providedModelName: 'claude-opus-5', count: 10, totalCost: 1 },
+          { providedModelName: null, count: 90, totalCost: 0 },
+        ],
+      },
+      5,
+    );
+    expect(rolled?.models).toBe(1);
+    expect(rolled?.observations).toBe(100);
+  });
+
+  it('does not infer traces from observations', () => {
+    // One trace carries many spans. Counting observations as traces would
+    // multiply the trace count by the average span fan-out.
+    const rolled = rollup(
+      { data: [{ providedModelName: 'm', count: 900, totalCost: 0 }] },
+      undefined,
+    );
+    expect(rolled?.traces).toBe(0);
+    expect(rolled?.observations).toBe(900);
+  });
+
   it('returns undefined when the API did not answer', () => {
-    expect(rollup(undefined)).toBeUndefined();
-    expect(rollup({})).toBeUndefined();
+    expect(rollup(undefined, 1)).toBeUndefined();
+    expect(rollup({}, 1)).toBeUndefined();
+  });
+});
+
+describe('the Langfuse v3 metrics query', () => {
+  // The failure this locks down: the collector previously called
+  // /api/public/metrics/daily, which does not exist in Langfuse v3. It 404d,
+  // getJson swallowed it, and the result was indistinguishable from "Langfuse
+  // is not deployed".
+  it('targets the endpoint that exists, not the one that was removed', () => {
+    const url = metricsUrl('http://lf', '2026-08-01T00:00:00Z', '2026-08-08T00:00:00Z');
+    expect(url).toContain('/api/public/metrics?query=');
+    expect(url).not.toContain('/metrics/daily');
+  });
+
+  it('asks for the documented view, dimension and measures', () => {
+    const q = JSON.parse(
+      observationsByModelQuery('2026-08-01T00:00:00Z', '2026-08-08T00:00:00Z'),
+    );
+    expect(q.view).toBe('observations');
+    // `providedModelName`, not `model` — the latter is not a documented
+    // dimension and returns a 400.
+    expect(q.dimensions).toEqual([{ field: 'providedModelName' }]);
+    expect(q.metrics.map((m: { measure: string }) => m.measure).sort()).toEqual([
+      'count',
+      'inputTokens',
+      'outputTokens',
+      'totalCost',
+    ]);
+    // Both bounds are required by the API.
+    expect(q.fromTimestamp).toBeTruthy();
+    expect(q.toTimestamp).toBeTruthy();
   });
 });
 
@@ -1187,6 +1262,27 @@ describe('langfuseAuth', () => {
   });
 });
 
+/**
+ * Answer both calls collectLangfuse makes: the observations metrics query and
+ * the trace count. Routing on the URL rather than returning one body for
+ * everything is what keeps these tests honest now that traces and observations
+ * come from different endpoints.
+ */
+function mockLangfuse(opts: {
+  rows?: unknown[];
+  traces?: number;
+  prompts?: unknown;
+}) {
+  mockFetchJson((url: string) => {
+    if (url.includes('/api/public/metrics')) return { data: opts.rows ?? [] };
+    if (url.includes('/api/public/traces')) {
+      return { meta: { totalItems: opts.traces ?? 0 } };
+    }
+    if (url.includes('/api/public/v2/prompts')) return opts.prompts;
+    return undefined;
+  });
+}
+
 describe('collectLangfuse', () => {
   it('reports unavailable without any credential', async () => {
     const noKeys = {
@@ -1201,7 +1297,7 @@ describe('collectLangfuse', () => {
   });
 
   it('collects using only the proxy credential, with no langfuse.* keys set', async () => {
-    mockFetchJson(() => ({ data: [{ countTraces: 4 }] }));
+    mockLangfuse({ rows: [{ providedModelName: 'm', count: 4 }], traces: 4 });
     const proxyOnly = {
       config: new ConfigReader({
         proxy: {
@@ -1222,7 +1318,10 @@ describe('collectLangfuse', () => {
   });
 
   it('reports observability active when traces are flowing', async () => {
-    mockFetchJson(() => ({ data: [{ countTraces: 12, countObservations: 40, totalCost: 0.1 }] }));
+    mockLangfuse({
+      rows: [{ providedModelName: 'm', count: 40, totalCost: 0.1 }],
+      traces: 12,
+    });
     const result = await collectLangfuse(ctx);
     expect(result.samples[0].metric).toBe('ai.observabilityActive');
     expect(result.samples[0].value).toBe(1);
@@ -1231,7 +1330,7 @@ describe('collectLangfuse', () => {
   it('reports observability inactive — a real zero — when no traces arrived', async () => {
     // This is the one place a zero is a measurement rather than an absence:
     // Langfuse answered, and it has seen nothing.
-    mockFetchJson(() => ({ data: [] }));
+    mockLangfuse({ rows: [], traces: 0 });
     const result = await collectLangfuse(ctx);
     expect(result.samples[0].value).toBe(0);
     expect(result.unavailable).toBeUndefined();

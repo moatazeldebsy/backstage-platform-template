@@ -23,9 +23,9 @@ Collectors live in `backstage/app/packages/backend/src/modules/engineeringIntell
 | `catalog.ts` | Backstage catalog API | `catalog.ownershipCoverage`, `catalog.goldenPathAdoption` |
 | `techInsights.ts` | Tech Insights facts API | `scorecard.checksPassedRatio`, `security.scanningControlsRatio`, `ai.modelCardRatio`, `ai.evalSuiteRatio`, `ai.observabilityWiredRatio`, `ai.governanceChecksRatio` |
 | `opencost.ts` | OpenCost `/allocation/compute` | `finops.costEfficiencyRatio` |
-| `langfuse.ts` | Langfuse public API | `ai.observabilityActive`, `ai.promptsManagedRatio` |
-| `langfuseScores.ts` | Langfuse scores API | `ai.evalPassRatio` |
-| `aiCost.ts` | Langfuse daily metrics | `ai.costAttributedRatio` |
+| `langfuse.ts` | Langfuse v3 metrics + traces API | `ai.observabilityActive`, `ai.promptsManagedRatio` |
+| `langfuseScores.ts` | Langfuse `/api/public/v2/scores` | `ai.evalPassRatio` |
+| `aiCost.ts` | Langfuse metrics + traces API | `ai.costAttributedRatio` |
 | `scaffolder.ts` | Backstage scaffolder API | `scaffolder.taskSuccessRatio` |
 | `mlflow.ts` | MLflow registry | `ai.modelVersionedRatio` |
 
@@ -119,7 +119,7 @@ Honest status on a running local platform:
 |---|---|
 | DORA, DevEx, catalog, Tech Insights, OpenCost, scaffolder | Live |
 | `test.passRate`, `test.flakinessRatio` | **Newly wired.** The platform's own CI now publishes JUnit XML as `test-results-*`; values appear after the next few runs give the flakiness window something to classify |
-| MLflow, Langfuse prompts, Langfuse scores, AI cost | Fixture-tested only — the AI stack is not installed locally |
+| MLflow, Langfuse prompts, Langfuse scores, AI cost | **Spec-verified, not live-verified.** Endpoints and field names are checked against Langfuse's published OpenAPI description for the version the chart pins (chart 1.5.41 → app v3.224.1), but the AI stack does not fit in local capacity, so no response has ever been parsed from a running instance |
 
 DevEx and DORA metrics cover repositories carrying the `idp-app` topic; a repository without
 it is invisible to the exporter.

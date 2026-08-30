@@ -20,19 +20,59 @@ import {
 // key added at the emitting end (services/*/src/telemetry.ts) before it can be
 // anything other than invented.
 
-export interface DailyMetrics {
-  data?: {
-    date?: string;
-    countTraces?: number;
-    countObservations?: number;
-    totalCost?: number;
-    usage?: {
-      model?: string;
-      inputUsage?: number;
-      outputUsage?: number;
-      totalCost?: number;
-    }[];
-  }[];
+// Langfuse v3's metrics API (`GET /api/public/metrics?query=<json>`). It replaced
+// `/api/public/metrics/daily`, which this collector used to call and which no
+// longer exists — the request 404s, and because `getJson` swallows failures that
+// looked exactly like "Langfuse is not deployed yet" rather than a broken call.
+//
+// The query is a JSON string, and the response rows carry whatever the query
+// asked for, so the shape below is the shape OUR query produces and nothing
+// more general. Field names are taken from the published OpenAPI description
+// rather than guessed: the model dimension is `providedModelName`, not `model`.
+export interface MetricsRow {
+  providedModelName?: string | null;
+  count?: number;
+  totalCost?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  [key: string]: unknown;
+}
+
+export interface MetricsResponse {
+  data?: MetricsRow[];
+}
+
+/**
+ * Build the `query` parameter for the observations view, grouped by model.
+ *
+ * One query serves both callers: this collector needs the observation count and
+ * the distinct model count, and `aiCost.ts` needs per-model cost and tokens.
+ * Asking once and sharing the rows keeps the two consistent — two queries could
+ * disagree if a trace landed between them.
+ */
+export function observationsByModelQuery(from: string, to: string): string {
+  return JSON.stringify({
+    view: 'observations',
+    dimensions: [{ field: 'providedModelName' }],
+    metrics: [
+      { measure: 'count', aggregation: 'count' },
+      { measure: 'totalCost', aggregation: 'sum' },
+      { measure: 'inputTokens', aggregation: 'sum' },
+      { measure: 'outputTokens', aggregation: 'sum' },
+    ],
+    fromTimestamp: from,
+    toTimestamp: to,
+  });
+}
+
+export function metricsUrl(base: string, from: string, to: string): string {
+  const q = encodeURIComponent(observationsByModelQuery(from, to));
+  return `${base}/api/public/metrics?query=${q}`;
+}
+
+/** Paginated list envelope. `meta.totalItems` is how we count traces now. */
+export interface TraceCount {
+  meta?: { totalItems?: number };
 }
 
 /**
@@ -120,26 +160,33 @@ export interface LangfuseRollup {
   models: number;
 }
 
-/** Roll the per-day, per-model buckets up. Pure, so it is testable. */
-export function rollup(body: DailyMetrics | undefined): LangfuseRollup | undefined {
-  const days = body?.data;
-  if (!Array.isArray(days)) return undefined;
+/**
+ * Roll the per-model rows up. Pure, so it is testable.
+ *
+ * `traces` comes from a separate call rather than from these rows: the metrics
+ * API has no documented `traces` view, and counting observations would overstate
+ * traces by however many spans each one carries.
+ */
+export function rollup(
+  body: MetricsResponse | undefined,
+  traces: number | undefined,
+): LangfuseRollup | undefined {
+  const rows = body?.data;
+  if (!Array.isArray(rows)) return undefined;
 
-  let traces = 0;
   let observations = 0;
   let costUsd = 0;
   const models = new Set<string>();
 
-  for (const day of days) {
-    traces += finite(day.countTraces) ?? 0;
-    observations += finite(day.countObservations) ?? 0;
-    costUsd += finite(day.totalCost) ?? 0;
-    for (const usage of day.usage ?? []) {
-      if (usage.model) models.add(usage.model);
-    }
+  for (const row of rows) {
+    observations += finite(row.count) ?? 0;
+    costUsd += finite(row.totalCost) ?? 0;
+    // A null model is Langfuse's bucket for observations that are not
+    // generations. It is a real row, but it is not a model.
+    if (row.providedModelName) models.add(row.providedModelName);
   }
 
-  return { traces, observations, costUsd, models: models.size };
+  return { traces: finite(traces) ?? 0, observations, costUsd, models: models.size };
 }
 
 export async function collectLangfuse(
@@ -161,13 +208,21 @@ export async function collectLangfuse(
     return { samples: [], unavailable: { source: 'langfuse', reason: auth.reason } };
   }
 
+  const to = new Date().toISOString();
   const from = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  const body = await getJson<DailyMetrics>(
-    `${base}/api/public/metrics/daily?fromTimestamp=${encodeURIComponent(from)}`,
-    { headers: { Authorization: auth.header } },
-  );
+  const headers = { Authorization: auth.header };
 
-  const rolled = rollup(body);
+  // limit=1 because only `meta.totalItems` is wanted; pulling 500 trace bodies
+  // to count them would be pure waste.
+  const [body, traceCount] = await Promise.all([
+    getJson<MetricsResponse>(metricsUrl(base, from, to), { headers }),
+    getJson<TraceCount>(
+      `${base}/api/public/traces?limit=1&fromTimestamp=${encodeURIComponent(from)}`,
+      { headers },
+    ),
+  ]);
+
+  const rolled = rollup(body, traceCount?.meta?.totalItems);
   if (!rolled) {
     return {
       samples: [],
