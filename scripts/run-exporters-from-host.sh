@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 # Run the observability exporters from the host instead of from the cluster.
 #
-# Why this exists: on this machine the Kind cluster's egress to GitHub is
-# unreliable — the same API call that answers in ~0.6s from the host returns
-# ConnectionError and SSLError from inside a pod, so the dora-exporter and
-# flaky-test-exporter CronJobs cannot fetch what they need and their dimensions
-# (Developer Experience, Reliability, Quality) stay unscored. Running the exact
-# same script from the host, pushing to the same Pushgateway, fills them.
+# Why this exists: when this cluster is starved, the exporter CronJobs fail to
+# reach GitHub — requests raise ConnectionError and SSLError from inside a pod
+# while the identical call answers in ~0.6s from the host — and Developer
+# Experience, Reliability and Quality lose their data. Running the same script
+# from the host, pushing to the same Pushgateway, fills them without waiting for
+# the cluster to recover.
 #
-# This is a workaround for a broken network, not a replacement for the CronJobs.
-# When egress is fixed, the CronJobs resume and this script stops being needed.
+# The cause is resource exhaustion, not the network. Measured on this machine:
+# while kube-state-metrics was in CrashLoopBackOff x45 and Pushgateway and
+# Prometheus were restarting, a pod could not fetch a GitHub artifact at all;
+# once the cluster settled, the same CronJob completed in 3m20s with zero fetch
+# errors. A 10MB download from a pod then succeeded 6/6 at MTU 1500 and 6/6 at
+# 1280, so the WARP MTU mismatch (tunnel 1280, pods 1500) that looks like an
+# obvious culprit is real but is not what breaks these jobs.
+#
+# So this is a fallback for a loaded cluster, not a replacement for the
+# CronJobs, which work whenever the cluster is healthy. Reach for it when a job
+# is failing and you want the numbers now; fix the memory pressure for a durable
+# answer.
 #
 # It does NOT hardcode configuration. Every environment variable is read from
 # the live CronJob spec, so the script cannot drift from what the cluster
