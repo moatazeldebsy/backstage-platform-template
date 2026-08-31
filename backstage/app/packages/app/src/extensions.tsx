@@ -5954,12 +5954,20 @@ function SettingsPage() {
             {tab === 'API Tokens' && (
               <Paper>
                 <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
-                  <Typography variant="h6" style={{ flex: 1 }}>API Tokens</Typography>
-                  <Button variant="contained" color="primary" size="small" style={{ fontSize: 12 }}>+ Generate Token</Button>
+                  <Typography variant="h6" style={{ flex: 1 }}>API Tokens<DemoChip /></Typography>
+                  <Button variant="contained" color="primary" size="small" style={{ fontSize: 12 }} disabled>+ Generate Token</Button>
                 </Box>
-                <Box style={{ padding: '12px 16px', background: '#e3f2fd', borderBottom: '1px solid #e0e0e0' }}>
-                  <Typography variant="body2" style={{ color: '#1565c0' }}>
-                    ℹ Tokens provide programmatic access to the Backstage API. Keep them secret — treat like passwords.
+                <Box style={{ padding: '12px 16px', background: '#fff8e1', borderBottom: '1px solid #ffe082' }}>
+                  <Typography variant="body2" style={{ color: '#7c6000' }}>
+                    <strong>The rows below are examples, not your tokens.</strong> This platform does not
+                    issue or store Backstage API tokens, so nothing here reflects real access. Showing
+                    plausible token names and scopes as though they were live was misleading about
+                    security state, which is why they are labelled rather than listed plainly.
+                  </Typography>
+                  <Typography variant="body2" style={{ color: '#7c6000', marginTop: 6 }}>
+                    Service-to-service calls authenticate with <code>BACKSTAGE_AUTH_SECRET</code>; the
+                    catalog exporter uses <code>BACKSTAGE_CATALOG_TOKEN</code>. Both are managed in
+                    Secrets Manager on AWS and in <code>local/backstage/.env</code> locally.
                   </Typography>
                 </Box>
                 <TableContainer>
@@ -6001,7 +6009,14 @@ function SettingsPage() {
             {tab === 'Integrations' && (
               <Paper>
                 <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
-                  <Typography variant="h6">Connected Integrations</Typography>
+                  <Typography variant="h6">Connected Integrations<DemoChip /></Typography>
+                </Box>
+                <Box style={{ padding: '12px 16px', background: '#fff8e1', borderBottom: '1px solid #ffe082' }}>
+                  <Typography variant="body2" style={{ color: '#7c6000' }}>
+                    Illustrative. These connection states are not read from configuration — a service
+                    shown as connected here may not be configured at all. Check{' '}
+                    <code>app-config.yaml</code> for what this instance actually talks to.
+                  </Typography>
                 </Box>
                 {INTEGRATIONS.map((intg, i) => (
                   <Box key={intg.name} display="flex" alignItems="center" style={{ gap: 14, padding: '14px 20px',
@@ -6162,7 +6177,14 @@ function UserProfilePage() {
               <Box style={{ flex: '2 1 300px' }}>
                 <Paper>
                   <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
-                    <Typography variant="h6">Recent Activity</Typography>
+                    <Typography variant="h6">Recent Activity<DemoChip /></Typography>
+                  </Box>
+                  <Box style={{ padding: '12px 20px', background: '#fff8e1', borderBottom: '1px solid #ffe082' }}>
+                    <Typography variant="body2" style={{ color: '#7c6000' }}>
+                      Example entries. Nothing here is your activity — the platform keeps no
+                      per-user event history, so a feed reading like an audit trail was the one
+                      panel most likely to be believed.
+                    </Typography>
                   </Box>
                   <Box style={{ padding: '8px 0' }}>
                     {ACTIVITY_DEMO.map((item, i) => (
