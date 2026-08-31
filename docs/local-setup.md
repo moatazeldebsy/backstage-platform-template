@@ -17,6 +17,14 @@ docker info     # Docker running
 
 > **macOS ARM64 note**: The cluster is pinned to K8s **1.33.1** (`kindest/node:v1.33.1`) — tested stable on macOS ARM64 with Docker Desktop.
 
+> **Python note (only if you run the observability tests)**: the exporters use
+> `X | None` type syntax, which needs **Python 3.10+**. macOS ships 3.9 as
+> `python3`, and running `pytest observability/tests` with it fails inside an
+> import — `observability/tests/conftest.py` catches that and says so. Use a
+> newer interpreter, e.g. `python3.13 -m pytest observability/tests`. Nothing
+> else in the local setup needs it: CI runs 3.12/3.13 and the exporter CronJobs
+> use `python:3.12-slim` / `python:3.13-slim`.
+
 ## Machine requirements — and what to do if you don't have them
 
 The full platform is ~90 pods. What it actually consumes once settled, measured
