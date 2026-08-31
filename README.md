@@ -13,6 +13,8 @@ A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (ser
 
 > **Using this template?** Click **"Use this template"** above, then run `./scripts/setup.sh` to personalise all placeholders — skipping it leaves ArgoCD's ApplicationSet pointed at the unresolved `moatazeldebsy` placeholder and it won't generate any apps.
 
+![Platform Planes](docs/assets/platform-planes.png)
+
 ![Platform Architecture](docs/assets/platform-architecture.jpg)
 
 <video src="https://github.com/user-attachments/assets/1f62cfc3-f645-4960-b0f7-9725324c9a13"
@@ -182,11 +184,10 @@ Manager → External Secrets on EKS.
 
 ### Platform Planes
 
-How the pieces fit together: five planes, each independently installable. The core IDP runs
-without the AI and Observability planes, and the AI plane holds no privilege the planes above
-it do not already grant.
-
-![Platform Planes](docs/assets/platform-planes.png)
+The [planes diagram](#-backstage-platform-template) at the top of this page is the systems
+view: five planes, each independently installable. The core IDP runs without the AI and
+Observability planes, and the AI plane holds no privilege the planes above it do not already
+grant.
 
 ### AWS Architecture
 
