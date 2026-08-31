@@ -218,3 +218,37 @@ def test_publish_drops_unmeasurable_services(monkeypatch):
     body = body.decode() if isinstance(body, bytes) else body
     assert "reachable" in body
     assert 'service="unreachable"' not in body
+
+
+# ── window sizing ─────────────────────────────────────────────────────────────
+#
+# The failure this covers: WINDOW_SIZE counts every completed workflow run, not
+# just the one publishing tests. On a repo where CodeQL and a docs deploy fire on
+# every push, a window of 10 held no CI run at all — so Quality reported
+# "insufficient evidence" when the data existed just outside the window.
+#
+# Looking deeper costs an artifact-list call per run, so the depth is paired with
+# a cap on how many artifact-bearing runs are actually needed.
+
+
+def test_window_is_deeper_than_the_artifact_cap():
+    # The window is how far back we may look; the cap is how much we use. If the
+    # cap were the larger of the two it would never bind and the cost control
+    # would be decorative.
+    assert mod.WINDOW_SIZE > mod.MAX_ARTIFACT_RUNS
+    assert mod.WINDOW_SIZE >= 30
+    assert mod.MAX_ARTIFACT_RUNS >= 10
+
+
+def test_flakiness_still_needs_two_outcomes(monkeypatch):
+    # The cap must not change what "flaky" means: a test is flaky only when it
+    # both passed and failed within the runs actually observed.
+    sf = mod.ServiceFlakiness(service="s", team="t", repo="o/r")
+    for outcome in ("pass", "pass", "fail"):
+        sf.record("suite/test_a", "suite", outcome)
+    for outcome in ("pass", "pass"):
+        sf.record("suite/test_b", "suite", outcome)
+
+    flaky = {t.test_id for t in sf.flaky_tests}
+    assert "suite/test_a" in flaky
+    assert "suite/test_b" not in flaky

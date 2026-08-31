@@ -63,7 +63,14 @@ spec:
                   value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
                 - name: MODE
                   value: "pushgateway"
+                # How far back to look. Counts every workflow run, not just the
+                # one that publishes tests — on a repo with frequent CodeQL and
+                # docs-deploy runs, a window of 10 held no CI run at all and the
+                # Quality dimension read as unmeasurable when it simply had not
+                # been reached. MAX_ARTIFACT_RUNS bounds what that costs.
                 - name: WINDOW_SIZE
+                  value: "30"
+                - name: MAX_ARTIFACT_RUNS
                   value: "10"
               volumeMounts:
                 - name: exporter-script
