@@ -1,0 +1,38 @@
+scripts/setup.sh
+  s_17ccb5fb4980ad::t_6bdd2228d2b792 71-91,111-113
+aws/backstage/deployment.yaml
+  s_17ccb5fb4980ad::t_9ba4d898103bda 45-49
+terraform/secrets.tf
+  s_17ccb5fb4980ad::t_9ba4d898103bda 6-14,40
+local/backstage/.env.example
+  s_17ccb5fb4980ad::t_6bdd2228d2b792 42-44
+observability/alertmanager/alertmanager-config.yaml
+  s_17ccb5fb4980ad::t_2449886728ab5c 140-165
+  s_17ccb5fb4980ad::t_4153644d86e2e5 47-54,60,64-66,107-133
+aws/backstage/deployment-standby.yaml
+  s_17ccb5fb4980ad::t_ad3dd7cd947e84 61-65
+scripts/bootstrap.sh
+  s_17ccb5fb4980ad::t_9ba4d898103bda 455-462,464,510
+docs/readiness-checklist.md
+  s_17ccb5fb4980ad::t_0bc3136d819ca0 13-16
+backstage/app-config.yaml
+  s_17ccb5fb4980ad::t_6bdd2228d2b792 81-86
+local/backstage/docker-compose.yml
+  s_17ccb5fb4980ad::t_6bdd2228d2b792 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "aff2d233eaf76dd0be81883f5553fc99ca100751",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
