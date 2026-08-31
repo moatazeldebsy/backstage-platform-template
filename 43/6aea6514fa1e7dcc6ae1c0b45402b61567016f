@@ -1,0 +1,25 @@
+observability/tests/test_flaky_artifacts.py
+  s_17ccb5fb4980ad::t_13824d120032f3 221-254
+observability/flaky-test-exporter/cronjob.yaml
+  s_17ccb5fb4980ad::t_c0c6c3275b0bc0 66-70,72-73
+observability/flaky-test-exporter/exporter.py
+  s_17ccb5fb4980ad::t_adba72ba1718c1 26-32,58-62,285-288
+docs/engineering-intelligence/integrations.md
+  s_17ccb5fb4980ad::t_d8d13b342b5238 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "436aea6514fa1e7dcc6ae1c0b45402b61567016f",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
