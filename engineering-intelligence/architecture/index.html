@@ -2652,7 +2652,7 @@ verified against <code>main</code>.</p>
   rotation are live-queried via <code>security-mcp-server</code> and never persisted. There
   are no <code>kyverno_*</code>, <code>trivy_*</code> or <code>gitleaks_*</code> series.</li>
 <li><strong>Code coverage and e2e pass rate.</strong> Both appear on the QA Grafana dashboard,
-  but the only thing that ever writes them is <code>scripts/seed-qa-metrics.sh</code> —
+  but the only thing that ever wrote them was <code>scripts/seed-qa-metrics.sh</code>, now removed —
   they are demo values. Deliberately excluded from the Quality dimension.</li>
 <li><strong>SLO error budgets.</strong> Sloth rules exist for <code>hello-service</code> alone.</li>
 <li><strong>AI cost attribution is convention-based.</strong> Phase 8 joins a trace to a

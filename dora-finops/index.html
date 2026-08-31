@@ -2753,7 +2753,7 @@ create a ConfigMap:</p>
 <li>Pushes metrics to Prometheus Pushgateway with <code>service=&lt;name&gt;</code> labels</li>
 <li>Prunes Pushgateway series for services that are no longer discovered</li>
 </ol>
-<p>The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Local metrics also accept synthetic data via <code>./scripts/seed-qa-metrics.sh</code> for demo purposes.</p>
+<p>The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Nothing seeds synthetic values: a panel with no publisher shows no data and says which series is missing.</p>
 <h3 id="which-services-appear">Which services appear<a class="headerlink" href="#which-services-appear" title="Permanent link">&para;</a></h3>
 <p>Two independent filters decide what lands on a dashboard, and a service must pass both:</p>
 <table>

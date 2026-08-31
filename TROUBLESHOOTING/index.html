@@ -3599,13 +3599,16 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 </code></pre></div></td></tr></table></div>
 <p>If the job fails with an auth error, update the token in Secrets Manager (see GITHUB_TOKEN section in <a href="../PRE_DEPLOYMENT_CHECKLIST/">PRE_DEPLOYMENT_CHECKLIST.md</a>).</p>
 <h4 id="symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty">Symptom: Pushgateway has no data / QA metrics dashboard empty<a class="headerlink" href="#symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty" title="Permanent link">&para;</a></h4>
-<p>Re-seed metrics pointing at the ALB URL:</p>
+<p>Expected on a new install, and not a fault. The QA dashboard is no longer seeded with
+sample values — it shows what the flaky-test exporter has actually collected, which is
+nothing until a service publishes JUnit <code>test-results*</code> artifacts from its CI.</p>
+<p>Check that the exporter is running and finding artifacts:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">PUSHGATEWAY_URL</span><span class="o">=</span>http://<span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>prometheus-pushgateway<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[0].hostname}&#39;</span><span class="k">)</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>./scripts/seed-qa-metrics.sh
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>flaky-manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--from<span class="o">=</span>cronjob/flaky-test-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span>job-name<span class="o">=</span>flaky-manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span>
 </code></pre></div></td></tr></table></div>
+<p>A line reading <code>0/10 runs had artifacts</code> means the repositories in the catalog are not
+publishing test results yet, not that the exporter is broken.</p>
 <h4 id="symptom-grafana-returning-503-intermittently">Symptom: Grafana returning 503 intermittently<a class="headerlink" href="#symptom-grafana-returning-503-intermittently" title="Permanent link">&para;</a></h4>
 <p>With a single node cluster, Grafana pod restarts can cause brief 503s. The nginx proxy is configured with <code>proxy-next-upstream: http_503</code> so retries are automatic. If 503s persist more than 60 seconds:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>

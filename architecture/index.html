@@ -2735,7 +2735,7 @@
 <h3 id="external-secrets-operator-aws">External Secrets Operator (AWS)<a class="headerlink" href="#external-secrets-operator-aws" title="Permanent link">&para;</a></h3>
 <p>ESO syncs secrets from AWS Secrets Manager into Kubernetes <code>Secret</code> objects. A single cluster-scoped <code>ClusterSecretStore</code> named <code>aws-secretsmanager</code> is created during bootstrap and shared by all <code>ExternalSecret</code> resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read <code>idp-mvp/*</code> secrets without static credentials.</p>
 <h3 id="observability-parity-local-aws">Observability parity (local = AWS)<a class="headerlink" href="#observability-parity-local-aws" title="Permanent link">&para;</a></h3>
-<p>Both environments use <code>kube-prometheus-stack</code> (Prometheus + Grafana + AlertManager bundled). AWS uses gp3 persistent volumes; local uses hostPath. Both install Prometheus Pushgateway as a separate Helm release so that <code>apply-catalog-exporter.sh</code>, <code>seed-qa-metrics.sh</code>, and the tech-insights-exporter CronJob can push metrics without modification.</p>
+<p>Both environments use <code>kube-prometheus-stack</code> (Prometheus + Grafana + AlertManager bundled). AWS uses gp3 persistent volumes; local uses hostPath. Both install Prometheus Pushgateway as a separate Helm release so that <code>apply-catalog-exporter.sh</code> and the exporter CronJobs can push metrics without modification.</p>
 <p>On AWS only Grafana gets a public ALB. Prometheus, AlertManager, Pushgateway, OpenCost and the Argo Rollouts dashboard deliberately have no ingress: each one costs ~$16/mo for a load balancer, and each was internet-facing with no authentication in front of it. They are operator tools reachable with <code>kubectl port-forward</code> — <code>bootstrap.sh</code> prints the exact command for each in its closing banner. Consolidating the remaining ALBs behind one hostname needs DNS; see the cost section of the deployment guide.</p>
 <h3 id="aws-load-balancer-controller-aws">AWS Load Balancer Controller (AWS)<a class="headerlink" href="#aws-load-balancer-controller-aws" title="Permanent link">&para;</a></h3>
 <p>All <code>Ingress</code> resources use <code>ingressClassName: alb</code>, backed by the AWS Load Balancer Controller. Supports <code>target-type: ip</code> (pod-level routing without NodePort).</p>
@@ -3559,8 +3559,7 @@ External Secrets Operator (ESO)
 <span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
+<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
   └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
 
 ./scripts/bootstrap.sh
@@ -3583,7 +3582,6 @@ External Secrets Operator (ESO)
   │     Pushgateway (cluster-internal)
   │     OpenCost (cluster-internal)
   │     DORA exporter CronJob
-  │     seed-qa-metrics.sh (seeds demo QA metrics into Pushgateway)
   │
   ├── Phase 5 — hello-service (~5 min)
   │     docker buildx build --platform linux/amd64 → ECR push

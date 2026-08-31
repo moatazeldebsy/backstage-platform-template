@@ -2537,7 +2537,7 @@ a Go job and a Python job has to publish <code>test-results-go</code> and <code>
 both must be read or one language's failures are invisible. Several catalog components may
 share a repository, in which case each is credited with that repository's test results.</p>
 <p>Two metrics are deliberately <strong>not</strong> collected: <code>code_coverage_percent</code> and <code>e2e_pass_rate</code>
-are only ever written by <code>scripts/seed-qa-metrics.sh</code>, so they are fabricated at source.</p>
+were only ever written by <code>scripts/seed-qa-metrics.sh</code>, which fabricated them at source and has since been removed.</p>
 
 
 

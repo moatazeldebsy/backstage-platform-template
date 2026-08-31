@@ -2992,11 +2992,6 @@ the scripts fall back to plain <code>docker build</code> + <code>docker push</co
 <td>Download, configure, and start a GitHub Actions self-hosted runner so pushes auto-deploy to the local Kind cluster.</td>
 <td>After a service repo is created</td>
 </tr>
-<tr>
-<td><code>seed-qa-metrics.sh</code></td>
-<td>Push synthetic QA metrics so the Grafana QA dashboard shows data immediately.</td>
-<td>Optional — demo / dev only</td>
-</tr>
 </tbody>
 </table>
 <h2 id="execution-flow">Execution flow<a class="headerlink" href="#execution-flow" title="Permanent link">&para;</a></h2>
@@ -3027,10 +3022,7 @@ the scripts fall back to plain <code>docker build</code> + <code>docker push</co
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code># First-time setup (interactive)
+<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code># First-time setup (interactive)
 scripts/setup.sh
   └─ Phase 0: replace placeholders in all files
   └─ Phase 1: choose local | aws | skip
@@ -3058,9 +3050,6 @@ scripts/setup-runner.sh --repo my-svc
 idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
 idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20
 idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
-
-# Optional
-scripts/seed-qa-metrics.sh
 </code></pre></div></td></tr></table></div>
 
 

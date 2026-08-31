@@ -2590,7 +2590,7 @@ happen to be measurable.</p>
 <ul>
 <li><strong>Do not add a signal for a metric nothing writes.</strong> <code>code_coverage_percent</code>
   and <code>e2e_pass_rate</code> are on the QA Grafana dashboard, but the only thing that
-  ever writes them is <code>scripts/seed-qa-metrics.sh</code>. They are excluded on purpose.</li>
+  ever wrote them was <code>scripts/seed-qa-metrics.sh</code>, now removed. They stay excluded.</li>
 <li><strong>Do not point a collector at the Backstage UI layer.</strong> Every page in
   <code>extensions.tsx</code> substitutes demo data when its source is down; a collector
   reading it would score fiction as fact. Go to Prometheus, OpenCost, Langfuse or
