@@ -1117,6 +1117,31 @@ log "Step 4d: Extracting K8s credentials for Backstage plugin..."
 "${ROOT_DIR}/scripts/get-k8s-credentials.sh"
 log "  K8s credentials written to local/backstage/.env"
 
+# Generate BACKSTAGE_AUTH_SECRET if it is missing or blank.
+#
+# The base config requires it with no fallback, so an empty value stops Backstage
+# from starting at all — docker compose refuses to interpolate. That is deliberate
+# (the old fallback was a literal published in this repository), but it should not
+# be something a first bootstrap walks into. bootstrap.sh already backfills the
+# same key on AWS; this is the local half of it.
+#
+# Only fills a missing or empty value. An existing secret is never overwritten:
+# rotating it silently would log every signed-in user out.
+if [[ -f "${ROOT_DIR}/local/backstage/.env" ]]; then
+  _bas_line="$(grep -E '^BACKSTAGE_AUTH_SECRET=' "${ROOT_DIR}/local/backstage/.env" || true)"
+  _bas_val="${_bas_line#BACKSTAGE_AUTH_SECRET=}"
+  if [[ -z "$_bas_val" ]]; then
+    _bas_new="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+    if [[ -n "$_bas_line" ]]; then
+      sed -i.bak "s|^BACKSTAGE_AUTH_SECRET=.*|BACKSTAGE_AUTH_SECRET=${_bas_new}|" \
+        "${ROOT_DIR}/local/backstage/.env" && rm -f "${ROOT_DIR}/local/backstage/.env.bak"
+    else
+      echo "BACKSTAGE_AUTH_SECRET=${_bas_new}" >> "${ROOT_DIR}/local/backstage/.env"
+    fi
+    log "  Generated BACKSTAGE_AUTH_SECRET in local/backstage/.env"
+  fi
+fi
+
 # Mirror GITHUB_ORG into local/backstage/.env so docker compose picks it up
 # without needing --env-file local/.env on every restart command.
 if [[ -n "${GITHUB_ORG:-}" && -f "${ROOT_DIR}/local/backstage/.env" ]]; then

@@ -654,6 +654,22 @@ kubectl logs -n monitoring -l "job-name=dora-manual-$(date +%s --date=1min ago)"
 
 If the job fails with an auth error, update the token in Secrets Manager (see GITHUB_TOKEN section in [PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md)).
 
+#### Symptom: `docker compose up` fails with "required variable BACKSTAGE_AUTH_SECRET is missing a value"
+
+Working as intended. That key signs Backstage's service-to-service tokens and has no
+default — the previous fallback was a literal published in this repository, so an unset
+value now stops startup instead of quietly signing with a shared key.
+
+`./scripts/setup.sh` and `./scripts/bootstrap-local.sh` both generate one into
+`local/backstage/.env`. If you are starting compose directly on a tree that predates
+this, fill it in once:
+
+```bash
+printf 'BACKSTAGE_AUTH_SECRET=%s\n' "$(openssl rand -hex 32)" >> local/backstage/.env
+```
+
+Neither script overwrites an existing value — rotating it would sign every user out.
+
 #### Symptom: Pushgateway has no data / QA metrics dashboard empty
 
 Expected on a new install, and not a fault. The QA dashboard is no longer seeded with
