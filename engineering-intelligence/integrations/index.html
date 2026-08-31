@@ -2522,8 +2522,12 @@ unconfigured.</p>
 <td><strong>Live-verified</strong> against MLflow 2.13.0. Running it found the collector POSTing to <code>registered-models/search</code>, which answers <code>Allow: HEAD, OPTIONS, GET</code>; the recorded response is committed as a fixture</td>
 </tr>
 <tr>
-<td>Langfuse prompts, Langfuse scores, AI cost</td>
-<td><strong>Spec-verified, not live-verified.</strong> Endpoints and field names are checked against Langfuse's published OpenAPI description for the version the chart pins (chart 1.5.41 → app v3.224.1), but Langfuse v3 wants ClickHouse and ~2.7GB, which this host cannot spare — so no response has been parsed from a running instance</td>
+<td>Langfuse observability, scores, AI cost</td>
+<td><strong>Live-verified</strong> against a self-hosted Langfuse v3. Running them found <code>limit=500</code> on <code>/traces</code> and <code>/v2/scores</code> returning HTTP 400 — the cap is 100 — which <code>getJson</code> turned into "no data", so both collectors reported the source as unavailable. Now paged. Score joining (<code>NUMERIC</code> + <code>_pass</code> <code>BOOLEAN</code>) and workload→team cost attribution were both confirmed against real ingested data</td>
+</tr>
+<tr>
+<td>Langfuse per-model cost breakdown</td>
+<td><strong>Still spec-verified only.</strong> The <code>providedModelName</code> dimension could not be exercised: a fresh Langfuse returns <code>count_count: 0</code> from the metrics API for every view — traces, scores and observations alike — while the list endpoints return the same data fine. The query shape is accepted and the envelope matches; only the aggregation had nothing in it</td>
 </tr>
 </tbody>
 </table>
