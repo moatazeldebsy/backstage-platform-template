@@ -177,7 +177,7 @@ The DORA exporter (`local/observability/dora/dora-exporter.py` locally, `aws/obs
 5. Pushes metrics to Prometheus Pushgateway with `service=<name>` labels
 6. Prunes Pushgateway series for services that are no longer discovered
 
-The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Local metrics also accept synthetic data via `./scripts/seed-qa-metrics.sh` for demo purposes.
+The exporter runs every 15 minutes (local) or every 5 minutes (AWS). Nothing seeds synthetic values: a panel with no publisher shows no data and says which series is missing.
 
 ### Which services appear
 

@@ -656,13 +656,19 @@ If the job fails with an auth error, update the token in Secrets Manager (see GI
 
 #### Symptom: Pushgateway has no data / QA metrics dashboard empty
 
-Re-seed metrics pointing at the ALB URL:
+Expected on a new install, and not a fault. The QA dashboard is no longer seeded with
+sample values — it shows what the flaky-test exporter has actually collected, which is
+nothing until a service publishes JUnit `test-results*` artifacts from its CI.
+
+Check that the exporter is running and finding artifacts:
 
 ```bash
-PUSHGATEWAY_URL=http://$(kubectl get ingress prometheus-pushgateway -n monitoring \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}') \
-  ./scripts/seed-qa-metrics.sh
+kubectl create job flaky-manual-$(date +%s) --from=cronjob/flaky-test-exporter -n monitoring
+kubectl logs -n monitoring -l job-name=flaky-manual-$(date +%s) --tail=30
 ```
+
+A line reading `0/10 runs had artifacts` means the repositories in the catalog are not
+publishing test results yet, not that the exporter is broken.
 
 #### Symptom: Grafana returning 503 intermittently
 

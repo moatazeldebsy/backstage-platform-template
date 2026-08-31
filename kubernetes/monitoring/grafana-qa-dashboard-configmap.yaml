@@ -19,8 +19,10 @@ data:
     {
       "__inputs": [],
       "__requires": [],
-      "annotations": { "list": [] },
-      "description": "QA Platform & Quality Enablement — E2E pass rates, k6 performance, and quality gate status",
+      "annotations": {
+        "list": []
+      },
+      "description": "QA Platform & Quality Enablement \u2014 E2E pass rates, coverage, and quality gate status",
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
@@ -28,199 +30,251 @@ data:
       "links": [],
       "panels": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "yellow", "value": 0.7 },
-                  { "color": "green", "value": 0.9 }
-                ]
-              },
-              "unit": "percentunit",
-              "min": 0, "max": 1
-            },
-            "overrides": []
+          "type": "text",
+          "title": "Why some panels are missing",
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 0
           },
-          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
-          "id": 1,
-          "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
-          "title": "E2E Pass Rate (last run)",
-          "type": "gauge",
-          "targets": [
-            {
-              "expr": "e2e_pass_rate",
-              "legendFormat": "{{suite}}",
-              "refId": "A"
-            }
-          ]
+          "options": {
+            "mode": "markdown",
+            "content": "Panels for **E2E pass rate**, **suite duration**, **code coverage** and the **k6 latency / error-rate** figures used to live here. They were removed because nothing publishes those series.\n\n`e2e_pass_rate`, `e2e_tests_total`, `perf_http_req_duration_p95_ms` and `perf_http_error_rate` came from `scripts/seed-qa-metrics.sh`, which pushed the same fixed values on every bootstrap \u2014 `e2e_pass_rate` was always `0.923`, error rate always `0.004`. `code_coverage_percent` and `e2e_duration_seconds` were never published by anything at all. The scaffolded k6 suite emits `k6_suite_last_run_timestamp`, a different metric that no panel here read.\n\nThe panels below are real. They come from the flaky-test exporter, which reads each service's JUnit `test-results*` CI artifacts.\n\nTo bring a removed panel back, publish its series first \u2014 then add the panel."
+          }
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 300 },
-                  { "color": "red", "value": 500 }
-                ]
-              },
-              "unit": "ms"
-            },
-            "overrides": []
-          },
-          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
-          "id": 2,
-          "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
-          "title": "k6 p95 Latency (last run)",
-          "type": "gauge",
-          "targets": [
-            {
-              "expr": "perf_http_req_duration_p95_ms",
-              "legendFormat": "{{suite}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 0.01 },
-                  { "color": "red", "value": 0.05 }
-                ]
-              },
-              "unit": "percentunit",
-              "min": 0, "max": 0.1
-            },
-            "overrides": []
-          },
-          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
-          "id": 3,
-          "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
-          "title": "k6 Error Rate (last run)",
-          "type": "gauge",
-          "targets": [
-            {
-              "expr": "perf_http_error_rate",
-              "legendFormat": "{{suite}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
-          "id": 4,
-          "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto" },
-          "title": "Tests Run Today",
+          "id": 8,
+          "title": "Flaky Tests \u2014 Total per Service",
           "type": "stat",
-          "targets": [
-            {
-              "expr": "increase(e2e_tests_total[1d])",
-              "legendFormat": "{{suite}} / {{result}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "lineWidth": 2, "fillOpacity": 10 },
-              "unit": "percentunit",
-              "min": 0, "max": 1
-            },
-            "overrides": []
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
-          "id": 5,
-          "options": { "legend": { "calcs": ["lastNotNull", "min"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-          "title": "E2E Pass Rate — 7 day trend",
-          "type": "timeseries",
-          "targets": [
-            {
-              "expr": "e2e_pass_rate",
-              "legendFormat": "{{suite}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "lineWidth": 2, "fillOpacity": 10 },
-              "unit": "ms"
-            },
-            "overrides": []
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 27
           },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
-          "id": 6,
-          "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-          "title": "k6 p95 Latency — trend",
-          "type": "timeseries",
-          "targets": [
-            {
-              "expr": "perf_http_req_duration_p95_ms",
-              "legendFormat": "{{suite}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "lineWidth": 2, "fillOpacity": 10 },
-              "unit": "percentunit",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              },
+              "unit": "short",
               "min": 0
             },
             "overrides": []
           },
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
-          "id": 7,
-          "options": { "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right" }, "tooltip": { "mode": "multi" } },
-          "title": "k6 Error Rate — trend",
-          "type": "timeseries",
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
           "targets": [
             {
-              "expr": "perf_http_error_rate",
-              "legendFormat": "{{suite}}",
+              "expr": "idp_test_flaky_count",
+              "legendFormat": "{{service}}",
               "refId": "A"
             }
-          ]
+          ],
+          "description": "Tests that both passed and failed in the last 10 workflow runs on the default branch. >5 is a sign the team should declare a flake-quarantine week."
+        },
+        {
+          "id": 9,
+          "title": "Top Flaky Tests (ratio of failures in window)",
+          "type": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 27
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "yellow",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.3
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "custom": {
+                "align": "auto",
+                "displayMode": "color-background"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Value",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "topk(15, idp_test_flakiness_ratio)",
+              "legendFormat": "{{service}} / {{test}}",
+              "refId": "A",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "description": "The 15 flakiest tests across the org. Use this for triage; each row is a candidate for the flake-quarantine list."
+        },
+        {
+          "id": 10,
+          "title": "Test Outcomes in Window (pass vs fail)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 35
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "bars",
+                "stacking": {
+                  "mode": "normal"
+                },
+                "lineWidth": 1,
+                "fillOpacity": 80
+              },
+              "unit": "short",
+              "min": 0
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "fail.*"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "pass.*"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "green"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (service) (idp_test_pass_total)",
+              "legendFormat": "pass {{service}}",
+              "refId": "A"
+            },
+            {
+              "expr": "sum by (service) (idp_test_fail_total)",
+              "legendFormat": "fail {{service}}",
+              "refId": "B"
+            }
+          ],
+          "description": "Aggregate pass/fail counts in the flake-detection window. Sudden growth in fail bars is a regression; growth in both is a flake."
         }
       ],
       "refresh": "5m",
       "schemaVersion": 38,
-      "tags": ["qa", "testing", "quality", "k6", "e2e"],
-      "templating": { "list": [] },
-      "time": { "from": "now-7d", "to": "now" },
+      "tags": [
+        "qa",
+        "testing",
+        "quality",
+        "flaky-tests",
+        "shift-left"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-7d",
+        "to": "now"
+      },
       "timepicker": {},
       "timezone": "browser",
       "title": "QA Platform Metrics",
       "uid": "qa-metrics",
-      "version": 2
+      "version": 1
     }

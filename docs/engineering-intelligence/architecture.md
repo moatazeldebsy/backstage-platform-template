@@ -131,7 +131,7 @@ verified against `main`.
   rotation are live-queried via `security-mcp-server` and never persisted. There
   are no `kyverno_*`, `trivy_*` or `gitleaks_*` series.
 - **Code coverage and e2e pass rate.** Both appear on the QA Grafana dashboard,
-  but the only thing that ever writes them is `scripts/seed-qa-metrics.sh` —
+  but the only thing that ever wrote them was `scripts/seed-qa-metrics.sh`, now removed —
   they are demo values. Deliberately excluded from the Quality dimension.
 - **SLO error budgets.** Sloth rules exist for `hello-service` alone.
 - **AI cost attribution is convention-based.** Phase 8 joins a trace to a
