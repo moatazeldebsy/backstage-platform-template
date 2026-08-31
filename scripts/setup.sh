@@ -68,6 +68,27 @@ _bootstrap_local() {
     log "Created local/backstage/.env from template."
   fi
 
+  # Generate the Backstage signing key rather than asking for it. This used to be
+  # a manual step whose instructions ended "leave blank to use the built-in dev
+  # default" — which is precisely how a literal published in this repo ended up
+  # signing tokens.
+  if ! grep -qE '^BACKSTAGE_AUTH_SECRET=.+' "$env_backstage" 2>/dev/null; then
+    local generated
+    generated=$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')
+    if grep -qE '^BACKSTAGE_AUTH_SECRET=' "$env_backstage" 2>/dev/null; then
+      python3 - "$env_backstage" "$generated" <<'PYEOF'
+import sys, re
+path, value = sys.argv[1], sys.argv[2]
+text = open(path).read()
+open(path, 'w').write(re.sub(r'^BACKSTAGE_AUTH_SECRET=.*$',
+                             'BACKSTAGE_AUTH_SECRET=' + value, text, flags=re.M))
+PYEOF
+    else
+      printf '\nBACKSTAGE_AUTH_SECRET=%s\n' "$generated" >> "$env_backstage"
+    fi
+    log "Generated BACKSTAGE_AUTH_SECRET in local/backstage/.env."
+  fi
+
   echo ""
   echo -e "${BOLD}Before bootstrapping, you need these credentials:${RESET}"
   echo ""
@@ -87,9 +108,9 @@ _bootstrap_local() {
   echo "     displayName         : ${DISPLAY_NAME}"
   echo "   Sign in with GitHub using the '${GITHUB_ORG}' account to match this entity."
   echo ""
-  echo -e "${CYAN}3. Backstage auth secret${RESET} → set BACKSTAGE_AUTH_SECRET in local/backstage/.env"
-  echo "   Any string works locally; for production use: openssl rand -hex 32"
-  echo "   (Leave blank to use the built-in dev default.)"
+  echo -e "${CYAN}3. Backstage auth secret${RESET} → generated for you in local/backstage/.env"
+  echo "   Nothing to do. There is no default: an unset value now fails startup"
+  echo "   rather than silently signing tokens with a shared key."
   echo ""
   echo -e "${CYAN}4. GitHub App (production/AWS only — optional for local dev)${RESET}"
   echo "   Replaces the PAT for Backstage API calls and auto-merge CI."

@@ -3,6 +3,15 @@ resource "random_password" "backstage_session" {
   special = false
 }
 
+# Signs Backstage's service-to-service tokens (backend.auth.keys). Distinct from
+# the session secret above: this one was never supplied on EKS at all, so the
+# base config's fallback applied and production signed with a literal published
+# in this repository.
+resource "random_password" "backstage_auth" {
+  length  = 64
+  special = false
+}
+
 resource "aws_secretsmanager_secret" "backstage" {
   name                    = "idp-mvp/backstage"
   description             = "Backstage IDP platform credentials"
@@ -28,6 +37,7 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     AUTH_GITHUB_CLIENT_ID     = "REPLACE_ME"
     AUTH_GITHUB_CLIENT_SECRET = "REPLACE_ME"
     AUTH_SESSION_SECRET       = random_password.backstage_session.result
+    BACKSTAGE_AUTH_SECRET     = random_password.backstage_auth.result
     K8S_CLUSTER_URL           = module.eks.cluster_endpoint
     K8S_CLUSTER_CA_DATA       = module.eks.cluster_certificate_authority_data
     K8S_SERVICE_ACCOUNT_TOKEN = "REPLACE_ME"

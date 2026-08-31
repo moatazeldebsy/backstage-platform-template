@@ -437,9 +437,9 @@ if $INSTALL_PUSHGATEWAY; then
     --wait --timeout "${HELM_WAIT_SHORT}"
   kubectl apply -f "${ROOT_DIR}/local/observability/pushgateway-ingress.yaml"
   kubectl rollout status deployment/prometheus-pushgateway -n monitoring --timeout=60s
-  log "Pushgateway ready. Seeding QA metrics..."
-  "${ROOT_DIR}/scripts/seed-qa-metrics.sh"
+  log "Pushgateway ready."
   log "Done. Grafana → QA Platform Metrics dashboard: http://grafana.idp.local"
+  log "The dashboard starts empty until a service publishes JUnit test-results to CI."
   exit 0
 fi
 
@@ -760,10 +760,6 @@ _start_backstage() {
     if curl -sf http://localhost:9091/-/healthy &>/dev/null; then break; fi
     sleep 2
   done
-  PUSHGATEWAY_URL=http://localhost:9091 "${ROOT_DIR}/scripts/seed-qa-metrics.sh" \
-    || warn "Could not seed QA metrics — run manually:
-  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &
-  PUSHGATEWAY_URL=http://localhost:9091 ./scripts/seed-qa-metrics.sh"
   kill "${_PFORWARD_PID}" 2>/dev/null || true
   wait "${_PFORWARD_PID}" 2>/dev/null || true
 
@@ -808,7 +804,6 @@ _start_backstage() {
   echo -e "${BOLD}Day-2 tools:${RESET}"
   echo "  Scaffold a service:   ./bin/idp scaffold service --name my-svc --type nodejs"
   echo "  Register a CI runner: ./scripts/setup-runner.sh --repo <repo-name>"
-  echo "  Seed QA demo metrics: ./scripts/seed-qa-metrics.sh"
   $_has_kagent    || echo "  Install AI/ML stack:    ./scripts/bootstrap-ai.sh"
   $_has_workflows || echo "  Install Argo Workflows: ./scripts/bootstrap-local.sh --install-argo-workflows"
   echo "  Restart Backstage:    ./scripts/bootstrap-local.sh --start-backstage"
@@ -1683,7 +1678,6 @@ if ! $SKIP_DORA; then
         if curl -sf http://pushgateway.idp.local/-/healthy &>/dev/null; then break; fi
         sleep 2
       done
-      "${ROOT_DIR}/scripts/seed-qa-metrics.sh" || warn "QA metrics seed failed — run ./scripts/seed-qa-metrics.sh manually."
     fi
 
     log "Step 10b: Applying DORA exporter..."

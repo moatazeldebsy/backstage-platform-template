@@ -117,7 +117,7 @@ Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-g
 ESO syncs secrets from AWS Secrets Manager into Kubernetes `Secret` objects. A single cluster-scoped `ClusterSecretStore` named `aws-secretsmanager` is created during bootstrap and shared by all `ExternalSecret` resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read `idp-mvp/*` secrets without static credentials.
 
 ### Observability parity (local = AWS)
-Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManager bundled). AWS uses gp3 persistent volumes; local uses hostPath. Both install Prometheus Pushgateway as a separate Helm release so that `apply-catalog-exporter.sh`, `seed-qa-metrics.sh`, and the tech-insights-exporter CronJob can push metrics without modification.
+Both environments use `kube-prometheus-stack` (Prometheus + Grafana + AlertManager bundled). AWS uses gp3 persistent volumes; local uses hostPath. Both install Prometheus Pushgateway as a separate Helm release so that `apply-catalog-exporter.sh` and the exporter CronJobs can push metrics without modification.
 
 On AWS only Grafana gets a public ALB. Prometheus, AlertManager, Pushgateway, OpenCost and the Argo Rollouts dashboard deliberately have no ingress: each one costs ~$16/mo for a load balancer, and each was internet-facing with no authentication in front of it. They are operator tools reachable with `kubectl port-forward` — `bootstrap.sh` prints the exact command for each in its closing banner. Consolidating the remaining ALBs behind one hostname needs DNS; see the cost section of the deployment guide.
 
@@ -487,7 +487,6 @@ External Secrets Operator (ESO)
   │     Pushgateway (cluster-internal)
   │     OpenCost (cluster-internal)
   │     DORA exporter CronJob
-  │     seed-qa-metrics.sh (seeds demo QA metrics into Pushgateway)
   │
   ├── Phase 5 — hello-service (~5 min)
   │     docker buildx build --platform linux/amd64 → ECR push
