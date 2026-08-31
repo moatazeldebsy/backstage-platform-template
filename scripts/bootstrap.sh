@@ -452,8 +452,16 @@ fi
     AUTH_SESSION_SECRET=$(_rand_hex)
     log "  Generated a new AUTH_SESSION_SECRET."
   fi
+  # Backfill for clusters created before this key existed. Without it those
+  # deployments keep signing service-to-service tokens with the old public
+  # fallback, which the base config no longer provides — the pod would crashloop.
+  BACKSTAGE_AUTH_SECRET=$(_existing_token BACKSTAGE_AUTH_SECRET)
+  if [[ -z "$BACKSTAGE_AUTH_SECRET" || "$BACKSTAGE_AUTH_SECRET" == "REPLACE_ME" ]]; then
+    BACKSTAGE_AUTH_SECRET=$(_rand_hex)
+    log "  Generated a new BACKSTAGE_AUTH_SECRET."
+  fi
 
-  UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" python3 -c "
+  UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" BACKSTAGE_AUTH_SECRET="$BACKSTAGE_AUTH_SECRET" python3 -c "
 import json, sys, os
 s = json.load(sys.stdin)
 # Conditional like every other key below — an unset GITHUB_TOKEN must leave the
@@ -499,6 +507,7 @@ if team_map:
     s['TEAM_MAP'] = team_map
 s['BACKSTAGE_CATALOG_TOKEN'] = os.environ['BACKSTAGE_CATALOG_TOKEN']
 s['AUTH_SESSION_SECRET'] = os.environ['AUTH_SESSION_SECRET']
+s['BACKSTAGE_AUTH_SECRET'] = os.environ['BACKSTAGE_AUTH_SECRET']
 print(json.dumps(s))
 ")
 
