@@ -1,0 +1,21 @@
+scripts/bootstrap-local.sh
+  s_17ccb5fb4980ad::t_b17e0d0850399a 1120-1144
+docs/TROUBLESHOOTING.md
+  s_17ccb5fb4980ad::t_81e5469fc9c80e 657-672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7263d6a080e714e33f6c897807a6799e31bbc0f6",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
