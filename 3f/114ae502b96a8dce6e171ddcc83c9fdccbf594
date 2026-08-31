@@ -1,0 +1,40 @@
+docs/engineering-intelligence/scoring.md
+  s_17ccb5fb4980ad::t_59c1dc2e31701e 196
+docs/engineering-intelligence/integrations.md
+  s_17ccb5fb4980ad::t_59c1dc2e31701e 142
+docs/engineering-intelligence/architecture.md
+  s_17ccb5fb4980ad::t_eefd60548d73f0 134
+docs/architecture.md
+  s_17ccb5fb4980ad::t_59c1dc2e31701e 120
+scripts/bootstrap-local.sh
+  s_17ccb5fb4980ad::t_3fa9c41fe14aa6 440
+  s_17ccb5fb4980ad::t_42da7a1f2a1ba5 442
+scripts/bootstrap.sh
+  s_17ccb5fb4980ad::t_3fa9c41fe14aa6 624-631
+kubernetes/monitoring/grafana-qa-dashboard-configmap.yaml
+  s_17ccb5fb4980ad::t_cd27b7e2965b44 22-25,33-39,41-44,47-59,62-64,68-79,82-83,87-96,99-100,103-104,107-119,122-124,128-139,143-148,152-159,163-167,169-170,173-185,188-200,202-233,235-238,240-242,246-247,251-253,255-256,261-274,279
+observability/grafana/dashboards/qa/qa-metrics.json
+  s_17ccb5fb4980ad::t_cd27b7e2965b44 25
+  s_17ccb5fb4980ad::t_ce7707135e8129 15-16,18,21,24,26,40,100,166,262
+docs/dora-finops.md
+  s_17ccb5fb4980ad::t_59c1dc2e31701e 180
+docs/TROUBLESHOOTING.md
+  s_17ccb5fb4980ad::t_1b242cf029ed2d 659-663,666-667,670-671
+  s_17ccb5fb4980ad::t_6a8fc117301ffd 672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3f114ae502b96a8dce6e171ddcc83c9fdccbf594",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
