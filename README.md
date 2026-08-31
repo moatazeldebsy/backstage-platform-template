@@ -180,6 +180,14 @@ Manager → External Secrets on EKS.
 | Observability | Prometheus + Grafana | CloudWatch + Grafana + Datadog Agent (infra/APM) |
 | LLM observability | Langfuse (default) — in-cluster Postgres + ClickHouse + MinIO | Langfuse (default) — RDS + S3 via Terraform, IRSA-scoped |
 
+### Platform Planes
+
+How the pieces fit together: five planes, each independently installable. The core IDP runs
+without the AI and Observability planes, and the AI plane holds no privilege the planes above
+it do not already grant.
+
+![Platform Planes](docs/assets/platform-planes.png)
+
 ### AWS Architecture
 
 ![AWS Architecture](docs/assets/aws-architecture.jpg)
