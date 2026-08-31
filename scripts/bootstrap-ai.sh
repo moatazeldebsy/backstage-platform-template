@@ -52,9 +52,14 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 SKIP_MLFLOW=false
 SKIP_ARGO_WORKFLOWS=false
-# Tri-state on purpose: "" means "not specified", which resolves after flag
-# parsing to on for AWS and off for local. A plain true/false default could not
-# tell "user passed --skip-langfuse" apart from "user said nothing".
+# Tri-state on purpose: "" means "not specified". A plain true/false default
+# could not tell "user passed --skip-langfuse" apart from "user said nothing".
+#
+# It resolves to ON for BOTH targets — see the block above the `if [[ -z
+# "$LANGFUSE" ]]` test further down, which is the only place that decides. This
+# comment used to say "off for local", which was wrong and expensive to believe:
+# Langfuse is six pods and ~2.4Gi, and someone budgeting a local cluster on that
+# sentence would be short by that much.
 LANGFUSE=""
 SKIP_KAGENT=false
 SKIP_MCP=false
