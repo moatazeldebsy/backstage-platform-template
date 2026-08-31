@@ -2475,7 +2475,10 @@
 <h3 id="secrets-credentials">Secrets &amp; Credentials<a class="headerlink" href="#secrets-credentials" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>local/.env</code> and <code>local/backstage/.env</code> are <strong>never committed</strong> (gitignored by default)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>BACKSTAGE_AUTH_SECRET</code> is set to a strong random value (not the <code>dev-secret-change-in-production</code> default)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>BACKSTAGE_AUTH_SECRET</code> is a generated random value. There is no default any more:
+      Terraform generates it, <code>bootstrap.sh</code> backfills existing clusters, both Backstage
+      deployments read it from <code>backstage-secrets</code>, and <code>setup.sh</code> generates one locally.
+      An unset value now fails startup instead of falling back to a shared key.</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ANTHROPIC_API_KEY</code> is stored as a GitHub Actions secret, not hardcoded anywhere</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All GitHub tokens (<code>GITHUB_TOKEN</code>, <code>GH_PAT</code>) are scoped to minimum required permissions</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD auth token and Grafana token are rotated after initial bootstrap</li>
