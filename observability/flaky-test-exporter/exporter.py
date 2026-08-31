@@ -23,7 +23,13 @@ Environment variables
   MODE                — "pushgateway" (local) or "cloudwatch" (AWS)
   CLOUDWATCH_NS       — CloudWatch namespace (AWS mode)
   AWS_REGION          — AWS region (AWS mode)
-  WINDOW_SIZE         — number of recent workflow runs per repo (default: 10)
+  WINDOW_SIZE         — how many recent completed runs to look through per repo
+                        (default: 30). This counts every workflow, not just the
+                        one that publishes tests, so a repo with noisy CodeQL or
+                        docs-deploy runs needs a deeper window to reach its CI.
+  MAX_ARTIFACT_RUNS   — stop after this many runs actually yielded test artifacts
+                        (default: 10). Bounds the cost of the deeper window: a
+                        healthy repo exits early, only a quiet one scans in full.
   ARTIFACT_NAME       — artifact name prefix uploaded by skeleton CI (default:
                         test-results; `test-results-<job>` also matches)
 """
@@ -49,7 +55,11 @@ PUSHGATEWAY_URL = os.environ.get("PUSHGATEWAY_URL", "http://prometheus-pushgatew
 MODE            = os.environ.get("MODE", "pushgateway")
 CW_NAMESPACE    = os.environ.get("CLOUDWATCH_NS", "IDP/FlakyTests")
 AWS_REGION      = os.environ.get("AWS_REGION", "us-east-1")
-WINDOW_SIZE     = int(os.environ.get("WINDOW_SIZE", "10"))
+WINDOW_SIZE     = int(os.environ.get("WINDOW_SIZE", "30"))
+# Flakiness is classified from runs that carry test results, so this — not
+# WINDOW_SIZE — is what determines the statistics. Raising the window without
+# capping here would triple the API cost for no extra signal.
+MAX_ARTIFACT_RUNS = int(os.environ.get("MAX_ARTIFACT_RUNS", "10"))
 ARTIFACT_NAME   = os.environ.get("ARTIFACT_NAME", "test-results")
 # Hard cardinality cap: never emit per-test metrics for more than this many
 # tests per service. Surfaces the worst offenders; protects Prometheus.
@@ -272,6 +282,10 @@ def collect() -> list[ServiceFlakiness]:
             for blob in blobs:
                 for test_id, suite, outcome in iter_testcases(blob):
                     sf.record(test_id, suite, outcome)
+            # Enough history for a flakiness verdict; the rest of the window only
+            # exists so a quiet repo can still be reached.
+            if sf.runs_observed >= MAX_ARTIFACT_RUNS:
+                break
 
         log.info(
             "%s — %d/%d runs had artifacts; %d distinct tests; %d flaky; %d fetch errors",
