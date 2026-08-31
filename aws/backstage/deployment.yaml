@@ -42,6 +42,11 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: POSTGRES_PASSWORD
+            - name: BACKSTAGE_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: BACKSTAGE_AUTH_SECRET
             - name: GITHUB_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -78,7 +78,12 @@ backend:
   # the UI shows "Failed to sign in as a guest using the auth backend" on load.
   auth:
     keys:
-      - secret: ${BACKSTAGE_AUTH_SECRET:-dev-secret-change-in-production}
+      # No default. This key signs Backstage's service-to-service tokens, so a
+      # fallback baked into a public repository is a published signing key —
+      # and because the fallback was silent, AWS ran on it: the env var was
+      # never supplied there at all. Unset now fails startup, which is the
+      # loud failure this needs.
+      - secret: ${BACKSTAGE_AUTH_SECRET}
   database:
     client: pg
     connection:

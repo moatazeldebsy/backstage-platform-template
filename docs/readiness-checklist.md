@@ -10,7 +10,10 @@ Use this checklist before promoting the IDP to a production environment.
 
 ### Secrets & Credentials
 - [ ] `local/.env` and `local/backstage/.env` are **never committed** (gitignored by default)
-- [ ] `BACKSTAGE_AUTH_SECRET` is set to a strong random value (not the `dev-secret-change-in-production` default)
+- [x] `BACKSTAGE_AUTH_SECRET` is a generated random value. There is no default any more:
+      Terraform generates it, `bootstrap.sh` backfills existing clusters, both Backstage
+      deployments read it from `backstage-secrets`, and `setup.sh` generates one locally.
+      An unset value now fails startup instead of falling back to a shared key.
 - [ ] `ANTHROPIC_API_KEY` is stored as a GitHub Actions secret, not hardcoded anywhere
 - [ ] All GitHub tokens (`GITHUB_TOKEN`, `GH_PAT`) are scoped to minimum required permissions
 - [ ] ArgoCD auth token and Grafana token are rotated after initial bootstrap
