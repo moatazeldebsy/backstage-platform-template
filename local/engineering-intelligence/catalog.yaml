@@ -1,0 +1,46 @@
+# Verification catalog: five Components with a deliberate mix.
+#  - two scaffolded (backstage.io/source-template present)
+#  - three not scaffolded
+#  - one with no owner
+# Expected: ownershipCoverage 4/5 = 0.8, goldenPathAdoption 2/5 = 0.4
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: orders-api
+  annotations:
+    backstage.io/source-template: template:default/go-service
+    idp.io/quality-gates: "coverage,static-analysis,vuln-scan,sonar-scanning,snyk-scanning"
+    sonarcloud.io/project-key: "acme_orders-api"
+    snyk.io/org-slug: "acme"
+    backstage.io/techdocs-ref: dir:.
+spec: { type: service, lifecycle: production, owner: team-payments }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: auth-service
+  annotations:
+    backstage.io/source-template: template:default/node-service
+    idp.io/quality-gates: "coverage,static-analysis"
+spec: { type: service, lifecycle: production, owner: team-platform }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: legacy-billing
+spec: { type: service, lifecycle: production, owner: team-payments }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: reporting-worker
+  annotations:
+    idp.io/quality-gates: "static-analysis"
+spec: { type: service, lifecycle: production, owner: team-data }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: orphaned-tool
+spec: { type: service, lifecycle: experimental }

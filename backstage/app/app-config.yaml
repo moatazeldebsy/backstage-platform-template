@@ -138,3 +138,24 @@ techInsights:
 permission:
   # setting this to `false` will disable permissions
   enabled: true
+
+# Engineering Intelligence — scores platform, quality, reliability, AI, security
+# and FinOps health from the telemetry the platform already produces, and keeps
+# its own snapshot history because nothing else does (Prometheus retains 6h
+# locally, 30d on AWS, with no long-term store behind it).
+#
+# Base layer on purpose: the defaults are true for every target, and the sources
+# are resolved from the `proxy.endpoints` already defined per environment. The
+# only environment-specific piece is `langfuse.*`, which belongs in the overlays.
+engineeringIntelligence:
+  # Matches the techInsights cadence above — this reads those facts, so
+  # collecting more often would re-record the same numbers.
+  refreshMinutes: 30
+  sources:
+    prometheus: true
+    opencost: true
+    langfuse: true
+    catalog: true
+    techInsights: true
+    scaffolder: true
+    mlflow: true

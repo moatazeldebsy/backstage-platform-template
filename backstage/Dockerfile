@@ -22,6 +22,10 @@ COPY vm2-shim ./vm2-shim
 # inside packages/* don't invalidate the 8-minute install layer.
 COPY packages/app/package.json ./packages/app/
 COPY packages/backend/package.json ./packages/backend/
+# Every workspace listed in yarn.lock needs its manifest here, or the immutable
+# install below fails resolving a workspace it cannot see. Add a line whenever a
+# package is added under packages/.
+COPY packages/engineering-intelligence-core/package.json ./packages/engineering-intelligence-core/
 
 RUN --mount=type=cache,target=/root/.yarn/berry/cache \
     yarn install --immutable
@@ -134,6 +138,11 @@ RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
 # crashes on boot: "Invalid schema in packages/app/config.d.ts, missing Config
 # export" (really: file not found).
 COPY --from=builder --chown=node:node /app/packages/app/config.d.ts ./packages/app/config.d.ts
+# Same reasoning for the backend's own schema, which declares the
+# engineeringIntelligence and langfuse keys. It is referenced by the "backend"
+# package's configSchema field, so a missing file here is the identical
+# boot-time crash as above, not a silently ignored schema.
+COPY --from=builder --chown=node:node /app/packages/backend/config.d.ts ./packages/backend/config.d.ts
 
 # 5. Copy configuration file (from build context parent directory)
 COPY --chown=node:node ../app-config.yaml ./app-config.yaml

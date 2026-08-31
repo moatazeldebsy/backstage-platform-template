@@ -189,7 +189,7 @@ Surfaced in:
 
 ### Flaky-test detection (every 30 min)
 
-A second runtime loop runs alongside the scorecard. The Flaky-Test Exporter (`observability/flaky-test-exporter/exporter.py`) pulls the last 10 GitHub Actions workflow runs per service repo, downloads each run's `test-results` JUnit artifact, and classifies every test:
+A second runtime loop runs alongside the scorecard. The Flaky-Test Exporter (`observability/flaky-test-exporter/exporter.py`) pulls the last 10 GitHub Actions workflow runs per service repo, downloads every `test-results*` JUnit artifact on each run, and classifies every test:
 
 | Classification | Definition |
 |---|---|

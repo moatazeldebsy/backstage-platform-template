@@ -1,0 +1,47 @@
+{
+  "registered_models": [
+    {
+      "name": "churn-predictor",
+      "creation_timestamp": 1788123710988,
+      "last_updated_timestamp": 1788123718397,
+      "latest_versions": [
+        {
+          "name": "churn-predictor",
+          "version": "1",
+          "creation_timestamp": 1788123718397,
+          "last_updated_timestamp": 1788123718397,
+          "current_stage": "None",
+          "description": "",
+          "source": "s3://models/churn-predictor/1",
+          "run_id": "",
+          "status": "READY",
+          "run_link": ""
+        }
+      ]
+    },
+    {
+      "name": "fraud-detector",
+      "creation_timestamp": 1788123710214,
+      "last_updated_timestamp": 1788123710692,
+      "latest_versions": [
+        {
+          "name": "fraud-detector",
+          "version": "1",
+          "creation_timestamp": 1788123710692,
+          "last_updated_timestamp": 1788123710692,
+          "current_stage": "None",
+          "description": "",
+          "source": "s3://models/fraud-detector/1",
+          "run_id": "",
+          "status": "READY",
+          "run_link": ""
+        }
+      ]
+    },
+    {
+      "name": "intent-classifier-draft",
+      "creation_timestamp": 1788123719105,
+      "last_updated_timestamp": 1788123719105
+    }
+  ]
+}

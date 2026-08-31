@@ -24,7 +24,8 @@ Environment variables
   CLOUDWATCH_NS       — CloudWatch namespace (AWS mode)
   AWS_REGION          — AWS region (AWS mode)
   WINDOW_SIZE         — number of recent workflow runs per repo (default: 10)
-  ARTIFACT_NAME       — artifact name uploaded by skeleton CI (default: test-results)
+  ARTIFACT_NAME       — artifact name prefix uploaded by skeleton CI (default:
+                        test-results; `test-results-<job>` also matches)
 """
 import io
 import logging
@@ -93,6 +94,10 @@ class ServiceFlakiness:
     # cases are indistinguishable downstream, so the caller checks this before
     # publishing anything.
     fetch_failed: bool = False
+    # Runs whose artifacts could not be fetched at all (network, auth, 5xx).
+    # Distinct from a run that genuinely published none: the first is an
+    # unknown, the second is a measurement.
+    artifact_errors: int = 0
 
     def record(self, test_id: str, suite: str, outcome: str) -> None:
         tr = self.results.setdefault(test_id, TestResult(test_id=test_id, suite=suite))
@@ -153,24 +158,47 @@ def list_recent_runs(repo: str) -> list[dict]:
     return resp.json().get("workflow_runs", [])[:WINDOW_SIZE]
 
 
-def fetch_junit_artifact(repo: str, run_id: int) -> bytes | None:
-    """Download the test-results artifact ZIP for a run; None if not present."""
+def matches_artifact_name(name: str) -> bool:
+    """Whether an artifact holds test results for us.
+
+    Matched on *prefix*, not equality. A repository with more than one test job
+    cannot name two artifacts `test-results` — upload-artifact@v4 rejects a
+    duplicate name within a run — so a multi-language repo has to publish
+    `test-results-go`, `test-results-python` and so on. Exact `test-results`
+    still matches, so single-job repositories are unaffected.
+    """
+    return name == ARTIFACT_NAME or name.startswith(f"{ARTIFACT_NAME}-")
+
+
+def fetch_junit_artifacts(repo: str, run_id: int) -> list[bytes]:
+    """Download every test-results artifact ZIP for a run.
+
+    Returns all matches rather than the first: a run whose Go tests passed and
+    whose Python tests failed has to contribute both, or the failure is invisible
+    and the run scores as clean.
+    """
     url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts"
     resp = requests.get(url, headers=GITHUB_HEADERS, timeout=30)
-    if not resp.ok:
-        return None
+    # Raise rather than return []: the caller has to be able to tell "this run
+    # published no tests" from "we could not find out", or an unreachable
+    # GitHub is published as a confident zero.
+    resp.raise_for_status()
+    blobs: list[bytes] = []
     for artifact in resp.json().get("artifacts", []):
-        if artifact.get("name") == ARTIFACT_NAME and not artifact.get("expired"):
-            dl = requests.get(
-                artifact["archive_download_url"],
-                headers=GITHUB_HEADERS,
-                timeout=60,
-                allow_redirects=True,
-            )
-            if dl.ok:
-                return dl.content
+        if not matches_artifact_name(artifact.get("name", "")) or artifact.get("expired"):
+            continue
+        dl = requests.get(
+            artifact["archive_download_url"],
+            headers=GITHUB_HEADERS,
+            timeout=60,
+            allow_redirects=True,
+        )
+        if dl.ok:
+            blobs.append(dl.content)
+        else:
             log.warning("Failed to download artifact for run %s: %s", run_id, dl.status_code)
-    return None
+            raise requests.HTTPError(f"artifact download returned {dl.status_code}")
+    return blobs
 
 
 # ── JUnit parsing ───────────────────────────────────────────────────────────
@@ -231,19 +259,24 @@ def collect() -> list[ServiceFlakiness]:
         for run in runs:
             run_id = run["id"]
             try:
-                blob = fetch_junit_artifact(repo, run_id)
+                blobs = fetch_junit_artifacts(repo, run_id)
             except Exception as e:
                 log.debug("Skipping run %s artifact: %s", run_id, e)
+                sf.artifact_errors += 1
                 continue
-            if blob is None:
+            if not blobs:
                 continue
+            # One run counts once however many test jobs it published, or a
+            # multi-job repo would look like it ran more often than it did.
             sf.runs_observed += 1
-            for test_id, suite, outcome in iter_testcases(blob):
-                sf.record(test_id, suite, outcome)
+            for blob in blobs:
+                for test_id, suite, outcome in iter_testcases(blob):
+                    sf.record(test_id, suite, outcome)
 
         log.info(
-            "%s — %d/%d runs had artifacts; %d distinct tests; %d flaky",
+            "%s — %d/%d runs had artifacts; %d distinct tests; %d flaky; %d fetch errors",
             name, sf.runs_observed, len(runs), len(sf.results), len(sf.flaky_tests),
+            sf.artifact_errors,
         )
         out.append(sf)
 
@@ -256,7 +289,31 @@ def _escape(label_value: str) -> str:
     return label_value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
 
 
+def measurable(s: "ServiceFlakiness") -> bool:
+    """Whether we actually observed this service's tests.
+
+    A service we could not reach must publish *nothing*. Publishing
+    `idp_test_pass_total 0` for an unreachable GitHub is indistinguishable
+    downstream from a service whose tests genuinely all failed, and the scoring
+    engine reads a zero as a measurement while it reads an absent series as
+    reduced coverage. Absence is the honest signal here.
+
+    A service that was reached and simply published no test artifacts is
+    *not* filtered — zero observed runs is a real fact about that repository.
+    """
+    if s.fetch_failed:
+        return False
+    return not (s.runs_observed == 0 and s.artifact_errors > 0)
+
+
 def push_to_pushgateway(services: list[ServiceFlakiness]) -> None:
+    skipped = [s.service for s in services if not measurable(s)]
+    if skipped:
+        log.warning(
+            "Omitting %d service(s) whose tests could not be fetched: %s",
+            len(skipped), ", ".join(sorted(skipped)),
+        )
+    services = [s for s in services if measurable(s)]
     lines = []
     lines.append("# HELP idp_test_runs_window Number of workflow runs scanned per service for flakiness classification")
     lines.append("# TYPE idp_test_runs_window gauge")

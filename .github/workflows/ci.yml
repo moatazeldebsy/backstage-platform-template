@@ -219,16 +219,34 @@ jobs:
         with:
           go-version-file: services/hello-service/go.mod
 
+      # JUnit XML as well as coverage: the flaky-test exporter classifies each
+      # test across recent runs, and it can only do that from per-test outcomes.
+      # go-junit-report is the same tool the go-service skeleton uses.
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+
       - name: Run tests with coverage
         working-directory: services/hello-service
-        run: go test ./... -coverprofile=coverage.out -covermode=atomic
+        run: |
+          set -o pipefail
+          go test ./... -v -coverprofile=coverage.out -covermode=atomic \
+            2>&1 | tee /tmp/go-hello.log
 
-      - name: Upload coverage artifact
+      # if: always() — a failing test is exactly the run worth publishing.
+      - name: Generate JUnit report
+        if: always()
+        working-directory: services/hello-service
+        run: go-junit-report -in /tmp/go-hello.log -out junit.xml || true
+
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: go-coverage
-          path: services/hello-service/coverage.out
-          retention-days: 1
+          name: test-results-hello-service
+          path: |
+            services/hello-service/coverage.out
+            services/hello-service/junit.xml
+          retention-days: 7
 
   test-cli:
     needs: changes
@@ -252,9 +270,27 @@ jobs:
         working-directory: cli
         run: go vet ./...
 
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+
       - name: Test CLI
         working-directory: cli
-        run: go test ./...
+        run: |
+          set -o pipefail
+          go test ./... -v 2>&1 | tee /tmp/go-cli.log
+
+      - name: Generate JUnit report
+        if: always()
+        working-directory: cli
+        run: go-junit-report -in /tmp/go-cli.log -out junit.xml || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results-cli
+          path: cli/junit.xml
+          retention-days: 7
 
   python-observability-checks:
     needs: changes
@@ -278,6 +314,26 @@ jobs:
           python -m py_compile observability/flaky-test-exporter/exporter.py
           python -m py_compile scripts/render-postmortem.py
           python -m py_compile scripts/render-backstage-config.py
+
+      # py_compile alone left every behavioural assertion in these exporters
+      # untested. The DevEx metrics carry real edge cases — a PR closed without
+      # merging, a cancelled CI run — where returning 0.0 instead of nothing
+      # would publish a fabricated measurement. The suite also compares the
+      # local and AWS exporters directly: they cannot share a module (each ships
+      # as a single-file ConfigMap), so a test is the only thing holding the
+      # duplicated DevEx block together.
+      - name: Test observability exporters
+        run: |
+          pip install --quiet pytest
+          python -m pytest observability/tests -q --junitxml=junit.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results-observability
+          path: junit.xml
+          retention-days: 7
 
   helm-lint:
     needs: changes

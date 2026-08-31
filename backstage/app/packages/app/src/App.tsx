@@ -22,6 +22,7 @@ import { SignInPageBlueprint } from '@backstage/plugin-app-react';
 import { navModule } from './modules/nav';
 import { themesModule } from './modules/themes';
 import { customPagesPlugin } from './extensions';
+import { engineeringIntelligencePlugin } from './engineeringIntelligence';
 
 // Override the default sign-in page to add GitHub provider alongside Guest.
 // Using createFrontendModule (targeting pluginId: 'app') avoids the version
@@ -54,6 +55,7 @@ const appSignInModule = createFrontendModule({
 export default createApp({
   features: [
     customPagesPlugin,
+    engineeringIntelligencePlugin,
     catalogPlugin,
     catalogGraphPlugin,
     scaffolderPlugin,

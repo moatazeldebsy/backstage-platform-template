@@ -52,9 +52,16 @@ GH_HEADERS = {
 }
 
 
-def gh_get(url: str, params: dict = None) -> list:
-    """Paginate through all pages of a GitHub API endpoint."""
+def gh_get(url: str, params: dict = None, max_pages: int | None = None) -> list:
+    """Paginate through a GitHub API endpoint, optionally stopping after N pages.
+
+    `max_pages` exists for the pull-request query, which has no `since` filter:
+    a busy repo can hold thousands of closed PRs, and walking all of them every
+    15 minutes would burn the rate limit for a mean that a recent sample already
+    answers.
+    """
     results = []
+    pages = 0
     while url:
         resp = requests.get(url, headers=GH_HEADERS, params=params, timeout=30)
         resp.raise_for_status()
@@ -67,6 +74,9 @@ def gh_get(url: str, params: dict = None) -> list:
             results.extend(data["items"])
         else:
             results.append(data)
+        pages += 1
+        if max_pages is not None and pages >= max_pages:
+            break
         url = resp.links.get("next", {}).get("url")
         params = None
     return results
@@ -126,6 +136,85 @@ def get_workflow_runs(repo: str, since: datetime) -> list:
     )
 
 
+# Developer Experience series. Names are the contract with the Engineering
+# Intelligence Prometheus collector (packages/backend/src/modules/
+# engineeringIntelligence/prometheus.ts) — change one and change the other.
+DEVEX_GAUGES = {
+    "devex_pr_cycle_time_hours":  "Mean hours from pull request opened to merged",
+    "devex_ci_duration_minutes":  "Mean wall-clock minutes per CI run, queue time included",
+    "devex_build_failure_ratio":  "Failed CI runs as a fraction of runs that reached a verdict",
+}
+
+
+def get_recent_pull_requests(repo: str) -> list:
+    """The most recently updated closed PRs.
+
+    One bounded page. The GitHub pulls API has no `since` parameter, so this
+    sorts by most-recently-updated and takes the first 100; callers filter to
+    the window themselves. A repo merging more than 100 PRs inside the window
+    is sampled rather than counted exhaustively, which is fine for a mean and
+    is the trade the rate limit demands.
+    """
+    return gh_get(
+        f"https://api.github.com/repos/{GITHUB_ORG}/{repo}/pulls",
+        {"state": "closed", "sort": "updated", "direction": "desc", "per_page": 100},
+        max_pages=1,
+    )
+
+
+def compute_pr_cycle_time(prs: list, since: datetime) -> float:
+    """Mean hours from a pull request being opened to being merged.
+
+    Closed-without-merge PRs are excluded: abandoning a change is not a slow
+    review, and counting it as one would make a team look worse for cleaning up.
+    Returns 0.0 when nothing merged in the window, which the scoring engine
+    reads as "no sample" only if the metric is absent — so callers must skip
+    pushing rather than push a zero. See main().
+    """
+    durations = []
+    for pr in prs:
+        merged_at = pr.get("merged_at")
+        if not merged_at:
+            continue
+        merged = datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
+        if merged < since:
+            continue
+        created = datetime.fromisoformat(pr["created_at"].replace("Z", "+00:00"))
+        durations.append((merged - created).total_seconds() / 3600.0)
+    return sum(durations) / len(durations) if durations else 0.0
+
+
+def compute_ci_duration(runs: list) -> float:
+    """Mean wall-clock minutes a CI run takes, queue time included.
+
+    Deliberately measured from `created_at` rather than `run_started_at`: time
+    spent waiting for a runner is time the developer waits, and excluding it
+    would flatter a platform that is starved of runners.
+    """
+    durations = []
+    for run in runs:
+        if run.get("conclusion") not in ("success", "failure"):
+            continue
+        started = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+        finished = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
+        durations.append((finished - started).total_seconds() / 60.0)
+    return sum(durations) / len(durations) if durations else 0.0
+
+
+def compute_build_failure_ratio(runs: list) -> float:
+    """Failed CI runs as a fraction of runs that reached a verdict.
+
+    Cancelled runs are excluded here, unlike in change failure rate: a cancelled
+    run is usually a person changing their mind, not the build breaking. The two
+    metrics answer different questions and deliberately count differently.
+    """
+    decided = [r for r in runs if r.get("conclusion") in ("success", "failure")]
+    if not decided:
+        return 0.0
+    failures = len([r for r in decided if r["conclusion"] == "failure"])
+    return failures / len(decided)
+
+
 def compute_deploy_frequency(prod_runs: list, window_hours: int) -> float:
     successes = [r for r in prod_runs if r.get("conclusion") == "success"]
     return len(successes) / (window_hours / 24.0) if window_hours > 0 else 0.0
@@ -166,8 +255,21 @@ def compute_mttr(prod_runs: list) -> float:
     return sum(mttr_values) / len(mttr_values) if mttr_values else 0.0
 
 
-def push_metrics(service: str, deploy_freq: float, lead_time: float, cfr: float, mttr: float):
-    """Push per-service DORA metrics to Prometheus Pushgateway."""
+def push_metrics(service: str, deploy_freq: float, lead_time: float, cfr: float, mttr: float,
+                 devex: dict | None = None):
+    """Push per-service DORA and Developer Experience metrics to Pushgateway.
+
+    DevEx metrics ride in the same push, and therefore the same Pushgateway
+    group, so `prune_stale_services` retires them alongside the DORA ones when a
+    service disappears. A second job would need its own pruning and would
+    eventually leak stale series.
+
+    `devex` is omitted rather than zeroed when a repo produced no pull requests
+    or no CI runs in the window. The Engineering Intelligence scoring engine
+    treats an absent sample as reduced coverage but reads a zero as a real
+    measurement, so pushing 0.0 here would claim a repo has instant CI and a
+    flawless build rather than that nothing ran.
+    """
     registry = CollectorRegistry()
     grouping = {"service": service}
 
@@ -187,12 +289,17 @@ def push_metrics(service: str, deploy_freq: float, lead_time: float, cfr: float,
           "Mean time to restore after a failed prod deploy (minutes)",
           ["service"], registry=registry).labels(service=service).set(mttr)
 
+    for name, help_text in DEVEX_GAUGES.items():
+        if devex and name in devex:
+            Gauge(name, help_text, ["service"], registry=registry) \
+                .labels(service=service).set(devex[name])
+
     push_to_gateway(PUSHGATEWAY_URL, job="dora-exporter",
                     grouping_key=grouping, registry=registry)
 
 
 def push_aggregate_metrics(repos: list, all_deploy_freq: list, all_lead_times: list,
-                           all_cfr: list, all_mttr: list):
+                           all_cfr: list, all_mttr: list, all_devex: dict | None = None):
     """Push org-wide aggregate DORA metrics to Prometheus Pushgateway."""
     registry = CollectorRegistry()
     grouping = {"service": "all-services"}
@@ -215,6 +322,15 @@ def push_aggregate_metrics(repos: list, all_deploy_freq: list, all_lead_times: l
           "Mean time to restore after a failed prod deploy (minutes)",
           ["service"], registry=registry).labels(service="all-services").set(
               sum(all_mttr) / len(all_mttr) if all_mttr else 0)
+
+    # Only aggregate a DevEx series when at least one service reported it, so
+    # "nothing merged anywhere this window" stays absent instead of becoming a
+    # platform-wide zero.
+    for name, help_text in DEVEX_GAUGES.items():
+        values = (all_devex or {}).get(name) or []
+        if values:
+            Gauge(name, help_text, ["service"], registry=registry) \
+                .labels(service="all-services").set(sum(values) / len(values))
 
     push_to_gateway(PUSHGATEWAY_URL, job="dora-exporter",
                     grouping_key=grouping, registry=registry)
@@ -346,6 +462,7 @@ def main():
     all_lead_times:  list[float] = []
     all_cfr:         list[float] = []
     all_mttr:        list[float] = []
+    all_devex: dict[str, list[float]] = {name: [] for name in DEVEX_GAUGES}
 
     for repo in repos:
         log.info("Processing repo: %s", repo)
@@ -358,10 +475,32 @@ def main():
             cfr         = compute_change_failure_rate(prod_runs)
             mttr        = compute_mttr(prod_runs)
 
-            push_metrics(repo, deploy_freq, lead_time, cfr, mttr)
+            # Developer Experience. CI metrics come from the runs already
+            # fetched above — all branches, not just main, because developers
+            # wait on pull-request CI too. Only the pull-request query costs an
+            # extra call.
+            devex: dict[str, float] = {}
+            decided = [r for r in runs if r.get("conclusion") in ("success", "failure")]
+            if decided:
+                devex["devex_ci_duration_minutes"] = compute_ci_duration(runs)
+                devex["devex_build_failure_ratio"] = compute_build_failure_ratio(runs)
 
-            log.info("%s — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm",
-                     repo, deploy_freq, lead_time, cfr, mttr)
+            merged = [p for p in get_recent_pull_requests(repo) if p.get("merged_at")]
+            cycle_time = compute_pr_cycle_time(merged, since)
+            if cycle_time > 0:
+                devex["devex_pr_cycle_time_hours"] = cycle_time
+
+            push_metrics(repo, deploy_freq, lead_time, cfr, mttr, devex)
+
+            log.info("%s — deploys/day=%.2f lead_time=%.1fm CFR=%.1f%% MTTR=%.1fm "
+                     "pr_cycle=%s ci=%s fail_ratio=%s",
+                     repo, deploy_freq, lead_time, cfr, mttr,
+                     f"{devex['devex_pr_cycle_time_hours']:.1f}h" if "devex_pr_cycle_time_hours" in devex else "-",
+                     f"{devex['devex_ci_duration_minutes']:.1f}m" if "devex_ci_duration_minutes" in devex else "-",
+                     f"{devex['devex_build_failure_ratio']:.2f}" if "devex_build_failure_ratio" in devex else "-")
+
+            for name, value in devex.items():
+                all_devex[name].append(value)
 
             all_deploy_freq.append(deploy_freq)
             all_lead_times.append(lead_time)
@@ -372,7 +511,7 @@ def main():
             log.warning("Failed to process %s: %s", repo, exc)
 
     if all_deploy_freq:
-        push_aggregate_metrics(repos, all_deploy_freq, all_lead_times, all_cfr, all_mttr)
+        push_aggregate_metrics(repos, all_deploy_freq, all_lead_times, all_cfr, all_mttr, all_devex)
         log.info("Published aggregate metrics for %d services.", len(repos))
 
     # Reconcile: drop anything Pushgateway still holds that is no longer a

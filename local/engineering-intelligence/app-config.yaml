@@ -1,0 +1,90 @@
+# Config for the Engineering Intelligence verification harness
+# (scripts/verify-engineering-intelligence.sh). Not used by any deployment.
+#
+# The point of this file is to boot the real Backstage image against a real
+# Postgres and a stub standing in for Prometheus and OpenCost, so the whole
+# Engineering Intelligence path — collectors, scoring, snapshots, the API and
+# the dashboard — can be exercised in about two minutes without a Kind cluster.
+#
+# Hostnames are container names on the `ei-verify` Docker network, created by
+# the script.
+app:
+  title: Engineering Intelligence harness
+  baseUrl: http://localhost:7099
+
+backend:
+  baseUrl: http://localhost:7099
+  listen:
+    port: 7007
+    host: 0.0.0.0
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+  cors:
+    origin: http://localhost:7099
+  database:
+    client: pg
+    connection:
+      host: ei-postgres
+      port: 5432
+      user: backstage
+      password: backstage
+      database: backstage
+  # The harness curls the API directly, without a browser session. Guest sign-in
+  # still mints a real token (see below) — this only relaxes the default policy
+  # so the harness does not need a GitHub app. Never copy this into a deployment.
+  auth:
+    dangerouslyDisableDefaultAuthPolicy: true
+
+auth:
+  environment: development
+  providers:
+    guest:
+      # Lets `POST /api/auth/guest/refresh` mint a token the harness can use as a
+      # real authenticated caller, which is how it proves the routes answer 401
+      # without one and 200 with it.
+      dangerouslyAllowOutsideDevelopment: true
+
+catalog:
+  rules:
+    - allow: [Component, System, API, Resource, Location, Template, User, Group]
+  locations:
+    - type: file
+      target: /verify/catalog.yaml
+
+proxy:
+  endpoints:
+    # All three point at the same stub, which routes by path: Prometheus answers
+    # on /api/v1/query and OpenCost on /allocation/compute.
+    /prometheus:
+      target: http://ei-stub:9099
+    /opencost:
+      target: http://ei-stub:9099
+    # Deliberately carries the same not-configured placeholder a local install
+    # has before `bootstrap-ai.sh --langfuse` runs, so the harness exercises the
+    # "Langfuse was never deployed" path rather than a 401.
+    /langfuse:
+      target: http://ei-stub:9099
+      headers:
+        Authorization: Basic bm90LWNvbmZpZ3VyZWQ=
+
+techInsights:
+  factRetrievers:
+    entityMetadataFactRetriever:
+      cadence: '*/30 * * * *'
+    entityOwnershipFactRetriever:
+      cadence: '*/30 * * * *'
+
+# Required by plugins the harness does not exercise, but which the backend
+# refuses to start without.
+techRadar:
+  url: https://raw.githubusercontent.com/backstage/backstage/master/plugins/tech-radar/src/sampleData.ts
+
+engineeringIntelligence:
+  refreshMinutes: 30
+  sources:
+    prometheus: true
+    opencost: true
+    langfuse: true
+    catalog: true
+    techInsights: true
+    scaffolder: true

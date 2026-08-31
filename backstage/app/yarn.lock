@@ -8892,6 +8892,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@internal/engineering-intelligence-core@npm:^0.1.0, @internal/engineering-intelligence-core@workspace:packages/engineering-intelligence-core":
+  version: 0.0.0-use.local
+  resolution: "@internal/engineering-intelligence-core@workspace:packages/engineering-intelligence-core"
+  dependencies:
+    "@backstage/cli": "npm:^0.36.1"
+  languageName: unknown
+  linkType: soft
+
 "@internationalized/date@npm:^3.12.0":
   version: 3.12.0
   resolution: "@internationalized/date@npm:3.12.0"
@@ -19192,6 +19200,7 @@ __metadata:
     "@backstage/plugin-user-settings": "npm:^0.9.2"
     "@backstage/theme": "npm:^0.7.3"
     "@backstage/ui": "npm:^0.14.3"
+    "@internal/engineering-intelligence-core": "npm:^0.1.0"
     "@material-ui/core": "npm:^4.12.2"
     "@material-ui/icons": "npm:^4.9.1"
     "@playwright/test": "npm:^1.32.3"
@@ -19882,6 +19891,7 @@ __metadata:
     "@backstage/plugin-signals-backend": "npm:^0.3.14"
     "@backstage/plugin-tech-insights-node": "npm:^0.6.1"
     "@backstage/plugin-techdocs-backend": "npm:^2.1.7"
+    "@internal/engineering-intelligence-core": "npm:^0.1.0"
     "@types/express": "npm:^4.17.21"
     app: "link:../app"
     better-sqlite3: "npm:^12.0.0"

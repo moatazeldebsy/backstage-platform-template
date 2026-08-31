@@ -39,12 +39,21 @@ nav:
   - Contract Testing: contract-testing.md
   - Crossplane: crossplane.md
   - Crossplane vs Terraform: crossplane-vs-terraform.md
+  - Engineering Intelligence:
+    - Product Vision: engineering-intelligence/product-vision.md
+    - Architecture: engineering-intelligence/architecture.md
+    - Maturity Model: engineering-intelligence/maturity-model.md
+    - Scoring: engineering-intelligence/scoring.md
+    - Integrations: engineering-intelligence/integrations.md
+    - AI Advisor: engineering-intelligence/ai-advisor.md
+    - Roadmap: engineering-intelligence/roadmap.md
   - Design Decisions:
     - "ADR-0001: Batch orchestration": design/adr-0001-batch-orchestration.md
     - "ADR-0002: Delivery model": design/adr-0002-delivery-model.md
     - "ADR-0003: Incident management": design/adr-0003-incident-management.md
     - "ADR-0004: Identity and access": design/adr-0004-identity-and-access.md
     - "ADR-0005: LLM serving and agent frameworks": design/adr-0005-llm-serving-and-agent-frameworks.md
+    - "ADR-0006: Engineering Intelligence": design/adr-0006-engineering-intelligence.md
   - Team Management: team-management.md
   - GitHub App Setup: github-app-setup.md
   - Scaling Runbook: scaling-runbook.md

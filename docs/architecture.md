@@ -15,6 +15,9 @@ Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
 - [ADR-0005: LLM serving and agent frameworks](design/adr-0005-llm-serving-and-agent-frameworks.md) —
   the mock vs Ollama vs vLLM split, one shared model server, and why LangGraph is a
   template rather than a platform service.
+- [ADR-0006: Engineering Intelligence](design/adr-0006-engineering-intelligence.md) —
+  why the scoring engine is a standalone package rather than a fourth scorecard, why
+  it persists its own snapshots, and why unmeasurable dimensions report no number.
 
 ## Overview
 

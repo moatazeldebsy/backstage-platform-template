@@ -29,6 +29,7 @@ import { idpCreateNamespaceModule } from './modules/idpCreateNamespace';
 import { ragSearchPlugin } from './modules/idpRagSearch';
 import { learningCenterPlugin } from './modules/idpLearningCenter';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
+import { engineeringIntelligencePlugin } from './modules/idpEngineeringIntelligence';
 
 
 const backend = createBackend();
@@ -82,6 +83,13 @@ backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 // permission plugin — guests get read-only access; authenticated users get full access
 backend.add(import('@backstage/plugin-permission-backend'));
 backend.add(idpPermissionPolicyModule);
+
+// engineering intelligence — scores platform/quality/reliability/AI/security/
+// FinOps health from the sources the platform already has, and persists a
+// snapshot each refresh because nothing else in the stack retains a trend
+// (Prometheus keeps 6h locally, 30d on AWS). Scoring itself lives in
+// @internal/engineering-intelligence-core, deliberately free of Backstage.
+backend.add(engineeringIntelligencePlugin);
 
 // search plugin
 backend.add(import('@backstage/plugin-search-backend'));
