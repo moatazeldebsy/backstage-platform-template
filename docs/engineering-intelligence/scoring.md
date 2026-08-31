@@ -193,7 +193,7 @@ Two things not to do:
 
 - **Do not add a signal for a metric nothing writes.** `code_coverage_percent`
   and `e2e_pass_rate` are on the QA Grafana dashboard, but the only thing that
-  ever writes them is `scripts/seed-qa-metrics.sh`. They are excluded on purpose.
+  ever wrote them was `scripts/seed-qa-metrics.sh`, now removed. They stay excluded.
 - **Do not point a collector at the Backstage UI layer.** Every page in
   `extensions.tsx` substitutes demo data when its source is down; a collector
   reading it would score fiction as fact. Go to Prometheus, OpenCost, Langfuse or

@@ -214,7 +214,6 @@ the scripts fall back to plain `docker build` + `docker push`.
 | `idp scaffold service` | Scaffold a new service (Node.js / Python / Go) via Backstage API or locally. Built by `setup.sh` automatically. | Each time you add a new service |
 | `idp scaffold test-suite` | Scaffold a QA test suite (18 types). Uses Backstage Scaffolder API when running, local generation otherwise. | Each time you add a test suite |
 | `setup-runner.sh` | Download, configure, and start a GitHub Actions self-hosted runner so pushes auto-deploy to the local Kind cluster. | After a service repo is created |
-| `seed-qa-metrics.sh` | Push synthetic QA metrics so the Grafana QA dashboard shows data immediately. | Optional — demo / dev only |
 
 ## Execution flow
 
@@ -248,6 +247,4 @@ idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
 idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20
 idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
 
-# Optional
-scripts/seed-qa-metrics.sh
 ```

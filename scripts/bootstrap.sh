@@ -621,28 +621,14 @@ _pushgateway() {
     --set "extraArgs[0]=--web.enable-admin-api" \
     --wait --timeout "${HELM_WAIT_SHORT}"
 
-  # No ALB ingress: Pushgateway is a metrics sink written to by CI and by
-  # seed-qa-metrics.sh (via the port-forward below), and read by Prometheus
-  # in-cluster. Nothing browses it, so a dedicated internet-facing ALB was
-  # ~$16/mo to publish an unauthenticated admin API.
+  # No ALB ingress: Pushgateway is a metrics sink written to by CI and read by
+  # Prometheus in-cluster. Nothing browses it, so a dedicated internet-facing ALB
+  # was ~$16/mo to publish an unauthenticated admin API.
 
-  # Seed QA demo metrics so the Grafana QA Platform dashboard has data
-  # immediately. This used to point at the cluster-internal Service DNS name —
-  # but seed-qa-metrics.sh runs on the operator's laptop, where that name can
-  # never resolve, so the seed failed on every AWS bootstrap and the QA
-  # dashboard was always empty. Port-forward instead, as bootstrap-local.sh does.
-  local pf_pid=""
-  kubectl port-forward svc/prometheus-pushgateway 9091:9091 -n monitoring &>/dev/null &
-  pf_pid=$!
-  if poll_until "Pushgateway port-forward" 20 2 \
-       curl -sf -o /dev/null http://localhost:9091/-/healthy; then
-    PUSHGATEWAY_URL=http://localhost:9091 bash scripts/seed-qa-metrics.sh \
-      || warn "QA metrics seed failed — run scripts/seed-qa-metrics.sh manually after deploy."
-  else
-    warn "Pushgateway port-forward never became healthy — skipping the QA metrics seed."
-  fi
-  kill "$pf_pid" 2>/dev/null || true
-  wait "$pf_pid" 2>/dev/null || true
+  # The QA dashboard is no longer seeded. It used to be filled with fixed sample
+  # values on every deploy — a pass rate of 0.923 and an error rate of 0.004 that
+  # looked like measurements and were not. The dashboard now shows the flaky-test
+  # exporter's real figures, and says so where a series has no publisher.
 }
 
 _opencost() {

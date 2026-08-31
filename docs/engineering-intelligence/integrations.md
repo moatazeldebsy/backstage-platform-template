@@ -139,4 +139,4 @@ both must be read or one language's failures are invisible. Several catalog comp
 share a repository, in which case each is credited with that repository's test results.
 
 Two metrics are deliberately **not** collected: `code_coverage_percent` and `e2e_pass_rate`
-are only ever written by `scripts/seed-qa-metrics.sh`, so they are fabricated at source.
+were only ever written by `scripts/seed-qa-metrics.sh`, which fabricated them at source and has since been removed.
