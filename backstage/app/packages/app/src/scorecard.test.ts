@@ -243,3 +243,59 @@ describe('CHECKS integrity', () => {
     }
   });
 });
+
+// ── drift guard: the scorecard exists twice ──────────────────────────────────
+//
+// The failure this prevents is the one that already happened. Tier logic lives
+// here and again in observability/tech-insights-exporter/exporter.py, and the two
+// disagree: this file scores 22 checks with gold at 9 (~41%), the exporter scores
+// an 11-check subset with gold at 10 (~91%). A service can be gold on its entity
+// page and bronze on the Grafana dashboard, and nothing said so.
+//
+// These tests do not assert the two agree — they do not, and reconciling them
+// demotes live services, which is a decision for the scorecard owners rather than
+// a quiet edit. They pin what each side does today, so the next change to either
+// has to be deliberate instead of silent.
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { TIER_THRESHOLDS } from './scorecard';
+
+function exporterSource(): string {
+  return readFileSync(
+    join(__dirname, '../../../../../observability/tech-insights-exporter/exporter.py'),
+    'utf8',
+  );
+}
+
+describe('scorecard drift between the UI and the exporter', () => {
+  it('pins the check counts each implementation scores against', () => {
+    const py = exporterSource();
+    const block = py.slice(py.indexOf('HYGIENE_CHECKS'), py.indexOf('SCORECARD_CHECKS'));
+    const exporterIds = [...block.matchAll(/"([a-z0-9-]+)"/g)].map(m => m[1]);
+
+    expect(CHECKS).toHaveLength(22);
+    expect(exporterIds).toHaveLength(11);
+  });
+
+  it('pins the gold thresholds, which disagree', () => {
+    const py = exporterSource();
+    const gold = /TIER_THRESHOLDS\s*=\s*\{[^}]*"gold":\s*(\d+)/.exec(py);
+    expect(gold).not.toBeNull();
+
+    expect(TIER_THRESHOLDS.gold).toBe(9);       // of 22 here — ~41%
+    expect(Number(gold![1])).toBe(10);          // of 11 there — ~91%
+  });
+
+  it('keeps the exporter a strict subset, so its ids stay meaningful here', () => {
+    // This is the one property worth enforcing rather than merely recording. The
+    // exporter inventing a check id the UI does not know would make the two
+    // scorecards incomparable, not merely differently calibrated.
+    const py = exporterSource();
+    const block = py.slice(py.indexOf('HYGIENE_CHECKS'), py.indexOf('SCORECARD_CHECKS'));
+    const exporterIds = [...block.matchAll(/"([a-z0-9-]+)"/g)].map(m => m[1]);
+    const uiIds = new Set(CHECKS.map(c => c.id as string));
+
+    expect(exporterIds.filter(id => !uiIds.has(id))).toEqual([]);
+  });
+});

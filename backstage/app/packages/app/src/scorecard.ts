@@ -73,13 +73,23 @@ export const CHECKS: CheckDef[] = [
 
 export type TierName = 'none' | 'bronze' | 'silver' | 'gold';
 
-// Thresholds for non-AI entities (14 checks) and AI entities (17 checks).
-// CHECKS above holds 17 entries; 3 are AI-only, so non-AI entities are scored
-// against 14. The absolute cutoffs below have not moved since the array held
-// 11/14, so the effective bar has drifted down (gold was ~82% of 11, it is now
-// ~64% of 14). Raising them is a deliberate policy change — it will demote
-// services overnight — so it is left alone here rather than folded into a
-// docs correction. Revisit with the scorecard owners.
+// CHECKS above now holds 22 entries and none are marked aiOnly, so both threshold
+// sets below are applied against the same 22 checks. The comment here previously
+// described 17 checks with 3 AI-only and did the percentage arithmetic on 14;
+// that array no longer exists.
+//
+// The absolute cutoffs have never moved while the array grew from 11 to 22, so
+// the effective bar has fallen a long way: gold was ~82% of 11 checks and is now
+// ~41% of 22.
+//
+// This also disagrees with the other implementation. observability/tech-insights-
+// exporter/exporter.py scores a strict 11-check subset of these ids and puts gold
+// at >= 10 of them — ~91%. The same service can therefore be gold on its entity
+// page and bronze on the Grafana dashboard. scorecard.test.ts pins both numbers so
+// neither side can drift further without a failing test.
+//
+// Raising these is a policy change: it demotes services overnight, so it needs the
+// scorecard owners rather than a quiet edit here.
 export const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
   bronze: 4,   // ~29% of 14 checks
   silver: 7,   // ~50% of 14 checks
