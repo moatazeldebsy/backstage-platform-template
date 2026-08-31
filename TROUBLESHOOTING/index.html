@@ -1476,6 +1476,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#symptom-docker-compose-up-fails-with-required-variable-backstage_auth_secret-is-missing-a-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      Symptom: docker compose up fails with "required variable BACKSTAGE_AUTH_SECRET is missing a value"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty" class="md-nav__link">
     <span class="md-ellipsis">
       Symptom: Pushgateway has no data / QA metrics dashboard empty
@@ -3598,6 +3607,16 @@ docker<span class="w"> </span>buildx<span class="w"> </span>build<span class="w"
 kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;job-name=dora-manual-</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="w"> </span>--date<span class="o">=</span>1min<span class="w"> </span>ago<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span>
 </code></pre></div></td></tr></table></div>
 <p>If the job fails with an auth error, update the token in Secrets Manager (see GITHUB_TOKEN section in <a href="../PRE_DEPLOYMENT_CHECKLIST/">PRE_DEPLOYMENT_CHECKLIST.md</a>).</p>
+<h4 id="symptom-docker-compose-up-fails-with-required-variable-backstage_auth_secret-is-missing-a-value">Symptom: <code>docker compose up</code> fails with "required variable BACKSTAGE_AUTH_SECRET is missing a value"<a class="headerlink" href="#symptom-docker-compose-up-fails-with-required-variable-backstage_auth_secret-is-missing-a-value" title="Permanent link">&para;</a></h4>
+<p>Working as intended. That key signs Backstage's service-to-service tokens and has no
+default — the previous fallback was a literal published in this repository, so an unset
+value now stops startup instead of quietly signing with a shared key.</p>
+<p><code>./scripts/setup.sh</code> and <code>./scripts/bootstrap-local.sh</code> both generate one into
+<code>local/backstage/.env</code>. If you are starting compose directly on a tree that predates
+this, fill it in once:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;BACKSTAGE_AUTH_SECRET=%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>local/backstage/.env
+</code></pre></div></td></tr></table></div>
+<p>Neither script overwrites an existing value — rotating it would sign every user out.</p>
 <h4 id="symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty">Symptom: Pushgateway has no data / QA metrics dashboard empty<a class="headerlink" href="#symptom-pushgateway-has-no-data-qa-metrics-dashboard-empty" title="Permanent link">&para;</a></h4>
 <p>Expected on a new install, and not a fault. The QA dashboard is no longer seeded with
 sample values — it shows what the flaky-test exporter has actually collected, which is
