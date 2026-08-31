@@ -1,0 +1,21 @@
+observability/tests/conftest.py
+  s_17ccb5fb4980ad::t_91e44f020f413b 1-33
+docs/local-setup.md
+  s_17ccb5fb4980ad::t_03bc68e8123951 20-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ab9bcdd08191b04dc3abea782c43212a10b18458",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
