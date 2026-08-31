@@ -1,0 +1,21 @@
+backstage/app/packages/app/src/scorecard.test.ts
+  s_17ccb5fb4980ad::t_18403b1fc06caa 246-301
+backstage/app/packages/app/src/scorecard.ts
+  s_17ccb5fb4980ad::t_06d651b00915c9 76-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "96e1c23cbf9843dceb713b35e8e494e723230f34",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
