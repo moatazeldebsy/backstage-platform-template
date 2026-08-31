@@ -2515,7 +2515,7 @@ unconfigured.</p>
 </tr>
 <tr>
 <td><code>test.passRate</code>, <code>test.flakinessRatio</code></td>
-<td><strong>Newly wired.</strong> The platform's own CI now publishes JUnit XML as <code>test-results-*</code>; values appear after the next few runs give the flakiness window something to classify</td>
+<td><strong>Live.</strong> The platform's own CI publishes JUnit XML as <code>test-results-*</code>. The exporter looks back over <code>WINDOW_SIZE</code> completed runs — every workflow, not just CI — so a repo with frequent CodeQL or docs-deploy runs needs a deeper window than the number of CI runs suggests; <code>MAX_ARTIFACT_RUNS</code> caps what that costs</td>
 </tr>
 <tr>
 <td>MLflow</td>
