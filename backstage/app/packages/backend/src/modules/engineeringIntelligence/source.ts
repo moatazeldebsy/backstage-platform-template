@@ -96,3 +96,38 @@ export function safeRatio(
   if (denominator === 0) return undefined;
   return numerator / denominator;
 }
+
+/**
+ * Page through a Langfuse-style list endpoint.
+ *
+ * Langfuse caps `limit` at 100 and answers HTTP 400 above it — which `getJson`
+ * turns into no data at all, so a collector asking for 500 got nothing rather
+ * than the first 100. The cap is documented in prose for `/v2/scores` and not
+ * documented at all for `/traces`; only calling it reveals the latter.
+ *
+ * Stops at `maxPages` so a busy instance cannot make a collection unbounded. A
+ * truncated read is fine here: every metric built on these is a ratio, and the
+ * alternative is a collector that never finishes.
+ */
+export const LANGFUSE_PAGE_SIZE = 100;
+
+export async function getPaged<T>(
+  url: (page: number, limit: number) => string,
+  init: RequestInit,
+  maxPages = 10,
+): Promise<T[] | undefined> {
+  const out: T[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const body = await getJson<{ data?: T[]; meta?: { totalPages?: number } }>(
+      url(page, LANGFUSE_PAGE_SIZE),
+      init,
+    );
+    // A failure on page 1 is "the source did not answer"; on a later page it is
+    // a partial read, and partial beats discarding what already arrived.
+    if (!body || !Array.isArray(body.data)) return page === 1 ? undefined : out;
+    out.push(...body.data);
+    const total = body.meta?.totalPages ?? 1;
+    if (page >= total || body.data.length === 0) break;
+  }
+  return out;
+}

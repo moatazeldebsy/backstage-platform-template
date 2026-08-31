@@ -10,6 +10,7 @@ import {
   CollectorResult,
   finite,
   getJson,
+  getPaged,
   proxyTarget,
 } from './source';
 import { langfuseAuth } from './langfuse';
@@ -105,15 +106,19 @@ export async function collectAiCost(
   ).toISOString();
   const headers = { Authorization: auth.header };
 
-  const [traceBody, dailyBody] = await Promise.all([
-    getJson<TraceListing>(
-      `${base}/api/public/traces?limit=500&fromTimestamp=${encodeURIComponent(from)}`,
+  const [traceRows, dailyBody] = await Promise.all([
+    getPaged<NonNullable<TraceListing['data']>[number]>(
+      (page, limit) =>
+        `${base}/api/public/traces?limit=${limit}&page=${page}` +
+        `&fromTimestamp=${encodeURIComponent(from)}`,
       { headers },
     ),
     getJson<MetricsResponse>(metricsUrl(base, from, new Date().toISOString()), {
       headers,
     }),
   ]);
+
+  const traceBody: TraceListing | undefined = traceRows && { data: traceRows };
 
   if (!traceBody || !Array.isArray(traceBody.data)) {
     return {
