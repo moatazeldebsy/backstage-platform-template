@@ -1,0 +1,28 @@
+.gitignore
+  s_17ccb5fb4980ad::t_102ae8b75ffc69 116-118
+docs/diagrams/render.mjs
+  s_17ccb5fb4980ad::t_bef2cba8673663 13-18
+  s_17ccb5fb4980ad::t_1591278e452310 1-12,19-64
+docs/diagrams/build-platform-planes.py
+  s_17ccb5fb4980ad::t_60386bab4898f7 1-159
+docs/diagrams/README.md
+  s_17ccb5fb4980ad::t_dec2372955d094 1-64
+docs/diagrams/platform-planes.html
+  s_17ccb5fb4980ad::t_72709813743960 1-420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b55c0b4fafd9fbf9efd9e5e25e3e9564454d23f6",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
