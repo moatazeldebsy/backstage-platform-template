@@ -689,6 +689,11 @@ if [[ -z "${OPENAI_API_KEY:-}" ]]; then
   warn "OPENAI_API_KEY is not set. OpenAI ModelConfig will not be functional. Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS) to enable OpenAI agents."
 fi
 
+# KAgent's CRDs come from an OCI registry, so a Helm pull authenticates against
+# ghcr.io and execs Docker's credential helper. Do this before anything long
+# runs: the failure is otherwise several minutes in, at the CRD install.
+ensure_docker_cred_helper
+
 info "Starting AI platform bootstrap (Claude API, mode=${DEPLOY_MODE})..."
 echo ""
 

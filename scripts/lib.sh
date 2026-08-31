@@ -1213,7 +1213,57 @@ run_personalization_pass() {
   log "Substituted in ${count} of ${scanned} files (skipped $((scanned - count)) with no match)."
 }
 
+# Put Docker's credential helper on PATH when it is installed but not reachable.
+#
+# `~/.docker/config.json` can name a credential store — `"credsStore":
+# "osxkeychain"` is the macOS default — and anything that authenticates to a
+# registry then execs `docker-credential-<store>`. Helm's OCI support does this
+# too, so a Helm pull from ghcr.io fails with:
+#
+#   exec: "docker-credential-osxkeychain": executable file not found in $PATH
+#
+# which names neither Docker nor the config key that asked for it.
+#
+# Rancher Desktop installs its helpers in ~/.rd/bin and only adds that directory
+# to an interactive shell's PATH, so a script run from anywhere else does not see
+# them. This is about Docker's configuration rather than which cluster is in use:
+# it bites a Kind cluster on a machine with Rancher Desktop just as readily.
+#
+# Prepends the directory holding the helper if one is found, and otherwise says
+# what is missing and which setting requires it, rather than letting the failure
+# surface several minutes later inside a Helm command.
+ensure_docker_cred_helper() {
+  local config="${HOME}/.docker/config.json"
+  [[ -f "$config" ]] || return 0
+
+  local store
+  store="$(sed -n 's/.*"credsStore"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$config" | head -1)"
+  [[ -n "$store" ]] || return 0
+
+  local helper="docker-credential-${store}"
+  command -v "$helper" &>/dev/null && return 0
+
+  local dir
+  for dir in "${HOME}/.rd/bin" \
+             "/Applications/Docker.app/Contents/Resources/bin" \
+             "/usr/local/bin" \
+             "/opt/homebrew/bin"; do
+    if [[ -x "${dir}/${helper}" ]]; then
+      export PATH="${dir}:${PATH}"
+      log "Added ${dir} to PATH for ${helper} (required by credsStore in ~/.docker/config.json)."
+      return 0
+    fi
+  done
+
+  warn "${helper} is not on PATH and was not found in the usual locations."
+  warn "  ~/.docker/config.json sets \"credsStore\": \"${store}\", so Helm and Docker will"
+  warn "  exec it when authenticating to a registry — an OCI chart pull will fail."
+  warn "  Install it, or remove credsStore from that file if you do not need it."
+  return 0
+}
+
 _preflight_check_local() {
+  ensure_docker_cred_helper
   local missing=()
   local required_cmds=(kubectl helm docker)
   [[ "${KUBERNETES_PROVIDER:-kind}" == "kind" ]] && required_cmds+=(kind)
