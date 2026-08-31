@@ -125,7 +125,8 @@ Honest status on a running local platform:
 | DORA, DevEx, catalog, Tech Insights, OpenCost, scaffolder | Live |
 | `test.passRate`, `test.flakinessRatio` | **Newly wired.** The platform's own CI now publishes JUnit XML as `test-results-*`; values appear after the next few runs give the flakiness window something to classify |
 | MLflow | **Live-verified** against MLflow 2.13.0. Running it found the collector POSTing to `registered-models/search`, which answers `Allow: HEAD, OPTIONS, GET`; the recorded response is committed as a fixture |
-| Langfuse prompts, Langfuse scores, AI cost | **Spec-verified, not live-verified.** Endpoints and field names are checked against Langfuse's published OpenAPI description for the version the chart pins (chart 1.5.41 → app v3.224.1), but Langfuse v3 wants ClickHouse and ~2.7GB, which this host cannot spare — so no response has been parsed from a running instance |
+| Langfuse observability, scores, AI cost | **Live-verified** against a self-hosted Langfuse v3. Running them found `limit=500` on `/traces` and `/v2/scores` returning HTTP 400 — the cap is 100 — which `getJson` turned into "no data", so both collectors reported the source as unavailable. Now paged. Score joining (`NUMERIC` + `_pass` `BOOLEAN`) and workload→team cost attribution were both confirmed against real ingested data |
+| Langfuse per-model cost breakdown | **Still spec-verified only.** The `providedModelName` dimension could not be exercised: a fresh Langfuse returns `count_count: 0` from the metrics API for every view — traces, scores and observations alike — while the list endpoints return the same data fine. The query shape is accepted and the envelope matches; only the aggregation had nothing in it |
 
 DevEx and DORA metrics cover repositories carrying the `idp-app` topic; a repository without
 it is invisible to the exporter.

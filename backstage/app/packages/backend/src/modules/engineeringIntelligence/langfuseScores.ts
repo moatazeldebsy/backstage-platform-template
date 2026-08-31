@@ -8,7 +8,7 @@ import {
 import {
   CollectorContext,
   CollectorResult,
-  getJson,
+  getPaged,
   proxyTarget,
 } from './source';
 import { langfuseAuth } from './langfuse';
@@ -107,14 +107,17 @@ export async function collectLangfuseScores(
     };
   }
 
-  const body = await getJson<ScoresResponse>(
-    // v2, not v1: `/api/public/scores` is POST-only in Langfuse v3 and the GET
-    // moved to `/api/public/v2/scores`. The old path answered 405, which
-    // `getJson` turned into "no scores" — a broken call that read as an
-    // organisation with no evaluation suite.
-    `${base}/api/public/v2/scores?limit=500`,
+  // v2, not v1: `/api/public/scores` is POST-only in Langfuse v3 and the GET
+  // moved to `/api/public/v2/scores`. The old path answered 405, which `getJson`
+  // turned into "no scores" — a broken call that read as an organisation with no
+  // evaluation suite. Paged because the limit is capped at 100; asking for 500
+  // returned HTTP 400 and, again, looked like no scores.
+  const rows = await getPaged<LangfuseScore>(
+    (page, limit) => `${base}/api/public/v2/scores?limit=${limit}&page=${page}`,
     { headers: { Authorization: auth.header } },
   );
+
+  const body: ScoresResponse | undefined = rows && { data: rows };
 
   if (!body || !Array.isArray(body.data)) {
     return {
