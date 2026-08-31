@@ -14,18 +14,19 @@ metadata:
     idp.io/slo-availability-target: "99.5"
     idp.io/slo-latency-target: "99.0"
     idp.io/sloth-service: hello-service
-    # Datadog tab (backstage/app/packages/app/src/extensions.tsx) — added per
-    # the "Enable Datadog APM & Monitoring" scaffolder template's documented
-    # convention (skeleton-addon/common/datadog/README.md). No dashboard-url:
-    # no dashboard has been created for this reference service yet.
-    datadoghq.com/monitor-tag: service:hello-service
-    datadoghq.com/site: app.datadoghq.eu
-    # Langfuse tab (backstage/app/packages/app/src/extensions.tsx) — same
-    # convention as the Datadog block above, per the "Enable Langfuse LLM
-    # Tracing" template (skeleton-addon/common/langfuse/README.md). The value is
-    # the Langfuse *trace tag*, and must equal OTEL_SERVICE_NAME in the service's
-    # Helm values — the two are the halves of the tab's filter.
-    langfuse.com/service-name: hello-service
+    # No datadoghq.com/* or langfuse.com/service-name here, deliberately.
+    #
+    # Both were set so their entity tabs would render on this reference service.
+    # They are claims about the service, and both were false: hello-service is a
+    # Go hello-world (src/main.go, one test) with no LLM client of any kind, and
+    # no Datadog dashboard was ever created for it. The tabs appeared, found
+    # nothing, and fell back to sample data — so the demo they enabled was of the
+    # fallback, not of the integration.
+    #
+    # Both tabs are still reachable from any service that genuinely has the
+    # integration: the llm-app-langfuse, ai-agent-kagent, mcp-server and
+    # mlflow-experiment skeletons set langfuse.com/service-name, and the
+    # "Enable Datadog APM & Monitoring" template sets the datadoghq.com ones.
 spec:
   type: service
   lifecycle: production
