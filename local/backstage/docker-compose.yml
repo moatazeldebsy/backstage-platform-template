@@ -40,7 +40,7 @@ services:
       AUTH_GITHUB_CLIENT_ID: ${AUTH_GITHUB_CLIENT_ID:-}
       AUTH_GITHUB_CLIENT_SECRET: ${AUTH_GITHUB_CLIENT_SECRET:-}
       # Backstage token service — signs session cookies (required in v1.29+)
-      BACKSTAGE_AUTH_SECRET: ${BACKSTAGE_AUTH_SECRET:-dev-secret-change-in-production}
+      BACKSTAGE_AUTH_SECRET: ${BACKSTAGE_AUTH_SECRET:?set it in local/backstage/.env — ./scripts/setup.sh generates one}
       # Local K8s — reads from in-cluster if running in Kind, else skip
       K8S_CLUSTER_URL: ${K8S_CLUSTER_URL:-https://kubernetes.default.svc}
       K8S_SERVICE_ACCOUNT_TOKEN: ${K8S_SERVICE_ACCOUNT_TOKEN:-}

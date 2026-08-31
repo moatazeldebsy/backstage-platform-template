@@ -58,6 +58,11 @@ spec:
                 secretKeyRef:
                   name: backstage-secrets
                   key: AUTH_SESSION_SECRET
+            - name: BACKSTAGE_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: BACKSTAGE_AUTH_SECRET
             - name: AWS_REGION
               value: us-east-1
             # Read-only mode — disables scaffolder and catalog mutations

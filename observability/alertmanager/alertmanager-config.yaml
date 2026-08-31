@@ -44,35 +44,26 @@ spec:
     # were dead too. Every route here except the last therefore sets continue: true,
     # and ordering runs most-specific first. Observed 2026-08-13.
     routes:
-      # SLO burn-rate fast-burn pages via PagerDuty immediately (0s group wait)
-      # rather than waiting out the default 30s.
-      - matchers:
-          - name: category
-            value: slo
-          - name: severity
-            value: critical
-        receiver: pagerduty-critical
-        groupWait: 0s
-        repeatInterval: 1h
-        continue: true
+      # SLO burn-rate fast-burn goes out immediately (0s group wait) rather than
+      # waiting out the default 30s, and repeats hourly while it burns.
+      #
+      # This used to page PagerDuty first. That receiver referenced a secret which
+      # was never created, and the operator rejects an AlertmanagerConfig wholesale
+      # when any receiver's secret is missing — so this file was skipped entirely
+      # and *nothing* was delivered: not PagerDuty, not Slack, not the event router.
+      # See "Enabling PagerDuty" at the foot of this file. Observed 2026-08-31.
       - matchers:
           - name: category
             value: slo
           - name: severity
             value: critical
         receiver: slack-platform
+        groupWait: 0s
+        repeatInterval: 1h
         continue: true
-      # Critical alerts go to PagerDuty (pages on-call) AND Slack. category != slo
-      # keeps them from double-paging the SLO routes above; `!=` also matches alerts
-      # that carry no category label at all, which is the common case.
-      - matchers:
-          - name: severity
-            value: critical
-          - name: category
-            matchType: "!="
-            value: slo
-        receiver: pagerduty-critical
-        continue: true
+      # Critical alerts go to Slack. category != slo keeps them from
+      # double-notifying via the SLO route above; `!=` also matches alerts that
+      # carry no category label at all, which is the common case.
       - matchers:
           - name: severity
             value: critical
@@ -113,40 +104,65 @@ spec:
             {{ end }}
           footer: 'IDP Platform'
 
-    # PagerDuty receiver — pages on-call for critical alerts.
-    # Requires secret: alertmanager-pagerduty (key: integration-key)
-    # Get the integration key from PagerDuty → Service → Integrations → Events API v2.
-    - name: pagerduty-critical
-      pagerdutyConfigs:
-        - routingKey:
-            name: alertmanager-pagerduty
-            key: integration-key
-          severity: '{{ if eq .CommonLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
-          description: '{{ .CommonAnnotations.summary }}'
-          details:
-            - key: namespace
-              value: '{{ .CommonLabels.namespace }}'
-            - key: service
-              value: '{{ .CommonLabels.service }}'
-            - key: runbook
-              value: '{{ .CommonAnnotations.runbook_url }}'
-          sendResolved: true
-          pagerDutyLinkConfigs:
-            - href: '{{ .CommonAnnotations.runbook_url }}'
-              alt: Runbook
-
+    # ── Enabling PagerDuty ────────────────────────────────────────────────
+    # Deliberately absent, not forgotten. A pagerduty receiver referencing a
+    # secret that does not exist takes the WHOLE AlertmanagerConfig down with it:
+    # the operator logs "skipping alertmanagerconfig" and every route in this file
+    # stops delivering. That is a silent, total alerting outage caused by adding
+    # an optional integration.
+    #
+    # To enable it, create the secret FIRST, then add the receiver and its routes:
+    #
+    #   kubectl create secret generic alertmanager-pagerduty -n monitoring \
+    #     --from-literal=integration-key=<Events API v2 key>
+    #
+    #   # then, in this file, a receiver:
+    #   - name: pagerduty-critical
+    #     pagerdutyConfigs:
+    #       - routingKey:
+    #           name: alertmanager-pagerduty
+    #           key: integration-key
+    #         sendResolved: true
+    #
+    #   # and a route above, ahead of the matching Slack one, with continue: true
+    #
+    # After applying, confirm the config was accepted rather than skipped:
+    #
+    #   kubectl logs -n monitoring deploy/prometheus-kube-prometheus-operator \
+    #     | grep -i "skipping alertmanagerconfig"
+    #
     # Agent event router — forwards firing alerts to the AI triage agent via A2A,
     # and resolved alerts so it can close out any incident issue it auto-created.
     - name: agent-event-router
       webhookConfigs:
         - url: 'http://agent-event-router.services-dev.svc.cluster.local:3004/webhook/alertmanager'
           sendResolved: true
-          httpConfig:
-            authorization:
-              type: Bearer
-              credentials:
-                name: agent-event-router-webhook-token
-                key: token
+          # No Authorization header by default, deliberately.
+          #
+          # This carried a Bearer credential from secret
+          # `agent-event-router-webhook-token`, which nothing in this repository
+          # ever created — and Alertmanager can only read secrets in its own
+          # namespace, so it could not have used the router's own
+          # `agent-event-router-secrets` in services-dev either. A missing secret
+          # is fatal to the whole AlertmanagerConfig, so this one reference took
+          # every route in this file down with it.
+          #
+          # The router accepts unauthenticated calls when WEBHOOK_TOKEN is unset
+          # and says so on startup; it is a ClusterIP service, reachable only from
+          # inside the cluster. To authenticate it anyway, create the secret in
+          # THIS namespace first, then add the block back:
+          #
+          #   kubectl create secret generic agent-event-router-webhook-token \
+          #     -n monitoring --from-literal=token="$TOKEN"
+          #   # and set the same value as webhook-token in
+          #   # agent-event-router-secrets (services-dev), which the router reads.
+          #
+          #   httpConfig:
+          #     authorization:
+          #       type: Bearer
+          #       credentials:
+          #         name: agent-event-router-webhook-token
+          #         key: token
 
   inhibitRules:
     - sourceMatch:
