@@ -1,0 +1,420 @@
+<title>IDP Platform Planes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --page:#fbfbfb; --ink:#1a1a1a; --ink-2:#5a5a5a; --chip:#1c1c1c;
+    --exp-border:#c9c9c9; --exp-fill:#f1f1f1;
+    --ctl-border:#3a3a3a; --ctl-fill:#ffffff; --ctl-inner:#f4f4f4;
+    --del-border:#2563c9; --del-fill:#edf3fd; --del-inner:#dfeafb;
+    --ai-border:#d6006e;  --ai-fill:#fceef5;  --ai-inner:#fadfec;
+    --obs-border:#e8890c; --obs-fill:#fdf3e7; --obs-inner:#fbe7cf;
+    --k8s:#326ce5; --wire:#9a9a9a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--page); color:var(--ink);
+         font-family:Poppins, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  .canvas { padding:54px; width:max-content; }
+
+  .diagram {
+    position:relative; display:grid;
+    grid-template-columns:300px 120px 380px 120px 720px 96px 250px;
+    grid-template-areas:
+      ".           .  .        .  delivery  .  aside1"
+      "experience  .  control  .  ai        .  aside2"
+      "auth        .  control  .  obs       .  aside3";
+    column-gap:0; row-gap:26px; align-items:center;
+  }
+  .p-ctl{grid-area:control;} .p-del{grid-area:delivery;} .p-ai{grid-area:ai;}
+  .p-obs{grid-area:obs;} .p-auth{grid-area:auth;}
+  .a1{grid-area:aside1;} .a2{grid-area:aside2;} .a3{grid-area:aside3;}
+
+  .plane { border:2px solid var(--bd); background:var(--bg); border-radius:20px;
+           padding:20px 20px 18px; position:relative; }
+  .p-exp{--bd:var(--exp-border); --bg:var(--exp-fill); border-style:dashed;}
+  .p-ctl{--bd:var(--ctl-border); --bg:var(--ctl-fill);}
+  .p-del{--bd:var(--del-border); --bg:var(--del-fill);}
+  .p-ai {--bd:var(--ai-border);  --bg:var(--ai-fill);}
+  .p-obs{--bd:var(--obs-border); --bg:var(--obs-fill);}
+
+  .plane-title{display:flex; align-items:center; gap:11px; margin-bottom:16px;}
+  .plane-title .mark{width:30px; height:30px; flex:0 0 30px; display:inline-flex;}
+  .plane-title .mark .lg{width:30px; height:30px; flex:0 0 30px;}
+  .plane-title .txt small{display:block; font-size:12.5px; font-weight:500; color:var(--ink-2); line-height:1.2;}
+  .plane-title .txt strong{display:block; font-size:25px; font-weight:600; letter-spacing:-.02em; line-height:1.15;}
+  .above-title{font-size:17px; font-weight:600; margin:0 0 10px 4px;}
+
+  .pill{display:inline-block; background:var(--chip); color:#fff; font-size:12.5px;
+        font-weight:500; border-radius:9px; padding:7px 14px; margin-bottom:10px;}
+
+  .module{background:var(--inner, rgba(255,255,255,.72)); border-radius:14px; padding:13px 13px 6px; margin-bottom:12px;}
+  .p-del .module{--inner:var(--del-inner);} .p-ai .module{--inner:var(--ai-inner);}
+  .p-obs .module{--inner:var(--obs-inner);} .p-ctl .module{--inner:var(--ctl-inner);}
+  .p-exp .module{--inner:#fff;}
+  .module.plainbox{background:transparent; padding:0;}
+
+  .row{display:flex; flex-wrap:wrap; gap:9px;}
+
+  .card{display:inline-flex; align-items:center; gap:8px; background:#fff;
+        border:1px solid rgba(0,0,0,.09); border-radius:11px; padding:8px 13px;
+        font-size:13.5px; font-weight:500; color:var(--ink); margin-bottom:8px; white-space:nowrap;}
+  .card .lg{width:19px; height:19px; flex:0 0 19px;}
+
+  .dark-card{display:inline-flex; align-items:center; gap:8px; background:var(--chip); color:#fff;
+             border-radius:11px; padding:8px 13px; font-size:13.5px; font-weight:500;
+             margin-bottom:8px; white-space:nowrap;}
+  .dark-card .lg{width:19px; height:19px; flex:0 0 19px;}
+  /* GitHub's mark is #181717 — on a black card it would not be there at all. */
+  .dark-card .lg-dark{fill:#fff;}
+
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .k8s{position:absolute; right:18px; bottom:-15px; display:inline-flex; align-items:center;
+       gap:7px; background:var(--page); padding:2px 8px; font-size:15px; font-weight:600; color:var(--k8s);}
+  .k8s .lg{width:21px; height:21px; flex:0 0 21px;}
+
+  .aside{display:flex; align-items:center; gap:11px; background:#f2f2f2; border-radius:13px;
+         padding:13px 15px; font-size:13.5px; font-weight:500; line-height:1.35;}
+  .aside .lg{width:26px; height:26px; flex:0 0 26px;}
+  .aside-note{font-size:12.5px; color:var(--ink-2); margin:9px 2px 0; line-height:1.4;}
+
+  .p-auth{display:flex; flex-direction:column; align-items:flex-start;}
+  .authbox{background:#f2f2f2; border-radius:14px; padding:14px 16px; width:100%;}
+  .authbox .t{font-size:13px; color:var(--ink-2); margin-bottom:9px;}
+
+  .wires{position:absolute; left:0; top:0; overflow:visible; pointer-events:none;}
+  .wire{fill:none; stroke:var(--wire); stroke-width:1.6;}
+  .wire.dash{stroke-dasharray:6 5; stroke-width:1.8;}
+  .wire-head{fill:var(--wire);}
+  .wire-label{font-family:Poppins,sans-serif; font-size:12px; font-weight:500; fill:var(--ink-2);
+              stroke:var(--page); stroke-width:6; paint-order:stroke fill;
+              text-anchor:middle; dominant-baseline:middle;}
+  .tele-label{font-size:11.5px; font-weight:600;}
+</style>
+
+<div class="canvas">
+  <div class="diagram">
+
+    <div style="grid-area: experience;">
+      <p class="above-title">Experience Plane</p>
+      <section class="plane p-exp">
+        <div class="module">
+          <div class="row">
+            <span class="dark-card">{{backstage}}Portal</span>
+            <span class="dark-card">{{si-go}}CLI</span>
+            <span class="dark-card">TechDocs</span>
+          </div>
+        </div>
+        <div class="module">
+          <div class="row">
+            <span class="dark-card">Claude Code</span>
+            <span class="dark-card">{{si-github}}Copilot</span>
+            <span class="dark-card">any MCP client</span>
+          </div>
+        </div>
+      </section>
+      <p class="aside-note" style="text-align:center; margin-top:14px;">Built for humans and agents</p>
+    </div>
+
+    <section class="plane p-ctl">
+      <div class="plane-title">
+        <span class="mark">{{backstage}}</span>
+        <span class="txt"><small>Backstage IDP</small><strong>Control Plane</strong></span>
+      </div>
+      <span class="pill">Platform Interfaces</span>
+      <div class="module plainbox">
+        <div class="row">
+          <span class="card">Catalog API</span>
+          <span class="card">Scaffolder</span>
+          <span class="card">MCP servers</span>
+        </div>
+      </div>
+      <div class="module">
+        <div class="row">
+          <span class="card">Permissions</span>
+          <span class="card">Tech Insights</span>
+          <span class="card">RAG search</span>
+          <span class="card">Engineering Intelligence</span>
+          <span class="card">{{si-postgresql}}PostgreSQL</span>
+        </div>
+      </div>
+      <div class="cols">
+        <div>
+          <span class="pill">Golden Paths</span>
+          <div class="module plainbox">
+            <div class="row">
+              <span class="card">64 templates</span>
+              <span class="card">{{helm}}Helm chart</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="pill">Infrastructure</span>
+          <div class="module plainbox">
+            <div class="row">
+              <span class="card">{{si-terraform}}Terraform</span>
+              <span class="card">{{crossplane}}Crossplane</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="k8s">{{kubernetes}}kubernetes</div>
+    </section>
+
+    <section class="plane p-del">
+      <div class="plane-title">
+        <span class="mark">{{argo}}</span>
+        <span class="txt"><small>GitOps</small><strong>Delivery Plane</strong></span>
+      </div>
+      <div class="cols">
+        <div>
+          <span class="pill">Continuous Delivery</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{argo}}Argo CD</span>
+              <span class="card">{{argo}}Workflows</span>
+              <span class="card">{{argo}}Rollouts</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="pill">Policy Guardrails</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{kyverno}}Kyverno</span>
+              <span class="card">default-deny</span>
+              <span class="card">no :latest</span>
+              <span class="card">health probes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="pill">Runtime</span>
+      <div class="module">
+        <div class="row">
+          <span class="card">{{kubernetes}}Kind / EKS</span>
+          <span class="card">{{karpenter}}Karpenter</span>
+          <span class="card">approval-service</span>
+          <span class="card">agent-event-router</span>
+        </div>
+      </div>
+      <div class="k8s">{{kubernetes}}kubernetes</div>
+    </section>
+
+    <section class="plane p-ai">
+      <div class="plane-title">
+        <span class="txt"><small>Optional</small><strong>AI &amp; ML Plane</strong></span>
+      </div>
+      <div class="cols">
+        <div>
+          <span class="pill">Agents — KAgent</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">idp</span><span class="card">cost</span>
+              <span class="card">incident</span><span class="card">qa</span>
+              <span class="card">security</span><span class="card">release</span>
+              <span class="card">onboarding</span><span class="card">contract</span>
+              <span class="card">platform</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="pill">MCP Servers</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">idp</span><span class="card">{{si-github}}github</span>
+              <span class="card">argocd</span><span class="card">cost</span>
+              <span class="card">incident</span><span class="card">security</span>
+              <span class="card">qa</span><span class="card">contract</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cols">
+        <div>
+          <span class="pill">Model &amp; Experiment</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{si-mlflow}}MLflow</span>
+              <span class="card">{{si-ollama}}Ollama</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="pill">Evaluation</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{langfuse}}Langfuse</span>
+              <span class="card">{{deepeval}}DeepEval</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="k8s">{{kubernetes}}kubernetes</div>
+    </section>
+
+    <section class="plane p-obs">
+      <div class="plane-title">
+        <span class="mark">{{prometheus}}</span>
+        <span class="txt"><small>Signals &amp; scoring</small><strong>Observability Plane</strong></span>
+      </div>
+      <div class="cols">
+        <div>
+          <span class="pill">Metrics &amp; Logs</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{prometheus}}Prometheus</span>
+              <span class="card">{{si-grafana}}Grafana</span>
+              <span class="card">{{loki}}Loki</span>
+              <span class="card">{{si-grafana}}Tempo</span>
+              <span class="card">Alertmanager</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="pill">Exporters</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{si-githubactions}}DORA + DevEx</span>
+              <span class="card">flaky-test</span>
+              <span class="card">Tech Insights</span>
+              <span class="card">catalog</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cols">
+        <div>
+          <span class="pill">Cost &amp; Reliability</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">{{opencost}}OpenCost</span>
+              <span class="card">Sloth SLOs</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="pill">Engineering Intelligence</span>
+          <div class="module">
+            <div class="row">
+              <span class="card">7 dimensions</span>
+              <span class="card">maturity model</span>
+              <span class="card">evidence per score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="k8s">{{kubernetes}}kubernetes</div>
+    </section>
+
+    <div class="p-auth">
+      <div class="authbox">
+        <span class="pill" style="margin-bottom:8px;">Authentication</span>
+        <div class="t">Pluggable OAuth2 / OIDC</div>
+        <span class="card">{{si-github}}GitHub OAuth</span>
+      </div>
+    </div>
+
+    <div class="a1">
+      <div class="aside">{{si-docker}}<span>Any OCI Container Registry<br><span style="color:var(--ink-2);font-weight:400;">ECR or local registry</span></span></div>
+    </div>
+    <div class="a2">
+      <div class="aside">{{si-terraform}}<span>Any ESO Compatible<br>Secret Store</span></div>
+      <p class="aside-note">Secret management for the delivery and runtime planes</p>
+    </div>
+    <div class="a3">
+      <div class="aside">{{si-ollama}}<span>Any AI Model Provider<br><span style="color:var(--ink-2);font-weight:400;">Ollama, Bedrock, Anthropic</span></span></div>
+    </div>
+
+  </div>
+
+  <svg class="wires" id="wires" aria-hidden="true"></svg>
+
+  <script>
+  (function () {
+    var NS = "http://www.w3.org/2000/svg";
+    function draw() {
+      var grid = document.querySelector(".diagram");
+      var svg = document.getElementById("wires");
+      if (svg.parentNode !== grid) grid.appendChild(svg);
+      var G = grid.getBoundingClientRect();
+      svg.setAttribute("width", G.width); svg.setAttribute("height", G.height);
+      svg.setAttribute("viewBox", "0 0 " + G.width + " " + G.height);
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      function box(sel) {
+        var b = document.querySelector(sel).getBoundingClientRect();
+        return { l:b.left-G.left, r:b.right-G.left, t:b.top-G.top, b:b.bottom-G.top,
+                 cy:b.top-G.top+b.height/2, cx:b.left-G.left+b.width/2 };
+      }
+      var exp=box(".p-exp"), ctl=box(".p-ctl"), del=box(".p-del"),
+          ai=box(".p-ai"), obs=box(".p-obs"), auth=box(".authbox");
+
+      function path(d, cls, stroke) {
+        var p=document.createElementNS(NS,"path");
+        p.setAttribute("class", cls||"wire"); p.setAttribute("d", d);
+        if (stroke) p.setAttribute("stroke", stroke);
+        svg.appendChild(p);
+      }
+      function head(x,y,dir,color) {
+        var H=8, pts = dir==="r"?[[x,y],[x-H,y-5],[x-H,y+5]]
+                     : dir==="l"?[[x,y],[x+H,y-5],[x+H,y+5]]
+                     : dir==="d"?[[x,y],[x-5,y-H],[x+5,y-H]]
+                     :           [[x,y],[x-5,y+H],[x+5,y+H]];
+        var t=document.createElementNS(NS,"polygon");
+        t.setAttribute("class","wire-head"); if(color) t.setAttribute("fill",color);
+        t.setAttribute("points", pts.map(function(p){return p.join(",");}).join(" "));
+        svg.appendChild(t);
+      }
+      function label(x,y,text,cls,color) {
+        var t=document.createElementNS(NS,"text");
+        t.setAttribute("class","wire-label "+(cls||"")); t.setAttribute("x",x); t.setAttribute("y",y);
+        if(color) t.setAttribute("fill",color);
+        t.textContent=text; svg.appendChild(t);
+      }
+      var G1=10;
+
+      // Experience <-> Control
+      path("M"+(exp.r+G1)+" "+exp.cy+" H"+(ctl.l-G1));
+      head(ctl.l-G1, exp.cy, "r"); head(exp.r+G1, exp.cy, "l");
+      label((exp.r+ctl.l)/2, exp.cy-14, "HTTP / MCP");
+
+      // Authentication -> Control, straight into the left edge.
+      // The elbow route was drawn as "right, then up into the underside", but the
+      // auth box sits *above* the plane's lower edge, so the segment ran downward
+      // while its arrowhead pointed up — a contradiction on the page.
+      path("M"+(auth.r+G1)+" "+auth.cy+" H"+(ctl.l-G1));
+      head(ctl.l-G1, auth.cy, "r");
+      label((auth.r+ctl.l)/2, auth.cy-14, "sign-in");
+
+      // Control -> Delivery / AI, branching off one trunk
+      var tX = ctl.r + (del.l-ctl.r)/2;
+      path("M"+(ctl.r+G1)+" "+ctl.cy+" H"+tX);
+      path("M"+tX+" "+ctl.cy+" V"+del.cy+" H"+(del.l-G1));
+      head(del.l-G1, del.cy, "r");
+      label(tX, (ctl.cy+del.cy)/2-4, "GitOps");
+      path("M"+tX+" "+ctl.cy+" V"+ai.cy+" H"+(ai.l-G1));
+      head(ai.l-G1, ai.cy, "r"); head(ctl.r+G1, ctl.cy, "l");
+      label(tX, (ctl.cy+ai.cy)/2+4, "tool calls");
+
+      // Telemetry. Delivery routes around the outside — a straight drop would
+      // cross the AI plane and sit on top of its contents.
+      var DEL_C="#2563c9", AI_C="#d6006e";
+      var rX = Math.max(del.r, ai.r, obs.r) + 46;
+      path("M"+(del.r+G1)+" "+(del.b-40)+" H"+rX+" V"+obs.cy+" H"+(obs.r+G1), "wire dash", DEL_C);
+      head(obs.r+G1, obs.cy, "l", DEL_C);
+      label(rX, (del.b+ai.t)/2-6, "runtime", "tele-label", DEL_C);
+      label(rX, (del.b+ai.t)/2+8, "telemetry", "tele-label", DEL_C);
+
+      path("M"+ai.cx+" "+(ai.b+G1)+" V"+(obs.t-G1), "wire dash", AI_C);
+      head(ai.cx, obs.t-G1, "d", AI_C);
+      label(ai.cx+70, (ai.b+obs.t)/2, "agent telemetry", "tele-label", AI_C);
+    }
+    window.redrawWires = draw;
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ requestAnimationFrame(draw); });
+    window.addEventListener("load", function(){ requestAnimationFrame(draw); });
+  })();
+  </script>
+</div>

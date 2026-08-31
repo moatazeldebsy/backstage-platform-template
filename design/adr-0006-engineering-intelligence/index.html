@@ -1,0 +1,2770 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Golden-path platform for building and deploying services on EKS">
+      
+      
+      
+      
+        <link rel="prev" href="../adr-0005-llm-serving-and-agent-frameworks/">
+      
+      
+        <link rel="next" href="../../team-management/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+    
+    
+      
+        <title>ADR-0006: Engineering Intelligence - Internal Developer Platform</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adr-0006-engineering-intelligence-where-scoring-lives-and-what-it-refuses-to-score" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Internal Developer Platform
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ADR-0006: Engineering Intelligence
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../architecture/" class="md-tabs__link">
+        
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../multi-region/" class="md-tabs__link">
+        
+  
+    
+  
+  Multi-Region
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../golden-path/" class="md-tabs__link">
+        
+  
+    
+  
+  Golden Path
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../mobile-platform/" class="md-tabs__link">
+        
+  
+    
+  
+  Mobile Platform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../local-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  Local Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
+          
+  
+  AWS Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../docker-recovery/" class="md-tabs__link">
+        
+  
+    
+  
+  Docker Recovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../cli-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../scripts-reference/" class="md-tabs__link">
+        
+  
+    
+  
+  Scripts Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../ai-assistant/" class="md-tabs__link">
+        
+  
+    
+  
+  AI Assistant
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../agentic-platform/" class="md-tabs__link">
+        
+  
+    
+  
+  Agentic Development Platform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../agent-approvals/" class="md-tabs__link">
+        
+  
+    
+  
+  Agent Approvals
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../dora-finops/" class="md-tabs__link">
+        
+  
+    
+  
+  DORA & FinOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contract-testing/" class="md-tabs__link">
+        
+  
+    
+  
+  Contract Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../crossplane/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../crossplane-vs-terraform/" class="md-tabs__link">
+        
+  
+    
+  
+  Crossplane vs Terraform
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../engineering-intelligence/product-vision/" class="md-tabs__link">
+          
+  
+  Engineering Intelligence
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../adr-0001-batch-orchestration/" class="md-tabs__link">
+          
+  
+  Design Decisions
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../team-management/" class="md-tabs__link">
+        
+  
+    
+  
+  Team Management
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../github-app-setup/" class="md-tabs__link">
+        
+  
+    
+  
+  GitHub App Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../scaling-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Scaling Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../shift-left-leadership/" class="md-tabs__link">
+          
+  
+  Shift-Left Quality
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../security/" class="md-tabs__link">
+        
+  
+    
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../security-scanning/" class="md-tabs__link">
+        
+  
+    
+  
+  Security Scanning (SonarCloud + Snyk)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../demo-runbook/" class="md-tabs__link">
+        
+  
+    
+  
+  Demo Runbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../readiness-checklist/" class="md-tabs__link">
+        
+  
+    
+  
+  Readiness Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../sre-reliability/" class="md-tabs__link">
+        
+  
+    
+  
+  SRE & Reliability
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../runbooks/" class="md-tabs__link">
+          
+  
+  Runbooks
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../postmortem-template/" class="md-tabs__link">
+        
+  
+    
+  
+  Post-Mortem Template
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Internal Developer Platform
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    moatazeldebsy/backstage-platform-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../multi-region/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Region
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../golden-path/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Golden Path
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mobile-platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../local-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Deployment
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Deployment
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pre-Deployment Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT_GUIDE/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../aws-install-failure-modes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known Failure Modes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../docker-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Docker Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scripts-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Scripts Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agentic-platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agentic Development Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agent-approvals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agent Approvals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dora-finops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DORA & FinOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contract-testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contract Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../crossplane/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Crossplane vs Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        
+          
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Engineering Intelligence
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_20">
+            <span class="md-nav__icon md-icon"></span>
+            Engineering Intelligence
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/product-vision/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Product Vision
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/maturity-model/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Maturity Model
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/scoring/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Scoring
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/integrations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integrations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/ai-advisor/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Advisor
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engineering-intelligence/roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Design Decisions
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_21">
+            <span class="md-nav__icon md-icon"></span>
+            Design Decisions
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-0001-batch-orchestration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0001: Batch orchestration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-0002-delivery-model/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0002: Delivery model
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-0003-incident-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0003: Incident management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-0004-identity-and-access/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0004: Identity and access
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0005: LLM serving and agent frameworks
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    ADR-0006: Engineering Intelligence
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0006: Engineering Intelligence
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-scoring-engine-is-a-workspace-package-not-a-fourth-scorecard" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. The scoring engine is a workspace package, not a fourth scorecard
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-it-consumes-tech-insights-facts-it-never-recomputes-a-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. It consumes Tech Insights facts; it never recomputes a check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-scores-are-persisted-from-the-first-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Scores are persisted from the first refresh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-unmeasurable-dimensions-report-insufficient-evidence-not-a-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Unmeasurable dimensions report insufficient-evidence, not a number
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-maturity-levels-are-floors-and-level-5-is-deliberately-out-of-reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Maturity levels are floors, and Level 5 is deliberately out of reach
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-collectors-read-sources-directly-never-the-backstage-ui-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Collectors read sources directly, never the Backstage UI layer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-evaluation-categories-are-an-extension-point-not-a-hard-coded-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Evaluation categories are an extension point, not a hard-coded list
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-ai-cost-attribution-derives-its-join-key-rather-than-waiting-for-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. AI cost attribution derives its join key rather than waiting for one
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-the-advisor-answers-arithmetically-and-its-context-is-a-reduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. The advisor answers arithmetically, and its context is a reduction
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-benchmarking-ships-as-a-data-model-that-transmits-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Benchmarking ships as a data model that transmits nothing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-single-tenant-is-the-one-organisation-case-not-a-special-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      11. Single-tenant is the one-organisation case, not a special path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-a-headline-score-is-withheld-below-a-third-of-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. A headline score is withheld below a third of the model
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consequences
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deferred
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../team-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Team Management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../github-app-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub App Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scaling-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Scaling Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_25" >
+        
+          
+          <label class="md-nav__link" for="__nav_25" id="__nav_25_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Shift-Left Quality
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_25">
+            <span class="md-nav__icon md-icon"></span>
+            Shift-Left Quality
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../shift-left-leadership/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    For Leadership
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../shift-left/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Programme Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pilot Kickoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Cheatsheet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flaky-test-quarantine/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Flaky-Test Quarantine
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../test-impact-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Test-Impact Analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security-scanning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security Scanning (SonarCloud + Snyk)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo-runbook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Demo Runbook
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../readiness-checklist/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Readiness Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sre-reliability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SRE & Reliability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_31" >
+        
+          
+          <label class="md-nav__link" for="__nav_31" id="__nav_31_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_31_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_31">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/incident-severity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Incident Severity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment Rollback
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pod Crash Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High Memory
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    High CPU
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database Recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ImagePullBackOff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kind Node IP Mismatch
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/cost-budget-exceeded/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost Budget Exceeded
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/kagent-guardrails/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    KAgent Guardrails
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/dr-region-failover/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DR Region Failover
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../postmortem-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Post-Mortem Template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/design/adr-0006-engineering-intelligence.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="adr-0006-engineering-intelligence-where-scoring-lives-and-what-it-refuses-to-score">ADR-0006: Engineering Intelligence — where scoring lives, and what it refuses to score<a class="headerlink" href="#adr-0006-engineering-intelligence-where-scoring-lives-and-what-it-refuses-to-score" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted · <strong>Date:</strong> 2026-08-28 · <strong>Updated:</strong> 2026-08-29 (phases 6–12)</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>The platform is evolving from an Internal Developer Platform into an
+<strong>Engineering Intelligence Platform</strong>: a layer that scores Platform Engineering,
+Developer Experience, Quality, Reliability, AI Engineering, Security and FinOps
+maturity and recommends what to improve. Phase 0 was an assessment of what the
+repo already has before any of that was built. Three findings decided this ADR.</p>
+<p><strong>The scoring layer already exists three times over.</strong> The Bronze/Silver/Gold
+scorecard is implemented in <code>backstage/app/packages/backend/src/modules/idpTechInsights.ts</code>
+(as Tech Insights facts), again client-side in <code>backstage/app/packages/app/src/scorecard.ts</code>,
+and a third time in Python in <code>observability/tech-insights-exporter/exporter.py</code>.
+<code>scorecard.ts:7-12</code> acknowledges the first duplication in a comment and asks that
+the two be changed together. They have nonetheless drifted: gold tier requires
+<strong>9</strong> passing checks in <code>scorecard.ts:82-95</code> and <strong>10</strong> in <code>exporter.py:73</code>.
+A service can therefore be Gold on its entity page and not Gold on the Grafana
+dashboard, today, with no error anywhere.</p>
+<p><strong>There is no long-term metric store.</strong> Prometheus retention is <strong>6 hours</strong>
+locally (<code>local/observability/prometheus-stack-values.yaml</code>) and <strong>30 days</strong> on
+AWS. There is no Thanos, Mimir or AMP remote-write, and no recording rules for
+any DORA, cost or scorecard series — every custom metric arrives as a
+last-write-wins Pushgateway gauge from one of four Python CronJobs. Quarter-over-
+quarter movement, which is most of what an executive engineering report is about,
+cannot be reconstructed after the fact.</p>
+<p><strong>Two of the seven dimensions have no data source at all.</strong> Developer Experience
+has nothing: no PR cycle time, no review latency, no CI duration, no build
+failure rate, no onboarding timing, no CLI telemetry. Security has only
+<em>annotation-presence</em> checks — <code>has-sonar-scanning</code> observes that a SonarCloud
+annotation exists, never whether Sonar found anything. Dependabot alerts, Kyverno
+PolicyReports and secret-rotation state are live-queried through
+<code>security-mcp-server</code> and stored nowhere.</p>
+<p>Against that, a strong house convention pulls the other way: every dashboard page
+in <code>extensions.tsx</code> falls back to hardcoded demo data behind a yellow banner when
+its source is unreachable (<code>DORA_DEMO</code>, <code>DEMO_LANGFUSE_*</code>, the FinOps demo rows).
+That is a reasonable choice for a per-service tab on a template people evaluate
+before installing anything.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<h3 id="1-the-scoring-engine-is-a-workspace-package-not-a-fourth-scorecard">1. The scoring engine is a workspace package, not a fourth scorecard<a class="headerlink" href="#1-the-scoring-engine-is-a-workspace-package-not-a-fourth-scorecard" title="Permanent link">&para;</a></h3>
+<p>Scoring lives in <code>backstage/app/packages/engineering-intelligence-core</code>, a
+framework-free TypeScript package that imports nothing from Backstage. The
+<code>engineering-intelligence</code> backend plugin collects samples and serves results;
+the phase-3 dashboard and the phase-9 AI Advisor will read the same structures.</p>
+<p>This is a new shape for the repo — no custom Backstage plugin has ever been
+created here, and all custom code has so far lived inside <code>packages/app</code> and
+<code>packages/backend</code>. The cost of the new convention is accepted because the
+alternative is the failure the repo already has three instances of: a scoring
+rule re-implemented per consumer, drifting silently.</p>
+<h3 id="2-it-consumes-tech-insights-facts-it-never-recomputes-a-check">2. It consumes Tech Insights facts; it never recomputes a check<a class="headerlink" href="#2-it-consumes-tech-insights-facts-it-never-recomputes-a-check" title="Permanent link">&para;</a></h3>
+<p><code>engineeringIntelligence/techInsights.ts</code> reads the <code>idp-entity-facts</code>
+retriever's output and aggregates it. It contains no check logic. A fourth
+implementation would be the worst of the four, because it would be the one
+feeding an organisation-wide health score.</p>
+<p>The 9-vs-10 gold threshold drift is <strong>documented here and deliberately not fixed</strong>.
+Reconciling it re-tiers live services overnight and is a policy decision for the
+scorecard owners, not a side effect of adding a dashboard.</p>
+<h3 id="3-scores-are-persisted-from-the-first-refresh">3. Scores are persisted from the first refresh<a class="headerlink" href="#3-scores-are-persisted-from-the-first-refresh" title="Permanent link">&para;</a></h3>
+<p>Each refresh writes a full report to <code>ei_snapshots</code> in the plugin's own Postgres
+database. This is the only place in the platform where a trend exists. There is
+no back-fill and there cannot be one — no source retains the history.</p>
+<h3 id="4-unmeasurable-dimensions-report-insufficient-evidence-not-a-number">4. Unmeasurable dimensions report <code>insufficient-evidence</code>, not a number<a class="headerlink" href="#4-unmeasurable-dimensions-report-insufficient-evidence-not-a-number" title="Permanent link">&para;</a></h3>
+<p>A dimension whose collected signals fall below its <code>minCoverage</code> returns
+<code>score: null</code>, <code>status: "insufficient-evidence"</code>, and a <code>missing</code> list naming the
+absent source. Developer Experience did exactly this until phase 5 gave it a
+collector; Quality Engineering does it now, pending test signals. Unscored
+dimensions are excluded from the overall score rather than counted as zero.</p>
+<p>This departs from the <code>extensions.tsx</code> demo-fallback convention, and the existing
+pages keep their fallbacks unchanged. The distinction is audience: a fabricated
+DORA sparkline on one service's tab is a placeholder, whereas a fabricated
+"Engineering Health: 74" is the kind of number that reaches a board pack. The
+<code>evidenceGaps</code> field is reported separately from <code>recommendations</code> for the same
+reason — "we cannot measure this" is work on the platform's instrumentation, not
+a finding about the engineering organisation.</p>
+<p>Signals that measure something narrower than their name carry a <code>caveat</code> that
+travels onto every evidence row. The security signal's reads:
+<em>"Control presence, not finding count."</em></p>
+<h3 id="5-maturity-levels-are-floors-and-level-5-is-deliberately-out-of-reach">5. Maturity levels are floors, and Level 5 is deliberately out of reach<a class="headerlink" href="#5-maturity-levels-are-floors-and-level-5-is-deliberately-out-of-reach" title="Permanent link">&para;</a></h3>
+<p>The five-level model (<code>maturity.ts</code>) is computed from dimension scores, not from
+the overall average — an average would place an organisation with strong
+Reliability and no platform at Level 3. Levels are floors: the walk stops at the
+first level not fully met, so high Level 4 scores cannot carry an unmet Level 2.</p>
+<p>A dimension with <code>insufficient-evidence</code> can neither satisfy a requirement nor
+fail one, making the level <em>unconfirmed above N</em>. A definite failure outranks
+missing evidence, so a real shortfall cannot hide behind a data gap.</p>
+<p>Level 5 declares two <code>capability</code> requirements that no collector supplies —
+enforced approval gating, and agent remediation with a measured success rate — so
+it is structurally unconfirmable rather than merely unmet. Nothing in the platform
+observes whether the human-in-the-loop gate is actually enforced, and this
+platform has had that gate found silently disabled before. Awarding "Autonomous
+Engineering" from a high AI score would make exactly the claim there is no
+evidence for.</p>
+<p>Developer Experience gates Level 4 rather than Level 3, so most installations
+report <em>unconfirmed above Level 3</em> until phase 5 lands.</p>
+<h3 id="6-collectors-read-sources-directly-never-the-backstage-ui-layer">6. Collectors read sources directly, never the Backstage UI layer<a class="headerlink" href="#6-collectors-read-sources-directly-never-the-backstage-ui-layer" title="Permanent link">&para;</a></h3>
+<p>Targets are resolved from the <code>proxy.endpoints</code> already configured for the
+frontend — the Backstage proxy is server-side, so the backend can reach
+<code>prometheus.idp.local</code> and friends today, and no second address needs keeping in
+step across two config overlays. A collector pointed at the UI layer would ingest
+the demo fallbacks described above and score fiction as fact.</p>
+<p>Every collector degrades to <em>no samples</em> on failure. None throws, and none
+substitutes a default, so one dead source lowers the coverage of the dimensions
+that depended on it and leaves the rest intact.</p>
+<h3 id="7-evaluation-categories-are-an-extension-point-not-a-hard-coded-list">7. Evaluation categories are an extension point, not a hard-coded list<a class="headerlink" href="#7-evaluation-categories-are-an-extension-point-not-a-hard-coded-list" title="Permanent link">&para;</a></h3>
+<p><code>METRIC_CATEGORIES</code> in <code>evaluation.ts</code> maps eval metric names to categories, and
+its <strong>ordering is load-bearing</strong> — the first match wins, so a specific pattern
+must precede a general one. Teams name eval metrics whatever they like, and a
+closed enum would either reject those names or silently file them as "other".
+A table that can be extended without touching the scorer keeps an unrecognised
+metric visible as an uncategorised result rather than dropping it.</p>
+<h3 id="8-ai-cost-attribution-derives-its-join-key-rather-than-waiting-for-one">8. AI cost attribution derives its join key rather than waiting for one<a class="headerlink" href="#8-ai-cost-attribution-derives-its-join-key-rather-than-waiting-for-one" title="Permanent link">&para;</a></h3>
+<p>Phase 0 recorded this as blocked: Langfuse traces carry no key joining back to a
+catalog entity. That was wrong. Trace names already encode the workload —
+<code>/a2a/&lt;namespace&gt;/&lt;agent&gt;</code> for agents and <code>&lt;server&gt;.&lt;tool&gt;</code> for MCP tools — so
+<code>deriveWorkload()</code> parses the identity that is already there.</p>
+<p>The cost of being wrong is bounded and visible: anything unparsed lands in
+<code>unattributedUsd</code>, and <code>ai.costAttributedRatio</code> reports what fraction was
+matched. A low ratio is a legible signal to fix naming at the emitting end,
+which is better than the phase-0 plan of blocking the entire feature on a
+telemetry change nobody had scheduled.</p>
+<h3 id="9-the-advisor-answers-arithmetically-and-its-context-is-a-reduction">9. The advisor answers arithmetically, and its context is a reduction<a class="headerlink" href="#9-the-advisor-answers-arithmetically-and-its-context-is-a-reduction" title="Permanent link">&para;</a></h3>
+<p><code>answer()</code> is deterministic. Every response is a lookup or a subtraction over the
+report, because a model asked "why did the score drop?" could only agree with the
+subtraction or contradict it — and only the second is a change in behaviour.</p>
+<p>What the architecture provides instead is the safe input for a model:
+<code>buildAdvisorContext()</code> strips evidence <code>labels</code> (user ids, raw trace names),
+drops <code>unmatchedNames</code> (uncontrolled text written by whatever emitted a trace)
+and reduces AI spend to team totals. <code>unsupportedCitations()</code> then rejects any
+answer citing a metric outside the context's vocabulary.</p>
+<p>Three refusals are properties of the <strong>data</strong>, not of the implementation, and a
+model does not make them go away: no per-team ranking (nothing here is per-team),
+no trend without two snapshots (retention is 6h/30d and history cannot be
+back-filled), and no saving figure (nothing measures workload complexity).</p>
+<h3 id="10-benchmarking-ships-as-a-data-model-that-transmits-nothing">10. Benchmarking ships as a data model that transmits nothing<a class="headerlink" href="#10-benchmarking-ships-as-a-data-model-that-transmits-nothing" title="Permanent link">&para;</a></h3>
+<p>Comparing an organisation against others requires consent, an anonymisation
+guarantee somebody is accountable for, and a decision about who holds the data.
+Those are product questions that precede code, and shipping a working uploader
+first is how a platform ends up exfiltrating engineering metrics by default.</p>
+<p>What ships is the shape: <code>toSubmission()</code> reduces a report to seven scores, a
+maturity level and a day-precision date — no names, no evidence, no sources, and
+no exact timestamp, because an exact timestamp is a correlation key across
+submissions. It is pure and tested, so the claim that nothing identifying would
+leave is checkable by reading one function. <code>MIN_COHORT_SIZE</code> is enforced in this
+package rather than trusted to a future provider.</p>
+<h3 id="11-single-tenant-is-the-one-organisation-case-not-a-special-path">11. Single-tenant is the one-organisation case, not a special path<a class="headerlink" href="#11-single-tenant-is-the-one-organisation-case-not-a-special-path" title="Permanent link">&para;</a></h3>
+<p><code>DEFAULT_ORGANISATION</code> is a <strong>real organisation id, not a null</strong>. Rows written
+today carry it and need no migration if a second organisation ever appears, and
+there is no <code>if (multiTenant)</code> branch to keep working. <code>scopeFrom()</code> ignores a
+stray scope parameter rather than erroring, so a leftover query string on a
+single-tenant install does nothing instead of producing an error page.</p>
+<p>Nothing here gates a feature on tenancy. The open-source platform has no
+artificial limits.</p>
+<h3 id="12-a-headline-score-is-withheld-below-a-third-of-the-model">12. A headline score is withheld below a third of the model<a class="headerlink" href="#12-a-headline-score-is-withheld-below-a-third-of-the-model" title="Permanent link">&para;</a></h3>
+<p><code>MIN_SCORED_FRACTION = 1/3</code>. Applied to both Engineering Health and AI Readiness.</p>
+<p>This came from a live cluster showing <strong>"AI Engineering Readiness 97 / 100"</strong>
+derived from one measurable area out of twelve. Each individual area was scored
+correctly; the average was arithmetically right and completely misleading,
+because averaging one number is not averaging. A headline figure implies breadth
+it did not have.</p>
+<p>Below the floor the score is <code>null</code> and the UI states why — <em>"no overall score —
+too little of the model is measurable"</em> — rather than rendering a bare dash that
+reads as a rendering fault. Per-area scores stay visible; only the claim that
+they summarise something is withheld.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
+<ul>
+<li>On a fresh install the report is mostly <code>insufficient-evidence</code>, and
+  <code>catalog.goldenPathAdoption</code> is honestly near zero until services are
+  scaffolded — the platform's own catalog entities are hand-written YAML with no
+  <code>backstage.io/source-template</code> annotation. This reads as unflattering and is
+  correct.</li>
+<li>Trends are unavailable for roughly the first week of running. There is no way
+  to make them available sooner.</li>
+<li>The Dockerfile now needs a manifest line per workspace package, and the
+  backend's own <code>config.d.ts</code> must be copied into the runtime image — the same
+  boot-time crash the existing <code>packages/app/config.d.ts</code> copy step guards
+  against.</li>
+<li>Adding a check to <code>idpTechInsights.ts</code> still requires the matching change in
+  <code>scorecard.ts</code> and <code>exporter.py</code>. This ADR does not fix that; it only declines
+  to make it worse.</li>
+</ul>
+<ul>
+<li>Upstream sources can publish a number they should have omitted, and no unit
+  test catches it: the collector parses correctly and the scorer scores
+  correctly. Two instances were found only by comparing output against a live
+  cluster — a never-deployed repo scoring as elite reliability, and unattributed
+  spend scoring as perfect budget discipline. Both are now guarded in
+  <code>prometheus.ts</code>, and the class is documented in <code>integrations.md</code> because the
+  next collector author will meet it again.</li>
+<li>Applying <code>MIN_SCORED_FRACTION</code> lowered a headline number that had previously
+  looked good. Every such correction in this subsystem has moved a score
+  downward, which is the expected direction when the prior number was borrowing
+  confidence from data that did not exist.</li>
+</ul>
+<h2 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Reconciling the three scorecard implementations</strong> onto the core package.
+  Correct end state, crosses a Python/TS boundary, and re-tiers live services.</li>
+<li><strong>Security findings as opposed to security controls.</strong> Needs an exporter that
+  turns Dependabot, Kyverno and Trivy results into a trended series.</li>
+<li><strong>SLO signals.</strong> Sloth rules exist for <code>hello-service</code> alone, so a
+  platform-wide SLO score would describe one service and imply it described all
+  of them.</li>
+<li><strong>Quality Engineering has only just been wired.</strong> The scaffolder skeletons
+  already published JUnit XML; the platform's own repository did not, and it is
+  the only catalog repository with active CI. Its three test jobs now publish
+  <code>test-results-*</code>, so the dimension should leave <code>insufficient-evidence</code> once
+  the flakiness window has several runs to classify. Where several catalog
+  components share one repository they are all credited with its results, which
+  is a limitation of mapping tests by repository rather than by component.</li>
+<li><strong>MLflow, Langfuse prompts, Langfuse scores and AI cost are fixture-tested
+  only.</strong> The AI stack does not fit in local capacity, so those four collectors
+  have never run against a live source.</li>
+<li><strong>Wiring a model into the advisor.</strong> The context boundary and citation
+  guardrail exist; the generation step does not.</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>docs/engineering-intelligence/architecture.md</code> — current and target architecture</li>
+<li><code>docs/engineering-intelligence/scoring.md</code> — the evidence contract</li>
+<li><code>docs/engineering-intelligence/maturity-model.md</code> — the five levels</li>
+<li><code>docs/engineering-intelligence/roadmap.md</code> — phases and their data blockers</li>
+<li><code>docs/engineering-intelligence/integrations.md</code> — collectors, sources and failure behaviour</li>
+<li><code>docs/engineering-intelligence/ai-advisor.md</code> — the advisor's context boundary and refusals</li>
+<li><a href="../adr-0004-identity-and-access/">ADR-0004</a> — the authorization model these APIs inherit</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../adr-0005-llm-serving-and-agent-frameworks/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADR-0005: LLM serving and agent frameworks">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                ADR-0005: LLM serving and agent frameworks
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../team-management/" class="md-footer__link md-footer__link--next" aria-label="Next: Team Management">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Team Management
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.ad660dcc.min.js"></script>
+      
+        <script src="../../search/main.js"></script>
+      
+    
+  </body>
+</html>
