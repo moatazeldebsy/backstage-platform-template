@@ -2657,6 +2657,13 @@ docker<span class="w"> </span>info<span class="w">     </span><span class="c1">#
 </code></pre></div></td></tr></table></div>
 <blockquote>
 <p><strong>macOS ARM64 note</strong>: The cluster is pinned to K8s <strong>1.33.1</strong> (<code>kindest/node:v1.33.1</code>) — tested stable on macOS ARM64 with Docker Desktop.</p>
+<p><strong>Python note (only if you run the observability tests)</strong>: the exporters use
+<code>X | None</code> type syntax, which needs <strong>Python 3.10+</strong>. macOS ships 3.9 as
+<code>python3</code>, and running <code>pytest observability/tests</code> with it fails inside an
+import — <code>observability/tests/conftest.py</code> catches that and says so. Use a
+newer interpreter, e.g. <code>python3.13 -m pytest observability/tests</code>. Nothing
+else in the local setup needs it: CI runs 3.12/3.13 and the exporter CronJobs
+use <code>python:3.12-slim</code> / <code>python:3.13-slim</code>.</p>
 </blockquote>
 <h2 id="machine-requirements-and-what-to-do-if-you-dont-have-them">Machine requirements — and what to do if you don't have them<a class="headerlink" href="#machine-requirements-and-what-to-do-if-you-dont-have-them" title="Permanent link">&para;</a></h2>
 <p>The full platform is ~90 pods. What it actually consumes once settled, measured
