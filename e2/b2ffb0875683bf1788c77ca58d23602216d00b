@@ -1,0 +1,21 @@
+scripts/bootstrap-ai.sh
+  s_17ccb5fb4980ad::t_877fb0f0fcf044 1094-1120
+  s_17ccb5fb4980ad::t_a388512377467a 2392-2422
+  s_17ccb5fb4980ad::t_01d2e31595a897 939-1033
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e2b2ffb0875683bf1788c77ca58d23602216d00b",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
