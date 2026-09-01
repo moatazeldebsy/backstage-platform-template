@@ -1,0 +1,30 @@
+docs/shift-left.md
+  s_17ccb5fb4980ad::t_f3318f799e52d3 202-203
+backstage/app/packages/backend/src/modules/__tests__/engineeringIntelligence.collectors.test.ts
+  s_17ccb5fb4980ad::t_117338aa620c50 322-350
+.claude/skills/qa-shift-left/SKILL.md
+  s_17ccb5fb4980ad::t_f3318f799e52d3 68-71
+backstage/app/packages/backend/src/modules/engineeringIntelligence/prometheus.ts
+  s_17ccb5fb4980ad::t_88812aa26d8efe 111
+docs/flaky-test-quarantine.md
+  s_17ccb5fb4980ad::t_f3318f799e52d3 18-19
+observability/flaky-test-exporter/exporter.py
+  s_17ccb5fb4980ad::t_88812aa26d8efe 368-380,386
+  s_17ccb5fb4980ad::t_dea4ddfb85d382 128-151,366-367,381-385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b772ca13e7e84134e44335a42820a04f9ecaf395",
+  "prompts": {},
+  "sessions": {
+    "s_17ccb5fb4980ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874c83a6-ab93-4169-a715-5597a597a336",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
