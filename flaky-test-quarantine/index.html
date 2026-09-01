@@ -2340,7 +2340,8 @@ run's <code>test-results*</code> JUnit artifacts, and classifies every test as:<
 <li><code>flaky</code> — passed at least once <strong>and</strong> failed at least once in the window</li>
 </ul>
 <p>Results are published as Prometheus metrics (<code>idp_test_flaky</code>, <code>idp_test_flakiness_ratio</code>,
-<code>idp_test_flaky_count</code>, <code>idp_test_runs_window</code>, <code>idp_test_pass_total</code>, <code>idp_test_fail_total</code>) via
+<code>idp_test_service_flakiness_ratio</code>, <code>idp_test_flaky_count</code>, <code>idp_test_runs_window</code>,
+<code>idp_test_pass_total</code>, <code>idp_test_fail_total</code>) via
 Pushgateway locally or CloudWatch on AWS (<code>MODE=cloudwatch</code>).</p>
 <p><strong>Action</strong> — <code>observability/flaky-test-exporter/quarantine.py</code> runs as a separate daily CronJob
 (<code>0 6 * * *</code>, deliberately much less frequent than the 30-minute detection cadence, so it doesn't open
