@@ -108,7 +108,7 @@ export async function collectPrometheus(
     query(`dora_lead_time_minutes${EXCLUDE_ROLLUP}`),
     query(`dora_change_failure_rate_percent${EXCLUDE_ROLLUP}`),
     query(`dora_mttr_minutes${EXCLUDE_ROLLUP}`),
-    query('idp_test_flakiness_ratio'),
+    query('idp_test_service_flakiness_ratio'),
     query('idp_test_pass_total'),
     query('idp_test_fail_total'),
     query('idp_team_budget_utilization_ratio'),

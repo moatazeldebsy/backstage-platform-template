@@ -199,7 +199,8 @@ A second runtime loop runs alongside the scorecard. The Flaky-Test Exporter (`ob
 
 Metrics published (Pushgateway local, CloudWatch on AWS):
 - `idp_test_flaky_count{service,team}` — headline number per service
-- `idp_test_flakiness_ratio{service,test,suite}` — emitted only for currently-flaky tests, capped at the top 20 per service to bound cardinality
+- `idp_test_flakiness_ratio{service,test,suite}` — per **test**: the fraction of that test's observations that failed. Emitted only for currently-flaky tests, capped at the top 20 per service to bound cardinality, so it is never near zero
+- `idp_test_service_flakiness_ratio{service,team}` — per **service**: the fraction of observed tests that are flaky. Zero is a real answer; omitted entirely when no tests were observed. This is the series the Engineering Intelligence Quality dimension scores
 - `idp_test_pass_total{service}`, `idp_test_fail_total{service}` — window totals
 
 Surfaced in the QA Grafana dashboard ("Flaky Tests" panel, "Top Flaky Tests" table, "Test Outcomes in Window" timeseries).
