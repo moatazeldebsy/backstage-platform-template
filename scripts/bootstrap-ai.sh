@@ -936,6 +936,101 @@ repair_stuck_helm_release() {
     done
   fi
 }
+# Is ARGOCD_TOKEN still valid for this cluster?
+#
+# An emptiness check is not enough. ArgoCD apiKey tokens carry no expiry by
+# default, so a token minted against a previous cluster stays syntactically
+# perfect forever — it decodes, it names the right account, and nothing about it
+# looks wrong. But a rebuild regenerates `server.secretkey` (invalidating the
+# signature) and drops `accounts.<name>.tokens` from argocd-secret (invalidating
+# the registration), so the API answers 401. The MCP server starts healthy and
+# the failure only surfaces later, inside the AI assistant, as "ArgoCD is not
+# authenticated" — which reads as a broken integration rather than a stale
+# credential. This is the same shape as the REPLACE_ME check above.
+#
+# ArgoCD records each live token's id in argocd-secret under
+# `accounts.<account>.tokens`; the JWT's `jti` is that id. Comparing the two is
+# offline, exact, and works the same in local and AWS mode.
+#
+# Echoes: valid | invalid | unknown. "unknown" means the check itself could not
+# run (unreadable secret, undecodable token) and the caller must proceed with
+# the token it has rather than discard a credential on a failed check.
+_argocd_token_state() {
+  local token="$1" account="${2:-argocd-mcp}"
+  local jti registered
+
+  jti=$(python3 -c '
+import base64, json, sys
+try:
+    p = sys.argv[1].split(".")[1]
+    print(json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4))).get("jti", ""))
+except Exception:
+    pass
+' "$token" 2>/dev/null || true)
+  [[ -z "$jti" ]] && { echo unknown; return; }
+
+  registered=$(kubectl get secret argocd-secret -n argocd \
+    -o jsonpath="{.data.accounts\.${account}\.tokens}" 2>/dev/null || true)
+  # No key at all is the rebuilt-cluster case: the account exists in argocd-cm
+  # but has no live tokens. Distinguishable from an unreachable API server,
+  # which fails the kubectl calls this script has already made by this point.
+  [[ -z "$registered" ]] && { echo invalid; return; }
+
+  if echo "$registered" | base64 -d 2>/dev/null | grep -q "\"$jti\""; then
+    echo valid
+  else
+    echo invalid
+  fi
+}
+
+# Mint a replacement argocd-mcp token and persist it to local/.env.
+#
+# bootstrap-local.sh Step 8 already does exactly this for ARGOCD_AUTH_TOKEN (the
+# admin session JWT the Backstage proxy uses), which is why that one silently
+# self-heals across rebuilds while this one silently does not. Echoes the new
+# token on success, nothing on failure.
+_mint_argocd_mcp_token() {
+  local account="${1:-argocd-mcp}" server="${2:-argocd.idp.local}"
+  local pass admin new
+
+  pass=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)
+  [[ -z "$pass" ]] && return 1
+
+  admin=$(curl -s --max-time 15 -X POST "http://${server}/api/v1/session" \
+    -H 'Content-Type: application/json' \
+    -d "{\"username\":\"admin\",\"password\":\"${pass}\"}" \
+    | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+  [[ -z "$admin" ]] && return 1
+
+  new=$(curl -s --max-time 15 -X POST \
+    "http://${server}/api/v1/account/${account}/token" \
+    -H "Authorization: Bearer ${admin}" -H 'Content-Type: application/json' -d '{}' \
+    | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+  [[ -z "$new" ]] && return 1
+
+  # Persist so the next run starts from a good token instead of re-minting one
+  # on every bootstrap.
+  if [[ -f "${ENV_FILE}" ]]; then
+    if grep -q '^ARGOCD_TOKEN=' "${ENV_FILE}"; then
+      # The token is a JWT: dots and dashes, but the value can contain any
+      # base64url character, so use a delimiter that cannot appear in it.
+      python3 -c '
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+lines = p.read_text().splitlines()
+p.write_text("\n".join(
+    "ARGOCD_TOKEN=" + sys.argv[2] if l.startswith("ARGOCD_TOKEN=") else l
+    for l in lines) + "\n")
+' "${ENV_FILE}" "$new" 2>/dev/null || true
+    else
+      echo "ARGOCD_TOKEN=${new}" >> "${ENV_FILE}"
+    fi
+  fi
+
+  echo "$new"
+}
+
 repair_stuck_helm_release kagent-crds kagent
 repair_stuck_helm_release kagent      kagent
 
@@ -996,6 +1091,33 @@ fi
 
 # argocd-mcp-server token
 if [[ -n "${ARGOCD_TOKEN:-}" ]]; then
+  # Validate before writing it. A token from a torn-down cluster is non-empty
+  # and well-formed, so the emptiness check below passes and the 401 only
+  # appears later, at runtime, in the AI assistant.
+  _argocd_tok_state=$(_argocd_token_state "${ARGOCD_TOKEN}")
+  if [[ "$_argocd_tok_state" == "invalid" ]]; then
+    warn "ARGOCD_TOKEN is not valid for this cluster (no matching token registered in argocd-secret)."
+    warn "  Most likely it was minted against a cluster that has since been rebuilt."
+    if [[ "$DEPLOY_MODE" == "local" ]]; then
+      info "Minting a replacement token for the argocd-mcp account..."
+      _argocd_new_tok=$(_mint_argocd_mcp_token argocd-mcp "${ARGOCD_SERVER:-argocd.idp.local}" || true)
+      if [[ -n "${_argocd_new_tok:-}" ]]; then
+        ARGOCD_TOKEN="$_argocd_new_tok"
+        check "Minted a fresh ARGOCD_TOKEN and updated local/.env"
+      else
+        warn "Could not mint a replacement. ArgoCD tools will fail with 401 until you run:"
+        warn "  argocd account generate-token --account argocd-mcp"
+        warn "  ...then update ARGOCD_TOKEN in local/.env and re-run this script."
+      fi
+    else
+      warn "  Generate a new one and store it in AWS Secrets Manager, then re-run:"
+      warn "  argocd account generate-token --account argocd-mcp"
+    fi
+  elif [[ "$_argocd_tok_state" == "unknown" ]]; then
+    # Could not read argocd-secret or decode the token. Proceeding with what we
+    # have beats discarding a working credential because the check failed.
+    warn "Could not verify ARGOCD_TOKEN against the cluster — using it as-is."
+  fi
   info "Creating argocd-mcp-server-token secret in services-dev..."
   kubectl create secret generic argocd-mcp-server-token \
     --namespace services-dev \
@@ -2267,6 +2389,37 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
       "$(langfuse_installed && echo true || echo false)" \
       "$(kagent_installed   && echo true || echo false)" \
       "$(mlflow_installed   && echo true || echo false)"
+
+  # Restart Backstage so it reads the overlay just written.
+  #
+  # The overlay is what flips every AI page and nav item from disabled: true to
+  # false, and Backstage reads its config once at startup. bootstrap-local.sh
+  # always starts Backstage before this script runs, so without this the AI
+  # surfaces stay hidden and the summary below prints URLs — /ai-assistant,
+  # /kagent, /mlflow — that render nothing. The stack is fine; only the UI has
+  # not been told about it, which reads as a failed install.
+  #
+  # The AWS branch below has always done the equivalent (`kubectl rollout
+  # restart deployment/backstage`); the local branch simply never did.
+  #
+  # A restart rather than `up -d`: the overlay is bind-mounted, so nothing needs
+  # recreating — and the Langfuse block above already recreates the container
+  # when .env changed, which is the only case that requires it.
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "backstage-backstage-1"; then
+    _ai_compose="docker compose -f ${REPO_ROOT}/local/backstage/docker-compose.yml"
+    [[ "${_provider:-kind}" == "rancher-desktop" ]] && \
+      _ai_compose="${_ai_compose} -f ${REPO_ROOT}/local/backstage/docker-compose.rancher.yml"
+    info "Restarting Backstage so it picks up the AI overlay..."
+    if $_ai_compose restart backstage >/dev/null 2>&1; then
+      check "Backstage restarted — AI pages and nav items are now enabled"
+    else
+      warn "Could not restart Backstage automatically. The AI pages stay hidden until you run:"
+      warn "  ${_ai_compose} restart backstage"
+    fi
+  else
+    info "Backstage is not running. Start it with ./scripts/bootstrap-local.sh --start-backstage"
+    info "  — it will read the AI overlay on boot and show the AI pages."
+  fi
 else
   info "Revealing Backstage AI surfaces (app.extensions + aiStack.enabled)..."
   if kubectl get configmap backstage-config -n backstage &>/dev/null; then
