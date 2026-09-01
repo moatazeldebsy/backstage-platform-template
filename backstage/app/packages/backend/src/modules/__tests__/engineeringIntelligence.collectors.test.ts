@@ -319,6 +319,35 @@ describe('collectPrometheus', () => {
     expect(result.samples.map(s => s.metric)).not.toContain('test.flakinessRatio');
     expect(result.samples.map(s => s.metric)).toContain('dora.mttrMinutes');
   });
+
+  it('scores flakiness from the service-level series, not the per-test one', async () => {
+    // The two are a name apart and mean different things. Per-test
+    // `idp_test_flakiness_ratio` is the fraction of one test's observations
+    // that failed, and only exists for tests already classified as flaky — so
+    // it is never near zero, and a mean over it scores a healthy service as
+    // badly as a broken one. `idp_test_service_flakiness_ratio` is the fraction
+    // of a service's tests that are flaky, which is the question the Quality
+    // dimension asks. Querying the wrong one is invisible: it returns a
+    // plausible number on a flaky repo and nothing at all on a healthy one.
+    const queried: string[] = [];
+    mockFetchJson(url => {
+      const q = decodeURIComponent(url);
+      queried.push(q);
+      if (q.includes('idp_test_service_flakiness_ratio')) {
+        return vector([{ service: 'a' }, '0.05']);
+      }
+      // The per-test series is present and would give a very different answer.
+      if (q.includes('idp_test_flakiness_ratio')) {
+        return vector([{ service: 'a', test: 't1' }, '0.5']);
+      }
+      return vector();
+    });
+
+    const result = await collectPrometheus(ctx);
+    const byMetric = Object.fromEntries(result.samples.map(s => [s.metric, s.value]));
+    expect(byMetric['test.flakinessRatio']).toBe(0.05);
+    expect(queried.some(q => q.includes('idp_test_service_flakiness_ratio'))).toBe(true);
+  });
 });
 
 // ── catalog ───────────────────────────────────────────────────────────────────

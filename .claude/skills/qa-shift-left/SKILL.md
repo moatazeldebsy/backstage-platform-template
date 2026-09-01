@@ -65,9 +65,10 @@ service repo, downloads each run's `test-results` JUnit artifact, and classifies
 stable-fail, which is a real bug — don't quarantine those).
 
 Metrics: `idp_test_flaky_count{service,team}`,
-`idp_test_flakiness_ratio{service,test,suite}` (top 20 per service, to bound
-cardinality), `idp_test_pass_total`, `idp_test_fail_total`. Surfaced in the QA Grafana
-dashboard.
+`idp_test_flakiness_ratio{service,test,suite}` (per test, top 20 per service to bound
+cardinality), `idp_test_service_flakiness_ratio{service,team}` (per service — the fraction
+of observed tests that are flaky; what Engineering Intelligence scores),
+`idp_test_pass_total`, `idp_test_fail_total`. Surfaced in the QA Grafana dashboard.
 
 Needs a GitHub token with `actions:read` — local: `GITHUB_TOKEN` in `local/.env` before
 `bootstrap-local.sh`; AWS: `GITHUB_TOKEN` in the `<cluster-name>/backstage` Secrets Manager

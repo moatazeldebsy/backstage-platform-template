@@ -126,6 +126,30 @@ class ServiceFlakiness:
         return flakes[:PER_TEST_CAP]
 
     @property
+    def flaky_count(self) -> int:
+        """How many tests are flaky — *uncapped*.
+
+        PER_TEST_CAP exists to bound Prometheus cardinality for the per-test
+        series, which is a storage concern, not a fact about the service. Using
+        the capped list for a count silently reports 20 for a service with 200
+        flaky tests, and understates precisely the services that are worst.
+        """
+        return sum(1 for r in self.results.values() if r.is_flaky)
+
+    @property
+    def flakiness_ratio(self) -> float | None:
+        """Fraction of observed tests that are flaky, or None if unmeasured.
+
+        None when no tests were observed at all: 0/0 is not "nothing is flaky",
+        it is "we did not look". The scoring engine reads an absent series as
+        reduced coverage and a zero as a measurement, so the two must not
+        collapse — the same distinction `measurable()` draws below.
+        """
+        if not self.results:
+            return None
+        return self.flaky_count / len(self.results)
+
+    @property
     def totals(self) -> dict[str, int]:
         return {
             "passes": sum(r.passes for r in self.results.values()),
@@ -339,7 +363,27 @@ def push_to_pushgateway(services: list[ServiceFlakiness]) -> None:
     lines.append("# TYPE idp_test_flaky_count gauge")
     for s in services:
         labels = f'service="{_escape(s.service)}",team="{_escape(s.team)}"'
-        lines.append(f'idp_test_flaky_count{{{labels}}} {len(s.flaky_tests)}')
+        lines.append(f'idp_test_flaky_count{{{labels}}} {s.flaky_count}')
+
+    # Service-level flakiness, deliberately NOT named idp_test_flakiness_ratio.
+    #
+    # That name is already taken below by a per-test series answering a
+    # different question — "of this one test's observations, what fraction
+    # failed" — which by construction only exists for tests already classified
+    # as flaky, and so is never near zero. Reusing the name would put two
+    # meanings and two label sets under one metric, and the Quality collector's
+    # mean would run over both at once.
+    #
+    # This is the series the scoring engine wants: of the tests we observed,
+    # what fraction is flaky. Zero is a real and reachable answer.
+    lines.append("# HELP idp_test_service_flakiness_ratio Fraction of a service's observed tests classified as flaky")
+    lines.append("# TYPE idp_test_service_flakiness_ratio gauge")
+    for s in services:
+        ratio = s.flakiness_ratio
+        if ratio is None:
+            continue          # observed nothing; absence, not zero
+        labels = f'service="{_escape(s.service)}",team="{_escape(s.team)}"'
+        lines.append(f'idp_test_service_flakiness_ratio{{{labels}}} {ratio:.6f}')
 
     lines.append("# HELP idp_test_pass_total Total test passes observed in the window")
     lines.append("# TYPE idp_test_pass_total gauge")

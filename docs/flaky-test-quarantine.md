@@ -15,7 +15,8 @@ run's `test-results*` JUnit artifacts, and classifies every test as:
 - `flaky` — passed at least once **and** failed at least once in the window
 
 Results are published as Prometheus metrics (`idp_test_flaky`, `idp_test_flakiness_ratio`,
-`idp_test_flaky_count`, `idp_test_runs_window`, `idp_test_pass_total`, `idp_test_fail_total`) via
+`idp_test_service_flakiness_ratio`, `idp_test_flaky_count`, `idp_test_runs_window`,
+`idp_test_pass_total`, `idp_test_fail_total`) via
 Pushgateway locally or CloudWatch on AWS (`MODE=cloudwatch`).
 
 **Action** — `observability/flaky-test-exporter/quarantine.py` runs as a separate daily CronJob
