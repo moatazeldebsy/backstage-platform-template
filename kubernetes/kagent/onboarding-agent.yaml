@@ -34,7 +34,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: idp-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - list_templates

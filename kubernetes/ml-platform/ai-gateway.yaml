@@ -1,0 +1,292 @@
+# AI Gateway — agentgateway, standalone mode.
+#
+# One entry point in front of the eight MCP servers AND the model providers, so
+# agents reach their tools and their LLM through the same proxy.
+# See docs/design/adr-0007-ai-gateway.md.
+#
+# Standalone, not the Helm/CRD control plane. The Kubernetes install path pulls
+# in Gateway API CRDs plus a kgateway control plane; this cluster ingresses
+# through nginx locally and ALB on AWS, so that would mean adopting Gateway API
+# as a side effect. Standalone is a single Rust binary reading one config file,
+# which is also the only shape that fits the local memory ceiling.
+#
+# Deployed by default (`bootstrap-ai.sh`, disable with --skip-gateway). Unlike
+# Ollama, this is not optional in practice: every agent's single RemoteMCPServer
+# (kubernetes/kagent/ai-gateway-toolserver.yaml) points at it, so a cluster
+# without it is a cluster whose agents have no tools. It costs ~84Mi measured,
+# against Langfuse's ~2.2Gi — the local ceiling argument does not reach it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-gateway-config
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+data:
+  config.yaml: |
+    # yaml-language-server: $schema=https://agentgateway.dev/schema/config
+    config:
+      # The admin interface also serves the UI. Nothing in-cluster needs either,
+      # and the UI would be reachable by anything that can open a socket to the
+      # pod, so it is off rather than bound to localhost.
+      adminAddr: "off"
+      # Default binds are localhost-only, which a kubelet probe and a Prometheus
+      # scrape both sit outside of. Bind both to the pod IP explicitly.
+      statsAddr: "0.0.0.0:15020"
+      readinessAddr: "0.0.0.0:15021"
+
+    gateways:
+      default:
+        port: 3000
+
+    # ── LLM egress ────────────────────────────────────────────────────────────
+    # The same gateway now fronts model traffic as well as tools. Agents keep
+    # speaking Anthropic's native protocol: the shorthand below serves
+    # /v1/messages directly, so nothing is translated into an OpenAI-compatible
+    # shape and the model ids stay exactly what kubernetes/kagent/modelconfig*.yaml
+    # already used. Verified against v1.5.0 — a POST /v1/messages here reaches
+    # endpoint=api.anthropic.com:443 with gen_ai.provider.name=anthropic.
+    #
+    # $ANTHROPIC_API_KEY expands from the pod environment, supplied by the
+    # optional `ai-gateway-llm-keys` Secret. Optional on purpose: with no key the
+    # gateway still starts and MCP tool traffic is unaffected — only model calls
+    # fail, and they fail with the provider's own 401 rather than a config error.
+    # That is what keeps a key-free evaluation cluster working.
+    #
+    # Anthropic only, because it is the only provider any agent actually uses:
+    # openai-prod and ollama-local exist as ModelConfigs but no agent references
+    # them (ADR-0005 decision 4). openAI, bedrock and custom self-hosted
+    # endpoints are each one more entry in this list — left out rather than
+    # shipped unexercised.
+    llm:
+      models:
+        # Explicit entries rather than only a wildcard, so /v1/models answers
+        # with the models this platform actually serves and each can carry its
+        # own policy (budgets, guardrails) later without restructuring.
+        - name: claude-haiku-4-5-20251001
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+        - name: claude-sonnet-4-6
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+        - name: claude-opus-4-8
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+        # Catch-all: a ModelConfig naming a model not listed above still routes
+        # instead of 404ing. Model ids change faster than this file does.
+        - name: "*"
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+
+    mcp:
+      # `never` — do not namespace tool names with the target name.
+      #
+      # The default (`conditional`) would rename every tool the moment a second
+      # target exists: sync_app becomes argocd_sync_app. That would invalidate
+      # the `toolNames:` allowlist AND the tool documentation inside the
+      # systemMessage of all nine agents in kubernetes/kagent/.
+      #
+      # `never` requires tool names to be unique across targets, which was
+      # checked before choosing it: 54 tools across the eight servers, zero
+      # collisions. scripts/validate-mcp-tool-names.py is the standing guard —
+      # a ninth server, or a rename, must keep that true.
+      prefixMode: never
+      # Default is failClosed: one unreachable target fails the whole session.
+      # incident (3008) and security (3010) only exist behind `--adp`, so on a
+      # cluster without it failClosed would take the gateway down for everyone.
+      # failOpen skips unhealthy targets and still errors if all of them fail.
+      failureMode: failOpen
+      # Per-target requestTimeout. These were the `timeout:` field on each of the
+      # eight RemoteMCPServer CRs before they collapsed into one, and they are not
+      # interchangeable: idp/qa poll the Backstage scaffolder for up to 180s, while
+      # a 30s ceiling is what stops a wedged incident or cost call holding a slot.
+      # Collapsing to a single CR would have forced one number for all 54 tools —
+      # 300s everywhere, so a hung 30s tool would tie up five minutes. Keeping them
+      # here preserves the old semantics; the CR's own timeout is only the outer bound.
+      targets:
+        - name: idp
+          mcp:
+            host: idp-mcp-server.services-dev.svc.cluster.local
+            port: 3001
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 300s
+        - name: qa
+          mcp:
+            host: qa-mcp-server.services-dev.svc.cluster.local
+            port: 3002
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 300s
+        - name: contract
+          mcp:
+            host: contract-mcp-server.services-dev.svc.cluster.local
+            port: 3003
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 60s
+        - name: github
+          mcp:
+            host: github-mcp-server.services-dev.svc.cluster.local
+            port: 3005
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+        - name: argocd
+          mcp:
+            host: argocd-mcp-server.services-dev.svc.cluster.local
+            port: 3006
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 90s
+        - name: cost
+          mcp:
+            host: cost-mcp-server.services-dev.svc.cluster.local
+            port: 3007
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+        # ADP-only (bootstrap-ai.sh --adp). Absent on a base install; failOpen
+        # above is what keeps that from being an outage.
+        - name: incident
+          mcp:
+            host: incident-mcp-server.services-dev.svc.cluster.local
+            port: 3008
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+        - name: security
+          mcp:
+            host: security-mcp-server.services-dev.svc.cluster.local
+            port: 3010
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-gateway
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+    backstage.io/kubernetes-id: ai-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-gateway
+  template:
+    metadata:
+      labels:
+        app: ai-gateway
+        backstage.io/kubernetes-id: ai-gateway
+      annotations:
+        # Scraped via the ai-gateway ServiceMonitor in
+        # kubernetes/monitoring/servicemonitor-kagent.yaml (that file owns both
+        # AI-stack monitors). These annotations are for any scrape path that
+        # reads them rather than the Prometheus Operator.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "15020"
+        prometheus.io/path: "/metrics"
+        # No checksum/config annotation on purpose. agentgateway watches its
+        # config file ("Watching config file: /config/config.yaml" at startup)
+        # and reloads on change, so a ConfigMap edit takes effect after the
+        # kubelet's volume sync without a pod roll. The alternative — bootstrap
+        # patching a checksum onto the Deployment — is the `kubectl set env`
+        # pattern that ArgoCD selfHeal silently reverted once already.
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agentgateway
+          # Pinned, not :latest — same convention as ollama 0.13.0 and vLLM
+          # v0.26.0. A proxy that silently changes version changes its routing.
+          image: cr.agentgateway.dev/agentgateway:v1.5.0
+          args: ["-f", "/config/config.yaml"]
+          ports:
+            - containerPort: 3000
+              name: mcp
+            - containerPort: 15020
+              name: metrics
+            - containerPort: 15021
+              name: readiness
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: readiness
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: readiness
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              # 84 MiB measured idle with all eight targets configured
+              # (docker stats, v1.5.0). A 64Mi request would have been under
+              # the real floor, which schedules fine and then reads as random
+              # eviction pressure on a full node.
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # optional: true — a cluster with no Anthropic key still gets a fully
+          # working MCP gateway; only /v1/messages fails, and it fails upstream.
+          envFrom:
+            - secretRef:
+                name: ai-gateway-llm-keys
+                optional: true
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: ai-gateway-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-gateway
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-gateway
+  ports:
+    - port: 3000
+      targetPort: mcp
+      name: mcp
+    - port: 15020
+      targetPort: metrics
+      name: metrics

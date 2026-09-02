@@ -38,18 +38,12 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: security-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - list_vulnerable_deps
             - get_secret_rotation_status
             - list_policy_violations
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
             - catalog_search
     deployment:
       resources:

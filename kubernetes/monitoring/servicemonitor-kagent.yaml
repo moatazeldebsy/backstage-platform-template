@@ -18,3 +18,31 @@ spec:
   namespaceSelector:
     matchNames:
     - kagent
+---
+# AI Gateway — every model call and every MCP tool call now passes through this
+# one pod, so its metrics are the platform-wide view that per-server scraping
+# cannot give: `agentgateway_mcp_requests_total` carries the target server and
+# the tool name, and LLM requests carry the gen_ai.* attributes (provider,
+# model) that per-team cost attribution will read.
+#
+# A separate ServiceMonitor rather than another selector on the one above: the
+# gateway lives in ml-platform, not kagent, and namespaceSelector applies to the
+# whole object.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ai-gateway
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: ai-gateway
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+  namespaceSelector:
+    matchNames:
+      - ml-platform

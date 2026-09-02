@@ -1,0 +1,33 @@
+# The one MCP registration every agent uses.
+#
+# This replaces the eight per-server RemoteMCPServer CRs (toolserver.yaml,
+# qa-toolserver.yaml, github-, argocd-, cost-, contract-, incident-,
+# security-toolserver.yaml). The AI Gateway multiplexes all eight behind a
+# single endpoint with `prefixMode: never`, so tools keep the names they always
+# had and every agent's `toolNames:` allowlist is unchanged by the move.
+#
+# Agents still get exactly the tools they were granted before: KAgent filters by
+# toolNames on its side, and the gateway resolves each name to the server that
+# owns it. What changed is the number of places that knowledge lives — one,
+# instead of eight CRs plus a partial duplicate in the LangGraph skeleton.
+#
+# The 300s timeout is an OUTER bound, not the per-server value. Real per-target
+# timeouts (30s–300s, preserved exactly as the eight CRs had them) live in
+# kubernetes/ml-platform/ai-gateway.yaml under each target's
+# policies.http.requestTimeout. This number only has to be no smaller than the
+# largest of those, or KAgent would cut the connection on a scaffolder poll that
+# the gateway was still legitimately waiting on.
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: ai-gateway
+  namespace: kagent
+spec:
+  description: >-
+    AI Gateway — every platform MCP tool behind one endpoint: catalog and
+    scaffolding (idp), test suites (qa), contracts (contract), pull requests
+    (github), ArgoCD applications (argocd), cost and budgets (cost), incidents
+    (incident), and security posture (security).
+  url: http://ai-gateway.ml-platform.svc.cluster.local:3000/mcp
+  protocol: STREAMABLE_HTTP
+  timeout: 300s

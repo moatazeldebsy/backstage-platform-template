@@ -42,7 +42,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: cost-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - get_team_spend
@@ -50,12 +50,6 @@ spec:
             - list_budget_overruns
             - get_namespace_cost
             - get_rightsizing_recommendations
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
             - catalog_search
     deployment:
       resources:

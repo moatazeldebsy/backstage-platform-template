@@ -125,7 +125,10 @@ jobs:
             # scripts/render-postmortem.py is py_compile'd by the same job, so it
             # has to trigger it — otherwise the check exists but never runs on
             # the file it was added for.
-            echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/|scripts/render-(postmortem|backstage-config)\.py)')"
+            # The validate-mcp-* gates ride here for the same reason: the
+            # scripts filter only matches *.sh, so without naming them they
+            # would never run on edits to the gates themselves.
+            echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/|scripts/(render-(postmortem|backstage-config)|validate-mcp-(metrics|tool-names))\.py)')"
             echo "contract-mcp=$(match '^services/contract-mcp-server/')"
             # Every MCP server except contract (which has its own job above), plus
             # agent-event-router and approval-service. Those two are not named
@@ -632,6 +635,45 @@ jobs:
             exit 1
           fi
           echo "All ${#files[@]} telemetry.ts copies are identical."
+
+  # telemetry.ts is guarded above, but the Prometheus metric *declarations* live
+  # in each server's own server.ts/index.ts and had no guard — and they drifted,
+  # invisibly, in both directions:
+  #   - qa-mcp-server declared mcp_tool_calls_total without the `outcome` label,
+  #     so the Engineering Intelligence scorer's {outcome="success"} query and
+  #     the MCPToolErrorRate alert both silently skipped qa.
+  #   - both AI dashboards selected {status="error"}. No server has ever emitted
+  #     a `status` label, so that panel read 0 for its entire life.
+  # A wrong label name never errors, it just matches nothing, which is exactly
+  # why it needs a gate rather than review.
+  #
+  # Tool-name uniqueness rides in the same job: the AI gateway multiplexes all
+  # eight servers with `prefixMode: never`, which is only safe while no two
+  # servers expose the same tool name. A collision does not error — the gateway
+  # routes by name lookup and one server silently wins.
+  mcp-contracts:
+    needs: changes
+    if: >-
+      needs.changes.outputs.mcp-servers == 'true' ||
+      needs.changes.outputs.contract-mcp == 'true' ||
+      needs.changes.outputs.k8s == 'true' ||
+      needs.changes.outputs.python-obs == 'true' ||
+      needs.changes.outputs.catalog == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate MCP metrics label contract
+        run: python3 scripts/validate-mcp-metrics.py
+
+      - name: Validate MCP tool-name uniqueness
+        run: python3 scripts/validate-mcp-tool-names.py
 
   terraform-check:
     needs: changes

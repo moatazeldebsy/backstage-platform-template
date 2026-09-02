@@ -251,6 +251,35 @@ if kubectl get ns kagent &>/dev/null; then
   MLFLOW_URL=$(kubectl get ingress -n ml-platform mlflow -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -n "$MLFLOW_URL" ]] && log "MLflow URL: http://$MLFLOW_URL" || err "MLflow not accessible"
 
+  # Check the AI Gateway — opt-in (bootstrap-ai.sh --gateway), so absence is
+  # reported as "not installed" rather than as a failure. A cluster without it
+  # is a supported configuration, and a red ✗ here would be noise on every base
+  # install.
+  if kubectl get deployment ai-gateway -n ml-platform &>/dev/null; then
+    GW_READY=$(kubectl get deployment ai-gateway -n ml-platform -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+    [[ "${GW_READY:-0}" -gt 0 ]] && log "AI Gateway ready" || err "AI Gateway deployed but not ready"
+
+    # Ready is not the same as useful: failureMode is failOpen, so the gateway
+    # serves happily while silently missing the tools of any target it cannot
+    # reach. Count the targets that actually resolve.
+    GW_TARGETS=0
+    for t in idp:3001 qa:3002 contract:3003 github:3005 argocd:3006 cost:3007 incident:3008 security:3010; do
+      kubectl get service "${t%%:*}-mcp-server" -n services-dev &>/dev/null && GW_TARGETS=$((GW_TARGETS+1))
+    done
+    log "AI Gateway MCP targets resolvable: $GW_TARGETS/8 (incident+security need --adp)"
+
+    # Model egress runs through the same gateway (modelconfig*.yaml points
+    # anthropic.baseUrl at it). Without the key the gateway is still healthy and
+    # tools still work, so this cannot be inferred from readyReplicas.
+    if kubectl get secret ai-gateway-llm-keys -n ml-platform &>/dev/null; then
+      log "AI Gateway LLM credentials present (ai-gateway-llm-keys)"
+    else
+      err "AI Gateway has no ai-gateway-llm-keys secret — agent model calls will 401"
+    fi
+  else
+    echo "- AI Gateway not installed (opt-in: bootstrap-ai.sh --gateway)"
+  fi
+
 else
   err "KAgent namespace not found (AI/ML stack not deployed)"
 fi

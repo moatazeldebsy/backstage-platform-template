@@ -96,7 +96,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: contract-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - fetch_service_contract
@@ -112,12 +112,6 @@ spec:
             - get_stale_contracts
             - get_audit_log
             - generate_migration_guide
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
             - catalog_search
             - list_deployments
     deployment:

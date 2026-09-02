@@ -101,30 +101,18 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: qa-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - list_test_suites
             - scaffold_test_suite
             - search_test_catalog
             - get_test_metrics
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: github-mcp-server
-          namespace: kagent
-          toolNames:
             - get_pr_diff
             - add_pr_comment
             - get_ci_status
             - approve_pr
             - request_changes
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
             - request_approval
             - get_approval_status
     deployment:
