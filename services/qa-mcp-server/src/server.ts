@@ -11,7 +11,7 @@ const PROMETHEUS_URL = process.env.PROMETHEUS_URL ?? 'http://prometheus-kube-pro
 const HTTP_TIMEOUT_MS = parseInt(process.env.HTTP_TIMEOUT_MS ?? '8000', 10);
 
 export const SERVER_NAME = 'qa-mcp-server';
-export const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['server', 'tool'] });
+export const toolCalls = new Counter({ name: 'mcp_tool_calls_total', help: 'Total MCP tool calls', labelNames: ['server', 'tool', 'outcome'] });
 export const toolDuration = new Histogram({ name: 'mcp_tool_duration_seconds', help: 'MCP tool call duration', labelNames: ['server', 'tool'] });
 
 // ── Known test-suite template names ──────────────────────────────────────────
@@ -75,7 +75,7 @@ export function createServer(agentId: string = 'unknown') {
     {},
     async () => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'list_test_suites' });
-      toolCalls.inc({ server: SERVER_NAME, tool: 'list_test_suites' });
+      let outcome = 'success';
       try {
         const data = await fetchCatalog('/api/catalog/entities?filter=kind=Template&limit=100') as Array<{
           metadata: { name: string; description?: string; title?: string; tags?: string[] };
@@ -93,8 +93,12 @@ export function createServer(agentId: string = 'unknown') {
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(suites, null, 2) }],
         };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
       } finally {
         end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'list_test_suites', outcome });
       }
     }
   );
@@ -119,7 +123,7 @@ export function createServer(agentId: string = 'unknown') {
     },
     async ({ template_ref, values }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'scaffold_test_suite' });
-      toolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_test_suite' });
+      let outcome = 'success';
       try {
         const refParts = template_ref.split('/');
         const templateName = refParts[refParts.length - 1];
@@ -195,8 +199,12 @@ export function createServer(agentId: string = 'unknown') {
             }, null, 2),
           }],
         };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
       } finally {
         end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_test_suite', outcome });
       }
     }
   );
@@ -216,7 +224,7 @@ export function createServer(agentId: string = 'unknown') {
     },
     async ({ query, service }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'search_test_catalog' });
-      toolCalls.inc({ server: SERVER_NAME, tool: 'search_test_catalog' });
+      let outcome = 'success';
       try {
         const all = await fetchCatalog('/api/catalog/entities?limit=200') as Array<{
           metadata: { name: string; description?: string; tags?: string[] };
@@ -250,8 +258,12 @@ export function createServer(agentId: string = 'unknown') {
             })), null, 2),
           }],
         };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
       } finally {
         end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'search_test_catalog', outcome });
       }
     }
   );
@@ -270,7 +282,7 @@ export function createServer(agentId: string = 'unknown') {
     },
     async ({ service_name, metric }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_test_metrics' });
-      toolCalls.inc({ server: SERVER_NAME, tool: 'get_test_metrics' });
+      let outcome = 'success';
       try {
         const queries = metric
           ? [`${metric}{job="${service_name}"}`]
@@ -310,8 +322,12 @@ export function createServer(agentId: string = 'unknown') {
                 `Consider instrumenting tests with prom-client or a test results exporter.`,
           }],
         };
+      } catch (err) {
+        outcome = 'error';
+        throw err;
       } finally {
         end();
+        toolCalls.inc({ server: SERVER_NAME, tool: 'get_test_metrics', outcome });
       }
     }
   );
