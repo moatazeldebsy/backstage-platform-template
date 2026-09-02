@@ -47,9 +47,8 @@ podLabels:
 metrics:
   enabled: true
 
-# ${{ values.name }}-secrets holds ANTHROPIC_API_KEY and is created by hand:
-#   kubectl create secret generic ${{ values.name }}-secrets -n services-dev \
-#     --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+# ${{ values.name }}-secrets is optional and no longer needed for Anthropic:
+# model calls go through the AI Gateway, which holds the provider key.
 # langfuse-otel is distributed by scripts/bootstrap-ai.sh to namespaces labelled
 # idp.io/langfuse=enabled. Both optional so a missing secret degrades one thing
 # instead of crashlooping the pod.

@@ -135,7 +135,7 @@ After onboarding, your service's contract status is visible in the **Backstage C
 |-----------|----------|---------|
 | `contract-mcp-server` | `services/contract-mcp-server/` | Central contract registry + MCP server |
 | `contract-assistant` KAgent | `kubernetes/kagent/contract-agent.yaml` | AI agent for natural-language workflows |
-| `contract-toolserver` | `kubernetes/kagent/contract-toolserver.yaml` | RemoteMCPServer CRD wiring |
+| `ai-gateway` | `kubernetes/kagent/ai-gateway-toolserver.yaml` | The single RemoteMCPServer CRD. The contract tools reach agents through the AI Gateway's `contract` target, configured in `kubernetes/ml-platform/ai-gateway.yaml` |
 | Backstage template — `contract-testing-suite` | `backstage/catalog/templates/contract-testing-suite/` | Scaffold a full Pact test project |
 | Backstage template — `enable-contract-testing` | `backstage/catalog/templates/enable-contract-testing/` | One-click onboarding for existing services |
 | GitHub Actions workflow | `.github/workflows/contract-check.yml` | Per-PR breaking change gate |

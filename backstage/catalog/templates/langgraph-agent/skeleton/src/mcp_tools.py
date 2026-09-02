@@ -1,8 +1,9 @@
 """Load tools from the platform's MCP servers.
 
 **No tool is reimplemented here.** The platform already runs eight MCP servers —
-idp, qa, contract, github, cost, argocd, incident, security — and KAgent's
-declarative agents consume them. A LangGraph app consuming the same servers is
+idp, qa, contract, github, cost, argocd, incident, security — reached through the
+AI Gateway, which multiplexes all of them behind one endpoint. KAgent's
+declarative agents consume the same gateway. A LangGraph app consuming it too is
 the whole point: one set of platform capabilities, two ways to orchestrate them.
 
 The trace propagation matters and is easy to get wrong. The MCP servers already
@@ -31,14 +32,26 @@ _TOOLS_CACHE: list[Any] | None = None
 def _endpoints() -> dict[str, str]:
     """MCP servers to load tools from.
 
-    In-cluster Service DNS, not ALB hostnames: these are reachable from inside
-    the cluster, they do not depend on an ingress existing, and they keep working
-    when the ALB hostname changes.
+    One entry: the AI Gateway, which multiplexes all eight platform MCP servers
+    behind a single endpoint. Tool names come through unprefixed (the gateway
+    runs `prefixMode: never`), so a tool is called by the name its own server
+    gave it — `scaffold_service`, `sync_app`, `get_pr_diff` — exactly as the
+    KAgent agents call it.
+
+    This used to be a hand-maintained map of individual servers, and it had
+    drifted to four of the eight: contract, argocd, incident and security were
+    simply missing, so a scaffolded agent could not reach them and nothing said
+    so. Pointing at the gateway removes the second copy of that knowledge rather
+    than fixing it in two places forever.
+
+    In-cluster Service DNS, not an ALB hostname: reachable from inside the
+    cluster, no dependency on an ingress existing, and unaffected when an ALB
+    hostname changes.
     """
     raw = os.environ.get("MCP_SERVERS", "")
     if raw:
-        # "name=url,name=url" — lets a scaffolded app narrow the set without a
-        # code change.
+        # "name=url,name=url" — lets a scaffolded app point at something else,
+        # or narrow to a single server, without a code change.
         out: dict[str, str] = {}
         for pair in raw.split(","):
             if "=" in pair:
@@ -46,12 +59,9 @@ def _endpoints() -> dict[str, str]:
                 out[name.strip()] = url.strip()
         return out
 
-    ns = os.environ.get("MCP_NAMESPACE", "services-dev")
+    ns = os.environ.get("MCP_GATEWAY_NAMESPACE", "ml-platform")
     return {
-        "idp": f"http://idp-mcp-server.{ns}.svc.cluster.local:3001/mcp",
-        "qa": f"http://qa-mcp-server.{ns}.svc.cluster.local:3002/mcp",
-        "github": f"http://github-mcp-server.{ns}.svc.cluster.local:3005/mcp",
-        "cost": f"http://cost-mcp-server.{ns}.svc.cluster.local:3007/mcp",
+        "platform": f"http://ai-gateway.{ns}.svc.cluster.local:3000/mcp",
     }
 
 

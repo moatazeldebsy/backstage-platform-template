@@ -65,7 +65,7 @@ spec:
           default: anthropic
           enum: [anthropic, ollama]
           enumNames:
-            - 'Anthropic (hosted — needs ANTHROPIC_API_KEY)'
+            - 'Anthropic (hosted — via the platform AI Gateway, no key needed)'
             - 'Ollama (in-cluster, no API key — needs bootstrap-ai.sh --ollama)'
           description: >-
             Anthropic is the default so the golden path works before anybody tunes a
@@ -390,14 +390,8 @@ spec:
     text:
       - title: Before it will answer a request
         content: |
-          The service needs an Anthropic API key. It is **not** created for you — create it once
-          in the target namespace:
-
-          ```
-          kubectl create secret generic ${{ parameters.name }}-secrets \
-            --namespace services-dev \
-            --from-literal=ANTHROPIC_API_KEY=sk-ant-...
-          ```
+          No Anthropic API key is needed. Model calls route through the platform's AI Gateway,
+          which holds the provider credential — the agent answers as soon as it is deployed.
 
           Langfuse credentials are separate and already handled: `services-dev` carries the
           `idp.io/langfuse=enabled` label, so `./scripts/bootstrap-ai.sh --langfuse-keys-only`

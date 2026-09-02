@@ -11,6 +11,8 @@ IDP `langgraph-agent` golden path.
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
+# Outside the cluster the gateway is not reachable, so go direct:
+export ANTHROPIC_BASE_URL=https://api.anthropic.com
 export ANTHROPIC_API_KEY=sk-ant-...
 uvicorn src.main:app --reload --port ${{ values.port }}
 
@@ -37,7 +39,8 @@ check would bill continuously and take the pod down on a provider blip.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | **Required.** Without it `/chat` returns 503; the pod still starts. |
+| `ANTHROPIC_BASE_URL` | the AI Gateway | Where model calls go. Defaults to `http://ai-gateway.ml-platform.svc.cluster.local:3000`. Set it to `https://api.anthropic.com` to bypass the gateway (needed outside the cluster). |
+| `ANTHROPIC_API_KEY` | — | **Not required in-cluster.** The gateway holds the provider credential. Only needed when pointing `ANTHROPIC_BASE_URL` straight at Anthropic. |
 | `ANTHROPIC_MODEL` | `${{ values.model }}` | Model id. Complete as written — never append a date suffix. |
 | `ANTHROPIC_EFFORT` | `${{ values.effort }}` | `low`–`max`. How much the model thinks before answering. |
 | `ANTHROPIC_MAX_TOKENS` | `8192` | Caps thinking **and** response text together. Raise it with effort. |

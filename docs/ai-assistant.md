@@ -81,14 +81,28 @@ The AI Assistant is a **native React chat component** embedded directly in the B
 │    cost-agent          — cost/budget analysis (claude-sonnet)    │
 │    release-agent       — ArgoCD sync/rollback (claude-sonnet)    │
 │    incident-agent      — alert triage (claude-sonnet)            │
-└──────┬──────────┬──────────────┬────────────┬───────┬───────┬───────┬────┘
-       │ MCP/HTTP │              │            │       │       │       │
-       ▼          ▼              ▼            ▼       ▼       ▼       ▼
+└───────────────────────────────┬──────────────────────────────────┘
+                                │ one RemoteMCPServer ("ai-gateway")
+                                │ + every ModelConfig's anthropic.baseUrl
+                                ▼
+              ┌──────────────────────────────────────┐
+              │  AI Gateway — agentgateway :3000     │  ml-platform
+              │   /mcp          all 8 servers, tool  │
+              │                 names unprefixed     │
+              │   /v1/messages  Anthropic, native    │──▶ api.anthropic.com
+              └───────────────────┬──────────────────┘
+                                  │ streamable-HTTP
+       ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
+       ▼          ▼               ▼            ▼       ▼       ▼       ▼
  ┌──────────┐┌──────────┐┌──────────────┐┌──────────┐┌────────┐┌──────────┐┌───────────┐
  │ idp-mcp  ││ qa-mcp   ││ contract-mcp ││ github-mcp││cost-mcp││argocd-mcp││incident-mcp│
  │ :3001    ││ :3002    ││ :3003        ││ :3005     ││ :3007  ││ :3006    ││ :3008      │
- │ 9 tools  ││ 4 tools  ││ 9 tools      ││ 5 tools   ││5 tools ││5 tools   ││5 tools     │
+ │ 12 tools ││ 4 tools  ││ 13 tools     ││ 5 tools   ││5 tools ││5 tools   ││7 tools     │
  └──────────┘└──────────┘└──────────────┘└──────────┘└────────┘└──────────┘└───────────┘
+        (security-mcp :3010, 3 tools, is the eighth — ADP only)
+
+  54 tools total, all names unique — which is what lets the gateway federate
+  them unprefixed. Each agent still receives only its own toolNames allowlist.
 
 Event Bus (agent-event-router :3004)
   ← GitHub webhooks (PR open/update → qa-assistant)
@@ -1017,9 +1031,8 @@ helm upgrade --install github-mcp-server helm/service-template \
 
 # Re-apply all KAgent resources
 kubectl apply -f kubernetes/kagent/modelconfig-sonnet.yaml
-kubectl apply -f kubernetes/kagent/toolserver.yaml
+kubectl apply -f kubernetes/kagent/ai-gateway-toolserver.yaml
 kubectl apply -f kubernetes/kagent/platform-agent.yaml
-kubectl apply -f kubernetes/kagent/github-toolserver.yaml
 
 # Rebuild a service image after code changes
 cd services/github-mcp-server && docker build -t localhost:5003/github-mcp-server:0.1.0 . && docker push localhost:5003/github-mcp-server:0.1.0

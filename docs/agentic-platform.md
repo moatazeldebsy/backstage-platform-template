@@ -37,10 +37,21 @@ Backstage — chat UI (/ai-assistant), semantic search (/ai-search), approval UI
 │  cost-agent · release-agent · incident-agent*        │
 │  security-agent* · onboarding-agent*                 │
 └───────────────────────┬──────────────────────────────┘
-                         │ MCP/HTTP
+                         │ MCP/HTTP — one RemoteMCPServer ("ai-gateway")
                          ▼
+              ┌──────────────────────────────┐
+              │  AI Gateway (agentgateway)   │  ml-platform :3000/mcp
+              │  multiplexes all 8, tool     │  prefixMode: never
+              │  names unprefixed, failOpen  │  per-target timeouts
+              └──────────────┬───────────────┘
+                             │ streamable-HTTP
+                             ▼
   idp-mcp :3001   qa-mcp :3002   contract-mcp :3003   github-mcp :3005
   cost-mcp :3007  argocd-mcp :3006   incident-mcp :3008*   security-mcp :3010*
+
+  Each agent still receives only the tools in its own `toolNames` allowlist —
+  the gateway federates, KAgent filters. A target the gateway cannot reach is
+  skipped, so a partial platform yields fewer tools rather than an error.
 
   Real (non-dry-run) sync_app / rollback_app / approve_pr calls are rejected by their MCP
   server unless they carry an approval_id whose status is "approved" — enforced in code, not
@@ -93,7 +104,7 @@ auto-merge before then.
 | Component | Path |
 |-----------|------|
 | `incident-mcp-server` (get_open_incidents, get_alert_history, get_runbook, post_incident_update, send_notification) | `services/incident-mcp-server/` |
-| `incident-agent` + toolserver | `kubernetes/kagent/incident-agent.yaml`, `kubernetes/kagent/incident-toolserver.yaml` |
+| `incident-agent` | `kubernetes/kagent/incident-agent.yaml` (its MCP server is a target of the AI Gateway, `kubernetes/ml-platform/ai-gateway.yaml`) |
 | AlertManager routing: critical non-budget alerts → incident-agent | `services/agent-event-router/src/router.ts` |
 | RAG fix: index rendered TechDocs pages via the techdocs-backend's per-entity `search_index.json` (portable across local filesystem and S3 publishers), replacing a dead-end raw filesystem walk of `/catalog` (the Backstage catalog-definitions mount, not the docs mount) | `backstage/app/packages/backend/src/modules/idpRagSearch.ts` |
 
