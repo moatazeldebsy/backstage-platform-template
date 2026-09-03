@@ -1,0 +1,32 @@
+scripts/sync-mcp-common.sh
+  s_3ef97d964200b8::t_682f8523ad2aa4 29-36
+  s_3ef97d964200b8::t_69a7b564941080 1-28,37-87
+services/mcp-common/src/telemetry.ts
+  s_3ef97d964200b8::t_0aa962ce4cac48 1-289
+services/mcp-common/README.md
+  s_3ef97d964200b8::t_0aa962ce4cac48 1-42
+.github/workflows/ci.yml
+  s_3ef97d964200b8::t_5e634aefa161d1 59,93,134-139,621
+  s_3ef97d964200b8::t_35b4c7e25088cc 628-634
+.claude/context/platform-map.md
+  s_3ef97d964200b8::t_9aa18a20939242 60
+  s_3ef97d964200b8::t_7d8bb3e712d389 69-70
+docs/scripts-reference.md
+  s_3ef97d964200b8::t_d7a63fd10c39d8 142-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "68ca0db84bb1c4fcc419437f387991fac162c412",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
