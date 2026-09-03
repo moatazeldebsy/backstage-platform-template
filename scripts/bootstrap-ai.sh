@@ -496,7 +496,8 @@ if $DESTROY; then
   # 10Gi PVC behind after --destroy is the sort of thing found on a bill later.
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/ollama.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-ollama.yaml" 2>/dev/null || true
-  # AI Gateway — also opt-in, same reasoning. Small, but a leftover gateway
+  # AI Gateway — default-on rather than opt-in, but torn down for the same
+  # reason as the opt-in components above. Small, but a leftover gateway
   # still holding sessions open against MCP servers that are being torn down is
   # a confusing set of errors to inherit on the next install.
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/ai-gateway.yaml" 2>/dev/null || true
@@ -1311,13 +1312,14 @@ fi
 timer_end "3a. Ollama"
 
 # ── 3a-bis. AI Gateway (agentgateway, standalone) ─────────────────────────────
-# Opt-in via --gateway. One multiplexed MCP endpoint in front of the eight
-# servers, with tool names left unprefixed so no agent allowlist has to change.
+# ON BY DEFAULT (--skip-gateway opts out). One multiplexed MCP endpoint in front
+# of the eight servers, with tool names left unprefixed so no agent allowlist has
+# to change.
 #
-# Purely additive here: this deploys the gateway but repoints nothing at it. The
-# RemoteMCPServer CRs in kubernetes/kagent/ still address each server directly,
-# so a cluster with the gateway running behaves exactly like one without until
-# that switch is made deliberately.
+# Not additive: this is now the only path. The eight per-server RemoteMCPServer
+# CRs were replaced by the single ai-gateway one, and every ModelConfig points
+# anthropic.baseUrl here, so a cluster that skips the gateway has agents with
+# neither tools nor a model. See docs/design/adr-0007-ai-gateway.md.
 timer_start "3a-bis. AI Gateway"
 if [[ "$GATEWAY" == "true" ]]; then
   info "Deploying AI Gateway (agentgateway v1.5.0) to ml-platform..."

@@ -29,7 +29,7 @@ Tracing stays off locally unless you point it at Langfuse — see below.
 |---|---|---|
 | `POST` | `/chat` | Send a message to Claude. Body: `{"message": "...", "user_id": "...", "session_id": "..."}` |
 | `GET` | `/healthz` | Liveness |
-| `GET` | `/ready` | Readiness — also reports whether the API key and tracing are configured |
+| `GET` | `/ready` | Readiness — also reports the model, the `llm_base_url` it will call, and whether tracing is configured |
 | `GET` | `/metrics` | Prometheus metrics, including `llm_tokens_total` and `llm_request_duration_seconds` |
 
 `/ready` deliberately does **not** call the model API. A readiness probe that costs a token per

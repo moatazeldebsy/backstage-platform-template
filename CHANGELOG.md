@@ -10,6 +10,56 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **One AI Gateway in front of every MCP server and every model call.**
+  [agentgateway](https://agentgateway.dev/) v1.5.0 in standalone mode
+  (`kubernetes/ml-platform/ai-gateway.yaml`), on by default — `--skip-gateway`
+  opts out. Tools: the eight MCP servers multiplex behind one `/mcp` endpoint
+  with names left **unprefixed** (`prefixMode: never`), so the eight
+  `RemoteMCPServer` CRs collapse into one and no agent's `toolNames:` allowlist
+  or systemMessage changes. Models: `/v1/messages` is served natively, so every
+  `ModelConfig` just points `anthropic.baseUrl` at the gateway — no protocol
+  translation and no model id changes. Unreachable targets are skipped rather
+  than failing the session (`failureMode: failOpen`), which means a Ready
+  gateway can serve fewer tools than expected; the bootstrap and
+  `validate-deployment.sh` both report how many resolve. Verified on a live
+  cluster: 54 tools federated unprefixed, 44 with two targets down, and a real
+  `/v1/messages` round trip. See
+  [ADR-0007](docs/design/adr-0007-ai-gateway.md).
+- **Scaffolded LLM apps no longer need their own Anthropic key.** The gateway
+  holds the provider credential, so `llm-app-langfuse` and `langgraph-agent`
+  ship with none — deleting the "create your own `sk-ant-` secret" step from
+  their READMEs and runbooks. `ANTHROPIC_BASE_URL` points at the gateway by
+  default and can be set to `https://api.anthropic.com` to bypass it when
+  running outside the cluster.
+
+### Fixed
+
+- **Three internet-facing MCP ALBs closed.** `idp`, `qa` and `contract`
+  MCP servers carried `scheme: internet-facing` with `host: ""` (match any
+  hostname), no TLS and no authentication on `POST /mcp` — `idp` exposing
+  `scaffold_service` and `set_user_memory`. `ingress.enabled: false` on all
+  three, matching the other five.
+- **`qa-mcp-server` was invisible to the reliability scorer.** Its
+  `mcp_tool_calls_total` omitted the `outcome` label, so the Engineering
+  Intelligence `{outcome="success"}` query and the error-rate alert both
+  silently skipped it. Both AI dashboards separately queried a `status` label
+  that no server has ever emitted, so those panels always read 0.
+  `scripts/validate-mcp-metrics.py` now fails CI on either mistake, and
+  `scripts/validate-mcp-tool-names.py` guards the tool-name uniqueness that
+  `prefixMode: never` depends on.
+- **NetworkPolicy allowed six MCP ports, not eight.** Ports 3008 (incident) and
+  3010 (security) were never added, leaving the two ADP-phase servers outside
+  the allowlist.
+- **Gatekeeper installed five policies that enforced nothing.** `kubectl wait`
+  returns `NotFound` immediately for a CRD that does not exist *yet*, so the
+  wait raced Gatekeeper's asynchronous CRD generation and lost; under `set -e`
+  that skipped the apply which actually creates the Constraints. Clusters came
+  up with five ConstraintTemplates, five CRDs and **zero Constraints** — a
+  violating Deployment was admitted — behind a single warning line.
+- **AI Gateway probes inherited the implicit 1s timeout.** Neither probe set
+  `timeoutSeconds`, so a CPU-starved node liveness-killed a perfectly healthy
+  gateway (exit 0 / `Completed`). Now 15s, the same fix MLflow needed.
+
 - **`mobile-device-farm` is provider-agnostic.** A `provider` parameter picks
   Firebase Test Lab, LambdaTest, BrowserStack App Automate or Sauce Labs, with the
   Firebase path unchanged as the default. Each provider uses its own native,

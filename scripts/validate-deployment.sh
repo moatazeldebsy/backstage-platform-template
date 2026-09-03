@@ -251,10 +251,11 @@ if kubectl get ns kagent &>/dev/null; then
   MLFLOW_URL=$(kubectl get ingress -n ml-platform mlflow -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
   [[ -n "$MLFLOW_URL" ]] && log "MLflow URL: http://$MLFLOW_URL" || err "MLflow not accessible"
 
-  # Check the AI Gateway — opt-in (bootstrap-ai.sh --gateway), so absence is
-  # reported as "not installed" rather than as a failure. A cluster without it
-  # is a supported configuration, and a red ✗ here would be noise on every base
-  # install.
+  # Check the AI Gateway. It is deployed BY DEFAULT (disable with
+  # bootstrap-ai.sh --skip-gateway), and every agent's single RemoteMCPServer
+  # plus every ModelConfig's anthropic.baseUrl point at it — so a cluster
+  # missing it has agents with neither tools nor a model. That is a real
+  # failure, not a supported shape, and is reported as one.
   if kubectl get deployment ai-gateway -n ml-platform &>/dev/null; then
     GW_READY=$(kubectl get deployment ai-gateway -n ml-platform -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
     [[ "${GW_READY:-0}" -gt 0 ]] && log "AI Gateway ready" || err "AI Gateway deployed but not ready"
@@ -277,7 +278,7 @@ if kubectl get ns kagent &>/dev/null; then
       err "AI Gateway has no ai-gateway-llm-keys secret — agent model calls will 401"
     fi
   else
-    echo "- AI Gateway not installed (opt-in: bootstrap-ai.sh --gateway)"
+    err "AI Gateway not installed — agents have no tools and no model. Run bootstrap-ai.sh (it is on by default; --skip-gateway is the opt-out)."
   fi
 
 else

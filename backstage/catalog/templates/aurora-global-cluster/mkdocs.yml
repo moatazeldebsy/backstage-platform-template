@@ -1,0 +1,4 @@
+site_name: Aurora Global Database (Multi-Region)
+docs_dir: docs
+plugins:
+  - techdocs-core
