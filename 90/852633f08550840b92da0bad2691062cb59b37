@@ -1,0 +1,35 @@
+observability/grafana/dashboards/ai/ai-platform.json
+  s_3ef97d964200b8::t_572dfa709a48f4 55
+services/qa-mcp-server/src/server.ts
+  s_3ef97d964200b8::t_630e4ac35e318b 14,78,126,227,285
+  s_3ef97d964200b8::t_6225da44ba0ea5 96-98,101,202-204,207,261-263,266,325-327,330
+kubernetes/network-policies/default-deny.yaml
+  s_3ef97d964200b8::t_ccc957ad8c75e6 33-38,43-45,94-99,104-106,155-160,165-167,216-221,226-228
+  s_3ef97d964200b8::t_0cdb579f53ba23 59-66,120-127,181-188,242-249
+  s_3ef97d964200b8::t_0025dcc1e7c7c2 5-6
+kubernetes/monitoring/grafana-ai-dashboard-configmap.yaml
+  s_3ef97d964200b8::t_572dfa709a48f4 66
+services/qa-mcp-server/helm-values-aws.yaml
+  s_3ef97d964200b8::t_cf099c08293868 18-25
+services/contract-mcp-server/helm-values-aws.yaml
+  s_3ef97d964200b8::t_cf099c08293868 32-39
+services/idp-mcp-server/helm-values-aws.yaml
+  s_3ef97d964200b8::t_60772b58451ef8 26
+  s_3ef97d964200b8::t_1af4fe2bf71baa 18-25,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "90852633f08550840b92da0bad2691062cb59b37",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}

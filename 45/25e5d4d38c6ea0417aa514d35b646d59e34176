@@ -1,0 +1,85 @@
+aws/ml-platform/ai-gateway-external-secret.yaml
+  s_3ef97d964200b8::t_d0b74a93c7c232 1-46
+scripts/validate-mcp-metrics.py
+  s_3ef97d964200b8::t_99ec4adba6abb2 1-167
+scripts/validate-mcp-tool-names.py
+  s_3ef97d964200b8::t_2285a529bfd0aa 1-90
+scripts/validate-deployment.sh
+  s_3ef97d964200b8::t_c4e7c233972814 270-278
+  s_3ef97d964200b8::t_b8ae632a11f443 254-269,279-282
+kubernetes/kagent/contract-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 99
+kubernetes/kagent/modelconfig.yaml
+  s_3ef97d964200b8::t_1e6b803ccb294b 11-23
+kubernetes/kagent/platform-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 49
+scripts/bootstrap-ai.sh
+  s_3ef97d964200b8::t_6e33b00ba42636 1342-1345,1348-1350
+  s_3ef97d964200b8::t_6e54b157f9c2c4 44-52,80-82,117,1347
+  s_3ef97d964200b8::t_e8273b6bff1554 1781-1793
+  s_3ef97d964200b8::t_1956ef03cc6edb 116
+  s_3ef97d964200b8::t_54564558fc3be2 1765
+  s_3ef97d964200b8::t_743e266036d320 485,1070-1085
+  s_3ef97d964200b8::t_65adb777981a9e 1313-1341,1346,1351-1352
+  s_3ef97d964200b8::t_7571158854eea9 454-462,1739-1744,1758,1822-1823
+  s_3ef97d964200b8::t_d87f96dd0d6776 499-502
+  s_3ef97d964200b8::t_58e8dec3dacf6a 484,1848-1853
+  s_3ef97d964200b8::t_3b77826a2ba382 1086,1353,1794
+kubernetes/kagent/modelconfig-opus.yaml
+  s_3ef97d964200b8::t_1e6b803ccb294b 11-23
+kubernetes/ml-platform/ai-gateway.yaml
+  s_3ef97d964200b8::t_49c34dbe56a709 13-17
+  s_3ef97d964200b8::t_5724549725afdb 103-109,116-118,124-126,132-134,140-142,148-150,156-158,166-168,174-176
+  s_3ef97d964200b8::t_d587137e0d7972 198-201
+  s_3ef97d964200b8::t_5ce4e9c8944c74 251-255
+  s_3ef97d964200b8::t_a3acbc785049df 205-210
+  s_3ef97d964200b8::t_7f13ae037fa0ec 3-5,42-84,259-264
+  s_3ef97d964200b8::t_f833a8af7924bf 1-2,6-12,18-41,85-102,110-115,119-123,127-131,135-139,143-147,151-155,159-165,169-173,177-197,202-204,211-250,256-258,265-292
+kubernetes/kagent/cost-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 45
+kubernetes/kagent/modelconfig-haiku.yaml
+  s_3ef97d964200b8::t_1e6b803ccb294b 11-23
+kubernetes/kagent/release-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 52
+.claude/context/platform-map.md
+  s_3ef97d964200b8::t_f4db71ee56eb1f 59-61
+  s_3ef97d964200b8::t_f59c4d4300a4e9 64,66-72
+kubernetes/kagent/security-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 41
+kubernetes/kagent/ai-gateway-toolserver.yaml
+  s_3ef97d964200b8::t_d612c53180e1c0 1-33
+kubernetes/kagent/onboarding-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 37
+kubernetes/kagent/modelconfig-sonnet.yaml
+  s_3ef97d964200b8::t_1e6b803ccb294b 11-23
+kubernetes/monitoring/servicemonitor-kagent.yaml
+  s_3ef97d964200b8::t_a83280661d2bad 21-48
+kubernetes/kagent/idp-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 68
+.github/workflows/ci.yml
+  s_3ef97d964200b8::t_494ca29c422243 649-654
+  s_3ef97d964200b8::t_ffaa0c6c013022 675-676
+  s_3ef97d964200b8::t_792909b2d54ebf 639-648,655-674
+  s_3ef97d964200b8::t_214e3457fa944d 131
+  s_3ef97d964200b8::t_b71c925c4c2e52 128-130,677
+kubernetes/kagent/qa-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 104
+kubernetes/kagent/incident-agent.yaml
+  s_3ef97d964200b8::t_5e8f1980e86697 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4525e5d4d38c6ea0417aa514d35b646d59e34176",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}

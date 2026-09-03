@@ -1,0 +1,78 @@
+backstage/catalog/templates/langgraph-agent/platform-values/helm-values-local.yaml
+  s_3ef97d964200b8::t_f6d9aa2df291e7 50-51
+backstage/catalog/templates/llm-app-langfuse/template.yaml
+  s_3ef97d964200b8::t_97c47f768166f1 377-378
+backstage/catalog/templates/llm-app-langfuse/skeleton/src/main.py
+  s_3ef97d964200b8::t_36f0ce97d3ee2d 73,75-91,95-102,267-270
+backstage/catalog/templates/llm-app-langfuse/skeleton/helm-values-local.yaml
+  s_3ef97d964200b8::t_0b5209a3184d96 50-52
+backstage/catalog/templates/langgraph-agent/skeleton/src/graph.py
+  s_3ef97d964200b8::t_84c2634a61d196 86-94,97-103
+backstage/catalog/templates/llm-app-langfuse/docs/index.md
+  s_3ef97d964200b8::t_97c47f768166f1 29-31,33-34
+backstage/catalog/templates/langgraph-agent/skeleton/README.md
+  s_3ef97d964200b8::t_f6d9aa2df291e7 14-15,42-43
+docs/local-setup.md
+  s_3ef97d964200b8::t_549ca56935387d 204-208
+backstage/catalog/templates/langgraph-agent/skeleton/docs/runbooks/service.md
+  s_3ef97d964200b8::t_6be4690765d188 13,16-19
+  s_3ef97d964200b8::t_9200823af9d828 23-24,27-28,31-37,39
+backstage/catalog/templates/langgraph-agent/skeleton/src/mcp_tools.py
+  s_3ef97d964200b8::t_928eafef7c5345 4-6,35-49,53-54,62,64
+backstage/catalog/templates/llm-app-langfuse/platform-values/helm-values-local.yaml
+  s_3ef97d964200b8::t_97c47f768166f1 50-51
+docs/ai-assistant.md
+  s_3ef97d964200b8::t_bc302c895d173b 84-96,100,102-105
+  s_3ef97d964200b8::t_549ca56935387d 1034
+backstage/catalog/templates/langgraph-agent/docs/index.md
+  s_3ef97d964200b8::t_412259299976d8 27,29-34
+docs/scripts-reference.md
+  s_3ef97d964200b8::t_c4e7c233972814 115-116
+backstage/catalog/templates/llm-app-langfuse/skeleton/docs/runbooks/service.md
+  s_3ef97d964200b8::t_7fdba74d8b0d26 16-17
+  s_3ef97d964200b8::t_0926002a09533c 13
+  s_3ef97d964200b8::t_1b45a73fa56ba1 21-22,25-26,29-35
+backstage/catalog/templates/llm-app-langfuse/skeleton/README.md
+  s_3ef97d964200b8::t_0926002a09533c 14-15,42-43,54,56-59,61-62
+backstage/catalog/templates/langgraph-agent/skeleton/helm-values-aws.yaml
+  s_3ef97d964200b8::t_19734edcb2f834 80-86
+docs/contract-testing.md
+  s_3ef97d964200b8::t_549ca56935387d 138
+backstage/catalog/templates/llm-app-langfuse/skeleton/docs/adr/0001-initial-decisions.md
+  s_3ef97d964200b8::t_0926002a09533c 31
+backstage/catalog/templates/langgraph-agent/template.yaml
+  s_3ef97d964200b8::t_412259299976d8 393-394
+  s_3ef97d964200b8::t_f6d9aa2df291e7 68
+docs/agentic-platform.md
+  s_3ef97d964200b8::t_af89b2d1d31aee 40,42-48,52-54
+  s_3ef97d964200b8::t_549ca56935387d 107
+  s_3ef97d964200b8::t_d98462a655cebe 55
+docs/design/adr-0007-ai-gateway.md
+  s_3ef97d964200b8::t_26d5166876e16b 1-181
+backstage/catalog/templates/langgraph-agent/skeleton/docs/adr/0001-initial-decisions.md
+  s_3ef97d964200b8::t_5ddc9b94b1ca16 18-23,44-48
+backstage/catalog/templates/langgraph-agent/skeleton/helm-values-local.yaml
+  s_3ef97d964200b8::t_19734edcb2f834 73-79
+  s_3ef97d964200b8::t_f6d9aa2df291e7 50-52
+docs/architecture.md
+  s_3ef97d964200b8::t_d823b4ebb779c3 18-21
+  s_3ef97d964200b8::t_549ca56935387d 213-214
+backstage/catalog/templates/llm-app-langfuse/skeleton/tests/test_main.py
+  s_3ef97d964200b8::t_729c08994a7ce3 22-24,107-113,118-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f7882c58ddf4f8c858a6d4a666149cdc4778260f",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
