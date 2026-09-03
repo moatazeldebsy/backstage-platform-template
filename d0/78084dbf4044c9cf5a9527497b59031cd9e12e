@@ -1,0 +1,89 @@
+services/qa-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 38,42
+services/security-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 39-41
+services/argocd-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 39-41
+backstage/catalog/templates/nodejs-service/skeleton/package.json
+  s_3ef97d964200b8::t_f9753639215207 23-27
+services/contract-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 48-50
+backstage/catalog/templates/contract-testing-suite/skeleton/package.json
+  s_3ef97d964200b8::t_f9753639215207 22-24
+backstage/app/package.json
+  s_3ef97d964200b8::t_bcc9ddb32b9ec1 80,91,107-109
+backstage/catalog/templates/mcp-server/skeleton/package.json
+  s_3ef97d964200b8::t_005ef663eecf1d 24-25
+  s_3ef97d964200b8::t_f8e108fb4fd72f 26-27
+backstage/catalog/templates/appium-mobile-suite/skeleton/package.json
+  s_3ef97d964200b8::t_005ef663eecf1d 24-25
+  s_3ef97d964200b8::t_7c9f46260d1552 26
+backstage/catalog/templates/newman-api-suite/skeleton/package.json
+  s_3ef97d964200b8::t_005ef663eecf1d 20
+services/approval-service/package.json
+  s_3ef97d964200b8::t_f9753639215207 32,34,37
+services/github-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 39-41
+backstage/catalog/templates/pact-contract-suite/skeleton/package.json
+  s_3ef97d964200b8::t_f9753639215207 22-24
+SECURITY.md
+  s_3ef97d964200b8::t_9253996455170a 65-66
+services/cost-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 39-41
+services/agent-event-router/package.json
+  s_3ef97d964200b8::t_f9753639215207 32-33
+services/idp-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 42-44
+services/incident-mcp-server/package.json
+  s_3ef97d964200b8::t_b595220e5ed81c 39-41
+backstage/app/yarn.lock
+  s_3ef97d964200b8::t_a8868fea4c5719 24310-24313,24704,26432-26440,30870,31194-31196,31200,31204,31207,31444,33443-33444,33448,33453-33454,33458,33857-33859,33861-33863,36326,36374-36386,36699-36702,38226,38846-38848,38850-38851,38853-38857,39809,39816-39822
+backstage/catalog/templates/appium-mobile-suite/skeleton/package-lock.json
+  s_3ef97d964200b8::t_948ffdba350d90 3069-3071,8294-8296,11588-11590
+backstage/catalog/templates/contract-testing-suite/skeleton/package-lock.json
+  s_3ef97d964200b8::t_4ded67a52479d4 4472-4474
+backstage/catalog/templates/mcp-server/skeleton/package-lock.json
+  s_3ef97d964200b8::t_848a57a9eb5fc8 2520-2522,2532-2533,4259-4262
+backstage/catalog/templates/newman-api-suite/skeleton/package-lock.json
+  s_3ef97d964200b8::t_df3900c867761f 1762-1764
+backstage/catalog/templates/nodejs-service/skeleton/package-lock.json
+  s_3ef97d964200b8::t_6da86e804e6f08 3989-3991
+backstage/catalog/templates/pact-contract-suite/skeleton/package-lock.json
+  s_3ef97d964200b8::t_f18db193f87321 4472-4474
+services/agent-event-router/package-lock.json
+  s_3ef97d964200b8::t_bd018c8f3c6821 5164-5166
+services/approval-service/package-lock.json
+  s_3ef97d964200b8::t_faab44145821be 5322-5324
+services/argocd-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_31db1dbfcb6324 3868-3870,5851-5853
+services/contract-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_e61ec234016bc6 4361-4363,6411-6413,6416-6417,6676-6678,6682-6683
+services/cost-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_0c4dc3f00b2293 3868-3870,5851-5853
+services/github-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_5cc2a3a859e9d6 3868-3870,5851-5853
+services/idp-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_7c1b6972462235 2915,2928,3272,3338,3347,3353-3356,3585-3587,3728,3755,3788,3834,3882,3891-3894,4909,5140,5433-5436,5438-5439,5682-5685,5688-5689,5704,5720,5738
+services/incident-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_afe15ffbde0f64 3868-3870,5851-5853
+services/qa-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_df377cc645d008 3403-3405,3642-3644,3954-3956,5524-5526,5529-5530,5789-5791,5795-5796
+services/security-mcp-server/package-lock.json
+  s_3ef97d964200b8::t_b7f8d7722a776b 3868-3870,5851-5853
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d078084dbf4044c9cf5a9527497b59031cd9e12e",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
