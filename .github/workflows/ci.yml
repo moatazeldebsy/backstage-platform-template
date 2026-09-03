@@ -56,6 +56,7 @@ jobs:
       terraform: ${{ steps.filter.outputs.terraform }}
       python-obs: ${{ steps.filter.outputs.python-obs }}
       contract-mcp: ${{ steps.filter.outputs.contract-mcp }}
+      mcp-common: ${{ steps.filter.outputs.mcp-common }}
       mcp-servers: ${{ steps.filter.outputs.mcp-servers }}
       scripts: ${{ steps.filter.outputs.scripts }}
     steps:
@@ -89,7 +90,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp mcp-servers scripts; do
+            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp mcp-common mcp-servers scripts; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -130,6 +131,12 @@ jobs:
             # would never run on edits to the gates themselves.
             echo "python-obs=$(match '^(observability/|local/observability/|aws/observability/|scripts/(render-(postmortem|backstage-config)|validate-mcp-(metrics|tool-names))\.py)')"
             echo "contract-mcp=$(match '^services/contract-mcp-server/')"
+            # The source of truth for the copied telemetry.ts, plus the script
+            # that pushes it out. Neither lives under a *-mcp-server path, so
+            # without this an edit to the canonical copy alone — the normal way
+            # to change it — would match no filter and skip the drift job that
+            # exists to catch exactly that.
+            echo "mcp-common=$(match '^(services/mcp-common/|scripts/sync-mcp-common\.sh$)')"
             # Every MCP server except contract (which has its own job above), plus
             # agent-event-router and approval-service. Those two are not named
             # "*-mcp-server" and so matched no filter at all: they have a tsc build,
@@ -611,30 +618,20 @@ jobs:
     # contract-mcp-server carries a copy too, but is excluded from the
     # mcp-servers filter because it has its own build job — so it needs naming
     # here as well, or editing only that copy would skip the drift check.
-    if: needs.changes.outputs.mcp-servers == 'true' || needs.changes.outputs.contract-mcp == 'true'
+    if: needs.changes.outputs.mcp-servers == 'true' || needs.changes.outputs.contract-mcp == 'true' || needs.changes.outputs.mcp-common == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - name: Compare telemetry.ts checksums
-        run: |
-          set -euo pipefail
-          mapfile -t files < <(find services -name telemetry.ts -path '*/src/*' | sort)
-          if [[ ${#files[@]} -lt 2 ]]; then
-            echo "Only ${#files[@]} telemetry.ts found — nothing to compare."
-            exit 0
-          fi
-          printf '%s\n' "${files[@]}"
-          if [[ $(sha256sum "${files[@]}" | awk '{print $1}' | sort -u | wc -l) -ne 1 ]]; then
-            echo "::error::services/*/src/telemetry.ts copies have diverged."
-            sha256sum "${files[@]}"
-            first="${files[0]}"
-            for f in "${files[@]:1}"; do diff -u "$first" "$f" || true; done
-            exit 1
-          fi
-          echo "All ${#files[@]} telemetry.ts copies are identical."
+      # Compares every copy against services/mcp-common/src/, the designated
+      # source of truth, rather than only against each other. All-identical was
+      # the old check and it had a gap: it passed when every copy was edited the
+      # same way and mcp-common was left behind, which is exactly what happens
+      # when someone runs a find-and-replace across services/.
+      - name: Check telemetry.ts copies against mcp-common
+        run: ./scripts/sync-mcp-common.sh --check
 
   # telemetry.ts is guarded above, but the Prometheus metric *declarations* live
   # in each server's own server.ts/index.ts and had no guard — and they drifted,

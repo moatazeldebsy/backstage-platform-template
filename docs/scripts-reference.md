@@ -139,6 +139,9 @@ entry points, which is why they are absent from the tables above.
 | `render-postmortem.py` | Fills `docs/postmortem-template.md` from an incident's data. |
 | `sync-agent-prompts.py` | Pushes versioned KAgent prompts to Langfuse and fails CI on drift. |
 | `validate-catalog-templates.py` | CI gate — checks every template is registered and parses. |
+| `validate-mcp-metrics.py` | CI gate — every MCP server must declare `mcp_tool_calls_total{server,tool,outcome}`, and no dashboard, alert rule or Engineering Intelligence query may select a label no server emits. |
+| `validate-mcp-tool-names.py` | CI gate — MCP tool names must be unique across all servers. The AI Gateway federates with `prefixMode: never`, and a collision does not error: the gateway routes by name and one server silently wins. |
+| `sync-mcp-common.sh` | Pushes `services/mcp-common/src/` out to every `services/*-mcp-server/src/`. Edit the mcp-common copy, run this, commit the set. `--check` writes nothing and exits 1 on drift — that is what the `mcp-telemetry-drift` CI job runs. |
 
 ## Re-running the bootstrap scripts — caching and parallelism
 

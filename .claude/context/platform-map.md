@@ -57,7 +57,7 @@ Run the gate for every component you touched, from the repo root, before saying 
 | `backstage/app/**`, `app-config*.yaml`, `backstage/Dockerfile` | `backstage-compile` | `cd backstage/app && yarn install --immutable && yarn build:backend`, then `docker build -t backstage:ci -f backstage/Dockerfile backstage/app` |
 | `services/contract-mcp-server/**` | `contract-mcp-server-build` | `cd services/contract-mcp-server && npm ci && npm run build` |
 | any other MCP server, `agent-event-router`, `approval-service` | `mcp-servers-build` | `cd services/<svc> && npm ci && npm run build && npm test` (matrix over 9 services, plus an ESM-resolution import of the built entrypoint) |
-| any `src/telemetry.ts` | `mcp-telemetry-drift` | all copies must be byte-identical — `sha256sum services/*/src/telemetry.ts` |
+| any `src/telemetry.ts`, or `services/mcp-common/` | `mcp-telemetry-drift` | every server's copy must match `services/mcp-common/src/` — `./scripts/sync-mcp-common.sh --check`. Edit the mcp-common copy, then run the script without `--check` to push it out. |
 | MCP metric declarations, AI dashboards, alert rules, EI Prometheus client | `mcp-metrics-contract` | `python3 scripts/validate-mcp-metrics.py` |
 | `terraform/**` | `terraform-check` | `cd terraform && terraform fmt -check -recursive && terraform init -backend=false && terraform validate` |
 
@@ -66,7 +66,8 @@ Run the gate for every component you touched, from the repo root, before saying 
 All ten Node services are covered: `contract-mcp-server` by its own job, the other
 seven MCP servers plus `agent-event-router` and `approval-service` by the
 `mcp-servers-build` matrix. Three cross-cutting contracts have their own gates —
-`telemetry.ts` byte-identity, the `mcp_tool_calls_total` label set, and the
+`telemetry.ts` matching its `services/mcp-common/` source, the
+`mcp_tool_calls_total` label set, and the
 ESM-resolution import — because each failed silently at least once before the gate
 existed. Still run the component's own `npm run build && npm test` locally; the
 matrix is the backstop, not the fast feedback loop.
