@@ -19,5 +19,8 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

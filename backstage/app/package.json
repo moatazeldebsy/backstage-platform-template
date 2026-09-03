@@ -77,7 +77,7 @@
     "ip-address": "^10.1.1",
     "basic-ftp": "^5.0.5",
     "lodash": "^4.17.21",
-    "fast-uri": "^3.1.4",
+    "fast-uri": "^3.1.7",
     "fast-xml-builder": "^1.2.0",
     "fast-xml-parser": "^5.7.0",
     "koa": "^2.16.0",
@@ -88,7 +88,7 @@
     "uuid": "^11.1.1",
     "prismjs": "^1.30.0",
     "tmp": "^0.2.6",
-    "qs": "^6.15.2",
+    "qs": "^6.16.0",
     "js-cookie": "^3.0.7",
     "webpack-dev-server": "^5.2.6",
     "http-proxy-middleware": "^2.0.10",
@@ -104,7 +104,9 @@
     "ws": "^8.21.0",
     "@material-table/core@npm:^3.1.0": "patch:@material-table/core@npm%3A3.2.5#~/.yarn/patches/@material-table-core-npm-3.2.5-5a76f950c0.patch",
     "nanoid": "^3.3.17",
-    "@remix-run/router": "^1.23.3"
+    "@remix-run/router": "^1.23.3",
+    "mysql2": "^3.24.3",
+    "urllib": "^4.9.1"
   },
   "jest": {
     "coverageProvider": "v8"
