@@ -47,8 +47,9 @@ adopting it means adopting Gateway API as a side effect, on a local cluster
 [measured](../local-setup.md) to have no headroom.
 
 agentgateway standalone is a single Rust binary reading one config file: no CRDs,
-no second control plane, **84 MiB measured idle** with all eight targets
-configured. It also speaks all three protocols this platform actually uses — MCP
+no second control plane, and **~9 MiB working set / ~20 MiB RSS measured on a
+real cluster** with all eight targets configured and 40 concurrent MCP requests
+in flight. It also speaks all three protocols this platform actually uses — MCP
 streamable-HTTP, A2A, and LLM — and comes from the same ecosystem as the KAgent
 already running here (Solo.io donated kagent to CNCF; agentgateway is under the
 Linux Foundation's Agentic AI Foundation and is the data plane for the
@@ -65,7 +66,7 @@ plane. Standalone is a Deployment, a Service and a ConfigMap — the same shape 
 ### 3. Default-on, not opt-in
 
 Ollama and Langfuse are opt-in because they are expensive and additive. The
-gateway is neither: at 84 MiB it is a rounding error against Langfuse's ~2.2 GB,
+gateway is neither: at well under 100 MiB it is a rounding error against Langfuse's ~2.2 GB,
 and every agent's single `RemoteMCPServer` **and** every `ModelConfig` now point
 at it. An opt-in gateway would have meant maintaining two topologies — two sets
 of agent manifests, two endpoint maps in the skeleton — which is precisely the
@@ -131,7 +132,7 @@ the platform generates.
 
 | | Local (Kind) | AWS (EKS) |
 |---|---|---|
-| Gateway | default, 84 MiB | default, 84 MiB |
+| Gateway | default, ~9 MiB | default, ~9 MiB |
 | Provider key | bootstrap-created Secret | ExternalSecret from `idp-mvp/kagent` |
 | Bedrock | n/a | not wired — needs an IRSA role |
 | Multi-region | n/a | one gateway **per region**, spoke-local |

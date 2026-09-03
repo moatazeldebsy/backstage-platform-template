@@ -13,8 +13,9 @@
 # Deployed by default (`bootstrap-ai.sh`, disable with --skip-gateway). Unlike
 # Ollama, this is not optional in practice: every agent's single RemoteMCPServer
 # (kubernetes/kagent/ai-gateway-toolserver.yaml) points at it, so a cluster
-# without it is a cluster whose agents have no tools. It costs ~84Mi measured,
-# against Langfuse's ~2.2Gi — the local ceiling argument does not reach it.
+# without it is a cluster whose agents have no tools. It costs ~9Mi working set
+# (~20 MiB RSS under load) measured on a real cluster, against Langfuse's ~2.2Gi
+# — the local ceiling argument does not reach it.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -234,25 +235,45 @@ spec:
             capabilities:
               drop:
                 - ALL
+          # timeoutSeconds is set explicitly on both probes because Kubernetes
+          # defaults it to 1s when omitted — never stated in the manifest, and
+          # the exact bug that had MLflow restart-looping every ~90s (fixed in
+          # efccde6). Observed here too: during a CPU-starved bootstrap this
+          # gateway was liveness-killed while perfectly healthy, exiting 0 /
+          # "Completed" — the signature of a probe kill rather than a crash.
+          # The process is a Rust binary answering a static readiness endpoint,
+          # so a slow reply means the node is starving, not that the gateway is
+          # broken; 15s rides that out instead of amplifying it with a restart.
           readinessProbe:
             httpGet:
               path: /healthz/ready
               port: readiness
-            periodSeconds: 10
+            # 20s, not 10s: a 15s timeout inside a 10s period lets probes
+            # overlap. Same pairing as mlflow.yaml.
+            periodSeconds: 20
+            timeoutSeconds: 15
           livenessProbe:
             httpGet:
               path: /healthz/ready
               port: readiness
             periodSeconds: 30
+            timeoutSeconds: 15
             failureThreshold: 3
           resources:
             requests:
               cpu: 50m
-              # 84 MiB measured idle with all eight targets configured
-              # (docker stats, v1.5.0). A 64Mi request would have been under
-              # the real floor, which schedules fine and then reads as random
-              # eviction pressure on a full node.
-              memory: 128Mi
+              # 64Mi, from a measurement on a real cluster: 9Mi working set and
+              # ~20 MiB anon RSS with all eight targets configured and 40
+              # concurrent MCP requests in flight (v1.5.0, Kind). CPU sat at
+              # 2-3m throughout, well under the 50m requested.
+              #
+              # An earlier 128Mi here cited "84 MiB measured" — that number came
+              # from `docker stats`, which counts the page cache (~58 MiB of
+              # mapped binary) alongside the working set. It described the image,
+              # not the process. Requesting against it reserved roughly 6x what
+              # the gateway ever touches, which is real waste on a node measured
+              # to have no headroom.
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 256Mi

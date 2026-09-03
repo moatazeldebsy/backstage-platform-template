@@ -203,7 +203,7 @@ Two things worth knowing:
 
 - **There is one toolserver, and it is automatic.** Every agent references a
   single `RemoteMCPServer` named `ai-gateway`, applied for you. It creates no
-  pods of its own; the AI Gateway it points at is one ~84Mi pod that multiplexes
+  pods of its own; the AI Gateway it points at is one ~9Mi pod that multiplexes
   all eight MCP servers. Agents stay genuinely independent — each still gets only
   the tools in its own allowlist, so enabling one can never break another.
 - **Deselected agents are pruned.** Re-running with a shorter list deletes the

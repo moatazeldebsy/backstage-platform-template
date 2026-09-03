@@ -47,7 +47,7 @@
 #                       every agent's single RemoteMCPServer points at it, so
 #                       skipping it leaves the agents with no tools. The flag is
 #                       kept for explicitness and for re-enabling after a
-#                       --skip-gateway run. ~84Mi. See docs/design/adr-0007-ai-gateway.md
+#                       --skip-gateway run. ~9Mi. See docs/design/adr-0007-ai-gateway.md
 #   --skip-gateway     Skip the AI Gateway. Only useful for debugging the MCP
 #                       servers directly — the agents will not work without it.
 #   --adp              Also deploy Agentic Development Platform (ADP) components
