@@ -1,0 +1,30 @@
+docs/design/adr-0007-ai-gateway.md
+  s_3ef97d964200b8::t_42d6118fd0e90c 50-52,69,135
+kubernetes/ml-platform/ai-gateway.yaml
+  s_3ef97d964200b8::t_5e4547e0dda149 265-276
+  s_3ef97d964200b8::t_42d6118fd0e90c 16-18
+  s_3ef97d964200b8::t_854baddeb627b3 251-253
+  s_3ef97d964200b8::t_2082caca750aff 238-246,254,260
+scripts/bootstrap-ai.sh
+  s_3ef97d964200b8::t_42d6118fd0e90c 50
+docs/local-setup.md
+  s_3ef97d964200b8::t_42d6118fd0e90c 206
+docs/scripts-reference.md
+  s_3ef97d964200b8::t_42d6118fd0e90c 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "63e0bf8d730df6b16036f23ec6e8df0770d0a29b",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
