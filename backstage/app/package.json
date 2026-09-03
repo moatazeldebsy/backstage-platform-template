@@ -106,7 +106,8 @@
     "nanoid": "^3.3.17",
     "@remix-run/router": "^1.23.3",
     "mysql2": "^3.24.3",
-    "urllib": "^4.9.1"
+    "urllib": "^4.9.1",
+    "browserslist": "^4.28.7"
   },
   "jest": {
     "coverageProvider": "v8"
