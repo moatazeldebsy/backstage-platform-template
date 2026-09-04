@@ -73,24 +73,25 @@ data:
     # endpoints are each one more entry in this list — left out rather than
     # shipped unexercised.
     llm:
-      # CORS exists solely so the admin UI's Chat Playground can call /v1/messages
-      # from the browser. Without it the page shows "Browser access is not
-      # allowed" and its Apply CORS button cannot help — that button writes
-      # config.yaml, which is a read-only ConfigMap mount here (by design; see
-      # the Deployment).
-      #
-      # Scoped to the one origin that serves the UI rather than "*", because
-      # allowOrigins takes "*" and this endpoint has no inbound auth yet: any
-      # page the browser visits could otherwise POST model calls through the
-      # gateway on the user's behalf. ai-gateway.idp.local resolves to 127.0.0.1
-      # and exists only on a developer machine; there is no AWS Ingress for the
-      # UI, so this origin is unreachable there.
+      # CORS so the console's Chat Playground can call /v1/... from the browser.
+      # Its Apply CORS button cannot do this itself — that button writes
+      # config.yaml, a read-only ConfigMap mount here by design.
       policies:
         cors:
+          # Only this origin. allowOrigins accepts "*", and this endpoint has no
+          # inbound auth yet, so a wildcard would let any page the browser visits
+          # POST model calls through the gateway. ai-gateway.idp.local resolves
+          # to 127.0.0.1 and has no AWS equivalent.
           allowOrigins:
             - http://ai-gateway.idp.local
           allowMethods: [GET, POST, OPTIONS]
-          allowHeaders: [content-type, authorization, anthropic-version, x-api-key]
+          # "*" is required, not lazy: the console gates its playground on
+          # allowHeaders literally containing "*" (checked in its bundle), and
+          # an explicit list — however complete — leaves it showing "Browser
+          # access is not allowed". Its own tooltip says to use "*" while
+          # debugging. The meaningful restriction is allowOrigins above; this
+          # only governs which headers that one origin may send.
+          allowHeaders: ["*"]
       models:
         # Explicit entries rather than only a wildcard, so /v1/models answers
         # with the models this platform actually serves and each can carry its
@@ -115,6 +116,18 @@ data:
             apiKey: "$ANTHROPIC_API_KEY"
 
     mcp:
+      # CORS for the console's Tool Playground, same reasoning as llm.policies
+      # above. exposeHeaders is the part that is functional rather than
+      # cosmetic: MCP hands back the session id in the Mcp-Session-Id response
+      # header, and a browser cannot read a response header that is not exposed
+      # — so without this the playground can open a session and then lose it.
+      policies:
+        cors:
+          allowOrigins:
+            - http://ai-gateway.idp.local
+          allowMethods: [GET, POST, DELETE, OPTIONS]
+          allowHeaders: ["*"]
+          exposeHeaders: [Mcp-Session-Id]
       # `never` — do not namespace tool names with the target name.
       #
       # The default (`conditional`) would rename every tool the moment a second
