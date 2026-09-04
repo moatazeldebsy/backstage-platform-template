@@ -151,18 +151,30 @@ the platform generates.
 
 ### Not yet done, and why it matters
 
-**Inbound auth is not enabled, and would not yet be a boundary if it were.**
-Both halves are ready — agentgateway takes `keyHash: sha256:…` so no secret need
-be committed, and KAgent's CRD has `headersFrom` with a `secretKeyRef`. What is
-missing is enforcement: **NetworkPolicy is not enforced on either target.** Kind
-runs kindnet, which does not implement it, and `terraform/eks.tf` installs
-`vpc-cni` without `enableNetworkPolicy`. Any pod can still reach
-`idp-mcp-server:3001/mcp` directly, so gateway auth alone would be a control that
-reads real and enforces nothing.
+**Inbound auth is not enabled.** Both halves are ready — agentgateway takes
+`keyHash: sha256:…` so no secret need be committed, and KAgent's CRD has
+`headersFrom` with a `secretKeyRef`.
 
-Enabling enforcement is its own change: it would currently break the Backstage →
-`contract-mcp-server` proxy, because the `backstage` namespace was never in the
-allowlist either. That needs a live cluster, and it should land before, or with,
+An earlier revision of this ADR deferred the work on the grounds that
+"NetworkPolicy is not enforced on either target", and that was **half wrong**.
+
+**Local: it is enforced.** Kind v1.33.1's kindnet implements NetworkPolicy, and
+this was not a paper finding — on 2026-09-04 the `services-dev` policy blocked
+the gateway outright. `ml-platform` was missing from the allowlist, every
+upstream failed with `Connect: deadline has elapsed`, and the `ai-gateway`
+`RemoteMCPServer` sat at `Accepted: False` until the policy in
+`kubernetes/network-policies/default-deny.yaml` was applied. So locally the
+boundary is real, and gateway auth can be built and tested against it today.
+
+**AWS: it is not.** `terraform/eks.tf` still installs `vpc-cni` with
+`{ most_recent = true }` and no `enableNetworkPolicy`, so on EKS any pod can
+reach `idp-mcp-server:3001/mcp` directly and gateway auth alone would be a
+control that reads real and enforces nothing. Turning that flag on is the
+prerequisite there, and it is a cluster-affecting Terraform change.
+
+Enabling enforcement is still its own change on both targets: the `backstage`
+namespace was never in the allowlist, so tightening further would break the
+Backstage → `contract-mcp-server` proxy. That should land before, or with,
 gateway auth — not after.
 
 **Cost attribution is not yet authoritative.** The gateway already emits the
