@@ -49,6 +49,62 @@ data:
       statsAddr: "0.0.0.0:15020"
       readinessAddr: "0.0.0.0:15021"
 
+      # This config is GitOps-managed: it comes from this ConfigMap, mounted
+      # read-only. The console's default `file` storage mode makes it offer Save
+      # buttons that then fail with "Read-only file system (os error 30)" — an
+      # OS error surfaced to the user for a design decision. `readOnly` tells the
+      # console up front that config is not editable here, so it presents the
+      # state instead of a broken write.
+      #
+      # `hybrid` is the other option — a file baseline plus UI edits stored in
+      # the database below. Deliberately not used: it would let the running
+      # config drift from the manifest, which is the drift ArgoCD would then
+      # fight, and there would be no record in git of what changed.
+      storage:
+        mode: readOnly
+
+      # Request log store, backing the console's Logs and Analytics pages, which
+      # otherwise report "request log database is not configured". Any non-postgres
+      # URL is treated as SQLite. It lives on an emptyDir (see the Deployment), so
+      # it is per-pod and lost on restart — right for a debugging aid, and it
+      # keeps the gateway free of a PVC.
+      #
+      # This does not replace Langfuse. Langfuse remains the platform's AI
+      # observability store and the source aiCost.ts reads; this is a local
+      # request log for the console.
+      logging:
+        database:
+          url: /data/requests.db
+
+      # Model prices, so the console's Analytics page reports cost rather than
+      # 0.0. Inline rather than the console's "Refresh base costs" button, which
+      # fetches models.dev and writes /config/base-costs.json — a read-only mount
+      # here, so it fails. Inline also means the prices are reviewable in git and
+      # do not change under you between deploys.
+      #
+      # USD per 1M tokens, list price. Only the models this gateway serves
+      # explicitly; a request for an unlisted model still routes through the "*"
+      # catch-all below and simply reports no cost.
+      #
+      # This is for the console's own view. It does not feed aiCost.ts, which
+      # reads Langfuse — keeping the two separate is what avoids the
+      # double-counting ADR-0007 flags as an open question.
+      modelCatalog:
+        - inline:
+            providers:
+              anthropic:
+                models:
+                  # Rates are strings, not numbers — the Money type in the
+                  # config schema is a string, and a bare 1.00 fails validation
+                  # with "data did not match any variant of untagged enum
+                  # ModelCatalogSource", which does not name the field.
+                  claude-haiku-4-5-20251001:
+                    rates: { input: "1.00", output: "5.00", cacheRead: "0.10", cacheWrite: "1.25" }
+                  claude-sonnet-4-6:
+                    rates: { input: "3.00", output: "15.00", cacheRead: "0.30", cacheWrite: "3.75" }
+                  claude-opus-4-8:
+                    rates: { input: "5.00", output: "25.00", cacheRead: "0.50", cacheWrite: "6.25" }
+
     gateways:
       default:
         port: 3000
@@ -339,10 +395,19 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
+            # Writable scratch for the request log SQLite file. readOnlyRootFilesystem
+            # is true, so without this the gateway cannot create it. emptyDir rather
+            # than a PVC on purpose: request logs are a debugging aid, and losing
+            # them with the pod is preferable to a volume that grows unattended.
+            - name: data
+              mountPath: /data
       volumes:
         - name: config
           configMap:
             name: ai-gateway-config
+        - name: data
+          emptyDir:
+            sizeLimit: 256Mi
 
 ---
 apiVersion: v1
