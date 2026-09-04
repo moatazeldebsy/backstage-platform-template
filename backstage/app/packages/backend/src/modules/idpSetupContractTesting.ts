@@ -80,7 +80,9 @@ podLabels:
   backstage.io/kubernetes-id: contract-mcp-server
 `;
 
-function buildContractAgentYaml(): string {
+// Exported for __tests__/kagentGeneratedCrs.test.ts — see the note in
+// idpDeployAgent.ts.
+export function buildContractAgentYaml(): string {
   return `apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:

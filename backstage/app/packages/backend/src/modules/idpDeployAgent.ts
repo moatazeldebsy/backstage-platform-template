@@ -11,7 +11,11 @@ import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
 const execAsync = promisify(exec);
 
-function buildAgentYaml(opts: {
+// Exported for __tests__/kagentGeneratedCrs.test.ts, which checks the CRs this
+// builds against what kubernetes/kagent/ actually defines. The two drifted once
+// already (ADR-0007 consolidated eight RemoteMCPServers into one and this kept
+// naming a deleted server), and nothing caught it.
+export function buildAgentYaml(opts: {
   name: string;
   description: string;
   modelConfig: string;

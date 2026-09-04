@@ -57,6 +57,7 @@ jobs:
       python-obs: ${{ steps.filter.outputs.python-obs }}
       contract-mcp: ${{ steps.filter.outputs.contract-mcp }}
       mcp-common: ${{ steps.filter.outputs.mcp-common }}
+      kagent: ${{ steps.filter.outputs.kagent }}
       mcp-servers: ${{ steps.filter.outputs.mcp-servers }}
       scripts: ${{ steps.filter.outputs.scripts }}
     steps:
@@ -90,7 +91,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s backstage catalog terraform python-obs contract-mcp mcp-common mcp-servers scripts; do
+            for k in go-service cli helm k8s kagent backstage catalog terraform python-obs contract-mcp mcp-common mcp-servers scripts; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -107,6 +108,15 @@ jobs:
             # YAML, so those manifests were never validated by anything.
             echo "k8s=$(match '^(kubernetes/|observability/alertmanager/|aws/argo-workflows/)')"
             echo "backstage=$(match '^backstage/(app/|app-config.*\.yaml|Dockerfile)')"
+            # Narrower than the k8s filter on purpose. Two Backstage scaffolder
+            # actions generate KAgent Agent CRs as template strings, and
+            # backend/src/modules/__tests__/kagentGeneratedCrs.test.ts checks
+            # them against these manifests. The trigger for that drift is editing
+            # kubernetes/kagent/, which matches `k8s` and NOT `backstage` — so
+            # without this the guard never runs on the change it guards against.
+            # Gating backstage-compile on all of k8s would rebuild Backstage for
+            # every manifest in the repo; kagent manifests change rarely.
+            echo "kagent=$(match '^kubernetes/kagent/')"
             # This filter is deliberately wider than backstage/catalog/:
             #  - kubernetes/kagent/modelconfig*.yaml, because check 7 compares
             #    those manifests against the allow-list in the ai-agent-kagent
@@ -462,7 +472,7 @@ jobs:
 
   backstage-compile:
     needs: changes
-    if: needs.changes.outputs.backstage == 'true'
+    if: needs.changes.outputs.backstage == 'true' || needs.changes.outputs.kagent == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
