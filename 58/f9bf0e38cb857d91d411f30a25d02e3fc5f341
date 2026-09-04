@@ -1,0 +1,29 @@
+aws/backstage/deployment-standby.yaml
+  s_3ef97d964200b8::t_183eeabd1e962b 126-128,135,142
+kubernetes/ml-platform/ollama.yaml
+  s_3ef97d964200b8::t_183eeabd1e962b 77-80,86,93
+.claude/agents/drift-detector.md
+  s_3ef97d964200b8::t_81892f436bf88a 99-102
+  s_3ef97d964200b8::t_cc392797da3da5 3,15,64-90
+  s_3ef97d964200b8::t_d1282b4c887023 91
+aws/backstage/deployment.yaml
+  s_3ef97d964200b8::t_183eeabd1e962b 263-269,276,283-285
+CHANGELOG.md
+  s_3ef97d964200b8::t_73621ac5d0332c 59-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "58f9bf0e38cb857d91d411f30a25d02e3fc5f341",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
