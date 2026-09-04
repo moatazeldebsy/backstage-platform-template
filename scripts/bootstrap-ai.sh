@@ -500,6 +500,7 @@ if $DESTROY; then
   # reason as the opt-in components above. Small, but a leftover gateway
   # still holding sessions open against MCP servers that are being torn down is
   # a confusing set of errors to inherit on the next install.
+  kubectl delete -f "${REPO_ROOT}/local/ml-platform/ai-gateway-ingress.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/ai-gateway.yaml" 2>/dev/null || true
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
@@ -728,7 +729,7 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
   timer_start "0. /etc/hosts"
   info "Checking /etc/hosts entries (may prompt for your password)..."
   append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|langfuse|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
+    "ai-gateway|mlflow|langfuse|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
   timer_end "0. /etc/hosts"
 fi
 
@@ -1324,6 +1325,12 @@ timer_start "3a-bis. AI Gateway"
 if [[ "$GATEWAY" == "true" ]]; then
   info "Deploying AI Gateway (agentgateway v1.5.0) to ml-platform..."
   kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/ai-gateway.yaml"
+  # Admin UI ingress, local only. No AWS counterpart on purpose: an ALB in front
+  # of an unauthenticated admin interface is the pattern this branch removed from
+  # the MCP servers. On EKS the port stays reachable in-cluster and unexposed.
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    kubectl apply -f "${REPO_ROOT}/local/ml-platform/ai-gateway-ingress.yaml"
+  fi
   # Small Rust binary with no model to pull, so this is seconds, not minutes.
   kubectl rollout status deployment/ai-gateway -n ml-platform --timeout=180s \
     || warn "AI Gateway did not become ready — check: kubectl logs -n ml-platform deploy/ai-gateway"
@@ -2587,6 +2594,7 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   fi
 else
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "KAgent UI             http://kagent.idp.local"
+  [[ "$GATEWAY"      == "true"  ]] && box_row "AI Gateway UI         http://ai-gateway.idp.local"
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "AI Assistant          http://backstage.idp.local/ai-assistant"
   [[ "$SKIP_MLFLOW"  == "false" ]] && box_row "MLflow                http://mlflow.idp.local"
   if [[ "$LANGFUSE" == "true" ]]; then

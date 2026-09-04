@@ -113,7 +113,25 @@ Only Anthropic is routed. `openai-prod` and `ollama-local` exist as ModelConfigs
 but no agent references them (ADR-0005 decision 4), and routing them would mean
 shipping config nothing exercises. Each is one more entry in the `llm:` block.
 
-### 7. Credentials live in the gateway, not in services
+### 7. The admin UI is on locally, and not ingressed on AWS
+
+agentgateway's admin listener serves `/ui` (routes, MCP targets, model list) and
+`/config_dump`. This was originally `off`, which turned out to be the wrong
+default: it removed the only view into what the gateway is doing, and cost a
+manifest edit *plus a pod restart* before anyone could look — `adminAddr` is read
+at startup, not on config reload.
+
+It now binds `0.0.0.0:15000`, with `local/ml-platform/ai-gateway-ingress.yaml`
+publishing `ai-gateway.idp.local` — the same shape kagent, mlflow and langfuse
+already have locally. **No AWS counterpart**: an ALB in front of an
+unauthenticated admin interface is precisely the pattern this change removed from
+the MCP servers, so on EKS the port stays reachable in-cluster and unexposed.
+
+The exposure is topology — MCP target hosts and ports, and which models are
+served. Not credentials: `/config_dump` renders provider keys as
+`{"key":{"value":"<redacted>"}}`, verified against v1.5.0.
+
+### 8. Credentials live in the gateway, not in services
 
 `ai-gateway-llm-keys` in `ml-platform` — created imperatively by the bootstrap so
 a first install works, and kept in sync on AWS by an ExternalSecret against the

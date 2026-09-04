@@ -25,6 +25,13 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cluster: 54 tools federated unprefixed, 44 with two targets down, and a real
   `/v1/messages` round trip. See
   [ADR-0007](docs/design/adr-0007-ai-gateway.md).
+- **The AI Gateway has a UI.** agentgateway's admin listener serves `/ui` (routes,
+  MCP targets, model list) and `/config_dump`, published locally at
+  `http://ai-gateway.idp.local` alongside kagent, mlflow and langfuse. It is
+  deliberately **not** ingressed on AWS — an ALB in front of an unauthenticated
+  admin interface is the pattern this release removes from the MCP servers — so
+  on EKS the port stays reachable in-cluster only. No credential exposure:
+  `/config_dump` renders provider keys as `{"key":{"value":"<redacted>"}}`.
 - **Scaffolded LLM apps no longer need their own Anthropic key.** The gateway
   holds the provider credential, so `llm-app-langfuse` and `langgraph-agent`
   ship with none — deleting the "create your own `sk-ant-` secret" step from

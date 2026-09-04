@@ -27,10 +27,23 @@ data:
   config.yaml: |
     # yaml-language-server: $schema=https://agentgateway.dev/schema/config
     config:
-      # The admin interface also serves the UI. Nothing in-cluster needs either,
-      # and the UI would be reachable by anything that can open a socket to the
-      # pod, so it is off rather than bound to localhost.
-      adminAddr: "off"
+      # The admin interface also serves the UI (/ui) and /config_dump. This was
+      # "off" originally, on the reasoning that nothing in-cluster needs it. That
+      # traded away the only view into what the gateway is actually doing, and
+      # cost a manifest edit AND a pod restart before anyone could debug —
+      # adminAddr is read at startup, not on config reload (verified: editing the
+      # ConfigMap updated the file in the pod and no listener appeared until the
+      # pod was rolled).
+      #
+      # Bound to 0.0.0.0 rather than localhost because nginx has to reach it for
+      # local/ml-platform/ai-gateway-ingress.yaml (ai-gateway.idp.local), the
+      # same shape kagent, mlflow and langfuse already have locally.
+      #
+      # What that exposes: routes, MCP target hosts and ports, and the model
+      # list. NOT credentials — /config_dump renders provider keys as
+      # {"key":{"value":"<redacted>"}}, confirmed against v1.5.0. On AWS there is
+      # no Ingress for this port, so it stays reachable in-cluster only.
+      adminAddr: "0.0.0.0:15000"
       # Default binds are localhost-only, which a kubelet probe and a Prometheus
       # scrape both sit outside of. Bind both to the pod IP explicitly.
       statsAddr: "0.0.0.0:15020"
@@ -204,11 +217,17 @@ spec:
         prometheus.io/port: "15020"
         prometheus.io/path: "/metrics"
         # No checksum/config annotation on purpose. agentgateway watches its
-        # config file ("Watching config file: /config/config.yaml" at startup)
-        # and reloads on change, so a ConfigMap edit takes effect after the
-        # kubelet's volume sync without a pod roll. The alternative — bootstrap
-        # patching a checksum onto the Deployment — is the `kubectl set env`
-        # pattern that ArgoCD selfHeal silently reverted once already.
+        # config file ("Watching config file: /config/config.yaml" at startup),
+        # so a ConfigMap edit takes effect after the kubelet's volume sync. The
+        # alternative — bootstrap patching a checksum onto the Deployment — is
+        # the `kubectl set env` pattern that ArgoCD selfHeal silently reverted
+        # once already.
+        #
+        # Caveat, measured rather than assumed: the watch does NOT cover listener
+        # bind addresses. Changing adminAddr updated the file inside the pod and
+        # produced no listener until the Deployment was rolled. Treat
+        # adminAddr/statsAddr/readinessAddr as startup-only and follow an edit to
+        # them with `kubectl -n ml-platform rollout restart deploy/ai-gateway`.
     spec:
       securityContext:
         runAsNonRoot: true
@@ -225,6 +244,8 @@ spec:
           ports:
             - containerPort: 3000
               name: mcp
+            - containerPort: 15000
+              name: admin
             - containerPort: 15020
               name: metrics
             - containerPort: 15021
@@ -308,6 +329,11 @@ spec:
     - port: 3000
       targetPort: mcp
       name: mcp
+    # Admin/UI. Served on the Service so the local Ingress can route to it;
+    # on AWS nothing ingresses this port.
+    - port: 15000
+      targetPort: admin
+      name: admin
     - port: 15020
       targetPort: metrics
       name: metrics
