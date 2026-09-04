@@ -1,0 +1,19 @@
+docs/design/adr-0007-ai-gateway.md
+  s_3ef97d964200b8::t_fecedff1f5945c 154-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9b5d94c75bdc16a52c80125b7b4d8f5672f261aa",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
