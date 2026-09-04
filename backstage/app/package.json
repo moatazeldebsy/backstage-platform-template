@@ -107,7 +107,8 @@
     "@remix-run/router": "^1.23.3",
     "mysql2": "^3.24.3",
     "urllib": "^4.9.1",
-    "browserslist": "^4.28.7"
+    "browserslist": "^4.28.7",
+    "fflate": "^0.8.3"
   },
   "jest": {
     "coverageProvider": "v8"
