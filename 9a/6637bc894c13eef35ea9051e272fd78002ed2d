@@ -1,0 +1,21 @@
+local/ml-platform/ai-gateway-ingress.yaml
+  s_3ef97d964200b8::t_7e8e680e2855a1 38-62
+kubernetes/ml-platform/ai-gateway.yaml
+  s_3ef97d964200b8::t_0487a1b7f301f8 76-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9a6637bc894c13eef35ea9051e272fd78002ed2d",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
