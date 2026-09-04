@@ -2225,6 +2225,11 @@ else
     fi
   fi
 
+  # Collected so the end of this step can say something true about the whole
+  # set. Warning per service and then printing "Bootstrap Complete" let a run
+  # where EVERY deploy failed look successful — see the summary below.
+  _mcp_failed=()
+
   for SVC in "${MCP_SERVICES[@]}"; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
@@ -2353,8 +2358,31 @@ else
     # here as a warning and the loop carries on to the remaining services.
     if [[ $_svc_rc -ne 0 ]]; then
       warn "${SVC} build/deploy failed (exit ${_svc_rc}) — check: kubectl get po -n services-dev"
+      _mcp_failed+=("$SVC")
     fi
   done
+
+  # One warning per service scrolls past; the banner at the end then claims
+  # success regardless. On 2026-09-04 a --skip-obs cluster failed all seven
+  # deploys (no ServiceMonitor CRD, so every `helm upgrade --install` was
+  # rejected) and the run still printed "AI/ML Platform Bootstrap Complete" with
+  # an empty services-dev. Say it plainly instead, and say it last.
+  if (( ${#_mcp_failed[@]} > 0 )); then
+    if (( ${#_mcp_failed[@]} == ${#MCP_SERVICES[@]} )); then
+      # Detail through warn, then a single err — err() exits 1 (lib.sh:28), so
+      # anything after the first one would never print.
+      warn "The gateway will have no targets and every agent will have no tools."
+      warn "Check the FIRST failure above, not the last: a missing CRD or a"
+      warn "rejecting admission webhook fails every service identically. A"
+      warn "cluster built with --skip-obs has no ServiceMonitor CRD, which is"
+      warn "exactly this shape — install it, or re-run without --skip-obs."
+      err "ALL ${#MCP_SERVICES[@]} MCP servers failed to deploy — systemic, not per-service. Refusing to report success."
+    else
+      warn "${#_mcp_failed[@]} of ${#MCP_SERVICES[@]} MCP servers failed: ${_mcp_failed[*]}"
+      warn "  The gateway skips unreachable targets (failOpen), so it will serve"
+      warn "  fewer tools than expected rather than erroring."
+    fi
+  fi
 
   # ── 6b. Self-heal stuck RemoteMCPServers ────────────────────────────────────
   # Runs here, after the MCP servers are actually deployed. It used to run in

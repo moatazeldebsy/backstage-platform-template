@@ -34,6 +34,23 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A missing ServiceMonitor CRD took down every service deploy.** The
+  golden-path chart rendered `kind: ServiceMonitor` whenever `metrics.enabled`
+  was set, and Helm validates every rendered object against the API server — so
+  on a cluster with no prometheus-operator the *whole release* failed with
+  `no matches for kind "ServiceMonitor"`. A monitoring resource took the service
+  down with it. Observed on a `bootstrap-local.sh --skip-obs` cluster, where all
+  seven MCP servers failed this way. The template now also checks
+  `.Capabilities.APIVersions.Has "monitoring.coreos.com/v1"`; `metrics.enabled`
+  remains the intent switch, and skipping the object when nothing can consume it
+  loses nothing.
+- **`bootstrap-ai.sh` reported success over a total deploy failure.** It warns
+  per service and carries on — deliberately, so one failure cannot kill the run —
+  but then printed "AI/ML Platform Bootstrap Complete" with an empty
+  `services-dev`. It now summarises: a partial failure explains that the gateway
+  will serve fewer tools (`failOpen`), and an all-services failure is called out
+  as systemic, points at the *first* error rather than the last, and exits
+  non-zero rather than claiming success.
 - **Three internet-facing MCP ALBs closed.** `idp`, `qa` and `contract`
   MCP servers carried `scheme: internet-facing` with `host: ""` (match any
   hostname), no TLS and no authentication on `POST /mcp` — `idp` exposing
