@@ -56,9 +56,15 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that skipped the apply which actually creates the Constraints. Clusters came
   up with five ConstraintTemplates, five CRDs and **zero Constraints** — a
   violating Deployment was admitted — behind a single warning line.
-- **AI Gateway probes inherited the implicit 1s timeout.** Neither probe set
-  `timeoutSeconds`, so a CPU-starved node liveness-killed a perfectly healthy
-  gateway (exit 0 / `Completed`). Now 15s, the same fix MLflow needed.
+- **Probes across the platform inherited the implicit 1s timeout.** Kubernetes
+  defaults `timeoutSeconds` to 1 when it is omitted, and the default is never
+  written in the manifest. A CPU-starved node liveness-killed a perfectly
+  healthy AI Gateway this way (exit 0 / `Completed` — a probe kill, not a
+  crash), which is the same failure MLflow had before efccde6. Fixed on the
+  gateway and swept: `aws/backstage/deployment.yaml`,
+  `aws/backstage/deployment-standby.yaml` and `kubernetes/ml-platform/ollama.yaml`
+  carried six more. All 14 probes in the repo now set it explicitly, and none
+  exceeds its own `periodSeconds`.
 
 - **`mobile-device-farm` is provider-agnostic.** A `provider` parameter picks
   Firebase Test Lab, LambdaTest, BrowserStack App Automate or Sauce Labs, with the
