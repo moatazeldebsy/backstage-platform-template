@@ -1,0 +1,33 @@
+docs/scripts-reference.md
+  s_3ef97d964200b8::t_f4fccb7c5a0e23 115
+kubernetes/ml-platform/ai-gateway.yaml
+  s_3ef97d964200b8::t_4328e726b504ac 220-230
+  s_3ef97d964200b8::t_cc27924669e0bd 247-248,332-336
+  s_3ef97d964200b8::t_e7bc09b5e350a3 30-46
+docs/design/adr-0007-ai-gateway.md
+  s_3ef97d964200b8::t_f4fccb7c5a0e23 116-134
+local/ml-platform/ai-gateway-ingress.yaml
+  s_3ef97d964200b8::t_1a823286f6b5fe 1-47
+scripts/bootstrap-ai.sh
+  s_3ef97d964200b8::t_cf736c4adff84a 503,732,1328-1333,2597
+local/hosts-append.txt
+  s_3ef97d964200b8::t_cf736c4adff84a 19
+CHANGELOG.md
+  s_3ef97d964200b8::t_45bc172e53682d 28-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9cd0f2e7403ba5e2fd9c66f01f184023056b167e",
+  "prompts": {},
+  "sessions": {
+    "s_3ef97d964200b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fc8a775-4020-448c-96aa-44b896324b8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
