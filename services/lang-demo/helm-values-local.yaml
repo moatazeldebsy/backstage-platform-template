@@ -1,0 +1,76 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5003/lang-demo
+  tag: "local"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  hosts:
+    - host: lang-demo.idp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    # Higher than a plain Python service: the OpenTelemetry SDK and the
+    # Anthropic client both carry real allocation, and the batch span processor
+    # holds spans in memory between exports.
+    memory: 384Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  team: "ml-team"
+  cost-center: "eng-ai"
+  environment: local
+  app.kubernetes.io/part-of: internal-developer-platform
+
+metrics:
+  enabled: true
+
+# lang-demo-secrets is optional and no longer needed for Anthropic:
+# model calls go through the AI Gateway, which holds the provider key.
+# langfuse-otel is distributed by scripts/bootstrap-ai.sh to namespaces labelled
+# idp.io/langfuse=enabled. Both optional so a missing secret degrades one thing
+# instead of crashlooping the pod.
+envFrom:
+  - secretRef:
+      name: lang-demo-secrets
+      optional: true
+  - secretRef:
+      name: langfuse-otel
+      optional: true
+
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: local
+  - name: OTEL_SERVICE_NAME
+    value: "lang-demo"
+  - name: LANGFUSE_CAPTURE_IO
+    value: "true"
+  - name: LANGFUSE_SAMPLE_RATE
+    value: "1"
+
+labels:
+  backstage.io/kubernetes-id: lang-demo
