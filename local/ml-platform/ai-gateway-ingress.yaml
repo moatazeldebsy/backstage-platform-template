@@ -35,13 +35,35 @@ spec:
     - host: ai-gateway.idp.local
       http:
         paths:
+          # Data plane first — nginx matches the longest prefix, so these win
+          # over "/" below. Without them the console's Chat and Tool Playgrounds
+          # cannot work: they call /v1/... and /mcp from the browser, and every
+          # path on this host would otherwise land on the admin listener, which
+          # answers the preflight with its own CORS defaults and then 404s.
+          #
+          # This does put /v1/messages on the host, so anything running on the
+          # developer's machine can spend tokens through it. That is the same
+          # reach a `kubectl port-forward` already gives, on a host that resolves
+          # to 127.0.0.1, and there is no AWS equivalent of this file.
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-gateway
+                port:
+                  name: mcp
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-gateway
+                port:
+                  name: mcp
+          # Everything else is the console: /ui, /config_dump.
           - path: /
             pathType: Prefix
             backend:
               service:
                 name: ai-gateway
-                # The admin listener, not the :3000 data plane. Agents and MCP
-                # traffic do not pass through this Ingress at all — they reach
-                # the Service directly by cluster DNS.
                 port:
                   name: admin

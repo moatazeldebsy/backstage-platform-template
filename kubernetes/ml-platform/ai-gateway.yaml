@@ -73,6 +73,24 @@ data:
     # endpoints are each one more entry in this list — left out rather than
     # shipped unexercised.
     llm:
+      # CORS exists solely so the admin UI's Chat Playground can call /v1/messages
+      # from the browser. Without it the page shows "Browser access is not
+      # allowed" and its Apply CORS button cannot help — that button writes
+      # config.yaml, which is a read-only ConfigMap mount here (by design; see
+      # the Deployment).
+      #
+      # Scoped to the one origin that serves the UI rather than "*", because
+      # allowOrigins takes "*" and this endpoint has no inbound auth yet: any
+      # page the browser visits could otherwise POST model calls through the
+      # gateway on the user's behalf. ai-gateway.idp.local resolves to 127.0.0.1
+      # and exists only on a developer machine; there is no AWS Ingress for the
+      # UI, so this origin is unreachable there.
+      policies:
+        cors:
+          allowOrigins:
+            - http://ai-gateway.idp.local
+          allowMethods: [GET, POST, OPTIONS]
+          allowHeaders: [content-type, authorization, anthropic-version, x-api-key]
       models:
         # Explicit entries rather than only a wildcard, so /v1/models answers
         # with the models this platform actually serves and each can carry its
