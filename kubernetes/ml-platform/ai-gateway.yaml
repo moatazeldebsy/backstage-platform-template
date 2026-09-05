@@ -49,19 +49,36 @@ data:
       statsAddr: "0.0.0.0:15020"
       readinessAddr: "0.0.0.0:15021"
 
-      # This config is GitOps-managed: it comes from this ConfigMap, mounted
-      # read-only. The console's default `file` storage mode makes it offer Save
-      # buttons that then fail with "Read-only file system (os error 30)" — an
-      # OS error surfaced to the user for a design decision. `readOnly` tells the
-      # console up front that config is not editable here, so it presents the
-      # state instead of a broken write.
+      # Overrides ADR-0007 decision 2 (readOnly) by deliberate choice: the admin
+      # console is only ever reachable as http://ai-gateway.idp.local, which
+      # resolves to 127.0.0.1 on the operator's own machine and has no AWS
+      # Ingress at all (see decision 7) — so "the console can write" and "a
+      # stranger can write" are not the same risk here. `hybrid` reads this
+      # ConfigMap as the baseline and stores UI-made overlay resources (targets,
+      # models, routes added from the console) in config.database below, rather
+      # than in the file — the file stays exactly what git says.
       #
-      # `hybrid` is the other option — a file baseline plus UI edits stored in
-      # the database below. Deliberately not used: it would let the running
-      # config drift from the manifest, which is the drift ArgoCD would then
-      # fight, and there would be no record in git of what changed.
+      # Consequence, not a bug: an edit made in the console does NOT appear in
+      # this file or in git. It lives only in the database PVC below. ArgoCD
+      # will not see it, revert it, or back it up. A GitOps-tracked change still
+      # belongs in this ConfigMap; use the console for exploration/one-offs, and
+      # promote anything that should survive a `kubectl delete pvc` into this
+      # file.
+      #
+      # `readOnly` is the safer default and was the previous value — revert to
+      # it if the console needs to be reachable somewhere less trusted than a
+      # single operator's localhost (e.g. if AWS ever ingresses this port).
       storage:
-        mode: readOnly
+        mode: hybrid
+
+      # Backs `storage.mode: hybrid` above — where the console's UI-made overlay
+      # resources actually live. Separate from logging.database below on
+      # purpose: that one sits on the emptyDir `data` volume and is meant to be
+      # lost on restart (a debugging aid); this one sits on the `gateway-store`
+      # PVC because losing it would silently discard real config edits. Any
+      # non-postgres:// URL is treated as SQLite, same rule as logging.database.
+      database:
+        url: /gateway-store/config.db
 
       # Request log store, backing the console's Logs and Analytics pages, which
       # otherwise report "request log database is not configured". Any non-postgres
@@ -302,6 +319,25 @@ data:
               requestTimeout: 30s
 
 ---
+# Backs config.database above (storage.mode: hybrid). Small: this holds
+# console-authored overlay config (targets/models/routes), not traffic data.
+# No storageClassName — same reasoning as mlflow-data: bind whatever the
+# cluster's default class is, which is `standard` (rancher.io/local-path) on
+# Kind, so this stays local-only and needs no AWS counterpart edit.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-gateway-store
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 64Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -426,6 +462,11 @@ spec:
             # them with the pod is preferable to a volume that grows unattended.
             - name: data
               mountPath: /data
+            # Persistent — backs config.database (storage.mode: hybrid). Unlike
+            # `data` above, losing this on a pod restart would silently discard
+            # console-made config edits.
+            - name: gateway-store
+              mountPath: /gateway-store
       volumes:
         - name: config
           configMap:
@@ -433,6 +474,9 @@ spec:
         - name: data
           emptyDir:
             sizeLimit: 256Mi
+        - name: gateway-store
+          persistentVolumeClaim:
+            claimName: ai-gateway-store
 
 ---
 apiVersion: v1
