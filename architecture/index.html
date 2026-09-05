@@ -2579,6 +2579,10 @@
 <li><a href="../design/adr-0005-llm-serving-and-agent-frameworks/">ADR-0005: LLM serving and agent frameworks</a> —
   the mock vs Ollama vs vLLM split, one shared model server, and why LangGraph is a
   template rather than a platform service.</li>
+<li><a href="../design/adr-0007-ai-gateway/">ADR-0007: One gateway for MCP tools and model traffic</a> —
+  agentgateway over Envoy AI Gateway, why the gateway is default-on rather than
+  opt-in, unprefixed tool names, and why inbound auth is not a boundary until
+  NetworkPolicy is enforced.</li>
 <li><a href="../design/adr-0006-engineering-intelligence/">ADR-0006: Engineering Intelligence</a> —
   why the scoring engine is a standalone package rather than a fourth scorecard, why
   it persists its own snapshots, and why unmeasurable dimensions report no number.</li>
@@ -2911,8 +2915,12 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 <td>Agent CRD: model, system message, tool allowlist</td>
 </tr>
 <tr>
-<td><code>kubernetes/kagent/toolserver.yaml</code></td>
-<td>RemoteMCPServer CRD pointing at idp-mcp-server</td>
+<td><code>kubernetes/kagent/ai-gateway-toolserver.yaml</code></td>
+<td>The one RemoteMCPServer CRD — points at the AI Gateway, which multiplexes all eight MCP servers</td>
+</tr>
+<tr>
+<td><code>kubernetes/ml-platform/ai-gateway.yaml</code></td>
+<td>AI Gateway (agentgateway) Deployment, Service and routing config</td>
 </tr>
 <tr>
 <td><code>kubernetes/kagent/modelconfig.yaml</code></td>

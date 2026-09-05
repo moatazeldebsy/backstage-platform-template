@@ -2460,7 +2460,18 @@ incidents/security, and a human-in-the-loop approval layer — needed to trust a
 <span class="normal">32</span>
 <span class="normal">33</span>
 <span class="normal">34</span>
-<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code>Backstage — chat UI (/ai-assistant), semantic search (/ai-search), approval UI (/approvals)
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span></pre></div></td><td class="code"><div><pre><span></span><code>Backstage — chat UI (/ai-assistant), semantic search (/ai-search), approval UI (/approvals)
         │  A2A protocol (JSON-RPC)                 │  /api/proxy/approval-service (list/decide)
         ▼                                          ▼
 ┌──────────────────┐                    ┌────────────────────────────┐
@@ -2476,10 +2487,21 @@ incidents/security, and a human-in-the-loop approval layer — needed to trust a
 │  cost-agent · release-agent · incident-agent*        │
 │  security-agent* · onboarding-agent*                 │
 └───────────────────────┬──────────────────────────────┘
-                         │ MCP/HTTP
+                         │ MCP/HTTP — one RemoteMCPServer (&quot;ai-gateway&quot;)
                          ▼
+              ┌──────────────────────────────┐
+              │  AI Gateway (agentgateway)   │  ml-platform :3000/mcp
+              │  multiplexes all 8, tool     │  prefixMode: never
+              │  names unprefixed, failOpen  │  per-target timeouts
+              └──────────────┬───────────────┘
+                             │ streamable-HTTP
+                             ▼
   idp-mcp :3001   qa-mcp :3002   contract-mcp :3003   github-mcp :3005
   cost-mcp :3007  argocd-mcp :3006   incident-mcp :3008*   security-mcp :3010*
+
+  Each agent still receives only the tools in its own `toolNames` allowlist —
+  the gateway federates, KAgent filters. A target the gateway cannot reach is
+  skipped, so a partial platform yields fewer tools rather than an error.
 
   Real (non-dry-run) sync_app / rollback_app / approve_pr calls are rejected by their MCP
   server unless they carry an approval_id whose status is &quot;approved&quot; — enforced in code, not
@@ -2579,8 +2601,8 @@ auto-merge before then.</p>
 <td><code>services/incident-mcp-server/</code></td>
 </tr>
 <tr>
-<td><code>incident-agent</code> + toolserver</td>
-<td><code>kubernetes/kagent/incident-agent.yaml</code>, <code>kubernetes/kagent/incident-toolserver.yaml</code></td>
+<td><code>incident-agent</code></td>
+<td><code>kubernetes/kagent/incident-agent.yaml</code> (its MCP server is a target of the AI Gateway, <code>kubernetes/ml-platform/ai-gateway.yaml</code>)</td>
 </tr>
 <tr>
 <td>AlertManager routing: critical non-budget alerts → incident-agent</td>

@@ -2732,6 +2732,16 @@ in the docs that mentions a <code>bootstrap-ai.sh</code> flag should defer to th
 <td>Run the agents against a local Ollama model instead of Anthropic, so the stack works with no <code>ANTHROPIC_API_KEY</code>. See <a href="../ai-assistant/">AI Assistant</a>.</td>
 </tr>
 <tr>
+<td><code>--gateway</code></td>
+<td>on</td>
+<td>Install the AI Gateway (agentgateway, standalone). Two things run through it: <strong>tools</strong> — all eight MCP servers multiplexed at <code>ai-gateway.ml-platform.svc.cluster.local:3000/mcp</code>, tool names unprefixed — and <strong>model calls</strong>, served natively at <code>/v1/messages</code> (<code>kubernetes/kagent/modelconfig*.yaml</code> point <code>anthropic.baseUrl</code> here). <strong>On by default</strong>; without it agents have neither tools nor a model. ~9Mi working set measured. Its admin UI is published locally at <code>http://ai-gateway.idp.local</code> (<code>/ui</code>, <code>/config_dump</code>) and is deliberately not ingressed on AWS. The Anthropic key comes from the optional <code>ai-gateway-llm-keys</code> Secret, so a key-free cluster still gets working tools and only model calls fail. Unreachable MCP targets are skipped rather than failing the session, so the gateway can be Ready while serving fewer tools than expected — the bootstrap and <code>validate-deployment.sh</code> both report how many resolve. See <a href="../design/adr-0007-ai-gateway/">ADR-0007</a>.</td>
+</tr>
+<tr>
+<td><code>--skip-gateway</code></td>
+<td>—</td>
+<td>Skip the AI Gateway. Agents reference it for both tools and model egress, so they will have <strong>no tools and no working model</strong> without it; only useful when debugging the MCP servers directly.</td>
+</tr>
+<tr>
 <td><code>--langfuse</code></td>
 <td>on</td>
 <td>Install Langfuse LLM tracing. On by default on both local and AWS — this flag only forces it on.</td>
@@ -2823,6 +2833,18 @@ entry points, which is why they are absent from the tables above.</p>
 <tr>
 <td><code>validate-catalog-templates.py</code></td>
 <td>CI gate — checks every template is registered and parses.</td>
+</tr>
+<tr>
+<td><code>validate-mcp-metrics.py</code></td>
+<td>CI gate — every MCP server must declare <code>mcp_tool_calls_total{server,tool,outcome}</code>, and no dashboard, alert rule or Engineering Intelligence query may select a label no server emits.</td>
+</tr>
+<tr>
+<td><code>validate-mcp-tool-names.py</code></td>
+<td>CI gate — MCP tool names must be unique across all servers. The AI Gateway federates with <code>prefixMode: never</code>, and a collision does not error: the gateway routes by name and one server silently wins.</td>
+</tr>
+<tr>
+<td><code>sync-mcp-common.sh</code></td>
+<td>Pushes <code>services/mcp-common/src/</code> out to every <code>services/*-mcp-server/src/</code>. Edit the mcp-common copy, run this, commit the set. <code>--check</code> writes nothing and exits 1 on drift — that is what the <code>mcp-telemetry-drift</code> CI job runs.</td>
 </tr>
 </tbody>
 </table>
