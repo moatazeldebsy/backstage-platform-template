@@ -109,6 +109,31 @@ data:
       default:
         port: 3000
 
+    # `ui` is a top-level sibling of `config`/`gateways` here, NOT a field
+    # inside `config:` above — v1.5.0 rejects it there with "unknown field
+    # `ui`, expected one of ...con­fig-only fields..." (learned the hard way).
+    #
+    # Without this, the console's Chat/Tool Playgrounds build an ABSOLUTE URL
+    # to the data plane using window.location.hostname + this gateway's own
+    # bind port (3000, from `gateways.default.port` above) — e.g.
+    # http://ai-gateway.idp.local:3000/mcp — and that port is never exposed by
+    # local/ml-platform/ai-gateway-ingress.yaml (only 80/443 are mapped into
+    # Kind), so every Playground request failed with "Failed to fetch".
+    # Attaching the UI to the SAME gateway ref the mcp/llm blocks already use
+    # (`default`, implicit since neither sets its own `.port`) makes the
+    # console's gatewayUrls.ts detect the overlap and switch to a same-origin
+    # relative fetch (`/mcp`, `/v1/...`) instead — which the ingress already
+    # routes correctly on port 80. Verified against agentgateway v1.5.0
+    # (ui/src/gatewayUrls.ts: playgroundEndpoint()/uiGatewayRefs()).
+    #
+    # Consequence: the UI backend routes are now also technically reachable on
+    # the `default` gateway (port 3000), not just adminAddr (15000). Not a new
+    # external exposure here — nothing routes host traffic to port 3000 locally
+    # (Kind only maps 80/443) or on AWS (no Ingress for this port at all, per
+    # decision 7) — but re-check this the day either of those change.
+    ui:
+      gateways: [default]
+
     # ── LLM egress ────────────────────────────────────────────────────────────
     # The same gateway now fronts model traffic as well as tools. Agents keep
     # speaking Anthropic's native protocol: the shorthand below serves
