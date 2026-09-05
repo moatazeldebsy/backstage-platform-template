@@ -74,17 +74,23 @@ spec:
           # The first pull is minutes on an empty PVC. Without a startupProbe the
           # readiness probe fails first and the kubelet restarts the pod
           # mid-download, which loops forever and reads as a broken image.
+          # timeoutSeconds explicit: omitting it means 1s, which /api/tags can
+          # miss while a model is being pulled into memory — the pod is working,
+          # not wedged. Same default that had mlflow.yaml restart-looping every
+          # ~90s until efccde6.
           startupProbe:
             httpGet:
               path: /api/tags
               port: http
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /api/tags
               port: http
             periodSeconds: 15
+            timeoutSeconds: 10
           resources:
             requests:
               cpu: "1"

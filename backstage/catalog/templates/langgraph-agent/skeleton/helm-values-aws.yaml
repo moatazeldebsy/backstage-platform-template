@@ -77,10 +77,13 @@ env:
     value: "${{ values.modelBackend }}"
   - name: MODEL_NAME
     value: "${{ values.model }}"
-  # MCP servers the graph loads tools from. Service DNS rather than ALB
-  # hostnames: reachable in-cluster, no dependency on an ingress existing.
-  - name: MCP_NAMESPACE
-    value: "services-dev"
+  # Namespace of the AI Gateway, which multiplexes all eight platform MCP
+  # servers behind one endpoint. Service DNS rather than an ALB hostname:
+  # reachable in-cluster, no dependency on an ingress existing.
+  # Set MCP_SERVERS ("name=url,...") instead to bypass the gateway and address
+  # individual servers — useful when debugging one of them.
+  - name: MCP_GATEWAY_NAMESPACE
+    value: "ml-platform"
   # A graph that can loop needs a hard stop; a small model that keeps deciding
   # "not good enough" would otherwise run until something kills it.
   - name: AGENT_MAX_ITERATIONS

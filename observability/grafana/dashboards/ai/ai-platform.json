@@ -52,7 +52,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(mcp_tool_calls_total{status=\"error\"}[5m])) or vector(0)",
+          "expr": "sum(increase(mcp_tool_calls_total{outcome=\"error\"}[5m])) or vector(0)",
           "refId": "A",
           "legendFormat": "Errors"
         }

@@ -11,7 +11,11 @@ import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 
 const execAsync = promisify(exec);
 
-function buildAgentYaml(opts: {
+// Exported for __tests__/kagentGeneratedCrs.test.ts, which checks the CRs this
+// builds against what kubernetes/kagent/ actually defines. The two drifted once
+// already (ADR-0007 consolidated eight RemoteMCPServers into one and this kept
+// naming a deleted server), and nothing caught it.
+export function buildAgentYaml(opts: {
   name: string;
   description: string;
   modelConfig: string;
@@ -27,12 +31,17 @@ function buildAgentYaml(opts: {
   if (enableMetrics) toolNames.push('get_service_metrics');
   if (enableScaffolding) toolNames.push('scaffold_service', 'list_deployments');
 
+  // `ai-gateway`, not `idp-mcp-server`. The eight per-server RemoteMCPServer CRs
+  // were consolidated into the single AI Gateway one (ADR-0007); referencing a
+  // name that no longer exists leaves the generated Agent stuck at
+  // `Accepted: False` with no obvious cause. Tool names are unchanged because
+  // the gateway federates with prefixMode: never.
   const toolsBlock = hasTools
     ? `    tools:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: idp-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
 ${toolNames.map(t => `            - ${t}`).join('\n')}`

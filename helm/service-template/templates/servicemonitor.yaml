@@ -1,4 +1,20 @@
-{{- if .Values.metrics.enabled }}
+{{/*
+The capability check is not belt-and-braces — without it, installing this chart
+on a cluster that has no prometheus-operator fails the WHOLE release with
+`no matches for kind "ServiceMonitor" in version "monitoring.coreos.com/v1"`,
+because Helm validates every rendered object against the API server. A monitoring
+resource then takes the service down with it.
+
+That is not hypothetical: on 2026-09-04 a cluster brought up with
+`bootstrap-local.sh --skip-obs` (no kube-prometheus-stack, so no CRD) failed
+every single MCP server deploy this way, and bootstrap-ai.sh reported
+"Bootstrap Complete" over the top of it.
+
+Skipping the ServiceMonitor when the CRD is absent loses nothing: there is no
+operator to consume it. `metrics.enabled` stays the intent switch — this only
+asks whether anything can act on that intent.
+*/}}
+{{- if and .Values.metrics.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

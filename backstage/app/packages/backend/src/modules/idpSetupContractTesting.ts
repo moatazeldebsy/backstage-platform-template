@@ -80,21 +80,9 @@ podLabels:
   backstage.io/kubernetes-id: contract-mcp-server
 `;
 
-function buildContractToolserverYaml(): string {
-  return `apiVersion: kagent.dev/v1alpha2
-kind: RemoteMCPServer
-metadata:
-  name: contract-mcp-server
-  namespace: kagent
-spec:
-  description: "Contract MCP server — register OpenAPI specs, generate Pact tests, detect breaking changes, validate compatibility"
-  url: http://contract-mcp-server.services-dev.svc.cluster.local:3003/mcp
-  protocol: STREAMABLE_HTTP
-  timeout: 60s
-`;
-}
-
-function buildContractAgentYaml(): string {
+// Exported for __tests__/kagentGeneratedCrs.test.ts — see the note in
+// idpDeployAgent.ts.
+export function buildContractAgentYaml(): string {
   return `apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
@@ -124,7 +112,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: contract-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - fetch_service_contract
@@ -136,12 +124,6 @@ spec:
             - validate_compatibility
             - detect_breaking_changes
             - get_compatibility_report
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
             - catalog_search
             - list_deployments
 `;
@@ -265,16 +247,17 @@ function createSetupContractTestingAction() {
         }
       }
 
-      // ── Step 3: Apply KAgent RemoteMCPServer CRD (idempotent) ────────────
-      ctx.logger.info('Applying KAgent RemoteMCPServer CRD...');
-      const toolserverFile = path.join(os.tmpdir(), `contract-toolserver-${Date.now()}.yaml`);
-      try {
-        await fs.writeFile(toolserverFile, buildContractToolserverYaml(), 'utf8');
-        const { stdout } = await execAsync(`kubectl apply -f ${toolserverFile}`, { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
-        ctx.logger.info(stdout.trim());
-      } finally {
-        await fs.unlink(toolserverFile).catch(() => undefined);
-      }
+      // ── Step 3: (removed) no per-server RemoteMCPServer ──────────────────
+      // This used to apply a `contract-mcp-server` RemoteMCPServer CR. The AI
+      // Gateway now fronts every MCP server behind one CR (ADR-0007), and it
+      // already lists contract-mcp-server.services-dev:3003 as a target — the
+      // Helm install above is all that is needed to make that target live,
+      // because the gateway resolves it by DNS rather than through a CR.
+      // Re-applying a per-server CR here would put back exactly the fan-out
+      // ADR-0007 removed, and leave an unreferenced CR behind in `kagent`.
+      ctx.logger.info(
+        'Skipping per-server RemoteMCPServer — the AI Gateway already fronts contract-mcp-server:3003.',
+      );
 
       // ── Step 4: Apply KAgent Agent CRD (idempotent) ───────────────────────
       ctx.logger.info('Applying KAgent contract-assistant Agent CRD...');

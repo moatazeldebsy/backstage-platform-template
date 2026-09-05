@@ -10,6 +10,86 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **One AI Gateway in front of every MCP server and every model call.**
+  [agentgateway](https://agentgateway.dev/) v1.5.0 in standalone mode
+  (`kubernetes/ml-platform/ai-gateway.yaml`), on by default — `--skip-gateway`
+  opts out. Tools: the eight MCP servers multiplex behind one `/mcp` endpoint
+  with names left **unprefixed** (`prefixMode: never`), so the eight
+  `RemoteMCPServer` CRs collapse into one and no agent's `toolNames:` allowlist
+  or systemMessage changes. Models: `/v1/messages` is served natively, so every
+  `ModelConfig` just points `anthropic.baseUrl` at the gateway — no protocol
+  translation and no model id changes. Unreachable targets are skipped rather
+  than failing the session (`failureMode: failOpen`), which means a Ready
+  gateway can serve fewer tools than expected; the bootstrap and
+  `validate-deployment.sh` both report how many resolve. Verified on a live
+  cluster: 54 tools federated unprefixed, 44 with two targets down, and a real
+  `/v1/messages` round trip. See
+  [ADR-0007](docs/design/adr-0007-ai-gateway.md).
+- **The AI Gateway has a UI.** agentgateway's admin listener serves `/ui` (routes,
+  MCP targets, model list) and `/config_dump`, published locally at
+  `http://ai-gateway.idp.local` alongside kagent, mlflow and langfuse. It is
+  deliberately **not** ingressed on AWS — an ALB in front of an unauthenticated
+  admin interface is the pattern this release removes from the MCP servers — so
+  on EKS the port stays reachable in-cluster only. No credential exposure:
+  `/config_dump` renders provider keys as `{"key":{"value":"<redacted>"}}`.
+- **Scaffolded LLM apps no longer need their own Anthropic key.** The gateway
+  holds the provider credential, so `llm-app-langfuse` and `langgraph-agent`
+  ship with none — deleting the "create your own `sk-ant-` secret" step from
+  their READMEs and runbooks. `ANTHROPIC_BASE_URL` points at the gateway by
+  default and can be set to `https://api.anthropic.com` to bypass it when
+  running outside the cluster.
+
+### Fixed
+
+- **A missing ServiceMonitor CRD took down every service deploy.** The
+  golden-path chart rendered `kind: ServiceMonitor` whenever `metrics.enabled`
+  was set, and Helm validates every rendered object against the API server — so
+  on a cluster with no prometheus-operator the *whole release* failed with
+  `no matches for kind "ServiceMonitor"`. A monitoring resource took the service
+  down with it. Observed on a `bootstrap-local.sh --skip-obs` cluster, where all
+  seven MCP servers failed this way. The template now also checks
+  `.Capabilities.APIVersions.Has "monitoring.coreos.com/v1"`; `metrics.enabled`
+  remains the intent switch, and skipping the object when nothing can consume it
+  loses nothing.
+- **`bootstrap-ai.sh` reported success over a total deploy failure.** It warns
+  per service and carries on — deliberately, so one failure cannot kill the run —
+  but then printed "AI/ML Platform Bootstrap Complete" with an empty
+  `services-dev`. It now summarises: a partial failure explains that the gateway
+  will serve fewer tools (`failOpen`), and an all-services failure is called out
+  as systemic, points at the *first* error rather than the last, and exits
+  non-zero rather than claiming success.
+- **Three internet-facing MCP ALBs closed.** `idp`, `qa` and `contract`
+  MCP servers carried `scheme: internet-facing` with `host: ""` (match any
+  hostname), no TLS and no authentication on `POST /mcp` — `idp` exposing
+  `scaffold_service` and `set_user_memory`. `ingress.enabled: false` on all
+  three, matching the other five.
+- **`qa-mcp-server` was invisible to the reliability scorer.** Its
+  `mcp_tool_calls_total` omitted the `outcome` label, so the Engineering
+  Intelligence `{outcome="success"}` query and the error-rate alert both
+  silently skipped it. Both AI dashboards separately queried a `status` label
+  that no server has ever emitted, so those panels always read 0.
+  `scripts/validate-mcp-metrics.py` now fails CI on either mistake, and
+  `scripts/validate-mcp-tool-names.py` guards the tool-name uniqueness that
+  `prefixMode: never` depends on.
+- **NetworkPolicy allowed six MCP ports, not eight.** Ports 3008 (incident) and
+  3010 (security) were never added, leaving the two ADP-phase servers outside
+  the allowlist.
+- **Gatekeeper installed five policies that enforced nothing.** `kubectl wait`
+  returns `NotFound` immediately for a CRD that does not exist *yet*, so the
+  wait raced Gatekeeper's asynchronous CRD generation and lost; under `set -e`
+  that skipped the apply which actually creates the Constraints. Clusters came
+  up with five ConstraintTemplates, five CRDs and **zero Constraints** — a
+  violating Deployment was admitted — behind a single warning line.
+- **Probes across the platform inherited the implicit 1s timeout.** Kubernetes
+  defaults `timeoutSeconds` to 1 when it is omitted, and the default is never
+  written in the manifest. A CPU-starved node liveness-killed a perfectly
+  healthy AI Gateway this way (exit 0 / `Completed` — a probe kill, not a
+  crash), which is the same failure MLflow had before efccde6. Fixed on the
+  gateway and swept: `aws/backstage/deployment.yaml`,
+  `aws/backstage/deployment-standby.yaml` and `kubernetes/ml-platform/ollama.yaml`
+  carried six more. All 14 probes in the repo now set it explicitly, and none
+  exceeds its own `periodSeconds`.
+
 - **`mobile-device-farm` is provider-agnostic.** A `provider` parameter picks
   Firebase Test Lab, LambdaTest, BrowserStack App Automate or Sauce Labs, with the
   Firebase path unchanged as the default. Each provider uses its own native,

@@ -551,9 +551,23 @@ function AiAssistantPage() {
             const body = await res.json();
             const sessions: any[] = body.data ?? [];
             // Find the most recent matching session (they're usually sorted newest first)
-            // Look for platform-assistant agent, created within a wide time window
+            // created within a wide time window.
+            //
+            // Match on the agent actually being talked to. This used to be
+            // hardcoded to `kagent__NS__platform_assistant`, which was only ever
+            // right when platform-assistant happened to be installed. The POST
+            // above was fixed to use the discovered `agent`, but this lookup was
+            // not — so on a cluster brought up with, say, `--agents idp` the
+            // message was delivered and answered, KAgent created the session,
+            // and the page still failed with "No session created after waiting"
+            // because it was looking for a session belonging to an agent that
+            // does not exist. Observed 2026-09-04.
+            //
+            // KAgent forms the id as `<namespace>__NS__<name>` with dashes in
+            // the name replaced by underscores (`kagent__NS__idp_assistant`).
+            const expectedAgentId = `kagent__NS__${agent.replace(/-/g, '_')}`;
             for (const s of sessions) {
-              if (s.agent_id === 'kagent__NS__platform_assistant') {
+              if (s.agent_id === expectedAgentId) {
                 const sessionTime = new Date(s.created_at).getTime();
                 // Accept sessions created from 5 seconds before to 30 seconds after send time
                 // This accounts for clock skew and agent startup time
@@ -600,8 +614,15 @@ function AiAssistantPage() {
           try { return JSON.parse(e.data); } catch { return null; }
         }).filter(Boolean);
 
+        // Same hardcoding as the session lookup above, and the same fix: the
+        // event author is the agent that answered, so `platform_assistant` only
+        // matched when that agent existed. Left alone, this reproduced the
+        // identical symptom one step later — a session found, an answer sitting
+        // in it, and the page timing out because it was reading events for an
+        // agent nobody was talking to.
+        const expectedAuthor = agent.replace(/-/g, '_');
         const agentEvents = parsed.filter(
-          (d: any) => d?.author === 'platform_assistant' && d?.content?.parts,
+          (d: any) => d?.author === expectedAuthor && d?.content?.parts,
         );
 
         if (agentEvents.length === 0) continue;

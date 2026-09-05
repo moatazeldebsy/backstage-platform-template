@@ -19,7 +19,9 @@ def test_ready_reports_configuration():
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ready"
-    assert body["api_key_configured"] is True
+    # The service no longer holds a provider key — it routes through the AI
+    # Gateway, which does. What readiness reports is where model calls go.
+    assert "ai-gateway" in body["llm_base_url"]
     # Tracing is off in tests (LANGFUSE_OTLP_ENDPOINT unset) — the readiness
     # probe must still pass. Tracing is observability, not a dependency.
     assert body["tracing_enabled"] is False
@@ -102,11 +104,30 @@ def test_chat_maps_api_status_errors(mock_anthropic, upstream_status, expected):
     assert response.status_code == expected
 
 
-def test_chat_without_api_key_returns_503(monkeypatch):
+def test_client_defaults_to_the_ai_gateway(monkeypatch):
+    """No provider key needed: the gateway holds it and injects it upstream.
+
+    This replaces an earlier test asserting a 503 when ANTHROPIC_API_KEY was
+    unset. That behaviour is gone on purpose — needing a per-service `sk-ant-`
+    secret was the friction the gateway removes.
+    """
     from src import main
 
     monkeypatch.setattr(main, "_client", None)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    response = client.post("/chat", json={"message": "Hi"})
-    assert response.status_code == 503
-    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+    monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
+
+    built = main.get_client()
+    assert "ai-gateway.ml-platform.svc.cluster.local:3000" in str(built.base_url)
+
+
+def test_base_url_override_bypasses_the_gateway(monkeypatch):
+    """Escape hatch for local development outside the cluster."""
+    from src import main
+
+    monkeypatch.setattr(main, "_client", None)
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key-not-real")
+
+    built = main.get_client()
+    assert "api.anthropic.com" in str(built.base_url)

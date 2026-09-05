@@ -123,18 +123,23 @@ spec:
                   name: backstage-secrets
                   key: JIRA_URL
                   optional: true
+          # Explicit timeouts — see the comment in deployment.yaml. Kubernetes
+          # defaults timeoutSeconds to 1s when omitted, which a Node backend can
+          # miss under a GC pause without being unhealthy.
           readinessProbe:
             httpGet:
               path: /healthcheck
               port: 7007
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /healthcheck
               port: 7007
             initialDelaySeconds: 60
             periodSeconds: 30
+            timeoutSeconds: 10
           resources:
             requests:
               cpu: 200m

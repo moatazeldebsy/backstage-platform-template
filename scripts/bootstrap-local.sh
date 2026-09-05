@@ -1561,15 +1561,44 @@ if ! $SKIP_POLICIES; then
       -f "${ROOT_DIR}/kubernetes/policies/deny-latest-tag.yaml" \
       -f "${ROOT_DIR}/kubernetes/policies/require-cost-tags.yaml" 2>/dev/null || true
 
+    # `kubectl wait` fails immediately with NotFound when the resource does not
+    # exist YET — --timeout bounds the wait for the *condition*, never for the
+    # object appearing. Gatekeeper generates these CRDs asynchronously from the
+    # ConstraintTemplates applied above, so a bare `kubectl wait crd` races that
+    # generation, and on 2026-09-03 it lost by roughly one second: four of the
+    # five CRDs returned NotFound, and the CRDs were present a second later.
+    #
+    # That was not a cosmetic warning. `set -e` is on in this subshell, so the
+    # failure skipped everything below — the webhook-readiness wait AND the
+    # second apply, which is the one that actually creates the Constraints. The
+    # cluster came up with five ConstraintTemplates, five CRDs, and zero
+    # Constraints: policy that looks installed and enforces nothing, behind a
+    # warning the run scrolls past.
+    #
+    # So: poll for existence first, then wait on the condition.
     log "Waiting for ConstraintTemplate CRDs to become established..."
-    kubectl wait crd \
+    for _crd in \
       requirehealthprobes.constraints.gatekeeper.sh \
       requireresourcelimits.constraints.gatekeeper.sh \
       requirelabels.constraints.gatekeeper.sh \
       denylatestimgtag.constraints.gatekeeper.sh \
-      requirecosttags.constraints.gatekeeper.sh \
-      --for=condition=Established \
-      --timeout=120s
+      requirecosttags.constraints.gatekeeper.sh
+    do
+      _waited=0
+      until kubectl get crd "$_crd" &>/dev/null; do
+        if [ "$_waited" -ge 120 ]; then
+          warn "CRD $_crd was never generated after 120s — its Constraint will fail to apply below."
+          break
+        fi
+        sleep 2
+        _waited=$((_waited + 2))
+      done
+      # Not fatal on its own: if a CRD is genuinely missing, the Constraints
+      # apply at the end of this step fails loudly and the step reports it.
+      # Aborting here is what hid the problem last time.
+      kubectl wait crd "$_crd" --for=condition=Established --timeout=120s 2>/dev/null || \
+        warn "CRD $_crd did not reach Established — continuing to the Constraints apply, which will surface it."
+    done
 
     # Wait for Gatekeeper webhook pods to be Ready before applying constraints.
     # The ValidatingWebhookConfiguration activates as soon as helm finishes; without

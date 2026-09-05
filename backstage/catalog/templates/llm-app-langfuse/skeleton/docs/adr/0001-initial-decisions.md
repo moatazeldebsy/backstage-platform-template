@@ -28,7 +28,7 @@ correctly disabled" look the same from outside — `/ready` reports which it is.
 
 ## Both secrets are `optional: true`
 
-A missing `ANTHROPIC_API_KEY` degrades `/chat` to 503; a missing `langfuse-otel` disables tracing.
+Model calls route through the platform's AI Gateway, so this service holds no provider key; a missing `langfuse-otel` disables tracing.
 Neither blocks the pod from starting.
 
 **Consequence:** a misconfiguration surfaces as a specific failing endpoint rather than a

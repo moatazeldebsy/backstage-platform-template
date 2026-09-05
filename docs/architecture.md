@@ -15,6 +15,10 @@ Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
 - [ADR-0005: LLM serving and agent frameworks](design/adr-0005-llm-serving-and-agent-frameworks.md) —
   the mock vs Ollama vs vLLM split, one shared model server, and why LangGraph is a
   template rather than a platform service.
+- [ADR-0007: One gateway for MCP tools and model traffic](design/adr-0007-ai-gateway.md) —
+  agentgateway over Envoy AI Gateway, why the gateway is default-on rather than
+  opt-in, unprefixed tool names, and why inbound auth is not a boundary until
+  NetworkPolicy is enforced.
 - [ADR-0006: Engineering Intelligence](design/adr-0006-engineering-intelligence.md) —
   why the scoring engine is a standalone package rather than a fourth scorecard, why
   it persists its own snapshots, and why unmeasurable dimensions report no number.
@@ -206,7 +210,8 @@ all required fields are known, and Rule 5 defines those fields as `name`,
 | `backstage/app-config.yaml` | KAgent proxy target (in-cluster) |
 | `backstage/app-config.local.yaml` | KAgent proxy target override (local ingress) |
 | `kubernetes/kagent/idp-agent.yaml` | Agent CRD: model, system message, tool allowlist |
-| `kubernetes/kagent/toolserver.yaml` | RemoteMCPServer CRD pointing at idp-mcp-server |
+| `kubernetes/kagent/ai-gateway-toolserver.yaml` | The one RemoteMCPServer CRD — points at the AI Gateway, which multiplexes all eight MCP servers |
+| `kubernetes/ml-platform/ai-gateway.yaml` | AI Gateway (agentgateway) Deployment, Service and routing config |
 | `kubernetes/kagent/modelconfig.yaml` | Claude Anthropic model configuration |
 | `services/idp-mcp-server/src/index.ts` | MCP server implementing all 6 tools |
 

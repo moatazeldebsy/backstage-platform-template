@@ -83,8 +83,24 @@ def _model():
 
     from langchain_anthropic import ChatAnthropic
 
+    # Through the platform's AI Gateway, not straight to api.anthropic.com. The
+    # gateway holds the provider credential and injects it upstream, so this
+    # service needs no `sk-ant-` key of its own — and every token it spends is
+    # visible in one place.
+    #
+    # base_url is passed explicitly rather than relying on the SDK picking an
+    # environment variable up, so the routing is visible where it happens.
+    # Override ANTHROPIC_BASE_URL (and supply a real key) to go direct, which is
+    # what running outside the cluster needs.
     return ChatAnthropic(
         model=os.environ.get("MODEL_NAME", "${{ values.model }}"),
+        base_url=os.environ.get(
+            "ANTHROPIC_BASE_URL",
+            "http://ai-gateway.ml-platform.svc.cluster.local:3000",
+        ),
+        # The SDK requires a value client-side; the gateway does not check it
+        # today. It becomes the per-team virtual key when inbound auth lands.
+        api_key=os.environ.get("ANTHROPIC_API_KEY", "via-ai-gateway"),
         temperature=0,
         max_tokens=1024,
     )

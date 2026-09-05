@@ -8,3 +8,16 @@ spec:
   model: claude-opus-4-8
   apiKeySecret: kagent-anthropic
   apiKeySecretKey: ANTHROPIC_API_KEY
+  # Routed through the AI Gateway rather than straight to api.anthropic.com, so
+  # model traffic and tool traffic share one egress point — one place that sees
+  # every token, and the seam where per-team attribution and budgets attach.
+  #
+  # provider stays Anthropic: the gateway serves /v1/messages natively, so this
+  # is the same protocol and the same model id, just a different host. No
+  # OpenAI-compatible translation is involved.
+  #
+  # apiKeySecret is deliberately kept. The gateway holds the real provider
+  # credential and injects it upstream; this one is what KAgent presents to the
+  # gateway, and becomes the gateway API key once inbound auth is enabled.
+  anthropic:
+    baseUrl: http://ai-gateway.ml-platform.svc.cluster.local:3000

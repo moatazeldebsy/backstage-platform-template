@@ -11,6 +11,8 @@ IDP `llm-app-langfuse` golden path.
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
+# Outside the cluster the gateway is not reachable, so go direct:
+export ANTHROPIC_BASE_URL=https://api.anthropic.com
 export ANTHROPIC_API_KEY=sk-ant-...
 uvicorn src.main:app --reload --port ${{ values.port }}
 
@@ -27,7 +29,7 @@ Tracing stays off locally unless you point it at Langfuse — see below.
 |---|---|---|
 | `POST` | `/chat` | Send a message to Claude. Body: `{"message": "...", "user_id": "...", "session_id": "..."}` |
 | `GET` | `/healthz` | Liveness |
-| `GET` | `/ready` | Readiness — also reports whether the API key and tracing are configured |
+| `GET` | `/ready` | Readiness — also reports the model, the `llm_base_url` it will call, and whether tracing is configured |
 | `GET` | `/metrics` | Prometheus metrics, including `llm_tokens_total` and `llm_request_duration_seconds` |
 
 `/ready` deliberately does **not** call the model API. A readiness probe that costs a token per
@@ -37,7 +39,8 @@ check would bill continuously and take the pod down on a provider blip.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | **Required.** Without it `/chat` returns 503; the pod still starts. |
+| `ANTHROPIC_BASE_URL` | the AI Gateway | Where model calls go. Defaults to `http://ai-gateway.ml-platform.svc.cluster.local:3000`. Set it to `https://api.anthropic.com` to bypass the gateway (needed when running outside the cluster). |
+| `ANTHROPIC_API_KEY` | — | **Not required in-cluster.** The gateway holds the provider credential and injects it upstream. Only needed when you point `ANTHROPIC_BASE_URL` straight at Anthropic. |
 | `ANTHROPIC_MODEL` | `${{ values.model }}` | Model id. Complete as written — never append a date suffix. |
 | `ANTHROPIC_EFFORT` | `${{ values.effort }}` | `low`–`max`. How much the model thinks before answering. |
 | `ANTHROPIC_MAX_TOKENS` | `8192` | Caps thinking **and** response text together. Raise it with effort. |
@@ -48,16 +51,15 @@ check would bill continuously and take the pod down on a provider blip.
 | `LANGFUSE_CAPTURE_IO` | `${{ values.captureIo }}` | `true` records prompts and completions. |
 | `LANGFUSE_SAMPLE_RATE` | `${{ values.sampleRate }}` | Fraction of root traces recorded, 0.0–1.0. |
 
-## The two secrets
+## Secrets
 
-**`${{ values.name }}-secrets` — yours.** The platform does not hold an Anthropic key on your
-behalf:
+**You do not need an Anthropic key.** Model calls go through the platform's AI Gateway, which
+holds the provider credential and injects it upstream — so there is no `sk-ant-` value for this
+service to create, store or rotate. This used to be a required manual step before every
+scaffolded LLM app would answer at all.
 
-```bash
-kubectl create secret generic ${{ values.name }}-secrets \
-  --namespace services-dev \
-  --from-literal=ANTHROPIC_API_KEY=sk-ant-...
-```
+The gateway does not check inbound credentials today. When it does, the per-team virtual key
+arrives the same way `langfuse-otel` does — distributed by the platform, not minted by you.
 
 **`langfuse-otel` — the platform's.** Copied into every namespace labelled
 `idp.io/langfuse=enabled`. `services-dev` already carries that label, so nothing is needed there.

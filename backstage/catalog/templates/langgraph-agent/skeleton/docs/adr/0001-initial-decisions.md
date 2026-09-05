@@ -15,9 +15,12 @@ tool returned and decide to try again; that is the whole reason to reach for
 LangGraph rather than the simpler template.
 
 **Tools come from the platform's MCP servers, not from local reimplementations.**
-The platform runs eight of them and KAgent's declarative agents already consume
-them. Reimplementing `get_service_metrics` here would create a second version to
-keep correct.
+The platform runs eight of them, reached through the AI Gateway — one endpoint
+that multiplexes all eight, which KAgent's declarative agents use too.
+Reimplementing `get_service_metrics` here would create a second version to keep
+correct, and addressing the eight servers individually would create a second
+copy of *which servers exist* — one that had already drifted to four of eight
+before this template pointed at the gateway.
 
 **Bounded on purpose.** `AGENT_MAX_ITERATIONS` and `recursion_limit` are set
 because a small model that keeps deciding "not good enough" will otherwise run
@@ -38,5 +41,8 @@ that nesting and a single run would appear as several unrelated traces.
 - `MemorySaver` keeps conversation state per process. It survives turns within a
   pod, not a restart or a second replica. Swap it for a persistent checkpointer
   if you need more.
-- No MCP servers reachable is a normal state on a core-only cluster, so the agent
-  degrades to answering without tools rather than failing the request.
+- No gateway reachable is a normal state on a core-only cluster, so the agent
+  degrades to answering without tools rather than failing the request. The
+  gateway itself degrades the same way: a target it cannot reach is skipped
+  (`failureMode: failOpen`), so a partial platform yields fewer tools, not an
+  error.

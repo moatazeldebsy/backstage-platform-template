@@ -50,7 +50,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: incident-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - get_open_incidents
@@ -60,12 +60,6 @@ spec:
             - send_notification
             - get_incident_timeline
             - link_pagerduty_incident
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: idp-mcp-server
-          namespace: kagent
-          toolNames:
             - get_service_metrics
             - list_deployments
     deployment:

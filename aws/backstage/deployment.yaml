@@ -260,18 +260,29 @@ spec:
             limits:
               cpu: 1000m
               memory: 1Gi
+          # timeoutSeconds is set explicitly because Kubernetes defaults it to
+          # 1s when omitted — never stated in the manifest, and the cause of a
+          # restart loop in mlflow.yaml (efccde6) and of the AI Gateway being
+          # liveness-killed while healthy. Backstage is a Node backend: a GC
+          # pause or a slow upstream can push a trivial /ready past one second
+          # without the process being unwell. Both stay under their period, so
+          # detection cadence is unchanged.
           readinessProbe:
             httpGet:
               path: /ready
               port: 7007
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /healthz
               port: 7007
             initialDelaySeconds: 60
             periodSeconds: 30
+            # More headroom than readiness: failing this restarts the pod, which
+            # is the more destructive answer to "the reply was slow".
+            timeoutSeconds: 10
       volumes:
         - name: base-config
           configMap:

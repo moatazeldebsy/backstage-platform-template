@@ -1,0 +1,504 @@
+# AI Gateway — agentgateway, standalone mode.
+#
+# One entry point in front of the eight MCP servers AND the model providers, so
+# agents reach their tools and their LLM through the same proxy.
+# See docs/design/adr-0007-ai-gateway.md.
+#
+# Standalone, not the Helm/CRD control plane. The Kubernetes install path pulls
+# in Gateway API CRDs plus a kgateway control plane; this cluster ingresses
+# through nginx locally and ALB on AWS, so that would mean adopting Gateway API
+# as a side effect. Standalone is a single Rust binary reading one config file,
+# which is also the only shape that fits the local memory ceiling.
+#
+# Deployed by default (`bootstrap-ai.sh`, disable with --skip-gateway). Unlike
+# Ollama, this is not optional in practice: every agent's single RemoteMCPServer
+# (kubernetes/kagent/ai-gateway-toolserver.yaml) points at it, so a cluster
+# without it is a cluster whose agents have no tools. It costs ~9Mi working set
+# (~20 MiB RSS under load) measured on a real cluster, against Langfuse's ~2.2Gi
+# — the local ceiling argument does not reach it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-gateway-config
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+data:
+  config.yaml: |
+    # yaml-language-server: $schema=https://agentgateway.dev/schema/config
+    config:
+      # The admin interface also serves the UI (/ui) and /config_dump. This was
+      # "off" originally, on the reasoning that nothing in-cluster needs it. That
+      # traded away the only view into what the gateway is actually doing, and
+      # cost a manifest edit AND a pod restart before anyone could debug —
+      # adminAddr is read at startup, not on config reload (verified: editing the
+      # ConfigMap updated the file in the pod and no listener appeared until the
+      # pod was rolled).
+      #
+      # Bound to 0.0.0.0 rather than localhost because nginx has to reach it for
+      # local/ml-platform/ai-gateway-ingress.yaml (ai-gateway.idp.local), the
+      # same shape kagent, mlflow and langfuse already have locally.
+      #
+      # What that exposes: routes, MCP target hosts and ports, and the model
+      # list. NOT credentials — /config_dump renders provider keys as
+      # {"key":{"value":"<redacted>"}}, confirmed against v1.5.0. On AWS there is
+      # no Ingress for this port, so it stays reachable in-cluster only.
+      adminAddr: "0.0.0.0:15000"
+      # Default binds are localhost-only, which a kubelet probe and a Prometheus
+      # scrape both sit outside of. Bind both to the pod IP explicitly.
+      statsAddr: "0.0.0.0:15020"
+      readinessAddr: "0.0.0.0:15021"
+
+      # Overrides ADR-0007 decision 2 (readOnly) by deliberate choice: the admin
+      # console is only ever reachable as http://ai-gateway.idp.local, which
+      # resolves to 127.0.0.1 on the operator's own machine and has no AWS
+      # Ingress at all (see decision 7) — so "the console can write" and "a
+      # stranger can write" are not the same risk here. `hybrid` reads this
+      # ConfigMap as the baseline and stores UI-made overlay resources (targets,
+      # models, routes added from the console) in config.database below, rather
+      # than in the file — the file stays exactly what git says.
+      #
+      # Consequence, not a bug: an edit made in the console does NOT appear in
+      # this file or in git. It lives only in the database PVC below. ArgoCD
+      # will not see it, revert it, or back it up. A GitOps-tracked change still
+      # belongs in this ConfigMap; use the console for exploration/one-offs, and
+      # promote anything that should survive a `kubectl delete pvc` into this
+      # file.
+      #
+      # `readOnly` is the safer default and was the previous value — revert to
+      # it if the console needs to be reachable somewhere less trusted than a
+      # single operator's localhost (e.g. if AWS ever ingresses this port).
+      storage:
+        mode: hybrid
+
+      # Backs `storage.mode: hybrid` above — where the console's UI-made overlay
+      # resources actually live. Separate from logging.database below on
+      # purpose: that one sits on the emptyDir `data` volume and is meant to be
+      # lost on restart (a debugging aid); this one sits on the `gateway-store`
+      # PVC because losing it would silently discard real config edits. Any
+      # non-postgres:// URL is treated as SQLite, same rule as logging.database.
+      database:
+        url: /gateway-store/config.db
+
+      # Request log store, backing the console's Logs and Analytics pages, which
+      # otherwise report "request log database is not configured". Any non-postgres
+      # URL is treated as SQLite. It lives on an emptyDir (see the Deployment), so
+      # it is per-pod and lost on restart — right for a debugging aid, and it
+      # keeps the gateway free of a PVC.
+      #
+      # This does not replace Langfuse. Langfuse remains the platform's AI
+      # observability store and the source aiCost.ts reads; this is a local
+      # request log for the console.
+      logging:
+        database:
+          url: /data/requests.db
+
+      # Model prices, so the console's Analytics page reports cost rather than
+      # 0.0. Inline rather than the console's "Refresh base costs" button, which
+      # fetches models.dev and writes /config/base-costs.json — a read-only mount
+      # here, so it fails. Inline also means the prices are reviewable in git and
+      # do not change under you between deploys.
+      #
+      # USD per 1M tokens, list price. Only the models this gateway serves
+      # explicitly; a request for an unlisted model still routes through the "*"
+      # catch-all below and simply reports no cost.
+      #
+      # This is for the console's own view. It does not feed aiCost.ts, which
+      # reads Langfuse — keeping the two separate is what avoids the
+      # double-counting ADR-0007 flags as an open question.
+      modelCatalog:
+        - inline:
+            providers:
+              anthropic:
+                models:
+                  # Rates are strings, not numbers — the Money type in the
+                  # config schema is a string, and a bare 1.00 fails validation
+                  # with "data did not match any variant of untagged enum
+                  # ModelCatalogSource", which does not name the field.
+                  claude-haiku-4-5-20251001:
+                    rates: { input: "1.00", output: "5.00", cacheRead: "0.10", cacheWrite: "1.25" }
+                  claude-sonnet-4-6:
+                    rates: { input: "3.00", output: "15.00", cacheRead: "0.30", cacheWrite: "3.75" }
+                  claude-opus-4-8:
+                    rates: { input: "5.00", output: "25.00", cacheRead: "0.50", cacheWrite: "6.25" }
+
+    gateways:
+      default:
+        port: 3000
+
+    # `ui` is a top-level sibling of `config`/`gateways` here, NOT a field
+    # inside `config:` above — v1.5.0 rejects it there with "unknown field
+    # `ui`, expected one of ...con­fig-only fields..." (learned the hard way).
+    #
+    # Without this, the console's Chat/Tool Playgrounds build an ABSOLUTE URL
+    # to the data plane using window.location.hostname + this gateway's own
+    # bind port (3000, from `gateways.default.port` above) — e.g.
+    # http://ai-gateway.idp.local:3000/mcp — and that port is never exposed by
+    # local/ml-platform/ai-gateway-ingress.yaml (only 80/443 are mapped into
+    # Kind), so every Playground request failed with "Failed to fetch".
+    # Attaching the UI to the SAME gateway ref the mcp/llm blocks already use
+    # (`default`, implicit since neither sets its own `.port`) makes the
+    # console's gatewayUrls.ts detect the overlap and switch to a same-origin
+    # relative fetch (`/mcp`, `/v1/...`) instead — which the ingress already
+    # routes correctly on port 80. Verified against agentgateway v1.5.0
+    # (ui/src/gatewayUrls.ts: playgroundEndpoint()/uiGatewayRefs()).
+    #
+    # Consequence: the UI backend routes are now also technically reachable on
+    # the `default` gateway (port 3000), not just adminAddr (15000). Not a new
+    # external exposure here — nothing routes host traffic to port 3000 locally
+    # (Kind only maps 80/443) or on AWS (no Ingress for this port at all, per
+    # decision 7) — but re-check this the day either of those change.
+    ui:
+      gateways: [default]
+
+    # ── LLM egress ────────────────────────────────────────────────────────────
+    # The same gateway now fronts model traffic as well as tools. Agents keep
+    # speaking Anthropic's native protocol: the shorthand below serves
+    # /v1/messages directly, so nothing is translated into an OpenAI-compatible
+    # shape and the model ids stay exactly what kubernetes/kagent/modelconfig*.yaml
+    # already used. Verified against v1.5.0 — a POST /v1/messages here reaches
+    # endpoint=api.anthropic.com:443 with gen_ai.provider.name=anthropic.
+    #
+    # $ANTHROPIC_API_KEY expands from the pod environment, supplied by the
+    # optional `ai-gateway-llm-keys` Secret. Optional on purpose: with no key the
+    # gateway still starts and MCP tool traffic is unaffected — only model calls
+    # fail, and they fail with the provider's own 401 rather than a config error.
+    # That is what keeps a key-free evaluation cluster working.
+    #
+    # Anthropic only, because it is the only provider any agent actually uses:
+    # openai-prod and ollama-local exist as ModelConfigs but no agent references
+    # them (ADR-0005 decision 4). openAI, bedrock and custom self-hosted
+    # endpoints are each one more entry in this list — left out rather than
+    # shipped unexercised.
+    llm:
+      # CORS so the console's Chat Playground can call /v1/... from the browser.
+      # Its Apply CORS button cannot do this itself — that button writes
+      # config.yaml, a read-only ConfigMap mount here by design.
+      policies:
+        cors:
+          # Only this origin. allowOrigins accepts "*", and this endpoint has no
+          # inbound auth yet, so a wildcard would let any page the browser visits
+          # POST model calls through the gateway. ai-gateway.idp.local resolves
+          # to 127.0.0.1 and has no AWS equivalent.
+          allowOrigins:
+            - http://ai-gateway.idp.local
+          allowMethods: [GET, POST, OPTIONS]
+          # "*" is required, not lazy: the console gates its playground on
+          # allowHeaders literally containing "*" (checked in its bundle), and
+          # an explicit list — however complete — leaves it showing "Browser
+          # access is not allowed". Its own tooltip says to use "*" while
+          # debugging. The meaningful restriction is allowOrigins above; this
+          # only governs which headers that one origin may send.
+          allowHeaders: ["*"]
+      models:
+        # Explicit entries rather than only a wildcard, so /v1/models answers
+        # with the models this platform actually serves and each can carry its
+        # own policy (budgets, guardrails) later without restructuring.
+        - name: claude-haiku-4-5-20251001
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+        - name: claude-sonnet-4-6
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+        - name: claude-opus-4-8
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+        # Catch-all: a ModelConfig naming a model not listed above still routes
+        # instead of 404ing. Model ids change faster than this file does.
+        - name: "*"
+          provider: anthropic
+          params:
+            apiKey: "$ANTHROPIC_API_KEY"
+
+    mcp:
+      # CORS for the console's Tool Playground, same reasoning as llm.policies
+      # above. exposeHeaders is the part that is functional rather than
+      # cosmetic: MCP hands back the session id in the Mcp-Session-Id response
+      # header, and a browser cannot read a response header that is not exposed
+      # — so without this the playground can open a session and then lose it.
+      policies:
+        cors:
+          allowOrigins:
+            - http://ai-gateway.idp.local
+          allowMethods: [GET, POST, DELETE, OPTIONS]
+          allowHeaders: ["*"]
+          exposeHeaders: [Mcp-Session-Id]
+      # `never` — do not namespace tool names with the target name.
+      #
+      # The default (`conditional`) would rename every tool the moment a second
+      # target exists: sync_app becomes argocd_sync_app. That would invalidate
+      # the `toolNames:` allowlist AND the tool documentation inside the
+      # systemMessage of all nine agents in kubernetes/kagent/.
+      #
+      # `never` requires tool names to be unique across targets, which was
+      # checked before choosing it: 54 tools across the eight servers, zero
+      # collisions. scripts/validate-mcp-tool-names.py is the standing guard —
+      # a ninth server, or a rename, must keep that true.
+      prefixMode: never
+      # Default is failClosed: one unreachable target fails the whole session.
+      # incident (3008) and security (3010) only exist behind `--adp`, so on a
+      # cluster without it failClosed would take the gateway down for everyone.
+      # failOpen skips unhealthy targets and still errors if all of them fail.
+      failureMode: failOpen
+      # Per-target requestTimeout. These were the `timeout:` field on each of the
+      # eight RemoteMCPServer CRs before they collapsed into one, and they are not
+      # interchangeable: idp/qa poll the Backstage scaffolder for up to 180s, while
+      # a 30s ceiling is what stops a wedged incident or cost call holding a slot.
+      # Collapsing to a single CR would have forced one number for all 54 tools —
+      # 300s everywhere, so a hung 30s tool would tie up five minutes. Keeping them
+      # here preserves the old semantics; the CR's own timeout is only the outer bound.
+      targets:
+        - name: idp
+          mcp:
+            host: idp-mcp-server.services-dev.svc.cluster.local
+            port: 3001
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 300s
+        - name: qa
+          mcp:
+            host: qa-mcp-server.services-dev.svc.cluster.local
+            port: 3002
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 300s
+        - name: contract
+          mcp:
+            host: contract-mcp-server.services-dev.svc.cluster.local
+            port: 3003
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 60s
+        - name: github
+          mcp:
+            host: github-mcp-server.services-dev.svc.cluster.local
+            port: 3005
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+        - name: argocd
+          mcp:
+            host: argocd-mcp-server.services-dev.svc.cluster.local
+            port: 3006
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 90s
+        - name: cost
+          mcp:
+            host: cost-mcp-server.services-dev.svc.cluster.local
+            port: 3007
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+        # ADP-only (bootstrap-ai.sh --adp). Absent on a base install; failOpen
+        # above is what keeps that from being an outage.
+        - name: incident
+          mcp:
+            host: incident-mcp-server.services-dev.svc.cluster.local
+            port: 3008
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+        - name: security
+          mcp:
+            host: security-mcp-server.services-dev.svc.cluster.local
+            port: 3010
+            path: /mcp
+          policies:
+            http:
+              requestTimeout: 30s
+
+---
+# Backs config.database above (storage.mode: hybrid). Small: this holds
+# console-authored overlay config (targets/models/routes), not traffic data.
+# No storageClassName — same reasoning as mlflow-data: bind whatever the
+# cluster's default class is, which is `standard` (rancher.io/local-path) on
+# Kind, so this stays local-only and needs no AWS counterpart edit.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-gateway-store
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-gateway
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+    backstage.io/kubernetes-id: ai-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-gateway
+  template:
+    metadata:
+      labels:
+        app: ai-gateway
+        backstage.io/kubernetes-id: ai-gateway
+      annotations:
+        # Scraped via the ai-gateway ServiceMonitor in
+        # kubernetes/monitoring/servicemonitor-kagent.yaml (that file owns both
+        # AI-stack monitors). These annotations are for any scrape path that
+        # reads them rather than the Prometheus Operator.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "15020"
+        prometheus.io/path: "/metrics"
+        # No checksum/config annotation on purpose. agentgateway watches its
+        # config file ("Watching config file: /config/config.yaml" at startup),
+        # so a ConfigMap edit takes effect after the kubelet's volume sync. The
+        # alternative — bootstrap patching a checksum onto the Deployment — is
+        # the `kubectl set env` pattern that ArgoCD selfHeal silently reverted
+        # once already.
+        #
+        # Caveat, measured rather than assumed: the watch does NOT cover listener
+        # bind addresses. Changing adminAddr updated the file inside the pod and
+        # produced no listener until the Deployment was rolled. Treat
+        # adminAddr/statsAddr/readinessAddr as startup-only and follow an edit to
+        # them with `kubectl -n ml-platform rollout restart deploy/ai-gateway`.
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agentgateway
+          # Pinned, not :latest — same convention as ollama 0.13.0 and vLLM
+          # v0.26.0. A proxy that silently changes version changes its routing.
+          image: cr.agentgateway.dev/agentgateway:v1.5.0
+          args: ["-f", "/config/config.yaml"]
+          ports:
+            - containerPort: 3000
+              name: mcp
+            - containerPort: 15000
+              name: admin
+            - containerPort: 15020
+              name: metrics
+            - containerPort: 15021
+              name: readiness
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # timeoutSeconds is set explicitly on both probes because Kubernetes
+          # defaults it to 1s when omitted — never stated in the manifest, and
+          # the exact bug that had MLflow restart-looping every ~90s (fixed in
+          # efccde6). Observed here too: during a CPU-starved bootstrap this
+          # gateway was liveness-killed while perfectly healthy, exiting 0 /
+          # "Completed" — the signature of a probe kill rather than a crash.
+          # The process is a Rust binary answering a static readiness endpoint,
+          # so a slow reply means the node is starving, not that the gateway is
+          # broken; 15s rides that out instead of amplifying it with a restart.
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: readiness
+            # 20s, not 10s: a 15s timeout inside a 10s period lets probes
+            # overlap. Same pairing as mlflow.yaml.
+            periodSeconds: 20
+            timeoutSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: readiness
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              # 64Mi, from a measurement on a real cluster: 9Mi working set and
+              # ~20 MiB anon RSS with all eight targets configured and 40
+              # concurrent MCP requests in flight (v1.5.0, Kind). CPU sat at
+              # 2-3m throughout, well under the 50m requested.
+              #
+              # An earlier 128Mi here cited "84 MiB measured" — that number came
+              # from `docker stats`, which counts the page cache (~58 MiB of
+              # mapped binary) alongside the working set. It described the image,
+              # not the process. Requesting against it reserved roughly 6x what
+              # the gateway ever touches, which is real waste on a node measured
+              # to have no headroom.
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # optional: true — a cluster with no Anthropic key still gets a fully
+          # working MCP gateway; only /v1/messages fails, and it fails upstream.
+          envFrom:
+            - secretRef:
+                name: ai-gateway-llm-keys
+                optional: true
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            # Writable scratch for the request log SQLite file. readOnlyRootFilesystem
+            # is true, so without this the gateway cannot create it. emptyDir rather
+            # than a PVC on purpose: request logs are a debugging aid, and losing
+            # them with the pod is preferable to a volume that grows unattended.
+            - name: data
+              mountPath: /data
+            # Persistent — backs config.database (storage.mode: hybrid). Unlike
+            # `data` above, losing this on a pod restart would silently discard
+            # console-made config edits.
+            - name: gateway-store
+              mountPath: /gateway-store
+      volumes:
+        - name: config
+          configMap:
+            name: ai-gateway-config
+        - name: data
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: gateway-store
+          persistentVolumeClaim:
+            claimName: ai-gateway-store
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-gateway
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-gateway
+  ports:
+    - port: 3000
+      targetPort: mcp
+      name: mcp
+    # Admin/UI. Served on the Service so the local Ingress can route to it;
+    # on AWS nothing ingresses this port.
+    - port: 15000
+      targetPort: admin
+      name: admin
+    - port: 15020
+      targetPort: metrics
+      name: metrics

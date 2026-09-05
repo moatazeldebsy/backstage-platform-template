@@ -26,13 +26,12 @@ catalog-info.yaml      carries langfuse.com/service-name — drives the Langfuse
 
 ## Two secrets, two different mechanisms
 
-**The Anthropic API key is yours to create.** The platform does not hold one on your behalf:
+**No Anthropic API key needed.** Model calls route through the platform's AI Gateway, which
+holds the provider credential and injects it upstream — so a scaffolded service answers as soon
+as it is deployed, with no secret for you to create, hold or rotate.
 
-```bash
-kubectl create secret generic <service-name>-secrets \
-  --namespace services-dev \
-  --from-literal=ANTHROPIC_API_KEY=sk-ant-...
-```
+To bypass the gateway (running outside the cluster, or pinning to a different provider account),
+set `ANTHROPIC_BASE_URL=https://api.anthropic.com` and supply your own `ANTHROPIC_API_KEY`.
 
 **The Langfuse credentials are the platform's.** They are minted in-cluster and copied into every
 namespace labelled `idp.io/langfuse=enabled` as `secret/langfuse-otel`. `services-dev` already

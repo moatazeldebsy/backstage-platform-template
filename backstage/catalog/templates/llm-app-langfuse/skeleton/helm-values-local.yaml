@@ -47,9 +47,9 @@ metrics:
 # is missing, so an unconfigured secret is a degraded endpoint rather than a
 # crashloop that hides the real cause.
 #
-#   ${{ values.name }}-secrets  — ANTHROPIC_API_KEY. YOU create this:
-#       kubectl create secret generic ${{ values.name }}-secrets -n services-dev \
-#         --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+#   ${{ values.name }}-secrets  — optional, and no longer needed for Anthropic.
+#       Model calls go through the AI Gateway, which holds the provider key and
+#       injects it upstream. Keep this secret only for values of your own.
 #
 #   langfuse-otel               — LANGFUSE_OTLP_ENDPOINT + project key pair.
 #       Distributed by the platform to every namespace labelled

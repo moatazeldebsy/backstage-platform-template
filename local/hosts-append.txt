@@ -16,6 +16,7 @@
 127.0.0.1  tempo.idp.local
 127.0.0.1  argo-rollouts.idp.local
 # AI / ML Platform
+127.0.0.1  ai-gateway.idp.local
 127.0.0.1  mlflow.idp.local
 127.0.0.1  langfuse.idp.local
 127.0.0.1  kagent.idp.local

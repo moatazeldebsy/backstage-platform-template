@@ -41,6 +41,15 @@
 #                       Each agent is one pod; narrow this on a small machine.
 #                       Agents not selected are pruned, so re-running with a
 #                       shorter list removes the ones you dropped.
+#   --gateway          Deploy the AI Gateway (agentgateway, standalone) — one
+#                       multiplexed MCP endpoint in front of the eight MCP
+#                       servers, with tool names left unprefixed. ON BY DEFAULT:
+#                       every agent's single RemoteMCPServer points at it, so
+#                       skipping it leaves the agents with no tools. The flag is
+#                       kept for explicitness and for re-enabling after a
+#                       --skip-gateway run. ~9Mi. See docs/design/adr-0007-ai-gateway.md
+#   --skip-gateway     Skip the AI Gateway. Only useful for debugging the MCP
+#                       servers directly — the agents will not work without it.
 #   --adp              Also deploy Agentic Development Platform (ADP) components
 #                       (see docs/agentic-platform.md) on top of the base AI/ML stack
 #   --destroy          Remove AI/ML components only (keeps core platform running)
@@ -68,6 +77,9 @@ ADP=false
 # ~4GB on top of the platform, and everything runs fine against hosted APIs
 # without it. Exists so the agents can be tried with no API key at all.
 OLLAMA=false
+# On by default: every agent's single RemoteMCPServer points at it, so a
+# cluster without the gateway is a cluster whose agents have no tools.
+GATEWAY=true
 # Which KAgent agents to install. Empty means "not specified" -> the historical
 # default set (see AGENTS_DEFAULT below). Each agent is one Deployment running a
 # Python runtime, so this is the main lever for fitting the AI layer on a small
@@ -101,6 +113,8 @@ while [[ $# -gt 0 ]]; do
       AGENTS="$2"; shift 2 ;;
     --adp)          ADP=true; shift ;;
     --ollama)       OLLAMA=true; shift ;;
+    --gateway)      GATEWAY=true; shift ;;
+    --skip-gateway) GATEWAY=false; shift ;;
     --destroy)      DESTROY=true; shift ;;
     --force-build)  FORCE_BUILD=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
@@ -437,19 +451,21 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-agent.yaml"       2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-agent.yaml"        2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/idp-mcp-server-rbac.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/toolserver.yaml"      2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/qa-toolserver.yaml"   2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/github-toolserver.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/argocd-toolserver.yaml" 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-toolserver.yaml"   2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/ai-gateway-toolserver.yaml" 2>/dev/null || true
+  # The eight per-server RemoteMCPServer CRs the gateway replaced. Deleted by
+  # name, not by -f: their manifests no longer exist in the repo, so a
+  # file-based delete silently no-ops and leaves them behind on any cluster
+  # bootstrapped before the consolidation.
+  kubectl delete remotemcpservers.kagent.dev -n kagent \
+    idp-mcp-server qa-mcp-server contract-mcp-server github-mcp-server \
+    argocd-mcp-server cost-mcp-server incident-mcp-server security-mcp-server \
+    2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"        2>/dev/null || true
   # ADP components (docs/agentic-platform.md) — torn down unconditionally so a
   # destroy always fully cleans up regardless of which --adp phases were applied.
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/incident-agent.yaml"      2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/incident-toolserver.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/security-agent.yaml"      2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/security-toolserver.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/security-mcp-server-rbac.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/onboarding-agent.yaml"    2>/dev/null || true
   helm uninstall incident-mcp-server --namespace services-dev 2>/dev/null || true
@@ -465,6 +481,8 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"    2>/dev/null || true
   helm uninstall agent-event-router --namespace services-dev 2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/ai-gateway-external-secret.yaml" 2>/dev/null || true
+  kubectl delete secret ai-gateway-llm-keys -n ml-platform 2>/dev/null || true
   kubectl delete secret kagent-openai -n kagent 2>/dev/null || true
   # Residue from the pre-fe4fce2 HTTPS-with-mkcert install. Harmless once the
   # new HTTP-only ingress is applied, but its presence on second machines is a
@@ -478,6 +496,12 @@ if $DESTROY; then
   # 10Gi PVC behind after --destroy is the sort of thing found on a bill later.
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/ollama.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-ollama.yaml" 2>/dev/null || true
+  # AI Gateway — default-on rather than opt-in, but torn down for the same
+  # reason as the opt-in components above. Small, but a leftover gateway
+  # still holding sessions open against MCP servers that are being torn down is
+  # a confusing set of errors to inherit on the next install.
+  kubectl delete -f "${REPO_ROOT}/local/ml-platform/ai-gateway-ingress.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/ai-gateway.yaml" 2>/dev/null || true
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     kubectl delete -f "${REPO_ROOT}/aws/ml-platform/mlflow.yaml" 2>/dev/null || true
   fi
@@ -492,7 +516,6 @@ if $DESTROY; then
   kubectl delete secret langfuse-kagent-otel -n kagent      2>/dev/null || true
 
   # KAgent contract resources
-  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-toolserver.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"      2>/dev/null || true
 
   # MCP servers (services-dev namespace)
@@ -706,7 +729,7 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
   timer_start "0. /etc/hosts"
   info "Checking /etc/hosts entries (may prompt for your password)..."
   append_hosts_file "${REPO_ROOT}/local/hosts-append.txt" \
-    "mlflow|langfuse|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
+    "ai-gateway|mlflow|langfuse|kagent|idp-assistant|idp-mcp-server|qa-mcp-server|contract-mcp-server|agent-event-router|github-mcp-server|argocd-mcp-server|cost-mcp-server"
   timer_end "0. /etc/hosts"
 fi
 
@@ -1046,6 +1069,23 @@ kubectl create secret generic kagent-anthropic \
   --dry-run=client -o yaml | kubectl apply -f -
 check "Secret kagent-anthropic ready"
 
+# The AI Gateway needs the same provider key, and Secrets are namespace-scoped,
+# so kagent-anthropic in the kagent namespace is not reachable from ml-platform.
+# Same shape as the langfuse-otel key distribution: one source value, written
+# into each namespace that needs it.
+#
+# The gateway mounts this with optional: true, so a cluster without a key still
+# gets a fully working MCP gateway — only /v1/messages fails, and it fails with
+# the provider's own 401 rather than a startup error.
+if kubectl get namespace ml-platform &>/dev/null; then
+  info "Creating ai-gateway-llm-keys secret in ml-platform namespace..."
+  kubectl create secret generic ai-gateway-llm-keys \
+    --namespace ml-platform \
+    --from-literal=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Secret ai-gateway-llm-keys ready"
+fi
+
 # Create OpenAI secret if API key is provided
 if [[ -n "${OPENAI_API_KEY:-}" ]]; then
   info "Creating kagent-openai secret in kagent namespace..."
@@ -1271,6 +1311,54 @@ else
   info "Skipping Ollama (pass --ollama for a self-hosted model that needs no API key)."
 fi
 timer_end "3a. Ollama"
+
+# ── 3a-bis. AI Gateway (agentgateway, standalone) ─────────────────────────────
+# ON BY DEFAULT (--skip-gateway opts out). One multiplexed MCP endpoint in front
+# of the eight servers, with tool names left unprefixed so no agent allowlist has
+# to change.
+#
+# Not additive: this is now the only path. The eight per-server RemoteMCPServer
+# CRs were replaced by the single ai-gateway one, and every ModelConfig points
+# anthropic.baseUrl here, so a cluster that skips the gateway has agents with
+# neither tools nor a model. See docs/design/adr-0007-ai-gateway.md.
+timer_start "3a-bis. AI Gateway"
+if [[ "$GATEWAY" == "true" ]]; then
+  info "Deploying AI Gateway (agentgateway v1.5.0) to ml-platform..."
+  kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/ai-gateway.yaml"
+  # Admin UI ingress, local only. No AWS counterpart on purpose: an ALB in front
+  # of an unauthenticated admin interface is the pattern this branch removed from
+  # the MCP servers. On EKS the port stays reachable in-cluster and unexposed.
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    kubectl apply -f "${REPO_ROOT}/local/ml-platform/ai-gateway-ingress.yaml"
+  fi
+  # Small Rust binary with no model to pull, so this is seconds, not minutes.
+  kubectl rollout status deployment/ai-gateway -n ml-platform --timeout=180s \
+    || warn "AI Gateway did not become ready — check: kubectl logs -n ml-platform deploy/ai-gateway"
+
+  # failureMode: failOpen means unreachable targets are skipped rather than
+  # failing the session, so a gateway that is Ready can still be serving fewer
+  # tools than expected. Say which targets are actually resolvable now, because
+  # the alternative is discovering it later as "the agent lost a tool".
+  _gw_missing=""
+  for _t in idp:3001 qa:3002 contract:3003 github:3005 argocd:3006 cost:3007 incident:3008 security:3010; do
+    _svc="${_t%%:*}-mcp-server"
+    kubectl get service "$_svc" -n services-dev &>/dev/null || _gw_missing="${_gw_missing} ${_svc}"
+  done
+  if [[ -n "$_gw_missing" ]]; then
+    warn "AI Gateway targets not present in services-dev:${_gw_missing}"
+    warn "  Those tools will be absent from tools/list. incident/security need --adp."
+  fi
+  check "AI Gateway deployed — /mcp (54 tools) and /v1/messages (Anthropic) on :3000"
+  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    warn "  No ANTHROPIC_API_KEY: MCP tools work, model calls will 401 upstream."
+  fi
+else
+  warn "Skipping AI Gateway (--skip-gateway). Agents reference the ai-gateway"
+  warn "  RemoteMCPServer for tools AND route their model calls through it"
+  warn "  (modelconfig*.yaml anthropic.baseUrl), so they will have neither"
+  warn "  tools nor a working model until it is deployed."
+fi
+timer_end "3a-bis. AI Gateway"
 
 # ── 3b. Langfuse (LLM observability) ──────────────────────────────────────────
 timer_start "3b. Langfuse (launch)"
@@ -1662,25 +1750,12 @@ EOF
   # these objects are independent (distinct ModelConfigs/RemoteMCPServers/
   # Agents), so there is nothing to order between them, and a single call pays
   # one process spawn and one client-side discovery round trip instead of 16.
-  # contract-toolserver is required, not optional: idp-agent and platform-agent
-  # both reference contract-mcp-server as a tool source, so without it those
-  # agents fail to compile ("RemoteMCPServer.kagent.dev contract-mcp-server not found").
-  # Toolservers each selected agent needs, beyond the always-applied base
-  # (toolserver.yaml provides idp-mcp-server plus kagent's own tool server).
-  # Selection itself was resolved and validated at the top of this script.
-  _agent_toolservers() {
-    case "$1" in
-      idp|platform)  echo "qa-toolserver.yaml argocd-toolserver.yaml cost-toolserver.yaml contract-toolserver.yaml" ;;
-      qa)            echo "qa-toolserver.yaml github-toolserver.yaml" ;;
-      release)       echo "argocd-toolserver.yaml" ;;
-      cost)          echo "cost-toolserver.yaml" ;;
-      contract)      echo "contract-toolserver.yaml" ;;
-      incident)      echo "incident-toolserver.yaml" ;;
-      security)      echo "security-toolserver.yaml" ;;
-      onboarding)    echo "" ;;
-      *)             echo "" ;;
-    esac
-  }
+  # There is one RemoteMCPServer now — ai-gateway — and every agent references
+  # it, so there is no longer a per-agent toolserver selection to compute. It is
+  # in the always-applied base list below, which matters because an Agent whose
+  # RemoteMCPServer is absent fails to compile with
+  # "RemoteMCPServer.kagent.dev ai-gateway not found".
+  # Agent selection itself was resolved and validated at the top of this script.
 
   _agents_selected="$AGENTS_SELECTED"
   for _a in ${_agents_selected//,/ }; do
@@ -1694,28 +1769,15 @@ EOF
     info "KAgent agents: none (--agents none) — runtime installs, no agent pods"
   fi
 
-  # Base: model configs, RBAC, and the always-present toolserver. Never selectable.
+  # Base: model configs, RBAC, and the single gateway toolserver. Never selectable.
   _kagent_manifests=(
     modelconfig.yaml
     modelconfig-haiku.yaml
     modelconfig-sonnet.yaml
     modelconfig-opus.yaml
     idp-mcp-server-rbac.yaml
-    toolserver.yaml
+    ai-gateway-toolserver.yaml
   )
-
-  # Toolservers for the selected agents, de-duplicated. Applied before the
-  # agents themselves: an Agent whose RemoteMCPServer is absent fails to compile
-  # with "RemoteMCPServer.kagent.dev <name> not found".
-  _ts_seen=""
-  for _a in ${_agents_selected//,/ }; do
-    for _ts in $(_agent_toolservers "$_a"); do
-      case " $_ts_seen " in
-        *" $_ts "*) ;;
-        *) _ts_seen="$_ts_seen $_ts"; _kagent_manifests+=("$_ts") ;;
-      esac
-    done
-  done
 
   # The agents themselves.
   for _a in ${_agents_selected//,/ }; do
@@ -1729,6 +1791,20 @@ EOF
     _kagent_apply_args+=(-f "${REPO_ROOT}/kubernetes/kagent/${_m}")
   done
   kubectl apply "${_kagent_apply_args[@]}"
+
+  # Prune the eight per-server RemoteMCPServer CRs the gateway replaced. A
+  # cluster bootstrapped before the consolidation still has them, and nothing
+  # references them any more — but they are not inert: each still advertises a
+  # direct route to an MCP server, which is exactly the bypass the gateway
+  # exists to remove. Applied here rather than only in --destroy so a plain
+  # re-run converges an existing cluster.
+  for _old_ts in idp-mcp-server qa-mcp-server contract-mcp-server github-mcp-server \
+                 argocd-mcp-server cost-mcp-server incident-mcp-server security-mcp-server; do
+    if kubectl get remotemcpservers.kagent.dev -n kagent "$_old_ts" >/dev/null 2>&1; then
+      info "  Pruning superseded RemoteMCPServer: $_old_ts (replaced by ai-gateway)"
+      kubectl delete remotemcpservers.kagent.dev -n kagent "$_old_ts" --wait=false >/dev/null 2>&1 || true
+    fi
+  done
 
   # Prune agents that are no longer selected, so re-running with a shorter
   # --agents list actually removes them instead of silently leaving the previous
@@ -1757,8 +1833,8 @@ EOF
     # for what each phase adds. Manifests referenced here are applied only if
     # present, so bootstrap-ai.sh --adp is always safe to run against whatever
     # ADP phases have shipped so far.
-    for _adp_manifest in incident-toolserver.yaml incident-agent.yaml \
-                         security-mcp-server-rbac.yaml security-toolserver.yaml security-agent.yaml \
+    for _adp_manifest in incident-agent.yaml \
+                         security-mcp-server-rbac.yaml security-agent.yaml \
                          onboarding-agent.yaml; do
       if [[ -f "${REPO_ROOT}/kubernetes/kagent/${_adp_manifest}" ]]; then
         kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/${_adp_manifest}"
@@ -1783,6 +1859,12 @@ EOF
       -n kagent \
       "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" \
       --overwrite
+    # Same Secrets Manager entry, projected into ml-platform for the gateway.
+    # Uses the cluster-scoped aws-secretsmanager store, so no extra SA or IRSA
+    # role is needed. Keeps the gateway's copy rotating with the source instead
+    # of freezing at whatever the bootstrap wrote imperatively.
+    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/ai-gateway-external-secret.yaml"
+    check "AI Gateway ExternalSecret → idp-mvp/kagent (Secrets Manager)"
     kubectl apply -f "${REPO_ROOT}/aws/kagent/ingress.yaml"
     kubectl apply -f "${REPO_ROOT}/aws/kagent/ingress-idp-assistant.yaml"
     check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
@@ -2155,6 +2237,11 @@ else
     fi
   fi
 
+  # Collected so the end of this step can say something true about the whole
+  # set. Warning per service and then printing "Bootstrap Complete" let a run
+  # where EVERY deploy failed look successful — see the summary below.
+  _mcp_failed=()
+
   for SVC in "${MCP_SERVICES[@]}"; do
     # Clean up stale resources from previous failed runs before deploying
     cleanup_stale_mcp_resources "$SVC" "services-dev"
@@ -2283,8 +2370,31 @@ else
     # here as a warning and the loop carries on to the remaining services.
     if [[ $_svc_rc -ne 0 ]]; then
       warn "${SVC} build/deploy failed (exit ${_svc_rc}) — check: kubectl get po -n services-dev"
+      _mcp_failed+=("$SVC")
     fi
   done
+
+  # One warning per service scrolls past; the banner at the end then claims
+  # success regardless. On 2026-09-04 a --skip-obs cluster failed all seven
+  # deploys (no ServiceMonitor CRD, so every `helm upgrade --install` was
+  # rejected) and the run still printed "AI/ML Platform Bootstrap Complete" with
+  # an empty services-dev. Say it plainly instead, and say it last.
+  if (( ${#_mcp_failed[@]} > 0 )); then
+    if (( ${#_mcp_failed[@]} == ${#MCP_SERVICES[@]} )); then
+      # Detail through warn, then a single err — err() exits 1 (lib.sh:28), so
+      # anything after the first one would never print.
+      warn "The gateway will have no targets and every agent will have no tools."
+      warn "Check the FIRST failure above, not the last: a missing CRD or a"
+      warn "rejecting admission webhook fails every service identically. A"
+      warn "cluster built with --skip-obs has no ServiceMonitor CRD, which is"
+      warn "exactly this shape — install it, or re-run without --skip-obs."
+      err "ALL ${#MCP_SERVICES[@]} MCP servers failed to deploy — systemic, not per-service. Refusing to report success."
+    else
+      warn "${#_mcp_failed[@]} of ${#MCP_SERVICES[@]} MCP servers failed: ${_mcp_failed[*]}"
+      warn "  The gateway skips unreachable targets (failOpen), so it will serve"
+      warn "  fewer tools than expected rather than erroring."
+    fi
+  fi
 
   # ── 6b. Self-heal stuck RemoteMCPServers ────────────────────────────────────
   # Runs here, after the MCP servers are actually deployed. It used to run in
@@ -2489,6 +2599,7 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   fi
 else
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "KAgent UI             http://kagent.idp.local"
+  [[ "$GATEWAY"      == "true"  ]] && box_row "AI Gateway UI         http://ai-gateway.idp.local"
   [[ "$SKIP_KAGENT"  == "false" ]] && box_row "AI Assistant          http://backstage.idp.local/ai-assistant"
   [[ "$SKIP_MLFLOW"  == "false" ]] && box_row "MLflow                http://mlflow.idp.local"
   if [[ "$LANGFUSE" == "true" ]]; then

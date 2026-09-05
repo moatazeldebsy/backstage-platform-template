@@ -2,8 +2,8 @@
 # single-cluster `services` namespace used by local/Kind). Same allow rules as
 # kubernetes/teams/*/network-policy.yaml: same-namespace traffic, Prometheus
 # scraping, the ingress controller (kube-system or ingress-nginx namespace),
-# and KAgent MCP tool calls (kagent namespace, ports 3001-3007) are permitted;
-# everything else is denied.
+# and MCP tool calls from the kagent and ml-platform namespaces (ports 3001-3010)
+# are permitted; everything else is denied.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -30,11 +30,19 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
-    # Allow KAgent agents to reach the MCP tool servers hosted here
+    # Allow KAgent agents to reach the MCP tool servers hosted here.
+    # ml-platform is listed alongside kagent because the AI Gateway
+    # (kubernetes/ml-platform/ai-gateway.yaml, opt-in via --gateway) multiplexes
+    # these same servers and runs there. Without it the gateway comes up Ready
+    # and serves an empty tool list — failureMode: failOpen turns a blocked
+    # target into a missing tool, not an error.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kagent
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ml-platform
       ports:
         - protocol: TCP
           port: 3001
@@ -48,6 +56,14 @@ spec:
           port: 3006
         - protocol: TCP
           port: 3007
+        # 3008 incident-mcp-server, 3010 security-mcp-server — both ADP-phase
+        # servers (bootstrap-ai.sh --adp). They were added after this allowlist
+        # was written, so incident-agent and security-agent tool calls were
+        # denied wherever these policies are enforced.
+        - protocol: TCP
+          port: 3008
+        - protocol: TCP
+          port: 3010
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -75,11 +91,19 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
-    # Allow KAgent agents to reach the MCP tool servers hosted here
+    # Allow KAgent agents to reach the MCP tool servers hosted here.
+    # ml-platform is listed alongside kagent because the AI Gateway
+    # (kubernetes/ml-platform/ai-gateway.yaml, opt-in via --gateway) multiplexes
+    # these same servers and runs there. Without it the gateway comes up Ready
+    # and serves an empty tool list — failureMode: failOpen turns a blocked
+    # target into a missing tool, not an error.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kagent
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ml-platform
       ports:
         - protocol: TCP
           port: 3001
@@ -93,6 +117,14 @@ spec:
           port: 3006
         - protocol: TCP
           port: 3007
+        # 3008 incident-mcp-server, 3010 security-mcp-server — both ADP-phase
+        # servers (bootstrap-ai.sh --adp). They were added after this allowlist
+        # was written, so incident-agent and security-agent tool calls were
+        # denied wherever these policies are enforced.
+        - protocol: TCP
+          port: 3008
+        - protocol: TCP
+          port: 3010
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -120,11 +152,19 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
-    # Allow KAgent agents to reach the MCP tool servers hosted here
+    # Allow KAgent agents to reach the MCP tool servers hosted here.
+    # ml-platform is listed alongside kagent because the AI Gateway
+    # (kubernetes/ml-platform/ai-gateway.yaml, opt-in via --gateway) multiplexes
+    # these same servers and runs there. Without it the gateway comes up Ready
+    # and serves an empty tool list — failureMode: failOpen turns a blocked
+    # target into a missing tool, not an error.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kagent
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ml-platform
       ports:
         - protocol: TCP
           port: 3001
@@ -138,6 +178,14 @@ spec:
           port: 3006
         - protocol: TCP
           port: 3007
+        # 3008 incident-mcp-server, 3010 security-mcp-server — both ADP-phase
+        # servers (bootstrap-ai.sh --adp). They were added after this allowlist
+        # was written, so incident-agent and security-agent tool calls were
+        # denied wherever these policies are enforced.
+        - protocol: TCP
+          port: 3008
+        - protocol: TCP
+          port: 3010
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -165,11 +213,19 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
-    # Allow KAgent agents to reach the MCP tool servers hosted here
+    # Allow KAgent agents to reach the MCP tool servers hosted here.
+    # ml-platform is listed alongside kagent because the AI Gateway
+    # (kubernetes/ml-platform/ai-gateway.yaml, opt-in via --gateway) multiplexes
+    # these same servers and runs there. Without it the gateway comes up Ready
+    # and serves an empty tool list — failureMode: failOpen turns a blocked
+    # target into a missing tool, not an error.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kagent
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ml-platform
       ports:
         - protocol: TCP
           port: 3001
@@ -183,3 +239,11 @@ spec:
           port: 3006
         - protocol: TCP
           port: 3007
+        # 3008 incident-mcp-server, 3010 security-mcp-server — both ADP-phase
+        # servers (bootstrap-ai.sh --adp). They were added after this allowlist
+        # was written, so incident-agent and security-agent tool calls were
+        # denied wherever these policies are enforced.
+        - protocol: TCP
+          port: 3008
+        - protocol: TCP
+          port: 3010

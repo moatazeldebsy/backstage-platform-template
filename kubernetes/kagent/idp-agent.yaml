@@ -65,7 +65,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: idp-mcp-server
+          name: ai-gateway
           namespace: kagent
           toolNames:
             - catalog_search
@@ -77,22 +77,10 @@ spec:
             - list_templates
             - get_user_memory
             - set_user_memory
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: qa-mcp-server
-          namespace: kagent
-          toolNames:
             - list_test_suites
             - scaffold_test_suite
             - search_test_catalog
             - get_test_metrics
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: contract-mcp-server
-          namespace: kagent
-          toolNames:
             - register_contract
             - get_contract
             - list_contracts
@@ -102,23 +90,11 @@ spec:
             - get_compatibility_report
             - fetch_service_contract
             - auto_discover_contracts
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: argocd-mcp-server
-          namespace: kagent
-          toolNames:
             - list_apps
             - get_app_health
             - get_app_diff
             - sync_app
             - rollback_app
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: cost-mcp-server
-          namespace: kagent
-          toolNames:
             - get_team_spend
             - forecast_budget
             - list_budget_overruns

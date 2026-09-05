@@ -10,30 +10,33 @@ kubectl exec deploy/${{ values.name }} -n services-dev -- \
 ```
 
 ```json
-{"status":"ready","model":"${{ values.model }}","api_key_configured":true,"tracing_enabled":true}
+{"status":"ready","mcp_tools":54,"tracing":true}
 ```
 
-`api_key_configured: false` and `tracing_enabled: false` each point at a specific secret — see
-below.
+`mcp_tools: 0` means the AI Gateway is unreachable or serving nothing; `tracing: false` points at
+the `langfuse-otel` secret. Both are covered below.
+
+(This block previously showed an `api_key_configured` field that `/ready` has never returned.)
 
 ## `/chat` returns 503, `/healthz` is fine
 
-`ANTHROPIC_API_KEY` is not reaching the pod. This is the designed degraded state, not a crash.
+Model calls are not getting through. This agent holds no provider key, so the cause is never a
+secret in this namespace — it is the AI Gateway, or the gateway's own credential.
 
 ```bash
-kubectl get secret ${{ values.name }}-secrets -n services-dev
+kubectl get deployment ai-gateway -n ml-platform     # is it running at all?
+kubectl logs -n ml-platform deploy/ai-gateway | grep 'protocol=llm' | tail
 ```
 
-Missing → create it:
+- **No `protocol=llm` lines** — the request never arrived. Check `ANTHROPIC_BASE_URL` on this
+  pod; it should be `http://ai-gateway.ml-platform.svc.cluster.local:3000`.
+- **`http.status=401` with `gen_ai.provider.name=anthropic`** — the request reached the gateway
+  and the gateway reached Anthropic, which rejected *its* credential. Fix `ai-gateway-llm-keys`
+  in `ml-platform`, not anything here.
+- **Gateway pod absent** — the platform was installed with `--skip-gateway`. Every agent and
+  every scaffolded LLM app depends on it.
 
-```bash
-kubectl create secret generic ${{ values.name }}-secrets -n services-dev \
-  --from-literal=ANTHROPIC_API_KEY=sk-ant-...
-kubectl rollout restart deployment/${{ values.name }} -n services-dev
-```
-
-Present but still 503 → the pod predates the secret. `envFrom` is read at container start, so
-restart the deployment.
+An empty tool list is the same gateway, different symptom — see the MCP section below.
 
 ## `/chat` returns 429 or 503 intermittently
 

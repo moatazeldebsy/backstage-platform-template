@@ -70,23 +70,36 @@ _client: anthropic.Anthropic | None = None
 
 
 def get_client() -> anthropic.Anthropic:
-    """Return the shared Anthropic client, or 503 if the API key is missing.
+    """Return the shared Anthropic client.
 
-    The key comes from `secret/${{ values.name }}-secrets`, which is mounted
-    with `optional: true` — the pod starts without it so a missing secret is a
-    degraded endpoint rather than a crashloop. See the README.
+    Calls go through the platform's AI Gateway, not to api.anthropic.com
+    directly. The gateway holds the provider credential and injects it upstream,
+    so this service needs no `sk-ant-` key of its own — one fewer secret for
+    every team to create, hold and rotate, and one place where the platform can
+    see and attribute the spend.
+
+    `ANTHROPIC_BASE_URL` is passed explicitly rather than left to the SDK's
+    environment handling, so the routing is visible in the code that does it.
+
+    The SDK still requires *some* api_key value client-side, hence the
+    placeholder. The gateway does not check it today; when inbound auth is
+    enabled it becomes the per-team virtual key and arrives through the same
+    optional secret.
+
+    Point `ANTHROPIC_BASE_URL` at https://api.anthropic.com and supply a real
+    `ANTHROPIC_API_KEY` to bypass the gateway — useful for local development
+    outside the cluster.
     """
     global _client
     if _client is None:
-        if not os.environ.get("ANTHROPIC_API_KEY"):
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    "ANTHROPIC_API_KEY is not set. Create secret/"
-                    "${{ values.name }}-secrets in this namespace — see the README."
-                ),
-            )
-        _client = anthropic.Anthropic()
+        base_url = os.environ.get(
+            "ANTHROPIC_BASE_URL",
+            "http://ai-gateway.ml-platform.svc.cluster.local:3000",
+        )
+        _client = anthropic.Anthropic(
+            base_url=base_url,
+            api_key=os.environ.get("ANTHROPIC_API_KEY", "via-ai-gateway"),
+        )
     return _client
 
 
@@ -251,7 +264,10 @@ async def ready():
     return {
         "status": "ready",
         "model": MODEL,
-        "api_key_configured": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "llm_base_url": os.environ.get(
+            "ANTHROPIC_BASE_URL",
+            "http://ai-gateway.ml-platform.svc.cluster.local:3000",
+        ),
         "tracing_enabled": tracing_enabled(),
     }
 

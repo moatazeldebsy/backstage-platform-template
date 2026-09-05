@@ -1,0 +1,69 @@
+# AI Gateway admin UI — LOCAL ONLY.
+#
+# Applied by bootstrap-ai.sh only when DEPLOY_MODE == local. There is deliberately
+# no AWS counterpart: on EKS the admin port stays reachable in-cluster and is not
+# ingressed, because an internet-facing ALB in front of an unauthenticated admin
+# interface is exactly the pattern this branch removed from the MCP servers
+# (see the `ingress.enabled: false` blocks in services/*/helm-values-aws.yaml).
+#
+# What lives behind this host:
+#   /ui           the agentgateway console — routes, MCP targets, model list
+#   /config_dump  the resolved config as JSON
+#
+# Neither exposes credentials: /config_dump renders provider keys as
+# {"key":{"value":"<redacted>"}}, confirmed against v1.5.0. It does expose the
+# topology — every MCP target host and port, and which models are served — so it
+# belongs on a laptop cluster and not on a shared one.
+#
+# `*.idp.local` resolves to 127.0.0.1 via /etc/hosts (bootstrap adds the entry;
+# on a machine with a dnsmasq wildcard resolver for .idp.local it is already
+# there). Same shape as kagent.idp.local, mlflow.idp.local and langfuse.idp.local.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-gateway-admin
+  namespace: ml-platform
+  labels:
+    app: ai-gateway
+  annotations:
+    # HTTP only, matching every other local ingress — mkcert/TLS was removed
+    # from the local path (see the kagent-tls note in bootstrap-ai.sh).
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: ai-gateway.idp.local
+      http:
+        paths:
+          # Data plane first — nginx matches the longest prefix, so these win
+          # over "/" below. Without them the console's Chat and Tool Playgrounds
+          # cannot work: they call /v1/... and /mcp from the browser, and every
+          # path on this host would otherwise land on the admin listener, which
+          # answers the preflight with its own CORS defaults and then 404s.
+          #
+          # This does put /v1/messages on the host, so anything running on the
+          # developer's machine can spend tokens through it. That is the same
+          # reach a `kubectl port-forward` already gives, on a host that resolves
+          # to 127.0.0.1, and there is no AWS equivalent of this file.
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-gateway
+                port:
+                  name: mcp
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-gateway
+                port:
+                  name: mcp
+          # Everything else is the console: /ui, /config_dump.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-gateway
+                port:
+                  name: admin

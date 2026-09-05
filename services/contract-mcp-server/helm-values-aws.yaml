@@ -29,7 +29,14 @@ service:
   port: 3003
   targetPort: 3003
 ingress:
-  enabled: true
+  # Disabled: this was an internet-facing ALB with `host: ""` (match any hostname),
+  # no TLS, and no authentication in front of POST /mcp. Nothing consumed it —
+  # Backstage reaches the MCP servers over in-cluster Service DNS and KAgent uses
+  # the RemoteMCPServer CRs in kubernetes/kagent/. Five of the eight MCP servers
+  # already had their ALBs removed on 2026-08-18 for cost; these last three are
+  # removed for exposure. If external MCP access is ever wanted, expose the AI
+  # gateway with JWT auth in front of it — never a bare /mcp.
+  enabled: false
   className: alb
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing

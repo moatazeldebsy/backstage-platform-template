@@ -1,6 +1,6 @@
 ---
 name: drift-detector
-description: Read-only agent that compares two implementations of the same contract in this IDP repo and reports where they have diverged. Built for the known drift pairs — Backstage template skeleton vs CLI local scaffolder, template registration in app-config.yaml vs all-templates.yaml, and helm-values-local.yaml vs helm-values-aws.yaml. Use whenever a scaffolder template, the CLI scaffolder, or the golden-path chart changes.
+description: Read-only agent that compares two implementations of the same contract in this IDP repo and reports where they have diverged. Built for the known drift pairs — Backstage template skeleton vs CLI local scaffolder, template registration in app-config.yaml vs all-templates.yaml, helm-values-local.yaml vs helm-values-aws.yaml, and the static KAgent manifests vs the Backstage backend modules that generate the same CRs at runtime. Use whenever a scaffolder template, the CLI scaffolder, the golden-path chart, or kubernetes/kagent/ changes.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -12,7 +12,7 @@ divergence; the calling skill decides what to reconcile.
 Read `.claude/context/platform-map.md` first — §3 (dual-target rule) and §5 (two front
 doors, two scaffolder implementations) define the contracts you are checking.
 
-## The three drift pairs
+## The four drift pairs
 
 ### Pair A — Backstage skeleton vs CLI local scaffolder
 
@@ -61,6 +61,34 @@ Legitimate asymmetry is expected — ingress annotations, replica counts, resour
 requests, registry host. Do not report those as defects. Report a key as drift only
 when the chart reads it on a path both targets exercise.
 
+### Pair D — Static KAgent manifests vs runtime-generated CRs
+
+- `kubernetes/kagent/*.yaml` (the `Agent` and `RemoteMCPServer` CRs applied by
+  `scripts/bootstrap-ai.sh`)
+- against the same CRs built as **TypeScript template strings** in
+  `backstage/app/packages/backend/src/modules/idpDeployAgent.ts` and
+  `.../idpSetupContractTesting.ts`
+
+This pair is the easiest of the four to miss, because the second side is not YAML.
+A rename in `kubernetes/kagent/` is invisible to any file-shaped search of that
+directory, and grepping the repo for the old name turns up a string literal that
+reads like documentation.
+
+Report: any `mcpServer.name`, `mcpServer.kind`, `namespace`, `modelConfig` or
+`toolNames` entry in the generated CRs that does not resolve against what
+`kubernetes/kagent/` actually defines. Check `RemoteMCPServer` names hardest — since
+ADR-0007 there is exactly one, `ai-gateway`, and the generators predate it.
+
+Report as a **high-severity** finding when a generated `Agent` shares its
+`metadata.name` and `namespace` with a static manifest: applying it overwrites the
+static agent, so the drift does not merely coexist, it wins.
+`idpSetupContractTesting.ts` does this with `contract-assistant` in `kagent`.
+
+The symptom of an unresolved reference is an Agent stuck at `Accepted: False` /
+`Ready: Unknown` with no useful message — KAgent does not report the missing name.
+Found this way on 2026-09-03: both modules still emitted `name: idp-mcp-server`
+after the eight per-server CRs were consolidated into one.
+
 ## Method
 
 1. Enumerate both sides mechanically (Glob/Grep) before reading. Never eyeball one
@@ -68,6 +96,10 @@ when the chart reads it on a path both targets exercise.
 2. Where a real command settles it, run it: `python3 scripts/validate-catalog-templates.py`,
    `helm lint helm/service-template --set image.repository=test --set image.tag=abc1234`,
    `helm template` against each values file. Quote actual output.
+   For Pair D, the two sides are:
+   `grep -rhoE 'name: [a-z0-9-]+' kubernetes/kagent/*.yaml | sort -u` (what exists) against
+   `grep -rn 'RemoteMCPServer' -A3 backstage/app/packages/backend/src/modules/` (what is
+   generated). Every generated name must appear in the first list.
 3. For each divergence decide: **defect** (breaks a contract), **gap** (one side simply
    doesn't implement it yet), or **intentional asymmetry** (target-specific by design).
    Label every item with one of those three.

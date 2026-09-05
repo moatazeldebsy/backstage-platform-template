@@ -201,10 +201,11 @@ count maps directly to CPU pressure. Narrow it with `--agents`:
 
 Two things worth knowing:
 
-- **Toolservers are free and automatic.** They are `RemoteMCPServer` custom
-  resources pointing at the MCP Services in `services-dev` — they create no
-  pods. The script derives the ones your selection needs, so agents are
-  genuinely independent: enabling one can never break another.
+- **There is one toolserver, and it is automatic.** Every agent references a
+  single `RemoteMCPServer` named `ai-gateway`, applied for you. It creates no
+  pods of its own; the AI Gateway it points at is one ~9Mi pod that multiplexes
+  all eight MCP servers. Agents stay genuinely independent — each still gets only
+  the tools in its own allowlist, so enabling one can never break another.
 - **Deselected agents are pruned.** Re-running with a shorter list deletes the
   agents you dropped rather than leaving the previous run's pods consuming CPU.
   An unknown agent name fails immediately, before anything is installed.
