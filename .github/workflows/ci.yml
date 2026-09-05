@@ -386,11 +386,18 @@ jobs:
       #
       # That is exactly how services/demo-aws-react reached the cluster as a
       # broken Application. Fail here instead.
+      #
+      # Only directories with a Dockerfile are deployable services — same test
+      # build-and-deploy.yml's path-filter generation already uses. A shared
+      # library like services/mcp-common (no Dockerfile, nothing to deploy) is
+      # never an ArgoCD Application, so it carries no helm-values files by
+      # design and shouldn't be flagged as missing them.
       - name: Every services/* has per-target values files
         run: |
           missing=0
           for d in services/*/; do
             [ -d "$d" ] || continue
+            [ -f "${d}Dockerfile" ] || continue
             for target in aws local; do
               if [ ! -f "${d}helm-values-${target}.yaml" ]; then
                 echo "::error::${d} has no helm-values-${target}.yaml — the ArgoCD ApplicationSet would deploy it with chart defaults"
