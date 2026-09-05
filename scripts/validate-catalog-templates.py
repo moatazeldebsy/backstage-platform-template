@@ -77,7 +77,7 @@ EXTERNAL_MODEL_CONFIGS = {"default-model-config"}
 # Re-transcribe it when KAGENT_CHART_VERSION moves in scripts/bootstrap-ai.sh;
 # the version below is asserted against that script so the two cannot drift
 # silently.
-KAGENT_CHART_VERSION = "0.9.4"
+KAGENT_CHART_VERSION = "0.10.0"
 BOOTSTRAP_AI = Path("scripts/bootstrap-ai.sh")
 KAGENT_SERVED_VERSIONS: dict[str, set[str]] = {
     "Agent": {"v1alpha1", "v1alpha2"},
