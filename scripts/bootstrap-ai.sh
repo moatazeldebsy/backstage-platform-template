@@ -1469,11 +1469,16 @@ timer_start "4. KAgent install + patches"
 if [[ "$SKIP_KAGENT" == "true" ]]; then
   info "Skipping KAgent (--skip-kagent)."
 else
-  # Pinned to the verified latest release (0.9.4).
-  # 0.9.4 has two missing HTTP handlers (/api/modelproviderconfigs, /api/promptlibraries)
-  # that return plain-text 404 and crash the Next.js UI. The nginx intercept patch below
-  # fixes this by returning {"error":false,"data":[]} before requests reach the controller.
-  KAGENT_CHART_VERSION="0.9.4"
+  # Pinned to the verified latest release (0.10.0).
+  # 0.9.4 shipped a broken `kagent-adk` console script in the app image
+  # (ImportError: cannot import name 'run_cli' from 'kagent.adk.cli'), which
+  # crash-looped every Agent pod (idp-assistant, qa-assistant, etc.) — fixed
+  # upstream in 0.10.0. 0.9.4 also had two missing HTTP handlers
+  # (/api/modelproviderconfigs, /api/promptlibraries) that returned plain-text
+  # 404 and crashed the Next.js UI; the nginx intercept patch below papers over
+  # that for 0.9.4 and is left in place as a harmless no-op if 0.10.0 already
+  # implements those handlers (re-verify if the UI now needs real data there).
+  KAGENT_CHART_VERSION="0.10.0"
 
   KAGENT_VALUES="${REPO_ROOT}/local/kagent/values.yaml"
   [[ "$DEPLOY_MODE" == "aws" ]] && KAGENT_VALUES="${REPO_ROOT}/aws/kagent/values.yaml"
