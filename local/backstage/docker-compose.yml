@@ -96,6 +96,16 @@ services:
       retries: 5
       start_period: 60s
     extra_hosts:
+      # K8S_CLUSTER_URL (scripts/get-k8s-credentials.sh) uses this hostname
+      # rather than host.docker.internal — Kind's default API server cert has
+      # no SAN for host.docker.internal, so TLS verification in kubeconfig.ts
+      # (which pins the cluster CA and does not skip hostname checks) fails
+      # with "certificate is valid for ... not host.docker.internal" on every
+      # scaffolder action that shells out to kubectl (idp:run-training-job,
+      # idp:deploy-agent, idp:deploy-mcp-server, idp:deploy-model-server,
+      # idp:setup-contract-testing). kubernetes.default.svc.cluster.local IS a
+      # standard SAN on the API server cert of every mainstream K8s distro.
+      - "kubernetes.default.svc.cluster.local:host-gateway"
       - "backstage.idp.local:host-gateway"
       - "hello-service.idp.local:host-gateway"
       - "argocd.idp.local:host-gateway"

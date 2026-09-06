@@ -140,7 +140,6 @@ spec:
         experimentName: ${{ parameters.experimentName }}
         framework: ${{ parameters.framework }}
         pythonVersion: ${{ parameters.pythonVersion }}
-        owner: ${{ parameters.owner }}
         registerModel: ${{ parameters.registerModel }}
 
     # Registration runs LAST on purpose. A failing step aborts the whole task —
