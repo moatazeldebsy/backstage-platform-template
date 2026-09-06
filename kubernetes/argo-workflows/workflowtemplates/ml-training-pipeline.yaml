@@ -95,6 +95,13 @@ spec:
             {{workflow.parameters.deps}} &&
             python /app/train.py
         env:
+          # python:*-slim has no /etc/passwd entry for the workflow's
+          # runAsUser: 1000, so $HOME resolves to "/" — root-owned, and pip
+          # fails with "Permission denied: '/.local'" on every run before a
+          # single line of train.py executes. /tmp is already the writable
+          # scratch dir this template uses for the accuracy handoff.
+          - name: HOME
+            value: /tmp
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.ml-platform.svc.cluster.local:5000
           - name: MLFLOW_EXPERIMENT_NAME
@@ -152,6 +159,9 @@ spec:
           print(f"Registered {os.environ['MODEL_NAME']} from run {run_id}")
           PY
         env:
+          # Same runAsUser: 1000 / no-HOME issue as the train step above.
+          - name: HOME
+            value: /tmp
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.ml-platform.svc.cluster.local:5000
           - name: MLFLOW_EXPERIMENT_NAME

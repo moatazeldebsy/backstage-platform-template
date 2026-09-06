@@ -76,9 +76,21 @@ sleep 3
 
 # ── Extract credentials ──────────────────────────────────────────────────────
 CLUSTER_URL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-# Backstage runs inside Docker — replace 127.0.0.1 with host.docker.internal
-# so the Kubernetes plugin can reach the Kind API server from the container.
-CLUSTER_URL_DOCKER="${CLUSTER_URL/127.0.0.1/host.docker.internal}"
+# Backstage runs inside Docker, so 127.0.0.1 (the host's view of the API
+# server) is not reachable from the container as-is. host.docker.internal
+# would resolve to the right IP, but Kind's default API server certificate has
+# no SAN for it — kubeconfig.ts pins the cluster CA and verifies the hostname,
+# so that combination fails TLS verification every time
+# ("certificate is valid for ... not host.docker.internal"), regardless of
+# when this script last ran.
+#
+# kubernetes.default.svc.cluster.local IS a standard SAN on every mainstream
+# Kubernetes distro's API server cert (kubeadm, k3s included) — using it here,
+# and aliasing it to the host gateway in local/backstage/docker-compose.yml's
+# extra_hosts, satisfies TLS verification without weakening it and without
+# depending on a Kind-specific container hostname (this script also serves
+# Rancher Desktop).
+CLUSTER_URL_DOCKER="${CLUSTER_URL/127.0.0.1/kubernetes.default.svc.cluster.local}"
 SA_TOKEN=$(kubectl get secret backstage-token -n default -o jsonpath='{.data.token}' | base64 --decode)
 CA_DATA=$(kubectl get secret backstage-token -n default -o jsonpath='{.data.ca\.crt}')
 
