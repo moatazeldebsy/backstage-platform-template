@@ -131,8 +131,14 @@ function createMergeAnnotationsAction(config: Config) {
       const repo = params.get('repo');
       if (!owner || !repo) throw new Error(`Could not parse owner/repo from repoUrl: ${repoUrl}`);
 
+      // Config path segments can't index into an array with a numeric
+      // segment like 'integrations.github.0.token' — Backstage's ConfigReader
+      // treats that as a literal (and invalid) key name and throws "Invalid
+      // config key", not a "not found". Fetch the array and index into it.
       const token =
-        config.getOptionalString('integrations.github.0.token') ?? process.env.GITHUB_TOKEN ?? '';
+        config.getOptionalConfigArray('integrations.github')?.[0]?.getOptionalString('token') ??
+        process.env.GITHUB_TOKEN ??
+        '';
       if (!token) throw new Error('No GitHub token available to read the target catalog-info.yaml');
 
       // Drop empties: templates pass optional annotations unconditionally (a
