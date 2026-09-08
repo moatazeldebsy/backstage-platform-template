@@ -28,6 +28,11 @@ spec:
                 - path: services/*
                 - path: services/contract-mcp-server
                   exclude: true
+                # services/mcp-common is a shared TypeScript library (no
+                # Dockerfile, nothing to deploy) — not a service. See
+                # aws/argocd/app-of-apps.yaml for the full rationale.
+                - path: services/mcp-common
+                  exclude: true
           - list:
               elements:
                 - env: dev

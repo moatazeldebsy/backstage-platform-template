@@ -21,7 +21,21 @@ spec:
               revision: HEAD
               directories:
                 - path: services/*
-                # No exclusions. The ten AI/MCP services used to be excluded here
+                # services/mcp-common is a shared TypeScript library (no
+                # Dockerfile, nothing to deploy) — not a service. Without this
+                # exclusion the generator creates mcp-common-{{env}} anyway,
+                # which ArgoCD syncs against the chart's bare defaults
+                # (ignoreMissingValueFiles below) and Gatekeeper then rejects
+                # for missing cost-allocation labels: a permanently
+                # OutOfSync/Degraded Application — the exact failure mode the
+                # "services/demo-aws-react reached the cluster as a broken
+                # Application" comment in ci.yml warns about. The git
+                # directory generator has no Dockerfile-awareness, so unlike
+                # ci.yml/build-and-deploy.yml/scripts/lib.sh it must be told
+                # explicitly per path.
+                - path: services/mcp-common
+                  exclude: true
+                # No other exclusions. The ten AI/MCP services used to be excluded here
                 # because bootstrap-ai.sh helm-installed them directly and two
                 # systems cannot own the same release — which meant the platform's
                 # own services did not take the GitOps path it sells to users.
