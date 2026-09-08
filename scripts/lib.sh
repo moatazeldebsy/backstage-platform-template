@@ -972,6 +972,13 @@ _cleanup_scaffolded_services() {
   local SCAFFOLDED=()
   if [[ -d "${ROOT_DIR}/services" ]]; then
     while IFS= read -r svc; do
+      # Only directories with a Dockerfile are deployable services — same test
+      # build-and-deploy.yml's path-filter generation and ci.yml's
+      # helm-values check already use. A shared library like
+      # services/mcp-common (no Dockerfile, nothing to deploy, never an
+      # ArgoCD Application) is not "scaffolded" and must not be swept up
+      # here: it was deleted by exactly this loop once already.
+      [[ -f "${ROOT_DIR}/services/${svc}/Dockerfile" ]] || continue
       skip=false
       for builtin in "${PLATFORM_BUILTINS[@]}"; do
         [[ "$svc" == "$builtin" ]] && { skip=true; break; }
