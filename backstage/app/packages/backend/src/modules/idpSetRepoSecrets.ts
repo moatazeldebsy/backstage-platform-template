@@ -37,7 +37,7 @@ async function encryptSecret(repoPublicKey: string, secretValue: string): Promis
   return Buffer.from(encrypted).toString('base64');
 }
 
-function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) {
+export function createSetRepoSecretsAction(options: { integrations: ScmIntegrations }) {
   return createTemplateAction({
     id: 'idp:repo:set-secrets',
     description:

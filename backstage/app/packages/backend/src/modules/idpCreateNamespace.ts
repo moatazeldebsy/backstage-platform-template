@@ -87,7 +87,7 @@ spec:
   return `${docs.join('\n---\n')}\n`;
 }
 
-function createCreateNamespaceAction() {
+export function createCreateNamespaceAction() {
   return createTemplateAction({
     id: 'idp:create-namespace',
     description:

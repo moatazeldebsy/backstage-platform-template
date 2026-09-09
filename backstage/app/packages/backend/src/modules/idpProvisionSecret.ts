@@ -9,7 +9,7 @@ import {
   ResourceExistsException,
 } from '@aws-sdk/client-secrets-manager';
 
-function createProvisionSecretAction() {
+export function createProvisionSecretAction() {
   return createTemplateAction({
     id: 'idp:provision-secret',
     description:
