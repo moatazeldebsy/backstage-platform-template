@@ -21,6 +21,7 @@
     "testEnvironment": "node"
   },
   "overrides": {
+    "js-yaml": "^3.15.2",
     "qs": "^6.16.0"
   }
 }
