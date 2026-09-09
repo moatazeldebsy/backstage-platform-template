@@ -92,7 +92,7 @@
     "js-cookie": "^3.0.7",
     "webpack-dev-server": "^5.2.6",
     "http-proxy-middleware": "^2.0.10",
-    "multer": "^2.2.0",
+    "multer": "^2.3.0",
     "tough-cookie": "^5.0.0",
     "cookie": "^0.7.2",
     "file-type": "^21.3.1",
