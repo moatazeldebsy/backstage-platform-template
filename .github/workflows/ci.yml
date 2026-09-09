@@ -533,6 +533,55 @@ jobs:
       - name: Build Docker image (local, no push)
         run: docker build -t backstage:ci -f backstage/Dockerfile backstage/app
 
+  # sonar-project.properties has existed since before this job with nothing
+  # ever invoking it — it only fed the Backstage Security tab's SonarCloud
+  # proxy, not an actual scan. SonarCloud's own Automatic Analysis was
+  # enabled but had stalled (last analysis months old), so the dashboard was
+  # showing stale findings against old code. This job replaces that with a
+  # real per-push scan.
+  #
+  # continue-on-error: true until SONAR_TOKEN is added as a repo secret —
+  # without it this step fails harmlessly rather than blocking merges.
+  # Forked-repo PRs never see the secret, so this only runs meaningfully on
+  # pushes to the origin repo.
+  sonarcloud:
+    needs: [changes, backstage-compile]
+    if: needs.changes.outputs.backstage == 'true' && github.repository == 'moatazeldebsy/backstage-platform-template'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: backstage/app
+        run: yarn install --immutable
+
+      - name: Generate coverage
+        working-directory: backstage/app
+        env:
+          CI: 'true'
+        run: yarn test --coverage --coverageReporters=lcov --coverageReporters=text-summary
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8
+        with:
+          projectBaseDir: backstage/app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   contract-mcp-server-build:
     needs: changes
     if: needs.changes.outputs.contract-mcp == 'true'
@@ -556,6 +605,14 @@ jobs:
       - name: TypeScript compile
         working-directory: services/contract-mcp-server
         run: npm run build
+
+      # Unlike its sibling mcp-servers-build job, this job ran no tests at
+      # all — contract-mcp-server has 4 test files (store/audit/rest/
+      # generator) covering the breaking-change detection every onboarded
+      # service's contract gate relies on, and none of them ran in CI.
+      - name: Test
+        working-directory: services/contract-mcp-server
+        run: npm test
 
   # Until this job existed, contract-mcp-server was the ONLY Node service with
   # CI coverage — the other seven MCP servers were never compiled or tested, so
