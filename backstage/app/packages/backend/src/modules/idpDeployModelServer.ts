@@ -500,7 +500,7 @@ spec:
 `;
 }
 
-function createDeployModelServerAction() {
+export function createDeployModelServerAction() {
   return createTemplateAction({
     id: 'idp:deploy-model-server',
     description: 'Deploy an ML model as a REST API (Ollama for local Kind, vLLM for AWS EKS) to the ml-platform namespace.',

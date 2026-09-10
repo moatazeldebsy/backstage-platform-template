@@ -180,7 +180,7 @@ async function isHelmReleaseDeployed(releaseName: string, namespace: string): Pr
   }
 }
 
-function createSetupContractTestingAction() {
+export function createSetupContractTestingAction() {
   return createTemplateAction({
     id: 'idp:setup-contract-testing',
     description:
