@@ -121,6 +121,7 @@ describe('AI scaffolder actions bootstrap the kubeconfig', () => {
   // all, so in-cluster on EKS they ran kubectl against a /tmp/kubeconfig that
   // does not exist. The RBAC granted to them was unusable as a result.
   it.each([
+    'idpCreateNamespace',
     'idpDeployAgent',
     'idpDeployMcpServer',
     'idpDeployModelServer',

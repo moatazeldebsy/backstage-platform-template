@@ -7,6 +7,12 @@ jest.mock('child_process', () => ({
   execFile: (...args: any[]) => mockExecFile(...args),
 }));
 
+const mockEnsureKubeconfig = jest.fn();
+jest.mock('../kubeconfig', () => ({
+  ensureKubeconfig: (...args: any[]) => mockEnsureKubeconfig(...args),
+  kubeEnv: {},
+}));
+
 const mockWriteSecureTempFile = jest.fn();
 const mockCleanupSecureTempDir = jest.fn();
 jest.mock('../secureTempFile', () => ({
@@ -40,6 +46,7 @@ describe('idp:create-namespace', () => {
 
   beforeEach(() => {
     mockExecFile.mockReset();
+    mockEnsureKubeconfig.mockReset().mockResolvedValue(undefined);
     mockWriteSecureTempFile.mockReset().mockImplementation(async (_prefix: string, filename: string) => ({
       dir: '/tmp/mock-secure-dir',
       filePath: `/tmp/mock-secure-dir/${filename}`,
@@ -73,6 +80,13 @@ describe('idp:create-namespace', () => {
     expect(applyCall).toBeDefined();
     expect(applyCall![1]).toEqual(['apply', '-f', '/tmp/mock-secure-dir/scratch-payments.yaml']);
     expect(outputs.namespace).toBe('scratch-payments');
+  });
+
+  it('bootstraps the kubeconfig before checking the cluster', async () => {
+    succeedOn(() => true);
+    const { ctx } = makeCtx({ name: 'scratch-payments' });
+    await action.handler(ctx);
+    expect(mockEnsureKubeconfig).toHaveBeenCalledTimes(1);
   });
 
   it('always cleans up the temp directory, even when kubectl apply fails', async () => {

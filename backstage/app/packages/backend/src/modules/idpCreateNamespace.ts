@@ -3,14 +3,10 @@ import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-no
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { ensureKubeconfig, kubeEnv } from './kubeconfig';
 import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
 const execFileAsync = promisify(execFile);
-
-const kubeEnv = {
-  ...process.env,
-  KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
-};
 
 const TIER_QUOTAS: Record<string, { cpu: string; cpuLimit: string; memory: string; memoryLimit: string; pods: string }> = {
   small: { cpu: '4', cpuLimit: '8', memory: '8Gi', memoryLimit: '16Gi', pods: '30' },
@@ -119,6 +115,11 @@ export function createCreateNamespaceAction() {
       const { name, tier = 'small', networkPolicy = true } = ctx.input;
 
       ctx.logger.info(`Creating namespace '${name}' (tier: ${tier}, networkPolicy: ${networkPolicy})...`);
+
+      // In-cluster (EKS) there is no kubeconfig on disk — write one from the
+      // K8S_* env vars first. No-ops when Backstage runs on the host against
+      // Kind and the developer's own kubeconfig already applies.
+      await ensureKubeconfig();
 
       try {
         await execFileAsync('kubectl', ['cluster-info', '--request-timeout=5s'], { env: kubeEnv, timeout: 10_000 });
