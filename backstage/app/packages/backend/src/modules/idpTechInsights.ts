@@ -43,6 +43,45 @@ function isMobileEntity(entity: { spec?: Record<string, unknown>; metadata: { ta
   );
 }
 
+// Every entry here is a boolean fact with only its description varying, so
+// the literal `{ type: 'boolean', description: ... }` shape used to repeat
+// 28 times in the schema below — SonarCloud's duplication detector flagged
+// that repetition against itself. Generating the schema from this table
+// keeps the same keys, order, and shape without the repeated structure.
+const FACT_DESCRIPTIONS: Array<[string, string]> = [
+  // — Service hygiene (Bronze tier) —
+  ['has-owner', 'Entity has an owner defined in spec.owner'],
+  ['has-techdocs', 'Entity has a backstage.io/techdocs-ref annotation'],
+  ['has-health-probes', 'Entity has backstage.io/kubernetes-id annotation (implies probes via Helm chart)'],
+  ['has-runbook-url', 'Entity has a backstage.io/runbook-url annotation'],
+  ['has-api-definition', 'Entity has at least one providesApis relation'],
+  ['uses-pinned-image-tag', 'Entity image tag annotation is not "latest"'],
+  // — Shift-left quality gates (Silver / Gold tiers) —
+  ['has-coverage-gate', 'CI enforces a code coverage threshold (idp.io/quality-gates contains "coverage")'],
+  ['has-static-analysis', 'CI runs lint + type-check (idp.io/quality-gates contains "static-analysis")'],
+  ['has-vuln-scan', 'CI runs dependency + secret scan (idp.io/quality-gates contains "vuln-scan")'],
+  ['has-contract-tests', 'Service has a registered consumer-driven contract (annotation OR providesApi relation)'],
+  ['has-e2e-tests', 'Service has an end-to-end test suite registered in the catalog (annotation OR consumesApi from a test-suite component)'],
+  // — AI/ML service governance (Gold tier) —
+  ['has-model-card', 'AI service has a backstage.io/model-card-url annotation documenting the model'],
+  ['has-eval-suite', 'AI agent or model has LLM evaluation suite in CI (idp.io/quality-gates contains "llm-eval")'],
+  ['has-ai-observability', 'AI service has observability configured (backstage.io/kubernetes-id annotation AND "ai" tag present)'],
+  ['has-sonar-scanning', 'Service is wired up to SonarCloud (idp.io/quality-gates contains "sonar-scanning" OR sonarcloud.io/project-key annotation present)'],
+  ['has-snyk-scanning', 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)'],
+  ['has-trivy-scanning', 'Service image is scanned by Trivy (idp.io/quality-gates contains "trivy-scanning" OR github.com/project-slug annotation present)'],
+  // — Mobile app scorecard (Bronze/Silver/Gold for spec.type === "mobile") —
+  ['has-mobile-test-coverage', 'Mobile app CI enforces a test coverage threshold (idp.io/quality-gates contains "mobile-test-coverage")'],
+  ['has-mobile-crash-reporting', 'Mobile app has crash reporting configured — Firebase Crashlytics or Sentry (annotation or quality gate)'],
+  ['has-mobile-ui-tests', 'Mobile app has Appium/Espresso/Flutter integration tests registered in the catalog'],
+  ['has-mobile-fastlane', 'Mobile app uses Fastlane for release automation (idp.io/quality-gates contains "mobile-fastlane")'],
+  // — Mobile platform maturity checks (new — tied to platform annotations) —
+  ['has-min-sdk-version', 'Mobile app declares a minimum SDK/OS version via backstage.io/mobile-min-sdk annotation (Android >= 24 or iOS >= 16.0)'],
+  ['has-crashlytics-enabled', 'Mobile app has crash reporting enabled — backstage.io/crashlytics-enabled annotation is "true"'],
+  ['has-accessibility-tests', 'Mobile app has accessibility tests wired up — backstage.io/accessibility-tests annotation is "true"'],
+  ['has-app-size-budget', 'Mobile app declares an app-size budget — backstage.io/app-size-budget-mb annotation is present'],
+  ['has-code-signing', 'Mobile app has automated code signing configured — backstage.io/code-signing-setup annotation is "true"'],
+];
+
 const entityFactRetriever: FactRetriever = {
   id: 'idp-entity-facts',
   version: '0.3.0',
@@ -50,117 +89,9 @@ const entityFactRetriever: FactRetriever = {
   description:
     'Collects Bronze/Silver/Gold scorecard facts — service hygiene plus shift-left quality gates',
   entityFilter: [{ kind: 'Component' }],
-  schema: {
-    // — Service hygiene (Bronze tier) —
-    'has-owner': {
-      type: 'boolean',
-      description: 'Entity has an owner defined in spec.owner',
-    },
-    'has-techdocs': {
-      type: 'boolean',
-      description: 'Entity has a backstage.io/techdocs-ref annotation',
-    },
-    'has-health-probes': {
-      type: 'boolean',
-      description: 'Entity has backstage.io/kubernetes-id annotation (implies probes via Helm chart)',
-    },
-    'has-runbook-url': {
-      type: 'boolean',
-      description: 'Entity has a backstage.io/runbook-url annotation',
-    },
-    'has-api-definition': {
-      type: 'boolean',
-      description: 'Entity has at least one providesApis relation',
-    },
-    'uses-pinned-image-tag': {
-      type: 'boolean',
-      description: 'Entity image tag annotation is not "latest"',
-    },
-    // — Shift-left quality gates (Silver / Gold tiers) —
-    'has-coverage-gate': {
-      type: 'boolean',
-      description: 'CI enforces a code coverage threshold (idp.io/quality-gates contains "coverage")',
-    },
-    'has-static-analysis': {
-      type: 'boolean',
-      description: 'CI runs lint + type-check (idp.io/quality-gates contains "static-analysis")',
-    },
-    'has-vuln-scan': {
-      type: 'boolean',
-      description: 'CI runs dependency + secret scan (idp.io/quality-gates contains "vuln-scan")',
-    },
-    'has-contract-tests': {
-      type: 'boolean',
-      description: 'Service has a registered consumer-driven contract (annotation OR providesApi relation)',
-    },
-    'has-e2e-tests': {
-      type: 'boolean',
-      description: 'Service has an end-to-end test suite registered in the catalog (annotation OR consumesApi from a test-suite component)',
-    },
-    // — AI/ML service governance (Gold tier) —
-    'has-model-card': {
-      type: 'boolean',
-      description: 'AI service has a backstage.io/model-card-url annotation documenting the model',
-    },
-    'has-eval-suite': {
-      type: 'boolean',
-      description: 'AI agent or model has LLM evaluation suite in CI (idp.io/quality-gates contains "llm-eval")',
-    },
-    'has-ai-observability': {
-      type: 'boolean',
-      description: 'AI service has observability configured (backstage.io/kubernetes-id annotation AND "ai" tag present)',
-    },
-    'has-sonar-scanning': {
-      type: 'boolean',
-      description: 'Service is wired up to SonarCloud (idp.io/quality-gates contains "sonar-scanning" OR sonarcloud.io/project-key annotation present)',
-    },
-    'has-snyk-scanning': {
-      type: 'boolean',
-      description: 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)',
-    },
-    'has-trivy-scanning': {
-      type: 'boolean',
-      description: 'Service image is scanned by Trivy (idp.io/quality-gates contains "trivy-scanning" OR github.com/project-slug annotation present)',
-    },
-    // — Mobile app scorecard (Bronze/Silver/Gold for spec.type === "mobile") —
-    'has-mobile-test-coverage': {
-      type: 'boolean',
-      description: 'Mobile app CI enforces a test coverage threshold (idp.io/quality-gates contains "mobile-test-coverage")',
-    },
-    'has-mobile-crash-reporting': {
-      type: 'boolean',
-      description: 'Mobile app has crash reporting configured — Firebase Crashlytics or Sentry (annotation or quality gate)',
-    },
-    'has-mobile-ui-tests': {
-      type: 'boolean',
-      description: 'Mobile app has Appium/Espresso/Flutter integration tests registered in the catalog',
-    },
-    'has-mobile-fastlane': {
-      type: 'boolean',
-      description: 'Mobile app uses Fastlane for release automation (idp.io/quality-gates contains "mobile-fastlane")',
-    },
-    // — Mobile platform maturity checks (new — tied to platform annotations) —
-    'has-min-sdk-version': {
-      type: 'boolean',
-      description: 'Mobile app declares a minimum SDK/OS version via backstage.io/mobile-min-sdk annotation (Android >= 24 or iOS >= 16.0)',
-    },
-    'has-crashlytics-enabled': {
-      type: 'boolean',
-      description: 'Mobile app has crash reporting enabled — backstage.io/crashlytics-enabled annotation is "true"',
-    },
-    'has-accessibility-tests': {
-      type: 'boolean',
-      description: 'Mobile app has accessibility tests wired up — backstage.io/accessibility-tests annotation is "true"',
-    },
-    'has-app-size-budget': {
-      type: 'boolean',
-      description: 'Mobile app declares an app-size budget — backstage.io/app-size-budget-mb annotation is present',
-    },
-    'has-code-signing': {
-      type: 'boolean',
-      description: 'Mobile app has automated code signing configured — backstage.io/code-signing-setup annotation is "true"',
-    },
-  },
+  schema: Object.fromEntries(
+    FACT_DESCRIPTIONS.map(([key, description]) => [key, { type: 'boolean' as const, description }]),
+  ),
   // FactRetrieverContext does not supply `entities` — the retriever fetches
   // them itself, which is what the token and catalog client below were always
   // for. This used to destructure `entities` off the context, so at runtime it

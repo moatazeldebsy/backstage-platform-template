@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   AI_TIER_THRESHOLDS,
   CHECKS,
@@ -118,6 +119,24 @@ function StackedBar({ segments }: { segments: { value: number; color: string }[]
         ) : null
       )}
     </div>
+  );
+}
+
+// The small "N stat cards in a row" header used at the top of several
+// dashboard pages (KAgent, Langfuse, MLflow) — extracted because SonarCloud
+// flagged the card grid as duplicated verbatim across them; only the data
+// array passed in differs.
+function SummaryCards({ items }: { items: Array<{ label: string; value: ReactNode; sub: string; color: string }> }) {
+  return (
+    <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+      {items.map(({ label, value, sub, color }) => (
+        <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
+          <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
+          <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
+          <Typography variant="caption" color="textSecondary">{sub}</Typography>
+        </Paper>
+      ))}
+    </Box>
   );
 }
 
@@ -3348,6 +3367,20 @@ function makePrometheusQueries(fetchApi: FetchApi, base: string) {
   return { promQuery, promRange };
 }
 
+// DoraPage and SloPage both fetch this to decide whether a row links to a
+// catalog entity page — extracted because SonarCloud flagged the effect as
+// duplicated verbatim between them.
+function useCatalogComponentNames(base: string, fetchApi: FetchApi): Set<string> {
+  const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
+      .catch(() => setCatalogNames(new Set())); // no catalog → no rows link, table still renders
+  }, [base, fetchApi]);
+  return catalogNames;
+}
+
 function DoraEntityContent() {
   const { entity } = useEntity();
   const fetchApi  = useApi(fetchApiRef);
@@ -4059,14 +4092,7 @@ function DoraPage() {
   // Component names that actually exist in the catalog. The exporter reports GitHub
   // repos, which do not all have an entity, so a row is only clickable when its
   // target resolves — otherwise the click lands on "Entity not found".
-  const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
-      .catch(() => setCatalogNames(new Set())); // no catalog → no rows link, table still renders
-  }, [base, fetchApi]);
+  const catalogNames = useCatalogComponentNames(base, fetchApi);
 
   useEffect(() => {
     const pq = (expr: string) =>
@@ -4379,14 +4405,7 @@ function SloPage() {
   const [isDemo, setIsDemo]   = useState(false);
   // Sloth's sloth_service label (and the demo rows below) need not correspond to a
   // catalog entity, so only link a row when its target actually resolves.
-  const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
-      .catch(() => setCatalogNames(new Set()));
-  }, [base, fetchApi]);
+  const catalogNames = useCatalogComponentNames(base, fetchApi);
 
   useEffect(() => {
     const pq = (expr: string) =>
@@ -6842,19 +6861,11 @@ function KAgentPage() {
             )}
 
             {/* Summary cards */}
-            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Agents Running',      value: readyCount,                          sub: agents.map(a => a.name.replace('-assistant','').replace('-','‑')).join(', ') || '—', color: '#4caf50' },
-                { label: 'MCP Tool Calls (24h)', value: firstMatch([[totalCalls > 0, totalCalls.toLocaleString()], [isDemo, '2,681']], '0'), sub: 'across all agents', color: '#1976d2' },
-                { label: 'Avg Response',         value: isDemo ? '1.4s' : '—',             sub: 'p50 · p95: 3.8s',             color: '#7b1fa2' },
-              ].map(({ label, value, sub, color }) => (
-                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
-                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
-                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
-                  <Typography variant="caption" color="textSecondary">{sub}</Typography>
-                </Paper>
-              ))}
-            </Box>
+            <SummaryCards items={[
+              { label: 'Agents Running',      value: readyCount,                          sub: agents.map(a => a.name.replace('-assistant','').replace('-','‑')).join(', ') || '—', color: '#4caf50' },
+              { label: 'MCP Tool Calls (24h)', value: firstMatch([[totalCalls > 0, totalCalls.toLocaleString()], [isDemo, '2,681']], '0'), sub: 'across all agents', color: '#1976d2' },
+              { label: 'Avg Response',         value: isDemo ? '1.4s' : '—',             sub: 'p50 · p95: 3.8s',             color: '#7b1fa2' },
+            ]} />
 
             {/* Agents table */}
             <Paper style={{ marginBottom: 20 }}>
@@ -7056,6 +7067,25 @@ const mapLangfuseTrace = (t: any): LangfuseTrace => ({
   timestamp: relTime(t?.timestamp ? Date.parse(t.timestamp) : undefined),
 });
 
+// Also shared by the platform page and the per-entity tab (SonarCloud flagged
+// this table body as duplicated verbatim between them).
+function TraceTableRows({ traces }: { traces: LangfuseTrace[] }) {
+  return (
+    <>
+      {traces.map(t => (
+        <TableRow key={t.id}>
+          <TableCell><code style={{ fontSize: 11 }}>{t.id}</code></TableCell>
+          <TableCell>{t.agent}</TableCell>
+          <TableCell><span style={{ fontSize: 12 }}>{t.user}</span></TableCell>
+          <TableCell align="right">{t.latency}</TableCell>
+          <TableCell align="right">{t.cost}</TableCell>
+          <TableCell>{t.timestamp}</TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
 // The Langfuse public API, through the Backstage proxy. Auth is HTTP Basic over
 // the project key pair and is injected by the proxy (see the /langfuse endpoint
 // in app-config.*.yaml) — deliberately not held in the frontend.
@@ -7166,20 +7196,12 @@ function LangfusePage() {
             )}
 
             {/* Summary cards */}
-            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Traces',       value: String(totals.traces),         sub: 'agent runs (last 7 days)', color: '#1976d2' },
-                { label: 'Observations', value: String(totals.observations),   sub: 'LLM + tool spans',         color: '#0288d1' },
-                { label: 'LLM Cost',     value: fmtCost(totals.cost),          sub: 'last 7 days',              color: '#7b1fa2' },
-                { label: 'Models',       value: String(models.length),         sub: 'in use',                   color: '#4caf50' },
-              ].map(({ label, value, sub, color }) => (
-                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
-                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
-                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
-                  <Typography variant="caption" color="textSecondary">{sub}</Typography>
-                </Paper>
-              ))}
-            </Box>
+            <SummaryCards items={[
+              { label: 'Traces',       value: String(totals.traces),         sub: 'agent runs (last 7 days)', color: '#1976d2' },
+              { label: 'Observations', value: String(totals.observations),   sub: 'LLM + tool spans',         color: '#0288d1' },
+              { label: 'LLM Cost',     value: fmtCost(totals.cost),          sub: 'last 7 days',              color: '#7b1fa2' },
+              { label: 'Models',       value: String(models.length),         sub: 'in use',                   color: '#4caf50' },
+            ]} />
 
             {/* Cost + token usage by model */}
             <Paper style={{ marginBottom: 20 }}>
@@ -7249,16 +7271,7 @@ function LangfusePage() {
                         </TableCell>
                       </TableRow>
                     )}
-                    {traces.map(t => (
-                      <TableRow key={t.id}>
-                        <TableCell><code style={{ fontSize: 11 }}>{t.id}</code></TableCell>
-                        <TableCell>{t.agent}</TableCell>
-                        <TableCell><span style={{ fontSize: 12 }}>{t.user}</span></TableCell>
-                        <TableCell align="right">{t.latency}</TableCell>
-                        <TableCell align="right">{t.cost}</TableCell>
-                        <TableCell>{t.timestamp}</TableCell>
-                      </TableRow>
-                    ))}
+                    <TraceTableRows traces={traces} />
                   </TableBody>
                 </MuiTable>
               </TableContainer>
@@ -7437,16 +7450,7 @@ function LangfuseEntityContent() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {traces.map(t => (
-                    <TableRow key={t.id}>
-                      <TableCell><code style={{ fontSize: 11 }}>{t.id}</code></TableCell>
-                      <TableCell>{t.agent}</TableCell>
-                      <TableCell><span style={{ fontSize: 12 }}>{t.user}</span></TableCell>
-                      <TableCell align="right">{t.latency}</TableCell>
-                      <TableCell align="right">{t.cost}</TableCell>
-                      <TableCell>{t.timestamp}</TableCell>
-                    </TableRow>
-                  ))}
+                  <TraceTableRows traces={traces} />
                 </TableBody>
               </MuiTable>
             </TableContainer>
@@ -7707,19 +7711,11 @@ function MlflowPage() {
             )}
 
             {/* Summary cards */}
-            <Box display="flex" style={{ gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Experiments',       value: experiments.length, sub: 'tracked in MLflow',        color: '#1976d2' },
-                { label: 'Runs',              value: runTotal,           sub: 'most recent (max 50)',     color: '#4caf50' },
-                { label: 'Registered Models', value: models.length,      sub: 'in the model registry',    color: '#7b1fa2' },
-              ].map(({ label, value, sub, color }) => (
-                <Paper key={label} style={{ flex: 1, minWidth: 160, padding: '16px 20px', borderTop: `4px solid ${color}` }}>
-                  <Typography variant="caption" color="textSecondary" style={{ fontWeight: 600 }}>{label}</Typography>
-                  <Typography variant="h4" style={{ fontWeight: 300, color, margin: '4px 0 2px' }}>{value}</Typography>
-                  <Typography variant="caption" color="textSecondary">{sub}</Typography>
-                </Paper>
-              ))}
-            </Box>
+            <SummaryCards items={[
+              { label: 'Experiments',       value: experiments.length, sub: 'tracked in MLflow',        color: '#1976d2' },
+              { label: 'Runs',              value: runTotal,           sub: 'most recent (max 50)',     color: '#4caf50' },
+              { label: 'Registered Models', value: models.length,      sub: 'in the model registry',    color: '#7b1fa2' },
+            ]} />
 
             {/* Experiments */}
             <Paper style={{ marginBottom: 20 }}>

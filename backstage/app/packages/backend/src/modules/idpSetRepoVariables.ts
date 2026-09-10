@@ -12,12 +12,10 @@
 import { createBackendModule, coreServices } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import {
-  DefaultGithubCredentialsProvider,
-  ScmIntegrations,
-} from '@backstage/integration';
+import { ScmIntegrations } from '@backstage/integration';
+import { parseGithubOwnerRepo, getGithubApiHeaders, summarizeSettledResults } from './githubRepoHelpers';
 
-function createSetRepoVariablesAction(options: { integrations: ScmIntegrations }) {
+export function createSetRepoVariablesAction(options: { integrations: ScmIntegrations }) {
   return createTemplateAction({
     id: 'idp:repo:set-variables',
     description:
@@ -35,31 +33,8 @@ function createSetRepoVariablesAction(options: { integrations: ScmIntegrations }
       const repoUrl = ctx.input.repoUrl as string;
       const variables = ctx.input.variables as Record<string, string>;
 
-      let owner: string;
-      let repo: string;
-      const pathMatch = repoUrl.match(/github\.com[/:]([^/?]+)\/([^/?]+?)(?:\.git)?(?:[/?].*)?$/);
-      if (pathMatch) {
-        [, owner, repo] = pathMatch;
-      } else {
-        const urlStr = repoUrl.startsWith('http') ? repoUrl : `https://${repoUrl}`;
-        const parsed = new URL(urlStr);
-        owner = parsed.searchParams.get('owner') ?? '';
-        repo = parsed.searchParams.get('repo') ?? '';
-        if (!owner || !repo) {
-          throw new Error(`Cannot parse GitHub owner/repo from URL: ${repoUrl}`);
-        }
-      }
-
-      const httpsUrl = `https://github.com/${owner}/${repo}`;
-      const credProvider = DefaultGithubCredentialsProvider.fromIntegrations(options.integrations);
-      const { token } = await credProvider.getCredentials({ url: httpsUrl });
-
-      const ghHeaders = {
-        Authorization: `token ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      };
+      const { owner, repo } = parseGithubOwnerRepo(repoUrl);
+      const ghHeaders = await getGithubApiHeaders(options.integrations, owner, repo);
 
       const entries = Object.entries(variables).filter(([name, value]) => {
         if (!value) {
@@ -100,17 +75,7 @@ function createSetRepoVariablesAction(options: { integrations: ScmIntegrations }
         return name;
       }));
 
-      const results: string[] = [];
-      for (let i = 0; i < settled.length; i++) {
-        const s = settled[i];
-        const name = entries[i][0];
-        if (s.status === 'fulfilled') {
-          ctx.logger.info(`Variable ${name} set on ${owner}/${repo}`);
-          results.push(name);
-        } else {
-          ctx.logger.warn(`Failed to set variable ${name}: ${s.reason instanceof Error ? s.reason.message : String(s.reason)}`);
-        }
-      }
+      const results = summarizeSettledResults(settled, entries, 'Variable', `${owner}/${repo}`, ctx.logger);
 
       ctx.logger.info(`Done. Set ${results.length}/${entries.length} variables: ${results.join(', ')}`);
     },
