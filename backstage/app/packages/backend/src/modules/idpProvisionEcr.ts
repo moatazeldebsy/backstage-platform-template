@@ -8,7 +8,7 @@ import {
   RepositoryAlreadyExistsException,
 } from '@aws-sdk/client-ecr';
 
-function createProvisionEcrAction() {
+export function createProvisionEcrAction() {
   return createTemplateAction({
     id: 'idp:provision-ecr',
     description:

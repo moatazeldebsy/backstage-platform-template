@@ -22,7 +22,7 @@ const kubeEnv = {
   KUBECONFIG: process.env.KUBECONFIG ?? '/tmp/kubeconfig',
 };
 
-function createDeployLocalAction() {
+export function createDeployLocalAction() {
   return createTemplateAction({
     id: 'idp:deploy-local',
     description:
@@ -139,7 +139,7 @@ function createDeployLocalAction() {
 //
 // From inside the Docker container, the host registry (localhost:5003) is reachable
 // as host.docker.internal:5003 — same physical registry, different hostname.
-function createSeedImageAction() {
+export function createSeedImageAction() {
   return createTemplateAction({
     id: 'idp:seed-image',
     description:
@@ -203,7 +203,7 @@ function createSeedImageAction() {
 // in the service templates — and the scaffolded entity never appears in the
 // catalog. This action gives the templates a GitHub-free registration path so
 // the new Component shows up after every local scaffold.
-function createCatalogRegisterLocalAction() {
+export function createCatalogRegisterLocalAction() {
   return createTemplateAction({
     id: 'idp:catalog-register-local',
     description:
