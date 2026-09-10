@@ -5409,7 +5409,10 @@ function LearningCenterPage() {
   }, [catalogApi, fetchApi, base]);
 
   const allItems = useMemo(() => [...templateItems, ...LEARNING_DOCS], [templateItems]);
-  const topics = useMemo(() => Array.from(new Set(allItems.map(i => i.topic))).sort(), [allItems]);
+  const topics = useMemo(
+    () => Array.from(new Set(allItems.map(i => i.topic))).sort((a, b) => a.localeCompare(b)),
+    [allItems],
+  );
 
   const filtered = allItems.filter(i =>
     (topicFilter.length === 0 || topicFilter.includes(i.topic)) &&
