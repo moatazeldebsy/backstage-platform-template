@@ -7,6 +7,12 @@ jest.mock('child_process', () => ({
   execFile: (...args: any[]) => mockExecFile(...args),
 }));
 
+const mockEnsureKubeconfig = jest.fn();
+jest.mock('../kubeconfig', () => ({
+  ensureKubeconfig: (...args: any[]) => mockEnsureKubeconfig(...args),
+  kubeEnv: {},
+}));
+
 const mockWriteSecureTempFile = jest.fn();
 const mockCleanupSecureTempDir = jest.fn();
 jest.mock('../secureTempFile', () => ({
@@ -14,7 +20,7 @@ jest.mock('../secureTempFile', () => ({
   cleanupSecureTempDir: (...args: any[]) => mockCleanupSecureTempDir(...args),
 }));
 
-import { createCreateNamespaceAction } from '../idpCreateNamespace';
+import { createDeployMcpServerAction } from '../idpDeployMcpServer';
 
 function makeCtx(input: Record<string, unknown>) {
   const outputs: Record<string, unknown> = {};
@@ -35,11 +41,12 @@ function succeedOn(matcher: (args: string[]) => boolean, stdout = '', stderr = '
   });
 }
 
-describe('idp:create-namespace', () => {
-  const action = createCreateNamespaceAction();
+describe('idp:deploy-mcp-server', () => {
+  const action = createDeployMcpServerAction();
 
   beforeEach(() => {
     mockExecFile.mockReset();
+    mockEnsureKubeconfig.mockReset().mockResolvedValue(undefined);
     mockWriteSecureTempFile.mockReset().mockImplementation(async (_prefix: string, filename: string) => ({
       dir: '/tmp/mock-secure-dir',
       filePath: `/tmp/mock-secure-dir/${filename}`,
@@ -53,26 +60,27 @@ describe('idp:create-namespace', () => {
       else cb(null, { stdout: '', stderr: '' });
     });
 
-    const { ctx } = makeCtx({ name: 'scratch-payments' });
+    const { ctx } = makeCtx({ name: 'my-mcp' });
     await expect(action.handler(ctx)).rejects.toThrow('Cannot reach the cluster: connection refused');
     expect(mockWriteSecureTempFile).not.toHaveBeenCalled();
   });
 
-  it('writes the manifest to a securely-created temp dir, applies it, and reports the namespace as output', async () => {
+  it('applies the CRD via execFile with an args array, not a shell string', async () => {
     succeedOn(() => true);
 
-    const { ctx, outputs } = makeCtx({ name: 'scratch-payments' });
+    const { ctx, outputs } = makeCtx({ name: 'my-mcp' });
     await action.handler(ctx);
 
     expect(mockWriteSecureTempFile).toHaveBeenCalledTimes(1);
     const [prefix, filename] = mockWriteSecureTempFile.mock.calls[0];
-    expect(prefix).toBe('namespace');
-    expect(filename).toBe('scratch-payments.yaml');
+    expect(prefix).toBe('mcpserver');
+    expect(filename).toBe('my-mcp.yaml');
 
     const applyCall = mockExecFile.mock.calls.find(c => c[1][0] === 'apply');
     expect(applyCall).toBeDefined();
-    expect(applyCall![1]).toEqual(['apply', '-f', '/tmp/mock-secure-dir/scratch-payments.yaml']);
-    expect(outputs.namespace).toBe('scratch-payments');
+    expect(applyCall![1]).toEqual(['apply', '-f', '/tmp/mock-secure-dir/my-mcp.yaml']);
+    expect(typeof applyCall![1]).not.toBe('string');
+    expect(outputs.mcpServerName).toBe('my-mcp');
   });
 
   it('always cleans up the temp directory, even when kubectl apply fails', async () => {
@@ -82,65 +90,15 @@ describe('idp:create-namespace', () => {
       return cb(null, { stdout: '', stderr: '' });
     });
 
-    const { ctx } = makeCtx({ name: 'scratch-payments' });
+    const { ctx } = makeCtx({ name: 'my-mcp' });
     await expect(action.handler(ctx)).rejects.toThrow('admission webhook denied');
     expect(mockCleanupSecureTempDir).toHaveBeenCalledWith('/tmp/mock-secure-dir');
   });
 
-  it('defaults to the small tier with its ResourceQuota', async () => {
+  it('bootstraps the kubeconfig before checking the cluster', async () => {
     succeedOn(() => true);
-    const { ctx } = makeCtx({ name: 'scratch-payments' });
+    const { ctx } = makeCtx({ name: 'my-mcp' });
     await action.handler(ctx);
-
-    const yaml = mockWriteSecureTempFile.mock.calls[0][2] as string;
-    expect(yaml).toContain('idp.io/tier: small');
-    expect(yaml).toContain('kind: ResourceQuota');
-    expect(yaml).toContain('requests.cpu: "4"');
-    expect(yaml).toContain('limits.memory: 16Gi');
-  });
-
-  it('uses the medium tier quota when requested', async () => {
-    succeedOn(() => true);
-    const { ctx } = makeCtx({ name: 'scratch-payments', tier: 'medium' });
-    await action.handler(ctx);
-
-    const yaml = mockWriteSecureTempFile.mock.calls[0][2] as string;
-    expect(yaml).toContain('requests.cpu: "16"');
-    expect(yaml).toContain('limits.memory: 64Gi');
-  });
-
-  it('omits the ResourceQuota entirely for the large tier (no quota defined = unlimited)', async () => {
-    succeedOn(() => true);
-    const { ctx } = makeCtx({ name: 'scratch-payments', tier: 'large' });
-    await action.handler(ctx);
-
-    const yaml = mockWriteSecureTempFile.mock.calls[0][2] as string;
-    expect(yaml).toContain('idp.io/tier: large');
-    expect(yaml).not.toContain('kind: ResourceQuota');
-  });
-
-  it('applies the default-deny NetworkPolicy unless explicitly disabled', async () => {
-    succeedOn(() => true);
-    const { ctx } = makeCtx({ name: 'scratch-payments' });
-    await action.handler(ctx);
-    expect(mockWriteSecureTempFile.mock.calls[0][2] as string).toContain('kind: NetworkPolicy');
-  });
-
-  it('omits the NetworkPolicy when networkPolicy: false', async () => {
-    succeedOn(() => true);
-    const { ctx } = makeCtx({ name: 'scratch-payments', networkPolicy: false });
-    await action.handler(ctx);
-    expect(mockWriteSecureTempFile.mock.calls[0][2] as string).not.toContain('kind: NetworkPolicy');
-  });
-
-  it('always sets restricted Pod Security Standards labels, regardless of tier', async () => {
-    succeedOn(() => true);
-    const { ctx } = makeCtx({ name: 'scratch-payments', tier: 'large' });
-    await action.handler(ctx);
-
-    const yaml = mockWriteSecureTempFile.mock.calls[0][2] as string;
-    expect(yaml).toContain('pod-security.kubernetes.io/enforce: restricted');
-    expect(yaml).toContain('pod-security.kubernetes.io/audit: restricted');
-    expect(yaml).toContain('pod-security.kubernetes.io/warn: restricted');
+    expect(mockEnsureKubeconfig).toHaveBeenCalledTimes(1);
   });
 });

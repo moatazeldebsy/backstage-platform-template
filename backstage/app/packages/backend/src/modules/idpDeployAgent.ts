@@ -1,15 +1,13 @@
 import { createBackendModule } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 
 import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Exported for __tests__/kagentGeneratedCrs.test.ts, which checks the CRs this
 // builds against what kubernetes/kagent/ actually defines. The two drifted once
@@ -79,7 +77,7 @@ function resolveModelConfig(modelProvider: string, model: string): string {
   return 'claude-haiku';
 }
 
-function createDeployAgentAction() {
+export function createDeployAgentAction() {
   return createTemplateAction({
     id: 'idp:deploy-agent',
     description: 'Apply a KAgent Agent CRD to the local Kind cluster so the agent is immediately visible in the KAgent UI.',
@@ -127,21 +125,20 @@ function createDeployAgentAction() {
 
       // Verify cluster is reachable
       try {
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
+        await execFileAsync('kubectl', ['cluster-info', '--request-timeout=5s'], { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
         throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
 
       const yaml = buildAgentYaml({ name, description, modelConfig, enableCatalogSearch, enableMetrics, enableScaffolding });
 
-      const tmpFile = path.join(os.tmpdir(), `agent-${name}-${Date.now()}.yaml`);
+      const { dir, filePath: tmpFile } = await writeSecureTempFile('agent', `${name}.yaml`, yaml);
       try {
-        await fs.writeFile(tmpFile, yaml, 'utf8');
-        const { stdout, stderr } = await execAsync(`kubectl apply -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
+        const { stdout, stderr } = await execFileAsync('kubectl', ['apply', '-f', tmpFile], { env: kubeEnv, timeout: 30_000 });
         if (stdout) ctx.logger.info(stdout.trim());
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
-        await fs.unlink(tmpFile).catch(() => undefined);
+        await cleanupSecureTempDir(dir);
       }
 
       const kagentUrl = process.env.KAGENT_EXTERNAL_URL ?? 'http://kagent.idp.local';

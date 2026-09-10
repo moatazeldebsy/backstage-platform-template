@@ -3,10 +3,8 @@ import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-no
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
 const execFileAsync = promisify(execFile);
 
@@ -607,14 +605,13 @@ function createDeployModelServerAction() {
       };
       const yaml = builders[serverType](name, modelName);
 
-      const tmpFile = path.join(os.tmpdir(), `model-server-${name}-${Date.now()}.yaml`);
+      const { dir, filePath: tmpFile } = await writeSecureTempFile('model-server', `${name}.yaml`, yaml);
       try {
-        await fs.writeFile(tmpFile, yaml, 'utf8');
         const { stdout, stderr } = await execFileAsync('kubectl', ['apply', '-f', tmpFile], { env: kubeEnv, timeout: 30_000 });
         if (stdout) ctx.logger.info(stdout.trim());
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
-        await fs.unlink(tmpFile).catch(() => undefined);
+        await cleanupSecureTempDir(dir);
       }
 
       // Wait for deployment to be ready

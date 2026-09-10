@@ -3,9 +3,7 @@ import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-no
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
+import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
 const execFileAsync = promisify(execFile);
 
@@ -130,14 +128,13 @@ export function createCreateNamespaceAction() {
 
       const yaml = buildNamespaceYaml({ name, tier, networkPolicy });
 
-      const tmpFile = path.join(os.tmpdir(), `namespace-${name}-${Date.now()}.yaml`);
+      const { dir, filePath: tmpFile } = await writeSecureTempFile('namespace', `${name}.yaml`, yaml);
       try {
-        await fs.writeFile(tmpFile, yaml, 'utf8');
         const { stdout, stderr } = await execFileAsync('kubectl', ['apply', '-f', tmpFile], { env: kubeEnv, timeout: 30_000 });
         if (stdout) ctx.logger.info(stdout.trim());
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
-        await fs.unlink(tmpFile).catch(() => undefined);
+        await cleanupSecureTempDir(dir);
       }
 
       ctx.logger.info(`✓ Namespace '${name}' is ready`);

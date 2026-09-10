@@ -1,15 +1,14 @@
 import { createBackendModule } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 
 import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const CONTRACT_MCP_HELM_VALUES = `
 fullnameOverride: contract-mcp-server
@@ -162,6 +161,12 @@ async function callMcpTool(
 const EXEC_TIMEOUT_FAST_MS = 10_000;
 const EXEC_TIMEOUT_DEPLOY_MS = 180_000;
 
+// Still shell-interpolated (not execFile) because the `||` fallback needs a
+// shell. Safe today only because the sole caller below passes hardcoded
+// literals ('contract-mcp-server', 'services-dev') — this function's own
+// signature accepts arbitrary strings with no validation, so it must not
+// gain a second caller that forwards user/template input without first
+// switching this to execFile or validating releaseName/namespace.
 async function isHelmReleaseDeployed(releaseName: string, namespace: string): Promise<boolean> {
   try {
     const { stdout } = await execAsync(
@@ -210,7 +215,7 @@ function createSetupContractTestingAction() {
       ctx.logger.info('Verifying Kubernetes cluster is reachable...');
       await ensureKubeconfig();
       try {
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
+        await execFileAsync('kubectl', ['cluster-info', '--request-timeout=5s'], { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
       } catch (e: any) {
         throw new Error(`Cannot reach the Kubernetes cluster: ${e.message}`);
       }
@@ -227,23 +232,27 @@ function createSetupContractTestingAction() {
         );
       } else {
         ctx.logger.info('Deploying contract-mcp-server via Helm...');
-        const valuesFile = path.join(os.tmpdir(), `contract-mcp-values-${Date.now()}.yaml`);
+        const { dir: valuesDir, filePath: valuesFile } = await writeSecureTempFile(
+          'contract-mcp-values',
+          'values.yaml',
+          CONTRACT_MCP_HELM_VALUES.trim(),
+        );
         try {
-          await fs.writeFile(valuesFile, CONTRACT_MCP_HELM_VALUES.trim(), 'utf8');
-          const { stdout, stderr } = await execAsync(
+          const { stdout, stderr } = await execFileAsync(
+            'helm',
             [
-              'helm upgrade --install contract-mcp-server /helm/service-template',
-              '--namespace services-dev --create-namespace',
-              `--values ${valuesFile}`,
-              '--wait --timeout 120s',
-            ].join(' '),
+              'upgrade', '--install', 'contract-mcp-server', '/helm/service-template',
+              '--namespace', 'services-dev', '--create-namespace',
+              '--values', valuesFile,
+              '--wait', '--timeout', '120s',
+            ],
             { env: kubeEnv, timeout: EXEC_TIMEOUT_DEPLOY_MS },
           );
           if (stdout) ctx.logger.info(stdout.trim());
           if (stderr) ctx.logger.warn(stderr.trim());
           ctx.logger.info('✓ contract-mcp-server deployed');
         } finally {
-          await fs.unlink(valuesFile).catch(() => undefined);
+          await cleanupSecureTempDir(valuesDir);
         }
       }
 
@@ -261,13 +270,16 @@ function createSetupContractTestingAction() {
 
       // ── Step 4: Apply KAgent Agent CRD (idempotent) ───────────────────────
       ctx.logger.info('Applying KAgent contract-assistant Agent CRD...');
-      const agentFile = path.join(os.tmpdir(), `contract-agent-${Date.now()}.yaml`);
+      const { dir: agentDir, filePath: agentFile } = await writeSecureTempFile(
+        'contract-agent',
+        'agent.yaml',
+        buildContractAgentYaml(),
+      );
       try {
-        await fs.writeFile(agentFile, buildContractAgentYaml(), 'utf8');
-        const { stdout } = await execAsync(`kubectl apply -f ${agentFile}`, { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
+        const { stdout } = await execFileAsync('kubectl', ['apply', '-f', agentFile], { env: kubeEnv, timeout: EXEC_TIMEOUT_FAST_MS });
         ctx.logger.info(stdout.trim());
       } finally {
-        await fs.unlink(agentFile).catch(() => undefined);
+        await cleanupSecureTempDir(agentDir);
       }
 
       // ── Step 5: Wait for contract-mcp-server to be ready ─────────────────
