@@ -23,11 +23,9 @@
 import { createBackendModule, coreServices } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import {
-  DefaultGithubCredentialsProvider,
-  ScmIntegrations,
-} from '@backstage/integration';
+import { ScmIntegrations } from '@backstage/integration';
 import sodium from 'libsodium-wrappers';
+import { parseGithubOwnerRepo, getGithubApiHeaders, summarizeSettledResults } from './githubRepoHelpers';
 
 async function encryptSecret(repoPublicKey: string, secretValue: string): Promise<string> {
   await sodium.ready;
@@ -77,34 +75,10 @@ export function createSetRepoSecretsAction(options: { integrations: ScmIntegrati
       // Parse owner/repo from either:
       //   - Backstage RepoUrlPicker format: github.com?owner=X&repo=Y
       //   - Standard HTTPS/git URL:         https://github.com/owner/repo
-      let owner: string;
-      let repo: string;
-      const pathMatch = repoUrl.match(/github\.com[/:]([^/?]+)\/([^/?]+?)(?:\.git)?(?:[/?].*)?$/);
-      if (pathMatch) {
-        [, owner, repo] = pathMatch;
-      } else {
-        const urlStr = repoUrl.startsWith('http') ? repoUrl : `https://${repoUrl}`;
-        const parsed = new URL(urlStr);
-        owner = parsed.searchParams.get('owner') ?? '';
-        repo = parsed.searchParams.get('repo') ?? '';
-        if (!owner || !repo) {
-          throw new Error(`Cannot parse GitHub owner/repo from URL: ${repoUrl}`);
-        }
-      }
-
-      // Normalise to HTTPS URL for credential lookup
-      const httpsUrl = `https://github.com/${owner}/${repo}`;
+      const { owner, repo } = parseGithubOwnerRepo(repoUrl);
 
       // Get GitHub token from Backstage SCM integration config
-      const credProvider = DefaultGithubCredentialsProvider.fromIntegrations(options.integrations);
-      const { token } = await credProvider.getCredentials({ url: httpsUrl });
-
-      const ghHeaders = {
-        Authorization: `token ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      };
+      const ghHeaders = await getGithubApiHeaders(options.integrations, owner, repo);
 
       // Fetch the repo's Actions public key (required for secret encryption)
       ctx.logger.info(`Fetching Actions public key for ${owner}/${repo}...`);
@@ -147,17 +121,7 @@ export function createSetRepoSecretsAction(options: { integrations: ScmIntegrati
         }
         return name;
       }));
-      const results: string[] = [];
-      for (let i = 0; i < settled.length; i++) {
-        const s = settled[i];
-        const name = entries[i][0];
-        if (s.status === 'fulfilled') {
-          ctx.logger.info(`Secret ${name} set on ${owner}/${repo}`);
-          results.push(name);
-        } else {
-          ctx.logger.warn(`Failed to set secret ${name}: ${s.reason instanceof Error ? s.reason.message : String(s.reason)}`);
-        }
-      }
+      const results = summarizeSettledResults(settled, entries, 'Secret', `${owner}/${repo}`, ctx.logger);
 
       ctx.logger.info(`Done. Set ${results.length}/${entries.length} secrets: ${results.join(', ')}`);
     },
