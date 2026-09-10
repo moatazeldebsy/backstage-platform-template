@@ -37,7 +37,16 @@ export function proxyTarget(config: Config, endpoint: string): string | undefine
     | undefined;
   const target = endpoints?.[endpoint]?.target;
   if (typeof target !== 'string' || target.trim() === '') return undefined;
-  return target.replace(/\/+$/, '');
+  return stripTrailingSlashes(target);
+}
+
+// A loop instead of /\/+$/ — SonarQube flags that regex as super-linear
+// (S8786) even though it isn't in practice; not worth arguing with the
+// analyzer over a one-line helper.
+export function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') end--;
+  return value.slice(0, end);
 }
 
 export interface CollectorContext {

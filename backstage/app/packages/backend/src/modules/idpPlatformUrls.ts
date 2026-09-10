@@ -17,6 +17,15 @@ import type { Config } from '@backstage/config';
  * configured behaves exactly as the hardcoded values did.
  */
 
+// A loop instead of /\/+$/ — SonarQube flags that regex as super-linear
+// (S8786) even though it isn't in practice; not worth arguing with the
+// analyzer over a one-line helper.
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') end--;
+  return value.slice(0, end);
+}
+
 /** Key in externalLinks -> the local default it falls back to. */
 const LINKS: Record<string, string> = {
   grafana: 'http://grafana.idp.local',
@@ -58,7 +67,7 @@ function createPlatformUrlsAction(config: Config) {
             : config.getOptionalString(`externalLinks.${key}`) ?? fallback;
 
         // Strip a trailing slash so templates can append paths without doubling it.
-        ctx.output(key as never, value.replace(/\/+$/, '') as never);
+        ctx.output(key as never, stripTrailingSlashes(value) as never);
       }
 
       ctx.logger.info(
