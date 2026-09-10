@@ -283,4 +283,4 @@ export const idpTechInsightsModule = createBackendModule({
 });
 
 // Exported for unit tests / docs generation.
-export { QUALITY_GATES };
+export { QUALITY_GATES, entityFactRetriever };

@@ -37,7 +37,7 @@ const LINKS: Record<string, string> = {
   prometheus: 'http://prometheus.idp.local',
 };
 
-function createPlatformUrlsAction(config: Config) {
+export function createPlatformUrlsAction(config: Config) {
   return createTemplateAction({
     id: 'idp:platform-urls',
     description:
