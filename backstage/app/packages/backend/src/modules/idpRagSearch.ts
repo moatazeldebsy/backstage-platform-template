@@ -27,8 +27,18 @@ async function embedTexts(
   return json.data.map(d => d.embedding);
 }
 
+// The tag stripper is a manual scan rather than /<[^>]+>/g — SonarQube flags
+// that regex as super-linear (S8786). TechDocs pages can be large, so the
+// scan avoids relying on the regex engine's worst case.
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  let out = '';
+  let inTag = false;
+  for (const ch of html) {
+    if (ch === '<') inTag = true;
+    else if (ch === '>') inTag = false;
+    else if (!inTag) out += ch;
+  }
+  return out.replace(/\s+/g, ' ').trim();
 }
 
 function truncate(text: string, maxChars = 2000): string {

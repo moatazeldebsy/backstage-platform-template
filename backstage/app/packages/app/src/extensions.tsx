@@ -24,6 +24,7 @@ import {
   showIncidents, showLambdaTest,
 } from './entityFilters';
 import { useApi, fetchApiRef, configApiRef, identityApiRef } from '@backstage/core-plugin-api';
+import type { FetchApi } from '@backstage/core-plugin-api';
 import {
   Content,
   Header,
@@ -111,9 +112,9 @@ function StackedBar({ segments }: { segments: { value: number; color: string }[]
   if (total === 0) return <div style={{ height: 28, background: '#eee', borderRadius: 4 }} />;
   return (
     <div style={{ display: 'flex', height: 28, borderRadius: 4, overflow: 'hidden', gap: 1 }}>
-      {segments.map((seg, i) =>
+      {segments.map(seg =>
         seg.value > 0 ? (
-          <div key={i} style={{ flex: seg.value, background: seg.color }} title={`$${seg.value.toFixed(4)}`} />
+          <div key={seg.color} style={{ flex: seg.value, background: seg.color }} title={`$${seg.value.toFixed(4)}`} />
         ) : null
       )}
     </div>
@@ -140,7 +141,7 @@ function FinOpsPage() {
       fetchApi.fetch(`${base}/api/proxy/opencost/allocation/compute?window=${window_}&aggregate=${aggregate}&accumulate=true`),
       fetchApi.fetch(`${base}/api/proxy/opencost/allocation/compute?window=${window_}&aggregate=${aggregate}&accumulate=false&step=${step}`),
     ])
-      .then(([r1, r2]) => Promise.all([r1.ok ? r1.json() : Promise.reject(r1.status), r2.ok ? r2.json() : Promise.resolve({ data: [] })]))
+      .then(([r1, r2]) => Promise.all([r1.ok ? r1.json() : Promise.reject(new Error(`HTTP ${r1.status}`)), r2.ok ? r2.json() : Promise.resolve({ data: [] })]))
       .then(([total, daily]: [any, any]) => {
         const alloc: Record<string, any> = total?.data?.[0] ?? {};
         const sorted = Object.entries(alloc)
@@ -226,16 +227,16 @@ function FinOpsPage() {
                         return { label: `${d.getMonth()+1}/${d.getDate()}`, items: Object.fromEntries(DEMO_ROWS.map(r => [r.name, r.total / 7 * (0.8 + Math.random() * 0.4)])) };
                       })
                     : dailyBuckets
-                  ).map((bucket, bi) => {
+                  ).map(bucket => {
                     const bucketTotal = Object.values(bucket.items).reduce((s: number, v: any) => s + v, 0);
                     const barH = 120;
                     return (
-                      <Box key={bi} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
+                      <Box key={bucket.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 32 }}>
                         <Box style={{ width: '100%', height: barH, display: 'flex', flexDirection: 'column-reverse', borderRadius: '4px 4px 0 0', overflow: 'hidden' }}>
                           {displayRows.map((row, ri) => {
                             const val = bucket.items[row.name] ?? 0;
                             const h = bucketTotal > 0 ? (val / (isDemo ? bucketTotal : maxBucketTotal)) * barH : 0;
-                            return h > 0 ? <div key={ri} style={{ width: '100%', height: h, background: COST_COLORS[ri % COST_COLORS.length] }} title={`${row.name}: $${val.toFixed(4)}`} /> : null;
+                            return h > 0 ? <div key={row.name} style={{ width: '100%', height: h, background: COST_COLORS[ri % COST_COLORS.length] }} title={`${row.name}: $${val.toFixed(4)}`} /> : null;
                           })}
                         </Box>
                         <Typography variant="caption" style={{ fontSize: 9, marginTop: 2 }}>{bucket.label}</Typography>
@@ -246,7 +247,7 @@ function FinOpsPage() {
                 {/* Legend */}
                 <Box display="flex" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   {displayRows.slice(0, 8).map((row, i) => (
-                    <Box key={i} display="flex" alignItems="center" style={{ gap: 4 }}>
+                    <Box key={row.name} display="flex" alignItems="center" style={{ gap: 4 }}>
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: COST_COLORS[i % COST_COLORS.length] }} />
                       <Typography variant="caption">{row.name}</Typography>
                     </Box>
@@ -354,6 +355,9 @@ function uuidv4(): string {
 //   3. Poll GET /api/sessions/<id>      every 1 s for up to 90 s — wait for text
 
 interface ChatMessage {
+  // Optional because messages saved to localStorage before this field existed
+  // don't have one — the render key falls back to array index for those.
+  id?: string;
   role: 'user' | 'assistant';
   text: string;
 }
@@ -446,8 +450,9 @@ function AiAssistantPage() {
     if (!agent) {
       setMessages(prev => [
         ...prev,
-        { role: 'user', text },
+        { id: uuidv4(), role: 'user', text },
         {
+          id: uuidv4(),
           role: 'assistant',
           text:
             'No KAgent agents are installed on this cluster, so there is nothing to chat with.\n\n' +
@@ -461,7 +466,7 @@ function AiAssistantPage() {
       return;
     }
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text }]);
+    setMessages(prev => [...prev, { id: uuidv4(), role: 'user', text }]);
     setLoading(true);
     setStatusText('Sending…');
 
@@ -650,11 +655,11 @@ function AiAssistantPage() {
       }
 
       if (!agentReply) throw new Error('Agent did not respond in time');
-      setMessages(prev => [...prev, { role: 'assistant', text: agentReply! }]);
+      setMessages(prev => [...prev, { id: uuidv4(), role: 'assistant', text: agentReply! }]);
     } catch (err: any) {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', text: `⚠️ ${err.message}` },
+        { id: uuidv4(), role: 'assistant', text: `⚠️ ${err.message}` },
       ]);
     } finally {
       setLoading(false);
@@ -797,7 +802,7 @@ function AiAssistantPage() {
             )}
             {messages.map((msg, i) => (
               <Box
-                key={i}
+                key={msg.id ?? i}
                 display="flex"
                 justifyContent={msg.role === 'user' ? 'flex-end' : 'flex-start'}
                 mb={1}
@@ -2370,9 +2375,9 @@ function PagerDutyOnCallCard({ serviceId }: { serviceId: string }) {
     const headers = { 'Content-Type': 'application/json' };
     Promise.all([
       fetchApi.fetch(`${base}/api/proxy/pagerduty/oncalls?service_ids[]=${serviceId}&include[]=users`, { headers })
-        .then(r => r.ok ? r.json() : Promise.reject(r.status)),
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
       fetchApi.fetch(`${base}/api/proxy/pagerduty/incidents?service_ids[]=${serviceId}&statuses[]=triggered&statuses[]=acknowledged`, { headers })
-        .then(r => r.ok ? r.json() : Promise.reject(r.status)),
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
     ])
       .then(([oc, inc]) => { setOncall(oc.oncalls ?? []); setIncidents(inc.incidents ?? []); })
       .catch(e => setError(`PagerDuty unavailable (${e}). Set PAGERDUTY_TOKEN in local/backstage/.env`))
@@ -2850,7 +2855,7 @@ function GrafanaAlertsCard({ labelSelector }: { labelSelector: string }) {
     const encoded = encodeURIComponent(labelSelector);
     fetchApi
       .fetch(`${base}/api/proxy/grafana/api/api/alertmanager/grafana/api/v2/alerts?filter=${encoded}&active=true&silenced=false&inhibited=false`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(data => setAlerts(Array.isArray(data) ? data : []))
       .catch(e => {
         const hint = firstMatch([
@@ -2896,8 +2901,8 @@ function GrafanaAlertsCard({ labelSelector }: { labelSelector: string }) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {alerts.map((a: any, i: number) => (
-                <TableRow key={i}>
+              {alerts.map((a: any) => (
+                <TableRow key={`${a.labels?.alertname}-${a.labels?.instance ?? ''}-${a.startsAt}`}>
                   <TableCell><Typography variant="body2" style={{ fontWeight: 600 }}>{a.labels?.alertname}</Typography></TableCell>
                   <TableCell>
                     <Chip
@@ -2981,7 +2986,7 @@ function JiraIssuesCard({ projectKey }: { projectKey: string }) {
     const jql = encodeURIComponent(`project = ${projectKey} AND statusCategory != Done ORDER BY created DESC`);
     fetchApi
       .fetch(`${base}/api/proxy/jira/rest/api/2/search?jql=${jql}&maxResults=10&fields=summary,status,priority,assignee,issuetype,created`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(data => { setIssues(data.issues ?? []); setTotal(data.total ?? 0); })
       .catch(e => setError(`Jira unavailable (${e}). Set JIRA_TOKEN and JIRA_URL in local/backstage/.env`))
       .finally(() => setLoading(false));
@@ -3122,7 +3127,7 @@ function CopilotMetricsPage() {
   useEffect(() => {
     fetchApi
       .fetch(`${base}/api/proxy/github-copilot/orgs/moatazeldebsy/copilot/metrics`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(data => setDays(Array.isArray(data) ? data.slice(-28) : []))
       .catch(() => { setDays(generateDemoCopilotData()); setIsDemo(true); })
       .finally(() => setLoading(false));
@@ -3326,6 +3331,23 @@ const DORA_AGGREGATE_SERVICE = 'all-services';
 // Keeping them apart stops the UI blaming Prometheus for merely-absent metrics.
 type DoraDataSource = 'service' | 'aggregate' | 'empty' | 'demo';
 
+// Shared by every Prometheus-backed dashboard section — extracted because
+// SonarQube (S4144) flagged this closure pair as duplicated verbatim between
+// DoraEntityContent and the platform overview page.
+function makePrometheusQueries(fetchApi: FetchApi, base: string) {
+  const promQuery = (expr: string) =>
+    fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(d => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN'));
+
+  const promRange = (expr: string) =>
+    fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query_range?query=${encodeURIComponent(expr)}&start=${Math.floor(Date.now()/1000)-604800}&end=${Math.floor(Date.now()/1000)}&step=86400`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(d => (d?.data?.result?.[0]?.values ?? []).map((v: any[]) => parseFloat(v[1])).filter((v: number) => !isNaN(v)));
+
+  return { promQuery, promRange };
+}
+
 function DoraEntityContent() {
   const { entity } = useEntity();
   const fetchApi  = useApi(fetchApiRef);
@@ -3341,15 +3363,7 @@ function DoraEntityContent() {
   const [dataSource, setSource] = useState<DoraDataSource>('demo');
 
   useEffect(() => {
-    const promQuery = (expr: string) =>
-      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
-        .then(d => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN'));
-
-    const promRange = (expr: string) =>
-      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query_range?query=${encodeURIComponent(expr)}&start=${Math.floor(Date.now()/1000)-604800}&end=${Math.floor(Date.now()/1000)}&step=86400`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
-        .then(d => (d?.data?.result?.[0]?.values ?? []).map((v: any[]) => parseFloat(v[1])).filter((v: number) => !isNaN(v)));
+    const { promQuery, promRange } = makePrometheusQueries(fetchApi, base);
 
     const fetchForService = async (svc: string) => {
       const [freq, lead, cfr, mttr, fS, lS, cS, mS] = await Promise.all([
@@ -3503,7 +3517,7 @@ function TeamBudgetEntityContent() {
   useEffect(() => {
     const promQuery = (expr: string) =>
       fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
         .then((d: any) => {
           const val = d?.data?.result?.[0]?.value?.[1];
           return val != null ? parseFloat(val) : NaN;
@@ -3725,7 +3739,7 @@ function SloEntityContent() {
   useEffect(() => {
     const promQuery = (expr: string) =>
       fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
 
     (async () => {
       try {
@@ -3905,14 +3919,7 @@ function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const pq = (expr: string) =>
-      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
-        .then(d => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN'));
-    const pr = (expr: string) =>
-      fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query_range?query=${encodeURIComponent(expr)}&start=${Math.floor(Date.now()/1000)-604800}&end=${Math.floor(Date.now()/1000)}&step=86400`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
-        .then(d => (d?.data?.result?.[0]?.values ?? []).map((v: any[]) => parseFloat(v[1])).filter((v: number) => !isNaN(v)));
+    const { promQuery: pq, promRange: pr } = makePrometheusQueries(fetchApi, base);
 
     const catalogFetch = (kind: string) =>
       fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=${kind}&fields=metadata.name,spec.owner,spec.lifecycle,spec.type`)
@@ -4056,7 +4063,7 @@ function DoraPage() {
 
   useEffect(() => {
     fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
       .catch(() => setCatalogNames(new Set())); // no catalog → no rows link, table still renders
   }, [base, fetchApi]);
@@ -4064,7 +4071,7 @@ function DoraPage() {
   useEffect(() => {
     const pq = (expr: string) =>
       fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
     const scalar = (d: any) => parseFloat(d?.data?.result?.[0]?.value?.[1] ?? 'NaN');
     const allSeries = (d: any): Array<{metric: Record<string,string>; value: [number,string]}> => d?.data?.result ?? [];
 
@@ -4376,7 +4383,7 @@ function SloPage() {
 
   useEffect(() => {
     fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Component`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((items: any[]) => setCatalogNames(new Set(items.map(e => e?.metadata?.name).filter(Boolean))))
       .catch(() => setCatalogNames(new Set()));
   }, [base, fetchApi]);
@@ -4384,7 +4391,7 @@ function SloPage() {
   useEffect(() => {
     const pq = (expr: string) =>
       fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
 
     Promise.all([
       pq('sloth_slo_info'),
@@ -4458,13 +4465,13 @@ function SloPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {displaySlos.map((row, i) => {
+                    {displaySlos.map(row => {
                       const pct = budgetPct(row.objective, row.errorRatio);
                       const color = firstMatch([[pct == null, '#9e9e9e'], [pct != null && pct > 50, '#4caf50'], [pct != null && pct > 10, '#ff9800']], '#f44336');
                       const status = firstMatch([[pct == null, 'No data'], [pct != null && pct > 50, 'Healthy'], [pct != null && pct > 10, 'Burning fast']], 'Critical');
                       const linkable = catalogNames.has(row.service);
                       return (
-                        <TableRow key={i} hover={linkable} style={{ cursor: linkable ? 'pointer' : 'default' }}
+                        <TableRow key={`${row.service}-${row.label}`} hover={linkable} style={{ cursor: linkable ? 'pointer' : 'default' }}
                           title={linkable ? undefined : `${row.service} has SLO metrics but no catalog entity — register it to open its service page.`}
                           onClick={linkable ? () => { window.location.href = `/catalog/default/component/${row.service}/slo`; } : undefined}>
                           <TableCell style={{ fontWeight: 500 }}>{row.service}</TableCell>
@@ -4546,7 +4553,7 @@ function ArgocdPage() {
   const loadApps = () => {
     setLoading(true);
     fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((data: any) => {
         const items: ArgoApp[] = (data?.items ?? []).map((item: any) => ({
           name:       item.metadata?.name ?? '—',
@@ -4768,7 +4775,7 @@ function ActivityPage() {
   useEffect(() => {
     // Enrich with real ArgoCD sync operations
     fetchApi.fetch(`${base}/api/proxy/argocd/api/v1/applications`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((data: any) => {
         const items: any[] = data?.items ?? [];
         if (items.length === 0) return;
@@ -5043,7 +5050,7 @@ function ApiExplorerPage() {
                   <Button size="small" onClick={() => setSelected(null)} style={{ fontSize: 11 }}>Close ✕</Button>
                 </Box>
                 {DEMO_ENDPOINTS.map((ep, i) => (
-                  <Box key={i}>
+                  <Box key={ep.path}>
                     <Box style={{ background: '#1e2d3d', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span style={{ background: METHOD_COLORS[ep.method] ?? '#455a64', color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11, fontWeight: 700 }}>{ep.method}</span>
                       <Typography variant="caption" style={{ color: '#a3be8c', fontFamily: 'monospace', fontSize: 13 }}>{ep.path}</Typography>
@@ -5140,7 +5147,7 @@ function OnboardingPage() {
           <Paper style={{ padding: '20px 24px', marginBottom: 24 }}>
             <Box display="flex" alignItems="center">
               {STEPS.map((label, i) => (
-                <Box key={i} display="flex" alignItems="center" style={{ flex: 1 }}>
+                <Box key={label} display="flex" alignItems="center" style={{ flex: 1 }}>
                   <Box display="flex" flexDirection="column" alignItems="center" style={{ flex: 1 }}>
                     <button
                       type="button"
@@ -5571,7 +5578,7 @@ function CostCalculatorPage() {
   useEffect(() => {
     const pq = (expr: string) =>
       fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
     Promise.all([
       pq('idp_team_budget_usd_monthly').catch(() => null),
       pq('idp_team_actual_cost_usd_monthly').catch(() => null),
@@ -6212,7 +6219,7 @@ function UserProfilePage() {
                   </Box>
                   <Box style={{ padding: '8px 0' }}>
                     {ACTIVITY_DEMO.map((item, i) => (
-                      <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 12, padding: '10px 20px', position: 'relative' }}>
+                      <Box key={item.meta} display="flex" alignItems="flex-start" style={{ gap: 12, padding: '10px 20px', position: 'relative' }}>
                         {i < ACTIVITY_DEMO.length - 1 && (
                           <div style={{ position: 'absolute', left: 35, top: 38, bottom: 0, width: 2, background: '#eee' }} />
                         )}
@@ -6323,7 +6330,7 @@ function GlobalSearchPage() {
     setLoading(true);
     // Try Backstage search API first, fall back to catalog filter
     fetchApi.fetch(`${base}/api/search/query?term=${encodeURIComponent(q)}&pageLimit=30`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((data: any) => {
         const items: SearchResult[] = (data?.results ?? []).map((r: any) => {
           const doc  = r.document ?? {};
@@ -6647,8 +6654,8 @@ function AdminPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {DEMO_INGESTION.map((row, i) => (
-                  <TableRow key={i} hover>
+                {DEMO_INGESTION.map(row => (
+                  <TableRow key={row.source} hover>
                     <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{row.time}</Typography></TableCell>
                     <TableCell><Typography variant="caption">{row.source}</Typography></TableCell>
                     <TableCell><Typography variant="caption">{row.event}</Typography></TableCell>
@@ -6742,7 +6749,7 @@ function KAgentPage() {
   useEffect(() => {
     const pq = (expr: string) =>
       fetchApi.fetch(`${base}/api/proxy/prometheus/api/v1/query?query=${encodeURIComponent(expr)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status));
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
 
     // Try Prometheus for real MCP tool call counts
     const promFetch = pq('sum(mcp_tool_calls_total)').then(d => {
@@ -6760,10 +6767,10 @@ function KAgentPage() {
     // on a page that reports no error. The fields also moved under
     // spec.declarative in v1alpha2, so the version bump alone is not enough.
     const kagentFetch = fetchApi.fetch(`${base}/api/kubernetes/proxy/apis/kagent.dev/v1alpha2/namespaces/kagent/agents`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((data: any) => {
         const items: any[] = data?.items ?? [];
-        if (items.length === 0) return Promise.reject('empty');
+        if (items.length === 0) return Promise.reject(new Error('empty'));
         const liveAgents: KAgentAgent[] = items.map((item: any) => {
           const declarative = item.spec?.declarative ?? {};
           // tools[] entries are { type: 'McpServer', mcpServer: { name, toolNames[] } }
@@ -7616,9 +7623,15 @@ function MlflowPage() {
         live.forEach((e: any) => { expName[e.experiment_id] = e.name; });
 
         // int64 fields come back as JSON strings (proto3), hence Number(...).
+        // A for-loop rather than .map().find() — same result, one less level
+        // of function nesting (SonarQube S2004 flagged the chain at >5 deep).
         const headline = (r: any): string => {
           const metrics: any[] = r?.data?.metrics ?? [];
-          const pick = HEADLINE_METRICS.map(k => metrics.find(m => m.key === k)).find(Boolean) ?? metrics[0];
+          let pick = metrics[0];
+          for (const key of HEADLINE_METRICS) {
+            const found = metrics.find((m: any) => m.key === key);
+            if (found) { pick = found; break; }
+          }
           return pick ? `${pick.key} ${Number(pick.value).toFixed(3)}` : '—';
         };
 
@@ -7931,7 +7944,7 @@ function SupportPage() {
   useEffect(() => {
     // Try PagerDuty on-call roster
     fetchApi.fetch(`${base}/api/proxy/pagerduty/oncalls?limit=1&include[]=users`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((d: any) => {
         const name = d?.oncalls?.[0]?.user?.summary;
         if (name) setOncall(name);
@@ -8002,8 +8015,8 @@ function SupportPage() {
             <Typography variant="h6">Recent Platform Announcements</Typography>
           </Box>
           <Box style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {ANNOUNCEMENTS.map((a, i) => (
-              <Box key={i} style={{ borderLeft: `3px solid ${a.color}`, paddingLeft: 12 }}>
+            {ANNOUNCEMENTS.map(a => (
+              <Box key={a.title} style={{ borderLeft: `3px solid ${a.color}`, paddingLeft: 12 }}>
                 <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 2 }}>
                   <Typography variant="body2" style={{ fontWeight: 500 }}>{a.title}</Typography>
                   <Typography variant="caption" color="textSecondary" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>{a.date}</Typography>
