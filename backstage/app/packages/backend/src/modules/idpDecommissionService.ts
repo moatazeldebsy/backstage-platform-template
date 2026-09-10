@@ -16,7 +16,7 @@ import {
 } from '@backstage/integration';
 import { CatalogClient } from '@backstage/catalog-client';
 
-function createDecommissionServiceAction(options: {
+export function createDecommissionServiceAction(options: {
   integrations: ScmIntegrations;
   discovery: any;
   auth: any;
