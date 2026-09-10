@@ -1,15 +1,13 @@
 import { createBackendModule } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 
 import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // imageTag defaults to 'latest' on purpose, unlike the third-party images
 // elsewhere in this repo, which are pinned. The image this refers to is built
@@ -53,7 +51,7 @@ spec:
 `;
 }
 
-function createDeployMcpServerAction() {
+export function createDeployMcpServerAction() {
   return createTemplateAction({
     id: 'idp:deploy-mcp-server',
     description: 'Apply an MCPServer CRD to the cluster — the kmcp controller deploys it as a pod and makes it available to KAgent agents.',
@@ -108,24 +106,24 @@ function createDeployMcpServerAction() {
       await ensureKubeconfig();
 
       try {
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
+        await execFileAsync('kubectl', ['cluster-info', '--request-timeout=5s'], { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
         throw new Error(`Cannot reach the cluster: ${e.message}`);
       }
 
       const yaml = buildMcpServerYaml({ name, port, imageRepo, imageTag });
-      const tmpFile = path.join(os.tmpdir(), `mcpserver-${name}-${Date.now()}.yaml`);
+      const { dir, filePath: tmpFile } = await writeSecureTempFile('mcpserver', `${name}.yaml`, yaml);
 
       try {
-        await fs.writeFile(tmpFile, yaml, 'utf8');
-        const { stdout, stderr } = await execAsync(
-          `kubectl apply -f ${tmpFile}`,
+        const { stdout, stderr } = await execFileAsync(
+          'kubectl',
+          ['apply', '-f', tmpFile],
           { env: kubeEnv, timeout: 30_000 },
         );
         if (stdout) ctx.logger.info(stdout.trim());
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
-        await fs.unlink(tmpFile).catch(() => undefined);
+        await cleanupSecureTempDir(dir);
       }
 
       ctx.logger.info(`✓ MCPServer '${name}' applied — kmcp controller will deploy the pod`);

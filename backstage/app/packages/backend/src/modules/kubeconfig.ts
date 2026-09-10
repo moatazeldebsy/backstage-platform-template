@@ -1,4 +1,7 @@
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 /**
  * Shared kubeconfig bootstrap for the scaffolder actions that shell out to
@@ -22,7 +25,16 @@ import * as fs from 'fs/promises';
  * removes a MITM window against the API server.
  */
 
-export const KUBECONFIG_PATH = process.env.KUBECONFIG ?? '/tmp/kubeconfig';
+// A literal '/tmp/kubeconfig' default is a predictable path in a shared,
+// world-writable directory — another process/user could pre-plant a symlink
+// there before we write a service-account token through it (SonarQube
+// S5443). mkdtempSync creates an unpredictable, uniquely-named 0700
+// directory instead, so there's nothing to pre-plant. Local/AWS deployments
+// that need a fixed path (e.g. docker-compose) still take the explicit
+// KUBECONFIG env var below, unaffected by this fallback.
+export const KUBECONFIG_PATH =
+  process.env.KUBECONFIG ??
+  path.join(fsSync.mkdtempSync(path.join(os.tmpdir(), 'kubeconfig-')), 'config');
 
 export const kubeEnv = {
   ...process.env,

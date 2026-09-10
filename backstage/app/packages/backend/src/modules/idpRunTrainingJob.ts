@@ -1,15 +1,13 @@
 import { createBackendModule } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 
 import { ensureKubeconfig, kubeEnv } from './kubeconfig';
+import { writeSecureTempFile, cleanupSecureTempDir } from './secureTempFile';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Must track the MLflow *server* image tag in kubernetes/ml-platform/mlflow.yaml
 // and aws/ml-platform/mlflow.yaml. An unpinned `pip install mlflow` pulls a 3.x
@@ -221,7 +219,7 @@ spec:
 async function workflowsAvailable(): Promise<boolean> {
   if (process.env.IDP_TRAINING_BACKEND === 'job') return false;
   try {
-    await execAsync('kubectl get crd workflowtemplates.argoproj.io --request-timeout=5s', {
+    await execFileAsync('kubectl', ['get', 'crd', 'workflowtemplates.argoproj.io', '--request-timeout=5s'], {
       env: kubeEnv,
       timeout: 10_000,
     });
@@ -231,7 +229,7 @@ async function workflowsAvailable(): Promise<boolean> {
   }
 }
 
-function createRunTrainingJobAction() {
+export function createRunTrainingJobAction() {
   return createTemplateAction({
     id: 'idp:run-training-job',
     description: 'Create a Kubernetes Job in ml-platform that runs the initial training and logs metrics to the in-cluster MLflow.',
@@ -278,7 +276,7 @@ function createRunTrainingJobAction() {
 
       // Verify cluster is reachable
       try {
-        await execAsync('kubectl cluster-info --request-timeout=5s', { env: kubeEnv, timeout: 10_000 });
+        await execFileAsync('kubectl', ['cluster-info', '--request-timeout=5s'], { env: kubeEnv, timeout: 10_000 });
       } catch (e: any) {
         throw new Error(`Cannot reach the Kubernetes cluster: ${e.message}`);
       }
@@ -301,14 +299,17 @@ function createRunTrainingJobAction() {
         );
       }
 
-      const tmpFile = path.join(os.tmpdir(), `training-${useWorkflow ? 'workflow' : 'job'}-${name}-${Date.now()}.yaml`);
+      const { dir, filePath: tmpFile } = await writeSecureTempFile(
+        'training',
+        `${useWorkflow ? 'workflow' : 'job'}-${name}.yaml`,
+        yaml,
+      );
       let submittedWorkflow = '';
       try {
-        await fs.writeFile(tmpFile, yaml, 'utf8');
         // `create` not `apply`: the Workflow uses generateName, which apply
         // rejects because it has no name to diff against.
         const verb = useWorkflow ? 'create' : 'apply';
-        const { stdout, stderr } = await execAsync(`kubectl ${verb} -f ${tmpFile}`, { env: kubeEnv, timeout: 30_000 });
+        const { stdout, stderr } = await execFileAsync('kubectl', [verb, '-f', tmpFile], { env: kubeEnv, timeout: 30_000 });
         if (stdout) {
           ctx.logger.info(stdout.trim());
           const m = stdout.match(/workflow\.argoproj\.io\/(\S+)\s+created/);
@@ -316,7 +317,7 @@ function createRunTrainingJobAction() {
         }
         if (stderr) ctx.logger.warn(stderr.trim());
       } finally {
-        await fs.unlink(tmpFile).catch(() => undefined);
+        await cleanupSecureTempDir(dir);
       }
 
       const mlflowExternalUrl = process.env.MLFLOW_EXTERNAL_URL ?? 'http://mlflow.idp.local';

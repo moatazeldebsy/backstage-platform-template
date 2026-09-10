@@ -8,6 +8,8 @@
  * scripts/get-k8s-credentials.sh) writes `K8S_CLUSTER_CA_DATA`.
  */
 
+import * as os from 'os';
+
 const mockWriteFile = jest.fn();
 jest.mock('fs/promises', () => ({ writeFile: (...a: any[]) => mockWriteFile(...a) }));
 
@@ -92,7 +94,11 @@ describe('ensureKubeconfig', () => {
     await load().ensureKubeconfig();
 
     const [path, , opts] = mockWriteFile.mock.calls[0];
-    expect(path).toBe('/tmp/kubeconfig');
+    // Not a literal '/tmp/kubeconfig' — mkdtempSync gives each process an
+    // unpredictable directory (SonarQube S5443, see the comment on
+    // KUBECONFIG_PATH), so only the shape and location are checked here.
+    expect(path).toMatch(/[\\/]kubeconfig-[^\\/]+[\\/]config$/);
+    expect(path.startsWith(os.tmpdir())).toBe(true);
     expect(opts).toMatchObject({ mode: 0o600 });
   });
 
