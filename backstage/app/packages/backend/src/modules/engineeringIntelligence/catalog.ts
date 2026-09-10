@@ -82,7 +82,7 @@ export function platformFacts(components: CatalogEntity[]): PlatformFacts {
       ),
     // Sorted so the list is stable between refreshes; a set that reshuffles on
     // every collection is unreadable in a UI.
-    unscaffolded: unscaffolded.sort().slice(0, MAX_NAMED),
+    unscaffolded: unscaffolded.sort((a, b) => a.localeCompare(b)).slice(0, MAX_NAMED),
   };
 }
 
