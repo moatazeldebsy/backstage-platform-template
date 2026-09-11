@@ -2369,8 +2369,12 @@ open<span class="w"> </span>http://opencost.idp.local
 <span class="w">  </span>--requests<span class="o">=</span><span class="nv">cpu</span><span class="o">=</span>100m,memory<span class="o">=</span>128Mi<span class="w"> </span>--limits<span class="o">=</span><span class="nv">cpu</span><span class="o">=</span>500m,memory<span class="o">=</span>512Mi
 </code></pre></div></td></tr></table></div></li>
 <li><strong>Update the team budget</strong> — if the current budget is too low, raise it:<ul>
-<li>Edit <code>idp.io/cost-budget-monthly-usd</code> annotation on the Group entity in
-   <code>backstage/catalog/catalog-info.yaml</code>.</li>
+<li>Edit the team's entry in <code>catalog.teamMetadata</code> (<code>backstage/app-config.yaml</code>).
+   <code>idpGithubOrgTeamMetadataModule</code> merges this onto the GitHub-Org-synced
+   Group entity's <code>idp.io/cost-budget-monthly-usd</code> annotation on the next
+   catalog sync — editing the annotation directly on an entity has no
+   lasting effect, since Groups are no longer hand-written YAML (see
+   <a href="../../design/adr-0004-identity-and-access/">ADR-0004</a>).</li>
 <li>Update the matching entry in <code>kubernetes/finops/team-budgets-configmap.yaml</code>.</li>
 <li>The new value will take effect on the next exporter run (≤15 minutes).</li>
 </ul>
@@ -2378,12 +2382,13 @@ open<span class="w"> </span>http://opencost.idp.local
 </ol>
 <h2 id="how-budgets-are-set">How budgets are set<a class="headerlink" href="#how-budgets-are-set" title="Permanent link">&para;</a></h2>
 <p>Budgets live in two authoritative locations (keep in sync):
-- <strong>Backstage catalog</strong> — <code>idp.io/cost-budget-monthly-usd</code> annotation on each <code>Group</code> entity
-  in <code>backstage/catalog/catalog-info.yaml</code> and <code>backstage/catalog/qa-catalog.yaml</code>.
+- <strong>Backstage catalog</strong> — <code>catalog.teamMetadata</code> in <code>backstage/app-config.yaml</code>,
+  merged onto each GitHub-Org-synced <code>Group</code> entity's
+  <code>idp.io/cost-budget-monthly-usd</code> annotation at sync time.
 - <strong>Kubernetes ConfigMap</strong> — <code>kubernetes/finops/team-budgets-configmap.yaml</code>
   (<code>data.budgets.json</code>) read by the exporter via <code>TEAM_BUDGETS_JSON</code> env var.</p>
 <p>Defaults (USD/month): platform-team $2000, ml-team $1500, backend-team $600,
-data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $200.</p>
+data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-platform-team $200.</p>
 
 
 

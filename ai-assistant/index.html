@@ -3840,7 +3840,7 @@ ConfigMap and sets <code>MLFLOW_EXTERNAL_URL</code> on the Deployment once the M
 a hostname.</p>
 <hr />
 <h2 id="scaffolding-flow-step-by-step">Scaffolding flow (step-by-step)<a class="headerlink" href="#scaffolding-flow-step-by-step" title="Permanent link">&para;</a></h2>
-<p>When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-team":</p>
+<p>When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-platform-team":</p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -3862,9 +3862,9 @@ a hostname.</p>
   3. All required fields (name, description, owner) are already known
   4. call scaffold_service {
        template_ref: &quot;template:default/python-service&quot;,
-       values: { name: &quot;demo-svc&quot;, description: &quot;demo&quot;, owner: &quot;group:default/qa-team&quot; }
+       values: { name: &quot;demo-svc&quot;, description: &quot;demo&quot;, owner: &quot;group:default/qa-platform-team&quot; }
      }
-     → MCP server auto-builds repoUrl: &quot;github.com?owner=qa-team&amp;repo=demo-svc&quot;
+     → MCP server auto-builds repoUrl: &quot;github.com?owner=qa-platform-team&amp;repo=demo-svc&quot;
      → POSTs to Backstage scaffolder, polls until completed/failed (up to 3 min)
      → returns { task_id, status: &quot;completed&quot;, ui_url: &quot;http://backstage.idp.local/create/tasks/&lt;id&gt;&quot; }
   5. Agent responds with task result and the Backstage task URL

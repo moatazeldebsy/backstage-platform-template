@@ -2505,8 +2505,16 @@
 <h3 id="required-you-must-set-these">Required — You Must Set These<a class="headerlink" href="#required-you-must-set-these" title="Permanent link">&para;</a></h3>
 <hr />
 <h4 id="1-github_token">1. GITHUB_TOKEN<a class="headerlink" href="#1-github_token" title="Permanent link">&para;</a></h4>
-<p><strong>Why:</strong> Backstage catalog refresh, ArgoCD repo sync, DORA metrics</p>
-<p><strong>Scopes needed:</strong> <code>repo</code>, <code>read:org</code>, <code>gist</code></p>
+<p><strong>Why:</strong> Backstage catalog refresh, ArgoCD repo sync, DORA metrics, GitHub Org
+Team/User identity sync (<code>catalog.providers.githubOrg</code> — see
+<a href="../design/adr-0004-identity-and-access/">ADR-0004</a>)</p>
+<p><strong>Scopes needed:</strong> <code>repo</code>, <code>read:org</code>, <code>read:user</code>, <code>gist</code></p>
+<p><code>read:user</code> (or <code>user:email</code>) is easy to miss and the failure is non-obvious:
+the org-sync GraphQL query always requests each member's email when
+authenticating with a classic PAT, and GitHub rejects the <em>whole</em> query, not
+just that field, without the scope — symptom is <code>INSUFFICIENT_SCOPES</code> in the
+backend logs and zero synced Users/Groups (nobody can sign in, since sign-in
+requires a synced User entity).</p>
 <p><strong>Get it:</strong> <a href="https://github.com/settings/tokens">https://github.com/settings/tokens</a> → Generate new token (classic)</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Set in local/.env</span>
@@ -2661,7 +2669,7 @@ AWS:
        and table, so `terraform init` fails at Phase 1 without them.)
 
 Credentials:
-  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)
+  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org, read:user)
   [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
   [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
   [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)

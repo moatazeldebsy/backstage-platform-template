@@ -3279,7 +3279,7 @@ spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
 <hr />
 <h2 id="per-team-cost-budgets">Per-Team Cost Budgets<a class="headerlink" href="#per-team-cost-budgets" title="Permanent link">&para;</a></h2>
 <h3 id="overview_1">Overview<a class="headerlink" href="#overview_1" title="Permanent link">&para;</a></h3>
-<p>Monthly USD budgets are declared as annotations on Backstage <code>Group</code> entities and enforced via PrometheusRules. Actual costs are queried from OpenCost every 15 minutes by the tech-insights-exporter.</p>
+<p>Monthly USD budgets are declared in <code>catalog.teamMetadata</code> (<code>backstage/app-config.yaml</code>) and merged onto each GitHub-Org-synced <code>Group</code> entity's annotations at catalog-sync time (see <a href="../design/adr-0004-identity-and-access/">ADR-0004</a>); PrometheusRules enforce them. Actual costs are queried from OpenCost every 15 minutes by the tech-insights-exporter.</p>
 <h3 id="current-budget-values">Current budget values<a class="headerlink" href="#current-budget-values" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -3318,7 +3318,7 @@ spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
 <td>$300</td>
 </tr>
 <tr>
-<td>qa-team</td>
+<td>qa-platform-team</td>
 <td>$200</td>
 </tr>
 </tbody>
@@ -3371,12 +3371,14 @@ spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
 <p>See the <a href="../runbooks/cost-budget-exceeded/">Cost Budget Exceeded runbook</a> for remediation steps.</p>
 <h3 id="updating-a-teams-budget">Updating a team's budget<a class="headerlink" href="#updating-a-teams-budget" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Edit the annotation in <code>backstage/catalog/catalog-info.yaml</code> or <code>backstage/catalog/qa-catalog.yaml</code>:
+<li>Edit the team's entry in <code>catalog.teamMetadata</code> (<code>backstage/app-config.yaml</code>):
    <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">idp.io/cost-budget-monthly-usd</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1000&quot;</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">catalog</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">teamMetadata</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">backend-team</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">costBudgetMonthlyUsd</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1000&quot;</span>
 </code></pre></div></td></tr></table></div></li>
 <li>Update the matching entry in <code>kubernetes/finops/team-budgets-configmap.yaml</code>.</li>
 <li>Commit and push — the exporter picks up the new value on the next 15-minute cycle.</li>

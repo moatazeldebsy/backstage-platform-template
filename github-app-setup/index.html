@@ -2660,7 +2660,7 @@ exists for real org members, <strong>sign-in is effectively restricted to the or
 </li>
 <li>
 <p><strong>One-time rollout step</strong>: every scaffolder template defaults
-   <code>spec.owner</code> to a team slug (<code>platform-team</code>, <code>qa-team</code>, etc.) — these must
+   <code>spec.owner</code> to a team slug (<code>platform-team</code>, <code>qa-platform-team</code>, etc.) — these must
    exist as real Teams in the org, or ownership references dangle. Create them
    once via github.com/orgs/<code>&lt;org&gt;</code>/teams or the GitHub CLI
    (<code>gh api orgs/&lt;org&gt;/teams -f name=platform-team -f privacy=closed</code>); new

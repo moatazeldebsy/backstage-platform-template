@@ -2630,6 +2630,7 @@ with these safety defaults:</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Guest auth removed</strong> — the <code>dangerouslyAllowOutsideDevelopment</code> guest provider is no longer present in <code>backstage/app-config.aws.yaml</code>. Production requires GitHub OAuth (<code>auth.providers.github</code>).</li>
+<li><strong>Sign-in restricted to GitHub Org members</strong> — both GitHub auth resolvers set <code>dangerouslyAllowSignInWithoutUserInCatalog: false</code>. A matching catalog <code>User</code> entity only exists for real members of the org configured in <code>catalog.providers.githubOrg</code> (synced by <code>@backstage/plugin-catalog-backend-module-github-org</code>), so sign-in now fails closed for anyone outside that org instead of falling through to an unresolved identity. See <a href="../design/adr-0004-identity-and-access/">ADR-0004</a>.</li>
 <li><strong>Session secret from Secrets Manager</strong> — <code>AUTH_SESSION_SECRET</code> is injected at pod startup via the External Secrets Operator; there is no static fallback value in the config file.</li>
 </ul>
 <h3 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h3>
