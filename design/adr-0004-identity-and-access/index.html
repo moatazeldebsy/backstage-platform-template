@@ -2501,15 +2501,6 @@ and registered (<code>backstage/app/packages/backend/src/index.ts</code>), and
   exists. Only a split setup like this one (GitHub disallows converting a
   personal account into an Org — see Decision §2 above) needs to answer it
   separately.</li>
-<li>Scaffolded service repos (<code>go-service</code>, <code>nodejs-service</code>, etc.) still target
-  <code>moatazeldebsy</code> by default — <code>GITHUB_TEAMS_ORG</code> only drives identity sync
-  (<code>catalog.providers.githubOrg</code>) and the <code>/admin</code> page's "Invite User" link
-  (<code>externalLinks.githubOrgUrl</code>). The <code>allowedOwners</code> picker on every
-  repo-creating template deliberately stays pointed at <code>moatazeldebsy</code> (not
-  parameterised to <code>GITHUB_TEAMS_ORG</code>) — a personal account can't be an
-  <code>allowedOwners</code> entry alongside a GitHub Org selector without adopters who
-  never set <code>GITHUB_TEAMS_ORG</code> seeing a confusing second option that's
-  identical to the first.</li>
 <li><strong>All 33 repo-creating templates now grant the owning GitHub Team
   <code>maintain</code> access</strong> on the repo they create, via a <code>collaborators: [{team:
   ${{ parameters.owner }}, access: maintain}]</code> entry added to each template's
@@ -2518,13 +2509,20 @@ and registered (<code>backstage/app/packages/backend/src/index.ts</code>), and
   <code>entityRefToName()</code> in the scaffolder-backend-module-github action strips
   the <code>group:default/</code> prefix before calling GitHub's
   <code>addOrUpdateRepoPermissionsInOrg</code>. This only actually grants anything when
-  the repo owner is an Org (<code>user.data.type === 'Organization'</code>) — for a
-  personal-account repo (today's default, <code>moatazeldebsy</code>) the same call
-  fails harmlessly and is caught + logged as a warning by the scaffolder
-  action itself, not by anything in this repo. In other words: the grant is
-  inert today (repos still go to a personal account) and takes effect the
-  moment an adopter points a template's <code>repoUrl</code> at their
-  <code>GITHUB_TEAMS_ORG</code>-equivalent Org instead.</li>
+  the repo owner is an Org (<code>user.data.type === 'Organization'</code>).</li>
+<li><strong><code>allowedOwners</code> on the <code>repoUrl</code> field defaults to the teams Org first,
+  <code>moatazeldebsy</code> second</strong> — <code>[platform-demo-idp, moatazeldebsy]</code> — on all 33
+  repo-creating templates. Every Group an adopter can pick as <code>owner</code> is now
+  sourced from the same GitHub Org (<code>catalog.providers.githubOrg</code>), so a
+  disconnected default that put new repos under a <em>different</em> account by
+  default made the <code>collaborators</code> grant above silently inert unless someone
+  remembered to switch the picker by hand every time. Templates with a
+  second, independent <code>add to existing repo</code> mode (e.g. the test-suite
+  templates' <code>targetRepoUrl</code> field) are untouched — that field targets a
+  repo that already exists, so there is no "which account gets the new repo"
+  decision to make there.</li>
+<li><code>GITHUB_TEAMS_ORG</code> also drives the <code>/admin</code> page's "Invite User" link
+  (<code>externalLinks.githubOrgUrl</code>), independent of the above.</li>
 </ul>
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
