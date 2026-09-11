@@ -1023,8 +1023,10 @@ _cleanup_scaffolded_services() {
 
   # Remove IDP catalog GitHub topics so the org provider doesn't re-discover
   # these repos on the next fresh cluster install.
-  if [[ -n "${GITHUB_TOKEN:-}" ]] && command -v gh &>/dev/null; then
-    local org="${GITHUB_ORG:-moatazeldebsy}"
+  if [[ -z "${GITHUB_ORG:-}" ]]; then
+    warn "GITHUB_ORG not set — skipping GitHub topic cleanup for scaffolded repos (run setup.sh or source .idp-config.env first)."
+  elif [[ -n "${GITHUB_TOKEN:-}" ]] && command -v gh &>/dev/null; then
+    local org="${GITHUB_ORG}"
     for svc in ${SCAFFOLDED[@]+"${SCAFFOLDED[@]}"}; do
       gh repo edit "${org}/${svc}" \
         --remove-topic idp \
