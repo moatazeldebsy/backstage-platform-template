@@ -286,12 +286,30 @@ _langfuse_read_keys() {
 # Idempotent — apply-always rather than create-if-absent, because unlike
 # langfuse-secrets (whose salt must never be regenerated) these are copies whose
 # source of truth lives elsewhere.
+#
+# Sets _LANGFUSE_KEYS_CHANGED=true when the key pair differs from the last run
+# recorded in CACHE_DIR (including "no prior record" — first time the keys
+# exist at all). `envFrom.secretRef` only reads a Secret at pod creation, so a
+# Deployment that was already running before this Secret existed/changed will
+# never pick it up on its own (see rollout-restart note printed below); the
+# caller uses this flag, after MCP servers are (re)deployed in step 6, to
+# force a restart of anything that could otherwise be left with stale/missing
+# Langfuse env vars. Without this, a namespace's first-ever Langfuse key
+# distribution silently misses every pod that predates it.
+_LANGFUSE_KEYS_CHANGED=false
 _replicate_langfuse_keys() {
   local ns_list ns count=0
   _langfuse_read_keys || {
     warn "secret/langfuse-init not found in ml-platform — Langfuse is not deployed yet. Run ./scripts/bootstrap-ai.sh --langfuse first."
     return 1
   }
+
+  local _lf_fp_file="${CACHE_DIR}/langfuse-keys.fingerprint"
+  local _lf_fp
+  _lf_fp=$(printf '%s:%s' "$_LF_PK" "$_LF_SK" | _sha256_stdin)
+  if [[ "$(cat "$_lf_fp_file" 2>/dev/null || true)" != "$_lf_fp" ]]; then
+    _LANGFUSE_KEYS_CHANGED=true
+  fi
 
   ns_list=$(kubectl get namespaces -l "$LANGFUSE_NS_LABEL" \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
@@ -313,10 +331,39 @@ _replicate_langfuse_keys() {
     count=$((count + 1))
   done <<< "$ns_list"
 
+  mkdir -p "$CACHE_DIR"
+  printf '%s' "$_lf_fp" > "$_lf_fp_file"
+
   check "Langfuse keys distributed to ${count} namespace(s)"
-  info "  Workloads already running there need a restart to pick it up:"
-  info "    kubectl rollout restart deployment/<name> -n <ns>"
+  if [[ "$_LANGFUSE_KEYS_CHANGED" == "true" ]]; then
+    info "  Key pair changed since the last run — workloads already running in"
+    info "  these namespaces will be rolled to pick it up (see step 6b below)."
+  fi
   return 0
+}
+
+# Called after step 6 has (re)deployed the MCP servers. Deployments that step
+# 6 skipped via its own unchanged-fingerprint fast path never got a fresh pod,
+# so if the Langfuse key pair changed this run, force a rollout restart on
+# every Deployment in each Langfuse-labelled namespace. Restarting a
+# Deployment step 6 *did* just (re)create is a harmless no-op-ish extra
+# rollout, not worth the complexity of tracking which ones to skip.
+_restart_workloads_for_langfuse_keys() {
+  [[ "$_LANGFUSE_KEYS_CHANGED" == "true" ]] || return 0
+  local ns_list ns deploy
+  ns_list=$(kubectl get namespaces -l "$LANGFUSE_NS_LABEL" \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+  [[ -n "$ns_list" ]] || return 0
+
+  info "Restarting workloads to pick up the new Langfuse key pair..."
+  while IFS= read -r ns; do
+    [[ -n "$ns" ]] || continue
+    while IFS= read -r deploy; do
+      [[ -n "$deploy" ]] || continue
+      kubectl rollout restart "$deploy" -n "$ns" >/dev/null 2>&1 || true
+    done < <(kubectl get deployment -n "$ns" -o name 2>/dev/null)
+  done <<< "$ns_list"
+  check "Langfuse-dependent workloads restarted"
 }
 
 # AWS only. Mirrors the pair into Secrets Manager so teams who prefer pure
@@ -1842,17 +1889,18 @@ EOF
     done
   fi
 
-  if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    # Apply ServiceMonitor for Prometheus scraping of MCP servers
+  # kubernetes/monitoring/ is shared between local and AWS (see CLAUDE.md's
+  # repo-layout table) — this used to be nested inside the AWS-only branch
+  # below, so a local (Kind) install never got it applied and MCP/AI-gateway
+  # cost metrics silently never reached Prometheus/Grafana there.
   info "Applying Prometheus ServiceMonitor for kagent namespace..."
   kubectl apply -f "${REPO_ROOT}/kubernetes/monitoring/servicemonitor-kagent.yaml"
   check "ServiceMonitor applied — MCP metrics now scraped by Prometheus"
 
-  # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    # AWS: sync Anthropic API key via ExternalSecret + use ALB ingress
     KAGENT_ESO_ROLE_ARN=$(tf_output kagent_eso_role_arn)
     [[ -n "$KAGENT_ESO_ROLE_ARN" ]] || die "Could not read kagent_eso_role_arn from Terraform outputs."
-  fi
     sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
       "${REPO_ROOT}/aws/kagent/external-secret.yaml" | kubectl apply -f -
     kubectl annotate serviceaccount kagent-eso-sa \
@@ -2395,6 +2443,14 @@ else
       warn "  fewer tools than expected rather than erroring."
     fi
   fi
+
+  # Must run after the deploy loop above, not inside step 3b where the key
+  # pair is minted: a Deployment that predates the Secret (or predates a key
+  # rotation) needs an explicit restart, and step 6's own fast path skips
+  # `helm upgrade` (and therefore never touches the pod) whenever the image
+  # and chart values are unchanged — which is exactly the case where the
+  # Langfuse keys are the only thing that changed.
+  _restart_workloads_for_langfuse_keys
 
   # ── 6b. Self-heal stuck RemoteMCPServers ────────────────────────────────────
   # Runs here, after the MCP servers are actually deployed. It used to run in
