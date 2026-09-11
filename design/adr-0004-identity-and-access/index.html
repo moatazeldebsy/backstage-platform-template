@@ -1618,6 +1618,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#github-org-ingestion-adopted-2026-09-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub Org ingestion adopted (2026-09-10)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
       References
@@ -2360,7 +2369,9 @@
 
 
 <h1 id="adr-0004-identity-and-access">ADR-0004: Identity and access<a class="headerlink" href="#adr-0004-identity-and-access" title="Permanent link">&para;</a></h1>
-<p><strong>Status:</strong> Accepted (partial — see Deferred) · <strong>Date:</strong> 2026-08-14</p>
+<p><strong>Status:</strong> Accepted (partial — see Deferred) · <strong>Date:</strong> 2026-08-14
+<strong>Update 2026-09-10:</strong> GitHub Org ingestion, deferred in Decision §2 below, has
+since been adopted — see "GitHub Org ingestion adopted" after the Deferred list.</p>
 <h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
 <p>Users and Groups are hand-written YAML in <code>backstage/catalog/catalog-info.yaml</code>:
 seven Groups and fourteen Users. That drifts from reality the moment anyone else
@@ -2399,21 +2410,130 @@ rediscover it by reading the policy.</p>
 <h2 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h2>
 <p>Each of these is tracked, none is scheduled:</p>
 <ul>
-<li><strong>Install and wire <code>githubOrg</code></strong> so Users and Groups sync from a real
+<li><del><strong>Install and wire <code>githubOrg</code></strong> so Users and Groups sync from a real
   organisation. Should ship as <em>available and off by default</em>, since personal
-  accounts cannot use it.</li>
+  accounts cannot use it.</del> <strong>Superseded — see "GitHub Org ingestion adopted"
+  below.</strong></li>
 <li><strong>Team-scoped authorization</strong> — restrict scaffolder and catalog writes to the
   owning group. Existing issues #153 (ArgoCD RBAC per team) and #155 (catalog
-  permission policies) cover the shape.</li>
+  permission policies) cover the shape. Still open: sign-in is now restricted
+  to org members (see below), but once signed in, any authenticated user can
+  still run any template against any team's namespace — <code>idpPermissionPolicy.ts</code>
+  does no group-membership check.</li>
 <li><strong>OIDC / AWS IAM Identity Center</strong> as the enterprise path. Heavier, and most
   open-source adopters will not have Identity Center, so GitHub remains the
   default.</li>
 </ul>
+<h2 id="github-org-ingestion-adopted-2026-09-10">GitHub Org ingestion adopted (2026-09-10)<a class="headerlink" href="#github-org-ingestion-adopted-2026-09-10" title="Permanent link">&para;</a></h2>
+<p>The blocker in Decision §2 — <code>organization(login:)</code> failing against a personal
+GitHub account — is confirmed exactly as predicted: <code>moatazeldebsy</code> (the
+account the platform repo and scaffolded services live under) is a personal
+account, and the org-sync query fails against it with "Could not resolve to
+an Organization with the login of 'moatazeldebsy'." GitHub does not allow
+converting a personal account into an Org, so identity sync targets a
+<strong>separate</strong> real Org, <code>platform-demo-idp</code>, created for this purpose — the
+platform repo stays under <code>moatazeldebsy</code> and is unaffected.
+<code>catalog.providers.github.idpOrg</code> (component/repo discovery) still points at
+<code>moatazeldebsy</code>; only <code>catalog.providers.githubOrg</code> (identity sync) points at
+<code>platform-demo-idp</code>. <code>@backstage/plugin-catalog-backend-module-github-org</code> is installed
+and registered (<code>backstage/app/packages/backend/src/index.ts</code>), and
+<code>catalog.providers.githubOrg.idpOrgSync</code> (previously inert in
+<code>app-config.aws.yaml</code> only) is live in both <code>app-config.aws.yaml</code> and
+<code>app-config.local.yaml</code>.</p>
+<p>Consequences:</p>
+<ul>
+<li><strong>Users and Groups are synced, not hand-written.</strong> The seven Groups and
+  fourteen fictional Users formerly in <code>backstage/catalog/catalog-info.yaml</code>
+  (and <code>qa-team</code>/<code>qa-engineer</code> in <code>qa-catalog.yaml</code>) are deleted. Every org
+  member becomes a <code>User</code> entity; every org team becomes a <code>Group</code> entity,
+  on a 30-minute schedule.</li>
+<li><strong>Cost-budget annotations survive the migration</strong> via a <code>TeamTransformer</code>
+  (<code>idpGithubOrgTeamMetadataModule</code>, registered against
+  <code>githubOrgEntityProviderTransformsExtensionPoint</code>) that merges
+  <code>idp.io/cost-budget-monthly-usd</code> / <code>idp.io/cost-namespace</code> onto each synced
+  Group from <code>catalog.teamMetadata</code> (<code>app-config.yaml</code>), keyed by team slug.</li>
+<li><strong>Sign-in is now restricted to org members.</strong> Both GitHub auth resolvers
+  (<code>usernameMatchingUserEntityName</code>, <code>emailMatchingUserEntityProfileEmail</code>)
+  flipped <code>dangerouslyAllowSignInWithoutUserInCatalog</code> from <code>true</code> to <code>false</code>
+  in <code>app-config.yaml</code>, <code>app-config.local.yaml</code>, and <code>app-config.aws.yaml</code>.
+  A matching <code>User</code> entity now only exists for real org members, so sign-in
+  fails closed instead of falling through to an unresolved identity.
+  <strong>Caveat:</strong> a brand-new org member can't sign in until the next sync tick
+  (30 min on AWS) unless an admin triggers a manual catalog refresh.</li>
+<li><strong><code>GITHUB_TOKEN</code> needs <code>read:user</code> (or <code>user:email</code>) in addition to
+  <code>read:org</code>.</strong> Discovered while testing this locally: the sync provider's
+  GraphQL query always requests each member's email when authenticating with
+  a classic PAT, and GitHub fails the whole query — not just that field —
+  without the scope. See <code>docs/github-app-setup.md</code>.</li>
+<li><strong><code>catalog.providers.githubOrg</code> config shape</strong>: it's read directly as a
+  single provider config (or an array, for multiple orgs) — nesting it one
+  level deeper under a named key (as this repo's first attempt at the AWS
+  block did) fails at startup with "Missing required config value at
+  'catalog.providers.githubOrg.id'". <code>orgs</code> is a plain array of org-name
+  strings, not <code>{name: ...}</code> objects. This is presumably <em>why</em> the block sat
+  inert rather than erroring loudly before now — it was never actually run
+  against the real module until this change registered it.</li>
+<li><strong><code>team-namespace</code> creates the GitHub team</strong>, not a hand-generated catalog
+  Group YAML. The new <code>idp:github:team-create</code> scaffolder action
+  (<code>idpGithubTeamCreate.ts</code>) calls the GitHub API directly (idempotent — reuses
+  an existing team rather than failing); the Group entity then just appears
+  from the next org sync. The template's old <code>catalog-skeleton/</code> step is
+  removed.</li>
+<li><strong>Rollout requirement:</strong> every <code>spec.owner: platform-team</code> /
+  <code>owner: qa-platform-team</code> / etc. reference across the 64 scaffolder templates
+  and registered services now points at what must be a <em>real</em> GitHub Team of
+  that slug — these were created in the org as part of rollout (one-time,
+  outside this repo) since template ownership defaults assume they exist. The
+  <code>qa-team</code> name was renamed to <code>qa-platform-team</code> across the repo to match the
+  slug actually chosen when the team was created in <code>platform-demo-idp</code>.</li>
+<li><strong>The <code>platform-demo-idp</code> / <code>moatazeldebsy</code> split is a personalisation
+  variable, not a hardcoded value.</strong> <code>scripts/placeholders.conf</code> gained a
+  <code>GITHUB_TEAMS_ORG</code> row (placeholder <code>YOUR_GITHUB_TEAMS_ORG</code>, literal
+  <code>platform-demo-idp</code>) alongside the existing <code>GITHUB_ORG</code> row (literal
+  <code>moatazeldebsy</code>) — this repo is itself a GitHub template other adopters
+  fork, so nothing about <em>this</em> deployment's org names may be baked in as a
+  literal outside the manifest. Left blank at the <code>setup.sh</code> prompt,
+  <code>GITHUB_TEAMS_ORG</code> defaults to whatever <code>GITHUB_ORG</code> resolves to (see the
+  fallback in <code>scripts/setup.sh</code> and <code>run_personalization_pass</code> in
+  <code>scripts/lib.sh</code> — a plain manifest row can't express "default to another
+  row's resolved value", so this one needed a few lines of code instead of
+  just a manifest row) — a single-org adopter never has to know this variable
+  exists. Only a split setup like this one (GitHub disallows converting a
+  personal account into an Org — see Decision §2 above) needs to answer it
+  separately.</li>
+<li>Scaffolded service repos (<code>go-service</code>, <code>nodejs-service</code>, etc.) still target
+  <code>moatazeldebsy</code> by default — <code>GITHUB_TEAMS_ORG</code> only drives identity sync
+  (<code>catalog.providers.githubOrg</code>) and the <code>/admin</code> page's "Invite User" link
+  (<code>externalLinks.githubOrgUrl</code>). The <code>allowedOwners</code> picker on every
+  repo-creating template deliberately stays pointed at <code>moatazeldebsy</code> (not
+  parameterised to <code>GITHUB_TEAMS_ORG</code>) — a personal account can't be an
+  <code>allowedOwners</code> entry alongside a GitHub Org selector without adopters who
+  never set <code>GITHUB_TEAMS_ORG</code> seeing a confusing second option that's
+  identical to the first.</li>
+<li><strong>All 33 repo-creating templates now grant the owning GitHub Team
+  <code>maintain</code> access</strong> on the repo they create, via a <code>collaborators: [{team:
+  ${{ parameters.owner }}, access: maintain}]</code> entry added to each template's
+  <code>publish:github</code> step. <code>parameters.owner</code> is always a <code>kind: Group</code>
+  <code>OwnerPicker</code> value across these templates (verified), and
+  <code>entityRefToName()</code> in the scaffolder-backend-module-github action strips
+  the <code>group:default/</code> prefix before calling GitHub's
+  <code>addOrUpdateRepoPermissionsInOrg</code>. This only actually grants anything when
+  the repo owner is an Org (<code>user.data.type === 'Organization'</code>) — for a
+  personal-account repo (today's default, <code>moatazeldebsy</code>) the same call
+  fails harmlessly and is caught + logged as a warning by the scaffolder
+  action itself, not by anything in this repo. In other words: the grant is
+  inert today (repos still go to a personal account) and takes effect the
+  moment an adopter points a template's <code>repoUrl</code> at their
+  <code>GITHUB_TEAMS_ORG</code>-equivalent Org instead.</li>
+</ul>
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>backstage/app-config.aws.yaml</code> — <code>auth.providers</code></li>
+<li><code>backstage/app-config.yaml</code>, <code>app-config.local.yaml</code>, <code>app-config.aws.yaml</code> — <code>auth.providers</code>, <code>catalog.providers.githubOrg</code>, <code>catalog.teamMetadata</code>, <code>externalLinks.githubOrgUrl</code></li>
 <li><code>backstage/app/packages/backend/src/modules/idpPermissionPolicy.ts</code></li>
-<li><code>backstage/catalog/catalog-info.yaml</code> — the static Groups and Users</li>
+<li><code>backstage/app/packages/backend/src/modules/idpGithubOrgTeamMetadata.ts</code></li>
+<li><code>backstage/app/packages/backend/src/modules/idpGithubTeamCreate.ts</code></li>
+<li><code>scripts/placeholders.conf</code>, <code>scripts/setup.sh</code>, <code>scripts/lib.sh</code> — <code>GITHUB_TEAMS_ORG</code> personalisation</li>
+<li><code>backstage/catalog/templates/team-namespace/template.yaml</code></li>
 </ul>
 
 

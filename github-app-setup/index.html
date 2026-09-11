@@ -1714,6 +1714,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#github-oauth-sign-in-and-orgteam-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitHub OAuth sign-in and Org/Team sync
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GitHub OAuth sign-in and Org/Team sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2581,6 +2614,73 @@ curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Aut
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="github-oauth-sign-in-and-orgteam-sync">GitHub OAuth sign-in and Org/Team sync<a class="headerlink" href="#github-oauth-sign-in-and-orgteam-sync" title="Permanent link">&para;</a></h2>
+<p>This is a <strong>third, separate</strong> use of GitHub credentials — distinct from both the
+scaffolder integration (PAT/App above) and CI. See
+<code>docs/design/adr-0004-identity-and-access.md</code> for the design rationale.</p>
+<p><strong>What it does:</strong> the <code>github</code> auth provider (<code>auth.providers.github</code> in
+<code>app-config.yaml</code>/<code>app-config.local.yaml</code>/<code>app-config.aws.yaml</code>) lets users sign in
+with their GitHub account. Separately, <code>catalog.providers.githubOrg.idpOrgSync</code>
+syncs every member and team of a GitHub Org into the catalog as <code>User</code>/<code>Group</code>
+entities (via <code>@backstage/plugin-catalog-backend-module-github-org</code>, on a
+30-minute schedule).</p>
+<p>Sign-in only succeeds for users with a matching <code>User</code> entity
+(<code>dangerouslyAllowSignInWithoutUserInCatalog: false</code>) — since that entity only
+exists for real org members, <strong>sign-in is effectively restricted to the org</strong>.</p>
+<h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>OAuth App</strong> (not the GitHub App above — a separate credential type):
+   github.com/settings/developers → New OAuth App.</p>
+<ul>
+<li>Homepage URL: your Backstage URL</li>
+<li>Callback URL: <code>http://backstage.idp.local/api/auth/github/handler/frame</code>
+   (local) or your production ALB URL equivalent</li>
+<li>Set <code>AUTH_GITHUB_CLIENT_ID</code> / <code>AUTH_GITHUB_CLIENT_SECRET</code> in
+   <code>local/backstage/.env</code> (local) or Secrets Manager (AWS)</li>
+</ul>
+</li>
+<li>
+<p><strong>Org sync token</strong>: <code>GITHUB_TOKEN</code> (<code>local/.env</code> / AWS Secrets Manager) needs
+   <code>read:org</code> scope in addition to whatever scaffolder integration already
+   requires it for. It also needs <strong><code>read:user</code></strong> (or <code>user:email</code>) —
+   <code>catalog-backend-module-github-org</code> always requests each member's email in
+   its GraphQL query when using a classic PAT, regardless of any local
+   config, and GitHub rejects the <em>entire</em> query (not just the email field)
+   if that scope is missing. Symptom: <code>GithubMultiOrgEntityProvider:*
+   refresh failed, GraphqlResponseError: ... INSUFFICIENT_SCOPES</code> in the
+   backend logs, and zero synced Users/Groups. Add the scope at
+   github.com/settings/tokens.</p>
+</li>
+<li>
+<p><strong><code>GITHUB_ORG</code></strong>: set in <code>local/.env</code> — the org whose members/teams get
+   synced locally. AWS has the org name inline in <code>app-config.aws.yaml</code>
+   (<code>catalog.providers.githubOrg.idpOrgSync.orgs</code>).</p>
+</li>
+<li>
+<p><strong>One-time rollout step</strong>: every scaffolder template defaults
+   <code>spec.owner</code> to a team slug (<code>platform-team</code>, <code>qa-team</code>, etc.) — these must
+   exist as real Teams in the org, or ownership references dangle. Create them
+   once via github.com/orgs/<code>&lt;org&gt;</code>/teams or the GitHub CLI
+   (<code>gh api orgs/&lt;org&gt;/teams -f name=platform-team -f privacy=closed</code>); new
+   teams created afterwards via the <code>team-namespace</code> Backstage template are
+   handled automatically.</p>
+</li>
+</ol>
+<h3 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Confirm the org-sync provider ran (local)</span>
+docker<span class="w"> </span>logs<span class="w"> </span>backstage-backstage-1<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>githuborg
+
+<span class="c1"># Confirm real Users/Groups landed in the catalog (not the old static demo ones)</span>
+<span class="c1"># — open http://backstage.idp.local/catalog?filters%5Bkind%5D=group</span>
+</code></pre></div></td></tr></table></div>
+<p>A user outside the org attempting sign-in gets a resolution failure, not a
+silent unauthenticated session — that's the intended behavior, not a bug.</p>
 
 
 
