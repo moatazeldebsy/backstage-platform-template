@@ -1240,10 +1240,20 @@ if ! $SKIP_OBS; then
     warn "  No SLO rules found — Grafana SRE dashboard will show no error budgets."
   fi
 
+  # Recent kube-prometheus-stack releases ship Grafana as a distroless image
+  # (grafana/grafana:*-distroless) with no shell, curl, or wget at all — `kubectl
+  # exec -c grafana -- curl ...` fails silently (redirected to /dev/null below,
+  # so the failure was invisible) and this whole block became a no-op, leaving
+  # a stale token in local/backstage/.env from a previous cluster. The
+  # k8s-sidecar containers in the same pod (grafana-sc-dashboard) share its
+  # network namespace and do have busybox wget, so exec into that one instead.
+  # Observed 2026-09-11 against grafana/grafana:13.2.1-distroless.
+  _GRAFANA_EXEC=(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana-sc-dashboard --)
+  _GRAFANA_AUTH="Authorization: Basic $(printf 'admin:admin' | base64)"
+
   log "  Waiting for Grafana API to be ready..."
   for _i in {1..24}; do
-    if kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
-        curl -sf http://localhost:3000/api/health &>/dev/null 2>&1; then
+    if "${_GRAFANA_EXEC[@]}" wget -q --spider http://localhost:3000/api/health &>/dev/null 2>&1; then
       break
     fi
     log "  Grafana not ready yet (${_i}/24) — retrying in 5s..."
@@ -1254,24 +1264,21 @@ if ! $SKIP_OBS; then
   # Strategy: find-or-create the 'backstage' SA, then always create a FRESH token
   # with a timestamp suffix. Stale tokens from previous runs become invalid when
   # Grafana restarts without persistence (ephemeral DB), so we always write a new one.
-  GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
-    curl -sf -u admin:admin \
+  GRAFANA_SA_ID=$("${_GRAFANA_EXEC[@]}" wget -qO- --header="${_GRAFANA_AUTH}" \
     "http://localhost:3000/api/serviceaccounts/search?query=backstage&perpage=1" 2>/dev/null \
     | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || echo "")
   if [[ -z "$GRAFANA_SA_ID" ]]; then
-    GRAFANA_SA_ID=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
-      curl -sf -u admin:admin -X POST http://localhost:3000/api/serviceaccounts \
-      -H 'Content-Type: application/json' \
-      -d '{"name":"backstage","role":"Viewer"}' 2>/dev/null \
+    GRAFANA_SA_ID=$("${_GRAFANA_EXEC[@]}" wget -qO- --header="${_GRAFANA_AUTH}" --header='Content-Type: application/json' \
+      --post-data='{"name":"backstage","role":"Viewer"}' \
+      http://localhost:3000/api/serviceaccounts 2>/dev/null \
       | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || echo "")
   fi
   if [[ -n "$GRAFANA_SA_ID" ]]; then
     # Use a timestamp in the token name so re-runs never hit 409 Conflict.
     _token_name="backstage-$(date +%s)"
-    GRAFANA_TOKEN=$(kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- \
-      curl -sf -u admin:admin -X POST "http://localhost:3000/api/serviceaccounts/${GRAFANA_SA_ID}/tokens" \
-      -H 'Content-Type: application/json' \
-      -d "{\"name\":\"${_token_name}\"}" 2>/dev/null \
+    GRAFANA_TOKEN=$("${_GRAFANA_EXEC[@]}" wget -qO- --header="${_GRAFANA_AUTH}" --header='Content-Type: application/json' \
+      --post-data="{\"name\":\"${_token_name}\"}" \
+      "http://localhost:3000/api/serviceaccounts/${GRAFANA_SA_ID}/tokens" 2>/dev/null \
       | grep -o '"key":"[^"]*"' | cut -d'"' -f4 || echo "")
     if [[ -n "$GRAFANA_TOKEN" ]]; then
       local_env="${ROOT_DIR}/local/backstage/.env"
