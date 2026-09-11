@@ -644,17 +644,27 @@ function AiAssistantPage() {
         // identical symptom one step later — a session found, an answer sitting
         // in it, and the page timing out because it was reading events for an
         // agent nobody was talking to.
+        //
+        // Field names below are PascalCase (Author, Content) because that's
+        // what KAgent's session API actually serializes (Go ADK event struct),
+        // not the lowercase `author`/`content` this used to check. That meant
+        // agentEvents was ALWAYS empty — the agent answered correctly every
+        // time (visible in kagent-controller's own session store), but this
+        // loop could never see it and always hit the 5-minute "Agent did not
+        // respond in time" timeout. `functionCall` (no underscore) is likewise
+        // how tool calls are actually keyed, not `function_call`.
+        // Observed 2026-09-11 against a real idp-assistant session.
         const expectedAuthor = agent.replace(/-/g, '_');
         const agentEvents = parsed.filter(
-          (d: any) => d?.author === expectedAuthor && d?.content?.parts,
+          (d: any) => d?.Author === expectedAuthor && d?.Content?.parts,
         );
 
         if (agentEvents.length === 0) continue;
 
         // [0] is the newest agent event (events are newest-first)
         const newest = agentEvents[0];
-        const parts: any[] = newest.content.parts;
-        const activeTool = parts.find((p: any) => p.function_call)?.function_call?.name;
+        const parts: any[] = newest.Content.parts;
+        const activeTool = parts.find((p: any) => p.functionCall)?.functionCall?.name;
         const textParts = parts.filter((p: any) => p.text);
 
         if (activeTool) {
