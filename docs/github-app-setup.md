@@ -188,7 +188,7 @@ exists for real org members, **sign-in is effectively restricted to the org**.
    (`catalog.providers.githubOrg.idpOrgSync.orgs`).
 
 4. **One-time rollout step**: every scaffolder template defaults
-   `spec.owner` to a team slug (`platform-team`, `qa-team`, etc.) — these must
+   `spec.owner` to a team slug (`platform-team`, `qa-platform-team`, etc.) — these must
    exist as real Teams in the org, or ownership references dangle. Create them
    once via github.com/orgs/`<org>`/teams or the GitHub CLI
    (`gh api orgs/<org>/teams -f name=platform-team -f privacy=closed`); new

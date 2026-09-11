@@ -39,18 +39,23 @@ open http://opencost.idp.local
      --requests=cpu=100m,memory=128Mi --limits=cpu=500m,memory=512Mi
    ```
 4. **Update the team budget** — if the current budget is too low, raise it:
-   - Edit `idp.io/cost-budget-monthly-usd` annotation on the Group entity in
-     `backstage/catalog/catalog-info.yaml`.
+   - Edit the team's entry in `catalog.teamMetadata` (`backstage/app-config.yaml`).
+     `idpGithubOrgTeamMetadataModule` merges this onto the GitHub-Org-synced
+     Group entity's `idp.io/cost-budget-monthly-usd` annotation on the next
+     catalog sync — editing the annotation directly on an entity has no
+     lasting effect, since Groups are no longer hand-written YAML (see
+     [ADR-0004](../design/adr-0004-identity-and-access.md)).
    - Update the matching entry in `kubernetes/finops/team-budgets-configmap.yaml`.
    - The new value will take effect on the next exporter run (≤15 minutes).
 
 ## How budgets are set
 
 Budgets live in two authoritative locations (keep in sync):
-- **Backstage catalog** — `idp.io/cost-budget-monthly-usd` annotation on each `Group` entity
-  in `backstage/catalog/catalog-info.yaml` and `backstage/catalog/qa-catalog.yaml`.
+- **Backstage catalog** — `catalog.teamMetadata` in `backstage/app-config.yaml`,
+  merged onto each GitHub-Org-synced `Group` entity's
+  `idp.io/cost-budget-monthly-usd` annotation at sync time.
 - **Kubernetes ConfigMap** — `kubernetes/finops/team-budgets-configmap.yaml`
   (`data.budgets.json`) read by the exporter via `TEAM_BUDGETS_JSON` env var.
 
 Defaults (USD/month): platform-team $2000, ml-team $1500, backend-team $600,
-data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-team $200.
+data-team $800, frontend-team $400, android-team $300, ios-team $300, qa-platform-team $200.

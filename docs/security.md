@@ -114,6 +114,7 @@ The following hardening steps were applied to the AWS Backstage deployment in co
 ### Authentication
 
 - **Guest auth removed** — the `dangerouslyAllowOutsideDevelopment` guest provider is no longer present in `backstage/app-config.aws.yaml`. Production requires GitHub OAuth (`auth.providers.github`).
+- **Sign-in restricted to GitHub Org members** — both GitHub auth resolvers set `dangerouslyAllowSignInWithoutUserInCatalog: false`. A matching catalog `User` entity only exists for real members of the org configured in `catalog.providers.githubOrg` (synced by `@backstage/plugin-catalog-backend-module-github-org`), so sign-in now fails closed for anyone outside that org instead of falling through to an unresolved identity. See [ADR-0004](design/adr-0004-identity-and-access.md).
 - **Session secret from Secrets Manager** — `AUTH_SESSION_SECRET` is injected at pod startup via the External Secrets Operator; there is no static fallback value in the config file.
 
 ### Database

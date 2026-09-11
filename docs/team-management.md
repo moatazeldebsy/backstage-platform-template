@@ -29,15 +29,21 @@ Fill in:
 | Field | Example | Notes |
 |---|---|---|
 | Team name | `payments` | Lowercase alphanum + hyphens, 3–30 chars |
-| Owner group | `group:default/payments-team` | Backstage Group entity |
+| Owner group | `group:default/platform-team` | Existing Backstage Group this new team nests under |
 | Cost center | `CC-1234` | Applied to all Crossplane resources |
+| Initial team members | `alice, bob` | Optional — GitHub logins to add to the new GitHub team immediately |
 | Sizing tier | `small` | Small ≤25 teams / Medium 26–75 / Large 75+ |
-| GitHub org | `moatazeldebsy` | Pre-filled from setup.sh |
+| GitHub organisation (platform repo) | `moatazeldebsy` | Pre-filled — owner of the platform repo the PR opens against |
+| GitHub organisation (teams) | `platform-demo-idp` | Pre-filled — the GitHub Org the new team is actually created in; must match `catalog.providers.githubOrg` or the Group won't sync |
 | Platform repo | `backstage-platform-template` | Pre-filled |
 | AWS region | `us-east-1` | Must match cluster region |
 | ESO IAM role ARN | *(see Step 2)* | Leave blank to skip SecretStore |
 
-Click **Create** → a PR is opened on the platform repo at `team/payments-namespace`.
+Click **Create**. Unlike the k8s manifests below, the **GitHub team itself is
+created immediately** (via the GitHub API, idempotent — reruns reuse an
+existing team) — it does not wait for a PR merge. A PR is then opened on the
+platform repo at `team/payments-namespace` for the Kubernetes-side resources
+only; no catalog YAML is part of that PR (see Step 3).
 
 ---
 
@@ -81,7 +87,12 @@ kubernetes/teams/payments/
 └── grafana-folder.yaml     # ConfigMap → Grafana sidecar creates folder
 ```
 
-And a Backstage Group entity in `backstage/catalog/catalog-info.yaml` (all Group entities live in that one file today; `backstage/catalog/groups/` exists but is empty).
+The Backstage Group entity for the team is **not** part of this PR. Teams and
+their members are synced live from the GitHub Org
+(`catalog.providers.githubOrg`, every 30 min on AWS) — the Group appears
+automatically once the GitHub team created in Step 1 is picked up by the next
+sync (trigger a manual catalog refresh to see it sooner). See
+[ADR-0004](design/adr-0004-identity-and-access.md).
 
 ---
 
@@ -198,7 +209,9 @@ kubectl delete namespace team-payments
 terraform apply -var='team_eso_roles=[]'
 
 # 4. Archive the scaffold PR branch or delete kubernetes/teams/payments/
-# 5. Remove the Backstage Group entity from backstage/catalog/catalog-info.yaml
+# 5. Remove/archive the "payments" GitHub team in the org — the Backstage
+#    Group entity is synced live and disappears on the next catalog refresh
+#    once the GitHub team is gone (nothing to clean up in this repo)
 ```
 
 ---

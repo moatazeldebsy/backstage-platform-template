@@ -38,9 +38,18 @@ These are created automatically during bootstrap:
 
 #### 1. GITHUB_TOKEN
 
-**Why:** Backstage catalog refresh, ArgoCD repo sync, DORA metrics
+**Why:** Backstage catalog refresh, ArgoCD repo sync, DORA metrics, GitHub Org
+Team/User identity sync (`catalog.providers.githubOrg` — see
+[ADR-0004](design/adr-0004-identity-and-access.md))
 
-**Scopes needed:** `repo`, `read:org`, `gist`
+**Scopes needed:** `repo`, `read:org`, `read:user`, `gist`
+
+`read:user` (or `user:email`) is easy to miss and the failure is non-obvious:
+the org-sync GraphQL query always requests each member's email when
+authenticating with a classic PAT, and GitHub rejects the *whole* query, not
+just that field, without the scope — symptom is `INSUFFICIENT_SCOPES` in the
+backend logs and zero synced Users/Groups (nobody can sign in, since sign-in
+requires a synced User entity).
 
 **Get it:** https://github.com/settings/tokens → Generate new token (classic)
 
@@ -190,7 +199,7 @@ AWS:
        and table, so `terraform init` fails at Phase 1 without them.)
 
 Credentials:
-  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org)
+  [ ] GITHUB_TOKEN set in local/.env (scope: repo, read:org, read:user)
   [ ] AUTH_GITHUB_CLIENT_ID set in local/backstage/.env
   [ ] AUTH_GITHUB_CLIENT_SECRET set in local/backstage/.env
   [ ] ANTHROPIC_API_KEY in idp-mvp/kagent Secrets Manager (if using AI)

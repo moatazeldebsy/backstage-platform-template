@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=moatazeldebsy_backstage-platform-template&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=moatazeldebsy_backstage-platform-template)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
@@ -608,8 +609,7 @@ Stated plainly, because finding these by surprise is worse than reading them her
 
 | Limitation | Detail |
 |---|---|
-| **Coarse authorization** | Any authenticated user can run any of the 64 templates against any namespace. [ADR-0004](docs/design/adr-0004-identity-and-access.md), issues #153 and #155 |
-| **Users and Groups are static YAML** | GitHub Org ingestion is deferred — it cannot work on a personal account |
+| **Coarse authorization** | Any authenticated user can run any of the 64 templates against any namespace — GitHub Org Team sync (below) gates sign-in, not template execution. [ADR-0004](docs/design/adr-0004-identity-and-access.md), issues #153 and #155 |
 | **Sloth has no in-cluster operator** | SLO rules are vendored; editing a source file without the `sloth` binary silently changes nothing |
 | **No CI exercises an AWS bootstrap** | `terraform validate` and a guard against committed account ids is all that gates it |
 
