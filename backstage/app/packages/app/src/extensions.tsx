@@ -896,7 +896,18 @@ function AiAssistantPage() {
                 <Typography variant="caption" color="textSecondary">Agent:{' '}</Typography>
                 <select
                   value={agent}
-                  onChange={e => setAgent(e.target.value)}
+                  onChange={e => {
+                    // A session is permanently bound to whichever agent
+                    // answered its first message — reusing contextIdRef
+                    // across an agent switch left every following message
+                    // polling for a reply from the NEW agent's name on a
+                    // session the OLD agent owns, which never arrives and
+                    // always hits the 5-minute "Agent did not respond in
+                    // time" timeout. Switching agents has to start a new
+                    // session, same as the New Chat button. Observed 2026-09-11.
+                    setAgent(e.target.value);
+                    newChat();
+                  }}
                   style={{ fontSize: 12, padding: '2px 4px' }}
                   aria-label="KAgent agent to chat with"
                 >
