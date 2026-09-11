@@ -207,7 +207,7 @@ A service that is deleted, unregistered, or simply loses its `idp-app` topic wou
 
 ### What it is
 
-Monthly USD budget limits are declared as annotations on Backstage `Group` entities in `backstage/catalog/catalog-info.yaml` and `backstage/catalog/qa-catalog.yaml`. Actual spend is queried from OpenCost (via `/allocation/compute?window=month&aggregate=label:team`) every 15 minutes by the tech-insights-exporter (`observability/tech-insights-exporter/exporter.py`). Canonical budget values are also stored in `kubernetes/finops/team-budgets-configmap.yaml`.
+Monthly USD budget limits are declared in `catalog.teamMetadata` (`backstage/app-config.yaml`) and merged onto each GitHub-Org-synced `Group` entity's `idp.io/cost-budget-monthly-usd` annotation at catalog-sync time by `idpGithubOrgTeamMetadataModule` (see [ADR-0004](design/adr-0004-identity-and-access.md)) — Groups themselves are no longer hand-written YAML, so editing the annotation directly on an entity has no effect past the next sync. Actual spend is queried from OpenCost (via `/allocation/compute?window=month&aggregate=label:team`) every 15 minutes by the tech-insights-exporter (`observability/tech-insights-exporter/exporter.py`). Canonical budget values are also stored in `kubernetes/finops/team-budgets-configmap.yaml`.
 
 ### Prometheus metrics
 
@@ -250,14 +250,14 @@ http://prometheus.idp.local/graph?g0.expr=idp_team_budget_utilization_ratio
 
 ### How to update a team's budget
 
-1. Edit the `idp.io/cost-budget-monthly-usd` annotation on the Group entity:
+1. Edit the team's entry in `catalog.teamMetadata` (`backstage/app-config.yaml`):
 
    ```yaml
-   # backstage/catalog/catalog-info.yaml (or qa-catalog.yaml)
-   metadata:
-     name: backend-team
-     annotations:
-       idp.io/cost-budget-monthly-usd: "800"
+   catalog:
+     teamMetadata:
+       backend-team:
+         costBudgetMonthlyUsd: "800"
+         costNamespace: "services-dev,services"
    ```
 
 2. Update the matching entry in `kubernetes/finops/team-budgets-configmap.yaml`.
@@ -274,4 +274,4 @@ http://prometheus.idp.local/graph?g0.expr=idp_team_budget_utilization_ratio
 | frontend-team | $400 |
 | android-team | $300 |
 | ios-team | $300 |
-| qa-team | $200 |
+| qa-platform-team | $200 |

@@ -501,7 +501,7 @@ a hostname.
 
 ## Scaffolding flow (step-by-step)
 
-When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-team":
+When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-platform-team":
 
 ```
 Agent turn 1 (same response):
@@ -512,9 +512,9 @@ Agent turn 1 (same response):
   3. All required fields (name, description, owner) are already known
   4. call scaffold_service {
        template_ref: "template:default/python-service",
-       values: { name: "demo-svc", description: "demo", owner: "group:default/qa-team" }
+       values: { name: "demo-svc", description: "demo", owner: "group:default/qa-platform-team" }
      }
-     → MCP server auto-builds repoUrl: "github.com?owner=qa-team&repo=demo-svc"
+     → MCP server auto-builds repoUrl: "github.com?owner=qa-platform-team&repo=demo-svc"
      → POSTs to Backstage scaffolder, polls until completed/failed (up to 3 min)
      → returns { task_id, status: "completed", ui_url: "http://backstage.idp.local/create/tasks/<id>" }
   5. Agent responds with task result and the Backstage task URL

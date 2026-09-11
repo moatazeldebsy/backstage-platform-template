@@ -34,7 +34,7 @@
 
 | Credential | Where to get it | Where it goes |
 |-----------|----------------|---------------|
-| `GITHUB_TOKEN` | https://github.com/settings/tokens (scopes: `repo`, `read:org`) | `local/.env` |
+| `GITHUB_TOKEN` | https://github.com/settings/tokens (scopes: `repo`, `read:org`, `read:user`) | `local/.env` |
 | `AUTH_GITHUB_CLIENT_ID` | https://github.com/settings/developers → New OAuth App | `local/backstage/.env` |
 | `AUTH_GITHUB_CLIENT_SECRET` | Same OAuth App | `local/backstage/.env` |
 | `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys | Created in Secrets Manager by `setup.sh` |

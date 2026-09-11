@@ -642,7 +642,7 @@ The AI Assistant at `/ai-assistant` is a **native React chat UI** (not an iframe
 Open http://backstage.idp.local/ai-assistant (or click **AI Assistant** in the
 sidebar). The assistant can:
 
-- Search the service catalog: *"find all Python services owned by qa-team"*
+- Search the service catalog: *"find all Python services owned by qa-platform-team"*
 - Check metrics: *"show request rate for hello-service"*
 - List running deployments: *"what's deployed in the services namespace?"*
 - Scaffold a new service: *"scaffold a Python FastAPI service called demo, description demo API, owner group:default/platform-team"*

@@ -411,7 +411,7 @@ The `smoke-test` job runs after the dev deploy and hits `GET /healthz` on the de
 
 ### Overview
 
-Monthly USD budgets are declared as annotations on Backstage `Group` entities and enforced via PrometheusRules. Actual costs are queried from OpenCost every 15 minutes by the tech-insights-exporter.
+Monthly USD budgets are declared in `catalog.teamMetadata` (`backstage/app-config.yaml`) and merged onto each GitHub-Org-synced `Group` entity's annotations at catalog-sync time (see [ADR-0004](design/adr-0004-identity-and-access.md)); PrometheusRules enforce them. Actual costs are queried from OpenCost every 15 minutes by the tech-insights-exporter.
 
 ### Current budget values
 
@@ -424,7 +424,7 @@ Monthly USD budgets are declared as annotations on Backstage `Group` entities an
 | frontend-team | $400 |
 | android-team | $300 |
 | ios-team | $300 |
-| qa-team | $200 |
+| qa-platform-team | $200 |
 
 ### Prometheus metrics
 
@@ -445,11 +445,12 @@ See the [Cost Budget Exceeded runbook](runbooks/cost-budget-exceeded.md) for rem
 
 ### Updating a team's budget
 
-1. Edit the annotation in `backstage/catalog/catalog-info.yaml` or `backstage/catalog/qa-catalog.yaml`:
+1. Edit the team's entry in `catalog.teamMetadata` (`backstage/app-config.yaml`):
    ```yaml
-   metadata:
-     annotations:
-       idp.io/cost-budget-monthly-usd: "1000"
+   catalog:
+     teamMetadata:
+       backend-team:
+         costBudgetMonthlyUsd: "1000"
    ```
 2. Update the matching entry in `kubernetes/finops/team-budgets-configmap.yaml`.
 3. Commit and push — the exporter picks up the new value on the next 15-minute cycle.
