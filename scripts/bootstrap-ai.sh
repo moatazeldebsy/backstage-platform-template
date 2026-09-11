@@ -609,10 +609,56 @@ for i in json.load(sys.stdin).get('items',[]):
 
   # Hide the AI surfaces again: nothing serves kagent.idp.local or /ai-assistant
   # once this teardown finishes, and a visible-but-dead nav item is worse than
-  # an absent one. Backstage reads config only at startup, hence the restart.
+  # an absent one. Backstage reads config only at startup, hence the restart
+  # below — writing the overlay alone was not enough (it took a manual
+  # `bootstrap-local.sh --start-backstage` to actually apply). Mirrors the
+  # restart the "enable" path already does at the bottom of this script.
   write_backstage_ai_overlay false
-  info "AI surfaces hidden in Backstage (AI Assistant, AI Search, Agent Approvals)."
-  info "  Apply with: ./scripts/bootstrap-local.sh --start-backstage"
+
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    if kubectl get configmap backstage-config -n backstage &>/dev/null; then
+      kubectl get configmap backstage-config -n backstage -o json \
+        | python3 -c '
+import json, re, sys
+cm = json.load(sys.stdin)
+key = "app-config.aws.yaml"
+body = cm["data"][key]
+body = re.sub(
+    r"(- (?:page|nav-item|entity-content):custom-pages/[\w-]+:\n\s+disabled: )false",
+    r"\1true",
+    body,
+)
+body = re.sub(r"(aiStack:\n\s+enabled: )true", r"\1false", body)
+cm["data"][key] = body
+json.dump(cm, sys.stdout)
+' | kubectl apply -f - >/dev/null \
+        && kubectl rollout restart deployment/backstage -n backstage >/dev/null 2>&1 \
+        && check "AI surfaces hidden in Backstage (rolling restart triggered)" \
+        || warn "Could not hide the Backstage AI surfaces automatically — patch backstage-config manually."
+    else
+      info "ConfigMap backstage/backstage-config not found — nothing to restart."
+    fi
+  else
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "backstage-backstage-1"; then
+      _destroy_provider="${KUBERNETES_PROVIDER:-}"
+      if [[ -z "$_destroy_provider" && -f "${ENV_FILE:-}" ]]; then
+        _destroy_provider="$(grep '^KUBERNETES_PROVIDER=' "${ENV_FILE}" 2>/dev/null | cut -d= -f2- | tr -d '"')"
+      fi
+      _destroy_compose="docker compose -f ${REPO_ROOT}/local/backstage/docker-compose.yml"
+      [[ "${_destroy_provider:-kind}" == "rancher-desktop" ]] && \
+        _destroy_compose="${_destroy_compose} -f ${REPO_ROOT}/local/backstage/docker-compose.rancher.yml"
+      info "Restarting Backstage so it picks up the AI overlay..."
+      if $_destroy_compose restart backstage >/dev/null 2>&1; then
+        check "AI surfaces hidden in Backstage (AI Assistant, AI Search, Agent Approvals)"
+      else
+        warn "Could not restart Backstage automatically. The AI pages stay visible until you run:"
+        warn "  ${_destroy_compose} restart backstage"
+      fi
+    else
+      info "Backstage is not running — nothing to restart. It will read the hidden"
+      info "  overlay next time it starts (./scripts/bootstrap-local.sh --start-backstage)."
+    fi
+  fi
 
   info "Done. Re-run ./scripts/bootstrap-ai.sh to reinstall."
   exit 0
