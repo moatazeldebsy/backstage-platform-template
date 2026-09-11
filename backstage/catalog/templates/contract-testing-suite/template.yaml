@@ -82,6 +82,7 @@ spec:
                     allowedHosts:
                       - github.com
                     allowedOwners:
+                      - platform-demo-idp
                       - moatazeldebsy
               required:
                 - repoUrl
