@@ -118,6 +118,9 @@ spec:
           - llm
           - idp
           - ${{ parameters.target }}
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: deploy
       name: Deploy Model Server

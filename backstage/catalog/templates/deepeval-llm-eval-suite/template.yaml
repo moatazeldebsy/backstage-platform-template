@@ -190,6 +190,9 @@ spec:
           - llm-eval
           - ai-testing
           - qa
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: publish-pr
       name: Open Pull Request

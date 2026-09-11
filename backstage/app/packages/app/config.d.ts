@@ -53,6 +53,15 @@ export interface Config {
      * @visibility frontend
      */
     incidentRepo?: string;
+    /**
+     * GitHub Org "people" page for the /admin page's "Invite User" button —
+     * the org configured in catalog.providers.githubOrg (identity/team sync),
+     * not necessarily the account that hosts this repo. Same footgun as
+     * `langfuse`/`incidentRepo` above applies without this annotation.
+     *
+     * @visibility frontend
+     */
+    githubOrgUrl?: string;
   };
 
   /**

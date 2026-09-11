@@ -7,9 +7,10 @@ metadata:
     app.kubernetes.io/part-of: idp-platform
     component: finops
 data:
-  # Monthly budget in USD per team. These values must stay in sync with the
-  # idp.io/cost-budget-monthly-usd annotations on Group entities in
-  # backstage/catalog/catalog-info.yaml.
+  # Monthly budget in USD per team. These values must stay in sync with
+  # catalog.teamMetadata in backstage/app-config.yaml, which
+  # idpGithubOrgTeamMetadataModule merges into the idp.io/cost-budget-monthly-usd
+  # annotation on each GitHub-Org-synced Group entity.
   #
   # The tech-insights-exporter reads this ConfigMap via the TEAM_BUDGETS env
   # var and pushes idp_team_budget_usd_monthly{team} to Prometheus Pushgateway.

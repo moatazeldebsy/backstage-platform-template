@@ -53,7 +53,7 @@ export async function getGithubApiHeaders(
 export function summarizeSettledResults(
   settled: PromiseSettledResult<string>[],
   entries: Array<[string, string]>,
-  kind: 'Secret' | 'Variable',
+  kind: 'Secret' | 'Variable' | 'Member',
   ownerRepo: string,
   logger: { info(message: string): void; warn(message: string): void },
 ): string[] {

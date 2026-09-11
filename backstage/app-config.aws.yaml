@@ -120,10 +120,17 @@ auth:
         sessionDuration: { days: 7 }
         signIn:
           resolvers:
+            # dangerouslyAllowSignInWithoutUserInCatalog: false on both — a
+            # matching User entity only exists for real members of the org
+            # configured in catalog.providers.githubOrg below (synced by
+            # @backstage/plugin-catalog-backend-module-github-org), so this
+            # is what restricts sign-in to org members. A brand-new org
+            # member can't sign in until the next sync tick (30 min) unless
+            # an admin triggers a manual catalog refresh. See ADR-0004.
             - resolver: usernameMatchingUserEntityName
-              dangerouslyAllowSignInWithoutUserInCatalog: true
+              dangerouslyAllowSignInWithoutUserInCatalog: false
             - resolver: emailMatchingUserEntityProfileEmail
-              dangerouslyAllowSignInWithoutUserInCatalog: true
+              dangerouslyAllowSignInWithoutUserInCatalog: false
 
 proxy:
   endpoints:
@@ -285,6 +292,9 @@ externalLinks:
   # page and entity tab read from here; it must match INCIDENT_REPO on the
   # router, or the UI shows an empty list while incidents are being filed.
   incidentRepo: moatazeldebsy/backstage-platform-template
+  # "Invite User" on the /admin page — the GitHub Org that owns team/user
+  # identity (catalog.providers.githubOrg), not the repo-hosting account.
+  githubOrgUrl: https://github.com/orgs/platform-demo-idp/people
   argocd: http://ARGOCD_ALB_URL
   grafana: http://GRAFANA_ALB_URL
   kagent: http://KAGENT_ALB_URL
@@ -401,15 +411,31 @@ catalog:
     # GitHub org sync — automatically imports User and Group entities from the GitHub
     # organisation so teams don't need to maintain User/Group YAML manually.
     # Members, team memberships, and avatars stay in sync with GitHub at the schedule below.
+    # This block sat here inert for a while with no consumer (see ADR-0004) — it's
+    # live now that @backstage/plugin-catalog-backend-module-github-org is
+    # registered in index.ts. Group entities get cost-budget/cost-namespace
+    # annotations merged back in via idpGithubOrgTeamMetadataModule, keyed off
+    # catalog.teamMetadata in app-config.yaml.
+    #
+    # NOTE: catalog.providers.githubOrg is read directly as a single provider
+    # config (or an array of them for multiple orgs) — readDefinitionsFromConfig
+    # in @backstage/plugin-catalog-backend-module-github-org does `getConfig`/
+    # `getConfigArray` on this exact key, so nesting it one level deeper (e.g.
+    # under an `idpOrgSync:` key, as this block did before) fails at startup
+    # with "Missing required config value at 'catalog.providers.githubOrg.id'".
+    # `orgs` is a plain array of org-name strings too, not `{name: ...}` objects.
     githubOrg:
-      idpOrgSync:
-        id: idpOrgSync
-        githubUrl: https://github.com
-        orgs:
-          - name: moatazeldebsy
-        schedule:
-          frequency: { minutes: 30 }
-          timeout: { minutes: 5 }
+      id: idpOrgSync
+      githubUrl: https://github.com
+      # Deliberately a different org than catalog.providers.github.idpOrg above:
+      # the platform repo and scaffolded services live under the moatazeldebsy
+      # personal account, but GitHub Orgs cannot be created on top of a personal
+      # account (verified against this one — see ADR-0004) — team/user identity
+      # sync needs a real Org, so it points at a separate one.
+      orgs: [platform-demo-idp]
+      schedule:
+        frequency: { minutes: 30 }
+        timeout: { minutes: 5 }
 
 # Backstage permission framework.
 # Requires @backstage/plugin-permission-backend and a policy plugin in packages/backend.

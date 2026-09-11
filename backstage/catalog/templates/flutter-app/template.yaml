@@ -283,6 +283,9 @@ spec:
           - dart
           - mobile
           - idp-app
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: fetch-platform-values
       name: Prepare Platform GitOps Values

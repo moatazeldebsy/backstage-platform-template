@@ -158,6 +158,9 @@ spec:
           - swiftui
           - mobile
           - idp-app
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: register
       name: Register in Catalog

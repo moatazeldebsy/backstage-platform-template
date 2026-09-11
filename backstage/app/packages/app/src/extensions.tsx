@@ -6142,6 +6142,33 @@ const settingsPage = PageBlueprint.make({
 // activity timeline, and stats.
 
 interface OwnedEntity { name: string; kind: string; lifecycle: string; type?: string }
+interface ScaffolderTask { id: string; templateRef: string; status: string; createdAt: string }
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} minute${min === 1 ? '' : 's'} ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hr / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+const TASK_STATUS_STYLE: Record<string, { dot: string; color: string; icon: string }> = {
+  completed:  { dot: '#4caf50', color: '#e8f5e9', icon: '✓' },
+  failed:     { dot: '#e53935', color: '#ffebee', icon: '✗' },
+  cancelled:  { dot: '#9e9e9e', color: '#f5f5f5', icon: '–' },
+  processing: { dot: '#1976d2', color: '#e3f2fd', icon: '⋯' },
+  open:       { dot: '#ff9800', color: '#fff8e1', icon: '⋯' },
+};
+
+// Membership in this group is used as the admin heuristic across /profile and
+// /admin — there is no real RBAC/role system yet (idpPermissionPolicy.ts
+// allows any authenticated user to do anything; see ADR-0004's "team-scoped
+// authorization" deferred item), so "admin" here means "on the team that owns
+// the platform", not a real permission grant.
+const ADMIN_TEAM_REF = 'group:default/platform-team';
 
 function UserProfilePage() {
   const identityApi = useApi(identityApiRef);
@@ -6150,7 +6177,9 @@ function UserProfilePage() {
   const base        = configApi.getString('backend.baseUrl');
 
   const [profile, setProfile]     = useState<{ displayName: string; email: string }>({ displayName: '', email: '' });
+  const [teams, setTeams]         = useState<string[]>([]);
   const [owned, setOwned]         = useState<OwnedEntity[]>([]);
+  const [tasks, setTasks]         = useState<ScaffolderTask[]>([]);
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
@@ -6160,6 +6189,34 @@ function UserProfilePage() {
 
     identityApi.getBackstageIdentity().then(id => {
       const owner = id.userEntityRef;
+      const [, namespace, name] = owner.split(/[:/]/);
+
+      // Note: unlike the /entities list endpoint, by-name does not support
+      // ?fields= — passing one 400s here (silently swallowed by the .catch
+      // below, which is what made this fetch look like it always returned
+      // no relations rather than erroring loudly).
+      fetchApi.fetch(`${base}/api/catalog/entities/by-name/user/${namespace}/${name}`)
+        .then(r => r.ok ? r.json() : null)
+        .then((userEntity: any) => {
+          const memberOf = (userEntity?.relations ?? []).filter((r: any) => r.type === 'memberOf');
+          setTeams(memberOf.map((r: any) => r.targetRef.split('/')[1]));
+        })
+        .catch(() => {});
+
+      // Real "recent activity": the scaffolder persists every template run
+      // (who, what, when, outcome) — there's no broader per-user audit trail
+      // in the platform (deploys, stars etc. aren't tracked anywhere), so
+      // this is deliberately scoped to scaffolder runs only.
+      fetchApi.fetch(`${base}/api/scaffolder/v2/tasks?createdBy=${encodeURIComponent(owner)}&limit=5&order=desc:created_at`)
+        .then(r => r.ok ? r.json() : null)
+        .then((body: { tasks?: any[] } | null) => setTasks((body?.tasks ?? []).map((t: any) => ({
+          id:          t.id,
+          templateRef: t.spec?.templateInfo?.entityRef ?? 'unknown',
+          status:      t.status,
+          createdAt:   t.createdAt,
+        }))))
+        .catch(() => {});
+
       return fetchApi.fetch(`${base}/api/catalog/entities?filter=relations.ownedBy=${encodeURIComponent(owner)}&fields=metadata.name,kind,spec.lifecycle,spec.type`);
     }).then(r => r.ok ? r.json() : [])
       .then((entities: any[]) => {
@@ -6173,18 +6230,13 @@ function UserProfilePage() {
       .finally(() => setLoading(false));
   }, [base, fetchApi, identityApi]);
 
+  const isAdmin = teams.some(t => `group:default/${t}` === ADMIN_TEAM_REF);
+  const teamSummary = teams.length === 0 ? 'no team' : teams.length === 1 ? teams[0] : `${teams.length} teams`;
+
   const initials = profile.displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ME';
   const LC_COLORS: Record<string, string> = { production: '#4caf50', experimental: '#ff9800', deprecated: '#9e9e9e' };
 
   const KIND_EMOJI: Record<string, string> = { Component: '🔧', API: '◈', Group: '👥', User: '👤', Template: '📋' };
-
-  const ACTIVITY_DEMO = [
-    { dot: '#4caf50', color: '#e8f5e9', text: <>Deployed <b>hello-service</b> to production</>,    meta: '2 minutes ago · main · a3f1b2c' },
-    { dot: '#1976d2', color: '#e3f2fd', text: <>Starred <b>payment-service</b></>,                 meta: '1 hour ago' },
-    { dot: '#7c4dff', color: '#f3e5f5', text: <>Scaffolded <b>payment-service</b> (Go)</>,         meta: 'Today 14:22' },
-    { dot: '#4caf50', color: '#e8f5e9', text: <>Deployed <b>idp-mcp-server</b></>,                 meta: '3 hours ago' },
-    { dot: '#ff9800', color: '#fff8e1', text: <>SLO breach acknowledged — latency-p95</>,           meta: 'Yesterday 16:40' },
-  ];
 
   return (
     <Page themeId="home">
@@ -6202,10 +6254,17 @@ function UserProfilePage() {
                 </div>
                 <Box style={{ paddingBottom: 16 }}>
                   <Typography variant="h5" style={{ fontWeight: 400 }}>{profile.displayName || '—'}</Typography>
-                  <Typography variant="body2" color="textSecondary" style={{ marginTop: 2 }}>Platform Engineer · platform-team · {profile.email}</Typography>
-                  <Box style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                    <Chip size="small" label="admin"         style={{ background: '#e3f2fd', color: '#1976d2', fontSize: 10, fontWeight: 600 }} />
-                    <Chip size="small" label="platform-team" style={{ fontSize: 10 }} />
+                  <Typography variant="body2" color="textSecondary" style={{ marginTop: 2 }}>{teamSummary} · {profile.email}</Typography>
+                  <Box style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {isAdmin && (
+                      <Chip size="small" label="admin" style={{ background: '#e3f2fd', color: '#1976d2', fontSize: 10, fontWeight: 600 }} />
+                    )}
+                    {teams.length === 0 && (
+                      <Chip size="small" label="no team synced yet" style={{ fontSize: 10 }} />
+                    )}
+                    {teams.map(t => (
+                      <Chip key={t} size="small" label={t} style={{ fontSize: 10 }} />
+                    ))}
                   </Box>
                 </Box>
                 <Box style={{ marginLeft: 'auto', paddingBottom: 16 }}>
@@ -6227,31 +6286,40 @@ function UserProfilePage() {
               <Box style={{ flex: '2 1 300px' }}>
                 <Paper>
                   <Box style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
-                    <Typography variant="h6">Recent Activity<DemoChip /></Typography>
-                  </Box>
-                  <Box style={{ padding: '12px 20px', background: '#fff8e1', borderBottom: '1px solid #ffe082' }}>
-                    <Typography variant="body2" style={{ color: '#7c6000' }}>
-                      Example entries. Nothing here is your activity — the platform keeps no
-                      per-user event history, so a feed reading like an audit trail was the one
-                      panel most likely to be believed.
+                    <Typography variant="h6">Recent Activity</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Your scaffolder template runs — the platform doesn't track other
+                      per-user activity (deploys, reviews, etc.), so this feed is scoped
+                      to what's actually recorded.
                     </Typography>
                   </Box>
                   <Box style={{ padding: '8px 0' }}>
-                    {ACTIVITY_DEMO.map((item, i) => (
-                      <Box key={item.meta} display="flex" alignItems="flex-start" style={{ gap: 12, padding: '10px 20px', position: 'relative' }}>
-                        {i < ACTIVITY_DEMO.length - 1 && (
-                          <div style={{ position: 'absolute', left: 35, top: 38, bottom: 0, width: 2, background: '#eee' }} />
-                        )}
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: item.color,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, zIndex: 1, color: item.dot, fontWeight: 700 }}>
-                          {firstMatch([[i === 0 || i === 3, '✓'], [i === 1, '★'], [i === 2, '+']], '⚠')}
-                        </div>
-                        <Box>
-                          <Typography variant="body2" style={{ fontSize: 13 }}>{item.text}</Typography>
-                          <Typography variant="caption" color="textSecondary">{item.meta}</Typography>
+                    {tasks.length === 0 && (
+                      <Typography variant="caption" color="textSecondary" style={{ padding: '16px 20px', display: 'block' }}>
+                        No scaffolder runs yet.
+                      </Typography>
+                    )}
+                    {tasks.map((task, i) => {
+                      const style = TASK_STATUS_STYLE[task.status] ?? TASK_STATUS_STYLE.open;
+                      const templateName = task.templateRef.split('/')[1] ?? task.templateRef;
+                      return (
+                        <Box key={task.id} display="flex" alignItems="flex-start" style={{ gap: 12, padding: '10px 20px', position: 'relative' }}>
+                          {i < tasks.length - 1 && (
+                            <div style={{ position: 'absolute', left: 35, top: 38, bottom: 0, width: 2, background: '#eee' }} />
+                          )}
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: style.color,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, zIndex: 1, color: style.dot, fontWeight: 700 }}>
+                            {style.icon}
+                          </div>
+                          <Box>
+                            <Typography variant="body2" style={{ fontSize: 13 }}>
+                              Ran <b>{templateName}</b> template — {task.status}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">{timeAgo(task.createdAt)}</Typography>
+                          </Box>
                         </Box>
-                      </Box>
-                    ))}
+                      );
+                    })}
                   </Box>
                 </Paper>
               </Box>
@@ -6288,8 +6356,8 @@ function UserProfilePage() {
                     {[
                       { label: 'Services owned',    value: owned.filter(e => e.kind === 'Component').length || '—' },
                       { label: 'APIs owned',         value: owned.filter(e => e.kind === 'API').length || '—' },
+                      { label: 'Teams',               value: teams.length || '—' },
                       { label: 'Deploys this month', value: '—' },
-                      { label: 'Member since',       value: 'Jan 2025' },
                     ].map(({ label, value }) => (
                       <Box key={label} display="flex" justifyContent="space-between" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
                         <Typography variant="caption" color="textSecondary">{label}</Typography>
@@ -6515,8 +6583,10 @@ const searchNavItem = NavItemBlueprint.make({
 });
 
 // ── Admin Panel ────────────────────────────────────────────────────────────────
-// Platform admin overview: user list from catalog, plugin table, and catalog
-// ingestion log (last N refresh_state entries via catalog API).
+// Platform admin overview: user list from catalog (live, github-org-synced —
+// see idpGithubOrgTeamMetadata.ts / ADR-0004), a static plugin table, and the
+// configured catalog entity providers (target org + schedule, real config —
+// not a live run-history, since the catalog backend exposes none over the API).
 
 const PLUGIN_TABLE = [
   { name: 'Catalog',     version: '1.12.0', enabled: true },
@@ -6528,32 +6598,64 @@ const PLUGIN_TABLE = [
   { name: 'Tech Insights',version: '0.3.0', enabled: true },
 ];
 
-const DEMO_INGESTION = [
-  { time: new Date(Date.now() - 3*60*1000).toLocaleTimeString(),  source: 'github.com/org/hello-service',          event: 'Refresh',   entities: 3,  ok: true },
-  { time: new Date(Date.now() - 11*60*1000).toLocaleTimeString(), source: 'backstage/catalog/catalog-info.yaml',  event: 'Full scan', entities: 24, ok: true },
-  { time: new Date(Date.now() - 19*60*1000).toLocaleTimeString(), source: 'github.com/org/qa-mcp-server',          event: 'Refresh',   entities: 2,  ok: false },
-];
-
 function AdminPage() {
   const fetchApi  = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
   const base      = configApi.getString('backend.baseUrl');
 
   const [users, setUsers]       = useState<any[]>([]);
+  const [userCount, setUserCount]   = useState<number | null>(null);
+  const [groupCount, setGroupCount] = useState<number | null>(null);
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=User&fields=metadata.name,metadata.namespace,spec.profile,relations`)
       .then(r => r.ok ? r.json() : [])
-      .then((entities: any[]) => setUsers(entities.slice(0, 10)))
+      .then((entities: any[]) => {
+        setUsers(entities.slice(0, 10));
+        setUserCount(entities.length);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetchApi.fetch(`${base}/api/catalog/entities?filter=kind=Group&fields=metadata.name`)
+      .then(r => r.ok ? r.json() : [])
+      .then((entities: any[]) => setGroupCount(entities.length))
+      .catch(() => {});
   }, [base, fetchApi]);
 
+  const getUserTeams = (u: any) => (u.relations ?? [])
+    .filter((r: any) => r.type === 'memberOf')
+    .map((r: any) => r.targetRef as string);
   const getUserTeam = (u: any) => {
-    const memberOf = (u.relations ?? []).filter((r: any) => r.type === 'memberOf');
-    return memberOf[0]?.targetRef?.split('/')[1] ?? '—';
+    const teams = getUserTeams(u).map((r: string) => r.split('/')[1]);
+    if (teams.length === 0) return '—';
+    const primary = teams.includes('platform-team') ? 'platform-team' : teams[0];
+    return teams.length > 1 ? `${primary} +${teams.length - 1}` : primary;
   };
+  const getUserRole = (u: any) => (getUserTeams(u).includes(ADMIN_TEAM_REF) ? 'admin' : 'member');
+
+  const githubOrgUrl = configApi.getOptionalString('externalLinks.githubOrgUrl');
+
+  // Real, config-derived provider list — not a live run-history (the catalog
+  // backend doesn't expose one over the API), but the schedule and target org
+  // here are the actual values the running backend was configured with.
+  const repoDiscoveryConfig = configApi.getOptionalConfig('catalog.providers.github.idpOrg');
+  const orgSyncConfig       = configApi.getOptionalConfig('catalog.providers.githubOrg');
+  const CATALOG_PROVIDERS = [
+    repoDiscoveryConfig && {
+      name: 'GitHub repo discovery',
+      target: repoDiscoveryConfig.getOptionalString('organization') ?? '—',
+      frequencyMin: repoDiscoveryConfig.getOptionalNumber('schedule.frequency.minutes'),
+      entities: null as number | null,
+    },
+    orgSyncConfig && {
+      name: 'GitHub Org Team sync',
+      target: (orgSyncConfig.getOptionalStringArray('orgs') ?? []).join(', ') || '—',
+      frequencyMin: orgSyncConfig.getOptionalNumber('schedule.frequency.minutes'),
+      entities: userCount !== null && groupCount !== null ? userCount + groupCount : null,
+    },
+  ].filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   return (
     <Page themeId="tool">
@@ -6572,7 +6674,15 @@ function AdminPage() {
           <Paper style={{ flex: '1 1 360px' }}>
             <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
               <Typography variant="h6" style={{ flex: 1 }}>Users</Typography>
-              <Button variant="contained" color="primary" size="small" style={{ fontSize: 12 }}>+ Invite User</Button>
+              <Button
+                variant="contained" color="primary" size="small" style={{ fontSize: 12 }}
+                href={githubOrgUrl ?? '#'}
+                target="_blank" rel="noopener noreferrer"
+                disabled={!githubOrgUrl}
+                title={githubOrgUrl ? 'Manage org membership on GitHub' : 'externalLinks.githubOrgUrl is not configured'}
+              >
+                + Invite User
+              </Button>
             </Box>
             <TableContainer>
               <MuiTable size="small">
@@ -6613,8 +6723,13 @@ function AdminPage() {
                         <Typography variant="caption" color="textSecondary">{u.spec?.profile?.email ?? ''}</Typography>
                       </TableCell>
                       <TableCell><Chip size="small" label={getUserTeam(u)} style={{ fontSize: 10, height: 18 }} /></TableCell>
-                      <TableCell><Chip size="small" label="member" style={{ fontSize: 10 }} /></TableCell>
-                      <TableCell><Button size="small" style={{ fontSize: 11 }}>Edit</Button></TableCell>
+                      <TableCell>
+                        <Chip size="small" label={getUserRole(u)}
+                          style={{ fontSize: 10, background: getUserRole(u) === 'admin' ? '#e3f2fd' : '#f5f5f5', color: getUserRole(u) === 'admin' ? '#1976d2' : '#555' }} />
+                      </TableCell>
+                      <TableCell>
+                        <Button size="small" style={{ fontSize: 11 }} href={`/catalog/default/user/${u.metadata?.name}`}>View</Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -6655,34 +6770,32 @@ function AdminPage() {
           </Paper>
         </Box>
 
-        {/* Catalog ingestion log */}
+        {/* Catalog providers — real config, not a live run-history (no API exposes one) */}
         <Paper>
           <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
-            <Typography variant="h6" style={{ flex: 1 }}>Catalog Ingestion Log</Typography>
-            <Typography variant="caption" color="textSecondary">last 10 events · demo data</Typography>
+            <Typography variant="h6" style={{ flex: 1 }}>Catalog Providers</Typography>
+            <Typography variant="caption" color="textSecondary">configured entity providers · live entity counts</Typography>
           </Box>
           <TableContainer>
             <MuiTable size="small">
               <TableHead>
                 <TableRow style={{ background: '#f5f5f5' }}>
-                  <TableCell><strong>Time</strong></TableCell>
-                  <TableCell><strong>Source</strong></TableCell>
-                  <TableCell><strong>Event</strong></TableCell>
+                  <TableCell><strong>Provider</strong></TableCell>
+                  <TableCell><strong>Target</strong></TableCell>
+                  <TableCell><strong>Schedule</strong></TableCell>
                   <TableCell align="right"><strong>Entities</strong></TableCell>
-                  <TableCell><strong>Status</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {DEMO_INGESTION.map(row => (
-                  <TableRow key={row.source} hover>
-                    <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{row.time}</Typography></TableCell>
-                    <TableCell><Typography variant="caption">{row.source}</Typography></TableCell>
-                    <TableCell><Typography variant="caption">{row.event}</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{row.entities}</Typography></TableCell>
-                    <TableCell>
-                      <Chip size="small" label={row.ok ? 'ok' : 'warn'}
-                        style={{ background: row.ok ? '#4caf50' : '#ff9800', color: '#fff', fontSize: 10, fontWeight: 600 }} />
-                    </TableCell>
+                {CATALOG_PROVIDERS.length === 0 && (
+                  <TableRow><TableCell colSpan={4}><Typography variant="caption" color="textSecondary">No catalog.providers configured.</Typography></TableCell></TableRow>
+                )}
+                {CATALOG_PROVIDERS.map(p => (
+                  <TableRow key={p.name} hover>
+                    <TableCell><Typography variant="caption">{p.name}</Typography></TableCell>
+                    <TableCell><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{p.target}</Typography></TableCell>
+                    <TableCell><Typography variant="caption">{p.frequencyMin ? `every ${p.frequencyMin}m` : '—'}</Typography></TableCell>
+                    <TableCell align="right"><Typography variant="caption" style={{ fontFamily: 'monospace' }}>{p.entities ?? '—'}</Typography></TableCell>
                   </TableRow>
                 ))}
               </TableBody>

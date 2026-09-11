@@ -170,6 +170,9 @@ spec:
           - pact
           - mcp
           - self-describing
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     # ── Step 5: Register in Backstage catalog (local fallback) ────────────────
     - id: register-local

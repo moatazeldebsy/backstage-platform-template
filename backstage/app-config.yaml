@@ -130,10 +130,16 @@ auth:
         clientSecret: ${AUTH_GITHUB_CLIENT_SECRET:-not-configured}
         signIn:
           resolvers:
+            # dangerouslyAllowSignInWithoutUserInCatalog is deliberately false:
+            # a matching User entity only exists for real members of the
+            # GitHub org configured in catalog.providers.githubOrg (synced by
+            # @backstage/plugin-catalog-backend-module-github-org), so this is
+            # what actually restricts sign-in to org members. A brand-new org
+            # member can't sign in until the next sync tick — see ADR-0004.
             - resolver: usernameMatchingUserEntityName
-              dangerouslyAllowSignInWithoutUserInCatalog: true
+              dangerouslyAllowSignInWithoutUserInCatalog: false
             - resolver: emailMatchingUserEntityProfileEmail
-              dangerouslyAllowSignInWithoutUserInCatalog: true
+              dangerouslyAllowSignInWithoutUserInCatalog: false
 
 scaffolder:
   defaultAuthor:
@@ -153,11 +159,11 @@ catalog:
     # and each environment registers backstage/catalog/all-templates.yaml itself
     # (type: file locally, type: url on AWS) to avoid double-registering every
     # template once per environment. See app-config.local.yaml / app-config.aws.yaml.
-    # Platform entities: users, groups (system moved to root catalog-info.yaml)
-    - type: file
-      target: /catalog/catalog-info.yaml
-      rules:
-        - allow: [Component, System, User, Group]
+    # backstage/catalog/catalog-info.yaml used to hold 7 hand-written Groups
+    # and 14 fictional Users here — deleted; Users/Groups are now synced from
+    # catalog.providers.githubOrg instead, see ADR-0004. No location entry for
+    # that path any more (an empty file resolves to a null YAML document,
+    # which the catalog reader rejects rather than treating as "no entities").
     # Auto-discover team Group entities created by the team-namespace scaffold template
     - type: file
       target: /catalog/groups/*.yaml
@@ -173,11 +179,13 @@ catalog:
       target: /catalog/mobile-catalog.yaml
       rules:
         - allow: [Component]
-    # QA team, qa-engineer user, QA platform component, and QA Resource entities
+    # QA platform component and QA Resource entities. qa-team / qa-engineer
+    # used to be hand-written here too — now synced from the GitHub Org
+    # (catalog.providers.githubOrg) instead, see ADR-0004.
     - type: file
       target: /catalog/qa-catalog.yaml
       rules:
-        - allow: [User, Group, Component, Resource]
+        - allow: [Component, Resource]
     # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
     - type: file
       target: /catalog-info.yaml
@@ -259,6 +267,38 @@ catalog:
         # idp topic (e.g. after decommissioning removes the topic). Without this,
         # stale entities persist as orphans and their TechDocs reappear on fresh installs.
         orphanStrategy: delete
+
+  # Overlay annotations for Group entities synced from GitHub Org Teams
+  # (catalog.providers.githubOrg) — cost budgets/namespaces aren't something
+  # GitHub knows about, so idpGithubOrgTeamMetadataModule (backend) merges
+  # these in via a TeamTransformer, keyed by GitHub team slug. Powers the
+  # Budget entity tab. Shared across local/AWS since budgets aren't
+  # environment-specific.
+  teamMetadata:
+    platform-team:
+      costBudgetMonthlyUsd: "2000"
+      costNamespace: "services,services-dev,monitoring,argocd,kagent"
+    data-team:
+      costBudgetMonthlyUsd: "800"
+      costNamespace: "services-dev,services"
+    ml-team:
+      costBudgetMonthlyUsd: "1500"
+      costNamespace: "ml-platform,services-dev"
+    android-team:
+      costBudgetMonthlyUsd: "300"
+      costNamespace: "services-dev,services"
+    ios-team:
+      costBudgetMonthlyUsd: "300"
+      costNamespace: "services-dev,services"
+    frontend-team:
+      costBudgetMonthlyUsd: "400"
+      costNamespace: "services-dev,services"
+    backend-team:
+      costBudgetMonthlyUsd: "600"
+      costNamespace: "services-dev,services"
+    qa-platform-team:
+      costBudgetMonthlyUsd: "200"
+      costNamespace: "services-dev"
 
 kubernetes:
   # Without this the plugin only fetches core workload types, so a service

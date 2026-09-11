@@ -121,6 +121,9 @@ spec:
           - mcp
           - kagent
           - idp
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: secrets
       name: Set CI secrets

@@ -386,6 +386,21 @@ for i in "${!MANIFEST_NAMES[@]}"; do
   export "$name"
 done
 
+# GITHUB_TEAMS_ORG defaults to GITHUB_ORG when left blank at the prompt above —
+# most adopters use one GitHub account/org for everything; only a split setup
+# (personal account hosting repos, separate real Org for team/user identity
+# sync — see docs/design/adr-0004-identity-and-access.md) needs to answer this
+# separately. Plain manifest fallback can't express "default to another row's
+# resolved value" (MANIFEST_DEFAULTS is a static string, not a live reference),
+# so this is the one row that needs a line of code instead of just a manifest row.
+if [[ -z "${GITHUB_TEAMS_ORG:-}" || "${GITHUB_TEAMS_ORG}" == "YOUR_GITHUB_TEAMS_ORG" ]]; then
+  GITHUB_TEAMS_ORG="${GITHUB_ORG}"
+  export GITHUB_TEAMS_ORG
+  for i in "${!MANIFEST_NAMES[@]}"; do
+    [[ "${MANIFEST_NAMES[$i]}" == "GITHUB_TEAMS_ORG" ]] && VALUES[$i]="$GITHUB_TEAMS_ORG"
+  done
+fi
+
 # Derived: Backstage OAuth callback URL (display-only, not a placeholder).
 BACKSTAGE_URL="${BACKSTAGE_URL:-http://localhost:3000}"
 BACKSTAGE_CALLBACK_URL="${BACKSTAGE_URL}/api/auth/github/handler/frame"

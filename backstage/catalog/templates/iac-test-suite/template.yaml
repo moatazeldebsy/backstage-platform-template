@@ -18,7 +18,7 @@ metadata:
     - v1
     - advanced
 spec:
-  owner: qa-team
+  owner: qa-platform-team
   type: test-suite
 
   parameters:

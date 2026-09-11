@@ -233,6 +233,9 @@ spec:
           - ruby
           - sinatra
           - idp-service
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: set-repo-secrets
       name: Configure CI/CD Secrets

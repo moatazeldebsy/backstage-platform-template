@@ -1143,6 +1143,17 @@ run_personalization_pass() {
       -print \) \
     2>/dev/null) || true
 
+  # GITHUB_TEAMS_ORG defaults to GITHUB_ORG when unresolved — belt-and-braces
+  # alongside the same fallback in setup.sh's prompt loop, so an .idp-config.env
+  # persisted before this variable existed (or a caller that exports GITHUB_ORG
+  # without ever having prompted for GITHUB_TEAMS_ORG) still resolves it instead
+  # of silently skipping the row and leaving the LITERAL unreplaced. See
+  # scripts/placeholders.conf and docs/design/adr-0004-identity-and-access.md.
+  if [[ -z "${GITHUB_TEAMS_ORG:-}" || "${GITHUB_TEAMS_ORG:-}" == "YOUR_GITHUB_TEAMS_ORG" ]]; then
+    GITHUB_TEAMS_ORG="${GITHUB_ORG:-}"
+    export GITHUB_TEAMS_ORG
+  fi
+
   # Build sed -e args + grep needles from the manifest, reading resolved
   # values from already-exported shell variables named after MANIFEST_NAMES.
   local sed_args=() grep_patterns=()
