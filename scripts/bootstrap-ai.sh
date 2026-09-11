@@ -601,8 +601,19 @@ for i in json.load(sys.stdin).get('items',[]):
   done
 
   # Wait up to 3m for the namespaces to actually disappear.
+  #
+  # `kubectl get ns kagent ml-platform` exits non-zero (NotFound) the moment
+  # either namespace is already gone — which is the common case here, since
+  # this destroy already ran once, or the AI stack was only partially
+  # installed. Under `set -euo pipefail` that non-zero status survives into
+  # `remaining=$(...)` (pipefail keeps the worst exit code even though
+  # `wc -l`/`tr` downstream succeed), and a failing command substitution used
+  # as a plain assignment DOES trigger errexit — so the whole script died
+  # here silently (stderr redirected to /dev/null) before ever reaching the
+  # Backstage-restart step below. `|| true` on the assignment neutralizes it;
+  # `wc -l` still reports 0 lines correctly either way.
   for _ in $(seq 1 90); do
-    remaining=$(kubectl get ns kagent ml-platform --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    remaining=$(kubectl get ns kagent ml-platform --no-headers 2>/dev/null | wc -l | tr -d ' ') || true
     [[ "$remaining" == "0" ]] && break
     sleep 2
   done
