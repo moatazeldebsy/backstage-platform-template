@@ -131,6 +131,9 @@ spec:
           - mlflow
           - ${{ parameters.framework }}
           - idp
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: train
       name: Run Initial Training Job

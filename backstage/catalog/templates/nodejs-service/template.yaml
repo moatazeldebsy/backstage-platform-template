@@ -251,6 +251,9 @@ spec:
         topics:
           - nodejs
           - idp-service
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: provision-ecr
       name: Provision ECR Repository

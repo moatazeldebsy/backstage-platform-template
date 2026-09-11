@@ -119,9 +119,15 @@ auth:
         sessionDuration: { days: 7 }
         signIn:
           resolvers:
-            # Match GitHub login against entity name (works with private/no email)
+            # dangerouslyAllowSignInWithoutUserInCatalog: false on both — a
+            # matching User entity only exists for real members of the org
+            # configured in catalog.providers.githubOrg below (synced by
+            # @backstage/plugin-catalog-backend-module-github-org), same
+            # restriction as app-config.aws.yaml. See ADR-0004.
             - resolver: usernameMatchingUserEntityName
-              dangerouslyAllowSignInWithoutUserInCatalog: true
+              dangerouslyAllowSignInWithoutUserInCatalog: false
+            - resolver: emailMatchingUserEntityProfileEmail
+              dangerouslyAllowSignInWithoutUserInCatalog: false
 
 integrations:
   github:
@@ -155,11 +161,11 @@ integrations:
 # equivalent note in app-config.aws.yaml, which has the same requirement).
 catalog:
   locations:
-    # Platform entities: users, groups (system moved to root catalog-info.yaml)
-    - type: file
-      target: /catalog/catalog-info.yaml
-      rules:
-        - allow: [Component, System, User, Group]
+    # backstage/catalog/catalog-info.yaml used to hold 7 hand-written Groups
+    # and 14 fictional Users here — deleted; Users/Groups are now synced from
+    # catalog.providers.githubOrg instead, see ADR-0004. No location entry for
+    # that path any more (an empty file resolves to a null YAML document,
+    # which the catalog reader rejects rather than treating as "no entities").
     # Auto-discover team Group entities created by the team-namespace scaffold template
     - type: file
       target: /catalog/groups/*.yaml
@@ -175,11 +181,13 @@ catalog:
       target: /catalog/mobile-catalog.yaml
       rules:
         - allow: [Component]
-    # QA team, qa-engineer user, QA platform component, and QA Resource entities
+    # QA platform component and QA Resource entities. qa-team / qa-engineer
+    # used to be hand-written here too — now synced from the GitHub Org
+    # (catalog.providers.githubOrg below) instead, see ADR-0004.
     - type: file
       target: /catalog/qa-catalog.yaml
       rules:
-        - allow: [User, Group, Component, Resource]
+        - allow: [Component, Resource]
     # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
     - type: file
       target: /catalog-info.yaml
@@ -245,6 +253,30 @@ catalog:
       rules:
         - allow: [Template]
 
+  # GitHub Org Team sync — mirrors catalog.providers.githubOrg in
+  # app-config.aws.yaml. Requires @backstage/plugin-catalog-backend-module-github-org
+  # (index.ts) and GITHUB_TOKEN (read:org + read:user scopes) in local/.env.
+  # See ADR-0004 and the config-shape note in app-config.aws.yaml (this key is
+  # read directly, not nested under a named sub-key; `orgs` is plain strings).
+  #
+  # Deliberately NOT ${GITHUB_ORG} here: that variable drives the docker-compose
+  # personalization step (local/backstage/docker-compose.yml — rewrites every
+  # `moatazeldebsy` placeholder under /catalog to $GITHUB_ORG on container start
+  # when it's set to anything other than "moatazeldebsy"). Reusing it for the
+  # identity-sync org corrupted every scaffolder template's repoUrl/allowedOwners/
+  # techdocs-ref the moment GITHUB_ORG was set to a distinct identity org, and
+  # kept re-corrupting them on every container restart. Hardcode the identity org
+  # here instead, same as app-config.aws.yaml — it is independent of which
+  # account hosts this repo.
+  providers:
+    githubOrg:
+      id: idpOrgSync
+      githubUrl: https://github.com
+      orgs: [platform-demo-idp]
+      schedule:
+        frequency: { minutes: 30 }
+        timeout: { minutes: 5 }
+
 # Browser-facing "open in new tab" links for the custom ArgoCD/Grafana/KAgent
 # pages — distinct from the `proxy:` targets below, which are server-side and
 # already differ per environment. These are read by the frontend via
@@ -255,6 +287,9 @@ externalLinks:
   # page and entity tab read from here; it must match INCIDENT_REPO on the
   # router, or the UI shows an empty list while incidents are being filed.
   incidentRepo: moatazeldebsy/backstage-platform-template
+  # "Invite User" on the /admin page — the GitHub Org that owns team/user
+  # identity (catalog.providers.githubOrg), not the repo-hosting account.
+  githubOrgUrl: https://github.com/orgs/platform-demo-idp/people
   argocd: http://argocd.idp.local
   grafana: http://grafana.idp.local
   kagent: http://kagent.idp.local

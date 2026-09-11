@@ -23,7 +23,7 @@ metadata:
 spec:
   type: service
   lifecycle: experimental
-  owner: qa-team
+  owner: qa-platform-team
   system: idp-platform
   dependsOn:
     - resource:kagent

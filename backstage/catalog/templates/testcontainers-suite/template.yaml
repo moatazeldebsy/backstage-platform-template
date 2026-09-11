@@ -19,7 +19,7 @@ metadata:
     - v1
     - advanced
 spec:
-  owner: qa-team
+  owner: qa-platform-team
   type: test-suite
 
   parameters:
@@ -193,6 +193,9 @@ spec:
           - testcontainers
           - integration-testing
           - qa
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: publish-pr
       name: Open Pull Request on Service Repo

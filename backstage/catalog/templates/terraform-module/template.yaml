@@ -103,6 +103,9 @@ spec:
           - terraform
           - infrastructure
           - idp-module
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: register
       name: Register in Catalog

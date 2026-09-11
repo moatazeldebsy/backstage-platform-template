@@ -142,3 +142,68 @@ curl -H "Authorization: Bearer $(gh auth token)" \
 | Backstage scaffolder `401 Unauthorized` | App not installed on the target repo | Install App on the repo in GitHub App settings |
 | `Rate limit exceeded` after migration | App not replacing PAT — both in use | Remove `GITHUB_TOKEN` from Secrets Manager after App confirmed |
 | Auto-merge approval step skipped | Neither App nor PAT configured | Add `APP_ID` + `APP_PRIVATE_KEY` repo secrets |
+
+---
+
+## GitHub OAuth sign-in and Org/Team sync
+
+This is a **third, separate** use of GitHub credentials — distinct from both the
+scaffolder integration (PAT/App above) and CI. See
+`docs/design/adr-0004-identity-and-access.md` for the design rationale.
+
+**What it does:** the `github` auth provider (`auth.providers.github` in
+`app-config.yaml`/`app-config.local.yaml`/`app-config.aws.yaml`) lets users sign in
+with their GitHub account. Separately, `catalog.providers.githubOrg.idpOrgSync`
+syncs every member and team of a GitHub Org into the catalog as `User`/`Group`
+entities (via `@backstage/plugin-catalog-backend-module-github-org`, on a
+30-minute schedule).
+
+Sign-in only succeeds for users with a matching `User` entity
+(`dangerouslyAllowSignInWithoutUserInCatalog: false`) — since that entity only
+exists for real org members, **sign-in is effectively restricted to the org**.
+
+### Setup
+
+1. **OAuth App** (not the GitHub App above — a separate credential type):
+   github.com/settings/developers → New OAuth App.
+   - Homepage URL: your Backstage URL
+   - Callback URL: `http://backstage.idp.local/api/auth/github/handler/frame`
+     (local) or your production ALB URL equivalent
+   - Set `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET` in
+     `local/backstage/.env` (local) or Secrets Manager (AWS)
+
+2. **Org sync token**: `GITHUB_TOKEN` (`local/.env` / AWS Secrets Manager) needs
+   `read:org` scope in addition to whatever scaffolder integration already
+   requires it for. It also needs **`read:user`** (or `user:email`) —
+   `catalog-backend-module-github-org` always requests each member's email in
+   its GraphQL query when using a classic PAT, regardless of any local
+   config, and GitHub rejects the *entire* query (not just the email field)
+   if that scope is missing. Symptom: `GithubMultiOrgEntityProvider:*
+   refresh failed, GraphqlResponseError: ... INSUFFICIENT_SCOPES` in the
+   backend logs, and zero synced Users/Groups. Add the scope at
+   github.com/settings/tokens.
+
+3. **`GITHUB_ORG`**: set in `local/.env` — the org whose members/teams get
+   synced locally. AWS has the org name inline in `app-config.aws.yaml`
+   (`catalog.providers.githubOrg.idpOrgSync.orgs`).
+
+4. **One-time rollout step**: every scaffolder template defaults
+   `spec.owner` to a team slug (`platform-team`, `qa-team`, etc.) — these must
+   exist as real Teams in the org, or ownership references dangle. Create them
+   once via github.com/orgs/`<org>`/teams or the GitHub CLI
+   (`gh api orgs/<org>/teams -f name=platform-team -f privacy=closed`); new
+   teams created afterwards via the `team-namespace` Backstage template are
+   handled automatically.
+
+### Verify
+
+```bash
+# Confirm the org-sync provider ran (local)
+docker logs backstage-backstage-1 2>&1 | grep -i githuborg
+
+# Confirm real Users/Groups landed in the catalog (not the old static demo ones)
+# — open http://backstage.idp.local/catalog?filters%5Bkind%5D=group
+```
+
+A user outside the org attempting sign-in gets a resolution failure, not a
+silent unauthenticated session — that's the intended behavior, not a bug.

@@ -142,6 +142,9 @@ spec:
           - ai-agent
           - kagent
           - idp
+        collaborators:
+          - team: ${{ parameters.owner }}
+            access: maintain
 
     - id: deploy
       name: Deploy Agent to KAgent

@@ -1,34 +1,7 @@
----
-apiVersion: backstage.io/v1alpha1
-kind: Group
-metadata:
-  name: qa-team
-  title: QA Platform Team
-  description: Owns the QA Platform & Quality Enablement capability — test tooling, quality gates, and E2E scaffolds.
-  annotations:
-    idp.io/cost-budget-monthly-usd: "200"
-    idp.io/cost-namespace: "services-dev"
-spec:
-  type: team
-  profile:
-    displayName: QA Platform Team
-    email: qa-platform@idp.local
-  parent: platform-team
-  children: []
-  members:
-    - qa-engineer
----
-apiVersion: backstage.io/v1alpha1
-kind: User
-metadata:
-  name: qa-engineer
-  title: QA Platform Engineer
-spec:
-  profile:
-    displayName: QA Engineer
-    email: qa-engineer@idp.local
-  memberOf:
-    - qa-team
+# qa-team / qa-engineer used to be hand-written here — deleted; now synced
+# from GitHub Org Teams instead (catalog.providers.githubOrg). Cost-budget
+# annotations for qa-team moved to catalog.teamMetadata in app-config.yaml,
+# see docs/design/adr-0004-identity-and-access.md.
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -55,7 +28,7 @@ metadata:
 spec:
   type: platform-capability
   lifecycle: production
-  owner: qa-team
+  owner: qa-platform-team
   system: internal-developer-platform
   dependsOn:
     - resource:lambdatest
@@ -84,7 +57,7 @@ metadata:
       icon: dashboard
 spec:
   type: device-farm
-  owner: qa-team
+  owner: qa-platform-team
   system: internal-developer-platform
 ---
 apiVersion: backstage.io/v1alpha1
@@ -104,5 +77,5 @@ metadata:
       icon: email
 spec:
   type: email-sandbox
-  owner: qa-team
+  owner: qa-platform-team
   system: internal-developer-platform

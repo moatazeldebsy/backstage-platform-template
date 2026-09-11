@@ -26,6 +26,8 @@ import { idpDeployMcpServerModule } from './modules/idpDeployMcpServer';
 import { idpDeployModelServerModule } from './modules/idpDeployModelServer';
 import { idpSetupContractTestingModule } from './modules/idpSetupContractTesting';
 import { idpCreateNamespaceModule } from './modules/idpCreateNamespace';
+import { idpGithubTeamCreateModule } from './modules/idpGithubTeamCreate';
+import { idpGithubOrgTeamMetadataModule } from './modules/idpGithubOrgTeamMetadata';
 import { ragSearchPlugin } from './modules/idpRagSearch';
 import { learningCenterPlugin } from './modules/idpLearningCenter';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
@@ -54,6 +56,7 @@ backend.add(idpDeployMcpServerModule);
 backend.add(idpDeployModelServerModule);
 backend.add(idpSetupContractTestingModule);
 backend.add(idpCreateNamespaceModule);
+backend.add(idpGithubTeamCreateModule);
 backend.add(ragSearchPlugin);
 backend.add(learningCenterPlugin);
 
@@ -76,6 +79,16 @@ backend.add(
 // no repo is ever ingested, which in turn blanks every DORA panel because the
 // exporter only reports repos the catalog knows about.
 backend.add(import('@backstage/plugin-catalog-backend-module-github'));
+
+// GitHub Org Team sync — Users and Groups. Same "inert without the module"
+// trap as above applied to `catalog.providers.githubOrg.idpOrgSync`: the
+// config block existed in app-config.aws.yaml for a while with no consumer
+// (see ADR-0004). The module is now registered, so that block — and its
+// local-config counterpart — are live: every org member becomes a User
+// entity and every team becomes a Group entity, replacing the old
+// hand-written ones in catalog-info.yaml / qa-catalog.yaml.
+backend.add(import('@backstage/plugin-catalog-backend-module-github-org'));
+backend.add(idpGithubOrgTeamMetadataModule);
 
 // See https://backstage.io/docs/features/software-catalog/configuration#subscribing-to-catalog-errors
 backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
