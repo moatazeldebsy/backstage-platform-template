@@ -119,6 +119,12 @@ spec:
           ```bash
           kubectl get sqsqueue ${{ parameters.queueName }} -n services-dev -w
           ```
+
+          Also adds a Backstage `Resource` entity at
+          `services/${{ parameters.ownerService }}/claims/catalog-info-${{ parameters.queueName }}.yaml`
+          (`dependencyOf: component:${{ parameters.ownerService }}`). After merging,
+          register it via **Backstage → Catalog → Register existing component**, using:
+          `https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/${{ parameters.ownerService }}/claims/catalog-info-${{ parameters.queueName }}.yaml`
         targetBranchName: main
 
   output:
@@ -131,3 +137,4 @@ spec:
           1. Merge the PR. ArgoCD syncs the Claim within ~1 min.
           2. SQS queue provisions in ~10 s. Watch with `kubectl get sqsqueue ${{ parameters.queueName }} -n services-dev -w`.
           3. Set `SQS_QUEUE_URL` from `aws sqs get-queue-url --queue-name ${{ parameters.queueName }}` in your service's env.
+          4. Register the catalog entry: Backstage → Catalog → Register existing component → paste the `catalog-info-${{ parameters.queueName }}.yaml` URL from the PR description

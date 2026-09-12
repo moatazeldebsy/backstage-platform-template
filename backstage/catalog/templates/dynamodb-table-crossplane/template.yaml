@@ -137,6 +137,12 @@ spec:
           ```bash
           kubectl get dynamotable ${{ parameters.tableName }} -n services-dev -w
           ```
+
+          Also adds a Backstage `Resource` entity at
+          `services/${{ parameters.ownerService }}/claims/catalog-info-${{ parameters.tableName }}.yaml`
+          (`dependencyOf: component:${{ parameters.ownerService }}`). After merging,
+          register it via **Backstage → Catalog → Register existing component**, using:
+          `https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/${{ parameters.ownerService }}/claims/catalog-info-${{ parameters.tableName }}.yaml`
         targetBranchName: main
 
   output:
@@ -149,3 +155,4 @@ spec:
           1. Merge the PR. ArgoCD syncs the Claim within ~1 min.
           2. DynamoDB table provisions in ~30 s. Watch with `kubectl get dynamotable ${{ parameters.tableName }} -n services-dev -w`.
           3. Set `DYNAMODB_TABLE_NAME=${{ parameters.tableName }}` in your service's env.
+          4. Register the catalog entry: Backstage → Catalog → Register existing component → paste the `catalog-info-${{ parameters.tableName }}.yaml` URL from the PR description

@@ -113,6 +113,11 @@ spec:
       action: fetch:template
       input:
         url: ./skeleton
+        # Without this the skeleton's catalog-info.yaml/terraform/ would land
+        # at the workspace root and overwrite the platform's own root
+        # catalog-info.yaml/README.md once the PR merges — this scopes output
+        # to the same directory the PR description below already claims.
+        targetPath: terraform/infra/s3-buckets/${{ parameters.bucketName }}
         values:
           bucketName: ${{ parameters.bucketName }}
           ownerService: ${{ parameters.ownerService }}
@@ -144,6 +149,7 @@ spec:
 
           **Resources created:**
           - `terraform/infra/s3-buckets/${{ parameters.bucketName }}/` — S3 bucket, versioning, lifecycle rules, encryption, public access block, least-privilege IAM policy for `${{ parameters.ownerService }}`
+          - `terraform/infra/s3-buckets/${{ parameters.bucketName }}/catalog-info.yaml` — Backstage `Resource` entity, `dependencyOf: component:${{ parameters.ownerService }}`
 
           **After merging:**
           ```bash
@@ -152,6 +158,9 @@ spec:
           ```
 
           Attach the output IAM policy to your service's task/pod IAM role to grant access.
+
+          Then register the catalog entry via **Backstage → Catalog → Register existing component**, using:
+          `https://github.com/moatazeldebsy/backstage-platform-template/blob/main/terraform/infra/s3-buckets/${{ parameters.bucketName }}/catalog-info.yaml`
         targetBranchName: main
 
   output:
@@ -165,3 +174,4 @@ spec:
           2. Run `terraform init && terraform apply` in `terraform/infra/s3-buckets/${{ parameters.bucketName }}/`
           3. Attach the `${{ parameters.bucketName }}-access` IAM policy to your service's pod/task role
           4. Set `S3_BUCKET_NAME=${{ parameters.bucketName }}` in your service environment
+          5. Register the catalog entry: Backstage → Catalog → Register existing component → paste the `catalog-info.yaml` URL from the PR description
