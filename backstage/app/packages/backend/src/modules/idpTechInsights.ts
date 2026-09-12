@@ -5,7 +5,7 @@ import {
   type FactRetriever,
 } from '@backstage/plugin-tech-insights-node';
 import { CatalogClient } from '@backstage/catalog-client';
-import { RELATION_OWNED_BY } from '@backstage/catalog-model';
+import { computeFacts, ScorecardFactKey } from '@internal/scorecard-core';
 
 // Quality gates a service can declare via the `idp.io/quality-gates` annotation
 // (comma-separated). The hardened language skeleton CI declares the first three;
@@ -30,25 +30,16 @@ const QUALITY_GATES = [
   'mobile-fastlane',        // Mobile app uses Fastlane for release automation
 ] as const;
 
-function parseGates(raw: string | undefined): Set<string> {
-  if (!raw) return new Set();
-  return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
-}
-
-// Returns true for entities that represent a mobile app (Android, iOS, Flutter, etc.)
-function isMobileEntity(entity: { spec?: Record<string, unknown>; metadata: { tags?: string[] } }): boolean {
-  return (
-    entity.spec?.type === 'mobile' ||
-    (entity.metadata.tags ?? []).includes('mobile')
-  );
-}
-
 // Every entry here is a boolean fact with only its description varying, so
 // the literal `{ type: 'boolean', description: ... }` shape used to repeat
 // 28 times in the schema below — SonarCloud's duplication detector flagged
 // that repetition against itself. Generating the schema from this table
 // keeps the same keys, order, and shape without the repeated structure.
-const FACT_DESCRIPTIONS: Array<[string, string]> = [
+//
+// The check *logic* itself lives in @internal/scorecard-core, shared with
+// packages/app/src/scorecard.ts — this table only carries the id ->
+// human-readable description mapping the Tech Insights schema needs.
+const FACT_DESCRIPTIONS: Array<[ScorecardFactKey, string]> = [
   // — Service hygiene (Bronze tier) —
   ['has-owner', 'Entity has an owner defined in spec.owner'],
   ['has-techdocs', 'Entity has a backstage.io/techdocs-ref annotation'],
@@ -63,9 +54,9 @@ const FACT_DESCRIPTIONS: Array<[string, string]> = [
   ['has-contract-tests', 'Service has a registered consumer-driven contract (annotation OR providesApi relation)'],
   ['has-e2e-tests', 'Service has an end-to-end test suite registered in the catalog (annotation OR consumesApi from a test-suite component)'],
   // — AI/ML service governance (Gold tier) —
-  ['has-model-card', 'AI service has a backstage.io/model-card-url annotation documenting the model'],
-  ['has-eval-suite', 'AI agent or model has LLM evaluation suite in CI (idp.io/quality-gates contains "llm-eval")'],
-  ['has-ai-observability', 'AI service has observability configured (backstage.io/kubernetes-id annotation AND "ai" tag present)'],
+  ['has-model-card', 'AI entity has a backstage.io/model-card-url annotation documenting the model'],
+  ['has-eval-suite', 'AI entity has LLM evaluation suite in CI (idp.io/quality-gates contains "llm-eval")'],
+  ['has-ai-observability', 'AI entity has observability configured (backstage.io/kubernetes-id annotation)'],
   ['has-sonar-scanning', 'Service is wired up to SonarCloud (idp.io/quality-gates contains "sonar-scanning" OR sonarcloud.io/project-key annotation present)'],
   ['has-snyk-scanning', 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)'],
   ['has-trivy-scanning', 'Service image is scanned by Trivy (idp.io/quality-gates contains "trivy-scanning" OR github.com/project-slug annotation present)'],
@@ -84,7 +75,7 @@ const FACT_DESCRIPTIONS: Array<[string, string]> = [
 
 const entityFactRetriever: FactRetriever = {
   id: 'idp-entity-facts',
-  version: '0.3.0',
+  version: '0.4.0',
   title: 'IDP Entity Facts',
   description:
     'Collects Bronze/Silver/Gold scorecard facts — service hygiene plus shift-left quality gates',
@@ -109,157 +100,14 @@ const entityFactRetriever: FactRetriever = {
       { token },
     );
 
-    const facts: TechInsightFact[] = [];
-
-    for (const entity of entities) {
-      const annotations = entity.metadata.annotations ?? {};
-      const relations   = entity.relations ?? [];
-      const tags        = entity.metadata.tags ?? [];
-
-      // Hygiene facts
-      const hasOwner = Boolean(
-        entity.spec?.owner &&
-        relations.some(r => r.type === RELATION_OWNED_BY),
-      );
-      const hasTechDocs      = Boolean(annotations['backstage.io/techdocs-ref']);
-      const hasHealthProbes  = Boolean(annotations['backstage.io/kubernetes-id']);
-      const hasRunbookUrl    = Boolean(annotations['backstage.io/runbook-url']);
-      const hasApiDefinition = relations.some(r => r.type === 'providesApi');
-      const imageTag         = annotations['backstage.io/image-tag'] ?? '';
-      const usesPinnedTag    = imageTag !== '' && imageTag !== 'latest';
-
-      // Quality-gate facts
-      const declaredGates = parseGates(annotations['idp.io/quality-gates']);
-      const hasCoverageGate   = declaredGates.has('coverage');
-      const hasStaticAnalysis = declaredGates.has('static-analysis');
-      const hasVulnScan       = declaredGates.has('vuln-scan');
-
-      // Contract tests: explicit annotation OR catalog relation to an API entity.
-      // Services scaffolded through enable-contract-testing get the annotation;
-      // services registered manually still credit if they expose an API.
-      const hasContractTests = declaredGates.has('contract') || hasApiDefinition;
-
-      // E2E tests: explicit annotation OR a Backstage tag of "e2e"/"playwright"
-      // OR an inbound consumesApi relation from a test-suite component.
-      // Suite scaffolders add the annotation; legacy services can opt in via tags.
-      const hasE2eTagged = tags.some(t =>
-        ['e2e', 'playwright', 'cypress', 'appium'].includes(t.toLowerCase()),
-      );
-      const hasE2eRelation = relations.some(r => r.type === 'consumesApi');
-      const hasE2eTests =
-        declaredGates.has('e2e') || hasE2eTagged || hasE2eRelation;
-
-      // AI/ML service governance facts
-      const hasModelCard = Boolean(annotations['backstage.io/model-card-url']);
-      const hasEvalSuite = declaredGates.has('llm-eval');
-      const isAiService = tags.some(t => t.toLowerCase() === 'ai');
-      const hasAiObservability = hasHealthProbes && isAiService;
-
-      // Sonar/Snyk: opt in via quality-gates list OR via tool-specific annotation.
-      const hasSonarScanning =
-        declaredGates.has('sonar-scanning') ||
-        Boolean(annotations['sonarcloud.io/project-key']);
-      const hasSnykScanning =
-        declaredGates.has('snyk-scanning') ||
-        Boolean(annotations['snyk.io/org-slug']);
-      const hasTrivyScanning =
-        declaredGates.has('trivy-scanning') ||
-        Boolean(annotations['github.com/project-slug']);
-
-      // Mobile scorecard facts (only meaningful for spec.type === 'mobile', but
-      // computed for all Components so the scorecard UI can render consistently)
-      const isMobileApp = entity.spec?.type === 'mobile';
-      const hasMobileTestCoverage = isMobileApp && declaredGates.has('mobile-test-coverage');
-      // Crash reporting: explicit gate OR Firebase/Sentry annotation
-      const hasMobileCrashReporting =
-        isMobileApp &&
-        (declaredGates.has('mobile-crash-reporting') ||
-          Boolean(annotations['mobile.io/crash-reporting']));
-      // UI tests: gate OR tags like "appium", "espresso", "xctest", "flutter-integration"
-      const hasMobileUiTests =
-        isMobileApp &&
-        (declaredGates.has('mobile-ui-tests') ||
-          tags.some(t =>
-            ['appium', 'espresso', 'xctest', 'flutter-integration'].includes(t.toLowerCase()),
-          ));
-      const hasMobileFastlane = isMobileApp && declaredGates.has('mobile-fastlane');
-
-      // New mobile platform maturity checks — only meaningful for mobile entities.
-      // Non-mobile entities always get false so the scorecard renders consistently.
-      const isMobile = isMobileEntity(entity);
-
-      // hasMinSdkVersion: annotation must exist and meet the platform floor.
-      // iOS floor: "16.0" (numeric prefix comparison). Android floor: 24.
-      const minSdkRaw = annotations['backstage.io/mobile-min-sdk'];
-      let hasMinSdkVersion = false;
-      if (isMobile && minSdkRaw) {
-        const isIos = (entity.metadata.tags ?? []).includes('ios') ||
-          (entity.metadata.tags ?? []).includes('swiftui') ||
-          (entity.metadata.tags ?? []).includes('swift');
-        if (isIos) {
-          // iOS: compare major version number
-          const major = parseFloat(minSdkRaw.split('.')[0]);
-          hasMinSdkVersion = !isNaN(major) && major >= 16;
-        } else {
-          // Android / Flutter: integer API level
-          const level = parseInt(minSdkRaw, 10);
-          hasMinSdkVersion = !isNaN(level) && level >= 24;
-        }
-      }
-
-      // hasCrashlyticsEnabled: annotation exactly "true"
-      const hasCrashlyticsEnabled =
-        isMobile && annotations['backstage.io/crashlytics-enabled'] === 'true';
-
-      // hasAccessibilityTests: annotation exactly "true"
-      const hasAccessibilityTests =
-        isMobile && annotations['backstage.io/accessibility-tests'] === 'true';
-
-      // hasAppSizeBudget: annotation present (any non-empty value)
-      const hasAppSizeBudget =
-        isMobile && Boolean(annotations['backstage.io/app-size-budget-mb']);
-
-      // hasCodeSigning: annotation exactly "true"
-      const hasCodeSigning =
-        isMobile && annotations['backstage.io/code-signing-setup'] === 'true';
-
-      facts.push({
-        entity: {
-          namespace: entity.metadata.namespace ?? 'default',
-          kind:      entity.kind,
-          name:      entity.metadata.name,
-        },
-        facts: {
-          'has-owner':             hasOwner,
-          'has-techdocs':          hasTechDocs,
-          'has-health-probes':     hasHealthProbes,
-          'has-runbook-url':       hasRunbookUrl,
-          'has-api-definition':    hasApiDefinition,
-          'uses-pinned-image-tag': usesPinnedTag,
-          'has-coverage-gate':     hasCoverageGate,
-          'has-static-analysis':   hasStaticAnalysis,
-          'has-vuln-scan':         hasVulnScan,
-          'has-contract-tests':    hasContractTests,
-          'has-e2e-tests':         hasE2eTests,
-          'has-model-card':        hasModelCard,
-          'has-eval-suite':        hasEvalSuite,
-          'has-ai-observability':  hasAiObservability,
-          'has-sonar-scanning':          hasSonarScanning,
-          'has-snyk-scanning':           hasSnykScanning,
-          'has-trivy-scanning':          hasTrivyScanning,
-          'has-mobile-test-coverage':    hasMobileTestCoverage,
-          'has-mobile-crash-reporting':  hasMobileCrashReporting,
-          'has-mobile-ui-tests':         hasMobileUiTests,
-          'has-mobile-fastlane':         hasMobileFastlane,
-          // New mobile platform maturity facts
-          'has-min-sdk-version':         hasMinSdkVersion,
-          'has-crashlytics-enabled':     hasCrashlyticsEnabled,
-          'has-accessibility-tests':     hasAccessibilityTests,
-          'has-app-size-budget':         hasAppSizeBudget,
-          'has-code-signing':            hasCodeSigning,
-        },
-      });
-    }
+    const facts: TechInsightFact[] = entities.map(entity => ({
+      entity: {
+        namespace: entity.metadata.namespace ?? 'default',
+        kind: entity.kind,
+        name: entity.metadata.name,
+      },
+      facts: computeFacts(entity),
+    }));
 
     return facts;
   },
