@@ -1,15 +1,19 @@
 import { Entity } from '@backstage/catalog-model';
+import { computeFacts, isAiEntity as sharedIsAiEntity, isMobileEntity as sharedIsMobileEntity } from '@internal/scorecard-core';
 
 // Pure scoring logic for the Tech Insights scorecard, extracted from
 // extensions.tsx so it can be unit-tested without pulling in the whole
 // Backstage frontend (importing extensions.tsx into a test loads every plugin
 // and takes minutes).
 //
-// NOTE: this duplicates the fact logic in
-// packages/backend/src/modules/idpTechInsights.ts. The backend computes the
-// same checks as Tech Insights *facts* for the Prometheus exporter and Grafana;
-// this module recomputes them client-side for the entity page. They are two
-// implementations of one contract and can drift — change both together.
+// The check *predicates* (the 22 booleans below) come from
+// @internal/scorecard-core, shared with the backend's Tech Insights fact
+// retriever (packages/backend/src/modules/idpTechInsights.ts) — the two used
+// to independently recompute the same checks and had drifted on three of
+// them. What stays local to this file, deliberately: tier *thresholds*
+// (TIER_THRESHOLDS/AI_TIER_THRESHOLDS/MOBILE_TIER_REQUIREMENTS below) — see
+// the comment on TIER_THRESHOLDS for why those remain a frontend-only
+// concern, not something the shared module also owns.
 
 export type CheckKey =
   | 'has-owner'
@@ -56,14 +60,14 @@ export const CHECKS: CheckDef[] = [
   { id: 'has-e2e-tests',         group: 'Test Coverage', label: 'End-to-end tests',          remediation: 'Run the playwright-e2e-suite scaffolder, or tag the entity with e2e/playwright.' },
   { id: 'has-model-card',        group: 'AI Governance', label: 'Has model card',            remediation: 'Add annotation backstage.io/model-card-url documenting the model, its training data, and performance.' },
   { id: 'has-eval-suite',        group: 'AI Governance', label: 'LLM eval suite in CI',      remediation: 'Add "llm-eval" to idp.io/quality-gates and run the deepeval-llm-eval-suite scaffolder.' },
-  { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id and tag the entity with "ai" to enable Grafana dashboards.' },
+  { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id to enable Grafana dashboards (applies to entities tagged "ai" or with an AI spec.type).' },
   { id: 'has-sonar-scanning',    group: 'Security',      label: 'SonarCloud quality gate',   remediation: 'Run the enable-security-scanning scaffolder, or add a sonarcloud.io/project-key annotation.' },
   { id: 'has-snyk-scanning',     group: 'Security',      label: 'Snyk SCA scan',             remediation: 'Run the enable-security-scanning scaffolder, or add a snyk.io/org-slug annotation.' },
   { id: 'has-trivy-scanning',    group: 'Security',      label: 'Trivy image scan',          remediation: 'See the Trivy tab — requires a github.com/project-slug annotation and CI to have run at least once.' },
   // Mobile maturity checks. Rendered only for mobile entities, and unlike every
   // other group these gate the tier individually rather than by count — see
-  // MOBILE_TIER_REQUIREMENTS. Mirrors the fact logic in the backend's
-  // idpTechInsights.ts; keep the two in sync.
+  // MOBILE_TIER_REQUIREMENTS. The predicate logic itself comes from
+  // @internal/scorecard-core, shared with the backend.
   { id: 'has-code-signing',        group: 'Mobile', label: 'Automated code signing',  remediation: 'Run the mobile-code-signing scaffolder, then set annotation backstage.io/code-signing-setup: "true".' },
   { id: 'has-min-sdk-version',     group: 'Mobile', label: 'Minimum SDK version',     remediation: 'Set annotation backstage.io/mobile-min-sdk — Android API ≥24, or iOS ≥16.0.' },
   { id: 'has-accessibility-tests', group: 'Mobile', label: 'Accessibility tests',     remediation: 'Run the accessibility-suite scaffolder, then set annotation backstage.io/accessibility-tests: "true".' },
@@ -158,16 +162,11 @@ export function visibleChecks(opts: { isAiEntity: boolean; isMobile: boolean }):
   });
 }
 
-// Deliberately case-sensitive, matching isMobileEntity in the backend's
-// idpTechInsights.ts exactly. A looser match here would be friendlier but would
-// put the two out of step: an entity tagged "Mobile" would show mobile checks on
-// the entity page while the backend recorded every mobile fact as false, so the
-// portal and the Grafana QA dashboard would disagree about the same app.
+// Deliberately case-sensitive — see @internal/scorecard-core's isMobileEntity
+// doc comment. Re-exported here (rather than re-implemented) so existing
+// imports of `isMobileEntity` from './scorecard' keep working unchanged.
 export function isMobileEntity(entity: Entity): boolean {
-  return (
-    (entity.spec as any)?.type === 'mobile' ||
-    (entity.metadata.tags ?? []).includes('mobile')
-  );
+  return sharedIsMobileEntity(entity as any);
 }
 
 export interface ScorecardResult {
@@ -177,81 +176,18 @@ export interface ScorecardResult {
   tier: TierName;
 }
 
-function parseGates(raw: string | undefined): Set<string> {
-  if (!raw) return new Set();
-  return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
-}
-
 export function computeScorecard(entity: Entity): ScorecardResult {
-  const annotations = entity.metadata.annotations ?? {};
-  const relations   = entity.relations ?? [];
-  const tags        = entity.metadata.tags ?? [];
-  const gates       = parseGates(annotations['idp.io/quality-gates']);
-
-  const hasOwner = Boolean(
-    entity.spec?.owner &&
-    relations.some(r => r.type === 'ownedBy'),
-  );
-  const hasApiDefinition = relations.some(r => r.type === 'providesApi');
-  const imageTag         = annotations['backstage.io/image-tag'] ?? '';
-  const hasE2eTagged     = tags.some(t =>
-    ['e2e', 'playwright', 'cypress', 'appium'].includes(t.toLowerCase()),
-  );
-
-  const hasKubernetesId = Boolean(annotations['backstage.io/kubernetes-id']);
-
-  // Mobile minimum-SDK floors, mirroring idpTechInsights.ts: iOS compares the
-  // major of a dotted version ("16.0" -> 16), Android/Flutter an integer API
-  // level. Different scales, so the platform has to be known before comparing.
   const isMobile = isMobileEntity(entity);
-  const minSdkRaw = annotations['backstage.io/mobile-min-sdk'];
-  let meetsMinSdk = false;
-  if (isMobile && minSdkRaw) {
-    const isIos = ['ios', 'swiftui', 'swift'].some(t => tags.includes(t));
-    if (isIos) {
-      const major = parseFloat(minSdkRaw.split('.')[0]);
-      meetsMinSdk = !isNaN(major) && major >= 16;
-    } else {
-      const level = parseInt(minSdkRaw, 10);
-      meetsMinSdk = !isNaN(level) && level >= 24;
-    }
-  }
+  const isAiEntityValue = sharedIsAiEntity(entity as any);
 
-  const isAiEntity =
-    tags.some(t => t.toLowerCase() === 'ai') ||
-    ['ai-agent', 'model-serving', 'llm', 'ml-model'].includes(
-      ((entity.spec as any)?.type ?? '').toLowerCase(),
-    );
+  // computeFacts returns all @internal/scorecard-core ScorecardFactKey
+  // entries (26, including the backend-only legacy mobile-* checks this
+  // page never renders); Record<CheckKey, boolean> (22 keys) is a subset,
+  // which TypeScript accepts structurally without a cast.
+  const results: Record<CheckKey, boolean> = computeFacts(entity as any);
 
-  const results: Record<CheckKey, boolean> = {
-    'has-owner':             hasOwner,
-    'has-techdocs':          Boolean(annotations['backstage.io/techdocs-ref']),
-    'has-health-probes':     hasKubernetesId,
-    'has-runbook-url':       Boolean(annotations['backstage.io/runbook-url']),
-    'has-api-definition':    hasApiDefinition,
-    'uses-pinned-image-tag': imageTag !== '' && imageTag !== 'latest',
-    'has-coverage-gate':     gates.has('coverage'),
-    'has-static-analysis':   gates.has('static-analysis'),
-    'has-vuln-scan':         gates.has('vuln-scan'),
-    'has-contract-tests':    gates.has('contract') || hasApiDefinition,
-    'has-e2e-tests':         gates.has('e2e') || hasE2eTagged || relations.some(r => r.type === 'consumesApi'),
-    'has-model-card':        isAiEntity && Boolean(annotations['backstage.io/model-card-url']),
-    'has-eval-suite':        isAiEntity && gates.has('llm-eval'),
-    'has-ai-observability':  isAiEntity && hasKubernetesId,
-    'has-sonar-scanning':    gates.has('sonar-scanning') || Boolean(annotations['sonarcloud.io/project-key']),
-    'has-snyk-scanning':     gates.has('snyk-scanning') || Boolean(annotations['snyk.io/org-slug']),
-    'has-trivy-scanning':    gates.has('trivy-scanning') || Boolean(annotations['github.com/project-slug']),
-    // Mobile — mirrors idpTechInsights.ts. Non-mobile entities are always false
-    // so the shape of `results` does not depend on the entity.
-    'has-min-sdk-version':     isMobile && meetsMinSdk,
-    'has-crashlytics-enabled': isMobile && annotations['backstage.io/crashlytics-enabled'] === 'true',
-    'has-accessibility-tests': isMobile && annotations['backstage.io/accessibility-tests'] === 'true',
-    'has-app-size-budget':     isMobile && Boolean(annotations['backstage.io/app-size-budget-mb']),
-    'has-code-signing':        isMobile && annotations['backstage.io/code-signing-setup'] === 'true',
-  };
-
-  const thresholds = isAiEntity ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
-  const activeChecks = visibleChecks({ isAiEntity, isMobile });
+  const thresholds = isAiEntityValue ? AI_TIER_THRESHOLDS : TIER_THRESHOLDS;
+  const activeChecks = visibleChecks({ isAiEntity: isAiEntityValue, isMobile });
   const passed = activeChecks.filter(c => results[c.id]).length;
 
   // Count-based tier over everything that applies, mobile checks included: they
