@@ -117,6 +117,12 @@ spec:
           ```bash
           kubectl get s3bucket ${{ parameters.bucketName }} -n services-dev
           ```
+
+          Also adds a Backstage `Resource` entity at
+          `services/${{ parameters.ownerService }}/claims/catalog-info-${{ parameters.bucketName }}.yaml`
+          (`dependencyOf: component:${{ parameters.ownerService }}`). After merging,
+          register it via **Backstage → Catalog → Register existing component**, using:
+          `https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/${{ parameters.ownerService }}/claims/catalog-info-${{ parameters.bucketName }}.yaml`
         targetBranchName: main
 
   output:
@@ -130,3 +136,4 @@ spec:
           2. ArgoCD syncs the Claim within ~1 min.
           3. `kubectl get s3bucket ${{ parameters.bucketName }} -n services-dev` shows `READY=True` once the bucket is provisioned (~30–60 s).
           4. Set `S3_BUCKET_NAME=${{ parameters.bucketName }}` in your service's env.
+          5. Register the catalog entry: Backstage → Catalog → Register existing component → paste the `catalog-info-${{ parameters.bucketName }}.yaml` URL from the PR description
