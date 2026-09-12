@@ -1,4 +1,4 @@
-import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api';
+import { createBackendPlugin, coreServices, RootConfigService } from '@backstage/backend-plugin-api';
 import { ensureSchema, getState, saveState, detectRegressions } from './complianceWatcher/store';
 import { postSlackRegression, createJiraIssue } from './complianceWatcher/notify';
 
@@ -47,6 +47,22 @@ async function getJson<T>(url: string, headers: Record<string, string>): Promise
   return (await res.json()) as T;
 }
 
+// `${SLACK_WEBHOOK_URL}`/`${JIRA_TOKEN}` in app-config.yaml resolve to a
+// literal empty string when the env var is unset (no `:-default` given,
+// unlike jira.baseUrl's `:-https://jira.invalid`), and Backstage's config
+// reader treats an empty string as an invalid `string` type rather than as
+// "absent" — `getOptionalString` throws instead of returning undefined,
+// which took the whole backend down at startup with SLACK_WEBHOOK_URL
+// unset. Treat both "unset" and "" as the same "not configured" case.
+function optionalNonEmptyString(config: RootConfigService, key: string): string | undefined {
+  try {
+    const value = config.getOptionalString(key);
+    return value || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const complianceWatcherPlugin = createBackendPlugin({
   pluginId: 'idp-compliance-watcher',
   register(env) {
@@ -65,9 +81,9 @@ export const complianceWatcherPlugin = createBackendPlugin({
 
         const refreshMinutes =
           config.getOptionalNumber('complianceWatcher.refreshMinutes') ?? DEFAULT_REFRESH_MINUTES;
-        const slackWebhookUrl = config.getOptionalString('complianceWatcher.slack.webhookUrl');
-        const jiraBaseUrl = config.getOptionalString('complianceWatcher.jira.baseUrl');
-        const jiraToken = config.getOptionalString('complianceWatcher.jira.token');
+        const slackWebhookUrl = optionalNonEmptyString(config, 'complianceWatcher.slack.webhookUrl');
+        const jiraBaseUrl = optionalNonEmptyString(config, 'complianceWatcher.jira.baseUrl');
+        const jiraToken = optionalNonEmptyString(config, 'complianceWatcher.jira.token');
 
         async function serviceToken(targetPluginId: string): Promise<string> {
           const { token } = await auth.getPluginRequestToken({

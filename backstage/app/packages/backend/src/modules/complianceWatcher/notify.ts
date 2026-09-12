@@ -46,10 +46,76 @@ export async function postSlackRegression(
 }
 
 export interface JiraConfig {
+  /** Site base URL, e.g. https://your-site.atlassian.net */
   baseUrl?: string;
-  /** Base64(email:api_token), as already used for the /jira proxy's Basic auth header. */
+  /**
+   * Either Base64(email:api_token) for a classic (unscoped) API token, used
+   * as-is with Basic auth against the site directly, OR the raw token for a
+   * scoped/organization-service-account token, which Jira Cloud only accepts
+   * as a Bearer token against the api.atlassian.com/ex/jira/<cloudId>
+   * gateway — not against the site URL. There is no reliable way to tell
+   * which kind a given string is, so createJiraIssue tries the gateway/Bearer
+   * path first (the form Atlassian now steers new tokens toward) and falls
+   * back to classic Basic-against-the-site on failure.
+   */
   token?: string;
   fetchImpl?: typeof fetch;
+}
+
+function buildIssuePayload(event: RegressionEvent) {
+  const summary = `${event.entityName} dropped out of compliance: ${event.failedChecks.join(', ')}`;
+  const description =
+    `Automated compliance watcher detected a regression on \`${event.entityRef}\`.\n\n` +
+    `Checks no longer passing:\n${event.failedChecks.map(c => `- ${c}`).join('\n')}` +
+    (event.owner ? `\n\nOwner: ${event.owner}` : '');
+  return {
+    fields: {
+      project: { key: event.jiraProjectKey },
+      issuetype: { name: 'Task' },
+      summary,
+      description: {
+        type: 'doc',
+        version: 1,
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: description }] }],
+      },
+    },
+  };
+}
+
+async function postIssue(
+  url: string,
+  authHeader: string,
+  payload: unknown,
+  fetchImpl: typeof fetch,
+): Promise<{ key: string } | null> {
+  try {
+    const res = await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { key?: string };
+    return body.key ? { key: body.key } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Unauthenticated — resolves the Atlassian cloud ID for a site's Jira REST gateway. */
+async function resolveCloudId(baseUrl: string, fetchImpl: typeof fetch): Promise<string | null> {
+  try {
+    const res = await fetchImpl(`${baseUrl}/_edge/tenant_info`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { cloudId?: string };
+    return body.cloudId ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -64,42 +130,18 @@ export async function createJiraIssue(
 ): Promise<{ key: string } | null> {
   if (!config.baseUrl || !config.token || !event.jiraProjectKey) return null;
   const fetchImpl = config.fetchImpl ?? fetch;
-  const summary = `${event.entityName} dropped out of compliance: ${event.failedChecks.join(', ')}`;
-  const description =
-    `Automated compliance watcher detected a regression on \`${event.entityRef}\`.\n\n` +
-    `Checks no longer passing:\n${event.failedChecks.map(c => `- ${c}`).join('\n')}` +
-    (event.owner ? `\n\nOwner: ${event.owner}` : '');
+  const payload = buildIssuePayload(event);
 
-  try {
-    const res = await fetchImpl(`${config.baseUrl}/rest/api/3/issue`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${config.token}`,
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          project: { key: event.jiraProjectKey },
-          issuetype: { name: 'Task' },
-          summary,
-          description: {
-            type: 'doc',
-            version: 1,
-            content: [
-              {
-                type: 'paragraph',
-                content: [{ type: 'text', text: description }],
-              },
-            ],
-          },
-        },
-      }),
-    });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { key?: string };
-    return body.key ? { key: body.key } : null;
-  } catch {
-    return null;
+  const cloudId = await resolveCloudId(config.baseUrl, fetchImpl);
+  if (cloudId) {
+    const viaGateway = await postIssue(
+      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/issue`,
+      `Bearer ${config.token}`,
+      payload,
+      fetchImpl,
+    );
+    if (viaGateway) return viaGateway;
   }
+
+  return postIssue(`${config.baseUrl}/rest/api/3/issue`, `Basic ${config.token}`, payload, fetchImpl);
 }

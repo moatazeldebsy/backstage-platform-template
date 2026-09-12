@@ -94,18 +94,45 @@ describe('createJiraIssue', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('creates an issue and returns its key', async () => {
-    const fetchImpl = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ key: 'PAY-42' }),
-    });
+  it('creates an issue via the cloud gateway (Bearer) when the site resolves a cloud ID', async () => {
+    const fetchImpl = jest
+      .fn()
+      // resolveCloudId
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ cloudId: 'cloud-1' }) })
+      // postIssue via gateway
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ key: 'PAY-42' }) });
     const result = await createJiraIssue(event, {
       baseUrl: 'https://x.atlassian.net',
       token: 'abc',
       fetchImpl,
     });
     expect(result).toEqual({ key: 'PAY-42' });
-    expect(fetchImpl).toHaveBeenCalledWith(
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, 'https://x.atlassian.net/_edge/tenant_info');
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://api.atlassian.com/ex/jira/cloud-1/rest/api/3/issue',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer abc' }),
+      }),
+    );
+  });
+
+  it('falls back to classic Basic auth against the site when no cloud ID resolves', async () => {
+    const fetchImpl = jest
+      .fn()
+      // resolveCloudId fails
+      .mockResolvedValueOnce({ ok: false })
+      // postIssue against the site directly
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ key: 'PAY-43' }) });
+    const result = await createJiraIssue(event, {
+      baseUrl: 'https://x.atlassian.net',
+      token: 'abc',
+      fetchImpl,
+    });
+    expect(result).toEqual({ key: 'PAY-43' });
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
       'https://x.atlassian.net/rest/api/3/issue',
       expect.objectContaining({
         method: 'POST',
@@ -114,8 +141,12 @@ describe('createJiraIssue', () => {
     );
   });
 
-  it('returns null when Jira rejects the request', async () => {
-    const fetchImpl = jest.fn().mockResolvedValue({ ok: false });
+  it('returns null when both the gateway and the classic fallback reject the request', async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ cloudId: 'cloud-1' }) })
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: false });
     const result = await createJiraIssue(event, {
       baseUrl: 'https://x.atlassian.net',
       token: 'abc',
