@@ -26,6 +26,7 @@ COPY packages/backend/package.json ./packages/backend/
 # install below fails resolving a workspace it cannot see. Add a line whenever a
 # package is added under packages/.
 COPY packages/engineering-intelligence-core/package.json ./packages/engineering-intelligence-core/
+COPY packages/scorecard-core/package.json ./packages/scorecard-core/
 
 RUN --mount=type=cache,target=/root/.yarn/berry/cache \
     yarn install --immutable
