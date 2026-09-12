@@ -32,6 +32,7 @@ import { ragSearchPlugin } from './modules/idpRagSearch';
 import { learningCenterPlugin } from './modules/idpLearningCenter';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
 import { engineeringIntelligencePlugin } from './modules/idpEngineeringIntelligence';
+import { complianceWatcherPlugin } from './modules/idpComplianceWatcher';
 
 
 const backend = createBackend();
@@ -103,6 +104,7 @@ backend.add(idpPermissionPolicyModule);
 // (Prometheus keeps 6h locally, 30d on AWS). Scoring itself lives in
 // @internal/engineering-intelligence-core, deliberately free of Backstage.
 backend.add(engineeringIntelligencePlugin);
+backend.add(complianceWatcherPlugin);
 
 // search plugin
 backend.add(import('@backstage/plugin-search-backend'));
