@@ -347,6 +347,19 @@ techInsights:
 
 ragSearch:
   voyageApiKey: ${VOYAGE_API_KEY}
+
+# Compliance watcher (idpComplianceWatcher.ts) — reads idp-entity-facts above
+# on a schedule and notifies on a true->false regression. Reuses the same
+# env vars already wired for the send_notification MCP tool (SLACK_WEBHOOK_URL)
+# and the read-only /jira proxy above (JIRA_URL, JIRA_TOKEN) rather than
+# introducing a second Slack app or a second Jira credential. Identical on
+# local and AWS, so it lives in the base file rather than either overlay.
+complianceWatcher:
+  slack:
+    webhookUrl: ${SLACK_WEBHOOK_URL}
+  jira:
+    baseUrl: ${JIRA_URL:-https://jira.invalid}
+    token: ${JIRA_TOKEN}
   indexIntervalMinutes: 30
   externalSources: []
 

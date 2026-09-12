@@ -59,6 +59,9 @@ services:
       PAGERDUTY_TOKEN: ${PAGERDUTY_TOKEN:-}
       JIRA_URL: ${JIRA_URL:-}
       JIRA_TOKEN: ${JIRA_TOKEN:-}
+      # Compliance watcher (idpComplianceWatcher.ts) Slack notification — reuses
+      # the same webhook already used by KAgent's send_notification MCP tool.
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       # Grafana viewer token — referenced by the /grafana/api proxy.
       GRAFANA_TOKEN: ${GRAFANA_TOKEN:-}
       # ArgoCD session token (JWT, not the admin password) — referenced by the /argocd proxy.

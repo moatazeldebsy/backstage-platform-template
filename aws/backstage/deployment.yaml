@@ -243,6 +243,15 @@ spec:
                   name: backstage-secrets
                   key: JIRA_URL
                   optional: true
+            # Compliance watcher (idpComplianceWatcher.ts) Slack notification —
+            # reuses the same webhook already used by KAgent's send_notification
+            # MCP tool and AlertManager routing. optional:true, same as above.
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: SLACK_WEBHOOK_URL
+                  optional: true
           volumeMounts:
             - name: base-config
               mountPath: /config/app-config.yaml
