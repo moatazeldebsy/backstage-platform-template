@@ -135,10 +135,14 @@ spec:
 
   steps:
     - id: fetch-template
-      name: Generate Terraform + K8s manifests
+      name: Generate Terraform manifests
       action: fetch:template
       input:
-        url: ./skeleton
+        url: ./skeleton/infra
+        # Scopes output under terraform/infra/managed-postgres/<name>/ instead
+        # of the workspace root, which would otherwise collide with (and
+        # overwrite on merge) the platform's own root catalog-info.yaml/README.md.
+        targetPath: terraform/infra/managed-postgres/${{ parameters.instanceName }}
         values:
           instanceName: ${{ parameters.instanceName }}
           ownerService: ${{ parameters.ownerService }}
@@ -152,6 +156,16 @@ spec:
           backupRetentionDays: ${{ parameters.backupRetentionDays }}
           enableIamAuth: ${{ parameters.enableIamAuth }}
           owner: ${{ parameters.owner }}
+
+    - id: fetch-k8s-secret
+      name: Generate ExternalSecret manifest
+      action: fetch:template
+      input:
+        url: ./skeleton/k8s
+        targetPath: kubernetes/services/${{ parameters.ownerService }}
+        values:
+          ownerService: ${{ parameters.ownerService }}
+          dbName: ${{ parameters.dbName }}
 
     - id: open-pr
       name: Open PR to provision database
@@ -176,6 +190,7 @@ spec:
 
           **Resources created:**
           - `terraform/infra/managed-postgres/${{ parameters.instanceName }}/` — Terraform module (RDS instance, parameter group, Secrets Manager secret, IAM role for IAM auth)
+          - `terraform/infra/managed-postgres/${{ parameters.instanceName }}/catalog-info.yaml` — Backstage `Resource` entity, `dependencyOf: component:${{ parameters.ownerService }}`
           - `kubernetes/services/${{ parameters.ownerService }}/external-secret.yaml` — ExternalSecret syncing `DATABASE_URL` into the `services` namespace
 
           **After merging:**
@@ -185,6 +200,9 @@ spec:
           kubectl apply -f kubernetes/services/${{ parameters.ownerService }}/external-secret.yaml
           kubectl rollout restart deployment/${{ parameters.ownerService }} -n services
           ```
+
+          Then register the catalog entry via **Backstage → Catalog → Register existing component**, using:
+          `https://github.com/moatazeldebsy/backstage-platform-template/blob/main/terraform/infra/managed-postgres/${{ parameters.instanceName }}/catalog-info.yaml`
         targetBranchName: main
 
   output:
@@ -198,3 +216,4 @@ spec:
           2. Run `terraform init && terraform apply` in `terraform/infra/managed-postgres/${{ parameters.instanceName }}/`
           3. Apply the ExternalSecret to sync credentials into your service namespace
           4. Restart your service deployment to pick up the `DATABASE_URL` environment variable
+          5. Register the catalog entry: Backstage → Catalog → Register existing component → paste the `catalog-info.yaml` URL from the PR description

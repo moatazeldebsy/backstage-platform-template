@@ -59,6 +59,7 @@
     "@backstage/plugin-tech-insights-node": "^0.6.1",
     "@backstage/plugin-techdocs-backend": "^2.1.7",
     "@internal/engineering-intelligence-core": "^0.1.0",
+    "@internal/scorecard-core": "^0.1.0",
     "app": "link:../app",
     "better-sqlite3": "^12.0.0",
     "dd-trace": "^5.19.0",
