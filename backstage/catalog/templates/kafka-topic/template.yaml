@@ -117,6 +117,11 @@ spec:
       action: fetch:template
       input:
         url: ./skeleton
+        # Without this the skeleton's catalog-info.yaml/terraform/ would land
+        # at the workspace root and overwrite the platform's own root
+        # catalog-info.yaml/README.md once the PR merges — this scopes output
+        # to the same directory the PR description below already claims.
+        targetPath: terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}
         values:
           topicName: ${{ parameters.topicName }}
           ownerService: ${{ parameters.ownerService }}
@@ -150,12 +155,16 @@ spec:
 
           **Resources created:**
           - `terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}/` — Kafka topic + ACLs (producer + consumer for `${{ parameters.ownerService }}`)${{ ' + Glue schema registry subject' if parameters.schemaRegistrySubject }}
+          - `terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}/catalog-info.yaml` — Backstage `Resource` entity, `dependencyOf: component:${{ parameters.ownerService }}`
 
           **After merging:**
           ```bash
           cd terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}
           terraform init && terraform apply
           ```
+
+          Then register the catalog entry via **Backstage → Catalog → Register existing component**, using:
+          `https://github.com/moatazeldebsy/backstage-platform-template/blob/main/terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}/catalog-info.yaml`
         targetBranchName: main
 
   output:
@@ -168,3 +177,4 @@ spec:
           1. Merge the pull request to create the Terraform files
           2. Run `terraform init && terraform apply` in `terraform/infra/kafka-topics/${{ parameters.topicName | replace('.', '-') }}/`
           3. Update your service's Kafka configuration with the topic name: `${{ parameters.topicName }}`
+          4. Register the catalog entry: Backstage → Catalog → Register existing component → paste the `catalog-info.yaml` URL from the PR description
