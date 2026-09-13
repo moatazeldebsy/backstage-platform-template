@@ -2768,8 +2768,8 @@ and the open-source platform stays fully usable single-tenant.</p>
 <td>Every quality and platform number inherits the ambiguity. Fixing it re-tiers live services, so it needs its own decision</td>
 </tr>
 <tr>
-<td><strong>No long-term metric store</strong> (6h local / 30d AWS, no Thanos/Mimir/AMP)</td>
-<td>Every trend in phases 10–11 depends on snapshots accumulating from now</td>
+<td><strong>No long-term metric store, local only</strong> — AWS already runs a Thanos sidecar (<code>aws/observability/thanos/</code>) backed by S3 for long-term/cross-region storage; local Kind had no equivalent, just a bare 6h Prometheus</td>
+<td>Every trend in phases 10–11 depends on snapshots accumulating from now. Closed as a lighter fix: local retention raised 6h→24h (<code>local/observability/prometheus-stack-values.yaml</code>) rather than running Thanos in Kind too — good enough for a local dev/demo session, not full parity with AWS</td>
 </tr>
 <tr>
 <td><strong>Security is control-presence only</strong></td>
