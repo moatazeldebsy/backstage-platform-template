@@ -2,12 +2,14 @@ import { HealthReport } from '@internal/engineering-intelligence-core';
 
 // Snapshot store.
 //
-// This exists because the platform has nowhere else to keep a trend. Prometheus
-// retention is 6 hours locally and 30 days on AWS, there is no Thanos/Mimir or
-// AMP remote-write, and every custom metric arrives as a last-write-wins
-// Pushgateway gauge. Quarter-over-quarter movement — the thing an executive
-// report is actually about — cannot be reconstructed after the fact, so it has
-// to be recorded as it happens, from the first refresh.
+// This exists because the platform has nowhere else to keep a trend. Every
+// custom metric arrives as a last-write-wins Pushgateway gauge, and even where
+// Prometheus retention is long enough to look back over (24h locally, 3d on
+// AWS backed by a Thanos sidecar for longer-term/cross-region), it is raw time
+// series, not a scored HealthReport. Quarter-over-quarter movement — the thing
+// an executive report is actually about — cannot be reconstructed after the
+// fact from either, so it has to be recorded as it happens, from the first
+// refresh.
 //
 // Schema is created inline with CREATE TABLE IF NOT EXISTS, matching
 // idpLearningCenter.ts and idpRagSearch.ts. Backstage's PluginDatabaseManager

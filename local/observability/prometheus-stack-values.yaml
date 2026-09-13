@@ -19,14 +19,25 @@ prometheus:
       - prometheus.idp.local
     servicePort: 9090
   prometheusSpec:
-    retention: 6h
+    # Was 6h. Raised to 24h so a local dev/demo session survives a workday and
+    # week-over-week exploration (DORA, SLO burn, cost) has more than a few
+    # hours of local history to look back over — closing the "no long-term
+    # metric store locally" gap called out in
+    # docs/engineering-intelligence/roadmap.md's cross-cutting debt table.
+    # This is a lighter fix than mirroring AWS's Thanos sidecar: no new
+    # component, still bounded, still lost on PVC deletion — good enough for
+    # local dev, not a substitute for real long-term storage.
+    retention: 24h
     # Cap by size as well as time. A time-only limit lets Prometheus fill the
     # volume and then stop ingesting entirely while still reporting every target
     # "up" — the AWS cluster wedged that way on 2026-08-17 and the only symptom
-    # was Grafana showing "no data". 6h of local series is far below 2Gi, so this
-    # should never bind; it exists so the failure mode is impossible rather than
-    # merely unlikely. Keep in step with aws/observability/prometheus-stack-values.yaml.
-    retentionSize: 1500MB
+    # was Grafana showing "no data". Scaled 4x with the retention bump above
+    # (6h→24h) so this still sits comfortably below the PVC size, not at it.
+    # Not "in step with" aws/observability/prometheus-stack-values.yaml's
+    # retention/retentionSize by design now — AWS's 3d/15GB is calibrated for
+    # its own storage class and its Thanos sidecar drains data before local
+    # retention expires; local has neither, so the numbers diverge on purpose.
+    retentionSize: 6000MB
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}
     podMonitorSelector: {}
@@ -69,7 +80,10 @@ prometheus:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 2Gi
+              # Was 2Gi, matched to the old 1500MB retentionSize. Raised to
+              # 8Gi so retentionSize (6000MB) still has real headroom rather
+              # than binding against the PVC — see retentionSize comment above.
+              storage: 8Gi
 
 alertmanager:
   enabled: true
