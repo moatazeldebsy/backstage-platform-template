@@ -1,0 +1,128 @@
+# Dedicated Postgres for LiteLLM — LOCAL ONLY.
+#
+# Discovered necessary after a real local deploy: LiteLLM's virtual keys and
+# budget enforcement — the actual reason ADR-0008 picked it over agentgateway's
+# native (DB-free) Bedrock support — do not function without a database.
+# Without one, /ui login fails outright ("Authentication Error, Not connected
+# to DB!") and BerriAI's own docs confirm budgets are silently unenforced at
+# request time. See docs/design/adr-0008-litellm-multiprovider-gateway.md.
+#
+# On AWS this is a dedicated RDS instance instead (terraform/rds.tf,
+# aws_db_instance.litellm) — same dedicated-per-component pattern Langfuse
+# already uses there, not shared with Backstage's instance. Locally there is
+# no RDS equivalent, so this is a plain in-cluster Postgres pod: local-only,
+# ephemeral, torn down with the cluster (no PVC-survives-teardown expectation,
+# unlike Langfuse's AWS Postgres which is deliberately durable).
+#
+# Credentials are a plaintext literal, not a Secret: this pod is local-only,
+# ephemeral, and reachable only inside the cluster network — same pragmatism
+# as backstage-postgres's plaintext creds in local/backstage/docker-compose.yml.
+# kubernetes/ml-platform/litellm.yaml's DATABASE_URL (composed in
+# scripts/bootstrap-ai.sh) must match this exactly: postgresql://litellm:litellm-local-dev@...
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: litellm-postgres-data
+  namespace: ml-platform
+  labels:
+    app: litellm-postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm-postgres
+  namespace: ml-platform
+  labels:
+    app: litellm-postgres
+spec:
+  replicas: 1
+  # Same reasoning as mlflow.yaml: the PVC is ReadWriteOnce, so a RollingUpdate
+  # would deadlock waiting for the new pod to mount a volume the old one still holds.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: litellm-postgres
+  template:
+    metadata:
+      labels:
+        app: litellm-postgres
+    spec:
+      securityContext:
+        # Official postgres image runs as uid/gid 999.
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_USER
+              value: litellm
+            - name: POSTGRES_PASSWORD
+              value: litellm-local-dev
+            - name: POSTGRES_DB
+              value: litellm
+            # Official image default (/var/lib/postgresql/data) refuses to
+            # initdb directly on a volume mount point with lost+found present;
+            # same subdirectory pattern the image's own docs recommend.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "litellm"]
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 15
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "litellm"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 15
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: litellm-postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-postgres
+  namespace: ml-platform
+  labels:
+    app: litellm-postgres
+spec:
+  selector:
+    app: litellm-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

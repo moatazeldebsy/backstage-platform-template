@@ -211,6 +211,25 @@ variable "enable_langfuse" {
   default     = false
 }
 
+# Discovered necessary post-ADR-0008: LiteLLM's virtual keys and budget
+# enforcement — the actual reason it was chosen over agentgateway's native
+# Bedrock support — do not function without a database ("Not connected to DB!"
+# on /ui login, and budgets silently unenforced at request time). Same
+# dedicated-RDS-per-stateful-component pattern as Langfuse above, not shared
+# with Backstage's instance. Set automatically by scripts/bootstrap-ai.sh --aws
+# from the --litellm flag.
+variable "enable_litellm" {
+  description = "Provision the LiteLLM Postgres RDS instance and its Secrets Manager entry. Requires enable_ai."
+  type        = bool
+  default     = false
+}
+
+variable "litellm_rds_instance_class" {
+  description = "RDS instance class for LiteLLM's PostgreSQL database (virtual keys, spend tracking). Small — this holds proxy metadata, not application data."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
 # ── Cost Optimizer variables ──────────────────────────────────────────────────
 variable "enable_cost_optimizer" {
   description = "Enable overnight EKS node scale-down and RDS stop/start to reduce idle costs"
@@ -233,6 +252,20 @@ variable "cost_optimizer_scale_up_cron" {
 # ── AI/ML variables ───────────────────────────────────────────────────────────
 variable "anthropic_api_key" {
   description = "Anthropic API key for KAgent (Claude). Stored in Secrets Manager (idp-mvp/kagent)."
+  type        = string
+  sensitive   = true
+  default     = "REPLACE_ME"
+}
+
+variable "litellm_master_key" {
+  description = <<-EOT
+    Inbound-auth key for the LiteLLM proxy (kubernetes/ml-platform/litellm.yaml,
+    ADR-0008). Distinct from anthropic_api_key above: this is what callers
+    (agentgateway, the LiteLLM /ui dashboard) present to LiteLLM, not what
+    LiteLLM presents to Anthropic/Bedrock. Stored alongside it in the same
+    Secrets Manager entry (idp-mvp/kagent) — see aws_secretsmanager_secret_version.kagent
+    in secrets.tf.
+  EOT
   type        = string
   sensitive   = true
   default     = "REPLACE_ME"

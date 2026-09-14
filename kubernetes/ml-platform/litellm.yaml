@@ -1,0 +1,215 @@
+# LiteLLM — central multi-provider LLM proxy (Anthropic + Bedrock).
+#
+# Sits behind agentgateway: agentgateway's llm.models entries point their
+# baseUrl at this Service instead of api.anthropic.com directly. agentgateway
+# keeps its MCP-multiplexing role untouched — only its model-traffic upstream
+# changes. See docs/design/adr-0008-litellm-multiprovider-gateway.md.
+#
+# Why this exists instead of agentgateway's own native `provider: bedrock`
+# support (ADR-0007 documents that path as "cheap" — one entry, IRSA): Bedrock
+# connectivity alone isn't the goal here. LiteLLM adds virtual keys, per-team
+# budget enforcement and centralized spend tracking across both providers,
+# none of which agentgateway has. That's the actual capability this buys.
+#
+# Deployed only when bootstrap-ai.sh is run with --litellm (opt-in locally,
+# because of the local memory ceiling — see docs/local-setup.md). On AWS this
+# is not opt-in: Bedrock only exists there, so there is nothing to gate.
+#
+# Protocol note (validated empirically, not assumed — see ADR-0008): agentgateway
+# reaches this over `provider: anthropic` + a `baseUrl` override, i.e. the exact
+# same native Anthropic /v1/messages wire protocol used against
+# api.anthropic.com today, just against a different host. `provider: openAI`
+# was tried and rejected — it silently dropped max_tokens when LiteLLM served
+# the request through its Anthropic-compatibility shim, producing a 500. Only
+# `provider: anthropic` + `baseUrl` was confirmed to round-trip cleanly.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: ml-platform
+  labels:
+    app: litellm
+data:
+  config.yaml: |
+    model_list:
+      # Anthropic direct — same three model ids agentgateway already serves,
+      # plus the catch-all is handled by agentgateway's own "*" entry routing
+      # here; LiteLLM itself needs one list entry per concrete model id.
+      - model_name: claude-haiku-4-5-20251001
+        litellm_params:
+          model: anthropic/claude-haiku-4-5-20251001
+          api_key: os.environ/ANTHROPIC_API_KEY
+      - model_name: claude-sonnet-4-6
+        litellm_params:
+          model: anthropic/claude-sonnet-4-6
+          api_key: os.environ/ANTHROPIC_API_KEY
+      - model_name: claude-opus-4-8
+        litellm_params:
+          model: anthropic/claude-opus-4-8
+          api_key: os.environ/ANTHROPIC_API_KEY
+      # Bedrock-backed models — AWS only. On local (Kind) these entries are
+      # present but unreachable: there is no IRSA, so a call to one of these
+      # model names fails with a Bedrock auth error rather than routing
+      # anywhere unexpected. Deliberately not gated out of the ConfigMap for
+      # local, to keep one file for both environments — see
+      # docs/design/adr-0008-litellm-multiprovider-gateway.md.
+      - model_name: claude-sonnet-bedrock
+        litellm_params:
+          model: bedrock/anthropic.claude-sonnet-4-6-v1:0
+          aws_region_name: os.environ/AWS_REGION
+    general_settings:
+      # Inbound auth for callers of this proxy (agentgateway, and anyone using
+      # the /ui spend dashboard). Distinct from the provider credentials above,
+      # which are what LiteLLM uses to call Anthropic/Bedrock on the way out.
+      master_key: os.environ/LITELLM_MASTER_KEY
+      # Required for virtual keys and budget enforcement to actually work —
+      # discovered via a real local deploy, not from documentation: without
+      # this, /ui login fails outright ("Authentication Error, Not connected
+      # to DB!") and budgets are silently unenforced at request time. Points at
+      # local/ml-platform/litellm-postgres.yaml locally, or the dedicated RDS
+      # instance from terraform/rds.tf (aws_db_instance.litellm) on AWS — both
+      # via the same DATABASE_URL key in the litellm-keys Secret. See
+      # docs/design/adr-0008-litellm-multiprovider-gateway.md.
+      database_url: os.environ/DATABASE_URL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: ml-platform
+  labels:
+    app: litellm
+    backstage.io/kubernetes-id: litellm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+        backstage.io/kubernetes-id: litellm
+    spec:
+      # serviceAccountName intentionally left at "default" here — on AWS,
+      # aws/ml-platform/litellm-serviceaccount.yaml creates and IRSA-annotates
+      # a "litellm" ServiceAccount, and bootstrap-ai.sh patches this Deployment
+      # (or an AWS-only overlay applies after this file) to reference it. Kind
+      # has no OIDC provider, so local stays on "default" like ai-gateway does.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: litellm
+          # Pinned, not :latest — same convention as agentgateway v1.5.0 and
+          # ollama 0.13.0. A proxy that silently changes version changes both
+          # its provider compatibility and its cost-tracking behavior.
+          # v1.102.0 does not exist as a published tag — verified against the
+          # ghcr.io/berriai/litellm registry directly (v1.100.1 is the latest
+          # numbered release as of this check); v1.102.0 came from misreading
+          # the litellm package's internal version string during the ADR-0008
+          # spike (which used main-latest), not an actual image tag.
+          image: ghcr.io/berriai/litellm:v1.100.1
+          args: ["--config", "/config/config.yaml", "--port", "4000"]
+          ports:
+            - containerPort: 4000
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # required: LITELLM_MASTER_KEY must exist or the proxy has no inbound
+          # auth at all. Unlike ai-gateway-llm-keys (optional — a key-free MCP
+          # gateway still degrades gracefully), a masterkey-free LiteLLM is a
+          # real misconfiguration: bootstrap-ai.sh dies() on a missing
+          # LITELLM_MASTER_KEY when --litellm is passed, matching that.
+          # DATABASE_URL rides in the same Secret — see the general_settings
+          # comment above for why it's required, not optional, despite the
+          # proxy technically starting without it (it just can't do the one
+          # thing ADR-0008 chose it for).
+          envFrom:
+            - secretRef:
+                name: litellm-keys
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 15
+          startupProbe:
+            httpGet:
+              path: /health/liveliness
+              port: http
+            periodSeconds: 20
+            # 30, not 15 (mlflow's number): observed a real startup killed at
+            # exactly 5m22s under CPU-starved conditions on this cluster (node
+            # at ~450-550% of 800% CPU) — mlflow's 5-minute budget (15 x 20s)
+            # was not enough for LiteLLM's heavier Python/dependency load.
+            # 30 x 20s = 10 minutes.
+            failureThreshold: 30
+            timeoutSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health/liveliness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 15
+          # Two OOMKills observed getting here, both exit 137 against real
+          # deploys — not guessed:
+          #   1. mlflow's tier (256Mi/512Mi) — killed before the proxy
+          #      finished starting even with NO database configured.
+          #   2. 512Mi/1Gi — killed once DATABASE_URL was added: the Prisma
+          #      client LiteLLM loads for DB connectivity (virtual keys,
+          #      budget enforcement — the ADR-0008 rationale) costs real
+          #      memory on top of the DB-less baseline.
+          # Raised again while re-measuring; replace with a real observed
+          # number once `kubectl top pod -n ml-platform -l app=litellm` is
+          # stable under light load, same convention as ai-gateway.yaml's
+          # 64Mi/256Mi.
+          resources:
+            requests:
+              cpu: 150m
+              memory: 768Mi
+            limits:
+              cpu: 1000m
+              memory: 1536Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            # readOnlyRootFilesystem needs somewhere writable; LiteLLM writes
+            # no persistent state we care about keeping across restarts here
+            # (spend/usage data lives in Langfuse via agentgateway's own
+            # telemetry path, not in LiteLLM's local state) — emptyDir, not a PVC.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: litellm-config
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: ml-platform
+  labels:
+    app: litellm
+spec:
+  type: ClusterIP
+  selector:
+    app: litellm
+  ports:
+    - port: 4000
+      targetPort: http
+      name: http

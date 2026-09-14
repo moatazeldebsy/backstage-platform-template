@@ -50,6 +50,19 @@
 #                       --skip-gateway run. ~9Mi. See docs/design/adr-0007-ai-gateway.md
 #   --skip-gateway     Skip the AI Gateway. Only useful for debugging the MCP
 #                       servers directly — the agents will not work without it.
+#   --litellm          Deploy LiteLLM as the model backend behind the AI Gateway
+#                       (Anthropic + Bedrock, virtual keys, spend tracking). OFF
+#                       BY DEFAULT ON LOCAL, because it's a second proxy process
+#                       on a cluster already measured to have ~1.2-1.5GB of
+#                       headroom (docs/local-setup.md) — a real memory cost on
+#                       top of agentgateway's own 64Mi. ON BY DEFAULT ON --aws:
+#                       Bedrock only exists there, so there's nothing to gate.
+#                       Once deployed, model traffic through the AI Gateway
+#                       depends on it — without --litellm on local, agents get
+#                       tools but not a model (same degraded-mode shape as a
+#                       missing ANTHROPIC_API_KEY used to be). Requires
+#                       LITELLM_MASTER_KEY in local/.env. See
+#                       docs/design/adr-0008-litellm-multiprovider-gateway.md
 #   --adp              Also deploy Agentic Development Platform (ADP) components
 #                       (see docs/agentic-platform.md) on top of the base AI/ML stack
 #   --destroy          Remove AI/ML components only (keeps core platform running)
@@ -80,6 +93,10 @@ OLLAMA=false
 # On by default: every agent's single RemoteMCPServer points at it, so a
 # cluster without the gateway is a cluster whose agents have no tools.
 GATEWAY=true
+# Tri-state, same reasoning as LANGFUSE above: "" means "not specified", so the
+# default can differ by DEPLOY_MODE (resolved after arg parsing, below) without
+# losing track of an explicit --litellm/--skip-litellm.
+LITELLM=""
 # Which KAgent agents to install. Empty means "not specified" -> the historical
 # default set (see AGENTS_DEFAULT below). Each agent is one Deployment running a
 # Python runtime, so this is the main lever for fitting the AI layer on a small
@@ -115,6 +132,8 @@ while [[ $# -gt 0 ]]; do
     --ollama)       OLLAMA=true; shift ;;
     --gateway)      GATEWAY=true; shift ;;
     --skip-gateway) GATEWAY=false; shift ;;
+    --litellm)      LITELLM=true; shift ;;
+    --skip-litellm) LITELLM=false; shift ;;
     --destroy)      DESTROY=true; shift ;;
     --force-build)  FORCE_BUILD=true; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
@@ -172,6 +191,17 @@ done
 # deliberately lighter cluster.
 if [[ -z "$LANGFUSE" ]]; then
   LANGFUSE=true
+fi
+
+# Bedrock only exists on AWS, so LITELLM defaults to on there and off on local
+# (see the --litellm usage comment above for the memory-cost reasoning). An
+# explicit --litellm/--skip-litellm always wins over this default.
+if [[ -z "$LITELLM" ]]; then
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    LITELLM=true
+  else
+    LITELLM=false
+  fi
 fi
 
 # Pinned chart version. app 3.224.1. Bump deliberately: the chart carries four
@@ -528,9 +558,18 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"    2>/dev/null || true
   helm uninstall agent-event-router --namespace services-dev 2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
-  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/ai-gateway-external-secret.yaml" 2>/dev/null || true
-  kubectl delete secret ai-gateway-llm-keys -n ml-platform 2>/dev/null || true
   kubectl delete secret kagent-openai -n kagent 2>/dev/null || true
+  # LiteLLM (ADR-0008) — torn down unconditionally, same reasoning as Ollama
+  # above: it's opt-in on local but must not be left behind after --destroy.
+  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-external-secret.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-serviceaccount.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/local/ml-platform/litellm-ingress.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml" 2>/dev/null || true
+  # Its dedicated Postgres (local only — AWS's RDS instance goes with
+  # `terraform destroy`, not this script) and PVC, so a re-run starts clean.
+  kubectl delete -f "${REPO_ROOT}/local/ml-platform/litellm-postgres.yaml" 2>/dev/null || true
+  kubectl delete pvc litellm-postgres-data -n ml-platform 2>/dev/null || true
+  kubectl delete secret litellm-keys -n ml-platform 2>/dev/null || true
   # Residue from the pre-fe4fce2 HTTPS-with-mkcert install. Harmless once the
   # new HTTP-only ingress is applied, but its presence on second machines is a
   # reliable fingerprint of "you upgraded across the TLS removal" — purge it
@@ -689,7 +728,7 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
   #
   # Idempotent: on a cluster that already has them this is a no-op plan.
   if [[ -f "${REPO_ROOT}/terraform/backend.hcl" ]]; then
-    info "Enabling AI/ML infrastructure in Terraform (enable_ai, enable_langfuse)..."
+    info "Enabling AI/ML infrastructure in Terraform (enable_ai, enable_langfuse, enable_litellm)..."
     (
       cd "${REPO_ROOT}/terraform"
       terraform init -input=false -backend-config=backend.hcl >/dev/null
@@ -697,7 +736,8 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
         -var "aws_region=${AWS_REGION}" \
         -var "cluster_name=${CLUSTER_NAME}" \
         -var "enable_ai=true" \
-        -var "enable_langfuse=${LANGFUSE}"
+        -var "enable_langfuse=${LANGFUSE}" \
+        -var "enable_litellm=${LITELLM}"
     ) || die "terraform apply failed while enabling the AI/ML infrastructure."
   else
     warn "terraform/backend.hcl not found — skipping the AI infrastructure apply."
@@ -759,6 +799,22 @@ if [[ "$DEPLOY_MODE" == "aws" ]]; then
     if [[ -z "${OPENAI_API_KEY:-}" ]]; then
       OPENAI_API_KEY=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('OPENAI_API_KEY',''))" "$_kagent_secret_json" 2>/dev/null || echo "")
     fi
+    if [[ -z "${LITELLM_MASTER_KEY:-}" ]]; then
+      LITELLM_MASTER_KEY=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('LITELLM_MASTER_KEY',''))" "$_kagent_secret_json" 2>/dev/null || echo "")
+    fi
+  fi
+  # DATABASE_URL lives in a SEPARATE Secrets Manager entry (idp-mvp/litellm,
+  # not idp-mvp/kagent) — terraform/rds.tf composes the full connection string
+  # there once enable_litellm's RDS instance exists. Fetched here, not left to
+  # the ExternalSecret alone, so a fresh install's imperative litellm-keys
+  # Secret (below) already has it — otherwise LiteLLM starts once with no DB
+  # ("Not connected to DB!") and needs a manual restart once ESO catches up.
+  if [[ "$LITELLM" == "true" && -z "${DATABASE_URL:-}" ]]; then
+    _litellm_db_json=$(aws secretsmanager get-secret-value \
+      --secret-id "idp-mvp/litellm" \
+      --region "${AWS_REGION}" \
+      --query 'SecretString' --output text 2>/dev/null || echo "{}")
+    DATABASE_URL=$(python3 -c "import json,sys; print(json.loads(sys.argv[1] or '{}').get('DATABASE_URL',''))" "$_litellm_db_json" 2>/dev/null || echo "")
   fi
 else
   REGISTRY="localhost:5003"
@@ -777,10 +833,20 @@ else
   if [[ -f "${ENV_FILE}" ]]; then
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(grep '^ANTHROPIC_API_KEY=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     OPENAI_API_KEY="${OPENAI_API_KEY:-$(grep '^OPENAI_API_KEY=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+    LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-$(grep '^LITELLM_MASTER_KEY=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep '^GITHUB_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     ARGOCD_TOKEN="${ARGOCD_TOKEN:-$(grep '^ARGOCD_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     GITHUB_WEBHOOK_SECRET="${GITHUB_WEBHOOK_SECRET:-$(grep '^GITHUB_WEBHOOK_SECRET=' "${ENV_FILE}" | cut -d= -f2- || true)}"
     WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-$(grep '^WEBHOOK_TOKEN=' "${ENV_FILE}" | cut -d= -f2- || true)}"
+  fi
+  # Local DATABASE_URL: a fixed, non-secret DSN pointing at the dedicated
+  # litellm-postgres pod (local/ml-platform/litellm-postgres.yaml) — not read
+  # from local/.env, since there is nothing to configure. The password is a
+  # literal in that pod's own manifest, same pragmatism as backstage-postgres's
+  # plaintext creds in local/backstage/docker-compose.yml: local-only,
+  # ephemeral, torn down with the cluster.
+  if [[ "$LITELLM" == "true" ]]; then
+    DATABASE_URL="postgresql://litellm:litellm-local-dev@litellm-postgres.ml-platform.svc.cluster.local:5432/litellm"
   fi
 
   # Authenticate the `argocd` CLI for the "is <svc>-local already an ArgoCD
@@ -810,6 +876,13 @@ fi
 # a missing credential, which is a much harder thing to diagnose.
 if [[ -z "${ANTHROPIC_API_KEY:-}" || "${ANTHROPIC_API_KEY:-}" == "REPLACE_ME" ]]; then
   die "ANTHROPIC_API_KEY is not set (or is still the REPLACE_ME placeholder). Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
+fi
+# Required only when LiteLLM is actually being deployed — a masterkey-free
+# LiteLLM proxy has no inbound auth at all, which is a real misconfiguration,
+# not a gracefully-degrading one (unlike the optional ai-gateway/litellm-keys
+# Secret itself, see the envFrom comment in kubernetes/ml-platform/litellm.yaml).
+if [[ "$LITELLM" == "true" && ( -z "${LITELLM_MASTER_KEY:-}" || "${LITELLM_MASTER_KEY:-}" == "REPLACE_ME" ) ]]; then
+  die "LITELLM_MASTER_KEY is not set (required with --litellm). Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
 fi
 # OPENAI_API_KEY is optional; warn if not set but allow bootstrap to continue
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
@@ -1173,21 +1246,27 @@ kubectl create secret generic kagent-anthropic \
   --dry-run=client -o yaml | kubectl apply -f -
 check "Secret kagent-anthropic ready"
 
-# The AI Gateway needs the same provider key, and Secrets are namespace-scoped,
-# so kagent-anthropic in the kagent namespace is not reachable from ml-platform.
-# Same shape as the langfuse-otel key distribution: one source value, written
-# into each namespace that needs it.
+# LiteLLM is what actually calls Anthropic/Bedrock now (ADR-0008) — it needs
+# ANTHROPIC_API_KEY itself, its own inbound-auth LITELLM_MASTER_KEY, and
+# DATABASE_URL (virtual keys / budget enforcement don't work without one —
+# discovered via "Not connected to DB!" on a real /ui login attempt), all in
+# one Secret since kubernetes/ml-platform/litellm.yaml's envFrom reads all
+# three. agentgateway also mounts this Secret (optional: true) purely for
+# $LITELLM_MASTER_KEY, to authenticate its own calls into LiteLLM.
 #
-# The gateway mounts this with optional: true, so a cluster without a key still
-# gets a fully working MCP gateway — only /v1/messages fails, and it fails with
-# the provider's own 401 rather than a startup error.
-if kubectl get namespace ml-platform &>/dev/null; then
-  info "Creating ai-gateway-llm-keys secret in ml-platform namespace..."
-  kubectl create secret generic ai-gateway-llm-keys \
+# Only created when --litellm is set (or defaulted on for --aws) — on local
+# without the flag, model traffic through the AI Gateway is expected to fail
+# upstream (see the --litellm usage comment), same degraded-mode shape a
+# missing ANTHROPIC_API_KEY used to produce before LiteLLM existed.
+if [[ "$LITELLM" == "true" ]] && kubectl get namespace ml-platform &>/dev/null; then
+  info "Creating litellm-keys secret in ml-platform namespace..."
+  kubectl create secret generic litellm-keys \
     --namespace ml-platform \
     --from-literal=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
+    --from-literal=LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY}" \
+    --from-literal=DATABASE_URL="${DATABASE_URL:-}" \
     --dry-run=client -o yaml | kubectl apply -f -
-  check "Secret ai-gateway-llm-keys ready"
+  check "Secret litellm-keys ready"
 fi
 
 # Create OpenAI secret if API key is provided
@@ -1416,6 +1495,57 @@ else
 fi
 timer_end "3a. Ollama"
 
+# ── 3a-ter. LiteLLM (multi-provider model backend) ────────────────────────────
+# Deployed before the AI Gateway below: agentgateway's llm.models now points at
+# LiteLLM's Service, so it should exist first even though agentgateway does not
+# hard-fail at startup if it doesn't (the dependency only surfaces on the first
+# /v1/messages call). See docs/design/adr-0008-litellm-multiprovider-gateway.md.
+timer_start "3a-ter. LiteLLM"
+if [[ "$LITELLM" == "true" ]]; then
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    # Dedicated Postgres, local-only — LiteLLM's virtual keys and budget
+    # enforcement don't function without one (discovered via a real local
+    # deploy: "Not connected to DB!" on /ui login). AWS gets a real RDS
+    # instance instead (terraform/rds.tf); deployed first here so LiteLLM
+    # isn't racing its own DB on first boot.
+    info "Deploying dedicated Postgres for LiteLLM to ml-platform..."
+    kubectl apply -f "${REPO_ROOT}/local/ml-platform/litellm-postgres.yaml"
+    kubectl rollout status deployment/litellm-postgres -n ml-platform --timeout=120s \
+      || warn "litellm-postgres did not become ready — check: kubectl logs -n ml-platform deploy/litellm-postgres"
+  fi
+  info "Deploying LiteLLM to ml-platform..."
+  kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml"
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-serviceaccount.yaml"
+    # Applied here, before the rollout wait below, not later alongside the
+    # other AWS ExternalSecrets in "5. KAgent resources" — litellm-keys is a
+    # required (non-optional) envFrom source for the litellm container, unlike
+    # the old ai-gateway-llm-keys (optional: true), so the Secret must exist
+    # before rollout status is checked or a fresh install always warns with a
+    # CreateContainerConfigError that only self-heals once ESO reconciles.
+    # This manifest has no templated placeholders (unlike aws/kagent/external-secret.yaml's
+    # AWS_REGION_PLACEHOLDER), so nothing later in the script needs to run first.
+    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-external-secret.yaml"
+    # serviceAccountName defaults to "default" in the shared manifest (Kind has
+    # no OIDC provider to federate against); patch it to the IRSA-annotated SA
+    # here rather than forking the Deployment into two files. Strategic merge,
+    # not JSON patch, so it works whether the field is already set or not.
+    kubectl patch deployment litellm -n ml-platform \
+      -p '{"spec":{"template":{"spec":{"serviceAccountName":"litellm"}}}}'
+  else
+    kubectl apply -f "${REPO_ROOT}/local/ml-platform/litellm-ingress.yaml"
+  fi
+  kubectl rollout status deployment/litellm -n ml-platform --timeout=180s \
+    || warn "LiteLLM did not become ready — check: kubectl logs -n ml-platform deploy/litellm"
+  check "LiteLLM deployed — :4000 (Anthropic + Bedrock)"
+else
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    info "Skipping LiteLLM (pass --litellm to enable Bedrock + budget-tracked model access)."
+    info "  Without it, the AI Gateway's model traffic fails upstream — MCP tools still work."
+  fi
+fi
+timer_end "3a-ter. LiteLLM"
+
 # ── 3a-bis. AI Gateway (agentgateway, standalone) ─────────────────────────────
 # ON BY DEFAULT (--skip-gateway opts out). One multiplexed MCP endpoint in front
 # of the eight servers, with tool names left unprefixed so no agent allowlist has
@@ -1453,8 +1583,8 @@ if [[ "$GATEWAY" == "true" ]]; then
     warn "  Those tools will be absent from tools/list. incident/security need --adp."
   fi
   check "AI Gateway deployed — /mcp (54 tools) and /v1/messages (Anthropic) on :3000"
-  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    warn "  No ANTHROPIC_API_KEY: MCP tools work, model calls will 401 upstream."
+  if [[ "$LITELLM" != "true" ]]; then
+    warn "  LiteLLM not deployed (pass --litellm): MCP tools work, model calls will fail upstream."
   fi
 else
   warn "Skipping AI Gateway (--skip-gateway). Agents reference the ai-gateway"
@@ -1964,12 +2094,9 @@ EOF
       -n kagent \
       "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" \
       --overwrite
-    # Same Secrets Manager entry, projected into ml-platform for the gateway.
-    # Uses the cluster-scoped aws-secretsmanager store, so no extra SA or IRSA
-    # role is needed. Keeps the gateway's copy rotating with the source instead
-    # of freezing at whatever the bootstrap wrote imperatively.
-    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/ai-gateway-external-secret.yaml"
-    check "AI Gateway ExternalSecret → idp-mvp/kagent (Secrets Manager)"
+    # LiteLLM's own ExternalSecret (litellm-external-secret.yaml) is applied
+    # earlier, in "3a-ter. LiteLLM" — before that Deployment's rollout status
+    # is checked, since its envFrom Secret is required rather than optional.
     kubectl apply -f "${REPO_ROOT}/aws/kagent/ingress.yaml"
     kubectl apply -f "${REPO_ROOT}/aws/kagent/ingress-idp-assistant.yaml"
     check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"

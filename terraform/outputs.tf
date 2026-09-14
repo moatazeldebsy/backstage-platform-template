@@ -38,6 +38,11 @@ output "crossplane_aws_role_arn" {
   value       = aws_iam_role.crossplane_aws.arn
 }
 
+output "litellm_bedrock_role_arn" {
+  description = "IAM role ARN assumed by LiteLLM via IRSA for Bedrock access. Used as the eks.amazonaws.com/role-arn annotation on aws/ml-platform/litellm-serviceaccount.yaml's litellm ServiceAccount."
+  value       = aws_iam_role.litellm_bedrock.arn
+}
+
 output "secondary_region" {
   description = "Secondary (standby) AWS region configured for this workspace"
   value       = var.secondary_region

@@ -270,12 +270,19 @@ if kubectl get ns kagent &>/dev/null; then
     log "AI Gateway MCP targets resolvable: $GW_TARGETS/8 (incident+security need --adp)"
 
     # Model egress runs through the same gateway (modelconfig*.yaml points
-    # anthropic.baseUrl at it). Without the key the gateway is still healthy and
-    # tools still work, so this cannot be inferred from readyReplicas.
-    if kubectl get secret ai-gateway-llm-keys -n ml-platform &>/dev/null; then
-      log "AI Gateway LLM credentials present (ai-gateway-llm-keys)"
+    # anthropic.baseUrl at it), which now forwards to LiteLLM (ADR-0008) rather
+    # than calling Anthropic directly. Without LiteLLM deployed, or without its
+    # credentials, the gateway is still healthy and tools still work, so this
+    # cannot be inferred from readyReplicas.
+    if kubectl get deployment litellm -n ml-platform &>/dev/null; then
+      LITELLM_READY=$(kubectl get deployment litellm -n ml-platform -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+      if [[ "${LITELLM_READY:-0}" -gt 0 ]] && kubectl get secret litellm-keys -n ml-platform &>/dev/null; then
+        log "LiteLLM ready with credentials present (litellm-keys)"
+      else
+        err "LiteLLM deployed but not ready, or missing its litellm-keys secret — agent model calls will fail"
+      fi
     else
-      err "AI Gateway has no ai-gateway-llm-keys secret — agent model calls will 401"
+      err "LiteLLM not deployed (pass --litellm to bootstrap-ai.sh) — agent model calls will fail upstream"
     fi
   else
     err "AI Gateway not installed — agents have no tools and no model. Run bootstrap-ai.sh (it is on by default; --skip-gateway is the opt-out)."

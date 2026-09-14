@@ -22,6 +22,10 @@ Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
   agentgateway over Envoy AI Gateway, why the gateway is default-on rather than
   opt-in, unprefixed tool names, and why inbound auth is not a boundary until
   NetworkPolicy is enforced.
+- [ADR-0008: LiteLLM as the central multi-provider model backend](design/adr-0008-litellm-multiprovider-gateway.md) —
+  why Bedrock was wired via LiteLLM instead of agentgateway's own native
+  `provider: bedrock` path, the empirical spike that ruled out `provider: openAI`
+  in favor of `provider: anthropic` + `baseUrl`, and why it's opt-in on local.
 - [ADR-0006: Engineering Intelligence](design/adr-0006-engineering-intelligence.md) —
   why the scoring engine is a standalone package rather than a fourth scorecard, why
   it persists its own snapshots, and why unmeasurable dimensions report no number.
