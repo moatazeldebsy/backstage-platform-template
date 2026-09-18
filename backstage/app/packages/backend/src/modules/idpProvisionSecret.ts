@@ -9,6 +9,45 @@ import {
   ResourceExistsException,
 } from '@aws-sdk/client-secrets-manager';
 
+/**
+ * Create-or-update one value in AWS Secrets Manager, idempotently.
+ *
+ * Extracted out of createProvisionSecretAction's handler so idpProvisionLitellmKey.ts
+ * (ADR-0008 — LiteLLM virtual keys need the exact same store-once-return-never-again
+ * handling a raw secret value gets everywhere else in this repo) can reuse it rather
+ * than duplicating the SecretsManagerClient/ResourceExistsException dance.
+ */
+export async function provisionAwsSecret(opts: {
+  secretPath: string;
+  secretValue: string;
+  description: string;
+  tags: { Key: string; Value: string }[];
+  awsRegion?: string;
+}): Promise<{ secretArn: string }> {
+  const { secretPath, secretValue, description, tags, awsRegion = 'us-east-1' } = opts;
+  const client = new SecretsManagerClient({ region: awsRegion });
+
+  try {
+    const createCmd = new CreateSecretCommand({
+      Name: secretPath,
+      SecretString: secretValue,
+      Description: description,
+      Tags: tags,
+    });
+    const result = await client.send(createCmd);
+    return { secretArn: result.ARN ?? secretPath };
+  } catch (err: any) {
+    if (err instanceof ResourceExistsException || err.name === 'ResourceExistsException') {
+      const getCmd = new GetSecretValueCommand({ SecretId: secretPath });
+      const existing = await client.send(getCmd);
+      const putCmd = new PutSecretValueCommand({ SecretId: secretPath, SecretString: secretValue });
+      await client.send(putCmd);
+      return { secretArn: existing.ARN ?? secretPath };
+    }
+    throw new Error(`Failed to provision secret at ${secretPath}: ${err.message}`);
+  }
+}
+
 export function createProvisionSecretAction() {
   return createTemplateAction({
     id: 'idp:provision-secret',
@@ -46,43 +85,17 @@ export function createProvisionSecretAction() {
         `Provisioning secret at ${secretPath} in ${awsRegion}...`,
       );
 
-      const client = new SecretsManagerClient({ region: awsRegion });
-
-      let secretArn: string;
-
-      try {
-        const createCmd = new CreateSecretCommand({
-          Name: secretPath,
-          SecretString: secretValue,
-          Description: `Managed by IDP — service: ${serviceName}, key: ${secretKey}`,
-          Tags: [
-            { Key: 'managed-by', Value: 'idp-backstage' },
-            { Key: 'service', Value: serviceName },
-          ],
-        });
-        const result = await client.send(createCmd);
-        secretArn = result.ARN ?? secretPath;
-        ctx.logger.info(`Secret created: ${secretArn}`);
-      } catch (err: any) {
-        if (err instanceof ResourceExistsException || err.name === 'ResourceExistsException') {
-          ctx.logger.info(`Secret already exists at ${secretPath} — updating value...`);
-          // Fetch ARN from existing secret
-          const getCmd = new GetSecretValueCommand({ SecretId: secretPath });
-          const existing = await client.send(getCmd);
-          secretArn = existing.ARN ?? secretPath;
-
-          const putCmd = new PutSecretValueCommand({
-            SecretId: secretPath,
-            SecretString: secretValue,
-          });
-          await client.send(putCmd);
-          ctx.logger.info(`Secret updated.`);
-        } else {
-          throw new Error(
-            `Failed to provision secret at ${secretPath}: ${err.message}`,
-          );
-        }
-      }
+      const { secretArn } = await provisionAwsSecret({
+        secretPath,
+        secretValue,
+        awsRegion,
+        description: `Managed by IDP — service: ${serviceName}, key: ${secretKey}`,
+        tags: [
+          { Key: 'managed-by', Value: 'idp-backstage' },
+          { Key: 'service', Value: serviceName },
+        ],
+      });
+      ctx.logger.info(`Secret ready: ${secretArn}`);
 
       // Build the ExternalSecret manifest that teams commit to their service repo
       const externalSecretYaml = `apiVersion: external-secrets.io/v1beta1

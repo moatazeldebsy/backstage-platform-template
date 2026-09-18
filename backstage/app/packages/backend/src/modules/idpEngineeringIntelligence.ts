@@ -29,6 +29,7 @@ import {
 import { collectMlflow } from './engineeringIntelligence/mlflow';
 import { collectLangfuseScores } from './engineeringIntelligence/langfuseScores';
 import { collectAiCost } from './engineeringIntelligence/aiCost';
+import { collectLitellmSpend } from './engineeringIntelligence/litellmSpend';
 import { collectLangfuse } from './engineeringIntelligence/langfuse';
 import { collectOpenCost } from './engineeringIntelligence/opencost';
 import { collectPrometheus } from './engineeringIntelligence/prometheus';
@@ -233,6 +234,12 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
                   return result;
                 }
               : undefined,
+            // Parallel to the langfuse ai-cost collector above — a distinct,
+            // never-merged signal (ai.litellmSpendUsd vs. ai.costAttributedRatio).
+            // See litellmSpend.ts's header comment for why. No `lastX` state is
+            // held here because nothing else in this module reads it back —
+            // unlike lastCost, this collector's output is samples only.
+            enabled('litellm') ? () => collectLitellmSpend(ctx) : undefined,
             enabled('techInsights')
               ? () =>
                   collectTechInsights({

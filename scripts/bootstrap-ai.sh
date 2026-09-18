@@ -556,6 +556,7 @@ if $DESTROY; then
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-openai.yaml"  2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-sonnet.yaml"  2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-opus.yaml"    2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-bedrock.yaml" 2>/dev/null || true
   helm uninstall agent-event-router --namespace services-dev 2>/dev/null || true
   kubectl delete secret kagent-anthropic -n kagent 2>/dev/null || true
   kubectl delete secret kagent-openai -n kagent 2>/dev/null || true
@@ -1538,6 +1539,42 @@ if [[ "$LITELLM" == "true" ]]; then
   kubectl rollout status deployment/litellm -n ml-platform --timeout=180s \
     || warn "LiteLLM did not become ready — check: kubectl logs -n ml-platform deploy/litellm"
   check "LiteLLM deployed — :4000 (Anthropic + Bedrock)"
+
+  # Backstage's /litellm proxy (LiteLLM Spend page + the AI Governance scorecard
+  # checks' Tech Insights collector) authenticates with the same master key —
+  # same mechanism as LANGFUSE_BASIC_AUTH above: env var locally, deployment env
+  # on AWS.
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    _ll_env="${REPO_ROOT}/local/backstage/.env"
+    touch "$_ll_env"
+    if grep -q "^LITELLM_MASTER_KEY=" "$_ll_env" 2>/dev/null; then
+      sed -i.bak "s|^LITELLM_MASTER_KEY=.*|LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}|" "$_ll_env" && rm -f "${_ll_env}.bak"
+    else
+      echo "LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}" >> "$_ll_env"
+    fi
+    check "LITELLM_MASTER_KEY written to local/backstage/.env"
+
+    # Same reasoning as the LANGFUSE_BASIC_AUTH recreate below: Compose reads
+    # .env for interpolation at container-create time only, so an
+    # already-running Backstage still holds the old (or no) value.
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "backstage-backstage-1"; then
+      _ll_compose="docker compose -f ${REPO_ROOT}/local/backstage/docker-compose.yml"
+      [[ "${_provider:-kind}" == "rancher-desktop" ]] && \
+        _ll_compose="${_ll_compose} -f ${REPO_ROOT}/local/backstage/docker-compose.rancher.yml"
+      info "  Recreating the Backstage container to pick it up..."
+      if $_ll_compose up -d --no-build backstage >/dev/null 2>&1; then
+        check "Backstage restarted with LITELLM_MASTER_KEY"
+      else
+        warn "  Could not recreate Backstage automatically. Run:"
+        warn "    ${_ll_compose} up -d --no-build backstage"
+      fi
+    else
+      info "  Start Backstage with ./scripts/bootstrap-local.sh --start-backstage to pick it up."
+    fi
+  elif kubectl get deployment backstage -n backstage >/dev/null 2>&1; then
+    kubectl set env deployment/backstage -n backstage "LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}" >/dev/null
+    check "LITELLM_MASTER_KEY set on the Backstage deployment"
+  fi
 else
   if [[ "$DEPLOY_MODE" == "local" ]]; then
     info "Skipping LiteLLM (pass --litellm to enable Bedrock + budget-tracked model access)."
@@ -2019,6 +2056,12 @@ EOF
   done
   # Conditional — the OpenAI ModelConfig is only functional with a key present.
   [[ -n "${OPENAI_API_KEY:-}" ]] && _kagent_manifests+=(modelconfig-openai.yaml)
+  # Conditional — claude-sonnet-bedrock only resolves once LiteLLM is deployed
+  # (ADR-0008): it's LiteLLM's own model_list that maps this name to a real
+  # Bedrock-backed model, not the gateway or KAgent. Applying it without
+  # --litellm would let the ai-agent-kagent template's Bedrock option create
+  # an Agent that references a name nothing can serve.
+  [[ "$LITELLM" == "true" ]] && _kagent_manifests+=(modelconfig-bedrock.yaml)
 
   _kagent_apply_args=()
   for _m in "${_kagent_manifests[@]}"; do

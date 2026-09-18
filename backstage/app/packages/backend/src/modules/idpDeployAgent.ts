@@ -72,6 +72,14 @@ ${toolsBlock}
 // field for the repo's own GitOps copy.
 function resolveModelConfig(modelProvider: string, model: string): string {
   if (modelProvider === 'openai') return 'openai-prod';
+  // ADR-0008: Bedrock only offers one model in this platform's LiteLLM
+  // model_list (claude-sonnet-bedrock), so — same shape as the openai branch
+  // above — the provider choice alone decides the ModelConfig; the `model`
+  // dropdown's value is not consulted for Bedrock. Requires --litellm to have
+  // been deployed (kubernetes/kagent/modelconfig-bedrock.yaml is applied
+  // conditionally in bootstrap-ai.sh); without it this ModelConfig doesn't
+  // exist and the Agent is rejected the same way an unknown name always is.
+  if (modelProvider === 'bedrock') return 'claude-sonnet-bedrock';
   if (model.includes('opus')) return 'claude-opus';
   if (model.includes('sonnet')) return 'claude-sonnet';
   return 'claude-haiku';

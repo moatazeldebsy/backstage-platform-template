@@ -193,6 +193,16 @@ describe('visibleChecks', () => {
       expect(score.results).toHaveProperty(c.id);
     }
   });
+
+  it('shows the ADR-0008 LiteLLM checks for AI entities, hides them otherwise', () => {
+    const aiIds = visibleChecks({ isAiEntity: true, isMobile: false }).map(c => c.id);
+    expect(aiIds).toContain('has-litellm-virtual-key');
+    expect(aiIds).toContain('has-budget-configured');
+
+    const nonAiIds = visibleChecks({ isAiEntity: false, isMobile: false }).map(c => c.id);
+    expect(nonAiIds).not.toContain('has-litellm-virtual-key');
+    expect(nonAiIds).not.toContain('has-budget-configured');
+  });
 });
 
 describe('mobile gates cap the count-based tier', () => {
@@ -248,7 +258,7 @@ describe('CHECKS integrity', () => {
 //
 // The failure this prevents is the one that already happened. Tier logic lives
 // here and again in observability/tech-insights-exporter/exporter.py, and the two
-// disagree: this file scores 22 checks with gold at 9 (~41%), the exporter scores
+// disagree: this file scores 24 checks with gold at 9 (~38%), the exporter scores
 // an 11-check subset with gold at 10 (~91%). A service can be gold on its entity
 // page and bronze on the Grafana dashboard, and nothing said so.
 //
@@ -274,7 +284,7 @@ describe('scorecard drift between the UI and the exporter', () => {
     const block = py.slice(py.indexOf('HYGIENE_CHECKS'), py.indexOf('SCORECARD_CHECKS'));
     const exporterIds = [...block.matchAll(/"([a-z0-9-]+)"/g)].map(m => m[1]);
 
-    expect(CHECKS).toHaveLength(22);
+    expect(CHECKS).toHaveLength(24);
     expect(exporterIds).toHaveLength(11);
   });
 
@@ -283,7 +293,7 @@ describe('scorecard drift between the UI and the exporter', () => {
     const gold = /TIER_THRESHOLDS\s*=\s*\{[^}]*"gold":\s*(\d+)/.exec(py);
     expect(gold).not.toBeNull();
 
-    expect(TIER_THRESHOLDS.gold).toBe(9);       // of 22 here — ~41%
+    expect(TIER_THRESHOLDS.gold).toBe(9);       // of 24 here — ~38%
     expect(Number(gold![1])).toBe(10);          // of 11 there — ~91%
   });
 

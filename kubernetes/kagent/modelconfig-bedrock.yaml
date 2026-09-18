@@ -1,0 +1,28 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: claude-sonnet-bedrock
+  namespace: kagent
+spec:
+  provider: Anthropic
+  model: claude-sonnet-bedrock
+  apiKeySecret: kagent-anthropic
+  apiKeySecretKey: ANTHROPIC_API_KEY
+  # Routed through the AI Gateway, same as every other ModelConfig here — but
+  # this model name only resolves because LiteLLM sits behind the gateway
+  # (ADR-0008) and maps it to a real Bedrock-backed model in its own
+  # model_list (kubernetes/ml-platform/litellm.yaml). Without --litellm
+  # deployed, an agent using this ModelConfig gets a routing error from
+  # LiteLLM, not from the gateway or from KAgent.
+  #
+  # provider stays Anthropic, same reasoning as every other ModelConfig here:
+  # the gateway (and LiteLLM behind it) serve /v1/messages natively, so this
+  # is the same protocol throughout — only the model name differs, and
+  # LiteLLM is what actually knows to route "claude-sonnet-bedrock" to
+  # Bedrock instead of to Anthropic directly.
+  #
+  # apiKeySecret is deliberately kept, same as the other ModelConfigs — see
+  # their comments. It is not used to reach Bedrock at all; Bedrock access is
+  # IRSA-based (terraform/iam-litellm-bedrock.tf), held entirely by LiteLLM.
+  anthropic:
+    baseUrl: http://ai-gateway.ml-platform.svc.cluster.local:3000

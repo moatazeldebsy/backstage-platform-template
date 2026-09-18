@@ -6,7 +6,7 @@ import { computeFacts, isAiEntity as sharedIsAiEntity, isMobileEntity as sharedI
 // Backstage frontend (importing extensions.tsx into a test loads every plugin
 // and takes minutes).
 //
-// The check *predicates* (the 22 booleans below) come from
+// The check *predicates* (the 24 booleans below) come from
 // @internal/scorecard-core, shared with the backend's Tech Insights fact
 // retriever (packages/backend/src/modules/idpTechInsights.ts) — the two used
 // to independently recompute the same checks and had drifted on three of
@@ -30,6 +30,8 @@ export type CheckKey =
   | 'has-model-card'
   | 'has-eval-suite'
   | 'has-ai-observability'
+  | 'has-litellm-virtual-key'
+  | 'has-budget-configured'
   | 'has-sonar-scanning'
   | 'has-snyk-scanning'
   | 'has-trivy-scanning'
@@ -61,6 +63,8 @@ export const CHECKS: CheckDef[] = [
   { id: 'has-model-card',        group: 'AI Governance', label: 'Has model card',            remediation: 'Add annotation backstage.io/model-card-url documenting the model, its training data, and performance.' },
   { id: 'has-eval-suite',        group: 'AI Governance', label: 'LLM eval suite in CI',      remediation: 'Add "llm-eval" to idp.io/quality-gates and run the deepeval-llm-eval-suite scaffolder.' },
   { id: 'has-ai-observability',  group: 'AI Governance', label: 'AI observability wired',    remediation: 'Add annotation backstage.io/kubernetes-id to enable Grafana dashboards (applies to entities tagged "ai" or with an AI spec.type).' },
+  { id: 'has-litellm-virtual-key', group: 'AI Governance', label: 'Has LiteLLM virtual key', remediation: 'Run the ai-agent-kagent template with "Provision LiteLLM virtual key" enabled (ADR-0008).' },
+  { id: 'has-budget-configured', group: 'AI Governance', label: 'Has spend budget configured', remediation: 'Set annotation idp.io/litellm-budget-usd to your agreed monthly LLM spend ceiling (set automatically when provisioning a LiteLLM virtual key).' },
   { id: 'has-sonar-scanning',    group: 'Security',      label: 'SonarCloud quality gate',   remediation: 'Run the enable-security-scanning scaffolder, or add a sonarcloud.io/project-key annotation.' },
   { id: 'has-snyk-scanning',     group: 'Security',      label: 'Snyk SCA scan',             remediation: 'Run the enable-security-scanning scaffolder, or add a snyk.io/org-slug annotation.' },
   { id: 'has-trivy-scanning',    group: 'Security',      label: 'Trivy image scan',          remediation: 'See the Trivy tab — requires a github.com/project-slug annotation and CI to have run at least once.' },
@@ -77,14 +81,16 @@ export const CHECKS: CheckDef[] = [
 
 export type TierName = 'none' | 'bronze' | 'silver' | 'gold';
 
-// CHECKS above now holds 22 entries and none are marked aiOnly, so both threshold
-// sets below are applied against the same 22 checks. The comment here previously
+// CHECKS above now holds 24 entries and none are marked aiOnly, so both threshold
+// sets below are applied against the same 24 checks (AI Governance and Mobile are
+// filtered per-entity by visibleChecks(), not aiOnly). The comment here previously
 // described 17 checks with 3 AI-only and did the percentage arithmetic on 14;
 // that array no longer exists.
 //
-// The absolute cutoffs have never moved while the array grew from 11 to 22, so
-// the effective bar has fallen a long way: gold was ~82% of 11 checks and is now
-// ~41% of 22.
+// The absolute cutoffs have never moved while the array grew from 11 to 24 (most
+// recently: two AI Governance checks added for ADR-0008's LiteLLM virtual keys/
+// budgets), so the effective bar has fallen a long way: gold was ~82% of 11
+// checks and is now ~38% of 24.
 //
 // This also disagrees with the other implementation. observability/tech-insights-
 // exporter/exporter.py scores a strict 11-check subset of these ids and puts gold
@@ -99,10 +105,16 @@ export const TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
   silver: 7,   // ~50% of 14 checks
   gold:   9,   // ~64% of 14 checks
 };
+// visibleChecks() shows an AI entity everything except the Mobile group — 14
+// non-AI/non-Mobile checks + 5 AI Governance checks (was 3, before ADR-0008's
+// two LiteLLM checks) = 19. Absolute cutoffs unchanged on purpose, per the
+// policy note above — adding checks lowers the effective bar; that is an
+// accepted, previously-established consequence of this design, not something
+// silently corrected here.
 export const AI_TIER_THRESHOLDS: Record<Exclude<TierName, 'none'>, number> = {
-  bronze: 5,   // ~29% of 17 checks
-  silver: 9,   // ~53% of 17 checks
-  gold:   12,  // ~71% of 17 checks
+  bronze: 5,   // ~26% of 19 checks
+  silver: 9,   // ~47% of 19 checks
+  gold:   12,  // ~63% of 19 checks
 };
 
 // Mobile scores differently from everything else. The other groups use count
@@ -181,8 +193,8 @@ export function computeScorecard(entity: Entity): ScorecardResult {
   const isAiEntityValue = sharedIsAiEntity(entity as any);
 
   // computeFacts returns all @internal/scorecard-core ScorecardFactKey
-  // entries (26, including the backend-only legacy mobile-* checks this
-  // page never renders); Record<CheckKey, boolean> (22 keys) is a subset,
+  // entries (28, including the backend-only legacy mobile-* checks this
+  // page never renders); Record<CheckKey, boolean> (24 keys) is a subset,
   // which TypeScript accepts structurally without a cast.
   const results: Record<CheckKey, boolean> = computeFacts(entity as any);
 

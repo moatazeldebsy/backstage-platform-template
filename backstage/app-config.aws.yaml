@@ -182,6 +182,19 @@ proxy:
         Authorization: Basic ${LANGFUSE_BASIC_AUTH:-bm90LWNvbmZpZ3VyZWQ=}
       pathRewrite:
         '^/api/proxy/langfuse': ''
+    # LiteLLM spend/key queries — ADR-0008. In-cluster Service DNS, same
+    # reasoning as /langfuse above. LITELLM_MASTER_KEY is set on the Backstage
+    # deployment by bootstrap-ai.sh --litellm from the litellm-keys Secret.
+    # GET-only — see the local app-config's comment for why key minting is
+    # never proxied.
+    /litellm:
+      target: http://litellm.ml-platform.svc.cluster.local:4000
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${LITELLM_MASTER_KEY:-not-configured}
+      pathRewrite:
+        '^/api/proxy/litellm': ''
     # Contract testing (docs/contract-testing.md). bootstrap-ai.sh --aws deploys
     # contract-mcp-server — ECR repo, DynamoDB IRSA role and ALB included — but
     # this proxy entry was only ever added to app-config.local.yaml, so on EKS
@@ -301,6 +314,12 @@ externalLinks:
   mlflow: http://MLFLOW_ALB_URL
   # Substituted by scripts/bootstrap-ai.sh once the Langfuse ALB has a hostname.
   langfuse: http://LANGFUSE_ALB_URL
+  # No litellm entry here, deliberately: LiteLLM has no AWS Ingress/ALB at all,
+  # same convention as the AI Gateway admin console (ADR-0007 decision 7) — an
+  # internet-facing ALB in front of an unauthenticated admin/spend UI is the
+  # exact pattern this platform avoids. The LiteLLM Spend page still works on
+  # AWS via the in-cluster /litellm proxy above; only the "open the real /ui"
+  # link is local-only.
 
 # GitHub App integration — replaces the personal access token used in app-config.yaml.
 # Higher rate limits (5 000 req/hr per installation vs 5 000/hr per PAT globally),

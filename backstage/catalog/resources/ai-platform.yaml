@@ -70,3 +70,25 @@ spec:
   lifecycle: experimental
   owner: platform-team
   system: idp-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: litellm
+  description: Central multi-provider LLM proxy (Anthropic + Bedrock) — virtual keys and per-team budget enforcement behind the AI Gateway (ADR-0008)
+  annotations:
+    backstage.io/kubernetes-id: litellm
+  tags:
+    - llm
+    - ai
+    - proxy
+    - gateway
+    - bedrock
+  links:
+    - url: http://litellm.idp.local/ui
+      title: LiteLLM Spend Dashboard
+spec:
+  type: ai-platform
+  lifecycle: experimental
+  owner: platform-team
+  system: idp-platform

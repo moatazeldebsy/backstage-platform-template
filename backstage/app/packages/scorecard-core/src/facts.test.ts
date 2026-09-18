@@ -94,6 +94,27 @@ describe('computeFacts', () => {
       const tagOnlyNoProbes = entity({ metadata: { tags: ['ai'] } });
       expect(computeFacts(tagOnlyNoProbes)['has-ai-observability']).toBe(false);
     });
+
+    it('has-litellm-virtual-key requires an AI entity, not just the annotation (ADR-0008)', () => {
+      const withAnnotationOnly = entity({ metadata: { annotations: { 'backstage.io/litellm-virtual-key-id': 'tok_abc' } } });
+      expect(computeFacts(withAnnotationOnly)['has-litellm-virtual-key']).toBe(false);
+
+      const aiWithAnnotation = entity({
+        spec: { type: 'ai-agent' },
+        metadata: { annotations: { 'backstage.io/litellm-virtual-key-id': 'tok_abc' } },
+      });
+      expect(computeFacts(aiWithAnnotation)['has-litellm-virtual-key']).toBe(true);
+    });
+
+    it('has-budget-configured requires an AI entity, not just the annotation (ADR-0008)', () => {
+      const withAnnotationOnly = entity({ metadata: { annotations: { 'idp.io/litellm-budget-usd': '50' } } });
+      expect(computeFacts(withAnnotationOnly)['has-budget-configured']).toBe(false);
+
+      const aiWithAnnotation = entity({
+        metadata: { tags: ['ai'], annotations: { 'idp.io/litellm-budget-usd': '50' } },
+      });
+      expect(computeFacts(aiWithAnnotation)['has-budget-configured']).toBe(true);
+    });
   });
 
   it('has-sonar/snyk/trivy-scanning fall back to their tool-specific annotations', () => {

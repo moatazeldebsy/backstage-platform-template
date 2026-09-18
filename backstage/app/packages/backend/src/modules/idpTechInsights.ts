@@ -57,6 +57,8 @@ const FACT_DESCRIPTIONS: Array<[ScorecardFactKey, string]> = [
   ['has-model-card', 'AI entity has a backstage.io/model-card-url annotation documenting the model'],
   ['has-eval-suite', 'AI entity has LLM evaluation suite in CI (idp.io/quality-gates contains "llm-eval")'],
   ['has-ai-observability', 'AI entity has observability configured (backstage.io/kubernetes-id annotation)'],
+  ['has-litellm-virtual-key', 'AI entity has a LiteLLM virtual key provisioned (backstage.io/litellm-virtual-key-id annotation, ADR-0008)'],
+  ['has-budget-configured', 'AI entity has a LiteLLM spend budget configured (idp.io/litellm-budget-usd annotation, ADR-0008)'],
   ['has-sonar-scanning', 'Service is wired up to SonarCloud (idp.io/quality-gates contains "sonar-scanning" OR sonarcloud.io/project-key annotation present)'],
   ['has-snyk-scanning', 'Service is wired up to Snyk (idp.io/quality-gates contains "snyk-scanning" OR snyk.io/org-slug annotation present)'],
   ['has-trivy-scanning', 'Service image is scanned by Trivy (idp.io/quality-gates contains "trivy-scanning" OR github.com/project-slug annotation present)'],

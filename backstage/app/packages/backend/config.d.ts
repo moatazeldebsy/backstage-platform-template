@@ -29,6 +29,7 @@ export interface Config {
       techInsights?: boolean;
       scaffolder?: boolean;
       mlflow?: boolean;
+      litellm?: boolean;
     };
 
     /**
