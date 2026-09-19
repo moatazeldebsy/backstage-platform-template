@@ -46,8 +46,10 @@ import TableRow from '@material-ui/core/TableRow';
 import Box from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
+import Collapse from '@material-ui/core/Collapse';
 import IconButton from '@material-ui/core/IconButton';
 import InputAdornment from '@material-ui/core/InputAdornment';
+import MenuItem from '@material-ui/core/MenuItem';
 import Paper from '@material-ui/core/Paper';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
@@ -65,6 +67,7 @@ import SearchOutlinedIcon from '@material-ui/icons/SearchOutlined';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import SmartToyIcon from '@material-ui/icons/EmojiObjects';
 import TimelineIcon from '@material-ui/icons/Timeline';
+import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import ScienceIcon from '@material-ui/icons/BubbleChart';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import ChatIcon from '@material-ui/icons/Chat';
@@ -3125,6 +3128,27 @@ const jiraEntityContent = EntityContentBlueprint.make({
 
 const copilotRouteRef = createRouteRef();  // was id: 'copilot-metrics'
 
+interface CopilotModelStat {
+  name: string;
+  total_engaged_users: number;
+  total_chats?: number;
+  total_chat_insertion_events?: number;
+  total_chat_copy_events?: number;
+  total_pr_summaries_created?: number;
+}
+
+interface CopilotEditorStat {
+  name: string;
+  total_engaged_users: number;
+  models?: CopilotModelStat[];
+}
+
+interface CopilotRepoStat {
+  name: string;
+  total_engaged_users: number;
+  models?: CopilotModelStat[];
+}
+
 interface CopilotDay {
   date: string;
   total_active_users: number;
@@ -3132,12 +3156,27 @@ interface CopilotDay {
   copilot_ide_code_completions?: {
     total_engaged_users: number;
     languages?: { name: string; total_code_acceptances: number; total_code_suggestions: number; total_code_lines_accepted: number; total_code_lines_suggested: number }[];
+    editors?: CopilotEditorStat[];
+  };
+  copilot_ide_chat?: {
+    total_engaged_users: number;
+    editors?: CopilotEditorStat[];
+  };
+  copilot_dotcom_chat?: {
+    total_engaged_users: number;
+    models?: CopilotModelStat[];
+  };
+  copilot_dotcom_pull_requests?: {
+    total_engaged_users: number;
+    repositories?: CopilotRepoStat[];
   };
 }
 
 /** 28 days of realistic-looking demo Copilot data shown when the real API is unavailable. */
 function generateDemoCopilotData(): CopilotDay[] {
   const languages = ['TypeScript', 'Python', 'Go', 'JavaScript', 'YAML'];
+  const editors = ['VS Code', 'JetBrains', 'Neovim'];
+  const repos = ['idp-mvp', 'backstage-platform-template', 'hello-service', 'idp-cli'];
   return Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (27 - i));
@@ -3150,9 +3189,376 @@ function generateDemoCopilotData(): CopilotDay[] {
       return { name, total_code_suggestions: suggested, total_code_acceptances: accepted,
                total_code_lines_suggested: suggested * 3, total_code_lines_accepted: accepted * 3 };
     });
-    return { date, total_active_users: activeUsers, total_engaged_users: engagedUsers,
-             copilot_ide_code_completions: { total_engaged_users: engagedUsers, languages: langData } };
+    const editorCompletions = editors.map((name, ei) => ({
+      name,
+      total_engaged_users: Math.max(1, Math.round(engagedUsers * [0.6, 0.3, 0.1][ei])),
+    }));
+    const chatEditors = editors.map((name, ei) => {
+      const chats = 15 + Math.floor(Math.random() * 25 + i * 2) * [1, 0.6, 0.2][ei];
+      const insertions = Math.round(chats * (0.35 + Math.random() * 0.15));
+      const copies = Math.round(chats * (0.15 + Math.random() * 0.1));
+      return {
+        name,
+        total_engaged_users: Math.max(1, Math.round(engagedUsers * [0.5, 0.25, 0.05][ei])),
+        models: [{ name: 'default', total_engaged_users: Math.max(1, Math.round(engagedUsers * [0.5, 0.25, 0.05][ei])),
+                   total_chats: Math.round(chats), total_chat_insertion_events: insertions, total_chat_copy_events: copies }],
+      };
+    });
+    const dotcomChats = 4 + Math.floor(Math.random() * 6);
+    const prSummaryRepos = repos.map((name, ri) => ({
+      name,
+      total_engaged_users: Math.max(0, Math.round(2 - ri * 0.4 + Math.random() * 2)),
+      models: [{ name: 'default', total_engaged_users: Math.max(0, Math.round(2 - ri * 0.4)),
+                 total_pr_summaries_created: Math.max(0, Math.round(3 - ri * 0.6 + Math.random() * 3)) }],
+    }));
+    return {
+      date, total_active_users: activeUsers, total_engaged_users: engagedUsers,
+      copilot_ide_code_completions: { total_engaged_users: engagedUsers, languages: langData, editors: editorCompletions },
+      copilot_ide_chat: { total_engaged_users: Math.round(engagedUsers * 0.6), editors: chatEditors },
+      copilot_dotcom_chat: { total_engaged_users: Math.round(engagedUsers * 0.15),
+                              models: [{ name: 'default', total_engaged_users: Math.round(engagedUsers * 0.15), total_chats: dotcomChats }] },
+      copilot_dotcom_pull_requests: { total_engaged_users: prSummaryRepos.reduce((s, r) => s + r.total_engaged_users, 0),
+                                       repositories: prSummaryRepos },
+    };
   });
+}
+
+// Bigger, axis-labelled sibling of the DORA `Sparkline`: renders one or more
+// series as polylines in a responsive (viewBox-based) SVG with a legend and
+// per-point tooltips, instead of a fixed 80x32 trendless squiggle.
+function TrendChart({
+  series,
+  labels,
+  height = 160,
+  valueFormatter = (v: number) => v.toLocaleString(),
+}: {
+  series: { name: string; color: string; values: number[] }[];
+  labels: string[];
+  height?: number;
+  valueFormatter?: (v: number) => string;
+}) {
+  const w = 720;
+  const padL = 40;
+  const padR = 12;
+  const padT = 12;
+  const padB = 24;
+  const n = labels.length;
+  if (n < 2) return null;
+
+  const allValues = series.flatMap(s => s.values);
+  const max = Math.max(...allValues, 1);
+  const min = Math.min(...allValues, 0);
+  const range = max - min || 1;
+
+  const x = (i: number) => padL + (i / (n - 1)) * (w - padL - padR);
+  const y = (v: number) => height - padB - ((v - min) / range) * (height - padT - padB);
+
+  return (
+    <Box>
+      <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} style={{ display: 'block' }}>
+        {[0, 0.5, 1].map(f => (
+          <line
+            key={f}
+            x1={padL} x2={w - padR}
+            y1={padT + f * (height - padT - padB)} y2={padT + f * (height - padT - padB)}
+            stroke="#e0e0e0" strokeWidth="1"
+          />
+        ))}
+        <text x={2} y={padT + 4} fontSize="10" fill="#757575">{valueFormatter(max)}</text>
+        <text x={2} y={height - padB + 4} fontSize="10" fill="#757575">{valueFormatter(min)}</text>
+        <text x={padL} y={height - 4} fontSize="10" fill="#757575">{labels[0]}</text>
+        <text x={w - padR} y={height - 4} fontSize="10" fill="#757575" textAnchor="end">{labels[n - 1]}</text>
+
+        {series.map(s => {
+          const pts = s.values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+          return (
+            <g key={s.name}>
+              <polyline points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" />
+              {s.values.map((v, i) => (
+                <circle key={i} cx={x(i)} cy={y(v)} r="2.5" fill={s.color}>
+                  <title>{`${labels[i]} · ${s.name}: ${valueFormatter(v)}`}</title>
+                </circle>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+      <Box display="flex" style={{ gap: 16, marginTop: 4 }}>
+        {series.map(s => (
+          <Box key={s.name} display="flex" alignItems="center" style={{ gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
+            <Typography variant="caption" color="textSecondary">{s.name}</Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+// Generic horizontal bar chart: one row per item, bar length proportional to
+// `value`, with a fixed-width right-aligned label. Reused for the per-language,
+// per-editor and per-repo Copilot breakdowns — all the same shape (name + a
+// magnitude + a secondary descriptive label), just different source fields.
+function HorizontalBarChart({
+  rows,
+  labelWidth = 130,
+  barColor = '#1976d2',
+}: {
+  rows: { name: string; value: number; valueLabel: string }[];
+  labelWidth?: number;
+  barColor?: string;
+}) {
+  if (rows.length === 0) {
+    return <Typography variant="body2" color="textSecondary">No data in this window.</Typography>;
+  }
+  const max = Math.max(...rows.map(r => r.value), 1);
+  return (
+    <Box display="flex" flexDirection="column" style={{ gap: 10 }}>
+      {rows.map(r => (
+        <Box key={r.name} display="flex" alignItems="center" style={{ gap: 12 }}>
+          <Typography variant="body2" style={{ width: 130, flexShrink: 0 }}>{r.name}</Typography>
+          <Box style={{ flex: 1, background: '#eeeeee', borderRadius: 4, overflow: 'hidden', height: 18 }}>
+            <Box style={{ width: `${(r.value / max) * 100}%`, background: barColor, height: '100%', borderRadius: 4 }} />
+          </Box>
+          <Typography variant="caption" color="textSecondary" style={{ width: labelWidth, flexShrink: 0, textAlign: 'right' }}>
+            {r.valueLabel}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+// Aggregates GitHub's per-day `languages[]` breakdown (suggested/accepted
+// lines) into totals across the visible window, sorted by usage.
+function languageBreakdownRows(days: CopilotDay[]) {
+  const byLanguage = new Map<string, { suggested: number; accepted: number }>();
+  for (const d of days) {
+    for (const l of d.copilot_ide_code_completions?.languages ?? []) {
+      const entry = byLanguage.get(l.name) ?? { suggested: 0, accepted: 0 };
+      entry.suggested += l.total_code_lines_suggested;
+      entry.accepted += l.total_code_lines_accepted;
+      byLanguage.set(l.name, entry);
+    }
+  }
+  return Array.from(byLanguage.entries())
+    .map(([name, { suggested, accepted }]) => ({
+      name, value: suggested,
+      valueLabel: `${suggested > 0 ? ((accepted / suggested) * 100).toFixed(1) : '0.0'}% accepted`,
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+// Which editor Copilot code completions are used from — engaged users on the
+// most recent day (engaged-user counts aren't meaningfully additive across days).
+function editorBreakdownRows(latest: CopilotDay | undefined) {
+  const editors = latest?.copilot_ide_code_completions?.editors ?? [];
+  return editors
+    .map(e => ({ name: e.name, value: e.total_engaged_users, valueLabel: `${e.total_engaged_users} users` }))
+    .sort((a, b) => b.value - a.value);
+}
+
+// Copilot Chat adoption per repo-hosting editor, summed across the window —
+// total chat turns, so editors used more heavily for chat float to the top.
+function chatEditorRows(days: CopilotDay[]) {
+  const byEditor = new Map<string, number>();
+  for (const d of days) {
+    for (const e of d.copilot_ide_chat?.editors ?? []) {
+      const chats = e.models?.reduce((s, m) => s + (m.total_chats ?? 0), 0) ?? 0;
+      byEditor.set(e.name, (byEditor.get(e.name) ?? 0) + chats);
+    }
+  }
+  return Array.from(byEditor.entries())
+    .map(([name, value]) => ({ name, value, valueLabel: `${value.toLocaleString()} chats` }))
+    .sort((a, b) => b.value - a.value);
+}
+
+// PR summary generation usage per repo (github.com Copilot feature, separate
+// from IDE completions/chat), summed across the window.
+function prSummaryRepoRows(days: CopilotDay[]) {
+  const byRepo = new Map<string, number>();
+  for (const d of days) {
+    for (const r of d.copilot_dotcom_pull_requests?.repositories ?? []) {
+      const summaries = r.models?.reduce((s, m) => s + (m.total_pr_summaries_created ?? 0), 0) ?? 0;
+      byRepo.set(r.name, (byRepo.get(r.name) ?? 0) + summaries);
+    }
+  }
+  return Array.from(byRepo.entries())
+    .map(([name, value]) => ({ name, value, valueLabel: `${value.toLocaleString()} summaries` }))
+    .filter(r => r.value > 0)
+    .sort((a, b) => b.value - a.value);
+}
+
+const SEAT_INACTIVE_DAYS = 30;
+
+interface CopilotSeat {
+  login: string;
+  plan_type?: string;
+  created_at: string;
+  last_activity_at: string | null;
+  assigning_team?: { name: string } | null;
+}
+
+interface CopilotSeatData {
+  total_seats: number;
+  seats: CopilotSeat[];
+}
+
+/** A billing-seats snapshot: mostly active seats, a handful stale or never used —
+ *  shown when the real Billing Seats API is unavailable (needs org billing-manager
+ *  or owner rights, stricter than the metrics endpoint's plain `copilot` scope). */
+function generateDemoSeatData(): CopilotSeatData {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const teams = ['platform', 'backend', 'frontend', 'mobile'];
+  const seats: CopilotSeat[] = Array.from({ length: 26 }, (_, i) => {
+    const createdDaysAgo = 20 + i * 5 + Math.floor(Math.random() * 10);
+    const isActive = i < 20;
+    const lastActivityDaysAgo = isActive
+      ? Math.floor(Math.random() * 10)
+      : (i < 24 ? SEAT_INACTIVE_DAYS + Math.floor(Math.random() * 40) : null);
+    // Every 5th seat is unassigned to a team (self-serve org membership, no team claim).
+    const team = i % 5 === 4 ? null : teams[i % teams.length];
+    return {
+      login: `dev-${i + 1}`,
+      plan_type: 'business',
+      created_at: new Date(now - createdDaysAgo * day).toISOString(),
+      last_activity_at: lastActivityDaysAgo == null ? null : new Date(now - lastActivityDaysAgo * day).toISOString(),
+      assigning_team: team ? { name: team } : null,
+    };
+  });
+  return { total_seats: seats.length, seats };
+}
+
+function isSeatActive(seat: CopilotSeat): boolean {
+  const cutoff = Date.now() - SEAT_INACTIVE_DAYS * 24 * 60 * 60 * 1000;
+  return !!seat.last_activity_at && new Date(seat.last_activity_at).getTime() >= cutoff;
+}
+
+function seatUtilization(data: CopilotSeatData | null) {
+  const seats = data?.seats ?? [];
+  const active = seats.filter(isSeatActive);
+  const inactive = seats.filter(s => !isSeatActive(s))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const totalSeats = data?.total_seats ?? seats.length;
+  const utilizationRate = totalSeats > 0 ? ((active.length / totalSeats) * 100).toFixed(1) : '—';
+  return { active, inactive, totalSeats, utilizationRate };
+}
+
+// Per-team seat + spend rollup, grouped by the Billing Seats API's
+// `assigning_team` field. Seats not assigned via a team fall under "Unassigned".
+function teamBreakdownRows(data: CopilotSeatData | null) {
+  const seats = data?.seats ?? [];
+  const byTeam = new Map<string, CopilotSeat[]>();
+  for (const s of seats) {
+    const team = s.assigning_team?.name ?? 'Unassigned';
+    byTeam.set(team, [...(byTeam.get(team) ?? []), s]);
+  }
+  return Array.from(byTeam.entries())
+    .map(([team, teamSeats]) => {
+      const active = teamSeats.filter(isSeatActive);
+      const spend = teamSeats.reduce((s, seat) => s + seatPrice(seat.plan_type), 0);
+      return {
+        team, seats: teamSeats.length, active: active.length,
+        inactive: teamSeats.length - active.length,
+        utilization: teamSeats.length > 0 ? (active.length / teamSeats.length) * 100 : 0,
+        spend,
+      };
+    })
+    .sort((a, b) => b.seats - a.seats);
+}
+
+// GitHub Copilot list prices (USD/seat/month, Sept 2026). Org contracts can
+// negotiate a different rate — the Billing Seats API doesn't expose the actual
+// price paid, so this is a list-price *estimate*, not a bill.
+const COPILOT_SEAT_LIST_PRICE_USD: Record<string, number> = {
+  business: 19,
+  enterprise: 39,
+};
+const DEFAULT_SEAT_PRICE_USD = COPILOT_SEAT_LIST_PRICE_USD.business;
+
+function seatPrice(planType: string | undefined): number {
+  return (planType ? COPILOT_SEAT_LIST_PRICE_USD[planType] : undefined) ?? DEFAULT_SEAT_PRICE_USD;
+}
+
+function seatCostSummary(active: CopilotSeat[], inactive: CopilotSeat[], totalAcceptedLines: number) {
+  const spendActive = active.reduce((s, seat) => s + seatPrice(seat.plan_type), 0);
+  const spendInactive = inactive.reduce((s, seat) => s + seatPrice(seat.plan_type), 0);
+  const monthlySpend = spendActive + spendInactive;
+  const costPerActiveUser = active.length > 0 ? spendActive / active.length : 0;
+  const costPer1kLines = totalAcceptedLines > 0 ? (monthlySpend / totalAcceptedLines) * 1000 : 0;
+  return { monthlySpend, spendInactive, costPerActiveUser, costPer1kLines };
+}
+
+// Derives the per-day suggested/accepted/chat totals used across the trend
+// charts — shared between the org-wide view and the per-repo drill-down below,
+// since GitHub's repo-level metrics endpoint returns the identical CopilotDay[] shape.
+function buildDailyRows(days: CopilotDay[]) {
+  return days.map(d => {
+    const lang = d.copilot_ide_code_completions?.languages;
+    const sug = lang?.reduce((s, l) => s + l.total_code_lines_suggested, 0) ?? 0;
+    const acc = lang?.reduce((s, l) => s + l.total_code_lines_accepted, 0) ?? 0;
+    const ideChatModels = d.copilot_ide_chat?.editors?.flatMap(e => e.models ?? []) ?? [];
+    const dotcomChatModels = d.copilot_dotcom_chat?.models ?? [];
+    const chats = [...ideChatModels, ...dotcomChatModels].reduce((s, m) => s + (m.total_chats ?? 0), 0);
+    const chatInsertions = ideChatModels.reduce((s, m) => s + (m.total_chat_insertion_events ?? 0), 0);
+    const chatCopies = ideChatModels.reduce((s, m) => s + (m.total_chat_copy_events ?? 0), 0);
+    return { ...d, sug, acc, rate: sug > 0 ? (acc / sug) * 100 : 0, chats, chatInsertions, chatCopies };
+  });
+}
+
+// Repos offered in the drill-down picker — same set (and relative weighting)
+// as the demo PR-summaries data, so the two stay consistent with each other.
+const COPILOT_DRILLDOWN_REPOS = ['idp-mvp', 'backstage-platform-template', 'hello-service', 'idp-cli'];
+const REPO_DEMO_SCALE: Record<string, number> = {
+  'idp-mvp': 0.42,
+  'backstage-platform-template': 0.34,
+  'hello-service': 0.24,
+  'idp-cli': 0.16,
+};
+
+/** Scales every numeric leaf of a CopilotDay by `factor`, preserving ratios
+ *  (so acceptance rate stays realistic) — used to fake a smaller, repo-scoped
+ *  slice of the org-wide demo data instead of hand-authoring a second dataset. */
+function scaleCopilotDay(d: CopilotDay, factor: number): CopilotDay {
+  const n = (v: number) => Math.max(0, Math.round(v * factor));
+  const scaleModels = (models?: CopilotModelStat[]) => models?.map(m => ({
+    ...m,
+    total_engaged_users: n(m.total_engaged_users),
+    total_chats: m.total_chats != null ? n(m.total_chats) : undefined,
+    total_chat_insertion_events: m.total_chat_insertion_events != null ? n(m.total_chat_insertion_events) : undefined,
+    total_chat_copy_events: m.total_chat_copy_events != null ? n(m.total_chat_copy_events) : undefined,
+  }));
+  const scaleEditors = (editors?: CopilotEditorStat[]) => editors?.map(e => ({
+    ...e, total_engaged_users: n(e.total_engaged_users), models: scaleModels(e.models),
+  }));
+  return {
+    date: d.date,
+    total_active_users: n(d.total_active_users),
+    total_engaged_users: n(d.total_engaged_users),
+    copilot_ide_code_completions: d.copilot_ide_code_completions && {
+      total_engaged_users: n(d.copilot_ide_code_completions.total_engaged_users),
+      languages: d.copilot_ide_code_completions.languages?.map(l => ({
+        ...l,
+        total_code_acceptances: n(l.total_code_acceptances),
+        total_code_suggestions: n(l.total_code_suggestions),
+        total_code_lines_accepted: n(l.total_code_lines_accepted),
+        total_code_lines_suggested: n(l.total_code_lines_suggested),
+      })),
+      editors: scaleEditors(d.copilot_ide_code_completions.editors),
+    },
+    copilot_ide_chat: d.copilot_ide_chat && {
+      total_engaged_users: n(d.copilot_ide_chat.total_engaged_users),
+      editors: scaleEditors(d.copilot_ide_chat.editors),
+    },
+    // PR summaries and dotcom chat are org/repo-list concepts, not meaningful
+    // scoped to a single repo's drill-down — omitted rather than faked.
+  };
+}
+
+function generateDemoRepoCopilotData(repo: string): CopilotDay[] {
+  const factor = REPO_DEMO_SCALE[repo] ?? 0.2;
+  return generateDemoCopilotData().map(d => scaleCopilotDay(d, factor));
 }
 
 function CopilotMetricsPage() {
@@ -3160,9 +3566,19 @@ function CopilotMetricsPage() {
   const configApi = useApi(configApiRef);
   const base = configApi.getString('backend.baseUrl');
 
-  const [days, setDays]       = useState<CopilotDay[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo]   = useState(false);
+  const [days, setDays]           = useState<CopilotDay[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [isDemo, setIsDemo]       = useState(false);
+  const [showTable, setShowTable] = useState(false);
+
+  const [seats, setSeats]               = useState<CopilotSeatData | null>(null);
+  const [seatsLoading, setSeatsLoading] = useState(true);
+  const [isSeatsDemo, setIsSeatsDemo]   = useState(false);
+
+  const [selectedRepo, setSelectedRepo] = useState('');
+  const [repoDays, setRepoDays]         = useState<CopilotDay[]>([]);
+  const [repoLoading, setRepoLoading]   = useState(false);
+  const [isRepoDemo, setIsRepoDemo]     = useState(false);
 
   useEffect(() => {
     fetchApi
@@ -3173,21 +3589,72 @@ function CopilotMetricsPage() {
       .finally(() => setLoading(false));
   }, [base, fetchApi]);
 
+  // Billing Seats needs org billing-manager/owner rights on the token — a
+  // stricter permission than the metrics endpoint above, so this is more
+  // likely to fall back to demo data even when the metrics fetch succeeds.
+  useEffect(() => {
+    fetchApi
+      .fetch(`${base}/api/proxy/github-copilot/orgs/moatazeldebsy/copilot/billing/seats?per_page=100`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then((data: CopilotSeatData) => Array.isArray(data?.seats) ? setSeats(data) : Promise.reject(new Error('bad shape')))
+      .catch(() => { setSeats(generateDemoSeatData()); setIsSeatsDemo(true); })
+      .finally(() => setSeatsLoading(false));
+  }, [base, fetchApi]);
+
+  useEffect(() => {
+    if (!selectedRepo) { setRepoDays([]); return; }
+    setRepoLoading(true);
+    setIsRepoDemo(false);
+    fetchApi
+      .fetch(`${base}/api/proxy/github-copilot/repos/moatazeldebsy/${selectedRepo}/copilot/metrics`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(data => setRepoDays(Array.isArray(data) ? data.slice(-28) : []))
+      .catch(() => { setRepoDays(generateDemoRepoCopilotData(selectedRepo)); setIsRepoDemo(true); })
+      .finally(() => setRepoLoading(false));
+  }, [base, fetchApi, selectedRepo]);
+
   const latest = days[days.length - 1];
   const completions = latest?.copilot_ide_code_completions;
   const totalSuggested = completions?.languages?.reduce((s, l) => s + l.total_code_lines_suggested, 0) ?? 0;
   const totalAccepted  = completions?.languages?.reduce((s, l) => s + l.total_code_lines_accepted, 0) ?? 0;
   const acceptanceRate = totalSuggested > 0 ? ((totalAccepted / totalSuggested) * 100).toFixed(1) : '—';
 
+  const dailyRows = buildDailyRows(days);
+
+  const repoDailyRows = buildDailyRows(repoDays);
+  const repoLatest = repoDays[repoDays.length - 1];
+  const repoTotalSuggested = repoDailyRows.reduce((s, d) => s + d.sug, 0);
+  const repoTotalAccepted  = repoDailyRows.reduce((s, d) => s + d.acc, 0);
+  const repoAcceptanceRate = repoTotalSuggested > 0 ? ((repoTotalAccepted / repoTotalSuggested) * 100).toFixed(1) : '—';
+
+  const totalChats = dailyRows.reduce((s, d) => s + d.chats, 0);
+  const totalChatUsed = dailyRows.reduce((s, d) => s + d.chatInsertions + d.chatCopies, 0);
+  const chatUsageRate = totalChats > 0 ? ((totalChatUsed / totalChats) * 100).toFixed(1) : '—';
+  const editorRows = editorBreakdownRows(latest);
+  const chatRows = chatEditorRows(days);
+  const prRows = prSummaryRepoRows(days);
+  const { active: activeSeats, inactive: inactiveSeats, totalSeats, utilizationRate } = seatUtilization(seats);
+  const windowAcceptedLines = dailyRows.reduce((s, d) => s + d.acc, 0);
+  const { monthlySpend, spendInactive, costPerActiveUser, costPer1kLines } =
+    seatCostSummary(activeSeats, inactiveSeats, windowAcceptedLines);
+  const teamRows = teamBreakdownRows(seats);
+
   return (
     <Page themeId="tool">
       <Header title="GitHub Copilot Metrics" subtitle="Developer productivity via AI assistance" />
       <Content>
         {loading && <CircularProgress style={{ margin: 24 }} />}
-        {isDemo && (
+        {(isDemo || isSeatsDemo) && (
           <Paper style={{ padding: '10px 20px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
             <Typography variant="body2" style={{ color: '#7c6000' }}>
-              📊 <strong>Demo data</strong> — GitHub Copilot API unavailable (no licence or token). Connect a Copilot-enabled org to see live metrics.
+              📊 <strong>Demo data</strong>{isDemo && !isSeatsDemo && ' (usage metrics)'}{isSeatsDemo && !isDemo && ' (seat billing)'}
+              {' '}— GitHub Copilot API unavailable or insufficient permissions (no licence, token, or org billing-admin access). Connect a Copilot-enabled org to see live metrics.
+            </Typography>
+            <Typography variant="caption" style={{ color: '#7c6000', display: 'block', marginTop: 4 }}>
+              To see real data instead: the org needs an active Copilot Business/Enterprise subscription (metrics only
+              exist for orgs paying for Copilot), and <code>GITHUB_TOKEN</code> must belong to an org owner or
+              someone with the Copilot-manager role, carrying the <code>read:org</code> and{' '}
+              <code>manage_billing:copilot</code> scopes (the seats/billing widgets need the latter specifically).
             </Typography>
           </Paper>
         )}
@@ -3207,40 +3674,306 @@ function CopilotMetricsPage() {
               ))}
             </Box>
 
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+              <Paper style={{ padding: 16, flex: '1 1 420px', minWidth: 320 }}>
+                <Typography variant="h6" gutterBottom>Active vs Engaged Users (last {dailyRows.length} days)</Typography>
+                <TrendChart
+                  labels={dailyRows.map(d => d.date)}
+                  series={[
+                    { name: 'Active users', color: '#1976d2', values: dailyRows.map(d => d.total_active_users) },
+                    { name: 'Engaged users', color: '#43a047', values: dailyRows.map(d => d.total_engaged_users) },
+                  ]}
+                />
+              </Paper>
+
+              <Paper style={{ padding: 16, flex: '1 1 420px', minWidth: 320 }}>
+                <Typography variant="h6" gutterBottom>Acceptance Rate Trend</Typography>
+                <TrendChart
+                  labels={dailyRows.map(d => d.date)}
+                  series={[{ name: 'Acceptance %', color: '#f57c00', values: dailyRows.map(d => d.rate) }]}
+                  valueFormatter={v => `${v.toFixed(0)}%`}
+                />
+              </Paper>
+            </Box>
+
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+              <Paper style={{ padding: 16, flex: '1 1 420px', minWidth: 320 }}>
+                <Typography variant="h6" gutterBottom>Usage by Language</Typography>
+                <HorizontalBarChart rows={languageBreakdownRows(days)} />
+              </Paper>
+
+              <Paper style={{ padding: 16, flex: '1 1 420px', minWidth: 320 }}>
+                <Typography variant="h6" gutterBottom>Code Completions by Editor (latest day)</Typography>
+                <HorizontalBarChart rows={editorRows} barColor="#8e24aa" />
+              </Paper>
+            </Box>
+
+            <Paper style={{ padding: 16, marginBottom: 16 }}>
+              <Box display="flex" alignItems="center" style={{ gap: 16, marginBottom: selectedRepo ? 16 : 0, flexWrap: 'wrap' }}>
+                <Typography variant="h6">Repository Drill-Down</Typography>
+                <TextField
+                  select
+                  size="small"
+                  variant="outlined"
+                  label="Repository"
+                  value={selectedRepo}
+                  onChange={e => setSelectedRepo(e.target.value)}
+                  style={{ minWidth: 260 }}
+                >
+                  <MenuItem value="">Select a repository…</MenuItem>
+                  {COPILOT_DRILLDOWN_REPOS.map(repo => (
+                    <MenuItem key={repo} value={repo}>{repo}</MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+
+              {selectedRepo && repoLoading && <CircularProgress size={24} />}
+
+              {selectedRepo && !repoLoading && (
+                <>
+                  {isRepoDemo && (
+                    <Typography variant="body2" style={{ color: '#7c6000', marginBottom: 16 }}>
+                      📊 Demo data for <strong>{selectedRepo}</strong> — repo-level Copilot metrics unavailable.
+                    </Typography>
+                  )}
+                  {repoDailyRows.length >= 2 ? (
+                    <>
+                      <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+                        {[
+                          { label: 'Active Users (latest day)', value: repoLatest?.total_active_users ?? '—' },
+                          { label: 'Engaged Users (latest day)', value: repoLatest?.total_engaged_users ?? '—' },
+                          { label: 'Lines Accepted (window)', value: repoTotalAccepted.toLocaleString() },
+                          { label: 'Acceptance Rate (window)', value: `${repoAcceptanceRate}%` },
+                        ].map(({ label, value }) => (
+                          <Paper key={label} variant="outlined" style={{ padding: 16, minWidth: 180, flex: 1 }}>
+                            <Typography variant="h5" style={{ fontWeight: 700 }}>{String(value)}</Typography>
+                            <Typography variant="body2" color="textSecondary">{label}</Typography>
+                          </Paper>
+                        ))}
+                      </Box>
+                      <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+                        <Box style={{ flex: '1 1 420px', minWidth: 320 }}>
+                          <Typography variant="subtitle2" gutterBottom>Active vs Engaged Users</Typography>
+                          <TrendChart
+                            labels={repoDailyRows.map(d => d.date)}
+                            series={[
+                              { name: 'Active users', color: '#1976d2', values: repoDailyRows.map(d => d.total_active_users) },
+                              { name: 'Engaged users', color: '#43a047', values: repoDailyRows.map(d => d.total_engaged_users) },
+                            ]}
+                            height={140}
+                          />
+                        </Box>
+                        <Box style={{ flex: '1 1 420px', minWidth: 320 }}>
+                          <Typography variant="subtitle2" gutterBottom>Acceptance Rate Trend</Typography>
+                          <TrendChart
+                            labels={repoDailyRows.map(d => d.date)}
+                            series={[{ name: 'Acceptance %', color: '#f57c00', values: repoDailyRows.map(d => d.rate) }]}
+                            valueFormatter={v => `${v.toFixed(0)}%`}
+                            height={140}
+                          />
+                        </Box>
+                      </Box>
+                      <Box display="flex" style={{ gap: 16, flexWrap: 'wrap' }}>
+                        <Box style={{ flex: '1 1 420px', minWidth: 320 }}>
+                          <Typography variant="subtitle2" gutterBottom>Usage by Language</Typography>
+                          <HorizontalBarChart rows={languageBreakdownRows(repoDays)} />
+                        </Box>
+                        <Box style={{ flex: '1 1 420px', minWidth: 320 }}>
+                          <Typography variant="subtitle2" gutterBottom>Code Completions by Editor (latest day)</Typography>
+                          <HorizontalBarChart rows={editorBreakdownRows(repoLatest)} barColor="#8e24aa" />
+                        </Box>
+                      </Box>
+                    </>
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">No Copilot activity recorded for this repo.</Typography>
+                  )}
+                </>
+              )}
+            </Paper>
+
+            <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+              <Paper style={{ padding: 16, flex: '1 1 420px', minWidth: 320 }}>
+                <Typography variant="h6" gutterBottom>Copilot Chat Usage</Typography>
+                <Box display="flex" style={{ gap: 24, marginBottom: 16 }}>
+                  <Box>
+                    <Typography variant="h5" style={{ fontWeight: 700 }}>{totalChats.toLocaleString()}</Typography>
+                    <Typography variant="caption" color="textSecondary">Total chats (window)</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="h5" style={{ fontWeight: 700 }}>{chatUsageRate}%</Typography>
+                    <Typography variant="caption" color="textSecondary">Suggestions inserted or copied</Typography>
+                  </Box>
+                </Box>
+                <TrendChart
+                  labels={dailyRows.map(d => d.date)}
+                  series={[{ name: 'Chats per day', color: '#00897b', values: dailyRows.map(d => d.chats) }]}
+                  height={120}
+                />
+              </Paper>
+
+              <Paper style={{ padding: 16, flex: '1 1 420px', minWidth: 320 }}>
+                <Typography variant="h6" gutterBottom>Chat Usage by Editor</Typography>
+                <HorizontalBarChart rows={chatRows} barColor="#00897b" />
+              </Paper>
+            </Box>
+
+            <Paper style={{ padding: 16, marginBottom: 16 }}>
+              <Typography variant="h6" gutterBottom>PR Summaries Generated by Repo</Typography>
+              {prRows.length > 0
+                ? <HorizontalBarChart rows={prRows} barColor="#5e35b1" />
+                : <Typography variant="body2" color="textSecondary">No PR summary usage recorded in this window.</Typography>}
+            </Paper>
+
+            <Paper style={{ padding: 16, marginBottom: 16 }}>
+              <Typography variant="h6" gutterBottom>Seat Utilization</Typography>
+              {seatsLoading ? (
+                <CircularProgress size={24} />
+              ) : (
+                <>
+                  <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {[
+                      { label: 'Total Seats', value: totalSeats },
+                      { label: `Active (last ${SEAT_INACTIVE_DAYS}d)`, value: activeSeats.length },
+                      { label: 'Inactive', value: inactiveSeats.length },
+                      { label: 'Utilization', value: `${utilizationRate}%` },
+                    ].map(({ label, value }) => (
+                      <Paper key={label} variant="outlined" style={{ padding: 16, minWidth: 160, flex: 1 }}>
+                        <Typography variant="h5" style={{ fontWeight: 700 }}>{String(value)}</Typography>
+                        <Typography variant="body2" color="textSecondary">{label}</Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                  {inactiveSeats.length > 0 ? (
+                    <TableContainer>
+                      <MuiTable size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Login</TableCell>
+                            <TableCell>Plan</TableCell>
+                            <TableCell>Seat Granted</TableCell>
+                            <TableCell>Last Activity</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {inactiveSeats.map(s => (
+                            <TableRow key={s.login}>
+                              <TableCell>{s.login}</TableCell>
+                              <TableCell>{s.plan_type ?? '—'}</TableCell>
+                              <TableCell>{s.created_at.slice(0, 10)}</TableCell>
+                              <TableCell>{s.last_activity_at ? s.last_activity_at.slice(0, 10) : 'Never'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </MuiTable>
+                    </TableContainer>
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">
+                      No inactive seats — every assigned seat has been used in the last {SEAT_INACTIVE_DAYS} days.
+                    </Typography>
+                  )}
+                </>
+              )}
+            </Paper>
+
+            <Paper style={{ padding: 16, marginBottom: 16 }}>
+              <Typography variant="h6" gutterBottom>Seat Utilization by Team</Typography>
+              {seatsLoading ? (
+                <CircularProgress size={24} />
+              ) : (
+                <TableContainer>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Team</TableCell>
+                        <TableCell align="right">Seats</TableCell>
+                        <TableCell align="right">Active</TableCell>
+                        <TableCell align="right">Inactive</TableCell>
+                        <TableCell align="right">Utilization</TableCell>
+                        <TableCell align="right">Est. Spend</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {teamRows.map(r => (
+                        <TableRow key={r.team}>
+                          <TableCell>{r.team}</TableCell>
+                          <TableCell align="right">{r.seats}</TableCell>
+                          <TableCell align="right">{r.active}</TableCell>
+                          <TableCell align="right">{r.inactive}</TableCell>
+                          <TableCell align="right">{r.utilization.toFixed(1)}%</TableCell>
+                          <TableCell align="right">${r.spend.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              )}
+            </Paper>
+
+            <Paper style={{ padding: 16, marginBottom: 16 }}>
+              <Typography variant="h6" gutterBottom>Cost / ROI</Typography>
+              <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginBottom: 16 }}>
+                Estimated from GitHub Copilot list prices (Business $19, Enterprise $39 per seat/month) — negotiated
+                enterprise contracts may differ; the Billing API doesn't expose the actual price paid.
+              </Typography>
+              {seatsLoading ? (
+                <CircularProgress size={24} />
+              ) : (
+                <>
+                  <Box display="flex" style={{ gap: 16, flexWrap: 'wrap', marginBottom: inactiveSeats.length > 0 ? 16 : 0 }}>
+                    {[
+                      { label: 'Est. Monthly Spend', value: `$${monthlySpend.toLocaleString()}` },
+                      { label: 'Spend on Inactive Seats', value: `$${spendInactive.toLocaleString()}` },
+                      { label: 'Cost per Active User', value: `$${costPerActiveUser.toFixed(2)}` },
+                      { label: 'Cost per 1K Accepted Lines', value: `$${costPer1kLines.toFixed(2)}` },
+                    ].map(({ label, value }) => (
+                      <Paper key={label} variant="outlined" style={{ padding: 16, minWidth: 180, flex: 1 }}>
+                        <Typography variant="h5" style={{ fontWeight: 700 }}>{value}</Typography>
+                        <Typography variant="body2" color="textSecondary">{label}</Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                  {inactiveSeats.length > 0 && (
+                    <Typography variant="body2" style={{ color: '#7c6000' }}>
+                      💡 ${spendInactive.toLocaleString()}/mo across {inactiveSeats.length} unused seat
+                      {inactiveSeats.length === 1 ? '' : 's'} — consider reclaiming.
+                    </Typography>
+                  )}
+                </>
+              )}
+            </Paper>
+
             <Paper style={{ padding: 16 }}>
-              <Typography variant="h6" gutterBottom>Daily Active Users (last 28 days)</Typography>
-              <TableContainer>
-                <MuiTable size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Date</TableCell>
-                      <TableCell align="right">Active Users</TableCell>
-                      <TableCell align="right">Engaged Users</TableCell>
-                      <TableCell align="right">Lines Suggested</TableCell>
-                      <TableCell align="right">Lines Accepted</TableCell>
-                      <TableCell align="right">Acceptance %</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {[...days].reverse().map((d) => {
-                      const lang = d.copilot_ide_code_completions?.languages;
-                      const sug  = lang?.reduce((s, l) => s + l.total_code_lines_suggested, 0) ?? 0;
-                      const acc  = lang?.reduce((s, l) => s + l.total_code_lines_accepted, 0) ?? 0;
-                      const rate = sug > 0 ? ((acc / sug) * 100).toFixed(1) : '—';
-                      return (
+              <Button size="small" onClick={() => setShowTable(v => !v)}>
+                {showTable ? 'Hide' : 'Show'} daily breakdown {showTable ? '▴' : '▾'}
+              </Button>
+              <Collapse in={showTable}>
+                <TableContainer style={{ marginTop: 8 }}>
+                  <MuiTable size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Date</TableCell>
+                        <TableCell align="right">Active Users</TableCell>
+                        <TableCell align="right">Engaged Users</TableCell>
+                        <TableCell align="right">Lines Suggested</TableCell>
+                        <TableCell align="right">Lines Accepted</TableCell>
+                        <TableCell align="right">Acceptance %</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {[...dailyRows].reverse().map(d => (
                         <TableRow key={d.date}>
                           <TableCell>{d.date}</TableCell>
                           <TableCell align="right">{d.total_active_users}</TableCell>
                           <TableCell align="right">{d.total_engaged_users}</TableCell>
-                          <TableCell align="right">{sug.toLocaleString()}</TableCell>
-                          <TableCell align="right">{acc.toLocaleString()}</TableCell>
-                          <TableCell align="right">{rate}%</TableCell>
+                          <TableCell align="right">{d.sug.toLocaleString()}</TableCell>
+                          <TableCell align="right">{d.acc.toLocaleString()}</TableCell>
+                          <TableCell align="right">{d.sug > 0 ? `${d.rate.toFixed(1)}%` : '—'}</TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </MuiTable>
-              </TableContainer>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              </Collapse>
             </Paper>
           </>
         )}
@@ -7427,6 +8160,178 @@ const langfuseNavItem = NavItemBlueprint.make({
   params: { title: 'AI Observability', icon: TimelineIcon as any, routeRef: langfusePageRouteRef },
 });
 
+// ── LiteLLM Spend page — ADR-0008 ──────────────────────────────────────────────
+// Parallel to the Langfuse-based "AI Observability" page above: LiteLLM's own
+// per-key spend, surfaced separately and deliberately NOT merged into
+// aiCost.ts's ai.costAttributedRatio (Langfuse-derived) or the OpenCost-driven
+// Budget tab. ADR-0008 already flagged the triple-counting risk of measuring
+// the same AI spend from three vantage points (agentgateway telemetry,
+// Langfuse traces, LiteLLM's own accounting) and defers resolving it — this
+// page is that third, intentionally-separate vantage point.
+
+interface LitellmSpendLogRow {
+  requestId: string;
+  model: string;
+  spend: number;
+  totalTokens: number;
+  timestamp: string;
+}
+
+const DEMO_LITELLM_SPEND_TOTAL = 4.82;
+const DEMO_LITELLM_LOGS: LitellmSpendLogRow[] = [
+  { requestId: 'chatcmpl-a1b2c3', model: 'claude-haiku-4-5-20251001', spend: 0.0017, totalTokens: 355, timestamp: '3 min ago' },
+  { requestId: 'chatcmpl-d4e5f6', model: 'claude-sonnet-4-6', spend: 0.0284, totalTokens: 1240, timestamp: '22 min ago' },
+];
+
+// LiteLLM's own admin API, through the Backstage proxy. Auth (the master key)
+// is injected by the proxy (see the /litellm endpoint in app-config.*.yaml) —
+// deliberately not held in the frontend, same convention as langfuseApi above.
+// Endpoint shapes confirmed against a live local instance (v1.100.1):
+// /user/info returns the proxy admin user's cumulative spend with zero query
+// params; /spend/logs returns a bare array of call-level rows.
+// /global/spend/report is Enterprise-only and 400s on the OSS build used here
+// — deliberately not called.
+const litellmApi = (fetchApi: { fetch: typeof fetch }, base: string) => (path: string) =>
+  fetchApi
+    .fetch(`${base}/api/proxy/litellm${path}`)
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error(`${path} → HTTP ${r.status}`))));
+
+function LitellmSpendPage() {
+  const fetchApi   = useApi(fetchApiRef);
+  const configApi  = useApi(configApiRef);
+  const aiEnabled  = useAiStackEnabled();
+  const base       = configApi.getString('backend.baseUrl');
+  const litellmUrl = configApi.getOptionalString('externalLinks.litellm') ?? 'http://litellm.idp.local';
+
+  const [totalSpend, setTotalSpend] = useState(0);
+  const [logs, setLogs]             = useState<LitellmSpendLogRow[]>([]);
+  const [status, setStatus]         = useState<'loading' | 'demo' | 'error' | 'ok'>('loading');
+  const [error, setError]           = useState('');
+
+  useEffect(() => {
+    // Nothing deployed to reach — show the shape of the page rather than a 404.
+    // LiteLLM is opt-in even when the rest of the AI stack is up (ADR-0008:
+    // off by default locally), so this checks the same aiEnabled flag the
+    // Langfuse page uses rather than a separate LiteLLM-specific one — if the
+    // AI stack itself isn't up, LiteLLM certainly isn't either.
+    if (!aiEnabled) {
+      setTotalSpend(DEMO_LITELLM_SPEND_TOTAL);
+      setLogs(DEMO_LITELLM_LOGS);
+      setStatus('demo');
+      return;
+    }
+
+    const api = litellmApi(fetchApi, base);
+
+    Promise.all([api('/user/info'), api('/spend/logs')])
+      .then(([userInfo, spendLogs]: [any, any]) => {
+        setTotalSpend(Number(userInfo?.user_info?.spend ?? 0));
+        const rows: any[] = Array.isArray(spendLogs) ? spendLogs : [];
+        setLogs(
+          rows.slice(0, 25).map(r => ({
+            requestId: String(r?.request_id ?? '').slice(0, 20),
+            model: r?.model ?? '—',
+            spend: Number(r?.spend ?? 0),
+            totalTokens: Number(r?.total_tokens ?? 0),
+            timestamp: relTime(r?.startTime ? Date.parse(r.startTime) : undefined),
+          })),
+        );
+        setStatus('ok');
+      })
+      .catch((e: Error) => {
+        setError(e.message ?? String(e));
+        setStatus('error');
+      });
+  }, [aiEnabled, base, fetchApi]);
+
+  return (
+    <Page themeId="tool">
+      <Header
+        title="LiteLLM Spend"
+        subtitle={`Multi-provider LLM spend (Anthropic + Bedrock) · virtual keys & budgets${status === 'ok' ? ` · ${fmtCost(totalSpend)} total` : ''}`}
+      />
+      <Content>
+        {status === 'loading' && <Progress />}
+        {status !== 'loading' && (
+          <>
+            {status === 'demo' && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#fff8e1', border: '1px solid #ffe082' }}>
+                <Typography variant="body2" style={{ color: '#7c6000' }}>
+                  📊 Demo data — LiteLLM is not deployed. Run <code>./scripts/bootstrap-ai.sh --litellm</code> to install it.
+                </Typography>
+              </Paper>
+            )}
+            {status === 'error' && (
+              <Paper style={{ padding: '8px 16px', marginBottom: 16, background: '#ffebee', border: '1px solid #ef9a9a' }}>
+                <Typography variant="body2" style={{ color: '#b71c1c' }}>
+                  ⚠️ Couldn't reach LiteLLM ({error}). Check it with{' '}
+                  <code>kubectl get pods -n ml-platform -l app=litellm</code>. A 401 means{' '}
+                  <code>LITELLM_MASTER_KEY</code> is not set for Backstage.
+                </Typography>
+              </Paper>
+            )}
+
+            <SummaryCards items={[
+              { label: 'Total spend',  value: fmtCost(totalSpend), sub: 'all-time (proxy admin user)', color: '#7b1fa2' },
+              { label: 'Recent calls', value: String(logs.length), sub: 'shown below',                 color: '#1976d2' },
+            ]} />
+
+            <Paper>
+              <Box display="flex" alignItems="center" style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+                <Typography variant="h6" style={{ flex: 1 }}>Recent spend log</Typography>
+                <Button variant="outlined" size="small" href={`${litellmUrl}/ui`} target="_blank" style={{ fontSize: 11 }}>
+                  Open LiteLLM ↗
+                </Button>
+              </Box>
+              <TableContainer>
+                <MuiTable size="small">
+                  <TableHead>
+                    <TableRow style={{ background: '#f5f5f5' }}>
+                      <TableCell><strong>Request</strong></TableCell>
+                      <TableCell><strong>Model</strong></TableCell>
+                      <TableCell align="right"><strong>Tokens</strong></TableCell>
+                      <TableCell align="right"><strong>Spend</strong></TableCell>
+                      <TableCell><strong>When</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {logs.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5}>
+                          <Typography variant="body2" color="textSecondary">No spend recorded yet.</Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {logs.map(l => (
+                      <TableRow key={l.requestId}>
+                        <TableCell><code style={{ fontSize: 11 }}>{l.requestId}</code></TableCell>
+                        <TableCell><code style={{ fontSize: 12 }}>{l.model}</code></TableCell>
+                        <TableCell align="right">{l.totalTokens}</TableCell>
+                        <TableCell align="right">{fmtCost(l.spend)}</TableCell>
+                        <TableCell>{l.timestamp}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </MuiTable>
+              </TableContainer>
+            </Paper>
+          </>
+        )}
+      </Content>
+    </Page>
+  );
+}
+
+const litellmSpendPageRouteRef = createRouteRef();
+const litellmSpendPage = PageBlueprint.make({
+  name: 'litellm-spend',
+  params: { path: '/litellm-spend', routeRef: litellmSpendPageRouteRef, loader: async () => <LitellmSpendPage /> },
+});
+const litellmSpendNavItem = NavItemBlueprint.make({
+  name: 'litellm-spend',
+  params: { title: 'LiteLLM Spend', icon: VpnKeyIcon as any, routeRef: litellmSpendPageRouteRef },
+});
+
 // ── Langfuse entity tab — one service's traces ────────────────────────────────
 // The platform page above is org-wide; this is the same data scoped to one
 // component via the `langfuse.com/service-name` annotation, which the
@@ -8221,6 +9126,8 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
     kagentNavItem,
     langfusePage,
     langfuseNavItem,
+    litellmSpendPage,
+    litellmSpendNavItem,
     langfuseEntityContent,
     mlflowPage,
     mlflowNavItem,

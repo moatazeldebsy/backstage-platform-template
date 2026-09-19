@@ -104,6 +104,13 @@ five minutes, so the real values moved into the gateway as per-target
 
 ### 6. Anthropic stays Anthropic
 
+**Amended by [ADR-0008](adr-0008-litellm-multiprovider-gateway.md).** The
+protocol-native claim below still holds — nothing here was wrong — but the
+upstream host is no longer `api.anthropic.com` for every environment: LiteLLM
+now sits behind agentgateway to add Bedrock, virtual keys and spend tracking.
+Read the "only Anthropic is routed" paragraph below as historical: Bedrock is
+routed too now, via the same gateway, via LiteLLM.
+
 KAgent's pinned CRD (v0.9.4) exposes `anthropic.baseUrl`, not just
 `openAI.baseUrl`, and agentgateway serves `/v1/messages` natively. So model
 traffic is redirected without protocol translation and without changing a single
@@ -152,7 +159,7 @@ the platform generates.
 |---|---|---|
 | Gateway | default, ~9 MiB | default, ~9 MiB |
 | Provider key | bootstrap-created Secret | ExternalSecret from `idp-mvp/kagent` |
-| Bedrock | n/a | not wired — needs an IRSA role |
+| Bedrock | opt-in via `--litellm`, unreachable without it | wired via LiteLLM + IRSA (ADR-0008), on by default |
 | Multi-region | n/a | one gateway **per region**, spoke-local |
 
 - **The gateway is a single point of failure for the agent layer.** It was
@@ -165,7 +172,10 @@ the platform generates.
   IRSA-annotated ServiceAccount, one entry in the `llm:` block. Deliberately not
   wired here: it needs a Terraform IAM role that cannot be exercised without a
   cluster, and a half-wired install path is a failure mode this repo has already
-  paid for.
+  paid for. **Superseded by [ADR-0008](adr-0008-litellm-multiprovider-gateway.md):**
+  Bedrock connectivity alone wasn't the actual goal — LiteLLM's virtual keys and
+  spend tracking across both providers was — so Bedrock was wired via LiteLLM
+  instead of this native path, once the IRSA role existed.
 
 ### Not yet done, and why it matters
 

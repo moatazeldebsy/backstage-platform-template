@@ -295,6 +295,7 @@ externalLinks:
   kagent: http://kagent.idp.local
   mlflow: http://mlflow.idp.local
   langfuse: http://langfuse.idp.local
+  litellm: http://litellm.idp.local
 
 # Override the OpenCost proxy target — in-cluster DNS is not reachable from Docker;
 # use the ingress hostname that is mapped to host-gateway in docker-compose extra_hosts.
@@ -359,6 +360,21 @@ proxy:
         Authorization: Basic ${LANGFUSE_BASIC_AUTH:-bm90LWNvbmZpZ3VyZWQ=}
       pathRewrite:
         '^/api/proxy/langfuse': ''
+    # LiteLLM spend/key queries (LiteLLM Spend page + the AI Governance
+    # scorecard checks' Tech Insights collector) — ADR-0008. GET-only: key
+    # minting (POST /key/generate) is a privileged, backend-only call issued
+    # directly by the idp:provision-litellm-key scaffolder action, never
+    # proxied to the frontend. Deliberately-invalid default token, same
+    # reasoning as /langfuse above: an unconfigured install 401s loudly
+    # instead of silently resolving somewhere unintended.
+    /litellm:
+      target: http://litellm.idp.local
+      allowedMethods: ['GET']
+      changeOrigin: true
+      headers:
+        Authorization: Bearer ${LITELLM_MASTER_KEY:-not-configured}
+      pathRewrite:
+        '^/api/proxy/litellm': ''
     /contract-mcp:
       target: http://contract-mcp-server.idp.local
       allowedMethods: ['GET', 'POST']

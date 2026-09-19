@@ -73,6 +73,12 @@ services:
       # it into the container on its own. Unset leaves the proxy on its
       # "not-configured" default, which 401s and shows the page's error banner.
       LANGFUSE_BASIC_AUTH: ${LANGFUSE_BASIC_AUTH:-}
+      # LiteLLM's inbound-auth key, used by the /litellm proxy (LiteLLM Spend
+      # page + the AI Governance scorecard checks' Tech Insights collector).
+      # Written to local/backstage/.env by `bootstrap-ai.sh --litellm`; same
+      # reasoning as LANGFUSE_BASIC_AUTH above — Compose only interpolates
+      # .env, it does not forward host env vars into the container on its own.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
       # Datadog API/App keys — referenced by the /datadog proxy (Datadog tab).
       DD_API_KEY: ${DD_API_KEY:-}
       DD_APP_KEY: ${DD_APP_KEY:-}
@@ -121,6 +127,10 @@ services:
       # so the /langfuse proxy loops back into Backstage's own port 3000 and times
       # out with a 504 that confusingly names backstage.idp.local as the target.
       - "langfuse.idp.local:host-gateway"
+      # Same reasoning as langfuse.idp.local above — without this the /litellm
+      # proxy loops back into Backstage's own port 3000 instead of reaching
+      # LiteLLM's Service.
+      - "litellm.idp.local:host-gateway"
       - "idp-assistant.idp.local:host-gateway"
       - "idp-mcp-server.idp.local:host-gateway"
       - "contract-mcp-server.idp.local:host-gateway"

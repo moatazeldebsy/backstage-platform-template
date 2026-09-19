@@ -65,9 +65,20 @@ spec:
         modelProvider:
           title: Model Provider
           type: string
-          enum: [anthropic]
-          enumNames: ['Anthropic (Claude API)']
+          enum: [anthropic, bedrock]
+          enumNames: ['Anthropic (Claude API)', 'AWS Bedrock (via LiteLLM — ADR-0008)']
           default: anthropic
+          ui:help: "Bedrock requires the platform to be deployed with bootstrap-ai.sh --litellm. The Model choice above is ignored when Bedrock is selected — only one Bedrock model is currently wired (Claude Sonnet)."
+        provisionLitellmKey:
+          title: Provision a LiteLLM virtual key
+          type: boolean
+          default: false
+          description: Mint a dedicated LiteLLM virtual key + spend budget for this agent (ADR-0008), instead of it implicitly sharing the platform's master key through the AI Gateway. Requires --litellm.
+        budgetUsd:
+          title: Monthly spend budget (USD)
+          type: number
+          default: 50
+          description: Only used when "Provision a LiteLLM virtual key" is enabled above.
         enableCatalogSearch:
           title: Enable catalog_search tool
           type: boolean
@@ -106,6 +117,19 @@ spec:
       name: Resolve Platform URLs
       action: idp:platform-urls
 
+    # Runs BEFORE fetch, not after: fetch:template renders catalog-info.yaml,
+    # and a step's output is only visible to steps that run after it — putting
+    # this after fetch would mean catalog-info.yaml could never see its
+    # result. No repoUrl/GitHub repo is needed for this action, only
+    # parameters.name, so running it this early costs nothing. ADR-0008.
+    - id: provision-litellm-key
+      name: Provision LiteLLM virtual key
+      action: idp:provision-litellm-key
+      if: ${{ parameters.provisionLitellmKey }}
+      input:
+        serviceName: ${{ parameters.name }}
+        budgetUsd: ${{ parameters.budgetUsd }}
+
     - id: fetch
       name: Generate agent manifests
       action: fetch:template
@@ -130,6 +154,12 @@ spec:
           # the note in mlflow-experiment/template.yaml. Comes from the repo
           # URL, not parameters.owner (a Backstage group ref).
           githubOrg: ${{ parameters.repoUrl | parseRepoUrl | pick('owner') }}
+          # Empty string, not undefined, when provisionLitellmKey was off or
+          # the step was skipped — `| default('')` lets catalog-info.yaml
+          # gate the annotation on a plain truthiness check rather than
+          # depending on how nunjucks handles a skipped step's output. ADR-0008.
+          litellmVirtualKeyId: ${{ steps['provision-litellm-key'].output.virtualKeyAnnotationValue | default('') }}
+          litellmBudgetUsd: ${{ steps['provision-litellm-key'].output.budgetUsd | default('') }}
 
     - id: publish
       name: Publish to GitHub

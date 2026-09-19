@@ -26,6 +26,7 @@ Collectors live in `backstage/app/packages/backend/src/modules/engineeringIntell
 | `langfuse.ts` | Langfuse v3 metrics + traces API | `ai.observabilityActive`, `ai.promptsManagedRatio` |
 | `langfuseScores.ts` | Langfuse `/api/public/v2/scores` | `ai.evalPassRatio` |
 | `aiCost.ts` | Langfuse metrics + traces API | `ai.costAttributedRatio` |
+| `litellmSpend.ts` | LiteLLM `/user/info` (ADR-0008) | `ai.litellmSpendUsd` |
 | `scaffolder.ts` | Backstage scaffolder API | `scaffolder.taskSuccessRatio` |
 | `mlflow.ts` | MLflow registry | `ai.modelVersionedRatio` |
 

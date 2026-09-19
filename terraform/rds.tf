@@ -149,3 +149,86 @@ output "langfuse_db_secret_arn" {
   description = "Secrets Manager ARN holding the Langfuse Postgres password"
   value       = one(aws_secretsmanager_secret.langfuse[*].arn)
 }
+
+# ── LiteLLM (ADR-0008) ────────────────────────────────────────────────────────
+# LiteLLM's virtual keys and per-team budget enforcement — the actual reason
+# ADR-0008 chose it over agentgateway's native `provider: bedrock` support —
+# do not function without a database: verified against a live deploy, /ui
+# login fails outright ("Authentication Error, Not connected to DB!") and
+# BerriAI's own docs confirm budgets are silently unenforced at request time
+# with no DB connected. Same dedicated-RDS-per-component pattern as Langfuse
+# above, not shared with Backstage's instance — this holds proxy metadata
+# (keys, spend), not application data, same reasoning as Langfuse's Postgres
+# vs its ClickHouse trace store.
+resource "random_password" "litellm_rds" {
+  length = 32
+  # DATABASE_URL below composes this by string interpolation directly (unlike
+  # Langfuse, which hands the bare password to its Helm chart to compose).
+  # Same URL-safe restriction as langfuse_rds for the same reason: @ / : ? #
+  # would misparse the connection string.
+  special          = true
+  override_special = "-_"
+
+  count = var.enable_litellm ? 1 : 0
+}
+
+resource "aws_db_instance" "litellm" {
+  count = var.enable_litellm ? 1 : 0
+
+  identifier     = "${var.cluster_name}-litellm"
+  engine         = "postgres"
+  engine_version = "17"
+  instance_class = var.litellm_rds_instance_class
+
+  db_name  = "litellm"
+  username = "litellm"
+  password = random_password.litellm_rds[0].result
+
+  # Reuses the Backstage subnet group and security group, same reasoning as
+  # Langfuse's instance above: both are generic, and a third copy would add
+  # cost and drift for no isolation benefit within this single-tenant cluster.
+  db_subnet_group_name   = aws_db_subnet_group.backstage.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  multi_az          = false
+  allocated_storage = 20
+
+  backup_retention_period   = var.rds_backup_retention_days
+  storage_encrypted         = true
+  skip_final_snapshot       = var.environment == "prod" ? false : true
+  final_snapshot_identifier = "${var.cluster_name}-litellm-final"
+  deletion_protection       = var.environment == "prod" ? true : false
+
+  tags = {
+    Name = "${var.cluster_name}-litellm-db"
+  }
+}
+
+# Full connection string, not just the password: Terraform is the one place
+# that already knows both the RDS endpoint and the generated password at
+# apply time, so composing DATABASE_URL here means aws/ml-platform/litellm-external-secret.yaml
+# can pull one ready-to-use property instead of a bootstrap script string-building
+# it from two separate lookups (a tf_output for the host, a Secrets Manager read
+# for the password) the way Langfuse's Helm values currently do.
+resource "aws_secretsmanager_secret" "litellm_db" {
+  count = var.enable_litellm ? 1 : 0
+
+  name                    = "idp-mvp/litellm"
+  description             = "LiteLLM Postgres connection string (virtual keys, spend tracking) — ADR-0008"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "litellm_db" {
+  count = var.enable_litellm ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.litellm_db[0].id
+
+  secret_string = jsonencode({
+    DATABASE_URL = "postgresql://litellm:${random_password.litellm_rds[0].result}@${aws_db_instance.litellm[0].address}:5432/litellm"
+  })
+}
+
+output "litellm_db_secret_arn" {
+  description = "Secrets Manager ARN holding the LiteLLM Postgres connection string"
+  value       = one(aws_secretsmanager_secret.litellm_db[*].arn)
+}

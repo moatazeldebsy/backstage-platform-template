@@ -23,6 +23,14 @@ metadata:
     snyk.io/org-slug: "${{ values.githubOrg }}"
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
     jira/project-key: "${{ values.jiraProjectKey }}"
+{%- if values.litellmVirtualKeyId %}
+    # ADR-0008 — set by the idp:provision-litellm-key step above when
+    # "Provision a LiteLLM virtual key" was enabled. Drives the
+    # has-litellm-virtual-key / has-budget-configured AI Governance scorecard
+    # checks. The value is LiteLLM's opaque token_id, never the raw key.
+    backstage.io/litellm-virtual-key-id: "${{ values.litellmVirtualKeyId }}"
+    idp.io/litellm-budget-usd: "${{ values.litellmBudgetUsd }}"
+{%- endif %}
   links:
     - url: ${{ values.kagentUrl }}
       title: KAgent UI

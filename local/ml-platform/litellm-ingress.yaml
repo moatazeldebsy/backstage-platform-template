@@ -1,0 +1,32 @@
+# LiteLLM spend/admin UI — LOCAL ONLY.
+#
+# Applied by bootstrap-ai.sh only when DEPLOY_MODE == local AND --litellm was
+# passed. No AWS counterpart, same reasoning as ai-gateway-ingress.yaml: an
+# internet-facing ALB in front of an unauthenticated admin UI is the pattern
+# this platform has deliberately avoided elsewhere.
+#
+# `litellm.idp.local` resolves to 127.0.0.1 via /etc/hosts (bootstrap adds the
+# entry when --litellm is passed). Same shape as ai-gateway.idp.local,
+# kagent.idp.local, mlflow.idp.local.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: litellm-admin
+  namespace: ml-platform
+  labels:
+    app: litellm
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: litellm.idp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: litellm
+                port:
+                  name: http

@@ -123,7 +123,7 @@ output "slack_webhook_secret_arn" {
 # ── KAgent (AI/ML platform) secret ────────────────────────────────────────────────
 resource "aws_secretsmanager_secret" "kagent" {
   name                    = "idp-mvp/kagent"
-  description             = "KAgent AI platform credentials — Anthropic API key"
+  description             = "KAgent AI platform credentials — Anthropic API key, LiteLLM master key"
   recovery_window_in_days = 0
 
   dynamic "replica" {
@@ -139,6 +139,10 @@ resource "aws_secretsmanager_secret_version" "kagent" {
 
   secret_string = jsonencode({
     ANTHROPIC_API_KEY = var.anthropic_api_key
+    # LiteLLM's own inbound-auth key (ADR-0008) — reuses this secret rather
+    # than a dedicated one, same reuse decision as ai-gateway's Anthropic key
+    # sync before it. Read by aws/ml-platform/litellm-external-secret.yaml.
+    LITELLM_MASTER_KEY = var.litellm_master_key
   })
 }
 

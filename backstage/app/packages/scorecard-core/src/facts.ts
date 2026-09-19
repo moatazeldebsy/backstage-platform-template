@@ -28,6 +28,8 @@ export type ScorecardFactKey =
   | 'has-model-card'
   | 'has-eval-suite'
   | 'has-ai-observability'
+  | 'has-litellm-virtual-key'
+  | 'has-budget-configured'
   | 'has-sonar-scanning'
   | 'has-snyk-scanning'
   | 'has-trivy-scanning'
@@ -144,6 +146,12 @@ export function computeFacts(entity: FactsEntityLike): Record<ScorecardFactKey, 
     'has-model-card': isAi && Boolean(annotations['backstage.io/model-card-url']),
     'has-eval-suite': isAi && gates.has('llm-eval'),
     'has-ai-observability': isAi && hasKubernetesId,
+    // ADR-0008 — set by the idp:provision-litellm-key scaffolder action
+    // (backend/src/modules/idpProvisionLitellmKey.ts), never by hand: the
+    // annotation value is LiteLLM's opaque token_id, not something a human
+    // would type in correctly.
+    'has-litellm-virtual-key': isAi && Boolean(annotations['backstage.io/litellm-virtual-key-id']),
+    'has-budget-configured': isAi && Boolean(annotations['idp.io/litellm-budget-usd']),
     'has-sonar-scanning': gates.has('sonar-scanning') || Boolean(annotations['sonarcloud.io/project-key']),
     'has-snyk-scanning': gates.has('snyk-scanning') || Boolean(annotations['snyk.io/org-slug']),
     'has-trivy-scanning': gates.has('trivy-scanning') || Boolean(annotations['github.com/project-slug']),

@@ -152,24 +152,37 @@ data:
       gateways: [default]
 
     # ── LLM egress ────────────────────────────────────────────────────────────
-    # The same gateway now fronts model traffic as well as tools. Agents keep
-    # speaking Anthropic's native protocol: the shorthand below serves
-    # /v1/messages directly, so nothing is translated into an OpenAI-compatible
-    # shape and the model ids stay exactly what kubernetes/kagent/modelconfig*.yaml
-    # already used. Verified against v1.5.0 — a POST /v1/messages here reaches
-    # endpoint=api.anthropic.com:443 with gen_ai.provider.name=anthropic.
+    # The same gateway fronts model traffic as well as tools. Agents still
+    # speak Anthropic's native protocol end to end — /v1/messages, no
+    # OpenAI-shape translation anywhere — but the upstream host is now LiteLLM
+    # (kubernetes/ml-platform/litellm.yaml) instead of api.anthropic.com
+    # directly. See docs/design/adr-0008-litellm-multiprovider-gateway.md.
     #
-    # $ANTHROPIC_API_KEY expands from the pod environment, supplied by the
-    # optional `ai-gateway-llm-keys` Secret. Optional on purpose: with no key the
-    # gateway still starts and MCP tool traffic is unaffected — only model calls
-    # fail, and they fail with the provider's own 401 rather than a config error.
-    # That is what keeps a key-free evaluation cluster working.
+    # `provider: anthropic` + `params.baseUrl` is what makes this work with
+    # zero translation: LiteLLM exposes its own native /v1/messages-compatible
+    # passthrough, so agentgateway's existing Anthropic client just points at a
+    # different host. This was validated empirically against a live LiteLLM
+    # instance, not assumed — `provider: openAI` + baseUrl was tried first and
+    # rejected: it routed through LiteLLM's OpenAI-compatibility shim instead
+    # and silently dropped max_tokens, producing a 500
+    # ("anthropic_messages() missing 1 required positional argument:
+    # 'max_tokens'"). Only provider: anthropic round-trips cleanly.
     #
-    # Anthropic only, because it is the only provider any agent actually uses:
-    # openai-prod and ollama-local exist as ModelConfigs but no agent references
-    # them (ADR-0005 decision 4). openAI, bedrock and custom self-hosted
-    # endpoints are each one more entry in this list — left out rather than
-    # shipped unexercised.
+    # $LITELLM_MASTER_KEY expands from the pod environment, supplied by the
+    # optional `litellm-keys` Secret. Optional on purpose, same reasoning as
+    # before: with no key the gateway still starts and MCP tool traffic is
+    # unaffected — only model calls fail, now upstream against LiteLLM rather
+    # than against Anthropic directly.
+    #
+    # agentgateway no longer needs $ANTHROPIC_API_KEY at all — that credential
+    # now lives solely in LiteLLM's own config (kubernetes/ml-platform/litellm.yaml),
+    # which is what actually calls Anthropic and Bedrock.
+    #
+    # Bedrock models are added as more entries here, still provider: anthropic,
+    # still pointed at the same LiteLLM baseUrl — LiteLLM's own model_list maps
+    # the model name to its Bedrock-backed config and normalizes the response
+    # back into Anthropic Messages shape, so agentgateway's side is identical
+    # for both providers.
     llm:
       # CORS so the console's Chat Playground can call /v1/... from the browser.
       # Its Apply CORS button cannot do this itself — that button writes
@@ -197,21 +210,33 @@ data:
         - name: claude-haiku-4-5-20251001
           provider: anthropic
           params:
-            apiKey: "$ANTHROPIC_API_KEY"
+            apiKey: "$LITELLM_MASTER_KEY"
+            baseUrl: "http://litellm.ml-platform.svc.cluster.local:4000"
         - name: claude-sonnet-4-6
           provider: anthropic
           params:
-            apiKey: "$ANTHROPIC_API_KEY"
+            apiKey: "$LITELLM_MASTER_KEY"
+            baseUrl: "http://litellm.ml-platform.svc.cluster.local:4000"
         - name: claude-opus-4-8
           provider: anthropic
           params:
-            apiKey: "$ANTHROPIC_API_KEY"
+            apiKey: "$LITELLM_MASTER_KEY"
+            baseUrl: "http://litellm.ml-platform.svc.cluster.local:4000"
+        # Bedrock, via the same LiteLLM proxy. AWS only in practice — see
+        # kubernetes/ml-platform/litellm.yaml's model_list comment on why this
+        # entry is present but unreachable on local (Kind has no IRSA).
+        - name: claude-sonnet-bedrock
+          provider: anthropic
+          params:
+            apiKey: "$LITELLM_MASTER_KEY"
+            baseUrl: "http://litellm.ml-platform.svc.cluster.local:4000"
         # Catch-all: a ModelConfig naming a model not listed above still routes
         # instead of 404ing. Model ids change faster than this file does.
         - name: "*"
           provider: anthropic
           params:
-            apiKey: "$ANTHROPIC_API_KEY"
+            apiKey: "$LITELLM_MASTER_KEY"
+            baseUrl: "http://litellm.ml-platform.svc.cluster.local:4000"
 
     mcp:
       # CORS for the console's Tool Playground, same reasoning as llm.policies
@@ -442,15 +467,24 @@ spec:
               # not the process. Requesting against it reserved roughly 6x what
               # the gateway ever touches, which is real waste on a node measured
               # to have no headroom.
+              #
+              # NEEDS RE-MEASUREMENT after the LiteLLM change (ADR-0008): this
+              # number was measured serving model traffic to api.anthropic.com
+              # directly. Model calls now proxy through LiteLLM first, which
+              # changes nothing about agentgateway's own memory use in theory
+              # (still the same client connection, just a different host) but
+              # was not re-verified against a real cluster.
               memory: 64Mi
             limits:
               cpu: 500m
               memory: 256Mi
-          # optional: true — a cluster with no Anthropic key still gets a fully
-          # working MCP gateway; only /v1/messages fails, and it fails upstream.
+          # optional: true — a cluster with no LITELLM_MASTER_KEY still gets a
+          # fully working MCP gateway; only /v1/messages fails, and it fails
+          # upstream (against LiteLLM, or LiteLLM's own 401 against the real
+          # provider — see ADR-0008).
           envFrom:
             - secretRef:
-                name: ai-gateway-llm-keys
+                name: litellm-keys
                 optional: true
           volumeMounts:
             - name: config

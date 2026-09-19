@@ -46,6 +46,7 @@ import {
   modelCosts,
   traceCosts,
 } from '../engineeringIntelligence/aiCost';
+import { collectLitellmSpend } from '../engineeringIntelligence/litellmSpend';
 import {
   asRatio,
   collectOpenCost,
@@ -71,6 +72,7 @@ const config = new ConfigReader({
       '/prometheus': { target: 'http://prometheus.idp.local/' },
       '/opencost': { target: 'http://opencost.idp.local' },
       '/langfuse': { target: 'http://langfuse.idp.local' },
+      '/litellm': { target: 'http://litellm.idp.local' },
     },
   },
   langfuse: { publicKey: 'pk-test', secretKey: 'sk-test' },
@@ -878,6 +880,39 @@ describe('collectAiCost', () => {
     const result = await collectAiCost(ctx, { owners });
     expect(result.cost?.attributedUsd).toBe(0);
     expect(result.cost?.byTeam).toEqual([]);
+  });
+});
+
+describe('collectLitellmSpend', () => {
+  // Parallel to collectAiCost above — deliberately a separate metric name and a
+  // separate describe block, never asserting anything about
+  // ai.costAttributedRatio. See litellmSpend.ts's header comment.
+
+  it('emits ai.litellmSpendUsd from /user/info, not ai.costAttributedRatio', async () => {
+    mockFetchJson(url =>
+      url.includes('/user/info') ? { user_info: { spend: 4.82 } } : undefined,
+    );
+    const result = await collectLitellmSpend(ctx);
+    expect(result.samples).toEqual([
+      expect.objectContaining({ metric: 'ai.litellmSpendUsd', value: 4.82, source: 'litellm-spend' }),
+    ]);
+    expect(result.samples.some(s => s.metric === 'ai.costAttributedRatio')).toBe(false);
+  });
+
+  it('reports unavailable, not a throw, when LiteLLM does not answer', async () => {
+    mockFetchJson(() => undefined);
+    const result = await collectLitellmSpend(ctx);
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.source).toBe('litellm-spend');
+  });
+
+  it('reports unavailable when no /litellm proxy target is configured', async () => {
+    const noLitellmConfig = new ConfigReader({
+      proxy: { endpoints: { '/prometheus': { target: 'http://prometheus.idp.local' } } },
+    });
+    const result = await collectLitellmSpend({ config: noLitellmConfig, logger: ctx.logger });
+    expect(result.samples).toEqual([]);
+    expect(result.unavailable?.reason).toMatch(/No proxy.endpoints/);
   });
 });
 

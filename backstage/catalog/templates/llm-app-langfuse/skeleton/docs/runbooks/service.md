@@ -28,11 +28,13 @@ kubectl logs -n ml-platform deploy/ai-gateway | grep 'protocol=llm' | tail
 
 - **No `protocol=llm` lines** — the request never arrived. Check `ANTHROPIC_BASE_URL` on this
   pod; it should be `http://ai-gateway.ml-platform.svc.cluster.local:3000`.
-- **`http.status=401` with `gen_ai.provider.name=anthropic`** — the request reached the gateway
-  and the gateway reached Anthropic, which rejected *its* credential. Fix
-  `ai-gateway-llm-keys` in `ml-platform`, not anything here.
+- **`http.status=401` with `gen_ai.provider.name=anthropic`** — the request reached the gateway,
+  which forwarded it to LiteLLM, which reached Anthropic/Bedrock and got rejected. Fix
+  `litellm-keys` in `ml-platform` (or LiteLLM's own `model_list` credentials), not anything here.
 - **Gateway pod absent** — the platform was installed with `--skip-gateway`. Agents and every
   scaffolded LLM app depend on it.
+- **LiteLLM pod absent** — the platform was installed without `--litellm` (off by default
+  locally). The gateway is Ready and tools still work, but model calls fail upstream.
 
 ## `/chat` returns 429 or 503 intermittently
 
