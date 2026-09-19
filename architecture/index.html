@@ -1882,6 +1882,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0008: LiteLLM multi-provider gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2586,6 +2607,10 @@
   agentgateway over Envoy AI Gateway, why the gateway is default-on rather than
   opt-in, unprefixed tool names, and why inbound auth is not a boundary until
   NetworkPolicy is enforced.</li>
+<li><a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008: LiteLLM as the central multi-provider model backend</a> —
+  why Bedrock was wired via LiteLLM instead of agentgateway's own native
+  <code>provider: bedrock</code> path, the empirical spike that ruled out <code>provider: openAI</code>
+  in favor of <code>provider: anthropic</code> + <code>baseUrl</code>, and why it's opt-in on local.</li>
 <li><a href="../design/adr-0006-engineering-intelligence/">ADR-0006: Engineering Intelligence</a> —
   why the scoring engine is a standalone package rather than a fourth scorecard, why
   it persists its own snapshots, and why unmeasurable dimensions report no number.</li>

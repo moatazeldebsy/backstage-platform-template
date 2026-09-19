@@ -1708,6 +1708,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0008: LiteLLM multi-provider gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2734,12 +2755,22 @@ in the docs that mentions a <code>bootstrap-ai.sh</code> flag should defer to th
 <tr>
 <td><code>--gateway</code></td>
 <td>on</td>
-<td>Install the AI Gateway (agentgateway, standalone). Two things run through it: <strong>tools</strong> — all eight MCP servers multiplexed at <code>ai-gateway.ml-platform.svc.cluster.local:3000/mcp</code>, tool names unprefixed — and <strong>model calls</strong>, served natively at <code>/v1/messages</code> (<code>kubernetes/kagent/modelconfig*.yaml</code> point <code>anthropic.baseUrl</code> here). <strong>On by default</strong>; without it agents have neither tools nor a model. ~9Mi working set measured. Its admin UI is published locally at <code>http://ai-gateway.idp.local</code> (<code>/ui</code>, <code>/config_dump</code>) and is deliberately not ingressed on AWS. The Anthropic key comes from the optional <code>ai-gateway-llm-keys</code> Secret, so a key-free cluster still gets working tools and only model calls fail. Unreachable MCP targets are skipped rather than failing the session, so the gateway can be Ready while serving fewer tools than expected — the bootstrap and <code>validate-deployment.sh</code> both report how many resolve. See <a href="../design/adr-0007-ai-gateway/">ADR-0007</a>.</td>
+<td>Install the AI Gateway (agentgateway, standalone). Two things run through it: <strong>tools</strong> — all eight MCP servers multiplexed at <code>ai-gateway.ml-platform.svc.cluster.local:3000/mcp</code>, tool names unprefixed — and <strong>model calls</strong>, served natively at <code>/v1/messages</code> (<code>kubernetes/kagent/modelconfig*.yaml</code> point <code>anthropic.baseUrl</code> here), which it now forwards to LiteLLM rather than calling Anthropic directly (see <code>--litellm</code> below). <strong>On by default</strong>; without it agents have neither tools nor a model. ~9Mi working set measured. Its admin UI is published locally at <code>http://ai-gateway.idp.local</code> (<code>/ui</code>, <code>/config_dump</code>) and is deliberately not ingressed on AWS. Unreachable MCP targets are skipped rather than failing the session, so the gateway can be Ready while serving fewer tools than expected — the bootstrap and <code>validate-deployment.sh</code> both report how many resolve. See <a href="../design/adr-0007-ai-gateway/">ADR-0007</a>.</td>
 </tr>
 <tr>
 <td><code>--skip-gateway</code></td>
 <td>—</td>
 <td>Skip the AI Gateway. Agents reference it for both tools and model egress, so they will have <strong>no tools and no working model</strong> without it; only useful when debugging the MCP servers directly.</td>
+</tr>
+<tr>
+<td><code>--litellm</code></td>
+<td>off (local) / on (<code>--aws</code>)</td>
+<td>Deploy LiteLLM as the model backend behind the AI Gateway — Anthropic + Bedrock through one proxy, with virtual keys and spend tracking. Off by default locally: it's a second proxy process on a cluster already measured to have little headroom (see <a href="../local-setup/">Local Setup</a>). On by default on AWS, since Bedrock only exists there. Without it, the AI Gateway's tools still work but model calls fail upstream. Requires <code>LITELLM_MASTER_KEY</code>. See <a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>.</td>
+</tr>
+<tr>
+<td><code>--skip-litellm</code></td>
+<td>—</td>
+<td>Force LiteLLM off even on <code>--aws</code>.</td>
 </tr>
 <tr>
 <td><code>--langfuse</code></td>

@@ -1557,6 +1557,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0008: LiteLLM multi-provider gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2319,6 +2340,12 @@ into one. Forcing 300s everywhere would let a wedged 30s tool hold a slot for
 five minutes, so the real values moved into the gateway as per-target
 <code>policies.http.requestTimeout</code>; the CR's 300s is only an outer bound.</p>
 <h3 id="6-anthropic-stays-anthropic">6. Anthropic stays Anthropic<a class="headerlink" href="#6-anthropic-stays-anthropic" title="Permanent link">&para;</a></h3>
+<p><strong>Amended by <a href="../adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>.</strong> The
+protocol-native claim below still holds — nothing here was wrong — but the
+upstream host is no longer <code>api.anthropic.com</code> for every environment: LiteLLM
+now sits behind agentgateway to add Bedrock, virtual keys and spend tracking.
+Read the "only Anthropic is routed" paragraph below as historical: Bedrock is
+routed too now, via the same gateway, via LiteLLM.</p>
 <p>KAgent's pinned CRD (v0.9.4) exposes <code>anthropic.baseUrl</code>, not just
 <code>openAI.baseUrl</code>, and agentgateway serves <code>/v1/messages</code> natively. So model
 traffic is redirected without protocol translation and without changing a single
@@ -2373,8 +2400,8 @@ the platform generates.</p>
 </tr>
 <tr>
 <td>Bedrock</td>
-<td>n/a</td>
-<td>not wired — needs an IRSA role</td>
+<td>opt-in via <code>--litellm</code>, unreachable without it</td>
+<td>wired via LiteLLM + IRSA (ADR-0008), on by default</td>
 </tr>
 <tr>
 <td>Multi-region</td>
@@ -2394,7 +2421,10 @@ the platform generates.</p>
   IRSA-annotated ServiceAccount, one entry in the <code>llm:</code> block. Deliberately not
   wired here: it needs a Terraform IAM role that cannot be exercised without a
   cluster, and a half-wired install path is a failure mode this repo has already
-  paid for.</li>
+  paid for. <strong>Superseded by <a href="../adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>:</strong>
+  Bedrock connectivity alone wasn't the actual goal — LiteLLM's virtual keys and
+  spend tracking across both providers was — so Bedrock was wired via LiteLLM
+  instead of this native path, once the IRSA role existed.</li>
 </ul>
 <h3 id="not-yet-done-and-why-it-matters">Not yet done, and why it matters<a class="headerlink" href="#not-yet-done-and-why-it-matters" title="Permanent link">&para;</a></h3>
 <p><strong>Inbound auth is not enabled.</strong> Both halves are ready — agentgateway takes

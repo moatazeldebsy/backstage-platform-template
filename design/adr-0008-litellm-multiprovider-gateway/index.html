@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../adr-0006-engineering-intelligence/">
       
       
-        <link rel="next" href="../deployment-rollback/">
+        <link rel="next" href="../../team-management/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Incident Severity - Internal Developer Platform</title>
+        <title>ADR-0008: LiteLLM multi-provider gateway - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#incident-severity" class="md-skip">
+        <a href="#adr-0008-litellm-as-the-central-multi-provider-model-backend" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Incident Severity
+              ADR-0008: LiteLLM multi-provider gateway
             
           </span>
         </div>
@@ -480,11 +480,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../design/adr-0001-batch-orchestration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../adr-0001-batch-orchestration/" class="md-tabs__link">
           
   
   Design Decisions
@@ -652,13 +654,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -1401,25 +1401,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" checked>
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1430,7 +1435,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_21">
             <span class="md-nav__icon md-icon"></span>
             Design Decisions
@@ -1444,7 +1449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0001-batch-orchestration/" class="md-nav__link">
+      <a href="../adr-0001-batch-orchestration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1465,7 +1470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0002-delivery-model/" class="md-nav__link">
+      <a href="../adr-0002-delivery-model/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1486,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0003-incident-management/" class="md-nav__link">
+      <a href="../adr-0003-incident-management/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1507,7 +1512,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0004-identity-and-access/" class="md-nav__link">
+      <a href="../adr-0004-identity-and-access/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1528,7 +1533,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
+      <a href="../adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1549,7 +1554,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0006-engineering-intelligence/" class="md-nav__link">
+      <a href="../adr-0006-engineering-intelligence/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1567,10 +1572,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    ADR-0008: LiteLLM multi-provider gateway
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1579,6 +1604,122 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-provider-anthropic-baseurl-not-provider-openai" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. provider: anthropic + baseUrl, not provider: openAI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-bedrock-is-a-litellm-model_list-entry-not-a-separate-code-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Bedrock is a LiteLLM model_list entry, not a separate code path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-bedrock-access-is-irsa-on-aws-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Bedrock access is IRSA, on AWS only
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-opt-in-on-local-on-by-default-on-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Opt-in on local, on by default on AWS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-credentials-one-secrets-manager-entry-reused" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Credentials: one Secrets Manager entry, reused
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-a-database-is-required-not-optional-discovered-post-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. A database is required, not optional — discovered post-deploy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consequences
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1928,30 +2069,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_31" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_31" >
         
           
-          <label class="md-nav__link" for="__nav_31" id="__nav_31_label" tabindex="">
+          <label class="md-nav__link" for="__nav_31" id="__nav_31_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1962,7 +2098,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_31_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_31_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_31">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
@@ -1976,7 +2112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1994,30 +2130,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Incident Severity
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../runbooks/incident-severity/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2026,71 +2142,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      The mapping
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-each-value-appears" class="md-nav__link">
-    <span class="md-ellipsis">
-      Where each value appears
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#which-issues-get-filed" class="md-nav__link">
-    <span class="md-ellipsis">
-      Which issues get filed
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#a-caveat-on-slo-burn-rate-alerts" class="md-nav__link">
-    <span class="md-ellipsis">
-      A caveat on SLO burn-rate alerts
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      See also
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2103,7 +2154,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment-rollback/" class="md-nav__link">
+      <a href="../../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2124,7 +2175,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pod-crash-loop/" class="md-nav__link">
+      <a href="../../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2145,7 +2196,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-memory/" class="md-nav__link">
+      <a href="../../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2166,7 +2217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-cpu/" class="md-nav__link">
+      <a href="../../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2187,7 +2238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../db-recovery/" class="md-nav__link">
+      <a href="../../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2208,7 +2259,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../image-pull-backoff/" class="md-nav__link">
+      <a href="../../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2229,7 +2280,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kind-node-ip-mismatch/" class="md-nav__link">
+      <a href="../../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2250,7 +2301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cost-budget-exceeded/" class="md-nav__link">
+      <a href="../../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2271,7 +2322,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kagent-guardrails/" class="md-nav__link">
+      <a href="../../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2292,7 +2343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dr-region-failover/" class="md-nav__link">
+      <a href="../../runbooks/dr-region-failover/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2348,7 +2399,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/incident-severity.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/design/adr-0008-litellm-multiprovider-gateway.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2356,82 +2407,198 @@
   
 
 
-<h1 id="incident-severity">Incident severity<a class="headerlink" href="#incident-severity" title="Permanent link">&para;</a></h1>
-<p>One vocabulary, mapped at the single point where alerts enter the platform.</p>
-<p>There used to be four. Prometheus rules emit <code>critical</code> / <code>warning</code> / <code>info</code>; the
-GitHub issue labels used those same values; <code>docs/postmortem-template.md</code> and the
-Support page use <code>P1</code> / <code>P2</code> / <code>P3</code>; and <code>incident-agent</code>'s system prompt said
-"Sev-1". Nothing translated between them, so a P1 in one place was a <code>critical</code> in
-another and a Sev-1 in a third.</p>
-<h2 id="the-mapping">The mapping<a class="headerlink" href="#the-mapping" title="Permanent link">&para;</a></h2>
+<h1 id="adr-0008-litellm-as-the-central-multi-provider-model-backend">ADR-0008: LiteLLM as the central multi-provider model backend<a class="headerlink" href="#adr-0008-litellm-as-the-central-multi-provider-model-backend" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted · <strong>Date:</strong> 2026-09-13</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p><a href="../adr-0007-ai-gateway/">ADR-0007</a> put one gateway in front of both MCP tools
+and model traffic, and routed model traffic to Anthropic directly — the only
+provider any agent actually used. Its own Consequences table flagged Bedrock as
+"not wired — needs an IRSA role" and named agentgateway's native path to close
+that gap: <code>provider: bedrock</code> with <code>auth.aws</code> on an IRSA-annotated
+ServiceAccount, "one entry in the <code>llm:</code> block."</p>
+<p>That native path was evaluated here and rejected — not because it doesn't work,
+but because it only solves half the actual problem. Bedrock <em>connectivity</em>
+was never really the ask; the ask was centralized access to multiple providers
+with <strong>virtual keys, per-team budget enforcement, and spend tracking</strong>, none of
+which agentgateway has. agentgateway's own cost visibility is per-request
+telemetry for its console and, separately, Langfuse traces — neither is a
+budget <em>enforced at the proxy</em>, and neither hands out scoped credentials per
+consumer. Wiring <code>provider: bedrock</code> directly would have closed the
+connectivity gap while leaving the actual capability gap open, and then
+required a second migration later to add a budget layer on top.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p><strong>LiteLLM sits behind agentgateway as the model backend for both Anthropic and
+Bedrock.</strong> agentgateway keeps everything ADR-0007 gave it — MCP multiplexing,
+<code>failOpen</code>, <code>prefixMode: never</code>, the admin console — untouched. Only its
+<code>llm.models</code> upstream changes, from <code>api.anthropic.com</code> directly to LiteLLM's
+Service (<code>kubernetes/ml-platform/litellm.yaml</code>).</p>
+<h3 id="1-provider-anthropic-baseurl-not-provider-openai">1. <code>provider: anthropic</code> + <code>baseUrl</code>, not <code>provider: openAI</code><a class="headerlink" href="#1-provider-anthropic-baseurl-not-provider-openai" title="Permanent link">&para;</a></h3>
+<p>This was <strong>validated empirically against a live LiteLLM instance</strong>, not
+assumed from documentation. Two shapes were tried in an isolated scratch
+namespace, agentgateway unmodified in production:</p>
+<ul>
+<li><code>provider: openAI</code> with <code>params.baseUrl</code> pointed at LiteLLM — <strong>fails</strong>. A
+  <code>/v1/messages</code> call through agentgateway reached LiteLLM's internal
+  <code>anthropic_messages()</code> compatibility handler but silently dropped
+  <code>max_tokens</code>, producing a 500:
+  <code>"anthropic_messages() missing 1 required positional argument: 'max_tokens'"</code>.</li>
+<li><code>provider: anthropic</code> with <code>params.baseUrl</code> pointed at LiteLLM's own native
+  <code>/v1/messages</code> passthrough — <strong>works cleanly</strong>. A raw <code>/v1/messages</code> POST
+  round-tripped to a byte-for-byte valid Anthropic Messages response, with zero
+  protocol translation anywhere in the chain.</li>
+</ul>
+<p><strong>Consequence: ADR-0007 Decision 6's substance was not reversed.</strong> Agents still
+speak Anthropic's native protocol end to end — nothing is translated into an
+OpenAI shape. Only the upstream <em>host</em> changed. <code>kubernetes/kagent/modelconfig*.yaml</code>
+needed zero changes: they still say <code>provider: Anthropic</code>, <code>anthropic.baseUrl</code>
+pointed at agentgateway, exactly as before.</p>
+<h3 id="2-bedrock-is-a-litellm-model_list-entry-not-a-separate-code-path">2. Bedrock is a LiteLLM <code>model_list</code> entry, not a separate code path<a class="headerlink" href="#2-bedrock-is-a-litellm-model_list-entry-not-a-separate-code-path" title="Permanent link">&para;</a></h3>
+<p><code>kubernetes/ml-platform/litellm.yaml</code>'s <code>model_list</code> carries both Anthropic
+direct entries (<code>anthropic/claude-*</code>) and Bedrock-backed entries
+(<code>bedrock/anthropic.claude-*</code>). agentgateway adds one more <code>llm.models</code> entry
+per Bedrock model name — still <code>provider: anthropic</code>, still the same LiteLLM
+<code>baseUrl</code> — because LiteLLM normalizes the Bedrock response back into Anthropic
+Messages shape before it reaches agentgateway. agentgateway's side of the
+config is identical for both providers; only LiteLLM's <code>litellm_params.model</code>
+differs between entries.</p>
+<h3 id="3-bedrock-access-is-irsa-on-aws-only">3. Bedrock access is IRSA, on AWS only<a class="headerlink" href="#3-bedrock-access-is-irsa-on-aws-only" title="Permanent link">&para;</a></h3>
+<p><code>terraform/iam-litellm-bedrock.tf</code> grants a new <code>litellm</code> ServiceAccount
+(<code>aws/ml-platform/litellm-serviceaccount.yaml</code>) <code>bedrock:InvokeModel</code> /
+<code>bedrock:InvokeModelWithResponseStream</code>, scoped to
+<code>arn:aws:bedrock:*::foundation-model/anthropic.claude-*</code> — not <code>*</code>, same
+least-privilege convention as every other IRSA role in this repo
+(<code>terraform/iam-crossplane.tf</code>). This is the exact role ADR-0007 said didn't
+exist yet.</p>
+<p>No static AWS credentials for Bedrock exist anywhere in this platform,
+including locally. Kind has no OIDC provider to federate an IRSA role against,
+so on local the Bedrock <code>model_list</code> entries are present (one file for both
+environments) but unreachable — a call to one fails with a Bedrock auth error,
+not a routing error. This matches the platform's existing IRSA-over-static-keys
+convention (Crossplane, External Secrets); local Bedrock testing is a manual,
+undocumented-by-default path (export real AWS credentials into the pod), not a
+first-class flag.</p>
+<h3 id="4-opt-in-on-local-on-by-default-on-aws">4. Opt-in on local, on by default on AWS<a class="headerlink" href="#4-opt-in-on-local-on-by-default-on-aws" title="Permanent link">&para;</a></h3>
+<p><code>bootstrap-ai.sh --litellm</code> (tri-state, same pattern as <code>--langfuse</code>): unset
+resolves to <code>false</code> on local Kind, <code>true</code> on <code>--aws</code>. Local stays opt-in
+because LiteLLM is a second proxy process — Python/Uvicorn, not agentgateway's
+64Mi Rust binary — on a cluster <a href="../../local-setup/">docs/local-setup.md</a>
+measures to have roughly 1.2–1.5GB of headroom once the full stack is running.
+AWS has no such constraint, and Bedrock only exists there, so there's nothing
+to gate.</p>
+<p>Without <code>--litellm</code> on local, the AI Gateway still deploys and MCP tools still
+work — only <code>/v1/messages</code> fails, now upstream against LiteLLM's absence rather
+than against a missing <code>ANTHROPIC_API_KEY</code> (that failure mode still exists too,
+independently: <code>ANTHROPIC_API_KEY</code> remains a hard requirement regardless of
+<code>--litellm</code>, because LiteLLM's own config reads it, and other direct consumers —
+the <code>langgraph-agent</code> and <code>llm-app-langfuse</code> skeletons, DeepEval — still exist
+per ADR-0007's Context).</p>
+<h3 id="5-credentials-one-secrets-manager-entry-reused">5. Credentials: one Secrets Manager entry, reused<a class="headerlink" href="#5-credentials-one-secrets-manager-entry-reused" title="Permanent link">&para;</a></h3>
+<p><code>LITELLM_MASTER_KEY</code> (LiteLLM's own inbound auth) was added as a second key
+inside the existing <code>idp-mvp/kagent</code> Secrets Manager entry
+(<code>terraform/secrets.tf</code>), rather than a new secret — same reuse decision
+ADR-0007 made for the Anthropic key sync. <code>aws/ml-platform/litellm-external-secret.yaml</code>
+syncs both <code>ANTHROPIC_API_KEY</code> and <code>LITELLM_MASTER_KEY</code> from it into a
+<code>litellm-keys</code> Secret in <code>ml-platform</code>.</p>
+<p>The old <code>ai-gateway-llm-keys</code> Secret and its ExternalSecret
+(<code>aws/ml-platform/ai-gateway-external-secret.yaml</code>) are deleted, not left as a
+one-cycle no-op: agentgateway no longer reads <code>ANTHROPIC_API_KEY</code> directly, and
+a stale Secret sitting next to the real one is a worse failure mode than a
+clean cutover.</p>
+<h3 id="6-a-database-is-required-not-optional-discovered-post-deploy">6. A database is required, not optional — discovered post-deploy<a class="headerlink" href="#6-a-database-is-required-not-optional-discovered-post-deploy" title="Permanent link">&para;</a></h3>
+<p>Not anticipated when this ADR was first written: LiteLLM's <code>/ui</code> login fails
+outright ("Authentication Error, Not connected to DB!") and its budget
+enforcement is silently a no-op without a Postgres <code>DATABASE_URL</code> — confirmed
+against BerriAI's own docs and a live deploy. Since virtual keys and budget
+enforcement are this ADR's actual rationale (Decision above), a DB is not
+optional infrastructure here the way it might be for a pure routing proxy.</p>
+<p>Local gets a dedicated Postgres pod (<code>local/ml-platform/litellm-postgres.yaml</code>,
+plaintext local-only credentials, same pragmatism as <code>backstage-postgres</code> in
+docker-compose). AWS gets a dedicated RDS instance (<code>terraform/rds.tf</code>,
+<code>aws_db_instance.litellm</code>, gated behind <code>var.enable_litellm</code>) — same
+dedicated-per-component pattern Langfuse already uses, not shared with
+Backstage's instance. This also raised LiteLLM's measured memory floor
+further: DB-connected mode (Prisma client) needs more than DB-less mode did.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Prometheus <code>severity</code></th>
-<th>Priority</th>
-<th>Response</th>
-<th>Gets a tracked issue?</th>
+<th></th>
+<th>Before (ADR-0007)</th>
+<th>After (ADR-0008)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>critical</code></td>
-<td><strong>P1</strong></td>
-<td>Pages on-call via PagerDuty. Acknowledge within 15 min.</td>
-<td>Yes</td>
+<td>Model providers</td>
+<td>Anthropic only</td>
+<td>Anthropic + Bedrock</td>
 </tr>
 <tr>
-<td><code>warning</code></td>
-<td><strong>P2</strong></td>
-<td>Slack <code>#platform-alerts</code>. Handle within the working day.</td>
-<td>Only if <code>INCIDENT_SEVERITIES</code> includes <code>warning</code></td>
+<td>Protocol translation</td>
+<td>None (native <code>/v1/messages</code>)</td>
+<td>Still none — validated, not assumed</td>
 </tr>
 <tr>
-<td><code>info</code></td>
-<td><strong>P3</strong></td>
-<td>Slack. Next working day.</td>
-<td>No</td>
+<td>Budget/virtual keys</td>
+<td>None</td>
+<td>LiteLLM (per-key, per-team)</td>
+</tr>
+<tr>
+<td>Network hops per model call</td>
+<td>agentgateway → Anthropic</td>
+<td>agentgateway → LiteLLM → Anthropic/Bedrock</td>
+</tr>
+<tr>
+<td>Local default</td>
+<td>N/A</td>
+<td>Off (<code>--litellm</code> opt-in)</td>
+</tr>
+<tr>
+<td>AWS default</td>
+<td>N/A</td>
+<td>On</td>
+</tr>
+<tr>
+<td>New IRSA role</td>
+<td>—</td>
+<td><code>litellm-bedrock</code>, scoped to <code>InvokeModel*</code> on Claude ARNs</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>dedicated Postgres pod</td>
+<td>dedicated RDS (<code>aws_db_instance.litellm</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Anything unrecognised maps to <strong>P3</strong> rather than failing — an alert with a typo'd
-severity should still be routed, just not paged on.</p>
-<p>Defined once in <code>services/agent-event-router/src/incidents.ts</code> (<code>SEVERITY_MAP</code>).
-Change it there, not in the four places that used to disagree.</p>
-<h2 id="where-each-value-appears">Where each value appears<a class="headerlink" href="#where-each-value-appears" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Alert rules</strong> — <code>observability/alertmanager/prometheus-rules.yaml</code> sets
-  <code>severity:</code> on every rule. That label is what drives routing.</li>
-<li><strong>Routing</strong> — <code>observability/alertmanager/alertmanager-config.yaml</code>. Critical
-  goes to PagerDuty <em>and</em> Slack; warning to Slack; both also reach
-  <code>agent-event-router</code> for triage and record-keeping.</li>
-<li><strong>Issue labels</strong> — records carry <strong>both</strong> <code>severity:P1</code> and
-  <code>severity:critical</code> during the transition, so <code>get_open_incidents</code> filters
-  correctly whichever you ask for.</li>
-<li><strong>Postmortems</strong> — <code>docs/postmortem-template.md</code> uses the P-form. A postmortem
-  is required for P1 and P2 within 48 hours of resolution; the draft is opened
-  automatically (see <code>.github/workflows/postmortem.yml</code>).</li>
+<li><strong>One added network hop, one new uptime dependency.</strong> A model call now
+  depends on LiteLLM being up in addition to agentgateway. No protocol risk
+  (validated), but a real availability dependency that didn't exist before.</li>
+<li><strong>LiteLLM's resource footprint is an unmeasured placeholder as of this
+  writing</strong> — <code>kubernetes/ml-platform/litellm.yaml</code> starts from mlflow's tier
+  (256Mi/512Mi) explicitly labeled as such. Re-measure after first deploy and
+  replace with real numbers, per this repo's own convention
+  (<code>ai-gateway.yaml</code>, <code>mlflow.yaml</code> are both measured, not guessed).</li>
+<li><strong>Cost-attribution double-counting risk grows, not shrinks.</strong> ADR-0007
+  already flagged an open question about the gateway's own telemetry
+  double-counting against Langfuse. LiteLLM adds a <em>third</em> place usage could be
+  recorded (its own spend dashboard). Not resolved here — flagging it so it
+  isn't rediscovered independently.</li>
+<li><strong>Bedrock model coverage requires two files to agree.</strong> A model added to
+  LiteLLM's <code>model_list</code> but not to agentgateway's <code>llm.models</code> (or vice versa)
+  fails at call time, not at deploy time — same shape as the existing
+  <code>scripts/validate-mcp-tool-names.py</code> problem for MCP tools, without an
+  equivalent validator yet.</li>
 </ul>
-<h2 id="which-issues-get-filed">Which issues get filed<a class="headerlink" href="#which-issues-get-filed" title="Permanent link">&para;</a></h2>
-<p><code>INCIDENT_SEVERITIES</code> on <code>agent-event-router</code> controls this, and defaults to
-<code>critical</code> alone. Filing for warnings on a noisy cluster buries the repository —
-turn it on deliberately, once the warning volume is known:</p>
-<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INCIDENT_SEVERITIES</span>
-<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;critical,warning&quot;</span>
-</code></pre></div></td></tr></table></div>
-<h2 id="a-caveat-on-slo-burn-rate-alerts">A caveat on SLO burn-rate alerts<a class="headerlink" href="#a-caveat-on-slo-burn-rate-alerts" title="Permanent link">&para;</a></h2>
-<p>The SLO alerts (<code>SLOErrorBudgetFastBurn</code>, <code>SLOErrorBudgetSlowBurn</code>) depend on
-Sloth recording rules. <strong>No Sloth operator runs in-cluster</strong> — the
-<code>PrometheusServiceLevel</code> CRD is inert and the rules are vendored, so editing an
-SLO source file without the <code>sloth</code> binary on PATH silently changes nothing. See
-<a href="../../sre-reliability/">SRE &amp; Reliability</a> for the full explanation. A burn-rate
-alert that never fires is not the same as an error budget that is healthy.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../sre-reliability/">SRE &amp; Reliability</a> — SLOs, error budgets, the postmortem process</li>
-<li><a href="../../postmortem-template/"><code>docs/postmortem-template.md</code></a></li>
-<li><a href="../">Runbook index</a></li>
+<li><a href="../adr-0007-ai-gateway/">ADR-0007</a> — the gateway this amends</li>
+<li><a href="../adr-0005-llm-serving-and-agent-frameworks/">ADR-0005</a> — Bedrock originally
+  deferred here</li>
+<li><a href="../../local-setup/">local-setup.md</a> — the memory-ceiling numbers behind the
+  opt-in decision</li>
+<li><a href="../../scripts-reference/#bootstrap-aish-flags">scripts-reference.md</a> —
+  <code>--litellm</code> / <code>--skip-litellm</code></li>
 </ul>
 
 
@@ -2462,7 +2629,7 @@ alert that never fires is not the same as an error budget that is healthy.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+          <a href="../adr-0006-engineering-intelligence/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADR-0006: Engineering Intelligence">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2472,20 +2639,20 @@ alert that never fires is not the same as an error budget that is healthy.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Overview
+                ADR-0006: Engineering Intelligence
               </div>
             </div>
           </a>
         
         
           
-          <a href="../deployment-rollback/" class="md-footer__link md-footer__link--next" aria-label="Next: Deployment Rollback">
+          <a href="../../team-management/" class="md-footer__link md-footer__link--next" aria-label="Next: Team Management">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Deployment Rollback
+                Team Management
               </div>
             </div>
             <div class="md-footer__button md-icon">
