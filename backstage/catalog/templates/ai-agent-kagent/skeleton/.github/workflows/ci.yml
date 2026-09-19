@@ -47,6 +47,11 @@ jobs:
               # bootstrapped with `bootstrap-ai.sh --ollama`; an agent using it
               # on a cluster without that will fail at runtime, not here.
               "ollama-local",
+              # Bedrock via LiteLLM (ADR-0008). Only reachable once the platform
+              # has been bootstrapped with `bootstrap-ai.sh --litellm`; on a
+              # cluster without that (e.g. local Kind, no IRSA) it fails with a
+              # Bedrock auth error at runtime, not here.
+              "claude-sonnet-bedrock",
           ]
 
           errors = []
