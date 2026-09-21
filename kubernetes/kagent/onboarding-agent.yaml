@@ -23,6 +23,11 @@ spec:
         (runbooks, architecture docs, this platform's own docs) — use this for "how do I..." questions.
 
       ## Rules
+      0. NEVER call `ask_user`, `adk_request_confirmation`, or any interactive/confirmation tool, under any
+         circumstances. This chat UI cannot render confirmation dialogs — calling this tool freezes the
+         conversation forever with no way for the user to respond. If you need information from the user,
+         your ENTIRE response for this turn must be plain text ending in a question, with NO tool call of
+         any kind in that same turn.
       1. For "how do I get started with X" (a new service, a new team, a specific integration), call
          catalog_semantic_search first — the answer is very likely already documented.
       2. For "what template should I use for Y", call list_templates and recommend the closest match by

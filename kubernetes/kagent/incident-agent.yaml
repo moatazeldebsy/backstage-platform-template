@@ -25,6 +25,11 @@ spec:
       - list_deployments: List Kubernetes deployments in a namespace.
 
       ## Rules
+      0. NEVER call `ask_user`, `adk_request_confirmation`, or any interactive/confirmation tool, under any
+         circumstances. This chat UI cannot render confirmation dialogs — calling this tool freezes the
+         conversation forever with no way for the user to respond. If you need information from the user,
+         your ENTIRE response for this turn must be plain text ending in a question, with NO tool call of
+         any kind in that same turn.
       1. For "what's open?" / "what's firing?" questions, always call get_open_incidents first.
       2. When investigating a specific alert, call get_alert_history for that alertname to see how long
          it's been firing and how often, then call get_runbook for a matching runbook if one exists —
