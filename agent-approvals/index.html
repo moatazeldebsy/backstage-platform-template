@@ -1282,6 +1282,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#phase-4b-consent-delegation-and-verified-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4b — Consent, delegation, and verified identity
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 4b — Consent, delegation, and verified identity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verified-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verified identity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consent-grants" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consent grants
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       Troubleshooting
@@ -2443,7 +2476,7 @@
 
 <h1 id="agent-approvals">Agent Approvals<a class="headerlink" href="#agent-approvals" title="Permanent link">&para;</a></h1>
 <p>Human-in-the-loop (HiTL) gate for agent-initiated mutating actions — powered by <code>approval-service</code>, a policy ConfigMap, and enforcement inside the MCP tool servers themselves.</p>
-<p>Shipped as ADP Phase 4. See <a href="../agentic-platform/">Agentic Development Platform</a> for how it fits the wider agent architecture.</p>
+<p>Shipped as ADP Phase 4, extended by Phase 4b (below) with a consent/delegation layer and verified identity. See <a href="../agentic-platform/">Agentic Development Platform</a> for how it fits the wider agent architecture.</p>
 <hr />
 <h2 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
 <p>Agents that can only read are safe and not very useful. The moment an agent can sync an ArgoCD app, roll back a deployment, or approve a pull request, "the system prompt tells it to ask first" stops being a control — it's a suggestion the model is free to skip, and nothing in the platform records that it did.</p>
@@ -2724,6 +2757,53 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.id
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="phase-4b-consent-delegation-and-verified-identity">Phase 4b — Consent, delegation, and verified identity<a class="headerlink" href="#phase-4b-consent-delegation-and-verified-identity" title="Permanent link">&para;</a></h2>
+<p>Phase 4 answers "did <em>some</em> authorized human sign off on this specific call". It doesn't answer a different question: did the user an agent claims to be acting for actually agree that agent may act for them at all? Before Phase 4b, <code>X-Backstage-User</code> — the header <code>idp-mcp-server</code> binds user-memory operations to, and which now stamps <code>agent_approvals.requested_by_user</code> — was set by the <strong>browser</strong>, and the generic <code>/api/proxy/kagent</code> passthrough forwards headers verbatim. Anyone with a valid Backstage session could set a different value and have it trusted downstream.</p>
+<h3 id="verified-identity">Verified identity<a class="headerlink" href="#verified-identity" title="Permanent link">&para;</a></h3>
+<p><code>backstage/app/packages/backend/src/modules/idpAiIdentityProxy.ts</code> replaces that path. The AI Assistant chat page now POSTs to <code>POST /api/idp-ai-identity/a2a/kagent/:agent</code> instead of <code>/api/proxy/kagent/a2a/kagent/:agent</code>. The new route resolves the caller's identity server-side via <code>httpAuth.credentials(req, { allow: ['user'] })</code> — the same pattern <code>idpLearningCenter.ts</code> uses — ignores any client-supplied <code>X-Backstage-User</code>, and sets the header itself before forwarding to KAgent (<code>KAGENT_EXTERNAL_URL</code>, same env var <code>idpDeployAgent.ts</code> / <code>idpSetupContractTesting.ts</code> already use). A forged header in the incoming browser request never reaches KAgent.</p>
+<h3 id="consent-grants">Consent grants<a class="headerlink" href="#consent-grants" title="Permanent link">&para;</a></h3>
+<p>A new <code>consent_grants</code> table on the same approval-service Postgres records standing authorizations: <em>user X allows agent Y to use tool Z</em>, with an optional expiry.</p>
+<div class="language-sql highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">consent_grants</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">user_ref</span><span class="p">,</span><span class="w"> </span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="k">scope</span><span class="p">,</span><span class="w"> </span><span class="n">granted_at</span><span class="p">,</span><span class="w"> </span><span class="n">expires_at</span><span class="p">,</span><span class="w"> </span><span class="n">revoked_at</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Body / query</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/consent/grant</code></td>
+<td><code>{user_ref, agent, scope, expires_at?}</code></td>
+<td>201 — the grant (upsert; re-granting un-revokes and refreshes expiry)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/consent/revoke</code></td>
+<td><code>{user_ref, agent, scope}</code></td>
+<td>the revoked grant, or 404 if none was active</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/consent/check</code></td>
+<td><code>?user_ref=&amp;agent=&amp;scope=</code></td>
+<td><code>{granted, expires_at?}</code> — <code>false</code> if missing, revoked, or expired</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/consent</code></td>
+<td><code>?user_ref=</code></td>
+<td><code>{total, grants[]}</code> — a user's own grants</td>
+</tr>
+</tbody>
+</table>
+<p><code>idp-mcp-server</code>'s <code>scaffold_service</code>, and <code>argocd-mcp-server</code>/<code>github-mcp-server</code>'s <code>sync_app</code> / <code>rollback_app</code> / <code>approve_pr</code>, call <code>GET /consent/check</code> immediately before their existing <code>requireApproval()</code>/policy check on a real (non-dry-run) call. Same fail-open shape as Phase 4: the check is skipped — not denied — when <code>APPROVAL_SERVICE_URL</code> is unset, or when there's no verified <code>userRef</code> (a call that didn't come through <code>idpAiIdentityProxy.ts</code>). A denial returns a structured message naming the agent, user, and scope rather than a bare error, since there is no self-service "grant consent" UI yet (self-service grant/revoke via <code>/approvals</code> is the natural next slice — today an admin calls <code>POST /consent/grant</code> directly).</p>
+<p>Consent and approval are independent gates that both apply to the same call: consent answers "did the user agree this agent may act for them", approval answers "did a human reviewer sign off on this specific action". A <code>[AUDIT] consent_granted</code> / <code>consent_revoked</code> / <code>consent_check_denied</code> line is emitted for each; <code>approval_requested</code> now also carries <code>user_ref</code> when the caller is on the identity-verified path.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>
