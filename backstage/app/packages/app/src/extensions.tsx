@@ -504,21 +504,21 @@ function AiAssistantPage() {
       };
       if (contextIdRef.current) message.contextId = contextIdRef.current;
 
-      // X-Backstage-User is set from the authenticated identity and forwarded
-      // by KAgent to outgoing MCP calls — the LLM cannot influence it.
-      // This is the out-of-band identity binding for user memory (IDOR prevention).
-      const identityHeaders: Record<string, string> = userRef
-        ? { 'X-Backstage-User': userRef }
-        : {};
-
       // Capture sentAt BEFORE issuing the request — the a2a endpoint streams
       // the full agent turn (10-60s), so timing this after the call would put
       // it well past the session's created_at and break the window check below.
       const sentAt = Date.now();
 
-      const a2aRes = await fetchApi.fetch(`${proxyBase}/a2a/kagent/${agent}`, {
+      // Sends through the backend's idp-ai-identity proxy, NOT the generic
+      // /api/proxy/kagent passthrough: that proxy forwards whatever headers
+      // the client sends verbatim, so an X-Backstage-User set here in the
+      // browser would be trusted downstream unverified. The backend route
+      // resolves the caller's identity from their signed session itself
+      // (backend/src/modules/idpAiIdentityProxy.ts) and sets that header
+      // before forwarding to KAgent — this request no longer needs to.
+      const a2aRes = await fetchApi.fetch(`${base}/api/idp-ai-identity/a2a/kagent/${agent}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...identityHeaders },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'message/send',

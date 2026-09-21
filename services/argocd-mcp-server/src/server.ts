@@ -68,6 +68,31 @@ async function requireApproval(action: string, target: string, approvalId?: stri
   }
 }
 
+// ADP Phase 4b — consent gate (docs/agent-approvals.md), complementary to
+// requireApproval above: that checks a human reviewer signed off on this
+// specific call; this checks the user the agent claims to act for actually
+// authorized this agent to use this tool at all. Skips (fails open) when
+// there's no verified userRef — a deployment where identity isn't threaded
+// through yet behaves exactly as before, same as requireApproval without
+// APPROVAL_SERVICE_URL.
+async function requireConsent(userRef: string, agentId: string, action: string, target: string): Promise<void> {
+  if (!APPROVAL_SERVICE_URL || !userRef) return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
+  let res;
+  try {
+    const qs = new URLSearchParams({ user_ref: userRef, agent: agentId, scope: action });
+    res = await fetch(`${APPROVAL_SERVICE_URL}/consent/check?${qs.toString()}`, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`Could not verify consent for ${userRef}: HTTP ${res.status}`);
+  const { granted } = await res.json() as { granted: boolean };
+  if (!granted) {
+    throw new Error(`${agentId} is not authorized by ${userRef} to run ${action} yet. Grant consent via POST /consent/grant on approval-service, then retry.`);
+  }
+}
+
 export async function argoFetch(path: string, init: RequestInit = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
@@ -87,13 +112,13 @@ export async function argoFetch(path: string, init: RequestInit = {}) {
   }
 }
 
-export function createServer(agentId: string = 'unknown') {
+export function createServer(agentId: string = 'unknown', userRef: string = '') {
   const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' });
 
   // Wraps every server.tool() registered below in a Langfuse span. Must come
   // before the registrations. No-op (and does not patch anything) unless
   // tracing is enabled — see telemetry.ts.
-  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef: '' });
+  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef });
 
   server.tool(
     'list_apps',
@@ -246,7 +271,7 @@ export function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'sync_app' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'sync_app', agent: agentId });
       let outcome = 'success';
-      auditLog({ action: 'sync_app_requested', agent: agentId, app: app_name, revision, prune, dry_run, approval_id });
+      auditLog({ action: 'sync_app_requested', agent: agentId, user_ref: userRef || undefined, app: app_name, revision, prune, dry_run, approval_id });
       try {
         if (dry_run) {
           return {
@@ -256,6 +281,7 @@ export function createServer(agentId: string = 'unknown') {
             }],
           };
         }
+        await requireConsent(userRef, agentId, 'sync_app', app_name);
         await requireApproval('sync_app', app_name, approval_id);
         const body: Record<string, unknown> = { prune };
         if (revision) body.revision = revision;
@@ -265,7 +291,7 @@ export function createServer(agentId: string = 'unknown') {
         });
         if (!res.ok) throw new Error(`ArgoCD API error ${res.status}: ${await res.text()}`);
         const data = await res.json() as { metadata: { name: string }; status: { operationState?: { phase: string; message?: string } } };
-        auditLog({ action: 'sync_app_triggered', agent: agentId, app: app_name, revision, prune });
+        auditLog({ action: 'sync_app_triggered', agent: agentId, user_ref: userRef || undefined, app: app_name, revision, prune });
         return {
           content: [{
             type: 'text' as const,
@@ -299,7 +325,7 @@ export function createServer(agentId: string = 'unknown') {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'rollback_app' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'rollback_app', agent: agentId });
       let outcome = 'success';
-      auditLog({ action: 'rollback_app_requested', agent: agentId, app: app_name, revision_id, dry_run, approval_id });
+      auditLog({ action: 'rollback_app_requested', agent: agentId, user_ref: userRef || undefined, app: app_name, revision_id, dry_run, approval_id });
       try {
         if (dry_run) {
           return {
@@ -309,6 +335,7 @@ export function createServer(agentId: string = 'unknown') {
             }],
           };
         }
+        await requireConsent(userRef, agentId, 'rollback_app', app_name);
         await requireApproval('rollback_app', app_name, approval_id);
         const res = await argoFetch(`/api/v1/applications/${encodeURIComponent(app_name)}/rollback`, {
           method: 'POST',
@@ -316,7 +343,7 @@ export function createServer(agentId: string = 'unknown') {
         });
         if (!res.ok) throw new Error(`ArgoCD API error ${res.status}: ${await res.text()}`);
         const data = await res.json() as { metadata: { name: string }; status: { operationState?: { phase: string; message?: string } } };
-        auditLog({ action: 'rollback_app_triggered', agent: agentId, app: app_name, revision_id });
+        auditLog({ action: 'rollback_app_triggered', agent: agentId, user_ref: userRef || undefined, app: app_name, revision_id });
         return {
           content: [{
             type: 'text' as const,

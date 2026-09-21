@@ -83,6 +83,22 @@ export async function fetchPrometheus(query: string) {
   return res.json() as Promise<{ data: { result: Array<{ metric: Record<string, string>; value: [number, string] }> } }>;
 }
 
+// ADP Phase 4b — consent gate (docs/agent-approvals.md). Distinct from the
+// Phase 4 approval gate below: this checks whether the specific user the
+// agent is acting for (userRef, bound at the HTTP boundary from
+// X-Backstage-User) has standing-authorized this agent for this tool at all.
+// Degrades to "always allowed" when either the approval service isn't
+// deployed or no verified userRef is present — the same fail-open shape as
+// check_policy/request_approval, so a base install without Phase 4/4b
+// behaves exactly as before.
+export async function checkConsent(userRef: string, agent: string, scope: string): Promise<{ granted: boolean }> {
+  if (!APPROVAL_SERVICE_URL || !userRef) return { granted: true };
+  const qs = new URLSearchParams({ user_ref: userRef, agent, scope });
+  const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/consent/check?${qs.toString()}`);
+  if (!res.ok) throw new Error(`approval-service error ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<{ granted: boolean }>;
+}
+
 export async function fetchK8s(path: string) {
   const token = K8S_TOKEN || cachedSaToken;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -201,13 +217,31 @@ export function createServer(agentId = 'unknown', userRef = '') {
         const enrichedValues: Record<string, unknown> = { ...values };
         enrichedValues['repoUrl'] = normalizeRepoUrl(enrichedValues);
 
-        auditLog({ action: 'scaffold_service_requested', agent: agentId, template: template_ref, service: enrichedValues['name'], dry_run: !!dry_run });
+        auditLog({ action: 'scaffold_service_requested', agent: agentId, user_ref: userRef || undefined, template: template_ref, service: enrichedValues['name'], dry_run: !!dry_run });
 
         if (dry_run) {
           return {
             content: [{
               type: 'text' as const,
               text: JSON.stringify({ dry_run: true, message: 'Dry run — no service created. Review the parameters below, then call scaffold_service again without dry_run to proceed.', template: template_ref, values: enrichedValues }, null, 2),
+            }],
+          };
+        }
+
+        const consent = await checkConsent(userRef, agentId, 'scaffold_service');
+        if (!consent.granted) {
+          outcome = 'denied';
+          auditLog({ action: 'scaffold_service_consent_denied', agent: agentId, user_ref: userRef || undefined });
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: 'consent_required',
+                message: `${agentId} is not authorized to run scaffold_service on your behalf yet. Ask a platform admin to grant it via POST /consent/grant on approval-service, or grant it yourself from the Backstage approvals page once consent self-service ships.`,
+                user_ref: userRef || null,
+                agent: agentId,
+                scope: 'scaffold_service',
+              }, null, 2),
             }],
           };
         }
@@ -241,7 +275,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
           }
         }
 
-        auditLog({ action: 'scaffold_service_completed', agent: agentId, template: template_ref, task_id: task.id, status: taskStatus });
+        auditLog({ action: 'scaffold_service_completed', agent: agentId, user_ref: userRef || undefined, template: template_ref, task_id: task.id, status: taskStatus });
         if (taskStatus === 'failed') outcome = 'error';
 
         return {
@@ -252,7 +286,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
         };
       } catch (err) {
         outcome = 'error';
-        auditLog({ action: 'scaffold_service_error', agent: agentId, error: String(err) });
+        auditLog({ action: 'scaffold_service_error', agent: agentId, user_ref: userRef || undefined, error: String(err) });
         throw err;
       } finally { end(); toolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_service', outcome }); }
     },
@@ -497,7 +531,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
         const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/approvals`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, agent: agentId, target, context: context ?? {} }),
+          body: JSON.stringify({ action, agent: agentId, target, context: context ?? {}, requested_by_user: userRef || undefined }),
         });
         if (!res.ok) throw new Error(`approval-service error ${res.status}: ${await res.text()}`);
         return { content: [{ type: 'text' as const, text: await res.text() }] };
