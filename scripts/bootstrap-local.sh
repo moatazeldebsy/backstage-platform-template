@@ -710,7 +710,8 @@ _start_backstage() {
     write_backstage_ai_overlay true \
       "$(langfuse_installed && echo true || echo false)" \
       "$(kagent_installed   && echo true || echo false)" \
-      "$(mlflow_installed   && echo true || echo false)"
+      "$(mlflow_installed   && echo true || echo false)" \
+      "$(litellm_installed  && echo true || echo false)"
   else
     write_backstage_ai_overlay false
   fi

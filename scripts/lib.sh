@@ -1423,7 +1423,14 @@ mlflow_installed() {
   kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -q mlflow
 }
 
-# Usage: write_backstage_ai_overlay true|false [langfuse] [kagent] [mlflow]
+# LiteLLM is opt-in even when the rest of the AI stack is up (ADR-0008:
+# `bootstrap-ai.sh --litellm`, on by default on --aws), same asymmetry as
+# Langfuse above — checks for the actual Deployment, not the namespace.
+litellm_installed() {
+  kubectl get deployment litellm -n ml-platform -o name 2>/dev/null | grep -q .
+}
+
+# Usage: write_backstage_ai_overlay true|false [langfuse] [kagent] [mlflow] [litellm]
 #   Each optional flag defaults to the first argument, so a bare `false` still
 #   disables everything.
 #
@@ -1450,7 +1457,8 @@ write_backstage_ai_overlay() {
   local langfuse_enabled="${2:-$enabled}"
   local kagent_enabled="${3:-$enabled}"
   local mlflow_enabled="${4:-$enabled}"
-  local kagent_disabled mlflow_disabled lf_disabled
+  local litellm_enabled="${5:-$enabled}"
+  local kagent_disabled mlflow_disabled lf_disabled litellm_disabled
 
   # Each page is gated on ITS OWN component, not on the AI layer as a whole.
   #
@@ -1463,6 +1471,7 @@ write_backstage_ai_overlay() {
   kagent_disabled=$(_off "$kagent_enabled")
   mlflow_disabled=$(_off "$mlflow_enabled")
   lf_disabled=$(_off "$langfuse_enabled")
+  litellm_disabled=$(_off "$litellm_enabled")
 
   # bootstrap-local.sh calls the repo root ROOT_DIR, bootstrap-ai.sh calls it
   # REPO_ROOT. Accept either so this helper works unchanged from both.
@@ -1508,6 +1517,10 @@ app:
         disabled: ${lf_disabled}
     - nav-item:custom-pages/langfuse-platform:
         disabled: ${lf_disabled}
+    - page:custom-pages/litellm-spend:
+        disabled: ${litellm_disabled}
+    - nav-item:custom-pages/litellm-spend:
+        disabled: ${litellm_disabled}
 
 aiStack:
   enabled: ${enabled}
