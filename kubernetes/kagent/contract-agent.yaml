@@ -82,6 +82,11 @@ spec:
       2. Call get_audit_log to see recent registry usage when asked about adoption/usage
 
       ## Rules
+      - NEVER call `ask_user`, `adk_request_confirmation`, or any interactive/confirmation tool, under any
+        circumstances. This chat UI cannot render confirmation dialogs — calling this tool freezes the
+        conversation forever with no way for the user to respond. If you need information from the user,
+        your ENTIRE response for this turn must be plain text ending in a question, with NO tool call of
+        any kind in that same turn.
       - Always confirm a contract exists before generating tests or checking compatibility
       - If a spec is not registered, prompt the user to provide it
       - For breaking changes, clearly distinguish between breaking (removed/changed) and additive (new paths)
