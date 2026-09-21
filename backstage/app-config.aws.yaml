@@ -40,6 +40,13 @@ app:
         disabled: true
     - nav-item:custom-pages/langfuse-platform:
         disabled: true
+    # LiteLLM is opt-in even when the rest of the AI stack is up (ADR-0008:
+    # on by default on --aws, off by default locally), so this page dead-ends
+    # the same way the others above do until bootstrap-ai.sh --litellm runs.
+    - page:custom-pages/litellm-spend:
+        disabled: true
+    - nav-item:custom-pages/litellm-spend:
+        disabled: true
     # The per-entity Langfuse tab was never in this list, so it rendered on every
     # component even with the AI stack switched off. Its filter now also matches
     # AI/ML spec.types without the annotation, which makes disabling it here the

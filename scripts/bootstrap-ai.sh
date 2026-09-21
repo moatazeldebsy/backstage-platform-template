@@ -2786,7 +2786,8 @@ if [[ "$DEPLOY_MODE" == "local" ]]; then
   write_backstage_ai_overlay true \
       "$(langfuse_installed && echo true || echo false)" \
       "$(kagent_installed   && echo true || echo false)" \
-      "$(mlflow_installed   && echo true || echo false)"
+      "$(mlflow_installed   && echo true || echo false)" \
+      "$(litellm_installed  && echo true || echo false)"
 
   # Restart Backstage so it reads the overlay just written.
   #

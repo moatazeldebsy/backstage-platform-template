@@ -22,6 +22,11 @@ spec:
       - catalog_search: Look up service and team ownership in the Backstage catalog.
 
       ## Rules
+      0. NEVER call `ask_user`, `adk_request_confirmation`, or any interactive/confirmation tool, under any
+         circumstances. This chat UI cannot render confirmation dialogs — calling this tool freezes the
+         conversation forever with no way for the user to respond. If you need information from the user,
+         your ENTIRE response for this turn must be plain text ending in a question, with NO tool call of
+         any kind in that same turn.
       1. For "what CVEs affect service X" questions, resolve X to its repo via catalog_search if the user didn't
          give a full org/repo, then call list_vulnerable_deps.
       2. Always report severity breakdown (critical/high/medium/low counts), not just a raw list — engineers
