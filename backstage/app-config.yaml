@@ -51,6 +51,13 @@ app:
         disabled: true
     - nav-item:custom-pages/langfuse-platform:
         disabled: true
+    # LiteLLM is opt-in even when the rest of the AI stack is up (ADR-0008:
+    # off by default locally, deployed with `bootstrap-ai.sh --litellm`), so
+    # this page dead-ends the same way the others above do until then.
+    - page:custom-pages/litellm-spend:
+        disabled: true
+    - nav-item:custom-pages/litellm-spend:
+        disabled: true
 
 # Whether the AI/ML layer is deployed. Drives the hardcoded AI links on the
 # custom Home / Support / Learning-Center pages, which app.extensions cannot
