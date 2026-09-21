@@ -6,15 +6,26 @@ jest.mock('../store.js', () => ({
   listApprovals: jest.fn(),
   decideApproval: jest.fn(),
   initSchema: jest.fn(),
+  grantConsent: jest.fn(),
+  revokeConsent: jest.fn(),
+  checkConsent: jest.fn(),
+  listConsentGrants: jest.fn(),
 }));
 
 import { createApp } from '../app.js';
-import { createApproval, getApproval, listApprovals, decideApproval } from '../store.js';
+import {
+  createApproval, getApproval, listApprovals, decideApproval,
+  grantConsent, revokeConsent, checkConsent, listConsentGrants,
+} from '../store.js';
 
 const mockCreateApproval = createApproval as jest.Mock;
 const mockGetApproval = getApproval as jest.Mock;
 const mockListApprovals = listApprovals as jest.Mock;
 const mockDecideApproval = decideApproval as jest.Mock;
+const mockGrantConsent = grantConsent as jest.Mock;
+const mockRevokeConsent = revokeConsent as jest.Mock;
+const mockCheckConsent = checkConsent as jest.Mock;
+const mockListConsentGrants = listConsentGrants as jest.Mock;
 
 beforeEach(() => jest.resetAllMocks());
 
@@ -113,6 +124,80 @@ describe('POST /approvals/:id/decide', () => {
   it('400s when decided_by is missing', async () => {
     const app = createApp();
     const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved' });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /consent/grant', () => {
+  it('creates a standing consent grant', async () => {
+    mockGrantConsent.mockResolvedValueOnce({ id: 'g-1', user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service', granted_at: 'now', expires_at: null, revoked_at: null });
+    const app = createApp();
+    const res = await request(app).post('/consent/grant').send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
+    expect(res.status).toBe(201);
+    expect(res.body.scope).toBe('scaffold_service');
+    expect(mockGrantConsent).toHaveBeenCalledWith('user:default/jane', 'idp-assistant', 'scaffold_service', null);
+  });
+
+  it('400s when a required field is missing', async () => {
+    const app = createApp();
+    const res = await request(app).post('/consent/grant').send({ user_ref: 'user:default/jane', agent: 'idp-assistant' });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /consent/revoke', () => {
+  it('revokes an active grant', async () => {
+    mockRevokeConsent.mockResolvedValueOnce({ id: 'g-1', user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service', granted_at: 'now', expires_at: null, revoked_at: 'now' });
+    const app = createApp();
+    const res = await request(app).post('/consent/revoke').send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
+    expect(res.status).toBe(200);
+    expect(res.body.revoked_at).toBe('now');
+  });
+
+  it('404s when there is no active grant to revoke', async () => {
+    mockRevokeConsent.mockResolvedValueOnce(null);
+    const app = createApp();
+    const res = await request(app).post('/consent/revoke').send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /consent/check', () => {
+  it('returns granted: true with expiry when an active grant exists', async () => {
+    mockCheckConsent.mockResolvedValueOnce({ id: 'g-1', user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service', granted_at: 'now', expires_at: 'later', revoked_at: null });
+    const app = createApp();
+    const res = await request(app).get('/consent/check?user_ref=user:default/jane&agent=idp-assistant&scope=scaffold_service');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ granted: true, expires_at: 'later' });
+  });
+
+  it('returns granted: false when no grant exists', async () => {
+    mockCheckConsent.mockResolvedValueOnce(null);
+    const app = createApp();
+    const res = await request(app).get('/consent/check?user_ref=user:default/jane&agent=idp-assistant&scope=scaffold_service');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ granted: false });
+  });
+
+  it('400s when a query param is missing', async () => {
+    const app = createApp();
+    const res = await request(app).get('/consent/check?user_ref=user:default/jane&agent=idp-assistant');
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /consent', () => {
+  it('lists a user\'s grants', async () => {
+    mockListConsentGrants.mockResolvedValueOnce([{ id: 'g-1', user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' }]);
+    const app = createApp();
+    const res = await request(app).get('/consent?user_ref=user:default/jane');
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(1);
+  });
+
+  it('400s when user_ref is missing', async () => {
+    const app = createApp();
+    const res = await request(app).get('/consent');
     expect(res.status).toBe(400);
   });
 });

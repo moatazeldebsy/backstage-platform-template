@@ -2,7 +2,7 @@
 
 Human-in-the-loop (HiTL) gate for agent-initiated mutating actions — powered by `approval-service`, a policy ConfigMap, and enforcement inside the MCP tool servers themselves.
 
-Shipped as ADP Phase 4. See [Agentic Development Platform](agentic-platform.md) for how it fits the wider agent architecture.
+Shipped as ADP Phase 4, extended by Phase 4b (below) with a consent/delegation layer and verified identity. See [Agentic Development Platform](agentic-platform.md) for how it fits the wider agent architecture.
 
 ---
 
@@ -168,6 +168,35 @@ Cases worth asserting, because each is a different failure mode:
 | `sync_app` real call, no `approval_id` | rejected: "Approval required for …" |
 | replaying an approval on a different app | rejected: "requested for a different action/target" |
 | retry after a **denial** | rejected: "is not approved (status: denied)" |
+
+---
+
+## Phase 4b — Consent, delegation, and verified identity
+
+Phase 4 answers "did *some* authorized human sign off on this specific call". It doesn't answer a different question: did the user an agent claims to be acting for actually agree that agent may act for them at all? Before Phase 4b, `X-Backstage-User` — the header `idp-mcp-server` binds user-memory operations to, and which now stamps `agent_approvals.requested_by_user` — was set by the **browser**, and the generic `/api/proxy/kagent` passthrough forwards headers verbatim. Anyone with a valid Backstage session could set a different value and have it trusted downstream.
+
+### Verified identity
+
+`backstage/app/packages/backend/src/modules/idpAiIdentityProxy.ts` replaces that path. The AI Assistant chat page now POSTs to `POST /api/idp-ai-identity/a2a/kagent/:agent` instead of `/api/proxy/kagent/a2a/kagent/:agent`. The new route resolves the caller's identity server-side via `httpAuth.credentials(req, { allow: ['user'] })` — the same pattern `idpLearningCenter.ts` uses — ignores any client-supplied `X-Backstage-User`, and sets the header itself before forwarding to KAgent (`KAGENT_EXTERNAL_URL`, same env var `idpDeployAgent.ts` / `idpSetupContractTesting.ts` already use). A forged header in the incoming browser request never reaches KAgent.
+
+### Consent grants
+
+A new `consent_grants` table on the same approval-service Postgres records standing authorizations: *user X allows agent Y to use tool Z*, with an optional expiry.
+
+```sql
+consent_grants (id, user_ref, agent, scope, granted_at, expires_at, revoked_at)
+```
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| `POST` | `/consent/grant` | `{user_ref, agent, scope, expires_at?}` | 201 — the grant (upsert; re-granting un-revokes and refreshes expiry) |
+| `POST` | `/consent/revoke` | `{user_ref, agent, scope}` | the revoked grant, or 404 if none was active |
+| `GET` | `/consent/check` | `?user_ref=&agent=&scope=` | `{granted, expires_at?}` — `false` if missing, revoked, or expired |
+| `GET` | `/consent` | `?user_ref=` | `{total, grants[]}` — a user's own grants |
+
+`idp-mcp-server`'s `scaffold_service`, and `argocd-mcp-server`/`github-mcp-server`'s `sync_app` / `rollback_app` / `approve_pr`, call `GET /consent/check` immediately before their existing `requireApproval()`/policy check on a real (non-dry-run) call. Same fail-open shape as Phase 4: the check is skipped — not denied — when `APPROVAL_SERVICE_URL` is unset, or when there's no verified `userRef` (a call that didn't come through `idpAiIdentityProxy.ts`). A denial returns a structured message naming the agent, user, and scope rather than a bare error, since there is no self-service "grant consent" UI yet (self-service grant/revoke via `/approvals` is the natural next slice — today an admin calls `POST /consent/grant` directly).
+
+Consent and approval are independent gates that both apply to the same call: consent answers "did the user agree this agent may act for them", approval answers "did a human reviewer sign off on this specific action". A `[AUDIT] consent_granted` / `consent_revoked` / `consent_check_denied` line is emitted for each; `approval_requested` now also carries `user_ref` when the caller is on the identity-verified path.
 
 ---
 

@@ -27,7 +27,12 @@ app.get('/metrics', async (_req, res) => {
 
 app.post('/mcp', express.json(), async (req, res) => {
   const agentId = (req.get('x-agent-id') ?? req.get('user-agent') ?? 'unknown').slice(0, 64);
-  const srv = createServer(agentId);
+  // X-Backstage-User is set by Backstage's idp-ai-identity proxy and forwarded
+  // by KAgent to outgoing MCP calls — see services/idp-mcp-server/src/index.ts
+  // for the same pattern and why it's bound here rather than trusted from a
+  // tool argument.
+  const userRef = (req.get('x-backstage-user') ?? '').slice(0, 128);
+  const srv = createServer(agentId, userRef);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   await srv.connect(transport);
   await transport.handleRequest(req, res, req.body);

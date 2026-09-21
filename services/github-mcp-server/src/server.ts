@@ -66,6 +66,29 @@ async function requireApproval(action: string, target: string, approvalId?: stri
   }
 }
 
+// ADP Phase 4b — consent gate (docs/agent-approvals.md), complementary to
+// requireApproval above: that checks a human reviewer signed off on this
+// specific call; this checks the user the agent claims to act for actually
+// authorized this agent to use this tool at all. Skips (fails open) when
+// there's no verified userRef.
+async function requireConsent(userRef: string, agentId: string, action: string, target: string): Promise<void> {
+  if (!APPROVAL_SERVICE_URL || !userRef) return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
+  let res;
+  try {
+    const qs = new URLSearchParams({ user_ref: userRef, agent: agentId, scope: action });
+    res = await fetch(`${APPROVAL_SERVICE_URL}/consent/check?${qs.toString()}`, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`Could not verify consent for ${userRef}: HTTP ${res.status}`);
+  const { granted } = await res.json() as { granted: boolean };
+  if (!granted) {
+    throw new Error(`${agentId} is not authorized by ${userRef} to run ${action} yet. Grant consent via POST /consent/grant on approval-service, then retry.`);
+  }
+}
+
 export async function ghFetch(path: string, init: RequestInit = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
@@ -87,13 +110,13 @@ export async function ghFetch(path: string, init: RequestInit = {}) {
   }
 }
 
-export function createServer(agentId: string = 'unknown') {
+export function createServer(agentId: string = 'unknown', userRef: string = '') {
   const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' });
 
   // Wraps every server.tool() registered below in a Langfuse span. Must come
   // before the registrations. No-op (and does not patch anything) unless
   // tracing is enabled — see telemetry.ts.
-  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef: '' });
+  instrumentTools(server, { serverName: SERVER_NAME, agentId, userRef });
 
   server.tool(
     'get_pr_diff',
@@ -209,7 +232,7 @@ export function createServer(agentId: string = 'unknown') {
     async ({ repo, pr_number, body, dry_run = true, approval_id }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'approve_pr' });
       let outcome = 'success';
-      auditLog({ action: 'approve_pr_requested', agent: agentId, repo, pr_number, dry_run, approval_id });
+      auditLog({ action: 'approve_pr_requested', agent: agentId, user_ref: userRef || undefined, repo, pr_number, dry_run, approval_id });
       try {
         if (dry_run) {
           return {
@@ -219,6 +242,7 @@ export function createServer(agentId: string = 'unknown') {
             }],
           };
         }
+        await requireConsent(userRef, agentId, 'approve_pr', `${repo}#${pr_number}`);
         await requireApproval('approve_pr', `${repo}#${pr_number}`, approval_id);
         const res = await ghFetch(`/repos/${repo}/pulls/${pr_number}/reviews`, {
           method: 'POST',
@@ -226,7 +250,7 @@ export function createServer(agentId: string = 'unknown') {
         });
         if (!res.ok) throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
         const review = await res.json() as { id: number; html_url: string };
-        auditLog({ action: 'pr_approved', agent: agentId, repo, pr_number, review_id: review.id });
+        auditLog({ action: 'pr_approved', agent: agentId, user_ref: userRef || undefined, repo, pr_number, review_id: review.id });
         return { content: [{ type: 'text' as const, text: JSON.stringify({ review_id: review.id, url: review.html_url }) }] };
       } catch (err) {
         outcome = 'error';
