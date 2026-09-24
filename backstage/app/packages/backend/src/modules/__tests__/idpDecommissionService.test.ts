@@ -264,4 +264,76 @@ describe('idp:decommission-service', () => {
     });
     await expect(action.handler(ctx)).rejects.toThrow(/Failed to unregister entity/);
   });
+  describe('GitOps file listing (platformRepo)', () => {
+    const input = {
+      entityRef: 'component:default/payments-api',
+      action: 'archive',
+      confirmationText: 'payments-api',
+      platformRepo: 'acme/platform',
+    };
+
+    beforeEach(() => {
+      mockGetEntityByName.mockResolvedValue({ spec: { memberOf: ['group:default/platform-team'] } });
+    });
+
+    // Regression: decommission used to stop at the catalog, so services/<name>/
+    // stayed in the platform repo and the ApplicationSet kept deploying it.
+    it('outputs only the blobs under services/<name>/ for the removal PR', async () => {
+      const fetchMock = mockFetchSequence([
+        { ok: true, json: { metadata: { uid: 'uid-1', annotations: {} } } },
+        { ok: true, status: 204 }, // unregister
+        {
+          ok: true,
+          json: {
+            tree: [
+              { path: 'services/payments-api', type: 'tree' },
+              { path: 'services/payments-api/helm-values-local.yaml', type: 'blob' },
+              { path: 'services/payments-api/claims/bucket.yaml', type: 'blob' },
+              { path: 'services/payments-api-v2/helm-values-local.yaml', type: 'blob' },
+              { path: 'services/hello-service/helm-values-local.yaml', type: 'blob' },
+            ],
+          },
+        },
+      ]);
+      const { ctx, outputs } = makeCtx(input);
+      await action.handler(ctx);
+
+      expect(fetchMock.mock.calls[2][0]).toBe(
+        'https://api.github.com/repos/acme/platform/git/trees/HEAD?recursive=1',
+      );
+      expect(outputs.gitopsFiles).toEqual([
+        'services/payments-api/helm-values-local.yaml',
+        'services/payments-api/claims/bucket.yaml',
+      ]);
+      expect(outputs.summary).toContain('removing services/payments-api/');
+    });
+
+    it('does not fail the decommission when the platform repo cannot be listed', async () => {
+      mockFetchSequence([
+        { ok: true, json: { metadata: { uid: 'uid-1', annotations: {} } } },
+        { ok: true, status: 204 },
+        { ok: false, status: 404 },
+      ]);
+      const { ctx, outputs } = makeCtx(input);
+      await action.handler(ctx);
+
+      expect(outputs.gitopsFiles).toEqual([]);
+      expect(outputs.summary).not.toContain('removing services/');
+      expect((ctx.logger.warn as jest.Mock).mock.calls.some(c => String(c[0]).includes('Remove it manually'))).toBe(true);
+    });
+
+    it('strips every idp / idp-* topic, including idp-app', async () => {
+      const fetchMock = mockFetchSequence([
+        { ok: true, json: { metadata: { uid: 'uid-1', annotations: { 'github.com/project-slug': 'acme/payments-api' } } } },
+        { ok: true, status: 200 }, // PATCH archive
+        { ok: true, json: { names: ['idp', 'idp-app', 'idp-service', 'idpx', 'payments'] } },
+        { ok: true, status: 200 }, // PUT topics
+        { ok: true, status: 204 }, // unregister
+        { ok: true, json: { tree: [] } },
+      ]);
+      const { ctx } = makeCtx(input);
+      await action.handler(ctx);
+      expect(JSON.parse(fetchMock.mock.calls[3][1].body).names).toEqual(['idpx', 'payments']);
+    });
+  });
 });

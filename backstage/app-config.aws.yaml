@@ -419,8 +419,9 @@ catalog:
         - allow: [Component, System, API, Resource, Location, User, Group, Domain]
 
   # Keep the topic list in sync with app-config.yaml — scaffolder templates tag
-  # new repos `idp-app`, so both topics must be included or the catalog (and
-  # therefore the DORA exporter, which only reports catalogued repos) misses them.
+  # new repos `idp-app` (mobile) or `idp-service` (services/frontends), so all
+  # three topics must be included or the catalog (and therefore the DORA
+  # exporter, which only reports catalogued repos) misses them.
   providers:
     github:
       idpOrg:
@@ -429,7 +430,7 @@ catalog:
         filters:
           branch: main
           topic:
-            include: [idp, idp-app]
+            include: [idp, idp-app, idp-service]
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }

@@ -10,6 +10,7 @@ metadata:
     - Archive a service repo on GitHub (freezes it as read-only, reversible)
     - Permanently delete a service repo on GitHub (irreversible)
     - Automatically unregister the service from the Backstage catalog
+    - Open a PR removing services/<name>/ from the platform repo, so ArgoCD stops deploying it
 
     **Warning**: Deletion is permanent and cannot be undone. Archive if you want to preserve history.
   tags:
@@ -73,8 +74,34 @@ spec:
         entityRef: ${{ parameters.entityRef }}
         action: ${{ parameters.action }}
         confirmationText: ${{ parameters.confirmationText }}
+        platformRepo: moatazeldebsy/backstage-platform-template
+
+    # The idp-services ApplicationSet deploys every services/<name>/ directory
+    # in the platform repo, independently of the service's own GitHub repo or
+    # catalog entity. Skipping this leaves ArgoCD running a service Backstage no
+    # longer knows about. Merging the PR drops the generated Application
+    # (prune: true) and its workloads.
+    - id: remove-gitops
+      name: Open PR removing services/${{ parameters.confirmationText }}/
+      if: ${{ steps.decommission.output.gitopsFiles.length > 0 }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
+        title: "chore: decommission ${{ parameters.confirmationText }}"
+        branchName: chore/decommission-${{ parameters.confirmationText }}
+        description: |
+          Removes `services/${{ parameters.confirmationText }}/` from the platform repo.
+
+          The service was decommissioned via the Backstage `decommission-service`
+          template (${{ parameters.action }}). Once merged, the `idp-services`
+          ApplicationSet prunes its ArgoCD Application and workloads.
+        filesToDelete: ${{ steps.decommission.output.gitopsFiles }}
 
   output:
+    links:
+      - title: GitOps removal PR
+        if: ${{ steps['remove-gitops'].output.remoteUrl }}
+        url: ${{ steps['remove-gitops'].output.remoteUrl }}
     text:
       - title: Decommission Result
         content: ${{ steps.decommission.output.summary }}
