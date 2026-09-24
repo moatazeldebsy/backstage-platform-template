@@ -11,9 +11,9 @@
 # budget enforcement and centralized spend tracking across both providers,
 # none of which agentgateway has. That's the actual capability this buys.
 #
-# Deployed only when bootstrap-ai.sh is run with --litellm (opt-in locally,
-# because of the local memory ceiling — see docs/local-setup.md). On AWS this
-# is not opt-in: Bedrock only exists there, so there is nothing to gate.
+# Deployed by bootstrap-ai.sh by default on both local and AWS (--skip-litellm
+# opts out): every model entry in ai-gateway.yaml points here, so without it
+# agents get tools but no model.
 #
 # Protocol note (validated empirically, not assumed — see ADR-0008): agentgateway
 # reaches this over `provider: anthropic` + a `baseUrl` override, i.e. the exact
@@ -127,7 +127,8 @@ spec:
           # auth at all. Unlike ai-gateway-llm-keys (optional — a key-free MCP
           # gateway still degrades gracefully), a masterkey-free LiteLLM is a
           # real misconfiguration: bootstrap-ai.sh dies() on a missing
-          # LITELLM_MASTER_KEY when --litellm is passed, matching that.
+          # LITELLM_MASTER_KEY when LiteLLM is deployed (locally it generates
+          # one first), matching that.
           # DATABASE_URL rides in the same Secret — see the general_settings
           # comment above for why it's required, not optional, despite the
           # proxy technically starting without it (it just can't do the one
