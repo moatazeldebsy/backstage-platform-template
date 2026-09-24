@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -57,6 +59,50 @@ func TestToolStatusLabel(t *testing.T) {
 		got := toolStatusLabel("")
 		if got == "" {
 			t.Error("expected non-empty label for empty tool name")
+		}
+	})
+}
+
+func TestA2ATarget(t *testing.T) {
+	if got := a2aTarget("http://kagent", "http://backstage", ""); got != "http://kagent/a2a/kagent/platform-assistant" {
+		t.Errorf("without token: got %q", got)
+	}
+	if got := a2aTarget("http://kagent", "http://backstage", "tok"); got != "http://backstage/api/idp-ai-identity/a2a/kagent/platform-assistant" {
+		t.Errorf("with token: got %q", got)
+	}
+}
+
+func TestPostA2A_Headers(t *testing.T) {
+	var gotAuth, gotCT string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotCT = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Run("sends bearer token when set", func(t *testing.T) {
+		resp, err := postA2A(srv.Client(), srv.URL, "user-tok", []byte(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if gotAuth != "Bearer user-tok" {
+			t.Errorf("Authorization = %q, want Bearer user-tok", gotAuth)
+		}
+		if gotCT != "application/json" {
+			t.Errorf("Content-Type = %q, want application/json", gotCT)
+		}
+	})
+
+	t.Run("no Authorization header without token", func(t *testing.T) {
+		resp, err := postA2A(srv.Client(), srv.URL, "", []byte(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if gotAuth != "" {
+			t.Errorf("Authorization = %q, want empty", gotAuth)
 		}
 	})
 }

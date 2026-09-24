@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/backstage"
 	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/scaffold"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -96,6 +96,7 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 		Name:      svcName,
 		Type:      svcType,
 		Namespace: svcNamespace,
+		Owner:     svcOwner,
 		RootDir:   rootDir(),
 		DryRun:    svcDryRun,
 	})
@@ -128,7 +129,6 @@ func rootDir() string {
 	}
 	return dir
 }
-
 
 func keyFromEnvFile(path, key string) string {
 	data, err := os.ReadFile(path)

@@ -3,6 +3,7 @@ package scaffold
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -235,4 +236,27 @@ func TestApplyDefaults(t *testing.T) {
 			t.Errorf("got PlatformRepo %q, want backstage-platform-template", cfg.PlatformRepo)
 		}
 	})
+}
+
+func TestRenderCatalogInfo_Owner(t *testing.T) {
+	cases := map[string]string{
+		"":                        "owner: group:default/platform-team",
+		"group:default/data-team": "owner: group:default/data-team",
+	}
+	for owner, want := range cases {
+		t.Run("owner="+owner, func(t *testing.T) {
+			out := filepath.Join(t.TempDir(), "catalog-info.yaml")
+			cfg := applyDefaults(ServiceConfig{Name: "svc", Type: "go", Namespace: "services-dev", Owner: owner, RootDir: t.TempDir()})
+			if err := renderFile("shared/catalog-info.yaml.tmpl", out, cfg); err != nil {
+				t.Fatal(err)
+			}
+			b, err := os.ReadFile(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(b), want) {
+				t.Errorf("catalog-info.yaml missing %q:\n%s", want, b)
+			}
+		})
+	}
 }

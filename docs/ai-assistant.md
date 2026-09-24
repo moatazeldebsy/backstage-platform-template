@@ -463,6 +463,33 @@ The command posts a JSON-RPC 2.0 A2A message to `platform-assistant`, then polls
 `/api/sessions` for a response. Tool status lines are printed to stderr during
 processing so you can see what the agent is doing.
 
+**Acting as you (verified identity).** By default `idp ai` posts straight to KAgent
+with no user identity: user memory isn't tied to you and the consent gate lets the
+call through unchecked (see [agent-approvals.md](agent-approvals.md)). The CLI prints
+a warning when this happens. To have the agent act as you, set
+`IDP_BACKSTAGE_USER_TOKEN` to a Backstage **user** token. The A2A POST then goes
+through `POST /api/idp-ai-identity/a2a/kagent/platform-assistant`, which sets
+`X-Backstage-User` from your verified credentials. That's the same route the Backstage
+chat page uses. Session polling still goes directly to KAgent.
+
+A static service token (`BACKSTAGE_TOKEN`) won't work here, because the route only
+accepts user principals. To get a user token, sign in to Backstage, open the
+browser devtools console on that tab, and run:
+
+```js
+(await (await fetch('/api/auth/github/refresh?optional&env=development', {
+  headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'include',
+})).json()).backstageIdentity.token
+```
+
+(Use `env=production` against AWS.) The token lasts about an hour.
+
+```bash
+export IDP_BACKSTAGE_USER_TOKEN=<token>
+idp ai "what do you remember about me?"
+idp ai --env aws --backstage-url https://backstage.example.com "list my services"
+```
+
 ---
 
 ### 7. MLflow page — `/mlflow`

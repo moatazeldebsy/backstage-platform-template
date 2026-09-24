@@ -16,16 +16,27 @@ import (
 )
 
 var (
-	aiKagentURL string
-	aiTimeout   int
+	aiKagentURL    string
+	aiTimeout      int
+	aiEnv          string
+	aiBackstageURL string
 )
+
+// aiAgent is the KAgent agent `idp ai` talks to.
+const aiAgent = "platform-assistant"
 
 var aiCmd = &cobra.Command{
 	Use:   "ai <message>",
 	Short: "Ask the platform AI assistant in natural language",
 	Long: `Send a natural-language request to the platform-assistant KAgent agent.
 The agent has access to all platform tools: catalog search, service scaffolding,
-test suite creation, contract testing, deployment listing, and user memory.`,
+test suite creation, contract testing, deployment listing, and user memory.
+
+Set IDP_BACKSTAGE_USER_TOKEN to a Backstage *user* token to send the request
+through Backstage's verified-identity route (/api/idp-ai-identity). The agent
+then acts as you: user memory is bound to your identity and the consent gate
+(docs/agent-approvals.md) applies. Without it the request goes straight to
+KAgent unattributed.`,
 	Example: `  idp ai "scaffold a Go payment service for team-platform"
   idp ai "what test suites does hello-service have?"
   idp ai "list all running deployments in services-dev"
@@ -37,6 +48,30 @@ test suite creation, contract testing, deployment listing, and user memory.`,
 func init() {
 	aiCmd.Flags().StringVar(&aiKagentURL, "kagent-url", kagentBaseURL(), "KAgent base URL")
 	aiCmd.Flags().IntVar(&aiTimeout, "timeout", 300, "Seconds to wait for agent response")
+	aiCmd.Flags().StringVar(&aiEnv, "env", envLocal, fmt.Sprintf("Target environment: %s | %s", envLocal, envAWS))
+	aiCmd.Flags().StringVar(&aiBackstageURL, "backstage-url", "", "Backstage base URL (used with IDP_BACKSTAGE_USER_TOKEN)")
+}
+
+// a2aTarget returns where to POST the A2A message. With a Backstage user
+// token it goes through idpAiIdentityProxy.ts, which sets X-Backstage-User
+// from the verified credentials; without one it falls back to KAgent directly.
+func a2aTarget(kagentURL, backstageURL, userToken string) string {
+	if userToken != "" {
+		return backstageURL + "/api/idp-ai-identity/a2a/kagent/" + aiAgent
+	}
+	return kagentURL + "/a2a/kagent/" + aiAgent
+}
+
+func postA2A(client *http.Client, target, userToken string, payload []byte) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, target, bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if userToken != "" {
+		req.Header.Set("Authorization", "Bearer "+userToken)
+	}
+	return client.Do(req)
 }
 
 func kagentBaseURL() string {
@@ -57,9 +92,9 @@ type a2aParams struct {
 	Message a2aMsg `json:"message"`
 }
 type a2aMsg struct {
-	MessageID string     `json:"messageId"`
-	Role      string     `json:"role"`
-	Parts     []a2aPart  `json:"parts"`
+	MessageID string    `json:"messageId"`
+	Role      string    `json:"role"`
+	Parts     []a2aPart `json:"parts"`
 }
 type a2aPart struct {
 	Kind string `json:"kind"`
@@ -80,13 +115,25 @@ func runAI(_ *cobra.Command, args []string) error {
 		ID: 1,
 	})
 
+	userToken := os.Getenv("IDP_BACKSTAGE_USER_TOKEN")
+	backstageURL := ""
+	if userToken != "" {
+		backstageURL = resolveBackstageURL(aiEnv, aiBackstageURL, rootDir())
+	} else {
+		fmt.Fprintln(os.Stderr, "[idp] Warning: IDP_BACKSTAGE_USER_TOKEN not set — request is unattributed "+
+			"(no user memory, consent checks skipped). See `idp ai --help`.")
+	}
+
 	client := &http.Client{Timeout: time.Duration(aiTimeout) * time.Second}
-	a2aURL := aiKagentURL + "/a2a/kagent/platform-assistant"
-	resp, err := client.Post(a2aURL, "application/json", bytes.NewReader(payload))
+	target := a2aTarget(aiKagentURL, backstageURL, userToken)
+	resp, err := postA2A(client, target, userToken, payload)
 	if err != nil {
-		return fmt.Errorf("A2A request failed (is KAgent running at %s?): %w", aiKagentURL, err)
+		return fmt.Errorf("A2A request to %s failed: %w", target, err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized && userToken != "" {
+		return fmt.Errorf("Backstage rejected IDP_BACKSTAGE_USER_TOKEN (401) — it must be a current user token, not a static service token")
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("A2A POST returned %d: %s", resp.StatusCode, string(body))

@@ -20,6 +20,7 @@ type ServiceConfig struct {
 	Name         string
 	Type         string
 	Namespace    string
+	Owner        string // catalog owner ref, e.g. group:default/platform-team
 	RootDir      string
 	GHOrg        string
 	PlatformRepo string
@@ -161,6 +162,9 @@ func applyDefaults(cfg ServiceConfig) ServiceConfig {
 	}
 	if cfg.TestCmd == "" {
 		cfg.TestCmd = testCmds[cfg.Type]
+	}
+	if cfg.Owner == "" {
+		cfg.Owner = "group:default/platform-team"
 	}
 	localEnv := cfg.RootDir + "/local/.env"
 	if cfg.GHOrg == "" {

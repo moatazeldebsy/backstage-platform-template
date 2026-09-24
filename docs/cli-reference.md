@@ -200,7 +200,7 @@ Print the CLI version. Binaries built with `make cli-build` embed the git tag/sh
 | `idp context inject --service <name>` | Write live catalog annotations into `CLAUDE.md` (or `--target cursor`). `--dry-run` to preview |
 | `idp learn --type component --name <name>` | Curated TechDocs / SLO / Scorecard next steps for a catalog entity |
 | `idp tip` | Print a platform onboarding tip |
-| `idp mcp status` | Check reachability of all platform MCP servers |
+| `idp mcp status` | Check reachability of the AI Gateway, LiteLLM, and all platform MCP servers (ADP servers need `bootstrap-ai.sh --adp`) |
 
 ---
 
