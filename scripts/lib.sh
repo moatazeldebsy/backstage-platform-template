@@ -1483,24 +1483,40 @@ On Rancher Desktop, the usual cause is Traefik: Preferences -> Kubernetes -> dis
 # MLflow, so the namespace exists whenever the AI layer is on, with or without
 # Langfuse. Any failure to reach the cluster answers no, which is the safe
 # direction — it hides a nav item rather than publishing a broken one.
+#
+# These capture kubectl's output and test it, rather than piping into
+# `grep -q`. Callers run under `set -o pipefail`: `grep -q` exits on its first
+# match, kubectl can then die of SIGPIPE while still writing, and pipefail
+# turns that into "not installed". Measured at 5 in 40 calls for
+# kagent_installed on a cluster with a dozen kagent Deployments, which hid the
+# AI Assistant and KAgent pages after a successful bootstrap-ai.sh run.
 langfuse_installed() {
-  kubectl get deployment -n ml-platform -l app.kubernetes.io/name=langfuse -o name 2>/dev/null | grep -q . \
-    || kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -q langfuse
+  local out
+  out=$(kubectl get deployment -n ml-platform -l app.kubernetes.io/name=langfuse -o name 2>/dev/null || true)
+  [[ -n "$out" ]] && return 0
+  out=$(kubectl get deployment -n ml-platform -o name 2>/dev/null || true)
+  [[ "$out" == *langfuse* ]]
 }
 
 kagent_installed() {
-  kubectl get deployment -n kagent -o name 2>/dev/null | grep -q .
+  local out
+  out=$(kubectl get deployment -n kagent -o name 2>/dev/null || true)
+  [[ -n "$out" ]]
 }
 
 mlflow_installed() {
-  kubectl get deployment -n ml-platform -o name 2>/dev/null | grep -q mlflow
+  local out
+  out=$(kubectl get deployment -n ml-platform -o name 2>/dev/null || true)
+  [[ "$out" == *mlflow* ]]
 }
 
-# LiteLLM is opt-in even when the rest of the AI stack is up (ADR-0008:
-# `bootstrap-ai.sh --litellm`, on by default on --aws), same asymmetry as
-# Langfuse above — checks for the actual Deployment, not the namespace.
+# LiteLLM is on by default but --skip-litellm can leave it out while the rest
+# of the AI stack is up (ADR-0008), same asymmetry as Langfuse above — checks
+# for the actual Deployment, not the namespace.
 litellm_installed() {
-  kubectl get deployment litellm -n ml-platform -o name 2>/dev/null | grep -q .
+  local out
+  out=$(kubectl get deployment litellm -n ml-platform -o name 2>/dev/null || true)
+  [[ -n "$out" ]]
 }
 
 # Usage: write_backstage_ai_overlay true|false [langfuse] [kagent] [mlflow] [litellm]
