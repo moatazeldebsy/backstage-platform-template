@@ -89,7 +89,7 @@ The AI Assistant is a **native React chat component** embedded directly in the B
               │  AI Gateway — agentgateway :3000     │  ml-platform
               │   /mcp          all 8 servers, tool  │
               │                 names unprefixed     │
-              │   /v1/messages  Anthropic, native    │──▶ LiteLLM (--litellm) ──▶ Anthropic / Bedrock
+              │   /v1/messages  Anthropic, native    │──▶ LiteLLM ──▶ Anthropic / Bedrock
               └───────────────────┬──────────────────┘
                                   │ streamable-HTTP
        ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
@@ -277,9 +277,10 @@ longer calls Anthropic itself: it forwards model calls to **LiteLLM**
 (`kubernetes/ml-platform/litellm.yaml`), which holds the Anthropic key and Bedrock's
 IRSA credentials and adds virtual keys and per-key spend tracking.
 
-- **When it's installed:** on by default with `--aws`, opt-in locally with
-  `bootstrap-ai.sh --litellm` (requires `LITELLM_MASTER_KEY`). Without it, tools
-  still work through the gateway but model calls fail upstream.
+- **When it's installed:** by default on both local and AWS. It needs
+  `LITELLM_MASTER_KEY`; locally, `bootstrap-ai.sh` generates one into `local/.env`
+  if it's missing. With `--skip-litellm`, tools still work through the gateway
+  but every model call fails.
 - **Spend page:** the **LiteLLM Spend** page in Backstage (and
   `http://litellm.idp.local`) is hidden from the nav until a `litellm` Deployment
   exists in `ml-platform`. The bootstrap scripts check this separately from the

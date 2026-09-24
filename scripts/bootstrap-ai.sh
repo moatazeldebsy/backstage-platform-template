@@ -51,18 +51,15 @@
 #   --skip-gateway     Skip the AI Gateway. Only useful for debugging the MCP
 #                       servers directly — the agents will not work without it.
 #   --litellm          Deploy LiteLLM as the model backend behind the AI Gateway
-#                       (Anthropic + Bedrock, virtual keys, spend tracking). OFF
-#                       BY DEFAULT ON LOCAL, because it's a second proxy process
-#                       on a cluster already measured to have ~1.2-1.5GB of
-#                       headroom (docs/local-setup.md) — a real memory cost on
-#                       top of agentgateway's own 64Mi. ON BY DEFAULT ON --aws:
-#                       Bedrock only exists there, so there's nothing to gate.
-#                       Once deployed, model traffic through the AI Gateway
-#                       depends on it — without --litellm on local, agents get
-#                       tools but not a model (same degraded-mode shape as a
-#                       missing ANTHROPIC_API_KEY used to be). Requires
-#                       LITELLM_MASTER_KEY in local/.env. See
+#                       (Anthropic + Bedrock, virtual keys, spend tracking). ON BY
+#                       DEFAULT on both local and --aws: every model the AI
+#                       Gateway serves points at LiteLLM, so without it agents
+#                       have tools but no working model. Costs ~768Mi requested
+#                       locally. Needs LITELLM_MASTER_KEY; locally one is
+#                       generated into local/.env if it is missing. See
 #                       docs/design/adr-0008-litellm-multiprovider-gateway.md
+#   --skip-litellm     Don't deploy LiteLLM. The AI Gateway still starts and
+#                       serves MCP tools, but every model call fails.
 #   --adp              Also deploy Agentic Development Platform (ADP) components
 #                       (see docs/agentic-platform.md) on top of the base AI/ML stack
 #   --destroy          Remove AI/ML components only (keeps core platform running)
@@ -193,15 +190,13 @@ if [[ -z "$LANGFUSE" ]]; then
   LANGFUSE=true
 fi
 
-# Bedrock only exists on AWS, so LITELLM defaults to on there and off on local
-# (see the --litellm usage comment above for the memory-cost reasoning). An
-# explicit --litellm/--skip-litellm always wins over this default.
+# On by default on both targets: every model entry in the AI Gateway config
+# (kubernetes/ml-platform/ai-gateway.yaml) points at LiteLLM, so a cluster
+# without it has agents that can call tools but never get a model reply. It
+# used to be off locally to save memory, which left the default local install
+# with a non-working AI Assistant. --skip-litellm still opts out.
 if [[ -z "$LITELLM" ]]; then
-  if [[ "$DEPLOY_MODE" == "aws" ]]; then
-    LITELLM=true
-  else
-    LITELLM=false
-  fi
+  LITELLM=true
 fi
 
 # Pinned chart version. app 3.224.1. Bump deliberately: the chart carries four
@@ -882,6 +877,16 @@ fi
 # LiteLLM proxy has no inbound auth at all, which is a real misconfiguration,
 # not a gracefully-degrading one (unlike the optional ai-gateway/litellm-keys
 # Secret itself, see the envFrom comment in kubernetes/ml-platform/litellm.yaml).
+# Locally the key is only LiteLLM's own inbound auth (what the gateway presents
+# to it), with no external service behind it, so a missing one is generated and
+# saved to local/.env rather than failing a default install. AWS still requires
+# it to be set in Secrets Manager.
+if [[ "$LITELLM" == "true" && "$DEPLOY_MODE" == "local" && \
+      ( -z "${LITELLM_MASTER_KEY:-}" || "${LITELLM_MASTER_KEY:-}" == "REPLACE_ME" || "${LITELLM_MASTER_KEY:-}" == "sk-litellm-YOUR_MASTER_KEY" ) ]]; then
+  LITELLM_MASTER_KEY="sk-litellm-$(openssl rand -hex 24 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(24))')"
+  _upsert_env "${ENV_FILE}" LITELLM_MASTER_KEY "${LITELLM_MASTER_KEY}"
+  info "Generated LITELLM_MASTER_KEY and saved it to local/.env"
+fi
 if [[ "$LITELLM" == "true" && ( -z "${LITELLM_MASTER_KEY:-}" || "${LITELLM_MASTER_KEY:-}" == "REPLACE_ME" ) ]]; then
   die "LITELLM_MASTER_KEY is not set (required with --litellm). Add it to local/.env (local) or to AWS Secrets Manager at idp-mvp/kagent (AWS)."
 fi
@@ -1255,6 +1260,19 @@ if [[ "$LITELLM" == "true" ]] && kubectl get namespace ml-platform &>/dev/null; 
     --from-literal=DATABASE_URL="${DATABASE_URL:-}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret litellm-keys ready"
+elif kubectl get namespace ml-platform &>/dev/null \
+     && ! kubectl get secret litellm-keys -n ml-platform &>/dev/null; then
+  # --skip-litellm: agentgateway treats an unset $LITELLM_MASTER_KEY in its
+  # config as a fatal startup error, so without this the gateway crash-loops
+  # and agents lose their tools too, not just their model. A placeholder keeps
+  # the gateway up with model calls failing upstream. Never overwrites a real
+  # Secret left by an earlier --litellm run.
+  info "Creating placeholder litellm-keys secret so the AI Gateway can start without LiteLLM..."
+  kubectl create secret generic litellm-keys \
+    --namespace ml-platform \
+    --from-literal=LITELLM_MASTER_KEY="litellm-not-deployed" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  check "Placeholder secret litellm-keys ready (model calls will fail until --litellm)"
 fi
 
 # Create OpenAI secret if API key is provided
@@ -1564,7 +1582,7 @@ if [[ "$LITELLM" == "true" ]]; then
   fi
 else
   if [[ "$DEPLOY_MODE" == "local" ]]; then
-    info "Skipping LiteLLM (pass --litellm to enable Bedrock + budget-tracked model access)."
+    info "Skipping LiteLLM (--skip-litellm)."
     info "  Without it, the AI Gateway's model traffic fails upstream — MCP tools still work."
   fi
 fi
@@ -1608,7 +1626,7 @@ if [[ "$GATEWAY" == "true" ]]; then
   fi
   check "AI Gateway deployed — /mcp (54 tools) and /v1/messages (Anthropic) on :3000"
   if [[ "$LITELLM" != "true" ]]; then
-    warn "  LiteLLM not deployed (pass --litellm): MCP tools work, model calls will fail upstream."
+    warn "  LiteLLM not deployed (--skip-litellm): MCP tools work, model calls will fail upstream."
   fi
 else
   warn "Skipping AI Gateway (--skip-gateway). Agents reference the ai-gateway"

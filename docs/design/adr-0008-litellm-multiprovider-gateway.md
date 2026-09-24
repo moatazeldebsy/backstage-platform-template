@@ -84,6 +84,22 @@ first-class flag.
 
 ### 4. Opt-in on local, on by default on AWS
 
+> **Amended 2026-09-24: now on by default locally too.** Running the local
+> default (no `--litellm`) showed two things this section got wrong. First,
+> agentgateway v1.5.0 refuses to start when `$LITELLM_MASTER_KEY` is unset, so
+> the gateway crash-looped and agents lost their tools as well as their model.
+> The "MCP tools still work" claim below never held. Second, even with the
+> gateway up, every model entry points at LiteLLM, so the default local install
+> had an AI Assistant that could never answer. `bootstrap-ai.sh` now defaults
+> `--litellm` on for both targets, generates a local `LITELLM_MASTER_KEY` if
+> none is set, and under `--skip-litellm` creates a placeholder `litellm-keys`
+> Secret so the gateway starts. The memory cost (~768Mi requested) is accepted;
+> `--skip-langfuse` is the bigger lever when a laptop is tight.
+> Testing that placeholder also showed that agentgateway expands dollar-prefixed
+> variables inside YAML comments: a comment in `ai-gateway.yaml` naming the
+> Anthropic key made it a required env var. Those comments no longer use the
+> dollar form, and the config now warns about it.
+
 `bootstrap-ai.sh --litellm` (tri-state, same pattern as `--langfuse`): unset
 resolves to `false` on local Kind, `true` on `--aws`. Local stays opt-in
 because LiteLLM is a second proxy process — Python/Uvicorn, not agentgateway's
@@ -140,7 +156,7 @@ further: DB-connected mode (Prisma client) needs more than DB-less mode did.
 | Protocol translation | None (native `/v1/messages`) | Still none — validated, not assumed |
 | Budget/virtual keys | None | LiteLLM (per-key, per-team) |
 | Network hops per model call | agentgateway → Anthropic | agentgateway → LiteLLM → Anthropic/Bedrock |
-| Local default | N/A | Off (`--litellm` opt-in) |
+| Local default | N/A | On since 2026-09-24 (was `--litellm` opt-in); `--skip-litellm` opts out |
 | AWS default | N/A | On |
 | New IRSA role | — | `litellm-bedrock`, scoped to `InvokeModel*` on Claude ARNs |
 | Database | dedicated Postgres pod | dedicated RDS (`aws_db_instance.litellm`) |

@@ -168,15 +168,20 @@ data:
     # ("anthropic_messages() missing 1 required positional argument:
     # 'max_tokens'"). Only provider: anthropic round-trips cleanly.
     #
-    # $LITELLM_MASTER_KEY expands from the pod environment, supplied by the
-    # optional `litellm-keys` Secret. Optional on purpose, same reasoning as
-    # before: with no key the gateway still starts and MCP tool traffic is
-    # unaffected — only model calls fail, now upstream against LiteLLM rather
-    # than against Anthropic directly.
+    # The apiKey values below expand from the pod environment (the LiteLLM
+    # master key, from the `litellm-keys` Secret). agentgateway refuses to
+    # start if a referenced variable is unset, so bootstrap-ai.sh always
+    # creates that Secret: the real key when LiteLLM is deployed, a placeholder
+    # under --skip-litellm (gateway up, MCP tools fine, model calls fail).
     #
-    # agentgateway no longer needs $ANTHROPIC_API_KEY at all — that credential
-    # now lives solely in LiteLLM's own config (kubernetes/ml-platform/litellm.yaml),
-    # which is what actually calls Anthropic and Bedrock.
+    # WARNING: agentgateway expands dollar-prefixed variables anywhere in this
+    # file, comments included. Never write a variable with its dollar sign in a
+    # comment here: it becomes a required env var, and the gateway crash-loops
+    # without it (a comment naming the Anthropic key did exactly that).
+    #
+    # agentgateway no longer needs the Anthropic API key at all — that
+    # credential now lives solely in LiteLLM's own config
+    # (kubernetes/ml-platform/litellm.yaml), which calls Anthropic and Bedrock.
     #
     # Bedrock models are added as more entries here, still provider: anthropic,
     # still pointed at the same LiteLLM baseUrl — LiteLLM's own model_list maps
@@ -478,10 +483,13 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
-          # optional: true — a cluster with no LITELLM_MASTER_KEY still gets a
-          # fully working MCP gateway; only /v1/messages fails, and it fails
-          # upstream (against LiteLLM, or LiteLLM's own 401 against the real
-          # provider — see ADR-0008).
+          # agentgateway treats an unset $LITELLM_MASTER_KEY in its config as a
+          # fatal startup error, so this Secret must exist before the pod starts.
+          # bootstrap-ai.sh creates it with the real key when LiteLLM is
+          # deployed (the default) and with a placeholder under --skip-litellm,
+          # so the gateway still serves MCP tools and only /v1/messages fails.
+          # optional: true only avoids a stuck ContainerCreating; it does not
+          # make a missing key safe.
           envFrom:
             - secretRef:
                 name: litellm-keys
