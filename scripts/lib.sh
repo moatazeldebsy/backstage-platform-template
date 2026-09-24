@@ -1045,13 +1045,18 @@ _cleanup_scaffolded_services() {
   local SCAFFOLDED=()
   if [[ -d "${ROOT_DIR}/services" ]]; then
     while IFS= read -r svc; do
-      # Only directories with a Dockerfile are deployable services — same test
-      # build-and-deploy.yml's path-filter generation and ci.yml's
-      # helm-values check already use. A shared library like
-      # services/mcp-common (no Dockerfile, nothing to deploy, never an
-      # ArgoCD Application) is not "scaffolded" and must not be swept up
-      # here: it was deleted by exactly this loop once already.
-      [[ -f "${ROOT_DIR}/services/${svc}/Dockerfile" ]] || continue
+      # Only directories with Helm values are deployable services — that is
+      # what the idp-services ApplicationSet actually deploys from. A shared
+      # library like services/mcp-common (no values, nothing to deploy, never
+      # an ArgoCD Application) must not be swept up here: it was deleted by
+      # exactly this loop once already.
+      # Do NOT test for a Dockerfile instead: scaffolded services keep their
+      # source (and Dockerfile) in their own repo — the platform repo only gets
+      # services/<name>/helm-values-*.yaml — so a Dockerfile test matches only
+      # the built-ins and this function silently cleans up nothing, leaving
+      # the ApplicationSet to recreate every scaffolded app on the next cluster.
+      [[ -f "${ROOT_DIR}/services/${svc}/helm-values-local.yaml" \
+        || -f "${ROOT_DIR}/services/${svc}/helm-values-aws.yaml" ]] || continue
       skip=false
       for builtin in "${PLATFORM_BUILTINS[@]}"; do
         [[ "$svc" == "$builtin" ]] && { skip=true; break; }
@@ -1104,6 +1109,7 @@ _cleanup_scaffolded_services() {
       gh repo edit "${org}/${svc}" \
         --remove-topic idp \
         --remove-topic idp-service \
+        --remove-topic idp-app \
         --remove-topic idp-module 2>/dev/null \
         || true
       log "  Removed IDP topics from GitHub repo: ${org}/${svc}"
