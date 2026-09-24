@@ -135,6 +135,7 @@
         <div class="row">
           <span class="card">Permissions</span>
           <span class="card">Tech Insights</span>
+          <span class="card">Compliance watcher</span>
           <span class="card">RAG search</span>
           <span class="card">Engineering Intelligence</span>
           <span class="card">{{si-postgresql}}PostgreSQL</span>
@@ -196,7 +197,7 @@
         <div class="row">
           <span class="card">{{kubernetes}}Kind / EKS</span>
           <span class="card">{{karpenter}}Karpenter</span>
-          <span class="card">approval-service</span>
+          <span class="card">approvals + consent</span>
           <span class="card">agent-event-router</span>
         </div>
       </div>
@@ -206,6 +207,15 @@
     <section class="plane p-ai">
       <div class="plane-title">
         <span class="txt"><small>Optional</small><strong>AI &amp; ML Plane</strong></span>
+      </div>
+      <span class="pill">AI Gateway — one entry point for tool and model calls</span>
+      <div class="module">
+        <div class="row">
+          <span class="card">agentgateway</span>
+          <span class="card">LiteLLM</span>
+          <span class="card">virtual keys</span>
+          <span class="card">spend tracking</span>
+        </div>
       </div>
       <div class="cols">
         <div>
@@ -313,7 +323,10 @@
       <div class="authbox">
         <span class="pill" style="margin-bottom:8px;">Authentication</span>
         <div class="t">Pluggable OAuth2 / OIDC</div>
-        <span class="card">{{si-github}}GitHub OAuth</span>
+        <div class="row">
+          <span class="card">{{si-github}}GitHub OAuth</span>
+          <span class="card">{{si-github}}Org Teams sync</span>
+        </div>
       </div>
     </div>
 
@@ -325,7 +338,7 @@
       <p class="aside-note">Secret management for the delivery and runtime planes</p>
     </div>
     <div class="a3">
-      <div class="aside">{{si-ollama}}<span>Any AI Model Provider<br><span style="color:var(--ink-2);font-weight:400;">Ollama, Bedrock, Anthropic</span></span></div>
+      <div class="aside">{{si-ollama}}<span>Any AI Model Provider<br><span style="color:var(--ink-2);font-weight:400;">Anthropic &amp; Bedrock via LiteLLM, or Ollama</span></span></div>
     </div>
 
   </div>
