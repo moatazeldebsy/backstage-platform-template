@@ -1790,6 +1790,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -2640,13 +2661,17 @@ ingests the <code>catalog-info.yaml</code> from the <code>main</code> branch of 
 </table>
 <p>Each template opens a PR with <strong>two files</strong>:
 - <code>services/&lt;ownerService&gt;/claims/&lt;name&gt;.yaml</code> — the Crossplane Claim
-- <code>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml</code> — registers the resource in the Backstage catalog</p>
+- <code>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml</code> — the Backstage <code>Resource</code> entity for it</p>
 <p>ArgoCD syncs on merge, Crossplane provisions the AWS resource — no <code>terraform apply</code> step.
+The <code>Resource</code> entity is <strong>not</strong> auto-discovered: after merging, register it via
+<strong>Catalog → Register existing component</strong> with the URL from the PR description.
 See <a href="../crossplane/">crossplane.md</a> for the full flow.</p>
 <blockquote>
 <p>The legacy Terraform-PR templates (<code>s3-bucket</code>, <code>rds-database</code>,
 <code>kafka-topic</code>) still exist for callers mid-migration. Pick the
-Crossplane variant for new resources.</p>
+Crossplane variant for new resources. They write into their own
+directories (e.g. <code>terraform/infra/s3-buckets/&lt;name&gt;/</code>) rather than the
+repo root, and need the same manual catalog registration after merge.</p>
 </blockquote>
 <h3 id="2-clone-your-new-repo">2. Clone your new repo<a class="headerlink" href="#2-clone-your-new-repo" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>

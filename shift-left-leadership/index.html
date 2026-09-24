@@ -1570,6 +1570,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -1840,6 +1861,15 @@
   <a href="#scorecard-dashboard-grafana" class="md-nav__link">
     <span class="md-ellipsis">
       Scorecard dashboard (Grafana)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compliance-watcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compliance watcher
     </span>
   </a>
   
@@ -2632,6 +2662,17 @@ For the pilot kickoff agenda, see <a href="../shift-left-pilot-kickoff/">Shift-L
 <li><strong>Per-team panel</strong> — filter by <code>team</code> label to see any team's distribution.</li>
 <li><strong>Per-check heatmap</strong> — which specific checks are failing organisation-wide. If <code>has-coverage-gate</code> is red for 40% of services, that is the next highest-leverage gate to drive.</li>
 </ul>
+<h3 id="compliance-watcher">Compliance watcher<a class="headerlink" href="#compliance-watcher" title="Permanent link">&para;</a></h3>
+<p>Dashboards only help if someone looks at them. The compliance watcher reaches out instead: when a service <strong>loses</strong> a scorecard check (a check that passed now fails), its owner gets a Slack message and a Jira ticket.</p>
+<ul>
+<li><strong>What it watches:</strong> the boolean facts from the <code>idp-entity-facts</code> Tech Insights retriever, for every <code>Component</code>, every 30 minutes (first run 3 minutes after startup). It reports individual checks going from true to false. It never computes a tier, because a named failing check is more useful than "you dropped to Silver".</li>
+<li><strong>No duplicate alerts:</strong> the last-seen facts per entity are stored in the plugin's own Postgres database (<code>backstage_plugin_idp-compliance-watcher</code>), so a restart doesn't report every check again, and each regression is reported only once.</li>
+<li><strong>Slack:</strong> posts to <code>SLACK_WEBHOOK_URL</code>, the same webhook KAgent's <code>send_notification</code> tool and AlertManager use.</li>
+<li><strong>Jira:</strong> creates an issue in the project named by the entity's <code>jira/project-key</code> annotation (the same one the Jira tab reads), using <code>JIRA_URL</code> / <code>JIRA_TOKEN</code>. Entities without that annotation get Slack only.</li>
+<li><strong>Optional:</strong> if either integration is unset, it is skipped. The backend still starts.</li>
+</ul>
+<p>Configuration is the <code>complianceWatcher</code> block in <code>backstage/app-config.yaml</code>. It is the same on local and AWS. Set <code>complianceWatcher.refreshMinutes</code> to change the 30-minute interval. Source: <code>backstage/app/packages/backend/src/modules/idpComplianceWatcher.ts</code>.</p>
+<p>The check definitions live in one shared package, <code>@internal/scorecard-core</code> (<code>backstage/app/packages/scorecard-core/</code>). The entity-page Scorecard tab and the Tech Insights retriever both use it, so a check means the same thing in the portal as in Grafana and in these alerts. Tier thresholds are not in that package: the Grafana exporter (<code>observability/tech-insights-exporter/exporter.py</code>) deliberately still uses different Gold cutoffs.</p>
 <h3 id="dora-dashboard-grafana">DORA dashboard (Grafana)<a class="headerlink" href="#dora-dashboard-grafana" title="Permanent link">&para;</a></h3>
 <p><code>http://grafana.idp.local/d/dora/dora-metrics</code></p>
 <p>Four metrics tied directly to the shift-left programme:

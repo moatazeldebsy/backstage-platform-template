@@ -1228,6 +1228,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#model-backend-litellm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model backend: LiteLLM
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2276,6 +2285,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -3117,7 +3147,7 @@ otherwise the pod sits <code>Pending</code> forever and reads as a hang.</p>
               │  AI Gateway — agentgateway :3000     │  ml-platform
               │   /mcp          all 8 servers, tool  │
               │                 names unprefixed     │
-              │   /v1/messages  Anthropic, native    │──▶ api.anthropic.com
+              │   /v1/messages  Anthropic, native    │──▶ LiteLLM (--litellm) ──▶ Anthropic / Bedrock
               └───────────────────┬──────────────────┘
                                   │ streamable-HTTP
        ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
@@ -3187,8 +3217,14 @@ controls this value, preventing cross-user IDOR.</p>
 KAgent may emit an <code>ask_user</code> function call when it wants to render a form dialog.
 The Backstage chat UI cannot render ADK form widgets, so the frontend detects this
 event, extracts the question text from the function call args, and appends them as
-plain text. The system message Rule 2 now explicitly forbids the agent from calling
-this tool.</p>
+plain text. That fallback doesn't always help: the agent then waits for a form answer
+that never comes, and the turn hangs until the frontend's 5-minute poll gives up with
+"Agent did not respond in time". So <strong>every</strong> agent's system message now forbids
+<code>ask_user</code> / <code>adk_request_confirmation</code> and tells it to ask in plain text instead.
+That covers <code>platform-assistant</code>, <code>idp-assistant</code>, <code>qa-assistant</code>,
+<code>contract-assistant</code>, <code>cost-agent</code>, <code>release-agent</code>, <code>incident-agent</code>,
+<code>security-agent</code> and <code>onboarding-agent</code>. Add the same rule to any new agent in
+<code>kubernetes/kagent/</code>.</p>
 <p><strong>New Chat button:</strong> clears local <code>messages</code> state only — the KAgent session on the
 server is not deleted. Each new message creates a fresh contextId, so the next
 user turn starts a new server-side session.</p>
@@ -3404,6 +3440,23 @@ for the plan to formalize this into a real approval gate).</p>
 </tr>
 </tbody>
 </table>
+<h4 id="model-backend-litellm">Model backend: LiteLLM<a class="headerlink" href="#model-backend-litellm" title="Permanent link">&para;</a></h4>
+<p>Every ModelConfig's <code>anthropic.baseUrl</code> points at the AI Gateway. The gateway no
+longer calls Anthropic itself: it forwards model calls to <strong>LiteLLM</strong>
+(<code>kubernetes/ml-platform/litellm.yaml</code>), which holds the Anthropic key and Bedrock's
+IRSA credentials and adds virtual keys and per-key spend tracking.</p>
+<ul>
+<li><strong>When it's installed:</strong> on by default with <code>--aws</code>, opt-in locally with
+  <code>bootstrap-ai.sh --litellm</code> (requires <code>LITELLM_MASTER_KEY</code>). Without it, tools
+  still work through the gateway but model calls fail upstream.</li>
+<li><strong>Spend page:</strong> the <strong>LiteLLM Spend</strong> page in Backstage (and
+  <code>http://litellm.idp.local</code>) is hidden from the nav until a <code>litellm</code> Deployment
+  exists in <code>ml-platform</code>. The bootstrap scripts check this separately from the
+  rest of the AI stack, the same way they check Langfuse.</li>
+<li><strong>Scorecard:</strong> services that call LLMs get two AI-governance checks from it:
+  <code>has-litellm-virtual-key</code> and <code>has-budget-configured</code> (<code>idp.io/litellm-budget-usd</code>).</li>
+</ul>
+<p>Design and trade-offs: <a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>.</p>
 <hr />
 <h3 id="4-mcp-servers">4. MCP Servers<a class="headerlink" href="#4-mcp-servers" title="Permanent link">&para;</a></h3>
 <p>All MCP servers use the <code>@modelcontextprotocol/sdk</code> Streamable HTTP transport. Because

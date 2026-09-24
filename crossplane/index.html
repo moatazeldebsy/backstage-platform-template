@@ -1751,6 +1751,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -2514,8 +2535,11 @@ human running <code>terraform apply</code>. No manual step between "PR merged" a
    versioning, cost center.</li>
 <li>Backstage opens a PR adding
    <code>services/&lt;ownerService&gt;/claims/&lt;bucketName&gt;.yaml</code> (an <code>S3Bucket</code>
-   Claim) <strong>and</strong> a <code>catalog-info-&lt;bucketName&gt;.yaml</code> that registers the
-   resource in the Backstage Service Catalog.</li>
+   Claim) <strong>and</strong> a <code>catalog-info-&lt;bucketName&gt;.yaml</code> describing the
+   resource as a Backstage <code>Resource</code> entity (<code>dependencyOf</code> the owning
+   Component). It is not picked up automatically: after merging, register
+   it via <strong>Catalog → Register existing component</strong> using the URL in the
+   PR description.</li>
 <li>Reviewer merges. The <code>idp-services</code> ApplicationSet in
    <code>aws/argocd/app-of-apps.yaml</code> already watches <code>services/*/</code>, so
    ArgoCD syncs the Claim within ~60 s.</li>
@@ -2745,7 +2769,8 @@ policy's resource scope.</p>
 <li><code>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml</code> — Backstage Resource entity</li>
 </ul>
 </li>
-<li>Merge → ArgoCD syncs → Crossplane provisions → resource appears in catalog</li>
+<li>Merge → ArgoCD syncs → Crossplane provisions the resource</li>
+<li>Register the <code>catalog-info-&lt;name&gt;.yaml</code> via <strong>Backstage → Catalog → Register existing component</strong> (the exact URL is in the PR description and the task output). Until you do, the resource is not in the catalog.</li>
 </ol>
 <p><strong>DynamoDB composite keys:</strong> The template exposes optional <code>rangeKey</code> and
 <code>rangeKeyType</code> fields. Leave them blank for hash-only tables. When set, the

@@ -1717,6 +1717,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -2689,8 +2710,9 @@ series do not exist — the real ones are <code>dora_deploy_frequency_per_day</c
 <code>dora_lead_time_minutes</code>, <code>dora_change_failure_rate_percent</code> and
 <code>dora_mttr_minutes</code>. The doc has been corrected; build from the exporter, not
 from prose.</p>
-<p><strong>Retention.</strong> Prometheus keeps <strong>6 hours</strong> locally and <strong>30 days</strong> on AWS, with
-no long-term store and no recording rules for any custom series. Pushgateway
+<p><strong>Retention.</strong> Prometheus keeps <strong>24 hours</strong> locally (raised from 6h; no long-term
+store) and 3 days on AWS, where a Thanos sidecar ships blocks to S3 (30 days raw).
+There are no recording rules for any custom series. Pushgateway
 gauges are last-write-wins. This is why the plugin persists its own snapshots
 from the first refresh, and why no history can be back-filled.</p>
 <hr />

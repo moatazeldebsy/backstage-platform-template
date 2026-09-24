@@ -11,6 +11,10 @@
       
       
       
+        <link rel="prev" href="../adr-0006-engineering-intelligence/">
+      
+      
+        <link rel="next" href="../adr-0008-litellm-multiprovider-gateway/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -18,7 +22,7 @@
     
     
       
-        <title>ADR-0007: One gateway for MCP tools and model traffic - Internal Developer Platform</title>
+        <title>ADR-0007: AI Gateway - Internal Developer Platform</title>
       
     
     
@@ -94,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ADR-0007: One gateway for MCP tools and model traffic
+              ADR-0007: AI Gateway
             
           </span>
         </div>
@@ -476,10 +480,12 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../adr-0001-batch-orchestration/" class="md-tabs__link">
           
   
@@ -1395,25 +1401,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" checked>
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1424,7 +1435,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_21">
             <span class="md-nav__icon md-icon"></span>
             Design Decisions
@@ -1552,6 +1563,196 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-agentgateway-not-envoy-ai-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. agentgateway, not Envoy AI Gateway
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-standalone-mode-not-the-helmcrd-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Standalone mode, not the Helm/CRD install
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-default-on-not-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Default-on, not opt-in
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-prefixmode-never" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. prefixMode: never
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-failuremode-failopen-and-per-target-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. failureMode: failOpen, and per-target timeouts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-anthropic-stays-anthropic" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Anthropic stays Anthropic
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-the-admin-ui-is-on-locally-and-not-ingressed-on-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. The admin UI is on locally, and not ingressed on AWS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-credentials-live-in-the-gateway-not-in-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Credentials live in the gateway, not in services
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consequences
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Consequences">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#not-yet-done-and-why-it-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Not yet done, and why it matters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2487,6 +2688,44 @@ emit spans only. That decision belongs with the change that makes it, not here.<
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../adr-0006-engineering-intelligence/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADR-0006: Engineering Intelligence">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                ADR-0006: Engineering Intelligence
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../adr-0008-litellm-multiprovider-gateway/" class="md-footer__link md-footer__link--next" aria-label="Next: ADR-0008: LiteLLM multi-provider gateway">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                ADR-0008: LiteLLM multi-provider gateway
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
     
   
   <div class="md-footer-meta md-typeset">

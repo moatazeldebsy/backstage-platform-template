@@ -1961,6 +1961,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -2760,6 +2781,12 @@ with <code>kubectl top</code> on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-
 <td align="right">~0.4 GB</td>
 </tr>
 <tr>
+<td>LiteLLM (model backend)</td>
+<td><code>bootstrap-ai.sh --litellm</code> (<strong>off by default locally</strong>)</td>
+<td align="right">150m requested</td>
+<td align="right">768 Mi requested</td>
+</tr>
+<tr>
 <td>Argo Workflows</td>
 <td><code>bootstrap-ai.sh</code></td>
 <td align="right">~30m</td>
@@ -2771,6 +2798,15 @@ with <code>kubectl top</code> on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-
 <code>langfuse-clickhouse</code> is ~736 MB and <code>langfuse-web</code> ~908 MB. <code>langfuse-web</code> will
 not run under a 1 GB limit at all — Node sizes its heap from the container limit
 and OOMs at ~503 MB, so 2 GB is the floor.</p>
+<p><strong>Why LiteLLM is off by default locally:</strong> it is a second proxy process (after the
+AI Gateway), and the table above shows there is little memory to spare. On AWS it is
+on by default because Bedrock only exists there. Without it, MCP tools still work but
+model calls fail upstream. Turn it on with <code>./scripts/bootstrap-ai.sh --litellm</code>
+(requires <code>LITELLM_MASTER_KEY</code>); the <strong>LiteLLM Spend</strong> page appears in Backstage only
+once LiteLLM is installed. See <a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>.</p>
+<p><strong>Prometheus keeps 24 hours of history locally</strong> (<code>retention: 24h</code>,
+<code>retentionSize: 6000MB</code> on an 8 Gi PVC, in <code>local/observability/prometheus-stack-values.yaml</code>),
+up from 6h. There is no long-term store in Kind; that data is lost if the PVC is deleted.</p>
 <p><strong>Both Kind nodes share one VM.</strong> <code>free -m</code> inside either node reports the whole
 VM, not a per-node slice, so "the worker has 13 GB" is not a second 13 GB.</p>
 <h3 id="adding-it-up">Adding it up<a class="headerlink" href="#adding-it-up" title="Permanent link">&para;</a></h3>
@@ -3537,7 +3573,9 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 - <strong>MCP servers</strong> — Model Context Protocol servers: <code>idp-mcp-server</code> (6 IDP tools), <code>qa-mcp-server</code> (QA tools), <code>contract-mcp-server</code> (contract testing tools)
 - <strong>MLflow</strong> — Experiment tracking and model registry at <a href="http://mlflow.idp.local">http://mlflow.idp.local</a>
 - <strong>OpenAI ModelConfig</strong> — GPT-4o support if <code>OPENAI_API_KEY</code> is set; Claude Anthropic support if <code>ANTHROPIC_API_KEY</code> is set
-- <strong>AI Observability</strong> — Grafana dashboard with MCP tool metrics, latency, cost attribution per server</p>
+- <strong>AI Observability</strong> — Grafana dashboard with MCP tool metrics, latency, cost attribution per server
+- <strong>AI Gateway</strong> — one entry point for all MCP tool calls and model calls (<a href="../design/adr-0007-ai-gateway/">ADR-0007</a>)
+- <strong>LiteLLM</strong> <em>(only with <code>--litellm</code>)</em> — the model backend behind the gateway, with virtual keys and a spend dashboard at <a href="http://litellm.idp.local">http://litellm.idp.local</a> (<a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>)</p>
 <h3 id="ai-native-platform-features-phase-7a-complete">AI-Native Platform Features (Phase 7a Complete)<a class="headerlink" href="#ai-native-platform-features-phase-7a-complete" title="Permanent link">&para;</a></h3>
 <h4 id="priority-1-ai-platform-foundations">Priority 1: AI Platform Foundations ✅<a class="headerlink" href="#priority-1-ai-platform-foundations" title="Permanent link">&para;</a></h4>
 <ul>

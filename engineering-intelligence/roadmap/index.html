@@ -1750,6 +1750,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0007: AI Gateway
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
@@ -2786,7 +2807,7 @@ and the open-source platform stays fully usable single-tenant.</p>
 <tbody>
 <tr>
 <td><strong>Three scorecard implementations, already drifted</strong> (gold = 9 in <code>scorecard.ts</code>, 10 in <code>exporter.py</code>)</td>
-<td>Every quality and platform number inherits the ambiguity. Fixing it re-tiers live services, so it needs its own decision</td>
+<td>Every quality and platform number inherits the ambiguity. Partly closed: the check <em>predicates</em> now live in one package, <code>@internal/scorecard-core</code>, shared by <code>scorecard.ts</code> and <code>idpTechInsights.ts</code> (which had drifted on three AI checks). Tier <em>thresholds</em> and <code>exporter.py</code> (Python, can't import it) are unchanged, because reconciling them re-tiers live services and needs its own decision</td>
 </tr>
 <tr>
 <td><strong>No long-term metric store, local only</strong> — AWS already runs a Thanos sidecar (<code>aws/observability/thanos/</code>) backed by S3 for long-term/cross-region storage; local Kind had no equivalent, just a bare 6h Prometheus</td>
