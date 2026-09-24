@@ -2566,21 +2566,22 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 <span class="normal"> 7</span>
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code>services/&lt;name&gt;/
-├── src/                    # Application code
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code>services/&lt;name&gt;/
+├── src/                    # Application code (+ tests for go/python)
 ├── Dockerfile
 ├── README.md
-├── helm-values.yaml        # AWS / ALB overrides
-├── helm-values-local.yaml  # Kind / nginx overrides
-├── helm-values-aws.yaml
-├── helm-values-staging.yaml
-├── catalog-info.yaml       # Backstage registration
-└── .github/
-    └── workflows/
-        └── ci.yml
+├── mkdocs.yml + docs/      # TechDocs
+├── helm-values-local.yaml  # Kind / nginx — localhost:5003 image, cost labels
+├── helm-values-aws.yaml    # EKS dev — CI rewrites image repo/tag
+├── catalog-info.yaml       # register via /catalog-import (printed after scaffolding)
+├── package-lock.json       # nodejs, generated with npm if on PATH
+└── requirements-dev.txt    # python — pytest for build-and-deploy.yml
 </code></pre></div></td></tr></table></div>
+<p>There is no per-service CI workflow: the service lives in the platform repo, and
+<code>build-and-deploy.yml</code> tests, builds, scans, and deploys every <code>services/*</code>
+directory. <code>helm-values-staging.yaml</code> is created by that workflow on first
+promotion. <code>--owner</code> and <code>--cost-center</code> fill the <code>team</code> / <code>cost-center</code> pod
+labels the <code>require-cost-tags</code> Gatekeeper policy enforces in <code>services-*</code>.</p>
 <hr />
 <h3 id="idp-scaffold-test-suite"><code>idp scaffold test-suite</code><a class="headerlink" href="#idp-scaffold-test-suite" title="Permanent link">&para;</a></h3>
 <p>Scaffold a QA/testing suite. Supports 18 test types.</p>
@@ -2865,7 +2866,7 @@ idp<span class="w"> </span>completion<span class="w"> </span>powershell
 </tr>
 <tr>
 <td><code>idp mcp status</code></td>
-<td>Check reachability of all platform MCP servers</td>
+<td>Check reachability of the AI Gateway, LiteLLM, and all platform MCP servers (ADP servers need <code>bootstrap-ai.sh --adp</code>)</td>
 </tr>
 </tbody>
 </table>

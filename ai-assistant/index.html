@@ -3833,6 +3833,30 @@ idp<span class="w"> </span>ai<span class="w"> </span>--timeout<span class="w"> <
 <p>The command posts a JSON-RPC 2.0 A2A message to <code>platform-assistant</code>, then polls
 <code>/api/sessions</code> for a response. Tool status lines are printed to stderr during
 processing so you can see what the agent is doing.</p>
+<p><strong>Acting as you (verified identity).</strong> By default <code>idp ai</code> posts straight to KAgent
+with no user identity: user memory isn't tied to you and the consent gate lets the
+call through unchecked (see <a href="../agent-approvals/">agent-approvals.md</a>). The CLI prints
+a warning when this happens. To have the agent act as you, set
+<code>IDP_BACKSTAGE_USER_TOKEN</code> to a Backstage <strong>user</strong> token. The A2A POST then goes
+through <code>POST /api/idp-ai-identity/a2a/kagent/platform-assistant</code>, which sets
+<code>X-Backstage-User</code> from your verified credentials. That's the same route the Backstage
+chat page uses. Session polling still goes directly to KAgent.</p>
+<p>A static service token (<code>BACKSTAGE_TOKEN</code>) won't work here, because the route only
+accepts user principals. To get a user token, sign in to Backstage, open the
+browser devtools console on that tab, and run:</p>
+<div class="language-js highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s1">&#39;/api/auth/github/refresh?optional&amp;env=development&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s1">&#39;X-Requested-With&#39;</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;XMLHttpRequest&#39;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">credentials</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;include&#39;</span><span class="p">,</span>
+<span class="p">})).</span><span class="nx">json</span><span class="p">()).</span><span class="nx">backstageIdentity</span><span class="p">.</span><span class="nx">token</span>
+</code></pre></div></td></tr></table></div>
+<p>(Use <code>env=production</code> against AWS.) The token lasts about an hour.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">IDP_BACKSTAGE_USER_TOKEN</span><span class="o">=</span>&lt;token&gt;
+idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">&quot;what do you remember about me?&quot;</span>
+idp<span class="w"> </span>ai<span class="w"> </span>--env<span class="w"> </span>aws<span class="w"> </span>--backstage-url<span class="w"> </span>https://backstage.example.com<span class="w"> </span><span class="s2">&quot;list my services&quot;</span>
+</code></pre></div></td></tr></table></div>
 <hr />
 <h3 id="7-mlflow-page-mlflow">7. MLflow page — <code>/mlflow</code><a class="headerlink" href="#7-mlflow-page-mlflow" title="Permanent link">&para;</a></h3>
 <p><strong>File:</strong> <code>backstage/app/packages/app/src/extensions.tsx</code> (<code>MlflowPage</code>)</p>
