@@ -186,7 +186,11 @@ jobs:
 
       - name: Run tests (Python)
         if: steps.runtime.outputs.runtime == 'python'
-        run: pip install -r requirements.txt && pytest
+        # requirements-dev.txt carries pytest + test-only deps (the idp CLI
+        # scaffolder writes one) so they stay out of the runtime image.
+        run: |
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; else pip install -r requirements.txt pytest; fi
+          pytest
 
   # ─── Build and push to ECR ──────────────────────────────────────────────────
   build-and-push:
