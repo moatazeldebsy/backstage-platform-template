@@ -7,20 +7,21 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/backstage"
 	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/scaffold"
+	"github.com/spf13/cobra"
 )
 
 var (
-	svcName      string
-	svcType      string
-	svcNamespace string
-	svcLocal     bool
-	svcDryRun    bool
-	svcURL       string
-	svcOwner     string
-	svcDesc      string
+	svcName       string
+	svcType       string
+	svcNamespace  string
+	svcLocal      bool
+	svcDryRun     bool
+	svcURL        string
+	svcOwner      string
+	svcCostCenter string
+	svcDesc       string
 )
 
 var nameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -50,11 +51,12 @@ files are generated locally inside services/<name>/.`,
 func init() {
 	serviceCmd.Flags().StringVar(&svcName, "name", "", "Service name — lowercase alphanumeric + hyphens (required)")
 	serviceCmd.Flags().StringVar(&svcType, "type", "nodejs", "Service type: nodejs | python | go")
-	serviceCmd.Flags().StringVar(&svcNamespace, "namespace", "services", "Kubernetes namespace")
+	serviceCmd.Flags().StringVar(&svcNamespace, "namespace", "services-dev", "Kubernetes namespace (the local/dev ArgoCD ApplicationSet deploys to services-dev)")
 	serviceCmd.Flags().BoolVar(&svcLocal, "local", false, "Skip Backstage API, generate files locally")
 	serviceCmd.Flags().BoolVar(&svcDryRun, "dry-run", false, "Print files that would be generated without writing them")
 	serviceCmd.Flags().StringVar(&svcURL, "backstage-url", "", "Backstage base URL (auto-resolved from IDP_BACKSTAGE_URL / IDP_DOMAIN when --env aws)")
 	serviceCmd.Flags().StringVar(&svcOwner, "owner", "group:default/platform-team", "Backstage catalog owner ref")
+	serviceCmd.Flags().StringVar(&svcCostCenter, "cost-center", "eng-platform", "cost-center pod label (required by the require-cost-tags policy)")
 	serviceCmd.Flags().StringVar(&svcDesc, "description", "", "Short description (used by Backstage template)")
 	_ = serviceCmd.MarkFlagRequired("name")
 }
@@ -93,11 +95,13 @@ func runScaffoldService(cmd *cobra.Command, _ []string) error {
 	}
 
 	return scaffold.LocalService(scaffold.ServiceConfig{
-		Name:      svcName,
-		Type:      svcType,
-		Namespace: svcNamespace,
-		RootDir:   rootDir(),
-		DryRun:    svcDryRun,
+		Name:       svcName,
+		Type:       svcType,
+		Namespace:  svcNamespace,
+		Owner:      svcOwner,
+		CostCenter: svcCostCenter,
+		RootDir:    rootDir(),
+		DryRun:     svcDryRun,
 	})
 }
 
@@ -128,7 +132,6 @@ func rootDir() string {
 	}
 	return dir
 }
-
 
 func keyFromEnvFile(path, key string) string {
 	data, err := os.ReadFile(path)

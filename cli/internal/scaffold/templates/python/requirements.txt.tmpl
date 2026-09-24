@@ -1,2 +1,2 @@
-fastapi==0.110.0
-uvicorn[standard]==0.29.0
+fastapi>=0.111.0,!=0.136.3  # 0.136.3 compromised (MAL-2026-4750: injects typosquat 'fastar' dep)
+uvicorn[standard]>=0.29.0

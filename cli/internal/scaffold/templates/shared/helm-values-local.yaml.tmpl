@@ -1,5 +1,13 @@
 replicaCount: 1
 
+# bootstrap-local.sh builds and pushes every services/*/ image whose repository
+# here starts with localhost: — without this block the chart's empty default
+# renders an unpullable ":local" image.
+image:
+  repository: localhost:5003/<% .Name %>
+  tag: local
+  pullPolicy: IfNotPresent
+
 service:
   port: 80
   targetPort: <% .Port %>
@@ -8,7 +16,8 @@ ingress:
   enabled: true
   className: nginx
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   hosts:
     - host: <% .Name %>.idp.local
       paths:
@@ -22,6 +31,20 @@ resources:
   limits:
     cpu: 200m
     memory: 128Mi
+
+# Local overlay: single replica, no HPA (chart default enables HPA for prod).
+autoscaling:
+  enabled: false
+
+# Required in services-* namespaces by kubernetes/policies/require-cost-tags.yaml.
+podLabels:
+  team: <% .Team %>
+  cost-center: <% .CostCenter %>
+  environment: local
+
+env:
+  - name: ENVIRONMENT
+    value: local
 
 podSecurityContext:
   runAsNonRoot: true

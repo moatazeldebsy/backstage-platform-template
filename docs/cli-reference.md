@@ -66,18 +66,22 @@ idp scaffold service --name billing-svc --type nodejs --dry-run
 
 ```
 services/<name>/
-├── src/                    # Application code
+├── src/                    # Application code (+ tests for go/python)
 ├── Dockerfile
 ├── README.md
-├── helm-values.yaml        # AWS / ALB overrides
-├── helm-values-local.yaml  # Kind / nginx overrides
-├── helm-values-aws.yaml
-├── helm-values-staging.yaml
-├── catalog-info.yaml       # Backstage registration
-└── .github/
-    └── workflows/
-        └── ci.yml
+├── mkdocs.yml + docs/      # TechDocs
+├── helm-values-local.yaml  # Kind / nginx — localhost:5003 image, cost labels
+├── helm-values-aws.yaml    # EKS dev — CI rewrites image repo/tag
+├── catalog-info.yaml       # register via /catalog-import (printed after scaffolding)
+├── package-lock.json       # nodejs, generated with npm if on PATH
+└── requirements-dev.txt    # python — pytest for build-and-deploy.yml
 ```
+
+There is no per-service CI workflow: the service lives in the platform repo, and
+`build-and-deploy.yml` tests, builds, scans, and deploys every `services/*`
+directory. `helm-values-staging.yaml` is created by that workflow on first
+promotion. `--owner` and `--cost-center` fill the `team` / `cost-center` pod
+labels the `require-cost-tags` Gatekeeper policy enforces in `services-*`.
 
 ---
 
@@ -200,7 +204,7 @@ Print the CLI version. Binaries built with `make cli-build` embed the git tag/sh
 | `idp context inject --service <name>` | Write live catalog annotations into `CLAUDE.md` (or `--target cursor`). `--dry-run` to preview |
 | `idp learn --type component --name <name>` | Curated TechDocs / SLO / Scorecard next steps for a catalog entity |
 | `idp tip` | Print a platform onboarding tip |
-| `idp mcp status` | Check reachability of all platform MCP servers |
+| `idp mcp status` | Check reachability of the AI Gateway, LiteLLM, and all platform MCP servers (ADP servers need `bootstrap-ai.sh --adp`) |
 
 ---
 

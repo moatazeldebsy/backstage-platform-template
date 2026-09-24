@@ -4,12 +4,18 @@ metadata:
   name: <% .Name %>
   description: Auto-scaffolded <% .Type %> service
   annotations:
-    github.com/project-slug: <% .GHOrg %>/<% .Name %>
+    # The service lives in the platform repo (services/<% .Name %>/), not a repo of its own.
+    github.com/project-slug: <% .GHOrg %>/<% .PlatformRepo %>
     backstage.io/techdocs-ref: dir:.
-    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=<% .Name %>
+    # Matches the backstage.io/kubernetes-id label the ArgoCD ApplicationSet sets
+    # via backstage.kubernetesId — the release name is <% .Name %>-<env>, so an
+    # app.kubernetes.io/instance selector would match nothing.
+    backstage.io/kubernetes-id: <% .Name %>
     backstage.io/kubernetes-namespace: <% .Namespace %>
+    grafana/alert-label-selector: service=<% .Name %>
+    cost-center: "<% .CostCenter %>"
 spec:
   type: service
   lifecycle: development
-  owner: platform-team
+  owner: <% .Owner %>
   system: internal-developer-platform

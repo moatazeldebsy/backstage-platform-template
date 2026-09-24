@@ -20,9 +20,13 @@ var mcpCmd = &cobra.Command{
 var mcpStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check reachability of the platform's MCP servers",
-	Long: `Probes every known MCP server ingress with a lightweight health check.
-idp-mcp-server and qa-mcp-server are always-on (ApplicationSet-managed); the
-AI-stack servers require bootstrap-ai.sh and only warn (not fail) when down.`,
+	Long: `Probes the AI Gateway, LiteLLM, and every known MCP server ingress with a
+lightweight health check. idp-mcp-server and qa-mcp-server are always-on
+(ApplicationSet-managed) and fail the command when down; everything else
+requires bootstrap-ai.sh (or bootstrap-ai.sh --adp) and only warns.
+
+KAgent agents reach their tools only through the AI Gateway, so an up MCP
+server with a down ai-gateway still leaves agents with no tools.`,
 	RunE: runMcpStatus,
 }
 
@@ -31,21 +35,32 @@ func init() {
 	mcpStatusCmd.Flags().StringVar(&mcpEnv, "env", envLocal, fmt.Sprintf("Target environment: %s | %s", envLocal, envAWS))
 }
 
-// mcpServer describes one known platform MCP server.
+const (
+	noteAI  = "requires bootstrap-ai.sh"
+	noteADP = "requires bootstrap-ai.sh --adp"
+)
+
+// mcpServer describes one known platform MCP server (or AI-stack component
+// the MCP path depends on).
 type mcpServer struct {
-	name       string
-	alwaysOn   bool // false => requires bootstrap-ai.sh; down is a warning, not a failure
-	requiresAI bool
+	name     string
+	alwaysOn bool   // true => down fails the command
+	note     string // shown when down and not alwaysOn
 }
 
 var mcpServers = []mcpServer{
+	{name: "ai-gateway", note: noteAI},
+	{name: "litellm", note: noteAI},
 	{name: "idp-mcp-server", alwaysOn: true},
 	{name: "qa-mcp-server", alwaysOn: true},
-	{name: "contract-mcp-server", alwaysOn: false, requiresAI: true},
-	{name: "argocd-mcp-server", alwaysOn: false, requiresAI: true},
-	{name: "github-mcp-server", alwaysOn: false, requiresAI: true},
-	{name: "cost-mcp-server", alwaysOn: false, requiresAI: true},
-	{name: "agent-event-router", alwaysOn: false, requiresAI: true},
+	{name: "contract-mcp-server", note: noteAI},
+	{name: "argocd-mcp-server", note: noteAI},
+	{name: "github-mcp-server", note: noteAI},
+	{name: "cost-mcp-server", note: noteAI},
+	{name: "agent-event-router", note: noteAI},
+	{name: "incident-mcp-server", note: noteADP},
+	{name: "security-mcp-server", note: noteADP},
+	{name: "approval-service", note: noteADP},
 }
 
 func runMcpStatus(_ *cobra.Command, _ []string) error {
@@ -57,10 +72,10 @@ func runMcpStatus(_ *cobra.Command, _ []string) error {
 		status, latency, err := probeMcpServer(url)
 		note := ""
 		if err != nil {
-			if s.requiresAI {
-				note = "requires bootstrap-ai.sh"
-			} else if s.alwaysOn {
+			if s.alwaysOn {
 				failed = true
+			} else {
+				note = s.note
 			}
 		}
 		fmt.Printf("%-22s %-8s %-10s %s\n", s.name, status, latency, note)

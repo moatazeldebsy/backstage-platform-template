@@ -85,3 +85,33 @@ func TestMcpServerURL(t *testing.T) {
 	}
 	mcpEnv = envLocal
 }
+
+func TestMcpServers_CoversPlatform(t *testing.T) {
+	// Keep in sync with the MCP targets in kubernetes/ml-platform/ai-gateway.yaml
+	// and the AI entries in local/hosts-append.txt.
+	want := []string{
+		"ai-gateway", "litellm",
+		"idp-mcp-server", "qa-mcp-server", "contract-mcp-server", "argocd-mcp-server",
+		"github-mcp-server", "cost-mcp-server", "agent-event-router",
+		"incident-mcp-server", "security-mcp-server", "approval-service",
+	}
+	got := map[string]mcpServer{}
+	for _, s := range mcpServers {
+		got[s.name] = s
+	}
+	for _, name := range want {
+		s, ok := got[name]
+		if !ok {
+			t.Errorf("mcpServers is missing %q", name)
+			continue
+		}
+		if !s.alwaysOn && s.note == "" {
+			t.Errorf("%q is optional but has no note explaining how to enable it", name)
+		}
+	}
+	for _, name := range []string{"idp-mcp-server", "qa-mcp-server"} {
+		if !got[name].alwaysOn {
+			t.Errorf("%q should be alwaysOn (ApplicationSet-managed)", name)
+		}
+	}
+}
