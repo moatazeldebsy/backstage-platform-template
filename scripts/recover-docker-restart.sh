@@ -239,31 +239,14 @@ if [[ "$SKIP_BACKSTAGE" == "false" ]]; then
   step "Step 8 — Restart Backstage (Docker Compose)"
   COMPOSE_FILE="${ROOT_DIR}/local/backstage/docker-compose.yml"
   if [[ -f "$COMPOSE_FILE" ]]; then
-    # ArgoCD session tokens expire after 24h — refresh before restarting so the
-    # Backstage ArgoCD proxy widget works immediately after recovery.
-    LOCAL_ENV="${ROOT_DIR}/local/backstage/.env"
-    ARGOCD_PASS=$(kubectl get secret -n argocd argocd-initial-admin-secret \
-      -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)
-    if [[ -n "$ARGOCD_PASS" ]]; then
-      NEW_ARGOCD_TOKEN=$(curl -sk https://argocd.idp.local/api/v1/session \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASS}\"}" \
-        2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null || true)
-      if [[ -n "$NEW_ARGOCD_TOKEN" ]]; then
-        if grep -q "^ARGOCD_AUTH_TOKEN=" "$LOCAL_ENV" 2>/dev/null; then
-          sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${NEW_ARGOCD_TOKEN}|" "$LOCAL_ENV" && rm -f "${LOCAL_ENV}.bak"
-        else
-          echo "ARGOCD_AUTH_TOKEN=${NEW_ARGOCD_TOKEN}" >> "$LOCAL_ENV"
-        fi
-        log "ArgoCD token refreshed in $LOCAL_ENV"
-      else
-        warn "Could not refresh ArgoCD token — proxy widget may fail until token is renewed"
-      fi
-    fi
+    # Make sure the Backstage ArgoCD proxy has a working token before the
+    # container is recreated: keeps a still-valid one, mints one for the
+    # `backstage` account otherwise, and never writes an empty value.
+    run ensure_backstage_argocd_token "${ROOT_DIR}/local/backstage/.env" || true
 
     # Use 'up -d' not 'restart' — restart keeps the frozen env vars from container
     # creation and ignores any changes to the .env file (including the refreshed
-    # ARGOCD_AUTH_TOKEN written above).
+    # ARGOCD_AUTH_TOKEN checked above).
     run docker compose -f "$COMPOSE_FILE" up -d backstage
     log "Waiting for Backstage to become healthy..."
     elapsed=0

@@ -339,7 +339,7 @@ _print_url_banner() {
   echo ""
   if [[ -n "$argocd_pass" ]]; then
   echo "  ArgoCD admin password: ${argocd_pass}"
-  echo "  (saved in local/backstage/.env as ARGOCD_AUTH_TOKEN)"
+  echo "  (Backstage uses its own non-expiring token for the 'backstage' ArgoCD account: ARGOCD_AUTH_TOKEN in local/backstage/.env)"
   echo ""
   fi
   echo "  Next steps:"
@@ -383,20 +383,7 @@ if $INSTALL_ARGOCD; then
   log "ArgoCD ready. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'secret not yet available'})"
 
   if [[ -n "$ARGOCD_PASS" ]]; then
-    # The Backstage proxy sends ARGOCD_AUTH_TOKEN as a Bearer token, which
-    # the ArgoCD API server only accepts as a session JWT — not the raw
-    # admin password. Exchange the password for a real token via the API.
-    ARGOCD_TOKEN=$(curl -s -X POST http://argocd.idp.local/api/v1/session \
-      -H "Content-Type: application/json" \
-      -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASS}\"}" \
-      | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-    local_env="${ROOT_DIR}/local/backstage/.env"
-    if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
-      sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}|" "$local_env" && rm -f "${local_env}.bak"
-    else
-      echo "ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}" >> "$local_env"
-    fi
-    log "  ArgoCD token written to local/backstage/.env"
+    ensure_backstage_argocd_token "${ROOT_DIR}/local/backstage/.env" || true
   fi
 
   _github_token=$(grep -E '^GITHUB_TOKEN=' "${ROOT_DIR}/local/.env" | cut -d= -f2- | tr -d '"' || true)
@@ -1436,20 +1423,7 @@ if ! $SKIP_GITOPS; then
     log "ArgoCD ready. UI: http://argocd.idp.local  (admin / ${ARGOCD_PASS:-'not yet available'})"
 
     if [[ -n "$ARGOCD_PASS" ]]; then
-      # The Backstage proxy sends ARGOCD_AUTH_TOKEN as a Bearer token, which
-      # the ArgoCD API server only accepts as a session JWT — not the raw
-      # admin password. Exchange the password for a real token via the API.
-      ARGOCD_TOKEN=$(curl -s -X POST http://argocd.idp.local/api/v1/session \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASS}\"}" \
-        | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-      local_env="${ROOT_DIR}/local/backstage/.env"
-      if grep -q "^ARGOCD_AUTH_TOKEN=" "$local_env" 2>/dev/null; then
-        sed -i.bak "s|^ARGOCD_AUTH_TOKEN=.*|ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}|" "$local_env" && rm -f "${local_env}.bak"
-      else
-        echo "ARGOCD_AUTH_TOKEN=${ARGOCD_TOKEN}" >> "$local_env"
-      fi
-      log "  ArgoCD token written to local/backstage/.env (ARGOCD_AUTH_TOKEN)"
+      ensure_backstage_argocd_token "${ROOT_DIR}/local/backstage/.env" || true
     fi
 
     local _token _org

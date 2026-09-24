@@ -99,13 +99,13 @@ configs:
 
   # Local users. Both are apiKey-only (no password login): tokens are minted
   # against them and handed to a specific consumer.
-  #   backstage      -> the Backstage ArgoCD tab, read-only
+  #   backstage      -> the Backstage ArgoCD tab: read, plus sync
   #   argocd-mcp     -> services/argocd-mcp-server, which AI agents call
   cm:
     accounts.backstage: apiKey
     accounts.argocd-mcp: apiKey
 
-  # RBAC: admin can do everything; backstage gets read-only across all apps
+  # RBAC: admin can do everything; backstage can read and sync all apps
   rbac:
     policy.default: role:readonly
     policy.csv: |
@@ -113,10 +113,14 @@ configs:
       p, role:admin, clusters, get, *, allow
       p, role:admin, repositories, *, *, allow
       g, argocd-admins, role:admin
-      p, role:backstage-read, applications, get, */*, allow
-      p, role:backstage-read, clusters, get, *, allow
-      p, role:backstage-read, repositories, get, *, allow
-      g, backstage, role:backstage-read
+      # The Backstage ArgoCD tab lists apps and has a Sync button, so this role
+      # gets `sync` on top of read. Sync only re-applies what is already in git:
+      # no create, update or delete on Applications, and no write on repositories.
+      p, role:backstage, applications, get, */*, allow
+      p, role:backstage, applications, sync, */*, allow
+      p, role:backstage, clusters, get, *, allow
+      p, role:backstage, repositories, get, *, allow
+      g, backstage, role:backstage
       # argocd-mcp-server needs more than read: sync_app and rollback_app are
       # mutating tools (both gated behind the human-in-the-loop approval service,
       # see docs/agent-approvals.md). It is deliberately NOT role:admin -- no
