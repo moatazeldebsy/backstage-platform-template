@@ -2499,6 +2499,23 @@ convention (Crossplane, External Secrets); local Bedrock testing is a manual,
 undocumented-by-default path (export real AWS credentials into the pod), not a
 first-class flag.</p>
 <h3 id="4-opt-in-on-local-on-by-default-on-aws">4. Opt-in on local, on by default on AWS<a class="headerlink" href="#4-opt-in-on-local-on-by-default-on-aws" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>Amended 2026-09-24: now on by default locally too.</strong> Running the local
+default (no <code>--litellm</code>) showed two things this section got wrong. First,
+agentgateway v1.5.0 refuses to start when <code>$LITELLM_MASTER_KEY</code> is unset, so
+the gateway crash-looped and agents lost their tools as well as their model.
+The "MCP tools still work" claim below never held. Second, even with the
+gateway up, every model entry points at LiteLLM, so the default local install
+had an AI Assistant that could never answer. <code>bootstrap-ai.sh</code> now defaults
+<code>--litellm</code> on for both targets, generates a local <code>LITELLM_MASTER_KEY</code> if
+none is set, and under <code>--skip-litellm</code> creates a placeholder <code>litellm-keys</code>
+Secret so the gateway starts. The memory cost (~768Mi requested) is accepted;
+<code>--skip-langfuse</code> is the bigger lever when a laptop is tight.
+Testing that placeholder also showed that agentgateway expands dollar-prefixed
+variables inside YAML comments: a comment in <code>ai-gateway.yaml</code> naming the
+Anthropic key made it a required env var. Those comments no longer use the
+dollar form, and the config now warns about it.</p>
+</blockquote>
 <p><code>bootstrap-ai.sh --litellm</code> (tri-state, same pattern as <code>--langfuse</code>): unset
 resolves to <code>false</code> on local Kind, <code>true</code> on <code>--aws</code>. Local stays opt-in
 because LiteLLM is a second proxy process — Python/Uvicorn, not agentgateway's
@@ -2572,7 +2589,7 @@ further: DB-connected mode (Prisma client) needs more than DB-less mode did.</p>
 <tr>
 <td>Local default</td>
 <td>N/A</td>
-<td>Off (<code>--litellm</code> opt-in)</td>
+<td>On since 2026-09-24 (was <code>--litellm</code> opt-in); <code>--skip-litellm</code> opts out</td>
 </tr>
 <tr>
 <td>AWS default</td>

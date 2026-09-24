@@ -3147,7 +3147,7 @@ otherwise the pod sits <code>Pending</code> forever and reads as a hang.</p>
               │  AI Gateway — agentgateway :3000     │  ml-platform
               │   /mcp          all 8 servers, tool  │
               │                 names unprefixed     │
-              │   /v1/messages  Anthropic, native    │──▶ LiteLLM (--litellm) ──▶ Anthropic / Bedrock
+              │   /v1/messages  Anthropic, native    │──▶ LiteLLM ──▶ Anthropic / Bedrock
               └───────────────────┬──────────────────┘
                                   │ streamable-HTTP
        ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
@@ -3446,9 +3446,10 @@ longer calls Anthropic itself: it forwards model calls to <strong>LiteLLM</stron
 (<code>kubernetes/ml-platform/litellm.yaml</code>), which holds the Anthropic key and Bedrock's
 IRSA credentials and adds virtual keys and per-key spend tracking.</p>
 <ul>
-<li><strong>When it's installed:</strong> on by default with <code>--aws</code>, opt-in locally with
-  <code>bootstrap-ai.sh --litellm</code> (requires <code>LITELLM_MASTER_KEY</code>). Without it, tools
-  still work through the gateway but model calls fail upstream.</li>
+<li><strong>When it's installed:</strong> by default on both local and AWS. It needs
+  <code>LITELLM_MASTER_KEY</code>; locally, <code>bootstrap-ai.sh</code> generates one into <code>local/.env</code>
+  if it's missing. With <code>--skip-litellm</code>, tools still work through the gateway
+  but every model call fails.</li>
 <li><strong>Spend page:</strong> the <strong>LiteLLM Spend</strong> page in Backstage (and
   <code>http://litellm.idp.local</code>) is hidden from the nav until a <code>litellm</code> Deployment
   exists in <code>ml-platform</code>. The bootstrap scripts check this separately from the

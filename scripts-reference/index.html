@@ -2785,13 +2785,13 @@ in the docs that mentions a <code>bootstrap-ai.sh</code> flag should defer to th
 </tr>
 <tr>
 <td><code>--litellm</code></td>
-<td>off (local) / on (<code>--aws</code>)</td>
-<td>Deploy LiteLLM as the model backend behind the AI Gateway — Anthropic + Bedrock through one proxy, with virtual keys and spend tracking. Off by default locally: it's a second proxy process on a cluster already measured to have little headroom (see <a href="../local-setup/">Local Setup</a>). On by default on AWS, since Bedrock only exists there. Without it, the AI Gateway's tools still work but model calls fail upstream. Requires <code>LITELLM_MASTER_KEY</code>. See <a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>.</td>
+<td>on</td>
+<td>Deploy LiteLLM as the model backend behind the AI Gateway — Anthropic + Bedrock through one proxy, with virtual keys and spend tracking. On by default on both local and AWS, because every model the gateway serves points at it. Needs <code>LITELLM_MASTER_KEY</code>: locally one is generated into <code>local/.env</code> if missing; on AWS it must be in Secrets Manager. About 768 Mi requested locally. See <a href="../design/adr-0008-litellm-multiprovider-gateway/">ADR-0008</a>.</td>
 </tr>
 <tr>
 <td><code>--skip-litellm</code></td>
 <td>—</td>
-<td>Force LiteLLM off even on <code>--aws</code>.</td>
+<td>Don't deploy LiteLLM. The AI Gateway still starts (with a placeholder key) and serves MCP tools, but every model call fails.</td>
 </tr>
 <tr>
 <td><code>--langfuse</code></td>
