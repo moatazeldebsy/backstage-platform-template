@@ -192,6 +192,16 @@ view: five planes, each independently installable. The core IDP runs without the
 Observability planes, and the AI plane holds no privilege the planes above it do not already
 grant.
 
+| Plane | What's in it |
+|---|---|
+| **Experience** | The Backstage portal, the `idp` CLI and TechDocs for people; Claude Code, Copilot or any MCP client for agents. Sign-in is GitHub OAuth, with catalog groups synced from GitHub Org Teams |
+| **Control** | Backstage: catalog, scaffolder (64 templates), Tech Insights scorecard plus the compliance watcher, RAG search, Engineering Intelligence; Terraform and Crossplane for infrastructure |
+| **Delivery** | Argo CD, Workflows and Rollouts; Kyverno guardrails; Kind or EKS with Karpenter; the approval service (human approvals + user consent for agent actions) and the agent event router |
+| **AI & ML** *(optional)* | The **AI Gateway** is the single entry point: agentgateway routes every MCP tool call and every model call, and LiteLLM behind it serves Anthropic and Bedrock with virtual keys and spend tracking. Behind it: 9 KAgent agents, 8 MCP servers, MLflow, Ollama, Langfuse and DeepEval |
+| **Observability** *(optional)* | Prometheus, Grafana, Loki, Tempo, Alertmanager; DORA, flaky-test and Tech Insights exporters; OpenCost and Sloth SLOs; Engineering Intelligence scoring |
+
+The diagram is generated from [`docs/diagrams/platform-planes.html`](docs/diagrams/README.md), so update it there when a plane changes.
+
 ### AWS Architecture
 
 ![AWS Architecture](docs/assets/aws-architecture.jpg)
@@ -599,6 +609,7 @@ behaviour in [integrations](docs/engineering-intelligence/integrations.md).
 - **One scorecard predicate package** — `@internal/scorecard-core` is now shared by the entity-page tab and the Tech Insights retriever, which had drifted on three AI checks.
 - **Infra templates register their Resource entity** — the 8 PR-based infra templates now tell you how to register the generated `catalog-info.yaml` after merge, and write into scoped directories instead of the repo root.
 - **GitHub Org Teams as the identity source** — catalog groups and sign-in come from GitHub Teams, and new service repos default to the Teams org ([ADR-0004](docs/design/adr-0004-identity-and-access.md)).
+- **ArgoCD page no longer falls back to demo data** — Backstage now uses a non-expiring token for ArgoCD's `backstage` account (read + sync) instead of a 24h admin session, and the bootstrap never writes an empty token.
 - **24h local Prometheus retention** (was 6h), so local trend views have more than a few hours of history.
 - **No more AI Assistant hangs** — every KAgent agent is now told not to call `ask_user`, which the chat UI cannot answer.
 
@@ -638,6 +649,7 @@ Multi-team production hardening and self-hosted small-model serving. See the boa
 | `/kubernetes` standalone page crashes | By design — disabled in local config. Use the Kubernetes tab on any catalog entity instead |
 | `Cost Overview` shows "OpenCost returned 500" | Wait for the OpenCost pod: `kubectl get pods -n opencost` |
 | Catalog empty on first load | Fixed: `dangerouslyDisableDefaultAuthPolicy: true` prevents a 401 flash before sign-in |
+| ArgoCD page shows "📊 Demo data — ArgoCD proxy returned an error" | `ARGOCD_AUTH_TOKEN` is missing, usually because the cluster was recreated. Run `./scripts/bootstrap-local.sh --install-argocd` (mints a token for the `backstage` account), then `--start-backstage` to recreate the container |
 | `ImagePullBackOff` after scaffold | Image hasn't been pushed to the local registry yet. See [docs/runbooks/image-pull-backoff.md](docs/runbooks/image-pull-backoff.md) |
 | Backstage K8s tab shows "unknown" for CPU/memory | metrics-server not running (auto-installed by `bootstrap-local.sh`) |
 
