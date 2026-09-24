@@ -249,11 +249,15 @@ catalog:
       rules:
         - allow: [Component]
 
-  # GitHub org auto-discovery — finds repos tagged with the `idp` or `idp-app`
-  # topic that contain a catalog-info.yaml. Scaffolded services are tagged
-  # `idp-app` automatically by the scaffolder templates (publish:github
-  # `topics:`), so both must be listed here — the DORA exporter only reports
-  # repos the catalog knows, and dropping `idp-app` blanks every DORA panel.
+  # GitHub org auto-discovery — finds repos tagged with the `idp`, `idp-app` or
+  # `idp-service` topic that contain a catalog-info.yaml. The scaffolder
+  # templates tag new repos via publish:github `topics:` — mobile apps get
+  # `idp-app`, backend/frontend services get `idp-service` — so all three must
+  # be listed here. The DORA exporter only reports repos the catalog knows, and
+  # a scaffolded service's one-off catalog:register location is lost whenever
+  # the Postgres volume is pruned (bootstrap-local.sh --destroy): without its
+  # topic here, ArgoCD keeps deploying services/<name>/ while Backstage no
+  # longer shows it.
   # Add either topic to a pre-existing repo you want imported. Limiting
   # discovery by topic avoids scanning every fork/archived/tooling repo in the
   # org every 15 minutes (GitHub API rate-limit pressure).
@@ -266,7 +270,7 @@ catalog:
         filters:
           branch: main
           topic:
-            include: [idp, idp-app]
+            include: [idp, idp-app, idp-service]
         schedule:
           frequency: { minutes: 15 }
           timeout: { minutes: 3 }
