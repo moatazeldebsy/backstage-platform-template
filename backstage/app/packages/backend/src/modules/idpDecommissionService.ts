@@ -6,6 +6,9 @@
  * 2. Confirming via typed confirmation (can't be undone by accident)
  * 3. Archiving or deleting the GitHub repo
  * 4. Unregistering the entity from the Backstage catalog
+ * 5. Listing the service's GitOps files (services/<name>/**) in the platform
+ *    repo, so the template can open a PR deleting them. Without that PR the
+ *    idp-services ApplicationSet keeps deploying a decommissioned service.
  */
 import { createBackendModule, coreServices } from '@backstage/backend-plugin-api';
 import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-node';
@@ -35,9 +38,18 @@ export function createDecommissionServiceAction(options: {
             .describe('archive = repo is frozen read-only (reversible); delete = permanent removal'),
         confirmationText: z =>
           z.string().describe('Type the service name exactly to confirm'),
+        platformRepo: z =>
+          z
+            .string()
+            .optional()
+            .describe('owner/repo of the platform GitOps repo; when set, services/<name>/ files are listed in gitopsFiles'),
       },
       output: {
         summary: z => z.string().describe('Decommission summary message'),
+        gitopsFiles: z =>
+          z
+            .array(z.string())
+            .describe('Paths under services/<name>/ in the platform repo, for publish:github:pull-request filesToDelete'),
       },
     },
 
@@ -45,6 +57,7 @@ export function createDecommissionServiceAction(options: {
       const entityRef = ctx.input.entityRef as string;
       const action = ctx.input.action as 'archive' | 'delete';
       const confirmationText = ctx.input.confirmationText as string;
+      const platformRepo = ctx.input.platformRepo as string | undefined;
 
       // Parse entityRef into { kind, namespace, name }
       const refParts = entityRef.split(':');
@@ -213,8 +226,9 @@ export function createDecommissionServiceAction(options: {
               );
               if (topicsResp.ok) {
                 const { names: currentTopics } = (await topicsResp.json()) as { names: string[] };
-                const idpTopics = new Set(['idp', 'idp-service', 'idp-module']);
-                const remainingTopics = currentTopics.filter(t => !idpTopics.has(t));
+                const remainingTopics = currentTopics.filter(
+                  t => t !== 'idp' && !t.startsWith('idp-'),
+                );
                 await fetch(
                   `https://api.github.com/repos/${ghOwner}/${ghRepo}/topics`,
                   {
@@ -281,10 +295,53 @@ export function createDecommissionServiceAction(options: {
         );
       }
 
+      // Step 6: List services/<name>/** in the platform repo. Best-effort: the
+      // repo and catalog work above is already done, so a failure here only
+      // means the follow-up PR has nothing to delete — warn, don't throw.
+      let gitopsFiles: string[] = [];
+      if (platformRepo) {
+        try {
+          const { token: ghToken } = await DefaultGithubCredentialsProvider.fromIntegrations(
+            options.integrations,
+          ).getCredentials({ url: `https://github.com/${platformRepo}` });
+          const treeResp = await fetch(
+            `https://api.github.com/repos/${platformRepo}/git/trees/HEAD?recursive=1`,
+            {
+              headers: {
+                Authorization: `token ${ghToken}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+            },
+          );
+          if (!treeResp.ok) {
+            throw new Error(`GitHub returned ${treeResp.status}`);
+          }
+          const { tree } = (await treeResp.json()) as {
+            tree: Array<{ path: string; type: string }>;
+          };
+          const prefix = `services/${name}/`;
+          gitopsFiles = tree
+            .filter(e => e.type === 'blob' && e.path.startsWith(prefix))
+            .map(e => e.path);
+          ctx.logger.info(
+            `Found ${gitopsFiles.length} GitOps file(s) under ${prefix} in ${platformRepo}`,
+          );
+        } catch (e: any) {
+          ctx.logger.warn(
+            `Could not list services/${name}/ in ${platformRepo}: ${e.message}. Remove it manually or ArgoCD keeps deploying the service.`,
+          );
+        }
+      }
+      ctx.output('gitopsFiles', gitopsFiles);
+
       // Return summary
       const repoInfo = ghOwner && ghRepo ? `${ghOwner}/${ghRepo}` : '(no GitHub repo)';
       const actionVerb = action === 'archive' ? 'archived' : 'deleted';
-      ctx.output('summary', `Repository ${repoInfo} has been ${actionVerb} and entity ${entityRef} removed from the catalog.`);
+      const gitopsInfo = gitopsFiles.length
+        ? ` A PR removing services/${name}/ from the platform repo follows; ArgoCD prunes the service once it merges.`
+        : '';
+      ctx.output('summary', `Repository ${repoInfo} has been ${actionVerb} and entity ${entityRef} removed from the catalog.${gitopsInfo}`);
     },
   });
 }
