@@ -89,14 +89,18 @@ Two consequences worth knowing:
 
 Each template opens a PR with **two files**:
 - `services/<ownerService>/claims/<name>.yaml` — the Crossplane Claim
-- `services/<ownerService>/claims/catalog-info-<name>.yaml` — registers the resource in the Backstage catalog
+- `services/<ownerService>/claims/catalog-info-<name>.yaml` — the Backstage `Resource` entity for it
 
 ArgoCD syncs on merge, Crossplane provisions the AWS resource — no `terraform apply` step.
+The `Resource` entity is **not** auto-discovered: after merging, register it via
+**Catalog → Register existing component** with the URL from the PR description.
 See [crossplane.md](crossplane.md) for the full flow.
 
 > The legacy Terraform-PR templates (`s3-bucket`, `rds-database`,
 > `kafka-topic`) still exist for callers mid-migration. Pick the
-> Crossplane variant for new resources.
+> Crossplane variant for new resources. They write into their own
+> directories (e.g. `terraform/infra/s3-buckets/<name>/`) rather than the
+> repo root, and need the same manual catalog registration after merge.
 
 ### 2. Clone your new repo
 

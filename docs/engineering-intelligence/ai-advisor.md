@@ -78,7 +78,7 @@ available, it answers the spend question only, labelled *"a spend figure, not a 
 one"* — because cost is not performance and the distinction disappears the moment a number
 is shown without it.
 
-**Explaining a trend that does not exist.** Prometheus retention is 6h locally and 30d on
+**Explaining a trend that does not exist.** Prometheus retention is 24h locally and 30d on
 AWS, and the snapshot store starts empty. With fewer than two scored snapshots the advisor
 says the history *"cannot be back-filled"* rather than describing a movement it cannot see.
 

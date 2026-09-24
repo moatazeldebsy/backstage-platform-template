@@ -333,7 +333,7 @@ and the open-source platform stays fully usable single-tenant.
 
 | Item | Why it matters |
 |---|---|
-| **Three scorecard implementations, already drifted** (gold = 9 in `scorecard.ts`, 10 in `exporter.py`) | Every quality and platform number inherits the ambiguity. Fixing it re-tiers live services, so it needs its own decision |
+| **Three scorecard implementations, already drifted** (gold = 9 in `scorecard.ts`, 10 in `exporter.py`) | Every quality and platform number inherits the ambiguity. Partly closed: the check *predicates* now live in one package, `@internal/scorecard-core`, shared by `scorecard.ts` and `idpTechInsights.ts` (which had drifted on three AI checks). Tier *thresholds* and `exporter.py` (Python, can't import it) are unchanged, because reconciling them re-tiers live services and needs its own decision |
 | **No long-term metric store, local only** — AWS already runs a Thanos sidecar (`aws/observability/thanos/`) backed by S3 for long-term/cross-region storage; local Kind had no equivalent, just a bare 6h Prometheus | Every trend in phases 10–11 depends on snapshots accumulating from now. Closed as a lighter fix: local retention raised 6h→24h (`local/observability/prometheus-stack-values.yaml`) rather than running Thanos in Kind too — good enough for a local dev/demo session, not full parity with AWS |
 | **Security is control-presence only** | The Security dimension cannot become a real risk measure until findings are trended |
 | **Coverage and e2e pass rate are seeded demo values** | Excluded from scoring; a real exporter would strengthen Quality |

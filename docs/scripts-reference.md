@@ -127,7 +127,7 @@ in the docs that mentions a `bootstrap-ai.sh` flag should defer to this table.
 | `--aws` | off | Target the AWS cluster rather than Kind. `bootstrap.sh` passes this for you; run it standalone only to retry a failed AI phase. |
 | `--cluster <name>` | from `.idp-config.env` | Cluster name to target (AWS). |
 | `--region <region>` | from `.idp-config.env` | AWS region to target. |
-| `--destroy` | — | Remove the AI/ML stack. |
+| `--destroy` | — | Remove the AI/ML stack, then hide the AI pages in Backstage again and restart Backstage so the change applies. Safe to re-run if `kagent`/`ml-platform` are already gone. |
 
 ### Helper scripts (not invoked directly)
 

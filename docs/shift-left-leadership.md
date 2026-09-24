@@ -126,6 +126,20 @@ Three dashboards give leadership visibility without requiring Kubernetes access.
 - **Per-team panel** — filter by `team` label to see any team's distribution.
 - **Per-check heatmap** — which specific checks are failing organisation-wide. If `has-coverage-gate` is red for 40% of services, that is the next highest-leverage gate to drive.
 
+### Compliance watcher
+
+Dashboards only help if someone looks at them. The compliance watcher reaches out instead: when a service **loses** a scorecard check (a check that passed now fails), its owner gets a Slack message and a Jira ticket.
+
+- **What it watches:** the boolean facts from the `idp-entity-facts` Tech Insights retriever, for every `Component`, every 30 minutes (first run 3 minutes after startup). It reports individual checks going from true to false. It never computes a tier, because a named failing check is more useful than "you dropped to Silver".
+- **No duplicate alerts:** the last-seen facts per entity are stored in the plugin's own Postgres database (`backstage_plugin_idp-compliance-watcher`), so a restart doesn't report every check again, and each regression is reported only once.
+- **Slack:** posts to `SLACK_WEBHOOK_URL`, the same webhook KAgent's `send_notification` tool and AlertManager use.
+- **Jira:** creates an issue in the project named by the entity's `jira/project-key` annotation (the same one the Jira tab reads), using `JIRA_URL` / `JIRA_TOKEN`. Entities without that annotation get Slack only.
+- **Optional:** if either integration is unset, it is skipped. The backend still starts.
+
+Configuration is the `complianceWatcher` block in `backstage/app-config.yaml`. It is the same on local and AWS. Set `complianceWatcher.refreshMinutes` to change the 30-minute interval. Source: `backstage/app/packages/backend/src/modules/idpComplianceWatcher.ts`.
+
+The check definitions live in one shared package, `@internal/scorecard-core` (`backstage/app/packages/scorecard-core/`). The entity-page Scorecard tab and the Tech Insights retriever both use it, so a check means the same thing in the portal as in Grafana and in these alerts. Tier thresholds are not in that package: the Grafana exporter (`observability/tech-insights-exporter/exporter.py`) deliberately still uses different Gold cutoffs.
+
 ### DORA dashboard (Grafana)
 
 `http://grafana.idp.local/d/dora/dora-metrics`

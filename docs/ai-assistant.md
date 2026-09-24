@@ -89,7 +89,7 @@ The AI Assistant is a **native React chat component** embedded directly in the B
               │  AI Gateway — agentgateway :3000     │  ml-platform
               │   /mcp          all 8 servers, tool  │
               │                 names unprefixed     │
-              │   /v1/messages  Anthropic, native    │──▶ api.anthropic.com
+              │   /v1/messages  Anthropic, native    │──▶ LiteLLM (--litellm) ──▶ Anthropic / Bedrock
               └───────────────────┬──────────────────┘
                                   │ streamable-HTTP
        ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
@@ -161,8 +161,14 @@ controls this value, preventing cross-user IDOR.
 KAgent may emit an `ask_user` function call when it wants to render a form dialog.
 The Backstage chat UI cannot render ADK form widgets, so the frontend detects this
 event, extracts the question text from the function call args, and appends them as
-plain text. The system message Rule 2 now explicitly forbids the agent from calling
-this tool.
+plain text. That fallback doesn't always help: the agent then waits for a form answer
+that never comes, and the turn hangs until the frontend's 5-minute poll gives up with
+"Agent did not respond in time". So **every** agent's system message now forbids
+`ask_user` / `adk_request_confirmation` and tells it to ask in plain text instead.
+That covers `platform-assistant`, `idp-assistant`, `qa-assistant`,
+`contract-assistant`, `cost-agent`, `release-agent`, `incident-agent`,
+`security-agent` and `onboarding-agent`. Add the same rule to any new agent in
+`kubernetes/kagent/`.
 
 **New Chat button:** clears local `messages` state only — the KAgent session on the
 server is not deleted. Each new message creates a fresh contextId, so the next
@@ -263,6 +269,25 @@ for the plan to formalize this into a real approval gate).
 | `claude-sonnet` | claude-sonnet-4-6 | Balanced — `platform-assistant`, `qa-assistant`, `contract-assistant` |
 | `claude-opus` | claude-opus-4-8 | Highest quality — available for future agents |
 | `openai-prod` | gpt-4o | Optional; set `OPENAI_API_KEY` to enable |
+
+#### Model backend: LiteLLM
+
+Every ModelConfig's `anthropic.baseUrl` points at the AI Gateway. The gateway no
+longer calls Anthropic itself: it forwards model calls to **LiteLLM**
+(`kubernetes/ml-platform/litellm.yaml`), which holds the Anthropic key and Bedrock's
+IRSA credentials and adds virtual keys and per-key spend tracking.
+
+- **When it's installed:** on by default with `--aws`, opt-in locally with
+  `bootstrap-ai.sh --litellm` (requires `LITELLM_MASTER_KEY`). Without it, tools
+  still work through the gateway but model calls fail upstream.
+- **Spend page:** the **LiteLLM Spend** page in Backstage (and
+  `http://litellm.idp.local`) is hidden from the nav until a `litellm` Deployment
+  exists in `ml-platform`. The bootstrap scripts check this separately from the
+  rest of the AI stack, the same way they check Langfuse.
+- **Scorecard:** services that call LLMs get two AI-governance checks from it:
+  `has-litellm-virtual-key` and `has-budget-configured` (`idp.io/litellm-budget-usd`).
+
+Design and trade-offs: [ADR-0008](design/adr-0008-litellm-multiprovider-gateway.md).
 
 ---
 

@@ -367,8 +367,7 @@ complianceWatcher:
   jira:
     baseUrl: ${JIRA_URL:-https://jira.invalid}
     token: ${JIRA_TOKEN}
-  indexIntervalMinutes: 30
-  externalSources: []
+  refreshMinutes: 30
 
 # Proxy endpoints are env-specific:
 #   local → app-config.local.yaml  (*.idp.local ingress hostnames)

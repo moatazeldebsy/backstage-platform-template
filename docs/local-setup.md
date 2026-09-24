@@ -42,12 +42,24 @@ with `kubectl top` on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-22):
 | **KAgent runtime + 1 agent** | `bootstrap-ai.sh` | ~40m | ~0.5 GB |
 | ↳ each additional agent | `--agents` | ~5m | **~200 MB** |
 | MLflow | `bootstrap-ai.sh` | ~50m | ~0.4 GB |
+| LiteLLM (model backend) | `bootstrap-ai.sh --litellm` (**off by default locally**) | 150m requested | 768 Mi requested |
 | Argo Workflows | `bootstrap-ai.sh` | ~30m | ~0.15 GB |
 
 Two numbers dominate and are worth knowing by name: inside Langfuse,
 `langfuse-clickhouse` is ~736 MB and `langfuse-web` ~908 MB. `langfuse-web` will
 not run under a 1 GB limit at all — Node sizes its heap from the container limit
 and OOMs at ~503 MB, so 2 GB is the floor.
+
+**Why LiteLLM is off by default locally:** it is a second proxy process (after the
+AI Gateway), and the table above shows there is little memory to spare. On AWS it is
+on by default because Bedrock only exists there. Without it, MCP tools still work but
+model calls fail upstream. Turn it on with `./scripts/bootstrap-ai.sh --litellm`
+(requires `LITELLM_MASTER_KEY`); the **LiteLLM Spend** page appears in Backstage only
+once LiteLLM is installed. See [ADR-0008](design/adr-0008-litellm-multiprovider-gateway.md).
+
+**Prometheus keeps 24 hours of history locally** (`retention: 24h`,
+`retentionSize: 6000MB` on an 8 Gi PVC, in `local/observability/prometheus-stack-values.yaml`),
+up from 6h. There is no long-term store in Kind; that data is lost if the PVC is deleted.
 
 **Both Kind nodes share one VM.** `free -m` inside either node reports the whole
 VM, not a per-node slice, so "the worker has 13 GB" is not a second 13 GB.
@@ -538,6 +550,8 @@ What it installs:
 - **MLflow** — Experiment tracking and model registry at http://mlflow.idp.local
 - **OpenAI ModelConfig** — GPT-4o support if `OPENAI_API_KEY` is set; Claude Anthropic support if `ANTHROPIC_API_KEY` is set
 - **AI Observability** — Grafana dashboard with MCP tool metrics, latency, cost attribution per server
+- **AI Gateway** — one entry point for all MCP tool calls and model calls ([ADR-0007](design/adr-0007-ai-gateway.md))
+- **LiteLLM** *(only with `--litellm`)* — the model backend behind the gateway, with virtual keys and a spend dashboard at http://litellm.idp.local ([ADR-0008](design/adr-0008-litellm-multiprovider-gateway.md))
 
 ### AI-Native Platform Features (Phase 7a Complete)
 
