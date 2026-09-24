@@ -45,8 +45,11 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
 
+# Required in services-* namespaces by kubernetes/policies/require-cost-tags.yaml.
 podLabels:
-  team: platform-team
+  team: <% .Team %>
+  cost-center: <% .CostCenter %>
+  environment: dev
 
 # Allow scheduling on Karpenter-managed spot nodes.
 tolerations:

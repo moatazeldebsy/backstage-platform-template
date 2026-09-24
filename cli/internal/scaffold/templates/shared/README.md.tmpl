@@ -29,7 +29,8 @@ go run ./src/...
 <% if eq .Type "nodejs" %>```bash
 npm test
 ```<% else if eq .Type "python" %>```bash
-pytest src/ -q
+pip install -r requirements-dev.txt
+pytest -q
 ```<% else %>```bash
 go test ./src/...
 ```<% end %>
@@ -45,4 +46,6 @@ helm upgrade --install <% .Name %> ./helm/service-template \
 
 ## Deploying
 
-Push to `main` to trigger CI/CD (GitHub Actions → GHCR → Helm deploy).
+Push to `main`. The platform repo's `build-and-deploy.yml` tests, builds and
+scans `services/<% .Name %>/`, pushes the image to ECR, and bumps the tag in
+`helm-values-aws.yaml`; the `idp-services` ArgoCD ApplicationSet deploys it.

@@ -1,0 +1,11 @@
+# <% .Name %>
+
+Auto-scaffolded <% .Type %> service, owned by `<% .Owner %>`.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Service name and status |
+| `GET /healthz` | Liveness probe |
+| `GET /ready` | Readiness probe |
+
+Deployed by the `idp-services` ArgoCD ApplicationSet from `services/<% .Name %>/`.
