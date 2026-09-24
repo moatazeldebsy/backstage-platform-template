@@ -1196,11 +1196,12 @@ except Exception:
 # through mint_argocd_account_token in lib.sh. Echoes the new token on success,
 # nothing on failure.
 _mint_argocd_mcp_token() {
-  local account="${1:-argocd-mcp}" server="${2:-argocd.idp.local}"
+  local account="${1:-argocd-mcp}" server="${2:-argocd.idp.local}" attempts="${3:-1}"
   local new
 
-  # One attempt: the caller has just confirmed ArgoCD is answering.
-  new=$(mint_argocd_account_token "$account" "http://${server}" 1) || return 1
+  # One attempt by default: the invalid-token caller has just confirmed ArgoCD
+  # is answering. The missing-token caller passes more.
+  new=$(mint_argocd_account_token "$account" "http://${server}" "$attempts") || return 1
 
   # Persist so the next run starts from a good token instead of re-minting one
   # on every bootstrap.
@@ -1319,6 +1320,15 @@ else
 fi
 
 # argocd-mcp-server token
+#
+# No token at all: mint one locally, the same way an invalid one is replaced
+# below. Without this, a fresh local install ran argocd-mcp-server with no
+# credentials and every ArgoCD tool (sync_app, rollback_app, ...) failed.
+if [[ -z "${ARGOCD_TOKEN:-}" && "$DEPLOY_MODE" == "local" ]]; then
+  info "ARGOCD_TOKEN not set — minting one for the argocd-mcp account..."
+  ARGOCD_TOKEN=$(_mint_argocd_mcp_token argocd-mcp "${ARGOCD_SERVER:-argocd.idp.local}" 6 || true)
+  [[ -n "$ARGOCD_TOKEN" ]] && check "Minted ARGOCD_TOKEN and saved it to local/.env"
+fi
 if [[ -n "${ARGOCD_TOKEN:-}" ]]; then
   # Validate before writing it. A token from a torn-down cluster is non-empty
   # and well-formed, so the emptiness check below passes and the 401 only
@@ -1348,14 +1358,29 @@ if [[ -n "${ARGOCD_TOKEN:-}" ]]; then
     warn "Could not verify ARGOCD_TOKEN against the cluster — using it as-is."
   fi
   info "Creating argocd-mcp-server-token secret in services-dev..."
-  kubectl create secret generic argocd-mcp-server-token \
+  _argocd_secret_result=$(kubectl create secret generic argocd-mcp-server-token \
     --namespace services-dev \
     --from-literal=token="${ARGOCD_TOKEN}" \
-    --dry-run=client -o yaml | kubectl apply -f -
+    --dry-run=client -o yaml | kubectl apply -f -)
+  echo "$_argocd_secret_result"
   check "Secret argocd-mcp-server-token ready"
+  # The Deployment reads the token through an optional secretKeyRef, which is
+  # resolved only when the pod starts. A pod that started before this Secret
+  # existed (or held an older token) keeps running without it, so restart it
+  # whenever the Secret actually changed.
+  if [[ "$_argocd_secret_result" != *unchanged* ]] \
+     && kubectl get deployment argocd-mcp-server -n services-dev &>/dev/null; then
+    kubectl rollout restart deployment/argocd-mcp-server -n services-dev >/dev/null \
+      && check "argocd-mcp-server restarted to pick up the new token"
+  fi
 else
-  warn "ARGOCD_TOKEN not set — argocd-mcp-server will start without an ArgoCD token (all ArgoCD tools will fail). Add ARGOCD_TOKEN to local/.env."
-  warn "  Get token: argocd account generate-token --account admin (or kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
+  warn "ARGOCD_TOKEN not set — argocd-mcp-server will start without an ArgoCD token (all ArgoCD tools will fail)."
+  if [[ "$DEPLOY_MODE" == "local" ]]; then
+    warn "  Minting one failed (is argocd.idp.local reachable?). Re-run this script once ArgoCD is up."
+  else
+    warn "  Generate one with: argocd account generate-token --account argocd-mcp"
+    warn "  then store it in AWS Secrets Manager and re-run."
+  fi
 fi
 
 # agent-event-router secrets (GITHUB_WEBHOOK_SECRET + WEBHOOK_TOKEN + GITHUB_TOKEN)
