@@ -142,6 +142,79 @@ _upsert_env() {
   fi
 }
 
+# Mint a non-expiring API token for an apiKey-only ArgoCD account
+# (`accounts.<name>: apiKey` in the ArgoCD Helm values). The admin password is
+# only used to get a short-lived session to mint with; the token that comes
+# back belongs to <account> and carries that account's RBAC role.
+#
+# Retries because the ingress can answer 404/502 for a while after
+# `helm --wait` returns. Prints the token on stdout and nothing else, so it is
+# safe to capture; returns 1 with no output on failure.
+# Usage: mint_argocd_account_token <account> [base_url] [attempts]
+mint_argocd_account_token() {
+  local account="$1" base_url="${2:-http://argocd.idp.local}" attempts="${3:-12}"
+  local pass admin token i
+  pass=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || true)
+  [[ -z "$pass" ]] && return 1
+
+  for ((i = 1; i <= attempts; i++)); do
+    admin=$(curl -sk --max-time 10 -X POST "${base_url}/api/v1/session" \
+      -H 'Content-Type: application/json' \
+      -d "{\"username\":\"admin\",\"password\":\"${pass}\"}" 2>/dev/null \
+      | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+    if [[ -n "$admin" ]]; then
+      token=$(curl -sk --max-time 10 -X POST "${base_url}/api/v1/account/${account}/token" \
+        -H "Authorization: Bearer ${admin}" -H 'Content-Type: application/json' -d '{}' 2>/dev/null \
+        | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+      if [[ -n "$token" ]]; then
+        echo "$token"
+        return 0
+      fi
+    fi
+    (( i < attempts )) && sleep 5
+  done
+  return 1
+}
+
+# Make sure local/backstage/.env holds a working ARGOCD_AUTH_TOKEN for the
+# Backstage proxy. Keeps the current one if it still works and belongs to the
+# `backstage` account; otherwise mints a new one. Never writes an empty value:
+# on failure it warns and leaves the file alone, so a transient ArgoCD outage
+# can't wipe out a good token.
+#
+# The token is for the `backstage` account rather than an admin login session
+# because a session JWT expires after 24h, which left the ArgoCD page showing
+# demo data a day after every bootstrap.
+# Usage: ensure_backstage_argocd_token <env_file> [base_url]
+ensure_backstage_argocd_token() {
+  local env_file="$1" base_url="${2:-http://argocd.idp.local}" current sub new
+  current=$(grep -E '^ARGOCD_AUTH_TOKEN=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+  if [[ -n "$current" ]]; then
+    sub=$(python3 -c '
+import base64, json, sys
+try:
+    p = sys.argv[1].split(".")[1]
+    print(json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4))).get("sub", ""))
+except Exception:
+    pass
+' "$current" 2>/dev/null || true)
+    if [[ "$sub" == backstage* ]] && curl -sfk -o /dev/null --max-time 10 \
+        -H "Authorization: Bearer ${current}" "${base_url}/api/v1/applications"; then
+      log "  ArgoCD token for Backstage is still valid — keeping it"
+      return 0
+    fi
+  fi
+
+  if new=$(mint_argocd_account_token backstage "$base_url"); then
+    _upsert_env "$env_file" ARGOCD_AUTH_TOKEN "$new"
+    log "  ArgoCD token for the 'backstage' account written to ${env_file#"${ROOT_DIR:-}/"} (ARGOCD_AUTH_TOKEN, no expiry)"
+    return 0
+  fi
+  warn "Could not mint an ArgoCD token for Backstage — the ArgoCD page will show demo data. Re-run: ./scripts/bootstrap-local.sh --install-argocd"
+  return 1
+}
+
 # Source .idp-config.env (the single-source-of-truth file written by setup.sh)
 # into the current shell. Exports every assignment so child processes see them.
 # No-op when the file is absent — callers can still rely on local/.env fallback.

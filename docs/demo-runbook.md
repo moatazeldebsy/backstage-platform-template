@@ -41,17 +41,19 @@ Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, 
 ./scripts/bootstrap-local.sh --start-backstage
 ```
 
-### Step 3b — Refresh the ArgoCD token if bootstrap ran >24h ago
+### Step 3b — Check the ArgoCD page shows live data
 
-`ARGOCD_AUTH_TOKEN` is a session JWT (~24h TTL by default) written to `local/backstage/.env`
-during bootstrap. It is **not** auto-refreshed. If the cluster was bootstrapped more than a
-day before the demo, the `/argocd` proxy in Backstage will silently 401 — the ArgoCD entity
-tab and any "deploy status" widgets will show empty/error states with no obvious error in
-the UI. Refresh it and restart Backstage to pick up the new value (`docker compose restart`
-does **not** re-read `.env` — use `--start-backstage`):
+`ARGOCD_AUTH_TOKEN` in `local/backstage/.env` is an API token for ArgoCD's `backstage`
+account (read + sync, no create/update/delete). It does not expire, so a cluster
+bootstrapped days before the demo still works.
+
+If the ArgoCD page shows **"📊 Demo data — ArgoCD proxy returned an error"**, the token is
+missing or was minted against a cluster that has since been recreated. Mint a new one and
+recreate the Backstage container (`docker compose restart` does **not** re-read `.env` —
+use `--start-backstage`):
 
 ```bash
-./scripts/bootstrap-local.sh --install-argocd     # regenerates ARGOCD_AUTH_TOKEN
+./scripts/bootstrap-local.sh --install-argocd     # keeps a valid token, mints one otherwise
 ./scripts/bootstrap-local.sh --start-backstage    # picks up the new .env value
 ```
 

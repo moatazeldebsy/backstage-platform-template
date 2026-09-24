@@ -1186,29 +1186,16 @@ except Exception:
 
 # Mint a replacement argocd-mcp token and persist it to local/.env.
 #
-# bootstrap-local.sh Step 8 already does exactly this for ARGOCD_AUTH_TOKEN (the
-# admin session JWT the Backstage proxy uses), which is why that one silently
-# self-heals across rebuilds while this one silently does not. Echoes the new
-# token on success, nothing on failure.
+# bootstrap-local.sh does the same for the Backstage proxy's ARGOCD_AUTH_TOKEN
+# (ensure_backstage_argocd_token, for the `backstage` account); both mint
+# through mint_argocd_account_token in lib.sh. Echoes the new token on success,
+# nothing on failure.
 _mint_argocd_mcp_token() {
   local account="${1:-argocd-mcp}" server="${2:-argocd.idp.local}"
-  local pass admin new
+  local new
 
-  pass=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-    -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)
-  [[ -z "$pass" ]] && return 1
-
-  admin=$(curl -s --max-time 15 -X POST "http://${server}/api/v1/session" \
-    -H 'Content-Type: application/json' \
-    -d "{\"username\":\"admin\",\"password\":\"${pass}\"}" \
-    | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-  [[ -z "$admin" ]] && return 1
-
-  new=$(curl -s --max-time 15 -X POST \
-    "http://${server}/api/v1/account/${account}/token" \
-    -H "Authorization: Bearer ${admin}" -H 'Content-Type: application/json' -d '{}' \
-    | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-  [[ -z "$new" ]] && return 1
+  # One attempt: the caller has just confirmed ArgoCD is answering.
+  new=$(mint_argocd_account_token "$account" "http://${server}" 1) || return 1
 
   # Persist so the next run starts from a good token instead of re-minting one
   # on every bootstrap.
