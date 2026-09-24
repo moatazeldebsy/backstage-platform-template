@@ -1975,9 +1975,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-3b-refresh-the-argocd-token-if-bootstrap-ran-24h-ago" class="md-nav__link">
+  <a href="#step-3b-check-the-argocd-page-shows-live-data" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 3b — Refresh the ArgoCD token if bootstrap ran &gt;24h ago
+      Step 3b — Check the ArgoCD page shows live data
     </span>
   </a>
   
@@ -2500,15 +2500,16 @@ yarn<span class="w"> </span>build:backend
 <p>Builds the image, starts Docker Compose, wires nginx routing, seeds QA metrics, and triggers catalog export:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
 </code></pre></div></td></tr></table></div>
-<h3 id="step-3b-refresh-the-argocd-token-if-bootstrap-ran-24h-ago">Step 3b — Refresh the ArgoCD token if bootstrap ran &gt;24h ago<a class="headerlink" href="#step-3b-refresh-the-argocd-token-if-bootstrap-ran-24h-ago" title="Permanent link">&para;</a></h3>
-<p><code>ARGOCD_AUTH_TOKEN</code> is a session JWT (~24h TTL by default) written to <code>local/backstage/.env</code>
-during bootstrap. It is <strong>not</strong> auto-refreshed. If the cluster was bootstrapped more than a
-day before the demo, the <code>/argocd</code> proxy in Backstage will silently 401 — the ArgoCD entity
-tab and any "deploy status" widgets will show empty/error states with no obvious error in
-the UI. Refresh it and restart Backstage to pick up the new value (<code>docker compose restart</code>
-does <strong>not</strong> re-read <code>.env</code> — use <code>--start-backstage</code>):</p>
+<h3 id="step-3b-check-the-argocd-page-shows-live-data">Step 3b — Check the ArgoCD page shows live data<a class="headerlink" href="#step-3b-check-the-argocd-page-shows-live-data" title="Permanent link">&para;</a></h3>
+<p><code>ARGOCD_AUTH_TOKEN</code> in <code>local/backstage/.env</code> is an API token for ArgoCD's <code>backstage</code>
+account (read + sync, no create/update/delete). It does not expire, so a cluster
+bootstrapped days before the demo still works.</p>
+<p>If the ArgoCD page shows <strong>"📊 Demo data — ArgoCD proxy returned an error"</strong>, the token is
+missing or was minted against a cluster that has since been recreated. Mint a new one and
+recreate the Backstage container (<code>docker compose restart</code> does <strong>not</strong> re-read <code>.env</code> —
+use <code>--start-backstage</code>):</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--install-argocd<span class="w">     </span><span class="c1"># regenerates ARGOCD_AUTH_TOKEN</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--install-argocd<span class="w">     </span><span class="c1"># keeps a valid token, mints one otherwise</span>
 ./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">    </span><span class="c1"># picks up the new .env value</span>
 </code></pre></div></td></tr></table></div>
 <h3 id="step-4-verify-everything-is-green">Step 4 — Verify everything is green<a class="headerlink" href="#step-4-verify-everything-is-green" title="Permanent link">&para;</a></h3>
