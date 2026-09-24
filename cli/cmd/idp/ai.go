@@ -126,6 +126,11 @@ func runAI(_ *cobra.Command, args []string) error {
 
 	client := &http.Client{Timeout: time.Duration(aiTimeout) * time.Second}
 	target := a2aTarget(aiKagentURL, backstageURL, userToken)
+	// Taken before the POST, not after: message/send blocks until the agent has
+	// finished (tens of seconds with tool calls), but KAgent creates the session
+	// the moment the request arrives. The session lookup below matches on
+	// created_at, so a post-response timestamp misses the session entirely.
+	sentAt := time.Now()
 	resp, err := postA2A(client, target, userToken, payload)
 	if err != nil {
 		return fmt.Errorf("A2A request to %s failed: %w", target, err)
@@ -138,8 +143,6 @@ func runAI(_ *cobra.Command, args []string) error {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("A2A POST returned %d: %s", resp.StatusCode, string(body))
 	}
-
-	sentAt := time.Now()
 
 	// Try to extract contextId from the A2A response body.
 	var sessionID string
@@ -174,7 +177,7 @@ func runAI(_ *cobra.Command, args []string) error {
 				}
 				if createdStr, _ := sess["created_at"].(string); createdStr != "" {
 					if t, err := time.Parse(time.RFC3339Nano, createdStr); err == nil {
-						if t.After(sentAt.Add(-5*time.Second)) && t.Before(time.Now().Add(5*time.Second)) {
+						if sessionCreatedDuring(t, sentAt, time.Now()) {
 							sessionID, _ = sess["id"].(string)
 							break
 						}
@@ -222,43 +225,65 @@ func runAI(_ *cobra.Command, args []string) error {
 			if dataStr == "" {
 				continue
 			}
-			var parsed map[string]interface{}
-			if json.Unmarshal([]byte(dataStr), &parsed) != nil {
-				continue
+			text, toolName := parseAgentEvent(dataStr, "platform_assistant")
+			if toolName != "" {
+				fmt.Fprintf(os.Stderr, "\r%-70s", toolStatusLabel(toolName))
 			}
-			if author, _ := parsed["author"].(string); author != "platform_assistant" {
-				continue
-			}
-			content, _ := parsed["content"].(map[string]interface{})
-			parts, _ := content["parts"].([]interface{})
-
-			// Show active tool as status
-			for _, p := range parts {
-				part, _ := p.(map[string]interface{})
-				if fc, ok := part["function_call"].(map[string]interface{}); ok {
-					toolName, _ := fc["name"].(string)
-					label := toolStatusLabel(toolName)
-					fmt.Fprintf(os.Stderr, "\r%-70s", label)
-				}
-			}
-
-			// Collect text response
-			var textParts []string
-			for _, p := range parts {
-				part, _ := p.(map[string]interface{})
-				if text, ok := part["text"].(string); ok && text != "" {
-					textParts = append(textParts, text)
-				}
-			}
-			if len(textParts) > 0 {
+			if text != "" {
 				fmt.Fprintln(os.Stderr, "") // clear status line
-				fmt.Println(strings.Join(textParts, ""))
+				fmt.Println(text)
 				return nil
 			}
 		}
 	}
 	fmt.Fprintln(os.Stderr, "")
 	return fmt.Errorf("agent did not respond within %ds", aiTimeout)
+}
+
+// parseAgentEvent extracts the reply text and any in-flight tool call from one
+// KAgent session event authored by `author`. KAgent's Python runtime
+// serialises ADK events with snake_case keys (author, content, function_call);
+// the Go runtime serialises genai structs with Go field names (Author, Content)
+// and camelCase part keys (functionCall). Accept both, or the CLI polls until
+// --timeout while the answer sits in the session.
+func parseAgentEvent(dataStr, author string) (text, toolName string) {
+	var parsed map[string]interface{}
+	if json.Unmarshal([]byte(dataStr), &parsed) != nil {
+		return "", ""
+	}
+	field := func(m map[string]interface{}, keys ...string) interface{} {
+		for _, k := range keys {
+			if v, ok := m[k]; ok && v != nil {
+				return v
+			}
+		}
+		return nil
+	}
+	if a, _ := field(parsed, "author", "Author").(string); a != author {
+		return "", ""
+	}
+	content, _ := field(parsed, "content", "Content").(map[string]interface{})
+	parts, _ := field(content, "parts", "Parts").([]interface{})
+
+	var textParts []string
+	for _, p := range parts {
+		part, _ := p.(map[string]interface{})
+		if fc, ok := field(part, "function_call", "functionCall", "FunctionCall").(map[string]interface{}); ok {
+			toolName, _ = field(fc, "name", "Name").(string)
+		}
+		if t, _ := field(part, "text", "Text").(string); t != "" {
+			textParts = append(textParts, t)
+		}
+	}
+	return strings.Join(textParts, ""), toolName
+}
+
+// sessionCreatedDuring reports whether a session created at `created` could
+// belong to a request sent at `sentAt` and still being looked up at `now`.
+// The 5s slack on both ends absorbs clock skew between this machine and the
+// cluster.
+func sessionCreatedDuring(created, sentAt, now time.Time) bool {
+	return created.After(sentAt.Add(-5*time.Second)) && created.Before(now.Add(5*time.Second))
 }
 
 func toolStatusLabel(tool string) string {

@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestKagentBaseURL(t *testing.T) {
@@ -105,4 +106,64 @@ func TestPostA2A_Headers(t *testing.T) {
 			t.Errorf("Authorization = %q, want empty", gotAuth)
 		}
 	})
+}
+
+// Regression: sentAt used to be taken after message/send returned. Once the
+// POST waited for the full agent run, a session created at the start of a 20s
+// request fell outside the window and `idp ai` reported "could not find agent
+// session" even though the agent had answered.
+func TestSessionCreatedDuring(t *testing.T) {
+	sentAt := time.Date(2026, 9, 24, 21, 56, 30, 0, time.UTC)
+	now := sentAt.Add(20 * time.Second) // POST blocked for 20s
+
+	cases := []struct {
+		name    string
+		created time.Time
+		want    bool
+	}{
+		{"created as the request arrived", sentAt.Add(200 * time.Millisecond), true},
+		{"created mid-request", sentAt.Add(10 * time.Second), true},
+		{"small clock skew before send", sentAt.Add(-3 * time.Second), true},
+		{"earlier session from a previous run", sentAt.Add(-2 * time.Minute), false},
+		{"created well after lookup", now.Add(time.Minute), false},
+	}
+	for _, c := range cases {
+		if got := sessionCreatedDuring(c.created, sentAt, now); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestParseAgentEvent(t *testing.T) {
+	cases := []struct {
+		name, data, wantText, wantTool string
+	}{
+		{
+			"go runtime final answer",
+			`{"Author":"platform_assistant","Content":{"role":"model","parts":[{"text":"no suites"}]}}`,
+			"no suites", "",
+		},
+		{
+			"go runtime tool call",
+			`{"Author":"platform_assistant","Content":{"parts":[{"functionCall":{"name":"search_test_catalog","args":{}}}]}}`,
+			"", "search_test_catalog",
+		},
+		{
+			"python runtime answer and tool call",
+			`{"author":"platform_assistant","content":{"parts":[{"function_call":{"name":"get_test_metrics"}},{"text":"a"},{"text":"b"}]}}`,
+			"ab", "get_test_metrics",
+		},
+		{
+			"user message is ignored",
+			`{"Author":"user","Content":{"parts":[{"text":"what test suites?"}]}}`,
+			"", "",
+		},
+		{"not json", `nope`, "", ""},
+	}
+	for _, c := range cases {
+		text, tool := parseAgentEvent(c.data, "platform_assistant")
+		if text != c.wantText || tool != c.wantTool {
+			t.Errorf("%s: got (%q, %q), want (%q, %q)", c.name, text, tool, c.wantText, c.wantTool)
+		}
+	}
 }
