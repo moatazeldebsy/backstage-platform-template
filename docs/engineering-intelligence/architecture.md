@@ -149,8 +149,9 @@ series do not exist — the real ones are `dora_deploy_frequency_per_day`,
 `dora_mttr_minutes`. The doc has been corrected; build from the exporter, not
 from prose.
 
-**Retention.** Prometheus keeps **6 hours** locally and **30 days** on AWS, with
-no long-term store and no recording rules for any custom series. Pushgateway
+**Retention.** Prometheus keeps **24 hours** locally (raised from 6h; no long-term
+store) and 3 days on AWS, where a Thanos sidecar ships blocks to S3 (30 days raw).
+There are no recording rules for any custom series. Pushgateway
 gauges are last-write-wins. This is why the plugin persists its own snapshots
 from the first refresh, and why no history can be back-filled.
 

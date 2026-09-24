@@ -50,8 +50,11 @@ human running `terraform apply`. No manual step between "PR merged" and
    versioning, cost center.
 2. Backstage opens a PR adding
    `services/<ownerService>/claims/<bucketName>.yaml` (an `S3Bucket`
-   Claim) **and** a `catalog-info-<bucketName>.yaml` that registers the
-   resource in the Backstage Service Catalog.
+   Claim) **and** a `catalog-info-<bucketName>.yaml` describing the
+   resource as a Backstage `Resource` entity (`dependencyOf` the owning
+   Component). It is not picked up automatically: after merging, register
+   it via **Catalog → Register existing component** using the URL in the
+   PR description.
 3. Reviewer merges. The `idp-services` ApplicationSet in
    `aws/argocd/app-of-apps.yaml` already watches `services/*/`, so
    ArgoCD syncs the Claim within ~60 s.
@@ -154,7 +157,8 @@ All five Crossplane templates follow the same flow:
 1. Fill the form → Backstage generates a PR with two files:
    - `services/<ownerService>/claims/<name>.yaml` — the Crossplane Claim
    - `services/<ownerService>/claims/catalog-info-<name>.yaml` — Backstage Resource entity
-2. Merge → ArgoCD syncs → Crossplane provisions → resource appears in catalog
+2. Merge → ArgoCD syncs → Crossplane provisions the resource
+3. Register the `catalog-info-<name>.yaml` via **Backstage → Catalog → Register existing component** (the exact URL is in the PR description and the task output). Until you do, the resource is not in the catalog.
 
 **DynamoDB composite keys:** The template exposes optional `rangeKey` and
 `rangeKeyType` fields. Leave them blank for hash-only tables. When set, the

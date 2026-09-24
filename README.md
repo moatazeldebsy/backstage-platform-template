@@ -57,9 +57,9 @@ A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (ser
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + a 5-check mobile scorecard whose tiers gate on named requirements rather than a count. See [docs/mobile-platform.md](docs/mobile-platform.md) |
 | **Golden-path chart** | One reusable Helm chart for all services — health checks, metrics, RBAC, PodDisruptionBudget, optional Argo Rollouts canary |
-| **Shift-left quality** | Bronze/Silver/Gold scorecard (17 checks — 14 for non-AI entities, plus 3 AI-governance checks) in Tech Insights + Grafana; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
-| **Engineering Intelligence** | An `/engineering-intelligence` dashboard scoring Platform, Developer Experience, Quality, Reliability, AI Engineering, Security and FinOps health, and placing the organisation on a five-level maturity model, from the telemetry the platform already produces — every score decomposing into evidence that names its metric, source and timestamp. Dimensions with no data source say so and return no number rather than a plausible one. Keeps its own snapshot history, since Prometheus retains 6h locally / 30d on AWS. See [docs/engineering-intelligence/](docs/engineering-intelligence/product-vision.md) |
-| **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. All MCP tool traffic and model calls route through a single **AI Gateway** (agentgateway, standalone — ~9 MiB) rather than direct per-server wiring; local admin console at `ai-gateway.idp.local`. In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md) and [docs/design/adr-0007-ai-gateway.md](docs/design/adr-0007-ai-gateway.md) |
+| **Shift-left quality** | Bronze/Silver/Gold scorecard (19 checks — 14 for non-AI entities, plus 5 AI-governance checks including a LiteLLM virtual key and spend budget) in Tech Insights + Grafana, with one predicate package shared by the portal and the backend; a compliance watcher posts to Slack and files a Jira ticket when a check regresses; PR gates for coverage/vuln/static analysis; ArgoCD PreSync contract gate. See [docs/shift-left-leadership.md](docs/shift-left-leadership.md) |
+| **Engineering Intelligence** | An `/engineering-intelligence` dashboard scoring Platform, Developer Experience, Quality, Reliability, AI Engineering, Security and FinOps health, and placing the organisation on a five-level maturity model, from the telemetry the platform already produces — every score decomposing into evidence that names its metric, source and timestamp. Dimensions with no data source say so and return no number rather than a plausible one. Keeps its own snapshot history, since Prometheus retains 24h locally (and 30d raw in Thanos on AWS). See [docs/engineering-intelligence/](docs/engineering-intelligence/product-vision.md) |
+| **AI/ML platform** | KAgent agents (Claude + GPT-4o) + MLflow + 8 MCP servers (IDP, QA, Contract, GitHub, Cost, ArgoCD, Incident, Security) + Model Serving API + AI scorecard + RAG search over TechDocs. All MCP tool traffic and model calls route through a single **AI Gateway** (agentgateway, standalone — ~9 MiB) rather than direct per-server wiring; local admin console at `ai-gateway.idp.local`. Model calls then go through **LiteLLM**, which holds the Anthropic key and Bedrock's IRSA credentials and adds virtual keys and spend tracking, surfaced as the **LiteLLM Spend** page (on by default on AWS, `bootstrap-ai.sh --litellm` locally). In-portal **KAgent** and **MLflow** pages (agents/MCP servers; experiments, runs and the model registry). See [docs/ai-assistant.md](docs/ai-assistant.md), [ADR-0007](docs/design/adr-0007-ai-gateway.md) and [ADR-0008](docs/design/adr-0008-litellm-multiprovider-gateway.md) |
 | **LLM observability** | Langfuse — prompt/completion, token counts, cost and latency per agent run, plus versioned agent prompts and a CI drift gate. KAgent exports OTLP directly and all 8 MCP servers trace their tool calls; surfaced as the **AI Observability** page in Backstage. Self-service for your own services via the `enable-langfuse-tracing` and `llm-app-langfuse` templates, with a per-service **Langfuse** entity tab. Installed by default on both targets by `bootstrap-ai.sh` (part of `--with-ai` on AWS); `--skip-langfuse` opts out. See [docs/ai-assistant.md](docs/ai-assistant.md#llm-observability-langfuse) |
 | **Observability** | Prometheus + Grafana (local) / CloudWatch + Grafana (AWS); Loki + Tempo; PagerDuty; Sloth SLOs; DORA entity tab per-team; FinOps cost overview. See [docs/dora-finops.md](docs/dora-finops.md) |
 | **Datadog** | Cluster-wide Agent (infra metrics, logs, APM intake, AWS only) alongside Prometheus/Grafana; dd-trace on the Backstage backend; Datadog entity tab (dashboard/monitor/SLO status); `enable-datadog-apm` scaffolder template. See [docs/sre-reliability.md](docs/sre-reliability.md#datadog-infra-observability--apm) |
@@ -133,6 +133,7 @@ Written automatically to `/etc/hosts` by `bootstrap-local.sh` (you may need `sud
 | **AI Assistant** / **AI Search** | http://backstage.idp.local/ai-assistant · `/ai-search` | requires `bootstrap-ai.sh` (+ `VOYAGE_API_KEY` for search) |
 | **KAgent UI** / **MLflow UI** | http://kagent.idp.local · http://mlflow.idp.local (also surfaced in Backstage at `/kagent` · `/mlflow`) | requires `bootstrap-ai.sh` |
 | **AI Gateway (admin console)** | http://ai-gateway.idp.local — routes, MCP targets, model list, Chat/Tool Playgrounds | requires `bootstrap-ai.sh`; local only, no AWS Ingress for this port (`--skip-gateway` opts out) |
+| **LiteLLM** (spend dashboard) | http://litellm.idp.local (also surfaced in Backstage as the **LiteLLM Spend** page) | requires `bootstrap-ai.sh --litellm` locally; the nav item stays hidden until LiteLLM is installed |
 | **AI Observability** / **Langfuse UI** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | installed by default by `bootstrap-ai.sh` (`--skip-langfuse` opts out); Langfuse admin password in the `langfuse-init` Secret |
 | **MCP Servers** (8) | `http://<name>-mcp-server.idp.local/healthz` — `idp`, `qa`, `contract`, `github`, `cost`, `argocd`, `incident`, `security` | requires `bootstrap-ai.sh` |
 | **Approval Service** / **Agent Event Router** | http://approval-service.idp.local · http://agent-event-router.idp.local | requires `bootstrap-ai.sh --adp` |
@@ -495,7 +496,7 @@ Three things the Phase 0 assessment found, which shaped the design:
   page and not Gold on the Grafana dashboard. The new engine *consumes* Tech Insights facts
   rather than becoming a fourth copy. Reconciling the existing three re-tiers live services
   and is tracked separately.
-- **There is no long-term metric store** — Prometheus retains 6h locally and 30d on AWS, with
+- **There is no long-term metric store** — Prometheus retained only 6h locally (since raised to 24h) and 30d on AWS, with
   no recording rules for any custom series. Snapshots are persisted from the first refresh
   because no history can be back-filled.
 - **Developer Experience had no data source at all.** It reported `insufficient-evidence`
@@ -590,6 +591,17 @@ plan and what each one could and could not measure in
 [the roadmap](docs/engineering-intelligence/roadmap.md); the collectors and their failure
 behaviour in [integrations](docs/engineering-intelligence/integrations.md).
 
+### Recently shipped — closing platform gaps
+
+- **LiteLLM as the model backend** — Anthropic and Amazon Bedrock behind one endpoint, with virtual keys and per-team spend ([ADR-0008](docs/design/adr-0008-litellm-multiprovider-gateway.md)).
+- **Consent/delegation gate and verified AI Assistant identity** — the user an agent acts for is now verified server-side instead of trusted from a browser header, and mutating MCP tools check that the user has consented to that agent acting for them ([Agent Approvals](docs/agent-approvals.md#phase-4b--consent-delegation-and-verified-identity)).
+- **Compliance watcher** — when a scorecard check flips from passing to failing, the owner gets a Slack message and a Jira ticket ([Shift-Left Leadership](docs/shift-left-leadership.md#compliance-watcher)).
+- **One scorecard predicate package** — `@internal/scorecard-core` is now shared by the entity-page tab and the Tech Insights retriever, which had drifted on three AI checks.
+- **Infra templates register their Resource entity** — the 8 PR-based infra templates now tell you how to register the generated `catalog-info.yaml` after merge, and write into scoped directories instead of the repo root.
+- **GitHub Org Teams as the identity source** — catalog groups and sign-in come from GitHub Teams, and new service repos default to the Teams org ([ADR-0004](docs/design/adr-0004-identity-and-access.md)).
+- **24h local Prometheus retention** (was 6h), so local trend views have more than a few hours of history.
+- **No more AI Assistant hangs** — every KAgent agent is now told not to call `ask_user`, which the chat UI cannot answer.
+
 ### Recently shipped — pre-open-source hardening
 
 The AWS path went effectively untested between May and August 2026. Bringing a real cluster up surfaced a run of defects that are now fixed in the scripts, Terraform and manifests rather than worked around:
@@ -601,7 +613,7 @@ The AWS path went effectively untested between May and August 2026. Bringing a r
 - **71 template files hardcoded `*.idp.local`**, so every service scaffolded on AWS got catalog links that only resolve on a laptop.
 - CI reported green on paths that ran no jobs at all, including two services with full test suites.
 
-Design decisions from that work are recorded as [ADRs](docs/design/) rather than left implicit: [batch orchestration](docs/design/adr-0001-batch-orchestration.md), [delivery model](docs/design/adr-0002-delivery-model.md), [incident management](docs/design/adr-0003-incident-management.md), [identity and access](docs/design/adr-0004-identity-and-access.md), [LLM serving and agent frameworks](docs/design/adr-0005-llm-serving-and-agent-frameworks.md).
+Design decisions from that work are recorded as [ADRs](docs/design/) rather than left implicit: [batch orchestration](docs/design/adr-0001-batch-orchestration.md), [delivery model](docs/design/adr-0002-delivery-model.md), [incident management](docs/design/adr-0003-incident-management.md), [identity and access](docs/design/adr-0004-identity-and-access.md), [LLM serving and agent frameworks](docs/design/adr-0005-llm-serving-and-agent-frameworks.md), [Engineering Intelligence](docs/design/adr-0006-engineering-intelligence.md), [AI Gateway](docs/design/adr-0007-ai-gateway.md), [LiteLLM multi-provider gateway](docs/design/adr-0008-litellm-multiprovider-gateway.md).
 
 ### Known limitations
 
@@ -615,7 +627,7 @@ Stated plainly, because finding these by surprise is worse than reading them her
 
 ### Next
 
-Multi-team production hardening, Amazon Bedrock integration, and self-hosted small-model serving. See the board. (The LangGraph agent template shipped — it is one of the 12 blessed templates.)
+Multi-team production hardening and self-hosted small-model serving. See the board. (The LangGraph agent template shipped — it is one of the 12 blessed templates. Amazon Bedrock shipped too, via LiteLLM — [ADR-0008](docs/design/adr-0008-litellm-multiprovider-gateway.md).)
 
 ---
 
@@ -683,6 +695,7 @@ Two sub-agents back them for work that would otherwise flood the main context:
 | [Team Management](docs/team-management.md) | Onboard a new team: namespace, SecretStore, ArgoCD, Grafana |
 | [AI Assistant](docs/ai-assistant.md) | KAgent + MCP server setup and usage, plus Langfuse LLM observability and prompt versioning |
 | [ADR-0007: AI Gateway](docs/design/adr-0007-ai-gateway.md) | One gateway (agentgateway) for MCP tool traffic and model calls — design rationale and consequences |
+| [ADR-0008: LiteLLM](docs/design/adr-0008-litellm-multiprovider-gateway.md) | LiteLLM behind the AI Gateway — Anthropic + Bedrock, virtual keys, spend tracking |
 | [Agentic Development Platform (ADP)](docs/agentic-platform.md) | Agent-driven dev workflow + ops, HiTL approval gate, opt-in phases |
 | [Agent Approvals](docs/agent-approvals.md) | HiTL gate for agent-initiated mutating actions — policy, approval API, Backstage UI |
 | [DORA + FinOps](docs/dora-finops.md) | DORA entity tab, SLOs, cost budgets |
@@ -691,7 +704,7 @@ Two sub-agents back them for work that would otherwise flood the main context:
 | [Mobile Platform](docs/mobile-platform.md) | Android / iOS / Flutter templates |
 | [Crossplane vs Terraform](docs/crossplane-vs-terraform.md) | When to use each |
 | [Security Scanning](docs/security-scanning.md) | SAST, DAST, SCA setup |
-| [Shift-Left Leadership](docs/shift-left-leadership.md) | Bronze/Silver/Gold programme overview |
+| [Shift-Left Leadership](docs/shift-left-leadership.md) | Bronze/Silver/Gold programme overview, plus the compliance watcher (Slack + Jira on a check regression) |
 | [Docker Recovery](docs/docker-recovery.md) | Recover Kind after Docker Desktop restarts |
 
 Full docs site: [moatazeldebsy.github.io/backstage-platform-template](https://moatazeldebsy.github.io/backstage-platform-template/).
