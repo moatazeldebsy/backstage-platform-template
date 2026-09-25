@@ -11,6 +11,7 @@ import { SidebarLogo } from './SidebarLogo';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
 import { SidebarSearchModal } from '@backstage/plugin-search';
+import { SearchModalContent } from './SearchModalContent';
 import { UserSettingsSignInAvatar } from '@backstage/plugin-user-settings';
 
 export const SidebarContent = NavContentBlueprint.make({
@@ -32,7 +33,9 @@ export const SidebarContent = NavContentBlueprint.make({
         <Sidebar>
           <SidebarLogo />
           <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-            <SidebarSearchModal />
+            <SidebarSearchModal>
+              {({ toggleModal }) => <SearchModalContent toggleModal={toggleModal} />}
+            </SidebarSearchModal>
           </SidebarGroup>
           <SidebarDivider />
 
