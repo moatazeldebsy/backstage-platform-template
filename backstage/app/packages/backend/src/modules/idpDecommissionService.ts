@@ -5,7 +5,8 @@
  * 1. Validating the caller is in the platform-team group (GitHub org admin guard)
  * 2. Confirming via typed confirmation (can't be undone by accident)
  * 3. Archiving or deleting the GitHub repo
- * 4. Unregistering the entity from the Backstage catalog
+ * 4. Deleting the catalog location that registered it (catalog:register), then
+ *    unregistering the entity from the Backstage catalog
  * 5. Listing the service's GitOps files (services/<name>/**) in the platform
  *    repo, so the template can open a PR deleting them. Without that PR the
  *    idp-services ApplicationSet keeps deploying a decommissioned service.
@@ -18,6 +19,8 @@ import {
   ScmIntegrations,
 } from '@backstage/integration';
 import { CatalogClient } from '@backstage/catalog-client';
+
+type CatalogLocation = { id: string; type: string; target: string };
 
 export function createDecommissionServiceAction(options: {
   integrations: ScmIntegrations;
@@ -139,6 +142,7 @@ export function createDecommissionServiceAction(options: {
 
       // Step 3: Look up entity to get uid and GitHub project slug
       let entityUid: string = '';
+      let originLocation: string = '';
       let ghOwner: string = '';
       let ghRepo: string = '';
 
@@ -156,6 +160,8 @@ export function createDecommissionServiceAction(options: {
           metadata: { uid: string; annotations?: Record<string, string> };
         };
         entityUid = entity.metadata.uid;
+        originLocation =
+          entity.metadata.annotations?.['backstage.io/managed-by-origin-location'] ?? '';
 
         const projectSlug =
           entity.metadata.annotations?.['github.com/project-slug'];
@@ -271,7 +277,48 @@ export function createDecommissionServiceAction(options: {
         }
       }
 
-      // Step 5: Unregister entity from catalog
+      // Step 5a: Delete the location that registered the entity. Deleting only
+      // the entity is undone on the next refresh while its location still
+      // exists — and an archived repo still serves catalog-info.yaml, so an
+      // archive-mode decommission used to reappear in the catalog minutes
+      // later. Only user-registered locations (the scaffolder's
+      // catalog:register step) are listed by /locations; entities from the
+      // GitHub discovery provider have no match here and are dropped by the
+      // provider's orphanStrategy once their idp topics are gone (Step 4).
+      if (originLocation) {
+        const authHeader = { Authorization: `Bearer ${token}` };
+        const locationsResp = await fetch(`${catalogUrl}/api/catalog/locations`, {
+          headers: authHeader,
+        });
+        if (!locationsResp.ok) {
+          throw new Error(
+            `Failed to list catalog locations (${locationsResp.status}); ${entityRef} would reappear on the next refresh`,
+          );
+        }
+        const locations = (
+          (await locationsResp.json()) as Array<{ data?: CatalogLocation } & Partial<CatalogLocation>>
+        ).map(l => (l.data ?? l) as CatalogLocation);
+        const match = locations.find(l => `${l.type}:${l.target}` === originLocation);
+        if (match) {
+          const deleteResp = await fetch(
+            `${catalogUrl}/api/catalog/locations/${match.id}`,
+            { method: 'DELETE', headers: authHeader },
+          );
+          if (!deleteResp.ok && deleteResp.status !== 404) {
+            const body = await deleteResp.text();
+            throw new Error(
+              `Failed to delete catalog location ${originLocation} (${deleteResp.status}): ${body}`,
+            );
+          }
+          ctx.logger.info(`Deleted catalog location ${originLocation}`);
+        } else {
+          ctx.logger.info(
+            `No registered location for ${originLocation} — entity comes from an entity provider`,
+          );
+        }
+      }
+
+      // Step 5b: Unregister entity from catalog
       try {
         const unregisterResp = await fetch(
           `${catalogUrl}/api/catalog/entities/by-uid/${entityUid}`,

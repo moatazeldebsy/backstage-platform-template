@@ -336,4 +336,73 @@ describe('idp:decommission-service', () => {
       expect(JSON.parse(fetchMock.mock.calls[3][1].body).names).toEqual(['idpx', 'payments']);
     });
   });
+  describe('catalog location cleanup', () => {
+    const origin = 'url:https://github.com/acme/payments-api/tree/main/catalog-info.yaml';
+    const entityWithOrigin = {
+      ok: true,
+      json: {
+        metadata: {
+          uid: 'uid-1',
+          annotations: { 'backstage.io/managed-by-origin-location': origin },
+        },
+      },
+    };
+    const input = {
+      entityRef: 'component:default/payments-api',
+      action: 'archive',
+      confirmationText: 'payments-api',
+    };
+
+    beforeEach(() => {
+      mockGetEntityByName.mockResolvedValue({ spec: { memberOf: ['group:default/platform-team'] } });
+    });
+
+    // Regression: only the entity used to be deleted. Its catalog:register
+    // location survived, and the archived repo still serves catalog-info.yaml,
+    // so the next refresh put the decommissioned service straight back.
+    it('deletes the catalog:register location that owns the entity', async () => {
+      const fetchMock = mockFetchSequence([
+        entityWithOrigin,
+        {
+          ok: true,
+          json: [
+            { data: { id: 'loc-other', type: 'url', target: 'https://github.com/acme/other/tree/main/catalog-info.yaml' } },
+            { data: { id: 'loc-1', type: 'url', target: 'https://github.com/acme/payments-api/tree/main/catalog-info.yaml' } },
+          ],
+        },
+        { ok: true, status: 204 }, // DELETE location
+        { ok: true, status: 204 }, // unregister entity
+      ]);
+      const { ctx } = makeCtx(input);
+      await action.handler(ctx);
+
+      expect(fetchMock.mock.calls[1][0]).toBe('http://catalog.internal/api/catalog/locations');
+      expect(fetchMock.mock.calls[2][0]).toBe('http://catalog.internal/api/catalog/locations/loc-1');
+      expect(fetchMock.mock.calls[2][1].method).toBe('DELETE');
+      expect(fetchMock.mock.calls[3][0]).toBe('http://catalog.internal/api/catalog/entities/by-uid/uid-1');
+    });
+
+    it('leaves provider-managed entities to the provider (no matching location)', async () => {
+      const fetchMock = mockFetchSequence([
+        entityWithOrigin,
+        { ok: true, json: [] }, // discovery-provider locations are not listed
+        { ok: true, status: 204 }, // unregister entity
+      ]);
+      const { ctx } = makeCtx(input);
+      await action.handler(ctx);
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls.some(c => c[1]?.method === 'DELETE' && String(c[0]).includes('/locations/'))).toBe(false);
+    });
+
+    it('fails loudly rather than leaving an entity that will come back', async () => {
+      mockFetchSequence([
+        entityWithOrigin,
+        { ok: true, json: [{ data: { id: 'loc-1', type: 'url', target: origin.slice(4) } }] },
+        { ok: false, status: 500, text: 'db error' },
+      ]);
+      const { ctx } = makeCtx(input);
+      await expect(action.handler(ctx)).rejects.toThrow(/Failed to delete catalog location/);
+    });
+  });
 });
