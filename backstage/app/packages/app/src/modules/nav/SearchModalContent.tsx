@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -41,13 +41,25 @@ export const SearchModalContent = ({ toggleModal }: { toggleModal: () => void })
   const { transitions } = useTheme();
   const { focusContent } = useContent();
   const { term } = useSearch();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Move focus into the dialog's search box when it opens, like the stock
+  // modal, so you can type straight away. A ref rather than the autoFocus
+  // prop, which jsx-a11y/no-autofocus rejects wholesale.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleResultClick = useCallback(() => {
     setTimeout(focusContent, transitions.duration.leavingScreen);
   }, [focusContent, transitions]);
 
+  // Read the input itself, not `term`: SearchBar debounces its updates to the
+  // search context, so Enter pressed right after typing would otherwise open
+  // the full results for the previous query.
   const openFullResults = useCallback(() => {
-    navigate(`/search?query=${encodeURIComponent(term)}`);
+    const query = inputRef.current?.value ?? term;
+    navigate(`/search?query=${encodeURIComponent(query)}`);
     handleResultClick();
   }, [navigate, term, handleResultClick]);
 
@@ -57,7 +69,11 @@ export const SearchModalContent = ({ toggleModal }: { toggleModal: () => void })
     <>
       <DialogTitle>
         <Box className={classes.title}>
-          <SearchBar className={classes.input} onSubmit={openFullResults} />
+          <SearchBar
+            className={classes.input}
+            inputProps={{ ref: inputRef }}
+            onSubmit={openFullResults}
+          />
           <IconButton aria-label="close" onClick={toggleModal}>
             <CloseIcon />
           </IconButton>
