@@ -29,6 +29,7 @@ import { idpSetupContractTestingModule } from './modules/idpSetupContractTesting
 import { idpCreateNamespaceModule } from './modules/idpCreateNamespace';
 import { idpGithubTeamCreateModule } from './modules/idpGithubTeamCreate';
 import { idpGithubOrgTeamMetadataModule } from './modules/idpGithubOrgTeamMetadata';
+import { idpDecommissionServiceModule } from './modules/idpDecommissionService';
 import { ragSearchPlugin } from './modules/idpRagSearch';
 import { learningCenterPlugin } from './modules/idpLearningCenter';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
@@ -61,6 +62,7 @@ backend.add(idpDeployModelServerModule);
 backend.add(idpSetupContractTestingModule);
 backend.add(idpCreateNamespaceModule);
 backend.add(idpGithubTeamCreateModule);
+backend.add(idpDecommissionServiceModule);
 backend.add(ragSearchPlugin);
 backend.add(learningCenterPlugin);
 backend.add(idpAiIdentityProxyPlugin);
