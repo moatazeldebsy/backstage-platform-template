@@ -19283,6 +19283,7 @@ __metadata:
     "@backstage/plugin-org": "npm:^0.7.3"
     "@backstage/plugin-scaffolder": "npm:^1.36.2"
     "@backstage/plugin-search": "npm:^1.7.3"
+    "@backstage/plugin-search-react": "npm:^1.11.3"
     "@backstage/plugin-signals": "npm:^0.0.30"
     "@backstage/plugin-techdocs": "npm:^1.17.5"
     "@backstage/plugin-techdocs-module-addons-contrib": "npm:^1.1.35"
