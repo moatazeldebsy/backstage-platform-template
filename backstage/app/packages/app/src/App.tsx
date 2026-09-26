@@ -21,6 +21,7 @@ import { githubAuthApiRef } from '@backstage/core-plugin-api';
 import { SignInPageBlueprint } from '@backstage/plugin-app-react';
 import { navModule } from './modules/nav';
 import { themesModule } from './modules/themes';
+import { scaffolderFieldsModule } from './modules/scaffolderFields';
 import { customPagesPlugin } from './extensions';
 import { engineeringIntelligencePlugin } from './engineeringIntelligence';
 
@@ -72,6 +73,7 @@ export default createApp({
     techRadarPlugin,
     navModule,
     themesModule,
+    scaffolderFieldsModule,
     appSignInModule,
   ],
 });

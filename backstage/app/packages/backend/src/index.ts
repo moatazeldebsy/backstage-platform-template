@@ -32,6 +32,7 @@ import { idpGithubOrgTeamMetadataModule } from './modules/idpGithubOrgTeamMetada
 import { idpDecommissionServiceModule } from './modules/idpDecommissionService';
 import { ragSearchPlugin } from './modules/idpRagSearch';
 import { learningCenterPlugin } from './modules/idpLearningCenter';
+import { idpRepoCheckPlugin } from './modules/idpRepoCheck';
 import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
 import { engineeringIntelligencePlugin } from './modules/idpEngineeringIntelligence';
 import { complianceWatcherPlugin } from './modules/idpComplianceWatcher';
@@ -65,6 +66,7 @@ backend.add(idpGithubTeamCreateModule);
 backend.add(idpDecommissionServiceModule);
 backend.add(ragSearchPlugin);
 backend.add(learningCenterPlugin);
+backend.add(idpRepoCheckPlugin);
 backend.add(idpAiIdentityProxyPlugin);
 
 // techdocs plugin

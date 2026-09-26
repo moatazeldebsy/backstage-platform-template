@@ -74,7 +74,7 @@ spec:
                 repoUrl:
                   title: GitHub Repository
                   type: string
-                  ui:field: RepoUrlPicker
+                  ui:field: NewRepoUrlPicker
                   ui:help: 'Repository name must not already exist on GitHub.'
                   ui:options:
                     allowedHosts:
