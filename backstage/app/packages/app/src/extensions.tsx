@@ -15,6 +15,7 @@ import {
   visibleChecks,
 } from './scorecard';
 import { firstMatch } from './pick';
+import { describeAgentFailure, findFailedTurn } from './aiAgentErrors';
 import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef, FrontendPlugin } from '@backstage/frontend-plugin-api';
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
@@ -538,12 +539,19 @@ function AiAssistantPage() {
       let sessionId: string | null = contextIdRef.current;
       const contentType = a2aRes.headers.get('content-type') ?? '';
       if (contentType.includes('application/json')) {
+        let a2aBody: any = null;
         try {
-          const a2aBody = await a2aRes.json();
-          if (a2aBody.result?.contextId) sessionId = a2aBody.result.contextId;
+          a2aBody = await a2aRes.json();
         } catch {
           // ignore — fall through to session polling
         }
+        if (a2aBody?.result?.contextId) sessionId = a2aBody.result.contextId;
+        // A turn whose model call failed can come back as a failed task (or a
+        // JSON-RPC error) right here — no need to poll for an answer that will
+        // never be written. See aiAgentErrors.ts.
+        const immediateFailure =
+          a2aBody?.error?.message ?? (a2aBody?.result ? findFailedTurn([a2aBody.result], sentAt) : null);
+        if (immediateFailure) throw new Error(describeAgentFailure(String(immediateFailure)));
       } else {
         // Drain the event-stream body in the background without awaiting it —
         // cancelling it instead would signal a client disconnect that can
@@ -662,7 +670,18 @@ function AiAssistantPage() {
           (d: any) => d?.Author === expectedAuthor && d?.Content?.parts,
         );
 
-        if (agentEvents.length === 0) continue;
+        if (agentEvents.length === 0) {
+          // No agent output yet. If the model call failed (out of credits, bad
+          // key, rate limit) KAgent fails the turn's task and never writes an
+          // agent event, so without this check the page waited the full
+          // 5 minutes. Only this turn's task counts — sessions are reused.
+          const tasksRes = await fetchApi.fetch(`${proxyBase}/api/sessions/${sessionId}/tasks`);
+          if (tasksRes.ok) {
+            const failure = findFailedTurn((await tasksRes.json()).data ?? [], sentAt);
+            if (failure) throw new Error(describeAgentFailure(failure));
+          }
+          continue;
+        }
 
         // [0] is the newest agent event (events are newest-first)
         const newest = agentEvents[0];
