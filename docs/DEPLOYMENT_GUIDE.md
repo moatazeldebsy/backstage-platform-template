@@ -846,6 +846,7 @@ Terraform has never heard of those.
 | **S3/RDS/DynamoDB/SQS/MSK from Claims** | **Crossplane** | Provisioned from Claims committed to Git. Compositions set `deletionPolicy: Orphan` *on purpose* — a deleted Claim must not silently destroy a team's data. They are found by the `idp:provisioner=crossplane` tag instead. |
 | ECR repos created by `bootstrap-ai.sh` | **The script**, imperatively | AI/MCP service repos are created on demand, not declared in Terraform |
 | **Contents** of S3 buckets and ECR repos | Nobody — runtime data | Terraform can delete a bucket but AWS refuses while it holds objects and `force_destroy = false`. Contents must be emptied first, which is Phase 5. |
+| **EBS volumes behind PersistentVolumes** (Prometheus, Loki, Grafana, the kagent/mlflow Postgres PVCs, …) | **EBS CSI driver** | Created on demand for each PVC and tagged `kubernetes.io/cluster/<cluster>=owned`. Deleting the cluster detaches them but never deletes them; they keep billing as `available` volumes (18 volumes / 145 GB had piled up across deploy cycles by 2026-09). Phase 7b deletes them by that tag after `terraform destroy`. |
 | `/aws/eks/*`, `/aws/lambda/*` log groups | **EKS / Lambda**, at runtime | Created by the services themselves and outlive the cluster |
 | Kubeconfig contexts | Local machine | Not an AWS resource; prune with `kubectl config delete-context` |
 
