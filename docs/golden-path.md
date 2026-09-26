@@ -56,9 +56,16 @@ Open the Backstage portal and click **Create** → select one of:
 
 Fill in name, description, owner, and GitHub repo. Click **Create**.
 
+The repository must not exist yet. If the name is already taken, the form says so
+when you click **Next** on the repository step (*"acme/payments already exists on
+GitHub. Choose another repository name"*), before anything runs. Previously that
+only surfaced as a failed **Publish to GitHub** step partway through the run. If
+the check itself can't reach GitHub it lets you continue, and the publish step
+reports a real conflict as before.
+
 Backstage will:
 - Fetch the skeleton and render it with your values
-- Publish the repo to GitHub (tagging it with the `idp` / `idp-app` topics)
+- Publish the repo to GitHub, tagged with the `idp-service` topic (`idp-app` for mobile apps) so catalog discovery keeps finding it
 - Register the component and API in the catalog
 
 ### How a scaffolded repo stays in the catalog
@@ -268,6 +275,8 @@ no strategy — which Argo accepts and then never progresses.
 | Team label (K8s) | `team: <name>` | `team: <name>` |
 | Team tag (AWS) | `idp:team=<name>` (Kyverno auto-injects on Crossplane claims) | same |
 | Secret path | n/a (local uses ConfigMaps) | `/<teamName>/<secret-name>` in Secrets Manager |
+| Repo field in a template that **creates** a repo | `ui:field: NewRepoUrlPicker` (the stock picker plus a "name must not exist" check via `/api/idp-repo-check`) | same |
+| Repo field in a template that opens a **PR on an existing** repo | `ui:field: RepoUrlPicker`. Never `NewRepoUrlPicker`, which would reject every existing repo | same |
 
 ## CLI Alternative (without Backstage)
 

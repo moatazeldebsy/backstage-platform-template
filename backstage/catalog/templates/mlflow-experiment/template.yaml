@@ -77,7 +77,7 @@ spec:
           title: Repository Location
           type: string
           description: GitHub repository to store the experiment code
-          ui:field: RepoUrlPicker
+          ui:field: NewRepoUrlPicker
           ui:options:
             allowedHosts:
               - github.com

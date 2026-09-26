@@ -76,7 +76,7 @@ spec:
           title: Repository Location
           type: string
           description: GitHub repository for this model server
-          ui:field: RepoUrlPicker
+          ui:field: NewRepoUrlPicker
           ui:options:
             allowedHosts:
               - github.com
