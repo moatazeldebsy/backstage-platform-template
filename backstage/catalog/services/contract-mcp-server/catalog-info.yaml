@@ -10,7 +10,13 @@ metadata:
   annotations:
     github.com/project-slug: moatazeldebsy/backstage-platform-template
     backstage.io/kubernetes-id: contract-mcp-server
-    backstage.io/techdocs-ref: url:https://github.com/moatazeldebsy/backstage-platform-template/tree/main/services/contract-mcp-server
+    # The server's documentation is the Contract Testing guide in the platform
+    # docs site (docs/contract-testing.md). Show that page here rather than a
+    # copy that would drift. The previous techdocs-ref pointed at
+    # services/contract-mcp-server/, which has no docs/ or mkdocs.yml, so the
+    # TechDocs tab always failed.
+    backstage.io/techdocs-entity: system:default/internal-developer-platform
+    backstage.io/techdocs-entity-path: /contract-testing/
     idp.io/quality-gates: coverage,static-analysis,vuln-scan,llm-eval
     pagerduty.com/service-id: ""
     grafana/alert-label-selector: "service=contract-mcp-server"
