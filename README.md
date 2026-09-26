@@ -266,8 +266,14 @@ Ways to spend less, roughly in order of effect:
 - **Drop the node count.** Six `t3.large` is sized for the full stack including
   AI; the core platform alone fits in fewer. Note the constraint documented on
   `node_instance_types`: nodes are sized by **pod IP capacity**, not CPU/RAM.
-- **Tear down when idle.** `./scripts/cleanup.sh` removes everything including
-  the orphaned ALBs that a bare `terraform destroy` leaves behind.
+- **Tear down when idle.** `./scripts/cleanup.sh`, not a bare `terraform destroy`.
+  Several things the platform runs are created by in-cluster controllers rather
+  than Terraform: ALBs, the EBS disks behind PersistentVolumes, Crossplane
+  resources. They survive `terraform destroy` and keep billing. On one account
+  the PVC disks alone kept ~$13/month running after the cluster was gone.
+  `cleanup.sh` deletes them, and its final verification reports anything left
+  over. The full list is in
+  [what Terraform cannot destroy](docs/DEPLOYMENT_GUIDE.md#what-terraform-owns-and-what-it-cannot-destroy).
 
 ### What the table excludes
 
@@ -661,7 +667,8 @@ Multi-team production hardening and self-hosted small-model serving. See the boa
 | Nodes fail with `NodeCreationFailure: Instances failed to join the kubernetes cluster` ~20 min in | Usually a VPC/quota issue, or a cold-start apply that reached EKS without the NAT route. `bootstrap.sh` targets `module.vpc` alongside `module.eks` to prevent the latter |
 | `Error acquiring the state lock` | An interrupted apply left a stale lock: `cd terraform && terraform force-unlock <lock-id>` |
 | Scaffolder tasks fail with "requires `--no-node-snapshot`" | `NODE_OPTIONS` in the deployment replaced the image's value instead of appending. Fixed — it must contain both `--no-node-snapshot` and `--require dd-trace/init` |
-| Tearing down leaves resources behind | Use `./scripts/cleanup.sh`, not `terraform destroy` — orphaned ALBs hold the subnets Terraform is trying to delete |
+| Tearing down leaves resources behind | Use `./scripts/cleanup.sh`, not `terraform destroy`. Orphaned ALBs hold the subnets Terraform is trying to delete, and the EBS disks behind PersistentVolumes are never in Terraform state at all |
+| Small AWS charges continue after a teardown | Almost always leftovers Terraform never owned. Read the verification summary at the end of `cleanup.sh`. After a bare `terraform destroy`, look for `available` EBS volumes tagged `kubernetes.io/cluster/<cluster>=owned`, and check Cost Explorer grouped by **usage type** (`EBS:VolumeUsage*` is the tell) |
 
 Why each of these was possible, and which file now prevents it:
 [docs/aws-install-failure-modes.md](docs/aws-install-failure-modes.md).
@@ -732,6 +739,15 @@ helm lint helm/service-template
 cd backstage/app && yarn lint && yarn test
 cd services/hello-service && go test ./...
 cd cli && go build ./... && go vet ./...
+```
+
+If you touched `backstage/catalog/`, a `catalog-info.yaml`, an `mkdocs.yml` or any
+`docs/` content, also run the catalog checks CI runs:
+
+```bash
+pip install pyyaml mkdocs==1.6.1 mkdocs-techdocs-core==1.7.1 mkdocs-material==9.7.7
+python3 scripts/validate-catalog-templates.py   # template structure, tiers, registration
+python3 scripts/check-techdocs.py               # builds every TechDocs site the catalog declares
 ```
 
 ---
