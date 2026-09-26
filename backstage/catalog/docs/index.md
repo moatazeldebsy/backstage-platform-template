@@ -67,7 +67,7 @@ All templates are available in the Backstage **Create** page (`http://backstage.
 
 ## Mobile App Development
 
-The platform provides a complete golden path for mobile apps. See the [Mobile Developer Guide](mobile-developer-guide.md) for detailed setup.
+The platform provides a complete golden path for mobile apps. See the [Mobile Developer Guide](/docs/default/component/mobile-platform/) for detailed setup.
 
 | Template | Purpose |
 |---|---|

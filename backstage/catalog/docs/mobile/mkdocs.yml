@@ -1,7 +1,9 @@
 site_name: Mobile Platform
-site_description: Golden-path templates and developer guide for Android and Flutter apps
-docs_dir: .
+site_description: Golden-path templates and developer guide for Android, iOS and Flutter apps
+# Standard layout (docs/ next to this file). This used to set `docs_dir: .`,
+# which MkDocs 1.6 rejects ("docs_dir should not be the parent directory of
+# the config file"), so every TechDocs build of mobile-platform failed.
 nav:
-  - Developer Guide: mobile-developer-guide.md
+  - Developer Guide: index.md
 plugins:
   - techdocs-core
