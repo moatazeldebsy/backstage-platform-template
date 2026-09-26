@@ -175,8 +175,17 @@ describe('idp:setup-contract-testing', () => {
       mockHealthAndFetch({ healthOk: false });
       const { ctx, outputs } = makeCtx({ targetService: 'hello-service' });
 
-      const pending = action.handler(ctx);
-      await jest.advanceTimersByTimeAsync(65_000);
+      // Step the fake clock until the handler settles instead of one fixed
+      // jump. A single 65s advance flaked: the backoff sleeps are jittered
+      // with Math.random, so the loop can end up to ~66s after it starts
+      // (60s deadline + a 5s × 1.2 sleep), and the handler also has to get
+      // through several awaited steps before the loop computes its deadline.
+      // Either way a timer was left pending and the test hit Jest's 15s.
+      let settled = false;
+      const pending = action.handler(ctx).finally(() => { settled = true; });
+      for (let i = 0; i < 180 && !settled; i++) {
+        await jest.advanceTimersByTimeAsync(1_000);
+      }
       await pending;
 
       expect(outputs.contractRegistered).toBe('false');
