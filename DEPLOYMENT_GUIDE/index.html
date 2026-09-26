@@ -3919,6 +3919,16 @@ Terraform has never heard of those.</p>
 <td>Created on demand for each PVC and tagged <code>kubernetes.io/cluster/&lt;cluster&gt;=owned</code>. Deleting the cluster detaches them but never deletes them; they keep billing as <code>available</code> volumes (18 volumes / 145 GB had piled up across deploy cycles by 2026-09). Phase 7b deletes them by that tag after <code>terraform destroy</code>.</td>
 </tr>
 <tr>
+<td><strong>Karpenter nodes, launch templates, instance profiles</strong> (only with <code>enable_karpenter = true</code>)</td>
+<td><strong>Karpenter</strong></td>
+<td>Launched by the controller from NodePools, not by Terraform. If the controller is uninstalled while nodes are still terminating they orphan at full EC2 price, and their ENIs block the VPC delete. Phase 0b drains the NodePools while the controller is alive; Phase 5b terminates stragglers before <code>terraform destroy</code>; Phase 7c deletes the launch templates (<code>karpenter.k8s.aws/cluster</code>) and <code>&lt;cluster&gt;_*</code> instance profiles afterwards.</td>
+</tr>
+<tr>
+<td>Secret <code>&lt;cluster&gt;/langfuse/project-keys</code></td>
+<td><strong><code>bootstrap-ai.sh</code></strong>, imperatively</td>
+<td>Created with the CLI when Langfuse is enabled on AWS; deleted in Phase 5b with the same zero-day recovery window Terraform uses for its own secrets.</td>
+</tr>
+<tr>
 <td><code>/aws/eks/*</code>, <code>/aws/lambda/*</code> log groups</td>
 <td><strong>EKS / Lambda</strong>, at runtime</td>
 <td>Created by the services themselves and outlive the cluster</td>
@@ -3930,6 +3940,7 @@ Terraform has never heard of those.</p>
 </tr>
 </tbody>
 </table>
+<p>Anything else still tagged <code>Project=&lt;cluster&gt;</code> or <code>kubernetes.io/cluster/&lt;cluster&gt;</code> after all that is reported by a tag sweep in Phase 8, which then refuses to call the cleanup complete. That is how an orphaned Terraform launch template from an interrupted May destroy would have been caught at the time instead of months later. KMS keys and secrets that are only <em>scheduled</em> for deletion are expected and skipped.</p>
 <p>Two more reasons ordering matters, both learned the hard way:</p>
 <ul>
 <li><strong>KMS keys and Secrets Manager secrets are never deleted immediately.</strong>
