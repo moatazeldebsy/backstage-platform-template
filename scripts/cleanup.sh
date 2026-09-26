@@ -563,6 +563,38 @@ done
 
 log "  Phase 7 complete."
 
+# ── Phase 7b: Orphaned EBS volumes ───────────────────────────────────────────
+# Every PersistentVolume the cluster provisioned (Prometheus, Loki, Grafana,
+# the kagent/mlflow Postgres PVCs, ...) is an EBS volume the EBS CSI driver
+# created. Terraform never knew about them, so `terraform destroy` removes the
+# cluster and leaves the disks behind, detached and still billed. Each
+# deploy/destroy cycle added another set: 18 volumes / 145 GB (~$13/month)
+# had piled up by 2026-09. Runs after Phase 6 so the nodes are gone and the
+# volumes are detached. Scoped to the ownership tag the CSI driver sets for
+# THIS cluster, so volumes from other clusters in the account are untouched.
+log "Phase 7b: Deleting orphaned EBS volumes owned by ${CLUSTER_NAME}..."
+
+EBS_OWNER_FILTER="Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned"
+ORPHANED_VOLUMES=$(aws ec2 describe-volumes \
+  --region "${AWS_REGION}" \
+  --filters "${EBS_OWNER_FILTER}" "Name=status,Values=available" \
+  --query 'Volumes[].[VolumeId,Size,Tags[?Key==`kubernetes.io/created-for/pvc/name`]|[0].Value]' \
+  --output text 2>/dev/null || true)
+
+if [[ -z "$ORPHANED_VOLUMES" || "$ORPHANED_VOLUMES" == "None" ]]; then
+  log "  No orphaned volumes found"
+else
+  while read -r vol size pvc; do
+    [[ -z "$vol" ]] && continue
+    [[ -z "$pvc" || "$pvc" == "None" ]] && pvc="unknown"
+    log "  Deleting ${vol} (${size} GiB, PVC ${pvc})"
+    aws ec2 delete-volume --volume-id "${vol}" --region "${AWS_REGION}" 2>/dev/null \
+      || warn "    Could not delete ${vol} — see Phase 8"
+  done <<< "$ORPHANED_VOLUMES"
+fi
+
+log "  Phase 7b complete."
+
 # ── Phase 8: Verify cleanup ───────────────────────────────────────────────────
 log "Phase 8: Verifying cleanup..."
 
@@ -597,6 +629,13 @@ REMAINING_LOG_GROUPS=$(aws logs describe-log-groups \
   --query 'length(logGroups)' \
   --output text 2>/dev/null || echo "0")
 
+# Any state, not just `available`: an `in-use` volume still owned by the
+# cluster means something outlived terraform destroy and needs a look.
+REMAINING_EBS=$(aws ec2 describe-volumes --region "${AWS_REGION}" \
+  --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+  --query 'length(Volumes)' \
+  --output text 2>/dev/null || echo "0")
+
 log ""
 log "╔════════════════════════════════════════════════════════════════╗"
 log "║                    CLEANUP VERIFICATION                       ║"
@@ -608,6 +647,7 @@ log "  Classic ELBs remaining:             $REMAINING_CLASSIC (should be 0)"
 log "  ECR repositories remaining:         $REMAINING_ECR (should be 0)"
 log "  Crossplane resources remaining:     $CROSSPLANE_REMAINING (should be 0)"
 log "  CloudWatch log groups remaining:    $REMAINING_LOG_GROUPS (should be 0)"
+log "  EBS volumes (cluster-owned):        $REMAINING_EBS (should be 0)"
 
 CLEAN=true
 [[ $EKS_CLUSTERS -gt 0 ]]          && CLEAN=false
@@ -616,6 +656,7 @@ CLEAN=true
 [[ $REMAINING_CLASSIC -gt 0 ]]     && CLEAN=false
 [[ $REMAINING_ECR -gt 0 ]]         && CLEAN=false
 [[ "$CROSSPLANE_REMAINING" -gt 0 ]] && CLEAN=false
+[[ "$REMAINING_EBS" -gt 0 ]]        && CLEAN=false
 
 if $CLEAN; then
   log ""
@@ -645,4 +686,6 @@ else
     warn "  terraform destroy -auto-approve (for EKS)"
   [[ "$CROSSPLANE_REMAINING" -gt 0 ]] && \
     warn "  aws resourcegroupstaggingapi get-resources --tag-filters Key=idp:provisioner,Values=crossplane (list remaining)"
+  [[ "$REMAINING_EBS" -gt 0 ]] && \
+    warn "  aws ec2 describe-volumes --filters Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned (list; delete-volume once detached)"
 fi
