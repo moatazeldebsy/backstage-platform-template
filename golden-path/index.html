@@ -2604,9 +2604,15 @@
 </tbody>
 </table>
 <p>Fill in name, description, owner, and GitHub repo. Click <strong>Create</strong>.</p>
+<p>The repository must not exist yet. If the name is already taken, the form says so
+when you click <strong>Next</strong> on the repository step (<em>"acme/payments already exists on
+GitHub. Choose another repository name"</em>), before anything runs. Previously that
+only surfaced as a failed <strong>Publish to GitHub</strong> step partway through the run. If
+the check itself can't reach GitHub it lets you continue, and the publish step
+reports a real conflict as before.</p>
 <p>Backstage will:
 - Fetch the skeleton and render it with your values
-- Publish the repo to GitHub (tagging it with the <code>idp</code> / <code>idp-app</code> topics)
+- Publish the repo to GitHub, tagged with the <code>idp-service</code> topic (<code>idp-app</code> for mobile apps) so catalog discovery keeps finding it
 - Register the component and API in the catalog</p>
 <h3 id="how-a-scaffolded-repo-stays-in-the-catalog">How a scaffolded repo stays in the catalog<a class="headerlink" href="#how-a-scaffolded-repo-stays-in-the-catalog" title="Permanent link">&para;</a></h3>
 <p>Registration is not a one-off write. <code>catalog.providers.github.idpOrg</code> (in <code>app-config.yaml</code>,
@@ -2951,6 +2957,16 @@ no strategy — which Argo accepts and then never progresses.</p>
 <td>Secret path</td>
 <td>n/a (local uses ConfigMaps)</td>
 <td><code>/&lt;teamName&gt;/&lt;secret-name&gt;</code> in Secrets Manager</td>
+</tr>
+<tr>
+<td>Repo field in a template that <strong>creates</strong> a repo</td>
+<td><code>ui:field: NewRepoUrlPicker</code> (the stock picker plus a "name must not exist" check via <code>/api/idp-repo-check</code>)</td>
+<td>same</td>
+</tr>
+<tr>
+<td>Repo field in a template that opens a <strong>PR on an existing</strong> repo</td>
+<td><code>ui:field: RepoUrlPicker</code>. Never <code>NewRepoUrlPicker</code>, which would reject every existing repo</td>
+<td>same</td>
 </tr>
 </tbody>
 </table>
