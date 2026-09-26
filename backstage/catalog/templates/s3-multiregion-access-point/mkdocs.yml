@@ -1,0 +1,8 @@
+site_name: S3 Bucket with Cross-Region Replication
+site_description: Provision an S3 bucket with automatic Cross-Region Replication (CRR) to the standby
+  region. Objects written to the primary bucket are automatically…
+docs_dir: docs
+nav:
+- Overview: index.md
+plugins:
+- techdocs-core
