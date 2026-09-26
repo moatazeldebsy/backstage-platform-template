@@ -222,6 +222,25 @@ else
   log "  ArgoCD not reachable (cluster already gone?) — skipping"
 fi
 
+# ── Phase 0b: Drain Karpenter nodes (only when enable_karpenter is on) ───────
+# Karpenter launches its own EC2 instances, launch templates and instance
+# profiles — none of them are in Terraform state. terraform destroy does
+# delete the NodePool, but it uninstalls the controller right after, so nodes
+# still terminating at that moment are orphaned (full EC2 price each) and
+# their ENIs block the VPC delete. Deleting the NodePools here, while the
+# controller is alive, lets Karpenter drain and terminate its own nodes.
+# Phase 5b and 7c sweep anything that still slips through.
+if kubectl cluster-info &>/dev/null && kubectl get crd nodepools.karpenter.sh &>/dev/null; then
+  log "Phase 0b: Draining Karpenter-provisioned nodes..."
+  kubectl delete nodepools.karpenter.sh --all --timeout=300s 2>/dev/null || \
+    warn "  NodePool deletion did not finish in 5m — Phase 5b will terminate leftovers"
+  for _ in $(seq 1 30); do
+    [[ "$(kubectl get nodeclaims.karpenter.sh --no-headers 2>/dev/null | wc -l | tr -d ' ')" -eq 0 ]] && break
+    sleep 10
+  done
+  log "  NodeClaims remaining: $(kubectl get nodeclaims.karpenter.sh --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+fi
+
 # ── Phase 1: Delete Load Balancers created by Kubernetes services ─────────────
 log "Phase 1: Cleaning up Load Balancers..."
 
@@ -446,6 +465,48 @@ done <<< "$ECR_REPOS"
 
 log "  Phase 5 complete."
 
+# ── Phase 5b: Karpenter instances and script-created secrets ─────────────────
+# Runs before terraform destroy: a Karpenter node that survived Phase 0b holds
+# ENIs in the VPC, and the destroy fails with DependencyViolation until it is
+# gone. Karpenter tags its instances with karpenter.sh/nodepool AND the
+# cluster ownership tag (Karpenter v1 getTags); the managed node groups carry
+# the ownership tag but not karpenter.sh/nodepool, so they are left to
+# Terraform.
+log "Phase 5b: Terminating leftover Karpenter instances and script-created secrets..."
+
+KARPENTER_INSTANCES=$(aws ec2 describe-instances --region "${AWS_REGION}" \
+  --filters "Name=tag-key,Values=karpenter.sh/nodepool" \
+            "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+            "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+  --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || true)
+
+if [[ -n "$KARPENTER_INSTANCES" && "$KARPENTER_INSTANCES" != "None" ]]; then
+  # shellcheck disable=SC2086  # word-splitting the ID list is intended
+  log "  Terminating Karpenter instance(s): $(echo $KARPENTER_INSTANCES)"
+  # shellcheck disable=SC2086
+  aws ec2 terminate-instances --region "${AWS_REGION}" --instance-ids $KARPENTER_INSTANCES >/dev/null 2>&1 \
+    || warn "  terminate-instances failed — see Phase 8"
+  # shellcheck disable=SC2086
+  aws ec2 wait instance-terminated --region "${AWS_REGION}" --instance-ids $KARPENTER_INSTANCES 2>/dev/null \
+    || warn "  Instances not terminated yet — terraform destroy may retry on DependencyViolation"
+else
+  log "  No Karpenter instances found"
+fi
+
+# Terraform-owned secrets use recovery_window_in_days = 0, so match that.
+# bootstrap-ai.sh creates this one with the CLI (not Terraform) when Langfuse
+# is enabled on AWS.
+SCRIPT_SECRETS=("${CLUSTER_NAME}/langfuse/project-keys")
+for secret in "${SCRIPT_SECRETS[@]}"; do
+  if aws secretsmanager describe-secret --secret-id "$secret" --region "${AWS_REGION}" &>/dev/null; then
+    log "  Deleting secret: ${secret}"
+    aws secretsmanager delete-secret --secret-id "$secret" --region "${AWS_REGION}" \
+      --force-delete-without-recovery >/dev/null 2>&1 || warn "  Could not delete ${secret}"
+  fi
+done
+
+log "  Phase 5b complete."
+
 # ── Phase 6: Terraform destroy ────────────────────────────────────────────────
 log "Phase 6: Running terraform destroy..."
 
@@ -595,6 +656,38 @@ fi
 
 log "  Phase 7b complete."
 
+# ── Phase 7c: Karpenter launch templates and instance profiles ───────────────
+# Karpenter creates both itself, so terraform destroy never sees them. Launch
+# templates are tagged karpenter.k8s.aws/cluster=<cluster>; instance profiles
+# are named <cluster>_<hash> and tagged with the cluster ownership tag
+# (Karpenter v1.0 InstanceProfileName / InstanceProfileTags). Both are free
+# but pile up, and a stale instance profile keeps its IAM role attached.
+log "Phase 7c: Deleting Karpenter launch templates and instance profiles..."
+
+KARPENTER_LTS=$(aws ec2 describe-launch-templates --region "${AWS_REGION}" \
+  --filters "Name=tag:karpenter.k8s.aws/cluster,Values=${CLUSTER_NAME}" \
+  --query 'LaunchTemplates[].LaunchTemplateId' --output text 2>/dev/null || true)
+for lt in $KARPENTER_LTS; do
+  [[ "$lt" == "None" ]] && continue
+  log "  Deleting launch template: ${lt}"
+  aws ec2 delete-launch-template --region "${AWS_REGION}" --launch-template-id "$lt" >/dev/null 2>&1 \
+    || warn "  Could not delete ${lt}"
+done
+
+for ip in $(aws iam list-instance-profiles --query "InstanceProfiles[?starts_with(InstanceProfileName, '${CLUSTER_NAME}_')].InstanceProfileName" --output text 2>/dev/null); do
+  [[ "$ip" == "None" ]] && continue
+  owned=$(aws iam list-instance-profile-tags --instance-profile-name "$ip" \
+    --query "Tags[?Key=='kubernetes.io/cluster/${CLUSTER_NAME}'].Value | [0]" --output text 2>/dev/null || true)
+  [[ "$owned" != "owned" ]] && continue
+  log "  Deleting instance profile: ${ip}"
+  for role in $(aws iam get-instance-profile --instance-profile-name "$ip" --query 'InstanceProfile.Roles[].RoleName' --output text 2>/dev/null); do
+    aws iam remove-role-from-instance-profile --instance-profile-name "$ip" --role-name "$role" 2>/dev/null || true
+  done
+  aws iam delete-instance-profile --instance-profile-name "$ip" 2>/dev/null || warn "  Could not delete ${ip}"
+done
+
+log "  Phase 7c complete."
+
 # ── Phase 8: Verify cleanup ───────────────────────────────────────────────────
 log "Phase 8: Verifying cleanup..."
 
@@ -649,7 +742,53 @@ log "  Crossplane resources remaining:     $CROSSPLANE_REMAINING (should be 0)"
 log "  CloudWatch log groups remaining:    $REMAINING_LOG_GROUPS (should be 0)"
 log "  EBS volumes (cluster-owned):        $REMAINING_EBS (should be 0)"
 
+# Everything above checks a fixed list of resource kinds. A leak of any other
+# kind — like the Terraform launch template an interrupted destroy orphaned in
+# 2026-05, found by hand months later — was invisible. Ask the tagging API for
+# anything still carrying the platform's tags. Expected leftovers are skipped:
+# KMS keys pending deletion (AWS enforces a 7–30 day window), secrets pending
+# deletion, and instances already terminated (they stay listed for ~1h).
+LEFTOVER_ARNS=""
+SWEEP_FAILED=false
+for tag_filter in "Key=Project,Values=${CLUSTER_NAME}" "Key=kubernetes.io/cluster/${CLUSTER_NAME}"; do
+  # A failed query must not read as "nothing left" — that is the false
+  # all-clear this sweep exists to prevent.
+  if arns=$(aws resourcegroupstaggingapi get-resources --region "${AWS_REGION}" \
+      --tag-filters "$tag_filter" --query 'ResourceTagMappingList[].ResourceARN' \
+      --output text 2>/dev/null); then
+    LEFTOVER_ARNS+=$(tr '\t' '\n' <<< "$arns")$'\n'
+  else
+    SWEEP_FAILED=true
+  fi
+done
+LEFTOVERS=()
+while IFS= read -r arn; do
+  [[ -z "$arn" || "$arn" == "None" ]] && continue
+  case "$arn" in
+    arn:aws:kms:*)
+      state=$(aws kms describe-key --region "${AWS_REGION}" --key-id "$arn" \
+        --query 'KeyMetadata.KeyState' --output text 2>/dev/null || true)
+      [[ "$state" == "PendingDeletion" || "$state" == "PendingReplicaDeletion" ]] && continue ;;
+    arn:aws:secretsmanager:*)
+      deleted=$(aws secretsmanager describe-secret --region "${AWS_REGION}" --secret-id "$arn" \
+        --query 'DeletedDate' --output text 2>/dev/null || true)
+      [[ -n "$deleted" && "$deleted" != "None" ]] && continue ;;
+    arn:aws:ec2:*:instance/*)
+      state=$(aws ec2 describe-instances --region "${AWS_REGION}" --instance-ids "${arn##*/}" \
+        --query 'Reservations[0].Instances[0].State.Name' --output text 2>/dev/null || true)
+      [[ "$state" == "terminated" || "$state" == "shutting-down" ]] && continue ;;
+  esac
+  LEFTOVERS+=("$arn")
+done < <(sort -u <<< "$LEFTOVER_ARNS")
+log "  Tagged resources still present:     ${#LEFTOVERS[@]} (should be 0)"
+$SWEEP_FAILED && warn "    Could not query the tagging API — leftovers unknown, not reporting clean"
+for arn in ${LEFTOVERS[@]+"${LEFTOVERS[@]}"}; do
+  warn "    ${arn}"
+done
+
 CLEAN=true
+[[ ${#LEFTOVERS[@]} -gt 0 ]]        && CLEAN=false
+$SWEEP_FAILED                       && CLEAN=false
 [[ $EKS_CLUSTERS -gt 0 ]]          && CLEAN=false
 [[ $RDS_INSTANCES -gt 0 ]]         && CLEAN=false
 [[ $REMAINING_ALBS -gt 0 ]]        && CLEAN=false

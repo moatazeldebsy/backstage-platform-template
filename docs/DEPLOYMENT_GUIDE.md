@@ -847,8 +847,12 @@ Terraform has never heard of those.
 | ECR repos created by `bootstrap-ai.sh` | **The script**, imperatively | AI/MCP service repos are created on demand, not declared in Terraform |
 | **Contents** of S3 buckets and ECR repos | Nobody — runtime data | Terraform can delete a bucket but AWS refuses while it holds objects and `force_destroy = false`. Contents must be emptied first, which is Phase 5. |
 | **EBS volumes behind PersistentVolumes** (Prometheus, Loki, Grafana, the kagent/mlflow Postgres PVCs, …) | **EBS CSI driver** | Created on demand for each PVC and tagged `kubernetes.io/cluster/<cluster>=owned`. Deleting the cluster detaches them but never deletes them; they keep billing as `available` volumes (18 volumes / 145 GB had piled up across deploy cycles by 2026-09). Phase 7b deletes them by that tag after `terraform destroy`. |
+| **Karpenter nodes, launch templates, instance profiles** (only with `enable_karpenter = true`) | **Karpenter** | Launched by the controller from NodePools, not by Terraform. If the controller is uninstalled while nodes are still terminating they orphan at full EC2 price, and their ENIs block the VPC delete. Phase 0b drains the NodePools while the controller is alive; Phase 5b terminates stragglers before `terraform destroy`; Phase 7c deletes the launch templates (`karpenter.k8s.aws/cluster`) and `<cluster>_*` instance profiles afterwards. |
+| Secret `<cluster>/langfuse/project-keys` | **`bootstrap-ai.sh`**, imperatively | Created with the CLI when Langfuse is enabled on AWS; deleted in Phase 5b with the same zero-day recovery window Terraform uses for its own secrets. |
 | `/aws/eks/*`, `/aws/lambda/*` log groups | **EKS / Lambda**, at runtime | Created by the services themselves and outlive the cluster |
 | Kubeconfig contexts | Local machine | Not an AWS resource; prune with `kubectl config delete-context` |
+
+Anything else still tagged `Project=<cluster>` or `kubernetes.io/cluster/<cluster>` after all that is reported by a tag sweep in Phase 8, which then refuses to call the cleanup complete. That is how an orphaned Terraform launch template from an interrupted May destroy would have been caught at the time instead of months later. KMS keys and secrets that are only *scheduled* for deletion are expected and skipped.
 
 Two more reasons ordering matters, both learned the hard way:
 
