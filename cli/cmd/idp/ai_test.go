@@ -167,3 +167,58 @@ func TestParseAgentEvent(t *testing.T) {
 		}
 	}
 }
+
+// Regression: when the model call failed (e.g. Anthropic out of credits) the
+// turn's A2A task failed within seconds but no agent event was written, so
+// `idp ai` polled until --timeout. Observed 2026-09-26.
+func TestFindFailedTurn(t *testing.T) {
+	sentAt := time.Date(2026, 9, 26, 19, 37, 27, 0, time.UTC)
+	mk := func(state, ts, text string) a2aTask {
+		var tk a2aTask
+		tk.Status.State, tk.Status.Timestamp = state, ts
+		if text != "" {
+			tk.Status.Message.Parts = []struct {
+				Text string `json:"text"`
+			}{{Text: text}}
+		}
+		return tk
+	}
+	cases := []struct {
+		name  string
+		tasks []a2aTask
+		want  string
+	}{
+		{"failed during this turn", []a2aTask{mk("failed", "2026-09-26T19:37:29.310953219Z", "boom")}, "boom"},
+		{"failure from an earlier turn", []a2aTask{mk("failed", "2026-09-25T10:00:00Z", "old")}, ""},
+		{"small clock skew", []a2aTask{mk("failed", "2026-09-26T19:37:24Z", "skewed")}, "skewed"},
+		{"still working / completed", []a2aTask{mk("working", "2026-09-26T19:37:29Z", ""), mk("completed", "2026-09-26T19:37:30Z", "")}, ""},
+		{"rejected without text", []a2aTask{mk("rejected", "2026-09-26T19:37:29Z", "")}, `the agent's task ended as "rejected"`},
+		{"malformed timestamp", []a2aTask{mk("failed", "not-a-date", "x")}, ""},
+	}
+	for _, c := range cases {
+		if got := findFailedTurn(c.tasks, sentAt); got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestDescribeAgentFailure(t *testing.T) {
+	// Real message from a failed platform-assistant task, abbreviated.
+	noCredit := `anthropic API error: POST "http://ai-gateway.ml-platform.svc.cluster.local:3000/v1/messages": 400 Bad Request {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}`
+	cases := []struct{ raw, want string }{
+		{noCredit, "out of credits"},
+		{"Error code: 429 - insufficient_quota", "run out of quota"},
+		{`401 {"type":"authentication_error","message":"invalid x-api-key"}`, "rejected the platform's API key"},
+		{"429 rate_limit_error", "rate-limiting"},
+		{"529 overloaded_error", "overloaded"},
+		{"something odd", "failed before it could answer"},
+	}
+	for _, c := range cases {
+		if got := describeAgentFailure(c.raw); !strings.Contains(got, c.want) {
+			t.Errorf("describeAgentFailure(%.40q) = %q, want it to contain %q", c.raw, got, c.want)
+		}
+	}
+	if got := describeAgentFailure(strings.Repeat("x", 2000)); len(got) > 400 {
+		t.Errorf("detail not shortened: %d chars", len(got))
+	}
+}

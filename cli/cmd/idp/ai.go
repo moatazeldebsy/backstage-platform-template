@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -235,9 +236,112 @@ func runAI(_ *cobra.Command, args []string) error {
 				return nil
 			}
 		}
+
+		// No answer yet. If the model call failed (out of credits, bad key,
+		// rate limit) KAgent fails the turn's A2A task and writes no agent
+		// event, so without this the CLI polled until --timeout. Only this
+		// turn's task counts: sessions are reused across turns.
+		if failure := fetchFailedTurn(client, sessionID, sentAt); failure != "" {
+			fmt.Fprintln(os.Stderr, "")
+			return fmt.Errorf("%s", describeAgentFailure(failure))
+		}
 	}
 	fmt.Fprintln(os.Stderr, "")
 	return fmt.Errorf("agent did not respond within %ds", aiTimeout)
+}
+
+// a2aTask is the part of a KAgent A2A task (GET /api/sessions/<id>/tasks)
+// needed to tell whether a turn ended without an answer.
+type a2aTask struct {
+	Status struct {
+		State     string `json:"state"`
+		Timestamp string `json:"timestamp"`
+		Message   struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"message"`
+	} `json:"status"`
+}
+
+func fetchFailedTurn(client *http.Client, sessionID string, sentAt time.Time) string {
+	r, err := client.Get(fmt.Sprintf("%s/api/sessions/%s/tasks", aiKagentURL, sessionID))
+	if err != nil {
+		return ""
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return ""
+	}
+	var body struct {
+		Data []a2aTask `json:"data"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		return ""
+	}
+	return findFailedTurn(body.Data, sentAt)
+}
+
+// findFailedTurn returns the failure message of the turn sent at sentAt, or ""
+// if it has not failed. Tasks older than sentAt (minus 5s of clock skew) belong
+// to earlier turns in the same session and are ignored.
+func findFailedTurn(tasks []a2aTask, sentAt time.Time) string {
+	for _, t := range tasks {
+		switch t.Status.State {
+		case "failed", "rejected", "canceled":
+		default:
+			continue
+		}
+		ts, err := time.Parse(time.RFC3339Nano, t.Status.Timestamp)
+		if err != nil || ts.Before(sentAt.Add(-5*time.Second)) {
+			continue
+		}
+		var texts []string
+		for _, p := range t.Status.Message.Parts {
+			if p.Text != "" {
+				texts = append(texts, p.Text)
+			}
+		}
+		if len(texts) == 0 {
+			return fmt.Sprintf("the agent's task ended as %q", t.Status.State)
+		}
+		return strings.Join(texts, " ")
+	}
+	return ""
+}
+
+var (
+	reNoCredit  = regexp.MustCompile(`(?i)credit balance is too low`)
+	reQuota     = regexp.MustCompile(`(?i)insufficient_quota|exceeded your current quota|billing`)
+	reBadKey    = regexp.MustCompile(`(?i)invalid x-api-key|authentication_error|invalid api key|incorrect api key|\b401\b`)
+	reRateLimit = regexp.MustCompile(`(?i)rate_limit|rate limit|too many requests|\b429\b`)
+	reOverload  = regexp.MustCompile(`(?i)overloaded|\b529\b|\b503\b`)
+	reSpaces    = regexp.MustCompile(`\s+`)
+)
+
+// describeAgentFailure turns a raw provider error into something actionable.
+// Mirrors backstage/app/packages/app/src/aiAgentErrors.ts.
+func describeAgentFailure(raw string) string {
+	detail := strings.TrimSpace(reSpaces.ReplaceAllString(raw, " "))
+	if len(detail) > 300 {
+		detail = detail[:300] + "…"
+	}
+	switch {
+	case reNoCredit.MatchString(raw):
+		return "the AI provider (Anthropic) is out of credits, so the agent cannot answer. " +
+			"A platform admin needs to top up at console.anthropic.com → Plans & Billing.\n  provider said: " + detail
+	case reQuota.MatchString(raw):
+		return "the AI provider account has run out of quota or has a billing problem. " +
+			"A platform admin needs to check the provider billing page.\n  provider said: " + detail
+	case reBadKey.MatchString(raw):
+		return "the AI provider rejected the platform's API key (missing, revoked or wrong). " +
+			"Update it in local/.env (or the secret on AWS) and re-run bootstrap-ai.sh.\n  provider said: " + detail
+	case reRateLimit.MatchString(raw):
+		return "the AI provider is rate-limiting requests right now. Try again in a minute.\n  provider said: " + detail
+	case reOverload.MatchString(raw):
+		return "the AI provider is temporarily overloaded. Try again shortly.\n  provider said: " + detail
+	}
+	return "the agent failed before it could answer.\n  details: " + detail
 }
 
 // parseAgentEvent extracts the reply text and any in-flight tool call from one
