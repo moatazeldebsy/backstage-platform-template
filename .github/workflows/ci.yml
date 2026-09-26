@@ -53,6 +53,7 @@ jobs:
       k8s: ${{ steps.filter.outputs.k8s }}
       backstage: ${{ steps.filter.outputs.backstage }}
       catalog: ${{ steps.filter.outputs.catalog }}
+      techdocs: ${{ steps.filter.outputs.techdocs }}
       terraform: ${{ steps.filter.outputs.terraform }}
       python-obs: ${{ steps.filter.outputs.python-obs }}
       contract-mcp: ${{ steps.filter.outputs.contract-mcp }}
@@ -91,7 +92,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s kagent backstage catalog terraform python-obs contract-mcp mcp-common mcp-servers scripts; do
+            for k in go-service cli helm k8s kagent backstage catalog techdocs terraform python-obs contract-mcp mcp-common mcp-servers scripts; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -132,6 +133,11 @@ jobs:
             #    not deployed and passing evals mean nothing — which had already
             #    happened (25 lines here vs 50 in the CRD).
             echo "catalog=$(match '^(backstage/catalog/|kubernetes/kagent/|aws/kagent/|backstage/app/packages/backend/src/modules/|test-suites/test-deepeval/tests/|scripts/(bootstrap-ai\.sh|validate-catalog-templates\.py|sync-agent-prompts\.py))')"
+            # Any file that can change whether a TechDocs site builds: the
+            # entity declaring it, its mkdocs.yml, or its docs/ content —
+            # which lives next to services and test suites as well as under
+            # backstage/catalog/.
+            echo "techdocs=$(match '^backstage/catalog/|(^|/)catalog-info\.yaml$|(^|/)mkdocs\.ya?ml$|(^|/)docs/|^scripts/check-techdocs\.py$')"
             echo "terraform=$(match '^terraform/')"
             # scripts/render-postmortem.py is py_compile'd by the same job, so it
             # has to trigger it — otherwise the check exists but never runs on
@@ -182,6 +188,32 @@ jobs:
       # If the copy drifts, the evals are scoring a prompt that is not deployed.
       - name: Check agent prompt / eval-suite drift
         run: python3 scripts/sync-agent-prompts.py --check-evals
+
+  # A broken TechDocs site only surfaced when someone opened its tab and got
+  # "Building a newer version of this documentation failed" over a 404 —
+  # 8 templates shipped with no docs/ at all and one mkdocs.yml used a
+  # docs_dir MkDocs 1.6 rejects. Build every declared site, pinned to the
+  # versions the Backstage image installs.
+  techdocs-build:
+    needs: changes
+    if: needs.changes.outputs.techdocs == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+
+      # Keep in step with `pip list` in the backstage:local image; a site that
+      # builds with a different MkDocs can still fail inside Backstage.
+      - name: Install MkDocs (Backstage image versions)
+        run: pip install --quiet pyyaml mkdocs==1.6.1 mkdocs-techdocs-core==1.7.1 mkdocs-material==9.7.7
+
+      - name: Build every TechDocs site
+        run: python3 scripts/check-techdocs.py
 
   # Shell scripts had no CI coverage at all — scripts/ was absent from the old
   # path filter, so bootstrap-local.sh and friends were never even parsed.
