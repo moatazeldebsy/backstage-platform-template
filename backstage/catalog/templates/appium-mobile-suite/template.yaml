@@ -43,16 +43,20 @@ spec:
             catalogFilter:
               kind: Group
         targetService:
-          title: Target Service
+          title: Target Mobile App
           type: string
-          description: The service this test suite targets
+          description: The mobile app this suite tests (Android/iOS components created by the mobile templates)
           ui:field: EntityPicker
           ui:options:
+            # spec.type: mobile is what android-app, ios-app and flutter-app
+            # give the components they create, and what the other mobile
+            # templates (device farm, code signing, app store, Flutter
+            # integration tests) filter on. This used to list service/website
+            # components, copied from the web test suites, so no mobile app
+            # could ever be picked.
             catalogFilter:
               - kind: Component
-                spec.type: service
-              - kind: Component
-                spec.type: website
+                spec.type: mobile
         deploymentMode:
           title: Deployment Mode
           type: string
