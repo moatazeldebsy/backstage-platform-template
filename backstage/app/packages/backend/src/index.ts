@@ -122,6 +122,10 @@ backend.add(import('@backstage/plugin-search-backend-module-pg'));
 // search collators
 backend.add(import('@backstage/plugin-search-backend-module-catalog'));
 backend.add(import('@backstage/plugin-search-backend-module-techdocs'));
+// Indexes announcements. The announcements frontend plugin adds an
+// `announcements` result type to the search page; without a collator for it
+// the search backend rejects every query from that page with a 400.
+backend.add(import('@backstage-community/plugin-search-backend-module-announcements'));
 
 // kubernetes plugin
 backend.add(import('@backstage/plugin-kubernetes-backend'));
