@@ -60,9 +60,16 @@ spec:
           description: 'Backstage Component this suite belongs to (sets dependsOn)'
           ui:field: EntityPicker
           ui:options:
+            # Go/Node/Python code
             catalogFilter:
               - kind: Component
                 spec.type: service
+              - kind: Component
+                spec.type: website
+              - kind: Component
+                spec.type: mcp-server
+              - kind: Component
+                spec.type: ai-agent
         coverageThreshold:
           title: Coverage Threshold (%)
           type: integer

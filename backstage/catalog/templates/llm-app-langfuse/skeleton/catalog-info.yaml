@@ -17,6 +17,13 @@ metadata:
     # OTEL_SERVICE_NAME set in helm-values-*.yaml — that value is the Langfuse
     # trace tag the tab filters on.
     langfuse.com/service-name: "${{ values.name }}"
+  # `llm` is how templates find LLM apps: they are spec.type service like any
+  # other backend, so deepeval-llm-eval-suite filters on this tag.
+  tags:
+    - llm
+    - ai
+    - python
+    - langfuse
   links:
     # Absolute, like the Grafana and ArgoCD links below. A relative URL such as
     # /langfuse fails catalog validation outright ("expected a string that is a

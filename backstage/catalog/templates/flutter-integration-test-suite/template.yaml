@@ -47,9 +47,11 @@ spec:
           description: The Flutter app this test suite targets
           ui:field: EntityPicker
           ui:options:
+            # Flutter apps only, not native Android/iOS
             catalogFilter:
               - kind: Component
                 spec.type: mobile
+                metadata.tags: flutter
         targetRepoUrl:
           title: Flutter App Repository
           type: string

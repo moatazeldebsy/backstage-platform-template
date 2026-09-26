@@ -49,9 +49,13 @@ spec:
           description: The AI agent entity this suite evaluates (optional — used for catalog dependency)
           ui:field: EntityPicker
           ui:options:
+            # agents, and services tagged llm (llm-app-langfuse)
             catalogFilter:
               - kind: Component
                 spec.type: ai-agent
+              - kind: Component
+                spec.type: service
+                metadata.tags: llm
         deploymentMode:
           title: Deployment Mode
           type: string

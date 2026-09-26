@@ -54,11 +54,12 @@ spec:
           description: The provider service this consumer contract targets
           ui:field: EntityPicker
           ui:options:
+            # the provider exposes the API; a frontend is not a provider
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
-                spec.type: website
+                spec.type: mcp-server
         deploymentMode:
           title: Deployment Mode
           type: string

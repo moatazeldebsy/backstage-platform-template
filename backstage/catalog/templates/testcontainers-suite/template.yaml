@@ -51,11 +51,12 @@ spec:
           description: The service this test suite targets
           ui:field: EntityPicker
           ui:options:
+            # integration tests for a backend
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
-                spec.type: website
+                spec.type: mcp-server
         deploymentMode:
           title: Deployment Mode
           type: string

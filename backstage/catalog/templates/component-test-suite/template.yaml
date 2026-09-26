@@ -56,9 +56,12 @@ spec:
           type: string
           ui:field: EntityPicker
           ui:options:
+            # a single backend with stubbed HTTP dependencies
             catalogFilter:
               - kind: Component
                 spec.type: service
+              - kind: Component
+                spec.type: mcp-server
         serviceContainerImage:
           title: Service Container Image
           type: string

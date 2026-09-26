@@ -33,9 +33,21 @@ spec:
           ui:autofocus: true
           ui:field: EntityPicker
           ui:options:
+            # only things that deploy to Kind — not mobile apps, libraries or test suites —
+            # and, as before, only development-lifecycle components
             catalogFilter:
-              kind: Component
-              spec.lifecycle: development
+              - kind: Component
+                spec.type: service
+                spec.lifecycle: development
+              - kind: Component
+                spec.type: website
+                spec.lifecycle: development
+              - kind: Component
+                spec.type: mcp-server
+                spec.lifecycle: development
+              - kind: Component
+                spec.type: ai-agent
+                spec.lifecycle: development
         imageTag:
           title: Image Tag
           type: string

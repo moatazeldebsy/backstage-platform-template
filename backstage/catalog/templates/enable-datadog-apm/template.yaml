@@ -40,11 +40,16 @@ spec:
           description: The service you want to enable Datadog APM & monitoring for
           ui:field: EntityPicker
           ui:options:
+            # anything that runs and can be traced
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
                 spec.type: website
+              - kind: Component
+                spec.type: mcp-server
+              - kind: Component
+                spec.type: ai-agent
         targetRepoUrl:
           title: Target Service Repository
           type: string

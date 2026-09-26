@@ -52,11 +52,16 @@ spec:
           description: The service this test suite targets
           ui:field: EntityPicker
           ui:options:
+            # any workload running in the cluster
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
                 spec.type: website
+              - kind: Component
+                spec.type: mcp-server
+              - kind: Component
+                spec.type: ai-agent
         deploymentMode:
           title: Deployment Mode
           type: string
