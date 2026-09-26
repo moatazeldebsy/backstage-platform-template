@@ -39,11 +39,12 @@ spec:
           description: The service whose API will be contracted (the provider)
           ui:field: EntityPicker
           ui:options:
+            # the provider exposes the API; a frontend is not a provider
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
-                spec.type: website
+                spec.type: mcp-server
         providerName:
           title: Provider Service Name (Kubernetes)
           type: string

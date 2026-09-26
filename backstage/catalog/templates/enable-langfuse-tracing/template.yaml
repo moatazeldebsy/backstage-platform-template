@@ -43,11 +43,12 @@ spec:
           description: The service you want to send LLM traces to Langfuse
           ui:field: EntityPicker
           ui:options:
+            # code that calls an LLM
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
-                spec.type: website
+                spec.type: ai-agent
         targetRepoUrl:
           title: Target Service Repository
           type: string

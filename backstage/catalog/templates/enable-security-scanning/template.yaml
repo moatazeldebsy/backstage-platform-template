@@ -40,11 +40,20 @@ spec:
           description: The service whose CI you want to extend with Sonar + Snyk
           ui:field: EntityPicker
           ui:options:
+            # SAST/SCA applies to every code repository
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
                 spec.type: website
+              - kind: Component
+                spec.type: mcp-server
+              - kind: Component
+                spec.type: ai-agent
+              - kind: Component
+                spec.type: library
+              - kind: Component
+                spec.type: mobile
         targetRepoUrl:
           title: Target Service Repository
           type: string

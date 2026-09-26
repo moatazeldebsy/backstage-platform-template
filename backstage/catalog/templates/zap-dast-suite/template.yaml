@@ -57,6 +57,8 @@ spec:
                 spec.type: service
               - kind: Component
                 spec.type: website
+              - kind: Component
+                spec.type: mcp-server
         deploymentMode:
           title: Deployment Mode
           type: string

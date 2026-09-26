@@ -48,11 +48,14 @@ spec:
           description: The service this test suite targets
           ui:field: EntityPicker
           ui:options:
+            # Stryker: JS/TS code
             catalogFilter:
               - kind: Component
                 spec.type: service
               - kind: Component
                 spec.type: website
+              - kind: Component
+                spec.type: mcp-server
         deploymentMode:
           title: Deployment Mode
           type: string
