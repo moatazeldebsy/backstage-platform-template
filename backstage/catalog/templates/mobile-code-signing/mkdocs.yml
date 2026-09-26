@@ -1,0 +1,8 @@
+site_name: Mobile Code Signing Setup
+site_description: Add automated code signing for iOS (Fastlane Match via S3) or Android (keystore via
+  AWS Secrets Manager) to an existing mobile app repository
+docs_dir: docs
+nav:
+- Overview: index.md
+plugins:
+- techdocs-core

@@ -1,0 +1,8 @@
+site_name: Flutter Integration Test Suite
+site_description: Add Flutter integration tests to an existing Flutter app. Tests run on Firebase Test
+  Lab via GitHub Actions.
+docs_dir: docs
+nav:
+- Overview: index.md
+plugins:
+- techdocs-core
