@@ -3914,6 +3914,11 @@ Terraform has never heard of those.</p>
 <td>Terraform can delete a bucket but AWS refuses while it holds objects and <code>force_destroy = false</code>. Contents must be emptied first, which is Phase 5.</td>
 </tr>
 <tr>
+<td><strong>EBS volumes behind PersistentVolumes</strong> (Prometheus, Loki, Grafana, the kagent/mlflow Postgres PVCs, …)</td>
+<td><strong>EBS CSI driver</strong></td>
+<td>Created on demand for each PVC and tagged <code>kubernetes.io/cluster/&lt;cluster&gt;=owned</code>. Deleting the cluster detaches them but never deletes them; they keep billing as <code>available</code> volumes (18 volumes / 145 GB had piled up across deploy cycles by 2026-09). Phase 7b deletes them by that tag after <code>terraform destroy</code>.</td>
+</tr>
+<tr>
 <td><code>/aws/eks/*</code>, <code>/aws/lambda/*</code> log groups</td>
 <td><strong>EKS / Lambda</strong>, at runtime</td>
 <td>Created by the services themselves and outlive the cluster</td>
