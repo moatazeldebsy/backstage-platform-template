@@ -275,6 +275,19 @@ spec:
     # The web Dockerfile only belongs in the repo when Flutter Web is deployed.
     # It used to ship in every Flutter app, and Trivy's Dockerfile checks then
     # failed CI on apps that never build a container.
+    # The iOS Xcode project, only for apps that target iOS. Without it
+    # `flutter build ios` has nothing to build (the skeleton used to ship no
+    # platform folders at all).
+    - id: fetch-ios
+      name: Add iOS project
+      if: ${{ 'ios' in parameters.platforms }}
+      action: fetch:template
+      input:
+        url: ./skeleton-ios
+        values:
+          name: ${{ parameters.name }}
+          packageName: ${{ parameters.packageName }}
+
     - id: fetch-web
       name: Add Flutter Web container image
       if: ${{ parameters.enableWebDeploy }}
