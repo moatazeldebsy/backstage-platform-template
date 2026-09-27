@@ -80,7 +80,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25.12'
+          # Newest patch of a Go minor that still gets security fixes.
+          go-version: '1.26.x'
+          check-latest: true
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8

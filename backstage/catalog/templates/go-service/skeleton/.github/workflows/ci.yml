@@ -27,10 +27,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # Newest 1.25 patch, not go.mod's exact minimum: go.mod pins a patch
-          # release, and a pinned toolchain fails govulncheck as soon as the next
-          # stdlib security fix ships (every fresh repo did).
-          go-version: '1.25.x'
+          # Newest 1.26 patch, not go.mod's minimum: a pinned toolchain fails
+          # govulncheck as soon as the next stdlib security fix ships (every
+          # fresh repo did). go.mod says `go 1.26` rather than a patch because
+          # golangci-lint refuses a module targeting a newer Go than the one it
+          # was built with. Move off a minor once Go stops patching it (two
+          # releases back) — its stdlib CVEs then have no fix to resolve to.
+          go-version: '1.26.x'
           check-latest: true
           cache: true
 
@@ -95,10 +98,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # Newest 1.25 patch, not go.mod's exact minimum: go.mod pins a patch
-          # release, and a pinned toolchain fails govulncheck as soon as the next
-          # stdlib security fix ships (every fresh repo did).
-          go-version: '1.25.x'
+          # Newest 1.26 patch, not go.mod's minimum: a pinned toolchain fails
+          # govulncheck as soon as the next stdlib security fix ships (every
+          # fresh repo did). go.mod says `go 1.26` rather than a patch because
+          # golangci-lint refuses a module targeting a newer Go than the one it
+          # was built with. Move off a minor once Go stops patching it (two
+          # releases back) — its stdlib CVEs then have no fix to resolve to.
+          go-version: '1.26.x'
           check-latest: true
           cache: true
 
