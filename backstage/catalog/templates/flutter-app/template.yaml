@@ -271,13 +271,22 @@ spec:
           port: ${{ parameters.port }}
           grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
 
+    # Each platform folder ships only for the platforms the app targets, so an
+    # iOS-only app does not carry an Android project it never builds. The CI
+    # build jobs follow the same selection (skeleton/.github/workflows/ci.yml).
+    #
+    # The Android project, plus the Android-only Fastfile.
+    - id: fetch-android
+      name: Add Android project
+      if: ${{ 'android' in parameters.platforms }}
+      action: fetch:template
+      input:
+        url: ./skeleton-android
+        values:
+          name: ${{ parameters.name }}
+          packageName: ${{ parameters.packageName }}
 
-    # The web Dockerfile only belongs in the repo when Flutter Web is deployed.
-    # It used to ship in every Flutter app, and Trivy's Dockerfile checks then
-    # failed CI on apps that never build a container.
-    # The iOS Xcode project, only for apps that target iOS. Without it
-    # `flutter build ios` has nothing to build (the skeleton used to ship no
-    # platform folders at all).
+    # The iOS Xcode project. Without it `flutter build ios` has nothing to build.
     - id: fetch-ios
       name: Add iOS project
       if: ${{ 'ios' in parameters.platforms }}
@@ -288,9 +297,23 @@ spec:
           name: ${{ parameters.name }}
           packageName: ${{ parameters.packageName }}
 
+    # The web/ folder (index.html, manifest, icons).
+    - id: fetch-web-platform
+      name: Add Flutter Web project
+      if: ${{ 'web' in parameters.platforms }}
+      action: fetch:template
+      input:
+        url: ./skeleton-web-platform
+        values:
+          name: ${{ parameters.name }}
+
+    # The web Dockerfile only belongs in the repo when Flutter Web is deployed.
+    # It used to ship in every Flutter app, and Trivy's Dockerfile checks then
+    # failed CI on apps that never build a container. Same condition as the
+    # publish-web CI job, which is the only thing that builds it.
     - id: fetch-web
       name: Add Flutter Web container image
-      if: ${{ parameters.enableWebDeploy }}
+      if: ${{ parameters.enableWebDeploy and 'web' in parameters.platforms }}
       action: fetch:template
       input:
         url: ./skeleton-web
