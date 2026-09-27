@@ -9,8 +9,12 @@ app.get('/', (_req, res) => res.json({ service: '<% .Name %>', status: 'ok' }));
 app.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
 app.get('/ready', (_req, res) => res.json({ status: 'ready' }));
 
-app.listen(port, () => {
-  process.stdout.write(JSON.stringify({ msg: 'listening', port }) + '\n');
-});
+// Listen only when run directly, so tests can require the app without
+// holding a port open.
+if (require.main === module) {
+  app.listen(port, () => {
+    process.stdout.write(JSON.stringify({ msg: 'listening', port }) + '\n');
+  });
+}
 
 module.exports = app;

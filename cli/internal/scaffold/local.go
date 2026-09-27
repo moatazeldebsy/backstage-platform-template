@@ -106,6 +106,7 @@ func fileEntries(svcType string) []fileEntry {
 		"nodejs": {
 			{"nodejs/package.json.tmpl", "package.json"},
 			{"nodejs/src/index.js.tmpl", "src/index.js"},
+			{"nodejs/src/index.test.js.tmpl", "src/index.test.js"},
 			{"nodejs/Dockerfile.tmpl", "Dockerfile"},
 		},
 		"python": {
@@ -125,8 +126,10 @@ func fileEntries(svcType string) []fileEntry {
 	}
 	shared := []fileEntry{
 		// No .github/workflows here: the service lives in the platform repo,
-		// where GitHub only runs root-level workflows. build-and-deploy.yml
-		// tests, builds, scans and deploys every services/* directory.
+		// where GitHub only runs root-level workflows. build-and-deploy.yml's
+		// quality job (lint, vuln scan, coverage gate, container smoke test) and
+		// build jobs cover every services/* directory, so the language templates
+		// above must pass that job as generated.
 		{"shared/README.md.tmpl", "README.md"},
 		{"shared/mkdocs.yml.tmpl", "mkdocs.yml"},
 		{"shared/docs/index.md.tmpl", "docs/index.md"},

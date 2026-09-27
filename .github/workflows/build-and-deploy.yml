@@ -137,11 +137,25 @@ jobs:
           echo "source changed:     $(to_json "$SRC")"
           echo "staging promoted:   $(to_json "$PROMO")"
 
-  # ─── Lint and test ──────────────────────────────────────────────────────────
+  # ─── Lint, scan and test ────────────────────────────────────────────────────
+  # The quality bar every services/* directory has to clear before its image is
+  # built. It is the same bar the Backstage go/nodejs/python-service templates
+  # put in a new repo's own CI (static analysis, dependency vulnerability scan,
+  # coverage gate, container smoke test) — services living in this repo, which
+  # includes everything `idp scaffold service --local` generates, cannot carry
+  # their own workflow (GitHub only runs root-level ones), so it lives here.
+  # This job used to run the unit tests and nothing else.
+  #
+  # Coverage: 70% by default, same as the templates. A service can set its own
+  # floor in services/<name>/.coverage-min (a single number) — the built-in
+  # services that were below 70% when this gate landed carry their measured
+  # level there. Raise it as tests are added; do not lower it.
   test:
+    name: Lint, scan and test
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.services != '[]' }}
     strategy:
+      fail-fast: false
       matrix:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     runs-on: ubuntu-latest
@@ -151,19 +165,53 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - name: Detect runtime
+      - name: Detect runtime and coverage floor
         id: runtime
         run: |
           if [ -f "go.mod" ]; then echo "runtime=go" >> "$GITHUB_OUTPUT"
           elif [ -f "package.json" ]; then echo "runtime=node" >> "$GITHUB_OUTPUT"
           elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then echo "runtime=python" >> "$GITHUB_OUTPUT"
+          else echo "::error::services/${{ matrix.service }} has no go.mod, package.json or requirements.txt"; exit 1
           fi
+          MIN=$(tr -dc '0-9' < .coverage-min 2>/dev/null || true)
+          echo "coverage_min=${MIN:-70}" >> "$GITHUB_OUTPUT"
+          echo "Coverage floor: ${MIN:-70}%"
 
+      # ── Go ──
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         if: steps.runtime.outputs.runtime == 'go'
         with:
           go-version-file: services/${{ matrix.service }}/go.mod
+          # Newest patch of go.mod's minor: govulncheck judges the stdlib of the
+          # toolchain that runs it, so an old patch fails on already-fixed CVEs.
+          check-latest: true
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
 
+      - name: go vet
+        if: steps.runtime.outputs.runtime == 'go'
+        run: go vet ./...
+
+      - name: golangci-lint
+        if: steps.runtime.outputs.runtime == 'go'
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
+        with:
+          version: v2.12.2
+          working-directory: services/${{ matrix.service }}
+          args: --timeout=5m
+
+      - name: govulncheck
+        if: steps.runtime.outputs.runtime == 'go'
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Test with coverage (Go)
+        if: steps.runtime.outputs.runtime == 'go'
+        run: |
+          go test ./... -coverprofile=coverage.out -covermode=atomic
+          go tool cover -func=coverage.out | awk '/^total:/ { sub("%", "", $3); print $3 }' > coverage.pct
+
+      # ── Node ──
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: steps.runtime.outputs.runtime == 'node'
         with:
@@ -171,26 +219,108 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/${{ matrix.service }}/package-lock.json
 
+      - name: Install dependencies (Node)
+        if: steps.runtime.outputs.runtime == 'node'
+        run: npm ci
+
+      - name: Type check / syntax check (Node)
+        if: steps.runtime.outputs.runtime == 'node'
+        run: |
+          if [ -f tsconfig.json ]; then
+            npx --no-install tsc --noEmit
+          else
+            find src -name '*.js' -print0 | xargs -0 -n1 node --check
+          fi
+
+      - name: npm audit (high+critical, prod deps)
+        if: steps.runtime.outputs.runtime == 'node'
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Test with coverage (Node)
+        if: steps.runtime.outputs.runtime == 'node'
+        run: |
+          npm test -- --coverage --coverageDirectory=coverage \
+            --coverageReporters=json-summary --coverageReporters=text-summary
+          node -p "require('./coverage/coverage-summary.json').total.lines.pct" > coverage.pct
+
+      # ── Python ──
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         if: steps.runtime.outputs.runtime == 'python'
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
-      - name: Run tests (Go)
-        if: steps.runtime.outputs.runtime == 'go'
-        run: go test ./... -coverprofile=coverage.out
-
-      - name: Run tests (Node)
-        if: steps.runtime.outputs.runtime == 'node'
-        run: npm ci && npm test
-
-      - name: Run tests (Python)
+      - name: Install dependencies (Python)
         if: steps.runtime.outputs.runtime == 'python'
         # requirements-dev.txt carries pytest + test-only deps (the idp CLI
         # scaffolder writes one) so they stay out of the runtime image.
         run: |
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; else pip install -r requirements.txt pytest; fi
-          pytest
+          pip install pytest-cov ruff==0.7.* pip-audit==2.7.*
+
+      - name: ruff (lint)
+        if: steps.runtime.outputs.runtime == 'python'
+        run: ruff check .
+
+      - name: pip-audit
+        if: steps.runtime.outputs.runtime == 'python'
+        run: pip-audit -r requirements.txt
+
+      - name: Test with coverage (Python)
+        if: steps.runtime.outputs.runtime == 'python'
+        run: |
+          pytest --cov=src --cov-report=term --cov-report=json:coverage.json
+          python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])" > coverage.pct
+
+      # ── Every runtime ──
+      - name: Enforce coverage floor (${{ steps.runtime.outputs.coverage_min }}%)
+        env:
+          MIN: ${{ steps.runtime.outputs.coverage_min }}
+        run: |
+          COV=$(cat coverage.pct)
+          echo "Coverage: ${COV}% (floor ${MIN}%)"
+          awk -v cov="$COV" -v min="$MIN" 'BEGIN { if (cov+0 < min+0) { printf "::error::coverage %s%% is below the %s%% floor (services/<name>/.coverage-min, default 70)\n", cov, min; exit 1 } }'
+
+      - name: Trivy filesystem scan (deps, secrets, misconfig)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: services/${{ matrix.service }}
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # Builds the image and checks it starts and answers its liveness probe, so
+      # a Dockerfile that builds but cannot run fails here rather than in the
+      # cluster. The port is the Dockerfile's EXPOSE, which is the chart's
+      # targetPort for every service. /ready is reported but not required: it
+      # may rightly stay not-ready without the service's dependencies
+      # (approval-service waits for Postgres), which this container lacks.
+      - name: Container smoke test (/healthz)
+        run: |
+          PORT=$(awk 'toupper($1) == "EXPOSE" { print $2; exit }' Dockerfile)
+          PORT=${PORT%%/*}
+          [ -n "$PORT" ] || { echo "::error::Dockerfile has no EXPOSE — cannot smoke-test"; exit 1; }
+          docker build -t smoke:ci .
+          docker run -d --name smoke -p "${PORT}:${PORT}" -e PORT="${PORT}" smoke:ci
+          # Poll rather than `curl --retry`: until the app listens, docker's
+          # port proxy accepts and then resets the connection, which curl does
+          # not treat as retryable, so --retry gave up on the first attempt.
+          probe() {
+            for _ in $(seq 1 30); do
+              curl -sf "http://localhost:${PORT}$1" >/dev/null && return 0
+              sleep 2
+            done
+            return 1
+          }
+          ok=true
+          probe /healthz || { echo "::error::GET /healthz on port ${PORT} did not succeed within 60s"; ok=false; }
+          if $ok && ! curl -sf "http://localhost:${PORT}/ready" >/dev/null; then
+            echo "::warning::/ready is not ready without the service's dependencies — fine in CI, check it in the cluster"
+          fi
+          $ok || docker logs smoke
+          docker rm -f smoke >/dev/null
+          $ok
 
   # ─── Build and push to ECR ──────────────────────────────────────────────────
   build-and-push:

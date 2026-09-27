@@ -123,6 +123,23 @@ func TestFileEntries(t *testing.T) {
 		}
 	})
 
+	// build-and-deploy.yml's quality job fails a service below 70% coverage, so
+	// every type must generate tests — nodejs used to ship none.
+	t.Run("every type generates a test file", func(t *testing.T) {
+		tests := map[string]string{"go": "src/main_test.go", "nodejs": "src/index.test.js", "python": "src/test_main.py"}
+		for svcType, want := range tests {
+			found := false
+			for _, e := range fileEntries(svcType) {
+				if e.out == want {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("fileEntries(%q) missing %s", svcType, want)
+			}
+		}
+	})
+
 	t.Run("unknown type returns only shared files", func(t *testing.T) {
 		entries := fileEntries("unknown")
 		if len(entries) == 0 {
@@ -292,5 +309,24 @@ func TestFileEntries_AllEmbedded(t *testing.T) {
 				t.Errorf("%s: template %s not embedded: %v", svcType, e.tmpl, err)
 			}
 		}
+	}
+}
+
+// The quality gates build-and-deploy.yml enforces on every services/* directory
+// are what the scorecard's coverage / static-analysis / vuln-scan checks read
+// from this annotation.
+func TestCatalogInfoDeclaresQualityGates(t *testing.T) {
+	root := t.TempDir()
+	cfg := applyDefaults(ServiceConfig{Name: "svc", Type: "go", Namespace: "services", RootDir: root, GHOrg: "org"})
+	out := filepath.Join(root, "catalog-info.yaml")
+	if err := renderFile("shared/catalog-info.yaml.tmpl", out, cfg); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `idp.io/quality-gates: "coverage,static-analysis,vuln-scan"`) {
+		t.Errorf("catalog-info.yaml does not declare the enforced quality gates:\n%s", b)
 	}
 }

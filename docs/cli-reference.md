@@ -66,7 +66,7 @@ idp scaffold service --name billing-svc --type nodejs --dry-run
 
 ```
 services/<name>/
-├── src/                    # Application code (+ tests for go/python)
+├── src/                    # Application code + tests
 ├── Dockerfile
 ├── README.md
 ├── mkdocs.yml + docs/      # TechDocs
@@ -74,12 +74,20 @@ services/<name>/
 ├── helm-values-aws.yaml    # EKS dev — CI rewrites image repo/tag
 ├── catalog-info.yaml       # register via /catalog-import (printed after scaffolding)
 ├── package-lock.json       # nodejs, generated with npm if on PATH
-└── requirements-dev.txt    # python — pytest for build-and-deploy.yml
+└── requirements-dev.txt    # python — pytest + pytest-cov for build-and-deploy.yml
 ```
 
-There is no per-service CI workflow: the service lives in the platform repo, and
-`build-and-deploy.yml` tests, builds, scans, and deploys every `services/*`
-directory. `helm-values-staging.yaml` is created by that workflow on first
+There is no per-service CI workflow: the service lives in the platform repo,
+where GitHub only runs root-level workflows. `build-and-deploy.yml` is its CI.
+For every changed `services/*` directory it runs the same quality bar the
+Backstage `go`/`nodejs`/`python-service` templates put in a new repo's own CI —
+static analysis (`go vet` + golangci-lint / `tsc` or `node --check` / ruff),
+a dependency vulnerability scan (govulncheck / `npm audit` / pip-audit), a 70%
+coverage gate, a Trivy filesystem scan, and a container smoke test against
+`/healthz` — then builds, scans, and deploys the image. Generated
+services pass it as-is. A service below 70% records its current floor in a
+`.coverage-min` file (one number); raise it as tests are added, never lower it.
+`helm-values-staging.yaml` is created by that workflow on first
 promotion. `--owner` and `--cost-center` fill the `team` / `cost-center` pod
 labels the `require-cost-tags` Gatekeeper policy enforces in `services-*`.
 

@@ -7,5 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /service ./src/...
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /service /service
+# The :nonroot base already runs as 65532; stating it satisfies Trivy DS-0002.
+USER 65532:65532
 EXPOSE <% .Port %>
 ENTRYPOINT ["/service"]
