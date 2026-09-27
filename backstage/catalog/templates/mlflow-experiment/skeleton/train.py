@@ -65,11 +65,21 @@ def main():
         print(f"Accuracy: {acc:.4f} | F1: {f1:.4f}")
 
         if REGISTER_MODEL:
-            mlflow.sklearn.log_model(
-                model,
-                artifact_path="model",
-                registered_model_name="${{ values.name }}-model",
-            )
+            # MLflow 3 serializes sklearn models with skops and refuses to save
+            # one containing types off skops' trusted list; a RandomForest's
+            # trees are sklearn.tree._tree.Tree, so every run failed. Trust
+            # exactly that type. MLflow 2.x has no such parameter (and does not
+            # use skops): it rejects the keyword before doing any work.
+            log_kwargs = {
+                "artifact_path": "model",
+                "registered_model_name": "${{ values.name }}-model",
+            }
+            try:
+                mlflow.sklearn.log_model(
+                    model, skops_trusted_types=["sklearn.tree._tree.Tree"], **log_kwargs
+                )
+            except TypeError:
+                mlflow.sklearn.log_model(model, **log_kwargs)
 {%- elif values.framework == 'xgboost' %}
         dtrain = xgb.DMatrix(X_train, label=y_train)
         dtest = xgb.DMatrix(X_test, label=y_test)

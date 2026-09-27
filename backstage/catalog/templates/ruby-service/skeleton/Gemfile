@@ -1,17 +1,19 @@
-source "https://rubygems.org"
+# frozen_string_literal: true
 
-ruby ">= 3.2"
+source 'https://rubygems.org'
 
-gem "sinatra", "~> 4.1"
-gem "puma", "~> 7.2", ">= 7.2.1"
-gem "prometheus-client", "~> 4.2"
-gem "rackup", "~> 2.1"
+ruby '>= 3.2'
+
+gem 'prometheus-client', '~> 4.2'
+gem 'puma', '~> 7.2', '>= 7.2.1'
+gem 'rackup', '~> 2.1'
+gem 'sinatra', '~> 4.1'
 
 group :development, :test do
-  gem "rspec", "~> 3.13"
-  gem "rspec_junit_formatter", "~> 0.6"
-  gem "rack-test", "~> 2.1"
-  gem "simplecov", "~> 0.22", require: false
-  gem "rubocop", "~> 1.65", require: false
-  gem "bundler-audit", "~> 0.9", require: false
+  gem 'bundler-audit', '~> 0.9', require: false
+  gem 'rack-test', '~> 2.1'
+  gem 'rspec', '~> 3.13'
+  gem 'rspec_junit_formatter', '~> 0.6'
+  gem 'rubocop', '~> 1.65', require: false
+  gem 'simplecov', '~> 0.22', require: false
 end

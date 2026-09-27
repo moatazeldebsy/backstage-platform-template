@@ -11,3 +11,5 @@ RUN flutter build web --release
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY --from=builder /app/build/web /usr/share/nginx/html
 EXPOSE 8080
+# nginx-unprivileged already runs as uid 101; say so explicitly (Trivy DS-0002).
+USER 101

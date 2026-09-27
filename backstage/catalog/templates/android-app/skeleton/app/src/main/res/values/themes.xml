@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme only: the UI itself is Jetpack Compose (ui/theme/AppTheme.kt).
+         AndroidManifest.xml references Theme.App, and it did not exist, so
+         resource linking failed and nothing built. -->
+    <style name="Theme.App" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -1,8 +1,11 @@
-import { GenericContainer, Wait } from 'testcontainers';
+import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 
 describe('${{ values.targetService }} integration tests', () => {
   // Containers are started once per describe block for speed
-  let containers: Array<{ stop: () => Promise<void> }> = [];
+  // StartedTestContainer, not { stop(): Promise<void> }: testcontainers 12's
+  // stop() resolves to a StoppedTestContainer, and ts-jest rejected the
+  // narrower type before a single test ran.
+  let containers: StartedTestContainer[] = [];
 
   afterAll(async () => {
     await Promise.all(containers.map((c) => c.stop()));

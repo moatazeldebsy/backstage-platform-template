@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'  # testcontainers 12 → undici 8 needs Node >= 22.19
           cache: 'npm'
 
       - name: Install dependencies

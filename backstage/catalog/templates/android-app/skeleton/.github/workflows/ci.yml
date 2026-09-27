@@ -34,6 +34,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default list is "tools platform-tools"; the obsolete
+          # "tools" package no longer exists in current sdkmanager versions,
+          # so the step failed on every fresh repo.
+          packages: platform-tools
 
       - name: Run lint
         run: gradle lint
@@ -91,6 +96,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default list is "tools platform-tools"; the obsolete
+          # "tools" package no longer exists in current sdkmanager versions,
+          # so the step failed on every fresh repo.
+          packages: platform-tools
 
       - name: Run unit tests
         run: gradle test
@@ -123,6 +133,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default list is "tools platform-tools"; the obsolete
+          # "tools" package no longer exists in current sdkmanager versions,
+          # so the step failed on every fresh repo.
+          packages: platform-tools
 
       - name: Build debug APK
         run: gradle assembleDebug
@@ -155,6 +170,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default list is "tools platform-tools"; the obsolete
+          # "tools" package no longer exists in current sdkmanager versions,
+          # so the step failed on every fresh repo.
+          packages: platform-tools
 
       - name: Build release APK
         run: gradle assembleRelease

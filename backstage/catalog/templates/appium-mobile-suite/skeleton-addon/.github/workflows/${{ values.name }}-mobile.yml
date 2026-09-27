@@ -42,21 +42,41 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # These tests drive an app build — something only the team can provide.
+      # Until APP_PATH is set, skip them with a notice instead of failing every
+      # run of a freshly scaffolded suite.
+      - name: Check an app is configured
+        id: app
+        env:
+          APP_PATH: ${{ '${{ vars.APP_PATH }}' }}
+        run: |
+          if [ -z "$APP_PATH" ]; then
+            echo "::notice title=Mobile tests skipped::No app to test yet. Set the APP_PATH repository variable (Settings → Secrets and variables → Actions → Variables) to the .apk/.ipa path or URL, or your device farm's app id, and re-run."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
 {%- if values.deviceFarm === 'local-emulator' %}
 
       - name: Start Appium server
+        if: steps.app.outputs.configured == 'true'
         run: npx appium &
         env:
           APPIUM_LOG_LEVEL: error
 
       - name: Wait for Appium
+        if: steps.app.outputs.configured == 'true'
         run: npx wait-on http://localhost:4723/status --timeout 30000
 {%- endif %}
 
       - name: Run mobile tests
+        if: steps.app.outputs.configured == 'true'
         run: npm test
-{%- if values.deviceFarm !== 'local-emulator' %}
         env:
+          # wdio.config.ts reads this; it was never passed before.
+          APP_PATH: ${{ '${{ vars.APP_PATH }}' }}
+{%- if values.deviceFarm !== 'local-emulator' %}
 {%- if values.deviceFarm === 'browserstack' %}
           BROWSERSTACK_USERNAME: ${{ '${{ secrets.BROWSERSTACK_USERNAME }}' }}
           BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}

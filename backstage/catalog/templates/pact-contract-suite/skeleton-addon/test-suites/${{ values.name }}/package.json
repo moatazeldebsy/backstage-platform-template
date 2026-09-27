@@ -17,7 +17,22 @@
     "typescript": "^5.4.0"
   },
   "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.[tj]s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "allowJs": true,
+            "esModuleInterop": true,
+            "module": "commonjs"
+          },
+          "isolatedModules": true
+        }
+      ]
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(https-proxy-agent|agent-base|proxy-agent-negotiate)/)"
+    ]
   }
 }

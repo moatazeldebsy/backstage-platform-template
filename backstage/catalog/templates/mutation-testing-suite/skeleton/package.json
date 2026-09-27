@@ -8,6 +8,7 @@
   "devDependencies": {
     "@stryker-mutator/core": "^8.2.0",
     "@stryker-mutator/${{ values.testRunner }}-runner": "^8.2.0",
+    "${{ values.testRunner }}": "${{ {'jest': '^29.7.0', 'mocha': '^10.7.0', 'jasmine': '^5.4.0'}[values.testRunner] }}",
     "typescript": "^5.4.0"
   }
 }
