@@ -8,6 +8,7 @@ failed) across the CI run window. A quarantined test still runs — it's
 marked xfail (strict=False), not skipped outright — so it keeps reporting
 pass/fail in the JUnit output the exporter reads, but can't turn the build red.
 """
+
 from pathlib import Path
 
 import pytest
@@ -31,7 +32,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         # test_id format matches exporter.py's "<classname>/<name>" convention.
         test_id = f"{item.cls.__name__}/{item.name}" if item.cls else item.name
         if test_id in quarantined or item.nodeid.split("::")[-1] in quarantined:
-            item.add_marker(pytest.mark.xfail(
-                reason="quarantined as flaky — see flaky-quarantine.yaml",
-                strict=False,
-            ))
+            item.add_marker(
+                pytest.mark.xfail(
+                    reason="quarantined as flaky — see flaky-quarantine.yaml",
+                    strict=False,
+                )
+            )

@@ -1,7 +1,9 @@
 // wdio 9 moved the testrunner config shape: Options.Testrunner no longer
 // carries `capabilities`. WebdriverIO.Config (global, from @wdio/globals/types)
 // is the v9 equivalent.
-import '@wdio/globals/types';
+// A type reference, not `import`: @wdio/globals only exports ./types for
+// TypeScript, so a runtime import failed with ERR_PACKAGE_PATH_NOT_EXPORTED.
+/// <reference types="@wdio/globals/types" />
 
 const DEVICE_FARM = process.env.DEVICE_FARM ?? '${{ values.deviceFarm }}';
 const APP_PATH = process.env.APP_PATH ?? 'path/to/your.app';
@@ -34,7 +36,7 @@ const DEVICE_PROFILES: Record<string, object> = {
   },
 };
 
-const selectedDevices = (${{ JSON.stringify(values.deviceMatrix) }} as string[])
+const selectedDevices = (${{ values.deviceMatrix | dump }} as string[])
   .map((d) => ({ ...DEVICE_PROFILES[d], 'appium:app': APP_PATH }))
   .filter(Boolean);
 

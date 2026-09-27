@@ -22,7 +22,6 @@ metadata:
     sonarcloud.io/project-key: "${{ values.githubOrg }}_${{ values.repoName }}"
     sonarcloud.io/organization: "${{ values.githubOrg }}"
     snyk.io/org-slug: "${{ values.githubOrg }}"
-    grafana/alert-label-selector: "service=${{ values.name }}"
     pagerduty.com/service-id: "${{ values.pagerdutyServiceId }}"
     jira/project-key: "${{ values.jiraProjectKey }}"
   tags:
@@ -30,9 +29,6 @@ metadata:
     - dart
     - mobile
   links:
-    - title: Grafana Dashboard
-      url: ${{ values.grafanaUrl }}/d/idp-services/idp-services-overview
-      icon: dashboard
     - title: Runbook
       url: https://github.com/${{ values.githubOrg }}/${{ values.repoName }}/blob/main/docs/runbook.md
       icon: help

@@ -271,6 +271,17 @@ spec:
           port: ${{ parameters.port }}
           grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
 
+
+    # The web Dockerfile only belongs in the repo when Flutter Web is deployed.
+    # It used to ship in every Flutter app, and Trivy's Dockerfile checks then
+    # failed CI on apps that never build a container.
+    - id: fetch-web
+      name: Add Flutter Web container image
+      if: ${{ parameters.enableWebDeploy }}
+      action: fetch:template
+      input:
+        url: ./skeleton-web
+
     - id: publish
       name: Publish to GitHub
       action: publish:github

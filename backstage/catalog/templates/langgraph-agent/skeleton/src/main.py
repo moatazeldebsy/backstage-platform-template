@@ -9,6 +9,7 @@ agent — an application you own, with branching and state you control in code.
 Both consume the same MCP servers and both trace to the same Langfuse.
 """
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -25,9 +26,7 @@ from .telemetry import init_tracing, shutdown_tracing, tracing_enabled
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(__name__)
 
-AGENT_RUNS = Counter(
-    "agent_runs_total", "Agent runs", ["service", "outcome"]
-)
+AGENT_RUNS = Counter("agent_runs_total", "Agent runs", ["service", "outcome"])
 AGENT_LATENCY = Histogram(
     "agent_run_duration_seconds", "Agent run duration", ["service"]
 )
@@ -36,11 +35,17 @@ SERVICE = os.environ.get("OTEL_SERVICE_NAME", "${{ values.name }}")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_tracing()
+    # init_tracing requires the service name; calling it bare raised TypeError
+    # at startup, so the container never came up (tests/test_startup.py).
+    init_tracing(SERVICE)
     # Warm the tool cache so the first request does not pay session negotiation
-    # with every MCP server. Failure here is not fatal — load_mcp_tools degrades.
-    await load_mcp_tools()
+    # with every MCP server — in the background. Awaiting it here held startup
+    # (and /healthz) until an unreachable gateway timed out, ~15s outside the
+    # cluster, which failed the CI smoke test. Failure is not fatal either
+    # way: load_mcp_tools degrades to no tools.
+    warmup = asyncio.create_task(load_mcp_tools())
     yield
+    warmup.cancel()
     shutdown_tracing()
 
 

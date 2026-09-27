@@ -89,6 +89,52 @@ spec:
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
+
+    # Only the build file for the chosen platform. All three used to ship in
+    # every SDK repo: an Android SDK got a Package.swift and a pubspec.yaml.
+    # Same conditions publish.yml already uses to pick its job.
+
+    - id: fetch-android
+      name: Add Gradle build (Android / Kotlin Multiplatform)
+      if: ${{ parameters.platform === 'android' or parameters.platform === 'multiplatform' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-android
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          platform: ${{ parameters.platform }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-ios
+      name: Add Swift package (iOS)
+      if: ${{ parameters.platform === 'ios' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-ios
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          platform: ${{ parameters.platform }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: fetch-flutter
+      name: Add Dart package (Flutter)
+      if: ${{ parameters.platform === 'flutter' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-flutter
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          platform: ${{ parameters.platform }}
+          githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
     - id: publish
       name: Publish to GitHub
       action: publish:github

@@ -90,6 +90,8 @@ jobs:
           path: coverage/lcov.info
           retention-days: 7
 
+{%- if 'android' in values.platforms %}
+  # Only for apps that target Android.
   build-android:
     name: Build Android APK
     needs: [analyze, test]
@@ -122,7 +124,10 @@ jobs:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
+{%- endif %}
 
+{%- if 'web' in values.platforms %}
+  # Only for apps that target the web.
   build-web:
     name: Build Flutter Web
     needs: [analyze, test]
@@ -149,7 +154,10 @@ jobs:
           name: web-build
           path: build/web/
           retention-days: 14
+{%- endif %}
 
+{%- if values.enableWebDeploy and 'web' in values.platforms %}
+  # Only when Flutter Web is deployed to the cluster: builds skeleton-web's Dockerfile.
   publish-web:
     name: Build & Push Web Docker Image
     needs: [build-web]
@@ -185,3 +193,5 @@ jobs:
           docker build -t ${IMAGE}:${SHORT_SHA} -t ${IMAGE}:latest .
           docker push ${IMAGE}:${SHORT_SHA}
           docker push ${IMAGE}:latest
+{%- endif %}
+

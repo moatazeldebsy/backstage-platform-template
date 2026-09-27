@@ -21,12 +21,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Chaos experiments need a cluster to break — something only the team can
+      # provide. Without KUBECONFIG or EKS_CLUSTER_NAME, skip with a notice
+      # instead of failing every run of a freshly scaffolded suite.
       - name: Configure kubectl
+        id: kube
         env:
           KUBECONFIG_DATA: ${{ '${{ secrets.KUBECONFIG }}' }}
           EKS_CLUSTER: ${{ '${{ secrets.EKS_CLUSTER_NAME }}' }}
           EKS_REGION: ${{ '${{ secrets.AWS_REGION }}' }}
         run: |
+          if [ -z "${EKS_CLUSTER}" ] && [ -z "${KUBECONFIG_DATA}" ]; then
+            echo "::notice title=Chaos experiments skipped::No cluster configured. Add a KUBECONFIG secret (base64 kubeconfig) or EKS_CLUSTER_NAME + AWS_REGION secrets, then re-run."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
           mkdir -p ~/.kube
           if [ -n "${EKS_CLUSTER}" ]; then
             aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${EKS_REGION:-us-east-1}"
@@ -35,6 +45,7 @@ jobs:
           fi
 
       - name: Apply chaos experiment
+        if: steps.kube.outputs.configured == 'true'
         run: |
           EXPERIMENT="${{ '${{ github.event.inputs.experiment }}' }}"
           case "${EXPERIMENT}" in
@@ -46,8 +57,9 @@ jobs:
           esac
 
       - name: Wait for experiment duration
+        if: steps.kube.outputs.configured == 'true'
         run: sleep 90
 
       - name: Cleanup experiments
-        if: always()
+        if: always() && steps.kube.outputs.configured == 'true'
         run: kubectl delete -f ${EXPERIMENTS_DIR}/ --ignore-not-found

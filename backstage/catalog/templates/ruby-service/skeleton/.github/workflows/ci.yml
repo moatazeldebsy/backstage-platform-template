@@ -65,6 +65,11 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
           ignore-unfixed: true
+          # bundler-cache installs gems into vendor/bundle inside the workspace.
+          # Some gems ship their own development Gemfile.lock, and scanning
+          # those flagged CVEs in gems this app never loads. The app's own
+          # Gemfile.lock is still scanned.
+          skip-dirs: 'vendor'
 
   test:
     name: Test + Coverage Gate

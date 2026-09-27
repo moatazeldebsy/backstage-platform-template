@@ -45,7 +45,8 @@ import base64
 import json
 import logging
 import os
-from typing import Any, Callable, Mapping, TypeVar
+from contextlib import contextmanager
+from typing import Any, Awaitable, Callable, Iterator, Mapping, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -175,29 +176,19 @@ def _clip(value: Any) -> str:
     return text
 
 
-def with_generation(
+@contextmanager
+def _generation_span(
     name: str,
-    fn: Callable[[], T],
     *,
-    model: str | None = None,
-    input: Any = None,  # noqa: A002 - matches the Langfuse field name
-    user_id: str | None = None,
-    session_id: str | None = None,
-    attributes: Mapping[str, Any] | None = None,
-) -> T:
-    """Wrap one model call in a Langfuse ``generation`` observation.
-
-    Returns exactly what ``fn`` returns and re-raises whatever it raises, so it
-    can be dropped around an existing call without changing control flow.
-
-    ``input`` and the return value are only recorded when LANGFUSE_CAPTURE_IO is
-    true.
-    """
-    if not _enabled:
-        return fn()
-
+    model: str | None,
+    input: Any,  # noqa: A002 - matches the Langfuse field name
+    user_id: str | None,
+    session_id: str | None,
+    attributes: Mapping[str, Any] | None,
+) -> Iterator[Any]:
+    """Open a Langfuse ``generation`` span with the attributes both wrappers set."""
     from opentelemetry import trace
-    from opentelemetry.trace import SpanKind, StatusCode
+    from opentelemetry.trace import SpanKind
 
     tracer = trace.get_tracer(_service_tag)
     with tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
@@ -216,12 +207,84 @@ def with_generation(
             span.set_attribute(key, value)
         if _CAPTURE_IO and input is not None:
             span.set_attribute("langfuse.observation.input", _clip(input))
+        yield span
 
+
+def _record_failure(span: Any, exc: Exception) -> None:
+    from opentelemetry.trace import StatusCode
+
+    span.record_exception(exc)
+    span.set_status(StatusCode.ERROR, str(exc))
+
+
+def with_generation(
+    name: str,
+    fn: Callable[[], T],
+    *,
+    model: str | None = None,
+    input: Any = None,  # noqa: A002 - matches the Langfuse field name
+    user_id: str | None = None,
+    session_id: str | None = None,
+    attributes: Mapping[str, Any] | None = None,
+) -> T:
+    """Wrap one model call in a Langfuse ``generation`` observation.
+
+    Returns exactly what ``fn`` returns and re-raises whatever it raises, so it
+    can be dropped around an existing call without changing control flow.
+
+    ``input`` and the return value are only recorded when LANGFUSE_CAPTURE_IO is
+    true. For ``async`` model calls use :func:`awith_generation`, which awaits
+    inside the span so its timing covers the call.
+    """
+    if not _enabled:
+        return fn()
+    with _generation_span(
+        name,
+        model=model,
+        input=input,
+        user_id=user_id,
+        session_id=session_id,
+        attributes=attributes,
+    ) as span:
         try:
             result = fn()
         except Exception as exc:
-            span.record_exception(exc)
-            span.set_status(StatusCode.ERROR, str(exc))
+            _record_failure(span, exc)
+            raise
+        if _CAPTURE_IO:
+            span.set_attribute("langfuse.observation.output", _clip(result))
+        return result
+
+
+async def awith_generation(
+    name: str,
+    fn: Callable[[], Awaitable[T]],
+    *,
+    model: str | None = None,
+    input: Any = None,  # noqa: A002 - matches the Langfuse field name
+    user_id: str | None = None,
+    session_id: str | None = None,
+    attributes: Mapping[str, Any] | None = None,
+) -> T:
+    """Async :func:`with_generation`: awaits ``fn()`` inside the span.
+
+    The graph's model calls are coroutines (``ainvoke``). Passing them to the
+    sync wrapper would close the span before the call ran.
+    """
+    if not _enabled:
+        return await fn()
+    with _generation_span(
+        name,
+        model=model,
+        input=input,
+        user_id=user_id,
+        session_id=session_id,
+        attributes=attributes,
+    ) as span:
+        try:
+            result = await fn()
+        except Exception as exc:
+            _record_failure(span, exc)
             raise
         if _CAPTURE_IO:
             span.set_attribute("langfuse.observation.output", _clip(result))

@@ -27,7 +27,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          # Newest 1.25 patch, not go.mod's exact minimum: go.mod pins a patch
+          # release, and a pinned toolchain fails govulncheck as soon as the next
+          # stdlib security fix ships (every fresh repo did).
+          go-version: '1.25.x'
+          check-latest: true
           cache: true
 
       - name: go vet
@@ -91,7 +95,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          # Newest 1.25 patch, not go.mod's exact minimum: go.mod pins a patch
+          # release, and a pinned toolchain fails govulncheck as soon as the next
+          # stdlib security fix ships (every fresh repo did).
+          go-version: '1.25.x'
+          check-latest: true
           cache: true
 
       - name: Download dependencies

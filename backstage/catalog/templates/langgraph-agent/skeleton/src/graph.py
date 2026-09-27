@@ -26,7 +26,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
 from .mcp_tools import load_mcp_tools
-from .telemetry import with_generation
+from .telemetry import awith_generation
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +109,12 @@ def _model():
 async def plan_node(state: AgentState) -> dict[str, Any]:
     """Decide what to do before touching any tool."""
     question = state["messages"][-1].content if state["messages"] else ""
-    with with_generation("plan", model=os.environ.get("MODEL_NAME", "")):
-        response = await _model().ainvoke(
+    # The node's model call, traced as a Langfuse generation. This used to be
+    # `with with_generation(...)`, but with_generation is a function wrapper, not
+    # a context manager: every call raised TypeError and the agent never answered.
+    response = await awith_generation(
+        "plan",
+        lambda: _model().ainvoke(
             [
                 SystemMessage(content=SYSTEM_PROMPT),
                 HumanMessage(
@@ -119,7 +123,9 @@ async def plan_node(state: AgentState) -> dict[str, Any]:
                     "kind of tool would provide it. Do not answer the question yet."
                 ),
             ]
-        )
+        ),
+        model=os.environ.get("MODEL_NAME", ""),
+    )
     return {"plan": str(response.content), "iterations": state.get("iterations", 0) + 1}
 
 
@@ -133,10 +139,16 @@ async def select_tools_node(state: AgentState) -> dict[str, Any]:
         return {"tool_results": []}
 
     model_with_tools = _model().bind_tools(tools)
-    with with_generation("select_tools", model=os.environ.get("MODEL_NAME", "")):
-        response = await model_with_tools.ainvoke(
+    # The node's model call, traced as a Langfuse generation. This used to be
+    # `with with_generation(...)`, but with_generation is a function wrapper, not
+    # a context manager: every call raised TypeError and the agent never answered.
+    response = await awith_generation(
+        "select_tools",
+        lambda: model_with_tools.ainvoke(
             [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
-        )
+        ),
+        model=os.environ.get("MODEL_NAME", ""),
+    )
     return {"messages": [response]}
 
 
@@ -179,13 +191,20 @@ async def reflect_node(state: AgentState) -> dict[str, Any]:
 
 async def respond_node(state: AgentState) -> dict[str, Any]:
     """Produce the final answer from what the tools actually returned."""
-    observations = "\n".join(
-        f"- {r['tool']}: {r.get('output', r.get('error', ''))}"
-        for r in state.get("tool_results", [])
-    ) or "(no tool output)"
+    observations = (
+        "\n".join(
+            f"- {r['tool']}: {r.get('output', r.get('error', ''))}"
+            for r in state.get("tool_results", [])
+        )
+        or "(no tool output)"
+    )
 
-    with with_generation("respond", model=os.environ.get("MODEL_NAME", "")):
-        response = await _model().ainvoke(
+    # The node's model call, traced as a Langfuse generation. This used to be
+    # `with with_generation(...)`, but with_generation is a function wrapper, not
+    # a context manager: every call raised TypeError and the agent never answered.
+    response = await awith_generation(
+        "respond",
+        lambda: _model().ainvoke(
             [
                 SystemMessage(content=SYSTEM_PROMPT),
                 *state["messages"],
@@ -195,7 +214,9 @@ async def respond_node(state: AgentState) -> dict[str, Any]:
                     "If they do not answer it, say what is missing."
                 ),
             ]
-        )
+        ),
+        model=os.environ.get("MODEL_NAME", ""),
+    )
     return {"messages": [AIMessage(content=str(response.content))], "done": True}
 
 

@@ -47,6 +47,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Configure AWS credentials (for keystore)
         uses: aws-actions/configure-aws-credentials@v4

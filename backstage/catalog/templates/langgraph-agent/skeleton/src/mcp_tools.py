@@ -86,11 +86,13 @@ async def load_mcp_tools() -> list[Any]:
     try:
         from langchain_mcp_adapters.client import MultiServerMCPClient
     except ImportError:
-        logger.warning("langchain-mcp-adapters not installed — running without MCP tools")
+        logger.warning(
+            "langchain-mcp-adapters not installed — running without MCP tools"
+        )
         _TOOLS_CACHE = []
         return _TOOLS_CACHE
 
-    connections = {
+    connections: dict[str, Any] = {
         name: {
             "transport": "streamable_http",
             "url": url,

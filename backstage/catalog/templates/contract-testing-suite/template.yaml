@@ -134,11 +134,6 @@ spec:
 
     - title: Integrations
       properties:
-        pagerdutyServiceId:
-          title: PagerDuty Service ID
-          type: string
-          description: "Optional. PagerDuty service ID for on-call alerts."
-          ui:help: "Leave blank if not using PagerDuty."
         jiraProjectKey:
           title: Jira Project Key
           type: string
@@ -156,7 +151,6 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
-          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           consumerName: ${{ parameters.consumerName }}
@@ -177,7 +171,6 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
-          pagerdutyServiceId: ${{ parameters.pagerdutyServiceId }}
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           targetService: ${{ parameters.targetService }}
           consumerName: ${{ parameters.consumerName }}

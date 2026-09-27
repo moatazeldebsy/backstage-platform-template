@@ -40,6 +40,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Build test APK
         run: |
@@ -194,6 +198,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Install dependencies
         run: flutter pub get
@@ -292,6 +300,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Build app + test APKs
         run: |
@@ -313,6 +325,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Install dependencies
         run: flutter pub get
@@ -529,6 +545,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Build app + test APKs
         run: |
@@ -550,6 +570,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Install dependencies
         run: flutter pub get
@@ -722,6 +746,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Build app + test APKs
         run: |
@@ -743,6 +771,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the obsolete "tools" package, which current
+          # sdkmanager versions no longer have; the step failed on every run.
+          packages: platform-tools
 
       - name: Install dependencies
         run: flutter pub get

@@ -26,7 +26,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Mutation testing mutates the code in this repo and re-runs its tests. A
+      # freshly scaffolded suite has the Stryker config but no code yet, so skip
+      # with a notice instead of failing until there is something to mutate.
+      - name: Check there is code to mutate
+        id: code
+        run: |
+          if git ls-files -- '*.js' '*.ts' '*.mjs' '*.cjs' | grep -vE '(^|/)(stryker\.config|jest\.config|\.mocharc|jasmine)\.' | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Mutation tests skipped::No JavaScript/TypeScript source to mutate yet. Add your code and its tests (or use add-to-existing mode to run Stryker in the service repo), then re-run."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Stryker mutation tests
+        if: steps.code.outputs.present == 'true'
         run: npm test
 
       - name: Upload HTML report
