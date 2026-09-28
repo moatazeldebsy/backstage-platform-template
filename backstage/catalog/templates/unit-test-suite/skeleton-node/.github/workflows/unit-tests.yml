@@ -14,21 +14,59 @@ env:
 
 jobs:
   unit:
-    name: Vitest Unit Tests
+    name: Unit Tests + Coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: package.json
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
-      - name: Run vitest with coverage + JUnit
-        run: npx vitest run --coverage --reporter=junit --outputFile=test-results.xml
+      # Runs the repo's own tests with the runner it already uses. This used to
+      # assume Vitest (and ship a vitest.config.ts over any existing one), so on
+      # a Jest repo — the golden-path nodejs-service — it could not even start.
+      - name: Detect test runner
+        id: runner
+        run: |
+          runner=$(node -e "
+            const p = require('./package.json');
+            const d = { ...p.dependencies, ...p.devDependencies };
+            console.log(d.vitest ? 'vitest' : d.jest ? 'jest' : '');
+          ")
+          if [ -z "$runner" ]; then
+            echo "::notice::No Jest or Vitest in package.json — using Vitest. Add it as a devDependency and write tests under src/."
+            npm install --no-save --no-audit --no-fund vitest
+            runner=vitest
+          fi
+          echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "Test runner: $runner"
+
+      - name: Run Jest with coverage + JUnit
+        if: steps.runner.outputs.runner == 'jest'
+        run: |
+          npm install --no-save --no-audit --no-fund jest-junit
+          npx jest --ci --passWithNoTests \
+            --coverage --coverageDirectory=coverage \
+            --coverageReporters=json-summary --coverageReporters=text \
+            --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT_FILE: test-results.xml
+
+      - name: Run Vitest with coverage + JUnit
+        if: steps.runner.outputs.runner == 'vitest'
+        run: |
+          # The coverage provider must match the installed Vitest version.
+          npm install --no-save --no-audit --no-fund "@vitest/coverage-v8@$(node -p "require('vitest/package.json').version")"
+          npx vitest run --passWithNoTests \
+            --coverage.enabled --coverage.provider=v8 --coverage.reportsDirectory=coverage \
+            --coverage.reporter=json-summary --coverage.reporter=text \
+            --reporter=default --reporter=junit --outputFile.junit=test-results.xml
 
       - name: Enforce coverage threshold (${{ values.coverageThreshold }}%)
         run: |
@@ -36,7 +74,6 @@ jobs:
             echo "::notice::No coverage summary produced — skipping coverage gate."
             exit 0
           fi
-          # vitest writes coverage-summary.json under ./coverage/
           node -e "
             const s = require('./coverage/coverage-summary.json').total.lines.pct;
             const t = ${{ values.coverageThreshold }};
@@ -59,4 +96,5 @@ jobs:
           path: |
             test-results.xml
             coverage/
+          if-no-files-found: ignore
           retention-days: 7
