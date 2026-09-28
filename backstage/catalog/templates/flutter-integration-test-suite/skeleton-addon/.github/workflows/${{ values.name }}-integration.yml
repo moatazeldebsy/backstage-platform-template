@@ -49,15 +49,27 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # The tests need integration_test (an SDK package). Apps from the
+      # flutter-app template declare it; add it for this run if an older app
+      # does not — and add it to pubspec.yaml yourself so `flutter analyze`
+      # passes too (see the PR description).
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          grep -q '^  integration_test:' pubspec.yaml || flutter pub add --dev integration_test --sdk=flutter
+          flutter pub get
 
+      # API 33 google_apis never finished booting on hosted runners ("Timeout
+      # waiting for emulator to boot", twice in a row). API 30's default image,
+      # headless and without boot animation, boots in a couple of minutes.
       - name: Run integration tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
-          target: google_apis
+          api-level: 30
+          target: default
           arch: x86_64
+          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: flutter test integration_test/${{ values.name }}/
 
       - name: Upload test screenshots
