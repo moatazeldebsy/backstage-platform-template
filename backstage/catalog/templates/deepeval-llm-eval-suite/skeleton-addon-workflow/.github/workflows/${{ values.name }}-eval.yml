@@ -1,22 +1,25 @@
 name: LLM Eval (${{ values.name }})
 
+# Add-to-existing mode: the suite lives in eval-suites/${{ values.name }}/, but
+# GitHub only runs workflows from the repository root — the copy that used to
+# be written inside the suite directory never ran.
 on:
   push:
-    branches: ['**']
+    branches: [main]
     paths:
-      - 'tests/**'
-      - '.github/workflows/eval.yml'
+      - 'eval-suites/${{ values.name }}/**'
+      - '.github/workflows/${{ values.name }}-eval.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'tests/**'
-      - '.github/workflows/eval.yml'
+      - 'eval-suites/${{ values.name }}/**'
+      - '.github/workflows/${{ values.name }}-eval.yml'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 concurrency:
-  group: ${{ '${{ github.ref }}' }}
+  group: ${{ '${{ github.workflow }}-${{ github.ref }}' }}
   cancel-in-progress: true
 
 jobs:
@@ -24,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: eval-suites/${{ values.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +38,7 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: eval-suites/${{ values.name }}/requirements.txt
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -47,7 +53,7 @@ jobs:
             exit 0
           fi
           mkdir -p results
-          deepeval test run tests/test_agent.py \
+          deepeval test run tests/eval_agent.py \
             --exit-on-first-failure \
             --junitxml=results/report.xml \
             --html=results/report.html \
@@ -57,6 +63,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: deepeval-report
-          path: results/
+          name: deepeval-report-${{ values.name }}
+          path: eval-suites/${{ values.name }}/results/
+          if-no-files-found: ignore
           retention-days: 30

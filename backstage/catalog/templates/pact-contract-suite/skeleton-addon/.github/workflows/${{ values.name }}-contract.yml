@@ -28,11 +28,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - name: Install dependencies
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Run consumer Pact tests
         run: npm test
@@ -66,11 +67,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - name: Install dependencies
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Verify provider against published pact
         env:

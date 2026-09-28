@@ -25,8 +25,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - name: Check Datadog credentials
         run: |
@@ -37,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         if: env.DD_API_KEY != '' && env.DD_APP_KEY != ''
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Run Datadog Synthetic Tests
         if: env.DD_API_KEY != '' && env.DD_APP_KEY != ''

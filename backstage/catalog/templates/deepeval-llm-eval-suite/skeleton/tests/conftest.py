@@ -7,8 +7,16 @@ MCP tool responses are stubbed so the suite runs offline (no live cluster needed
 """
 
 import json
+from typing import TYPE_CHECKING
+
 import pytest
-from deepeval.models import AnthropicModel
+
+# deepeval is imported where it is used, not here. Added to an existing
+# service repo (eval-suites/<name>/), this conftest is loaded by that
+# service's own pytest run too — a top-level `import deepeval` failed it with
+# ModuleNotFoundError, since the service does not install the eval deps.
+if TYPE_CHECKING:
+    from deepeval.models import AnthropicModel
 
 
 SYSTEM_PROMPT = """${{ values.agentSystemPrompt }}"""
@@ -39,7 +47,9 @@ TOOL_STUB_RESPONSES: dict[str, str] = {
 }
 
 
-def get_judge_model() -> AnthropicModel:
+def get_judge_model() -> "AnthropicModel":
+    from deepeval.models import AnthropicModel
+
     return AnthropicModel(model="${{ values.judgeModel }}")
 
 

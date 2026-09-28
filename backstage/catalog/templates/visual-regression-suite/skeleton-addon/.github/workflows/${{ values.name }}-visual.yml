@@ -41,11 +41,12 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.preflight.outputs.skip != 'true'
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - if: steps.preflight.outputs.skip != 'true'
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 {%- if values.cloudGrid === 'none' %}
       - if: steps.preflight.outputs.skip != 'true'
         run: npx playwright install chromium --with-deps
@@ -65,9 +66,20 @@ jobs:
           SAUCE_USERNAME: ${{ '${{ secrets.SAUCE_USERNAME }}' }}
           SAUCE_ACCESS_KEY: ${{ '${{ secrets.SAUCE_ACCESS_KEY }}' }}
 {%- else %}
+      # There is nothing to compare against until a baseline is committed, so
+      # the first run used to fail on every screenshot ("A snapshot doesn't
+      # exist"). Without one, capture it instead and hand it back to commit.
       - name: Run visual regression tests
+        id: visual
         if: steps.preflight.outputs.skip != 'true'
-        run: npm test
+        run: |
+          if compgen -G "tests/*-snapshots" >/dev/null; then
+            npm test
+          else
+            echo "::notice::No baseline screenshots yet — captured them instead of comparing. Download the visual-baseline-${{ values.name }} artifact and commit its tests/*-snapshots/ directory to start comparing."
+            npm test -- --update-snapshots
+            echo "baseline=created" >> "$GITHUB_OUTPUT"
+          fi
 {%- if values.cloudGrid === 'lambdatest' %}
         env:
           LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
@@ -78,6 +90,14 @@ jobs:
           BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}
 {%- endif %}
 {%- endif %}
+
+      - name: Upload new baseline
+        uses: actions/upload-artifact@v4
+        if: steps.visual.outputs.baseline == 'created'
+        with:
+          name: visual-baseline-${{ values.name }}
+          path: test-suites/${{ values.name }}/tests/*-snapshots/
+          retention-days: 30
 
       - name: Upload diff artifacts
         uses: actions/upload-artifact@v4

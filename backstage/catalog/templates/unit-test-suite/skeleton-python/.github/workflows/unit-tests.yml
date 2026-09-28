@@ -26,8 +26,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]" 2>/dev/null || pip install -r requirements-dev.txt 2>/dev/null || true
-          pip install pytest pytest-cov pytest-junitxml
+          # The service's own dependencies, however it declares them. The
+          # golden-path python-service only has requirements.txt, which this
+          # step never installed, so every test failed on its first import.
+          if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e .; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          # JUnit output is built into pytest (--junitxml); there is no
+          # pytest-junitxml package, and asking pip for it failed the job.
+          pip install pytest pytest-cov
 
       - name: Run pytest with coverage + JUnit
         run: |

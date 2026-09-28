@@ -42,13 +42,13 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.preflight.outputs.skip != 'true'
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
-          cache-dependency-path: test-suites/${{ values.name }}/package-lock.json
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - name: Install dependencies
         if: steps.preflight.outputs.skip != 'true'
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Run Newman collection
         if: steps.preflight.outputs.skip != 'true'

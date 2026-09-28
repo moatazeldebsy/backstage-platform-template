@@ -173,6 +173,19 @@ spec:
           judgeModel: ${{ parameters.judgeModel }}
           githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}
+          # Renders the skeleton's .github/ directory name empty, so the
+          # workflow is not written into eval-suites/<name>/ where GitHub
+          # never runs it; fetch-workflow-addon puts one at the repo root.
+          embedded: true
+
+    - id: fetch-workflow-addon
+      name: Fetch Eval Workflow (Add to Existing)
+      action: fetch:template
+      if: ${{ parameters.deploymentMode === 'add-to-existing' }}
+      input:
+        url: ./skeleton-addon-workflow
+        values:
+          name: ${{ parameters.name }}
 
     - id: publish
       name: Publish to GitHub
@@ -207,8 +220,10 @@ spec:
 
           **What's included:**
           - `eval-suites/${{ parameters.name }}/tests/conftest.py` — system prompt + tool stubs
-          - `eval-suites/${{ parameters.name }}/tests/test_agent.py` — 3 starter eval test cases
-          - `eval-suites/${{ parameters.name }}/.github/workflows/eval.yml` — CI pipeline
+          - `eval-suites/${{ parameters.name }}/tests/eval_agent.py` — 3 starter eval test cases
+            (`eval_*.py`, so the service's own pytest run does not collect them)
+          - `.github/workflows/${{ parameters.name }}-eval.yml` — CI pipeline
+            (skips with a notice until the `ANTHROPIC_API_KEY` secret is set)
           - `eval-suites/${{ parameters.name }}/requirements.txt`
 
           **To run locally:**
@@ -216,7 +231,7 @@ spec:
           cd eval-suites/${{ parameters.name }}
           pip install -r requirements.txt
           export ANTHROPIC_API_KEY=sk-ant-...
-          deepeval test run tests/test_agent.py -v
+          deepeval test run tests/eval_agent.py -v
           ```
 
           > Scaffolded via the IDP Platform
