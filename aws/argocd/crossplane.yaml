@@ -8,9 +8,10 @@
 #
 # Apply once via bootstrap.sh; ArgoCD owns reconciliation thereafter.
 #
-# Service-side Claim files (services/<svc>/claims/*.yaml) are already picked
-# up by the existing `idp-services` ApplicationSet in app-of-apps.yaml — no
-# extra ApplicationSet needed.
+# Service-side Claim files (services/<svc>/claims/*.yaml) are applied by the
+# `idp-service-resources` ApplicationSet in app-of-apps.yaml. (This comment
+# used to say `idp-services` picked them up; it cannot — that ApplicationSet
+# only renders helm/service-template — so no claim was ever applied.)
 ---
 apiVersion: v1
 kind: Namespace

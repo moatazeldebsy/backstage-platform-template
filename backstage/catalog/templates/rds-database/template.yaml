@@ -162,7 +162,9 @@ spec:
       action: fetch:template
       input:
         url: ./skeleton/k8s
-        targetPath: kubernetes/services/${{ parameters.ownerService }}
+        # Applied on AWS by the idp-service-resources ApplicationSet. It used to
+        # go to kubernetes/services/<svc>/, which nothing applies.
+        targetPath: services/${{ parameters.ownerService }}/secrets
         values:
           ownerService: ${{ parameters.ownerService }}
           dbName: ${{ parameters.dbName }}
@@ -191,14 +193,18 @@ spec:
           **Resources created:**
           - `terraform/infra/managed-postgres/${{ parameters.instanceName }}/` — Terraform module (RDS instance, parameter group, Secrets Manager secret, IAM role for IAM auth)
           - `terraform/infra/managed-postgres/${{ parameters.instanceName }}/catalog-info.yaml` — Backstage `Resource` entity, `dependencyOf: component:${{ parameters.ownerService }}`
-          - `kubernetes/services/${{ parameters.ownerService }}/external-secret.yaml` — ExternalSecret syncing `DATABASE_URL` into the `services` namespace
+          - `services/${{ parameters.ownerService }}/secrets/external-secret.yaml` — ExternalSecret syncing `DATABASE_URL` into the `${{ parameters.ownerService }}-db-secret` Secret in `services-dev`; ArgoCD applies it on merge (`idp-service-resources` ApplicationSet)
 
           **After merging:**
           ```bash
           cd terraform/infra/managed-postgres/${{ parameters.instanceName }}
           terraform init && terraform apply
-          kubectl apply -f kubernetes/services/${{ parameters.ownerService }}/external-secret.yaml
-          kubectl rollout restart deployment/${{ parameters.ownerService }} -n services
+          ```
+          Then reference the Secret from `services/${{ parameters.ownerService }}/helm-values-aws.yaml`:
+          ```yaml
+          envFrom:
+            - secretRef:
+                name: ${{ parameters.ownerService }}-db-secret
           ```
 
           Then register the catalog entry via **Backstage → Catalog → Register existing component**, using:

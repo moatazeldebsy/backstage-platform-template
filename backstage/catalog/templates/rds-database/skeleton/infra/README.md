@@ -1,6 +1,6 @@
 # RDS Database: ${{ values.dbName }}
 
-PostgreSQL RDS instance for **${{ values.serviceName }}**.
+PostgreSQL RDS instance for **${{ values.ownerService }}**.
 
 | Setting | Value |
 |---------|-------|
@@ -16,22 +16,24 @@ PostgreSQL RDS instance for **${{ values.serviceName }}**.
 After merging this PR:
 
 ```bash
-# 1. Apply Terraform (creates the RDS instance)
-cd terraform
-terraform plan -var "cluster_name=idp-mvp"
-terraform apply -var "cluster_name=idp-mvp"
+# Apply Terraform (creates the RDS instance and its Secrets Manager secret)
+cd terraform/infra/managed-postgres/${{ values.instanceName }}/terraform
+terraform init && terraform apply
+```
 
-# 2. Apply Kubernetes manifests (ExternalSecret + catalog entry)
-kubectl apply -f services/${{ values.serviceName }}/k8s/database/
+ArgoCD applies the ExternalSecret (`services/${{ values.ownerService }}/secrets/`)
+on merge. Reference its Secret from `services/${{ values.ownerService }}/helm-values-aws.yaml`:
 
-# 3. Restart service to pick up DATABASE_URL
-kubectl rollout restart deployment/${{ values.serviceName }} -n services
+```yaml
+envFrom:
+  - secretRef:
+      name: ${{ values.ownerService }}-db-secret
 ```
 
 ## Connection
 
 The database credentials are synced automatically by External Secrets Operator
-into the `${{ values.serviceName }}-db-secret` Kubernetes secret.
+into the `${{ values.ownerService }}-db-secret` Kubernetes secret in `services-dev`.
 
 Your service should consume it as an environment variable:
 
@@ -39,13 +41,13 @@ Your service should consume it as an environment variable:
 # In your Helm values (helm-values-aws.yaml)
 extraEnvFrom:
   - secretRef:
-      name: ${{ values.serviceName }}-db-secret
+      name: ${{ values.ownerService }}-db-secret
 ```
 
 ## Rotating credentials
 
 ```bash
 aws secretsmanager rotate-secret \
-  --secret-id idp-mvp/${{ values.serviceName }}/db-credentials \
+  --secret-id idp-mvp/${{ values.ownerService }}/db-credentials \
   --region ${{ values.awsRegion }}
 ```
