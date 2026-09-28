@@ -1,0 +1,24 @@
+'use strict';
+
+const request = require('supertest');
+const app = require('./index');
+
+describe('<% .Name %>', () => {
+  it('GET / identifies the service', async () => {
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ service: '<% .Name %>', status: 'ok' });
+  });
+
+  it('GET /healthz reports live', async () => {
+    const res = await request(app).get('/healthz');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'ok' });
+  });
+
+  it('GET /ready reports ready', async () => {
+    const res = await request(app).get('/ready');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'ready' });
+  });
+});

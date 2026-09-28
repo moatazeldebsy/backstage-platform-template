@@ -1,11 +1,15 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
 COPY src/ ./src/
+# Tests stay out of the runtime image.
+RUN find src -name '*.test.js' -delete
 
-FROM gcr.io/distroless/nodejs20-debian12:nonroot
+FROM gcr.io/distroless/nodejs24-debian12:nonroot
 WORKDIR /app
 COPY --from=builder /app .
+# The :nonroot base already runs as 65532; stating it satisfies Trivy DS-0002.
+USER 65532:65532
 EXPOSE <% .Port %>
 CMD ["src/index.js"]

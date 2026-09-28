@@ -1,25 +1,71 @@
 package main
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
-func TestHandleRoot(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	w := httptest.NewRecorder()
-	handleRoot(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("want 200, got %d", w.Code)
+func TestRoutes(t *testing.T) {
+	h := newServer("0").Handler
+	cases := []struct {
+		path string
+		want int
+		body string
+	}{
+		{"/", http.StatusOK, `"service":"<% .Name %>"`},
+		{"/healthz", http.StatusOK, `"status":"ok"`},
+		{"/ready", http.StatusOK, `"status":"ready"`},
+		{"/nope", http.StatusNotFound, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if w.Code != tc.want {
+				t.Fatalf("GET %s: want %d, got %d", tc.path, tc.want, w.Code)
+			}
+			if tc.body != "" && !strings.Contains(w.Body.String(), tc.body) {
+				t.Errorf("GET %s: body %q does not contain %q", tc.path, w.Body.String(), tc.body)
+			}
+		})
 	}
 }
 
-func TestHandleLiveness(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	w := httptest.NewRecorder()
-	handleLiveness(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("want 200, got %d", w.Code)
+func TestGetEnv(t *testing.T) {
+	t.Setenv("IDP_TEST_SET", "value")
+	if got := getEnv("IDP_TEST_SET", "default"); got != "value" {
+		t.Errorf("set: got %q, want value", got)
+	}
+	if got := getEnv("IDP_TEST_UNSET", "default"); got != "default" {
+		t.Errorf("unset: got %q, want default", got)
+	}
+}
+
+func TestRunShutsDownOnCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- run(ctx, newServer("0"), slog.New(slog.NewTextHandler(io.Discard, nil))) }()
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("run returned %v, want nil after cancel", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("run did not return after cancel")
+	}
+}
+
+func TestRunReportsListenError(t *testing.T) {
+	err := run(context.Background(), newServer("-1"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err == nil {
+		t.Fatal("run returned nil for an invalid port, want an error")
 	}
 }
