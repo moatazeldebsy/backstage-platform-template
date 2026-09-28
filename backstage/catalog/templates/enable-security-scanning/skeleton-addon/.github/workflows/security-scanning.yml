@@ -9,40 +9,80 @@ on:
 permissions:
   contents: read
 
-env:
-  # Optional security tooling — empty values cause the related steps to skip.
-  # Generate tokens and add them as repo secrets (Settings → Secrets and variables → Actions):
-  #   SONAR_TOKEN   https://sonarcloud.io/account/security
-  #   SNYK_TOKEN    https://app.snyk.io/account
-  SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
-  SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
-
 jobs:
+  # Which scanners have a token. The jobs below used to test `env.SONAR_TOKEN`
+  # in a job-level `if:`, where GitHub does not allow the env context — the
+  # workflow file was rejected on every push and no scan ever ran. Secrets are
+  # not allowed there either, so this job turns them into outputs.
+  #
+  # Generate tokens and add them as repo secrets (Settings → Secrets and
+  # variables → Actions): SONAR_TOKEN https://sonarcloud.io/account/security,
+  # SNYK_TOKEN https://app.snyk.io/account. Without them the scans skip.
+  tokens:
+    name: Detect configured scanners
+    runs-on: ubuntu-latest
+    outputs:
+      sonar: ${{ '${{ steps.check.outputs.sonar }}' }}
+      snyk: ${{ '${{ steps.check.outputs.snyk }}' }}
+    steps:
+      - id: check
+        env:
+          SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+          SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
+        run: |
+          echo "sonar=$([ -n "$SONAR_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "snyk=$([ -n "$SNYK_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          [ -n "$SONAR_TOKEN" ] || echo "::notice::SONAR_TOKEN not set — SonarCloud scan skipped."
+          [ -n "$SNYK_TOKEN" ] || echo "::notice::SNYK_TOKEN not set — Snyk scan skipped."
+
   sonarcloud:
     name: SonarCloud Quality Gate
+    needs: tokens
+    if: needs.tokens.outputs.sonar == 'true'
     runs-on: ubuntu-latest
-    if: env.SONAR_TOKEN != ''
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: SonarCloud Scan
+      # A repo that already has sonar-project.properties (every golden-path
+      # service ships one, with coverage report paths) keeps it untouched. This
+      # add-on used to overwrite it, dropping the coverage settings.
+      - name: SonarCloud Scan (repo's sonar-project.properties)
+        if: hashFiles('sonar-project.properties') != ''
         uses: SonarSource/sonarcloud-github-action@v2
         env:
           GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
           SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
 
+      - name: SonarCloud Scan (defaults)
+        if: hashFiles('sonar-project.properties') == ''
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ '${{ secrets.GITHUB_TOKEN }}' }}
+          SONAR_TOKEN: ${{ '${{ secrets.SONAR_TOKEN }}' }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ values.sonarProjectKey }}
+            -Dsonar.organization=${{ values.sonarOrganization }}
+            -Dsonar.projectName=${{ values.repoName }}
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/vendor/**,**/.venv/**,**/__pycache__/**,**/coverage/**,**/dist/**,**/build/**
+            -Dsonar.sourceEncoding=UTF-8
+
   snyk:
     name: Snyk Dependency Scan
+    needs: tokens
+    if: needs.tokens.outputs.snyk == 'true'
     runs-on: ubuntu-latest
-    if: env.SNYK_TOKEN != ''
     steps:
       - uses: actions/checkout@v4
 
-      - name: Snyk test
+      - name: Set up Snyk
         uses: snyk/actions/setup@master
-      - run: snyk test --severity-threshold=${{ values.snykSeverityThreshold }} --all-projects || true
+
+      - name: Snyk test
+        run: snyk test --severity-threshold=${{ values.snykSeverityThreshold }} --all-projects || true
         env:
           SNYK_TOKEN: ${{ '${{ secrets.SNYK_TOKEN }}' }}
 
