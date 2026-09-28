@@ -2,6 +2,8 @@ apiVersion: idp.platform/v1alpha1
 kind: S3Bucket
 metadata:
   name: ${{ values.bucketName }}
+  # Claims are namespaced; this is where the owning service runs on AWS.
+  namespace: services-dev
   annotations:
     idp.platform/owner: ${{ values.owner }}
     # IAM replication role ARN is output by terraform/global — set this after running

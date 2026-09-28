@@ -12,10 +12,16 @@ on:
     paths:
       - '**/*.tf'
       - '**/*.tfvars'
+      # So the PR that adds this suite runs it; it used to contain no .tf
+      # change and never triggered, leaving a broken suite unnoticed.
+      - '.github/workflows/iac-tests.yml'
+      - 'tests/terratest/**'
+      - '.tflint.hcl'
 
 permissions:
   contents: read
   security-events: write
+  actions: read   # upload-sarif reads the workflow run; without it the upload failed
   pull-requests: write
 
 jobs:
@@ -62,8 +68,12 @@ jobs:
           soft_fail: false
           output_format: cli,sarif
           output_file_path: console,checkov-results.sarif
+      # Code scanning needs GitHub Advanced Security on private repos, so the
+      # upload is informational: checkov above is what gates the job, and its
+      # findings are in the log either way.
       - name: Upload SARIF to GitHub Security
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: checkov-results.sarif
