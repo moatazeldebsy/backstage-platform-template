@@ -2567,7 +2567,7 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
 <span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code>services/&lt;name&gt;/
-├── src/                    # Application code (+ tests for go/python)
+├── src/                    # Application code + tests
 ├── Dockerfile
 ├── README.md
 ├── mkdocs.yml + docs/      # TechDocs
@@ -2575,11 +2575,19 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 ├── helm-values-aws.yaml    # EKS dev — CI rewrites image repo/tag
 ├── catalog-info.yaml       # register via /catalog-import (printed after scaffolding)
 ├── package-lock.json       # nodejs, generated with npm if on PATH
-└── requirements-dev.txt    # python — pytest for build-and-deploy.yml
+└── requirements-dev.txt    # python — pytest + pytest-cov for build-and-deploy.yml
 </code></pre></div></td></tr></table></div>
-<p>There is no per-service CI workflow: the service lives in the platform repo, and
-<code>build-and-deploy.yml</code> tests, builds, scans, and deploys every <code>services/*</code>
-directory. <code>helm-values-staging.yaml</code> is created by that workflow on first
+<p>There is no per-service CI workflow: the service lives in the platform repo,
+where GitHub only runs root-level workflows. <code>build-and-deploy.yml</code> is its CI.
+For every changed <code>services/*</code> directory it runs the same quality bar the
+Backstage <code>go</code>/<code>nodejs</code>/<code>python-service</code> templates put in a new repo's own CI —
+static analysis (<code>go vet</code> + golangci-lint / <code>tsc</code> or <code>node --check</code> / ruff),
+a dependency vulnerability scan (govulncheck / <code>npm audit</code> / pip-audit), a 70%
+coverage gate, a Trivy filesystem scan, and a container smoke test against
+<code>/healthz</code> — then builds, scans, and deploys the image. Generated
+services pass it as-is. A service below 70% records its current floor in a
+<code>.coverage-min</code> file (one number); raise it as tests are added, never lower it.
+<code>helm-values-staging.yaml</code> is created by that workflow on first
 promotion. <code>--owner</code> and <code>--cost-center</code> fill the <code>team</code> / <code>cost-center</code> pod
 labels the <code>require-cost-tags</code> Gatekeeper policy enforces in <code>services-*</code>.</p>
 <hr />
