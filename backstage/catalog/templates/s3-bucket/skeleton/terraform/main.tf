@@ -93,6 +93,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     id     = "expire-noncurrent-versions"
     status = "Enabled"
 
+    # Empty filter = every object. The AWS provider requires filter or prefix
+    # and warns that omitting both "will be an error in a future version".
+    filter {}
+
     noncurrent_version_expiration {
       noncurrent_days = var.expire_noncurrent_days
     }

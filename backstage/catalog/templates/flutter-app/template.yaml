@@ -268,7 +268,6 @@ spec:
           jiraProjectKey: ${{ parameters.jiraProjectKey }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
-          port: ${{ parameters.port }}
           grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
 
     # Each platform folder ships only for the platforms the app targets, so an
@@ -346,7 +345,6 @@ spec:
           name: ${{ parameters.name }}
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
-          port: ${{ parameters.port }}
           owner: ${{ parameters.owner }}
           costCenter: ${{ parameters.costCenter | default("eng-mobile") }}
           # Full ECR URI from the provision-ecr step. That step is guarded on
