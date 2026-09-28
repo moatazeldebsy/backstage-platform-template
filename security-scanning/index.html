@@ -2608,9 +2608,11 @@ ships with:</p>
 scaffolder. It opens a PR against the target repo adding:</p>
 <ul>
 <li><code>.github/workflows/security-scanning.yml</code> — standalone workflow (independent of the service's main <code>ci.yml</code>)</li>
-<li><code>sonar-project.properties</code></li>
-<li><code>.snyk</code></li>
 </ul>
+<p>Nothing else. If the repo already has a <code>sonar-project.properties</code> (with its coverage
+report paths), the scan uses it unchanged; otherwise it runs with <code>&lt;org&gt;_&lt;repo&gt;</code> as the
+project key and the whole repo as sources. Add a <code>sonar-project.properties</code> or a <code>.snyk</code>
+policy file yourself when you need to tune them.</p>
 <p>After merging, update the service's <code>catalog-info.yaml</code> to add the
 <code>sonarcloud.io/project-key</code> and <code>snyk.io/org-slug</code> annotations so the Security
 entity tab can fetch data and the scorecard checks light up.</p>
