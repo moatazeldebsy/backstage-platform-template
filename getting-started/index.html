@@ -2906,10 +2906,13 @@ unchanged:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster-name<span class="w"> </span>&lt;name&gt;
 </code></pre></div></td></tr></table></div>
 <h2 id="adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service<a class="headerlink" href="#adding-aws-cd-to-a-scaffolded-service" title="Permanent link">&para;</a></h2>
-<p>Scaffolded service repos ship with CI only (<code>test</code> job). To add AWS deployment:</p>
+<p>A scaffolded service's <code>.github/workflows/ci.yml</code> tests, scans and publishes its
+image to GHCR. On AWS, ArgoCD pulls from the ECR repository named in the
+platform repo's <code>services/&lt;name&gt;/helm-values-aws.yaml</code>, so the image has to be
+pushed there too:</p>
 <ol>
 <li>Add the four secrets above to the GitHub repo</li>
-<li>Add a <code>deploy</code> job to <code>.github/workflows/build-and-deploy.yml</code>:</li>
+<li>Add a <code>deploy</code> job to the service's <code>.github/workflows/ci.yml</code>:</li>
 </ol>
 <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
