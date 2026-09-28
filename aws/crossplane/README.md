@@ -18,8 +18,11 @@ ArgoCD owns the lifecycle. Three Applications in
 providers, and compositions in sync-wave order.
 
 Claims live alongside the consuming service at `services/<name>/claims/*.yaml`
-and are picked up by the existing `idp-services` ApplicationSet in
-`kubernetes/argocd/app-of-apps.yaml`.
+and are applied by the `idp-service-resources` ApplicationSet in
+`aws/argocd/app-of-apps.yaml` (one Application per `claims/` directory, into
+the namespace each claim sets). Removing a claim file deletes the resource.
+`idp-services` does not apply them — it only renders `helm/service-template` —
+which is why claims merged before that ApplicationSet existed provisioned nothing.
 
 ## Bootstrap order
 

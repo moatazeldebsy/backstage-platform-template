@@ -231,3 +231,72 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+---
+# ArgoCD ApplicationSet — per-service platform resources (AWS only).
+#
+# Applies the plain manifests scaffolder templates commit next to a service:
+#   services/<name>/claims/   Crossplane Claims (s3/rds/kafka/sqs/dynamodb-*-crossplane)
+#   services/<name>/secrets/  ExternalSecrets (add-secret, secret-rotation, rds-database)
+#
+# Nothing applied these before: idp-services only renders helm/service-template
+# with the values files, and a chart cannot read raw YAML from the repo, so a
+# merged Claim provisioned nothing and a merged ExternalSecret synced nothing.
+# One Application per directory keeps a broken claim from blocking a service's
+# secrets (and vice versa).
+#
+# Local Kind has no Crossplane or AWS Secrets Manager store, so there is no
+# local counterpart.
+#
+# prune: true is deliberate — deleting a claim file (e.g. decommissioning a
+# service) deletes the AWS resource through its Composition's deletionPolicy,
+# the same way removing services/<name>/ removes its workload.
+#
+# Apply: kubectl apply -f aws/argocd/app-of-apps.yaml -n argocd
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: idp-service-resources
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        revision: HEAD
+        directories:
+          - path: services/*/claims
+          - path: services/*/secrets
+  template:
+    metadata:
+      name: "{{path[1]}}-{{path.basename}}"
+      labels:
+        service: "{{path[1]}}"
+        resource-kind: "{{path.basename}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        targetRevision: HEAD
+        path: "{{path}}"
+        directory:
+          # claims/ also holds each claim's Backstage catalog-info-*.yaml
+          # (registered with the catalog, not Kubernetes objects).
+          exclude: "catalog-info*.yaml"
+      destination:
+        server: https://kubernetes.default.svc
+        # Every generated manifest sets its own namespace; this is the fallback.
+        namespace: services-dev
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          # Claim kinds are served by XRDs that crossplane-compositions installs;
+          # until then, retry instead of failing the dry run.
+          - SkipDryRunOnMissingResource=true
+          - ServerSideApply=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m

@@ -84,6 +84,10 @@ spec:
       action: fetch:template
       input:
         url: ./skeleton
+        # Applied on AWS by the idp-service-resources ApplicationSet
+        # (aws/argocd/app-of-apps.yaml). It used to land at the repo root, where
+        # nothing applied it — and its README.md replaced the platform's own.
+        targetPath: services/${{ parameters.serviceName }}/secrets
         values:
           serviceName: ${{ parameters.serviceName }}
           secretKey: ${{ parameters.secretKey }}
@@ -100,12 +104,17 @@ spec:
         title: "feat(${{ parameters.serviceName }}): add ${{ parameters.secretKey }} secret"
         branchName: secret/${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}
         description: |
-          Adds an ExternalSecret CRD that syncs `${{ parameters.secretKey }}` from AWS Secrets Manager
-          into the `services` namespace for `${{ parameters.serviceName }}`.
+          Adds `services/${{ parameters.serviceName }}/secrets/external-secret.yaml`, an ExternalSecret that
+          syncs `${{ parameters.secretKey }}` from AWS Secrets Manager
+          (`${{ parameters.secretPathPrefix }}/${{ parameters.serviceName }}/${{ parameters.secretKey }}`) into the
+          Kubernetes Secret `${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}` in
+          `services-dev`. ArgoCD applies it on merge (`idp-service-resources` ApplicationSet, AWS only).
 
-          **After merging:**
-          ```bash
-          kubectl rollout restart deployment/${{ parameters.serviceName }} -n services
+          **To use it**, reference the Secret from `services/${{ parameters.serviceName }}/helm-values-aws.yaml`:
+          ```yaml
+          envFrom:
+            - secretRef:
+                name: ${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}
           ```
         targetBranchName: main
 

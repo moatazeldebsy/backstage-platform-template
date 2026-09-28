@@ -98,10 +98,14 @@ spec:
         secretPathPrefix: ${{ parameters.secretPathPrefix }}
 
     - id: fetch-template
-      name: Generate ExternalSecret manifest and rotation reminder workflow
+      name: Generate ExternalSecret manifest
       action: fetch:template
       input:
         url: ./skeleton
+        # Applied on AWS by the idp-service-resources ApplicationSet
+        # (aws/argocd/app-of-apps.yaml). It used to land at the repo root, where
+        # nothing applied it — and its README.md replaced the platform's own.
+        targetPath: services/${{ parameters.serviceName }}/secrets
         values:
           serviceName: ${{ parameters.serviceName }}
           secretKey: ${{ parameters.secretKey }}
@@ -109,6 +113,22 @@ spec:
           awsRegion: ${{ parameters.awsRegion }}
           owner: ${{ parameters.owner }}
           description: ${{ parameters.description }}
+          rotationSchedule: ${{ parameters.rotationSchedule }}
+
+    # The reminder is a root-level workflow on purpose — GitHub only runs those.
+    # Named per service and key: a single fixed filename meant each new request
+    # replaced the previous secret's reminder.
+    - id: fetch-workflow
+      name: Generate rotation reminder workflow
+      action: fetch:template
+      input:
+        url: ./skeleton-workflow
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          secretKey: ${{ parameters.secretKey }}
+          secretPathPrefix: ${{ parameters.secretPathPrefix }}
+          awsRegion: ${{ parameters.awsRegion }}
+          owner: ${{ parameters.owner }}
           rotationSchedule: ${{ parameters.rotationSchedule }}
 
     - id: open-pr
@@ -119,13 +139,17 @@ spec:
         title: "feat(${{ parameters.serviceName }}): add ${{ parameters.secretKey }} secret with rotation reminder"
         branchName: secret-rotation/${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}
         description: |
-          Adds an ExternalSecret CRD that syncs `${{ parameters.secretKey }}` from AWS Secrets Manager
-          into the `services` namespace for `${{ parameters.serviceName }}`, plus a scheduled GitHub Actions
+          Adds `services/${{ parameters.serviceName }}/secrets/external-secret.yaml`, an ExternalSecret that
+          syncs `${{ parameters.secretKey }}` from AWS Secrets Manager into the Kubernetes Secret
+          `${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}` in `services-dev`
+          (applied on merge by the `idp-service-resources` ApplicationSet, AWS only), plus a scheduled
           workflow that opens a reminder issue every ${{ parameters.rotationSchedule }} to rotate it.
 
-          **After merging:**
-          ```bash
-          kubectl rollout restart deployment/${{ parameters.serviceName }} -n services
+          **To use it**, reference the Secret from `services/${{ parameters.serviceName }}/helm-values-aws.yaml`:
+          ```yaml
+          envFrom:
+            - secretRef:
+                name: ${{ parameters.serviceName }}-${{ parameters.secretKey | lower | replace('_', '-') }}
           ```
         targetBranchName: main
 
