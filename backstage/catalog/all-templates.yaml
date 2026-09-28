@@ -39,7 +39,6 @@ spec:
     # ── Advanced: Multi-region (V2) ───────────────────────────────────────────
     - ./templates/dynamodb-global-table/template.yaml
     - ./templates/s3-multiregion-access-point/template.yaml
-    - ./templates/eks-multi-region/template.yaml
     # ── Advanced: AI / ML ────────────────────────────────────────────────────
     - ./templates/ai-agent-kagent/template.yaml
     - ./templates/mlflow-experiment/template.yaml
