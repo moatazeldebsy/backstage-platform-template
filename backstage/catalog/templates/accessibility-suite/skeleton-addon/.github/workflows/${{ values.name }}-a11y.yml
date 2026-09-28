@@ -42,11 +42,12 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.preflight.outputs.skip != 'true'
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - if: steps.preflight.outputs.skip != 'true'
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
       - if: steps.preflight.outputs.skip != 'true'
         run: npx playwright install chromium --with-deps
 

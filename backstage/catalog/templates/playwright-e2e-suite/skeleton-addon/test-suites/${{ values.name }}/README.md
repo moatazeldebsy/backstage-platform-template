@@ -17,7 +17,7 @@ npx playwright show-report
 
 ```
 tests/
-  example.spec.ts        # starter test
+  example.e2e.ts         # starter test
   fixtures/
     base.fixture.ts      # shared test fixtures
 playwright.config.ts     # Playwright configuration

@@ -11,10 +11,10 @@ pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # DeepEval runner — shows pass/fail per metric with scores
-deepeval test run tests/test_agent.py -v
+deepeval test run tests/eval_agent.py -v
 
 # Or via pytest directly
-pytest tests/test_agent.py -v
+pytest tests/eval_agent.py -v
 ```
 
 Reports are written to `results/report.html` and `results/report.xml`.

@@ -16,7 +16,7 @@ PROVIDER_BASE_URL=${{ values.providerBaseUrl }} npm run verify  # verify as prov
 
 ```
 tests/
-  consumer.pact.spec.ts   # consumer interaction definitions
+  consumer.pact.ts        # consumer interaction definitions
 pacts/                    # generated pact files (git-ignored)
 package.json
 ```
