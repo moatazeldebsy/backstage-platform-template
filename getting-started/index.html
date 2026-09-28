@@ -2796,33 +2796,11 @@ aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span c
 against a running cluster, not estimated. Full per-component breakdown and the ways to
 spend less: <a href="https://github.com/moatazeldebsy/backstage-platform-template#what-it-costs-on-aws">README → What it costs on AWS</a>.</p>
 <h3 id="4-github-actions-secrets">4. GitHub Actions secrets<a class="headerlink" href="#4-github-actions-secrets" title="Permanent link">&para;</a></h3>
-<p>Add these secrets to any scaffolded service repo to enable AWS CD:</p>
-<table>
-<thead>
-<tr>
-<th>Secret</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AWS_ROLE_ARN</code></td>
-<td><code>cd terraform &amp;&amp; terraform output github_actions_role_arn</code></td>
-</tr>
-<tr>
-<td><code>AWS_REGION</code></td>
-<td><code>us-east-1</code></td>
-</tr>
-<tr>
-<td><code>ECR_REGISTRY</code></td>
-<td><code>&lt;account&gt;.dkr.ecr.us-east-1.amazonaws.com</code></td>
-</tr>
-<tr>
-<td><code>EKS_CLUSTER</code></td>
-<td><code>idp-mvp</code></td>
-</tr>
-</tbody>
-</table>
+<p>Service repos scaffolded with <strong>Deployment Target: AWS</strong> get their <code>AWS_ROLE_ARN</code>
+secret automatically — a push-only role for that repository's own ECR repository
+(see <a href="#adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service</a>).
+Do not give a service repository the platform's <code>github_actions_role_arn</code>: it
+only trusts the platform repo, and carries near-admin permissions.</p>
 <p>Add these to the <strong>platform repo</strong> to enable the auto-merge workflow (recommended over a PAT):</p>
 <table>
 <thead>
@@ -2906,90 +2884,22 @@ unchanged:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster-name<span class="w"> </span>&lt;name&gt;
 </code></pre></div></td></tr></table></div>
 <h2 id="adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service<a class="headerlink" href="#adding-aws-cd-to-a-scaffolded-service" title="Permanent link">&para;</a></h2>
-<p>A scaffolded service's <code>.github/workflows/ci.yml</code> tests, scans and publishes its
-image to GHCR. On AWS, ArgoCD pulls from the ECR repository named in the
-platform repo's <code>services/&lt;name&gt;/helm-values-aws.yaml</code>, so the image has to be
-pushed there too:</p>
+<p>Nothing to add. Scaffold the service with <strong>Deployment Target: AWS</strong> and the
+template sets it up:</p>
 <ol>
-<li>Add the four secrets above to the GitHub repo</li>
-<li>Add a <code>deploy</code> job to the service's <code>.github/workflows/ci.yml</code>:</li>
+<li><code>idp:provision-ecr</code> creates the ECR repository <code>&lt;cluster&gt;/&lt;service&gt;</code> and an IAM
+   role, <code>&lt;cluster&gt;-svc-push-&lt;service&gt;</code>, that only the new repository's <code>main</code>
+   branch can assume and that can only push to that ECR repository (Terraform's
+   <code>&lt;cluster&gt;-service-image-push-boundary</code> caps what such roles may ever do).</li>
+<li>The role's ARN is written to the new repository as the <code>AWS_ROLE_ARN</code> secret.</li>
+<li>The GitOps pull request adds <code>services/&lt;service&gt;/helm-values-aws.yaml</code> to the
+   platform repo, pointing at that ECR repository.</li>
 </ol>
-<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">deploy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test</span>
-<span class="w">  </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
-<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github.ref == &#39;refs/heads/main&#39; &amp;&amp; github.event_name == &#39;push&#39;</span>
-<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
-
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Configure AWS credentials</span>
-<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aws-actions/configure-aws-credentials@v4</span>
-<span class="w">      </span><span class="nt">with</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">role-to-assume</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.AWS_ROLE_ARN }}</span>
-<span class="w">        </span><span class="nt">aws-region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.AWS_REGION }}</span>
-
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Log in to ECR</span>
-<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aws-actions/amazon-ecr-login@v2</span>
-
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build and push image</span>
-<span class="w">      </span><span class="nt">env</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">REGISTRY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.ECR_REGISTRY }}</span>
-<span class="w">        </span><span class="nt">IMAGE_TAG</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.sha }}</span>
-<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">docker build -t $REGISTRY/${{ env.SERVICE_NAME }}:$IMAGE_TAG .</span>
-<span class="w">        </span><span class="no">docker push $REGISTRY/${{ env.SERVICE_NAME }}:$IMAGE_TAG</span>
-
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Update kubeconfig</span>
-<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER }}</span>
-
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deploy via Helm</span>
-<span class="w">      </span><span class="nt">env</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">REGISTRY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.ECR_REGISTRY }}</span>
-<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">helm upgrade --install ${{ env.SERVICE_NAME }} \</span>
-<span class="w">          </span><span class="no">oci://$REGISTRY/helm/service-template \</span>
-<span class="w">          </span><span class="no">--namespace services --create-namespace \</span>
-<span class="w">          </span><span class="no">--set image.repository=$REGISTRY/${{ env.SERVICE_NAME }} \</span>
-<span class="w">          </span><span class="no">--set image.tag=${{ github.sha }} \</span>
-<span class="w">          </span><span class="no">--values helm-values-aws.yaml \</span>
-<span class="w">          </span><span class="no">--wait --timeout 120s</span>
-</code></pre></div></td></tr></table></div>
+<p>From then on the service's <code>ci.yml</code> pushes every <code>main</code> build to GHCR and to ECR
+(SHA and <code>latest</code> tags); with a <code>GH_PAT</code> secret it also bumps the tag in the
+platform repo. ArgoCD deploys it — no Helm or kubectl from the service's CI.</p>
+<p>The platform's own <code>github-actions</code> role is deliberately not used here: it trusts
+only the platform repository and carries near-admin permissions.</p>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp
 </code></pre></div></td></tr></table></div>

@@ -2799,11 +2799,11 @@ docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;nam
 <p>Scaffolding already opened a GitOps pull request against the platform repo adding
 <code>services/&lt;name&gt;/helm-values-aws.yaml</code>, whose image repository is the ECR
 repository the scaffolder created. Merge it and the <code>idp-services</code> ApplicationSet
-deploys the service to <code>services-dev</code> — once an image exists in that ECR
-repository. The service's own <code>ci.yml</code> publishes to GHCR, not ECR, so add the ECR
-push described in <a href="../getting-started/#adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service</a>.
-With a <code>GH_PAT</code> repository secret, <code>ci.yml</code> also bumps the image tag in the
-platform repo's values file on every push to <code>main</code>.</p>
+deploys the service to <code>services-dev</code>. The service's <code>ci.yml</code> pushes every <code>main</code>
+build to that ECR repository (and to GHCR) using the push-only role the scaffolder
+created for it; with a <code>GH_PAT</code> repository secret it also bumps the image tag in
+the platform repo's values file. See
+<a href="../getting-started/#adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service</a>.</p>
 <p>Crossplane claims and secrets requested later (the <code>*-crossplane</code>,
 <code>add-secret</code> and <code>rds-database</code> templates) land in <code>services/&lt;name&gt;/claims/</code> and
 <code>services/&lt;name&gt;/secrets/</code> of the platform repo and are applied by the
