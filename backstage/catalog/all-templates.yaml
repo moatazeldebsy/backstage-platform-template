@@ -36,11 +36,9 @@ spec:
     - ./templates/kafka-topic/template.yaml
     - ./templates/kafka-topic-crossplane/template.yaml
     - ./templates/sqs-queue-crossplane/template.yaml
-    - ./templates/eks-cluster/template.yaml
     # ── Advanced: Multi-region (V2) ───────────────────────────────────────────
     - ./templates/dynamodb-global-table/template.yaml
     - ./templates/s3-multiregion-access-point/template.yaml
-    - ./templates/aurora-global-cluster/template.yaml
     - ./templates/eks-multi-region/template.yaml
     # ── Advanced: AI / ML ────────────────────────────────────────────────────
     - ./templates/ai-agent-kagent/template.yaml

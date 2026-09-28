@@ -7,7 +7,11 @@ image:
 
 service:
   port: 80
-  targetPort: ${{ values.port }}
+  # nginx in this app's image listens on 8080 (Dockerfile EXPOSE, nginx.conf).
+  # This used to be the template value `port`, which the template never passes here,
+  # so it rendered empty and the Deployment was rejected ("containerPort:
+  # Required value") — every React app's local ArgoCD Application failed.
+  targetPort: 8080
 
 ingress:
   enabled: true
@@ -30,10 +34,9 @@ resources:
     cpu: 200m
     memory: 64Mi
 
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "${{ values.port }}"
-  prometheus.io/path: "/metrics"
+# No prometheus.io/* annotations: nginx here serves no /metrics (stub_status is
+# localhost-only), and the exporter sidecar lives in the app repo's own values,
+# which ArgoCD does not read. They used to point Prometheus at an empty port.
 
 podLabels:
   team: "${{ values.owner | replace('group:default/', '') | replace('user:default/', '') | replace(':', '-') | replace('/', '-') }}"

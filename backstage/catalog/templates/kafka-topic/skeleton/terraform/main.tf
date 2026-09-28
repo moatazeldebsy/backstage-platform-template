@@ -44,8 +44,8 @@ resource "kafka_topic" "this" {
   partitions         = var.partitions
 
   config = {
-    "retention.ms"    = tostring(var.retention_hours * 3600 * 1000)
-    "cleanup.policy"  = var.cleanup_policy
+    "retention.ms"        = tostring(var.retention_hours * 3600 * 1000)
+    "cleanup.policy"      = var.cleanup_policy
     "min.insync.replicas" = tostring(max(1, var.replication_factor - 1))
   }
 }
@@ -108,16 +108,16 @@ resource "kafka_acl" "consumer_group" {
 # AWS Glue Schema Registry subject (optional)
 # ---------------------------------------------------------------------------
 data "aws_glue_registry" "this" {
-  count         = var.schema_registry_subject != "" ? 1 : 0
-  registry_name = "default-registry"
+  count = var.schema_registry_subject != "" ? 1 : 0
+  name  = "default-registry"
 }
 
 resource "aws_glue_schema" "this" {
-  count          = var.schema_registry_subject != "" ? 1 : 0
-  schema_name    = var.schema_registry_subject
-  registry_arn   = data.aws_glue_registry.this[0].arn
-  data_format    = "AVRO"
-  compatibility  = "BACKWARD"
+  count         = var.schema_registry_subject != "" ? 1 : 0
+  schema_name   = var.schema_registry_subject
+  registry_arn  = data.aws_glue_registry.this[0].arn
+  data_format   = "AVRO"
+  compatibility = "BACKWARD"
   schema_definition = jsonencode({
     type      = "record"
     name      = replace(var.schema_registry_subject, "-", "_")

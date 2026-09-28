@@ -150,8 +150,9 @@ integrations:
 #
 # deploy-to-kind is intentionally NOT in all-templates.yaml (that file is shared
 # with AWS, and "deploy to a local Kind cluster" makes no sense there) — registered
-# here instead, local-only. This is why the catalog holds 64 templates locally and
-# all-templates.yaml lists 63; the gap is by design, not drift.
+# here instead, local-only. This is why the catalog holds 62 templates locally and
+# all-templates.yaml lists 61; the gap is by design, not drift. (Two more template
+# directories exist but are deliberately unregistered — each has a DISABLED.md.)
 #
 # Any template registered this way should carry the `local-only` tag so it is
 # filterable and visibly distinct in the scaffolder list — the `local` tag means

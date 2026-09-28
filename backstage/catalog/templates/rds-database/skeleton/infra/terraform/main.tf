@@ -72,11 +72,11 @@ resource "aws_db_instance" "this" {
   username = var.db_username
   password = random_password.db.result
 
-  parameter_group_name   = aws_db_parameter_group.this.name
-  multi_az               = var.multi_az
+  parameter_group_name    = aws_db_parameter_group.this.name
+  multi_az                = var.multi_az
   backup_retention_period = var.backup_retention_days
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "Mon:04:00-Mon:05:00"
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "Mon:04:00-Mon:05:00"
 
   deletion_protection = var.multi_az # protect production instances
   skip_final_snapshot = !var.multi_az
@@ -137,8 +137,8 @@ data "aws_caller_identity" "current" {}
 # ---------------------------------------------------------------------------
 locals {
   common_tags = {
-    "managed-by"   = "idp-backstage"
+    "managed-by"    = "idp-backstage"
     "instance-name" = var.instance_name
-    "owner"        = var.owner_service
+    "owner"         = var.owner_service
   }
 }
