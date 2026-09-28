@@ -120,10 +120,13 @@ spec:
 
           ### What's included
           - GitHub Actions workflow: `.github/workflows/store-deploy.yml`
-          - Fastlane lanes: `fastlane/Fastfile`
+
+          Nothing else is changed — your `fastlane/Fastfile` (if any) is left as it is; the
+          workflow calls Fastlane actions directly with `fastlane run`. It works with both a
+          Flutter layout (`android/`) and a native Android project at the repo root.
 
           ### Next steps
-          1. Configure the required GitHub secrets (see workflow comments).
+          1. Configure the required GitHub secrets — a release run lists any that are missing.
           2. Merge this PR.
           3. Push to a `release/*` branch or trigger manually to deploy.
 
