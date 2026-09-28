@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
+// On its own line so no formatted line's length depends on the name: inlined,
+// a long service name pushed lines past Prettier's width and the first CI run
+// failed the format check.
+const SERVICE_NAME = '${{ values.name }}';
+
 const app = express();
 const PORT = process.env.PORT || ${{ values.port }};
 
@@ -63,13 +68,13 @@ app.get(
   '/',
   instrument('GET', '/', (req, res) => {
     console.log(JSON.stringify({ msg: 'root called' }));
-    res.json({ service: '${{ values.name }}', status: 'running' });
+    res.json({ service: SERVICE_NAME, status: 'running' });
   }),
 );
 
 app.listen(PORT, () => {
   console.log(
-    JSON.stringify({ msg: `${{ values.name }} listening on port ${PORT}` }),
+    JSON.stringify({ msg: `${SERVICE_NAME} listening on port ${PORT}` }),
   );
 });
 

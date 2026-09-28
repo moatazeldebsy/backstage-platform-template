@@ -8,7 +8,14 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="${{ values.name }}", description="${{ values.description }}")
+# Own lines so no formatted line's length depends on these: inlined, a long
+# name or description made `ruff format --check` fail on the first CI run.
+# The description is free text, so it is rendered as an escaped string literal;
+# fmt: skip because ruff picks the quote style by what the text contains.
+SERVICE_NAME = "${{ values.name }}"
+SERVICE_DESCRIPTION = ${{ (values.description or "") | dump }}  # fmt: skip
+
+app = FastAPI(title=SERVICE_NAME, description=SERVICE_DESCRIPTION)
 
 REQUEST_COUNT = Counter(
     "http_requests_total",
@@ -56,4 +63,4 @@ async def metrics():
 @app.get("/")
 async def root():
     logger.info(json.dumps({"msg": "root called"}))
-    return {"service": "${{ values.name }}", "status": "running"}
+    return {"service": SERVICE_NAME, "status": "running"}
