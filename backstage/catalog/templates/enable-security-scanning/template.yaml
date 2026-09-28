@@ -130,8 +130,11 @@ spec:
 
           **Files added:**
           - `.github/workflows/security-scanning.yml` — runs on push + PR
-          - `sonar-project.properties` — SonarCloud config (projectKey: `${{ parameters.sonarProjectKey or ((parameters.targetRepoUrl | parseRepoUrl).owner + '_' + (parameters.targetRepoUrl | parseRepoUrl).repo) }}`)
-          - `.snyk` — Snyk policy file
+
+          Nothing else is changed. If the repo has a `sonar-project.properties`, the scan uses it as-is;
+          otherwise it runs with projectKey `${{ parameters.sonarProjectKey or ((parameters.targetRepoUrl | parseRepoUrl).owner + '_' + (parameters.targetRepoUrl | parseRepoUrl).repo) }}`
+          and the whole repo as sources. Add a `sonar-project.properties` (coverage report paths, test
+          inclusions) or a `.snyk` policy file later if you need them.
 
           **Required repository secrets** (set after merging):
           - `SONAR_TOKEN` — generate at https://sonarcloud.io/account/security

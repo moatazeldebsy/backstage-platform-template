@@ -34,6 +34,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A release cannot happen without these; say which are missing up front
+      # instead of failing later inside an AWS or store API call.
+      - name: Check release secrets
+        env:
+          AWS_ROLE_ARN: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          ANDROID_KEYSTORE_SECRET_ID: ${{ '${{ secrets.ANDROID_KEYSTORE_SECRET_ID }}' }}
+          KEYSTORE_STORE_PASSWORD: ${{ '${{ secrets.KEYSTORE_STORE_PASSWORD }}' }}
+          KEYSTORE_KEY_ALIAS: ${{ '${{ secrets.KEYSTORE_KEY_ALIAS }}' }}
+          KEYSTORE_KEY_PASSWORD: ${{ '${{ secrets.KEYSTORE_KEY_PASSWORD }}' }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' }}
+          ANDROID_PACKAGE_NAME: ${{ '${{ secrets.ANDROID_PACKAGE_NAME }}' }}
+        run: |
+          missing=""
+          for s in AWS_ROLE_ARN ANDROID_KEYSTORE_SECRET_ID KEYSTORE_STORE_PASSWORD KEYSTORE_KEY_ALIAS KEYSTORE_KEY_PASSWORD GOOGLE_PLAY_SERVICE_ACCOUNT_JSON ANDROID_PACKAGE_NAME; do [ -n "${!s}" ] || missing="$missing $s"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing — see the mobile-app-store-deploy PR description for setup."
+            exit 1
+          fi
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/,
+      # so it failed on every native app.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -56,14 +82,14 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
-          aws-region: ${{ '${{ secrets.AWS_REGION || ' }}"us-east-1"${{ ' }}' }}
+          aws-region: ${{ '${{ secrets.AWS_REGION || ' }}'us-east-1'${{ ' }}' }}
 
       - name: Download keystore from AWS Secrets Manager
         run: |
           SECRET=$(aws secretsmanager get-secret-value \
             --secret-id "${{ '${{ secrets.ANDROID_KEYSTORE_SECRET_ID }}' }}" \
             --query 'SecretString' --output text)
-          echo "$SECRET" | base64 --decode > android/app/release.keystore
+          echo "$SECRET" | base64 --decode > "$ANDROID_DIR/app/release.keystore"
 
       - name: Build release AAB
         env:
@@ -71,7 +97,7 @@ jobs:
           KEYSTORE_KEY_ALIAS: ${{ '${{ secrets.KEYSTORE_KEY_ALIAS }}' }}
           KEYSTORE_KEY_PASSWORD: ${{ '${{ secrets.KEYSTORE_KEY_PASSWORD }}' }}
         run: |
-          cd android
+          cd "$ANDROID_DIR"
           ./gradlew bundleRelease \
             -Pandroid.injected.signing.store.file=app/release.keystore \
             -Pandroid.injected.signing.store.password="$KEYSTORE_STORE_PASSWORD" \
@@ -83,13 +109,13 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' }}
           packageName: ${{ '${{ secrets.ANDROID_PACKAGE_NAME }}' }}
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: ${{ '${{ github.event.inputs.track || ' }}"${{ values.track }}"${{ ' }}' }}
+          releaseFiles: ${{ '${{ env.ANDROID_DIR }}' }}/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ '${{ github.event.inputs.track || ' }}'${{ values.track }}'${{ ' }}' }}
           status: completed
 
       - name: Clean up keystore
         if: always()
-        run: rm -f android/app/release.keystore
+        run: rm -f "$ANDROID_DIR/app/release.keystore"
 
 {% endif %}
 {% if values.platform === 'app_store' or values.platform === 'both' %}
@@ -99,11 +125,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A release cannot happen without these; say which are missing up front
+      # instead of failing later inside an AWS or store API call.
+      - name: Check release secrets
+        env:
+          AWS_ROLE_ARN: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          CODE_SIGN_S3_BUCKET: ${{ '${{ secrets.CODE_SIGN_S3_BUCKET }}' }}
+          APPLE_ID: ${{ '${{ secrets.APPLE_ID }}' }}
+          MATCH_PASSWORD: ${{ '${{ secrets.MATCH_PASSWORD }}' }}
+          ASC_API_KEY_ID: ${{ '${{ secrets.ASC_API_KEY_ID }}' }}
+          ASC_API_ISSUER_ID: ${{ '${{ secrets.ASC_API_ISSUER_ID }}' }}
+          ASC_API_KEY_CONTENT: ${{ '${{ secrets.ASC_API_KEY_CONTENT }}' }}
+        run: |
+          missing=""
+          for s in AWS_ROLE_ARN CODE_SIGN_S3_BUCKET APPLE_ID MATCH_PASSWORD ASC_API_KEY_ID ASC_API_ISSUER_ID ASC_API_KEY_CONTENT; do [ -n "${!s}" ] || missing="$missing $s"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing — see the mobile-app-store-deploy PR description for setup."
+            exit 1
+          fi
+
       - name: Configure AWS credentials (for Fastlane Match)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
-          aws-region: ${{ '${{ secrets.AWS_REGION || ' }}"us-east-1"${{ ' }}' }}
+          aws-region: ${{ '${{ secrets.AWS_REGION || ' }}'us-east-1'${{ ' }}' }}
 
       - name: Install Fastlane
         run: gem install fastlane --no-document
@@ -123,11 +168,17 @@ jobs:
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ '${{ secrets.ASC_API_ISSUER_ID }}' }}
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ '${{ secrets.ASC_API_KEY_CONTENT }}' }}
         run: |
-          TRACK="${{ '${{ github.event.inputs.track || ' }}"${{ values.track }}"${{ ' }}' }}"
+          TRACK="${{ '${{ github.event.inputs.track || ' }}'${{ values.track }}'${{ ' }}' }}"
+          # `fastlane run <action>` needs no Fastfile. This add-on used to ship
+          # fastlane/Fastfile with these lanes, which replaced the app's own
+          # Fastfile (and its test/build/distribute lanes) on merge.
+          fastlane run build_app scheme:"${SCHEME:-Release}" export_method:app-store \
+            clean:true output_directory:./build output_name:app.ipa
           if [ "$TRACK" = "internal" ] || [ "$TRACK" = "beta" ]; then
-            fastlane deploy_testflight
+            fastlane run upload_to_testflight ipa:./build/app.ipa skip_waiting_for_build_processing:true
           else
-            fastlane deploy_app_store
+            fastlane run upload_to_app_store ipa:./build/app.ipa skip_waiting_for_build_processing:true \
+              submit_for_review:false force:true skip_screenshots:true skip_metadata:true
           fi
 
 {% endif %}

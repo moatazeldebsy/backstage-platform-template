@@ -108,8 +108,11 @@ Run the **Enable Security Scanning (SonarCloud + Snyk)** template from the Backs
 scaffolder. It opens a PR against the target repo adding:
 
 - `.github/workflows/security-scanning.yml` — standalone workflow (independent of the service's main `ci.yml`)
-- `sonar-project.properties`
-- `.snyk`
+
+Nothing else. If the repo already has a `sonar-project.properties` (with its coverage
+report paths), the scan uses it unchanged; otherwise it runs with `<org>_<repo>` as the
+project key and the whole repo as sources. Add a `sonar-project.properties` or a `.snyk`
+policy file yourself when you need to tune them.
 
 After merging, update the service's `catalog-info.yaml` to add the
 `sonarcloud.io/project-key` and `snyk.io/org-slug` annotations so the Security
