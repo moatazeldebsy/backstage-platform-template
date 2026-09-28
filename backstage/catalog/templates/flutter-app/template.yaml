@@ -298,26 +298,6 @@ spec:
       input:
         url: ./skeleton-web
 
-    # The service's ECR repository, and the IAM role its CI assumes to push
-    # there — trusted only by this repo's main branch, push-only (see
-    # idp:provision-ecr). It used to ask for the platform's github-actions role,
-    # which only trusts the platform repo, so no service could push to ECR.
-    - id: provision-ecr
-      name: Provision ECR Repository
-      if: ${{ parameters.deployTarget === 'aws' }}
-      action: idp:provision-ecr
-      input:
-        serviceName: ${{ parameters.name }}
-        clusterName: ${{ parameters.clusterName }}
-        awsRegion: ${{ parameters.awsRegion }}
-        githubOwner: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
-        githubRepo: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
-
-          ArgoCD ApplicationSet will auto-discover and deploy the web build
-          to `services-dev` namespace once merged.
-        sourcePath: ./platform-values
-        targetPath: services/${{ parameters.name }}
-
     - id: publish
       name: Publish to GitHub
       action: publish:github
@@ -334,6 +314,21 @@ spec:
         collaborators:
           - team: ${{ parameters.owner }}
             access: maintain
+
+    # The service's ECR repository, and the IAM role its CI assumes to push
+    # there — trusted only by this repo's main branch, push-only (see
+    # idp:provision-ecr). It used to ask for the platform's github-actions role,
+    # which only trusts the platform repo, so no service could push to ECR.
+    - id: provision-ecr
+      name: Provision ECR Repository
+      if: ${{ parameters.deployTarget === 'aws' }}
+      action: idp:provision-ecr
+      input:
+        serviceName: ${{ parameters.name }}
+        clusterName: ${{ parameters.clusterName }}
+        awsRegion: ${{ parameters.awsRegion }}
+        githubOwner: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+        githubRepo: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
 
     - id: fetch-platform-values
       name: Prepare Platform GitOps Values
@@ -363,6 +358,11 @@ spec:
         branchName: feat/onboard-${{ parameters.name }}-web
         description: |
           Adds `services/${{ parameters.name }}/` (Flutter Web) to the platform repo.
+
+          ArgoCD ApplicationSet will auto-discover and deploy the web build
+          to `services-dev` namespace once merged.
+        sourcePath: ./platform-values
+        targetPath: services/${{ parameters.name }}
 
     - id: set-repo-secrets
       name: Configure CI/CD Secrets
