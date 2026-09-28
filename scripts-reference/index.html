@@ -2887,6 +2887,14 @@ entry points, which is why they are absent from the tables above.</p>
 <td>CI gate — checks every template is registered and parses.</td>
 </tr>
 <tr>
+<td><code>validate-platform-outputs.py</code></td>
+<td>CI gate (<code>platform-outputs</code> job) — renders every template whose PR targets this repo (via <code>render-template.js</code>) and checks the PR: only new files, only where something applies them, Terraform valid + fmt-clean, claims valid against the XRDs, manifests pass kubeconform, onboarding values render through the chart and pass the Gatekeeper policies. Then checks the committed <code>terraform/infra/</code>, <code>services/*/claims|secrets|helm-values-*</code> the same way. Locally: needs node, terraform, helm, kubeconform, gator, and PyYAML + jsonschema.</td>
+</tr>
+<tr>
+<td><code>render-template.js</code></td>
+<td>Renders a scaffolder template offline, as <code>fetch:template</code> would: <code>node scripts/render-template.js backstage/catalog/templates &lt;name&gt; - /tmp/out</code>.</td>
+</tr>
+<tr>
 <td><code>validate-mcp-metrics.py</code></td>
 <td>CI gate — every MCP server must declare <code>mcp_tool_calls_total{server,tool,outcome}</code>, and no dashboard, alert rule or Engineering Intelligence query may select a label no server emits.</td>
 </tr>
