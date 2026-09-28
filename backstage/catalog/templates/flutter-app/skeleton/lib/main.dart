@@ -2,6 +2,11 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 {% endif %}import 'package:flutter/material.dart';
 
+// A top-level constant so no formatted line's length depends on the app name:
+// inlined, a long name made `dart format --set-exit-if-changed` fail on the
+// first CI run. The widget test reads it too.
+const appTitle = '${{ values.name }}';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 {% if values.enableFirebase %}  await Firebase.initializeApp();
@@ -15,12 +20,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '${{ values.name }}',
+      title: appTitle,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const HomePage(title: '${{ values.name }}'),
+      home: const HomePage(title: appTitle),
     );
   }
 }

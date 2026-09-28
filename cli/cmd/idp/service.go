@@ -26,6 +26,8 @@ var (
 
 var nameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
+const maxServiceNameLen = 45
+
 var serviceCmd = &cobra.Command{
 	Use:   "service",
 	Short: "Scaffold a new microservice",
@@ -64,6 +66,11 @@ func init() {
 func runScaffoldService(cmd *cobra.Command, _ []string) error {
 	if !nameRe.MatchString(svcName) {
 		return fmt.Errorf("--name must be lowercase alphanumeric with hyphens (got %q)", svcName)
+	}
+	// Same limit as the Backstage templates: Helm caps release names at 53
+	// characters and the staging ApplicationSet deploys <name>-staging.
+	if len(svcName) > maxServiceNameLen {
+		return fmt.Errorf("--name must be at most %d characters (got %d): the staging release is %s-staging and Helm allows 53", maxServiceNameLen, len(svcName), svcName)
 	}
 	valid := map[string]bool{"nodejs": true, "python": true, "go": true}
 	if !valid[svcType] {

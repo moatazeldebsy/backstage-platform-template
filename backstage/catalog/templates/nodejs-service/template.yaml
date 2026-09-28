@@ -32,6 +32,10 @@ spec:
           type: string
           description: Unique service name (lowercase, hyphens only)
           pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          # Helm caps release names at 53 characters and the staging
+          # ApplicationSet names the release <name>-staging, so longer names
+          # scaffold fine and then cannot be deployed.
+          maxLength: 45
           ui:autofocus: true
         description:
           title: Description

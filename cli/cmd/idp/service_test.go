@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -162,6 +163,20 @@ func TestNameRe(t *testing.T) {
 		if nameRe.MatchString(n) {
 			t.Errorf("expected %q to be invalid", n)
 		}
+	}
+}
+
+// A name the Backstage templates would reject (maxLength 45) must not slip
+// through the CLI: its staging release, <name>-staging, would exceed Helm's 53.
+func TestRunScaffoldServiceRejectsLongName(t *testing.T) {
+	oldName, oldType := svcName, svcType
+	t.Cleanup(func() { svcName, svcType = oldName, oldType })
+	svcType = "go"
+
+	svcName = strings.Repeat("a", maxServiceNameLen+1)
+	err := runScaffoldService(serviceCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "at most 45 characters") {
+		t.Fatalf("46-char name: got %v, want a length error", err)
 	}
 }
 

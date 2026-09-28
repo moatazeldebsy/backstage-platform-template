@@ -30,7 +30,10 @@ AGENT_RUNS = Counter("agent_runs_total", "Agent runs", ["service", "outcome"])
 AGENT_LATENCY = Histogram(
     "agent_run_duration_seconds", "Agent run duration", ["service"]
 )
-SERVICE = os.environ.get("OTEL_SERVICE_NAME", "${{ values.name }}")
+# Own line so no formatted line's length depends on the name: inlined, a long
+# name made `ruff format --check` fail on the first CI run.
+SERVICE_NAME = "${{ values.name }}"
+SERVICE = os.environ.get("OTEL_SERVICE_NAME", SERVICE_NAME)
 
 
 @asynccontextmanager
@@ -49,7 +52,7 @@ async def lifespan(_: FastAPI):
     shutdown_tracing()
 
 
-app = FastAPI(title="${{ values.name }}", lifespan=lifespan)
+app = FastAPI(title=SERVICE_NAME, lifespan=lifespan)
 
 
 class AskRequest(BaseModel):
