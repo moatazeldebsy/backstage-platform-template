@@ -88,7 +88,10 @@ spec:
       name: Open Pull Request
       action: publish:github:pull-request
       input:
-        repoUrl: github.com?repo=${{ parameters.ownerService }}&owner=moatazeldebsy
+        # The platform repo, where the idp-service-resources ApplicationSet
+        # applies services/<svc>/claims/. This used to open the PR against the
+        # service's own repository, where nothing applies Crossplane claims.
+        repoUrl: github.com?repo=backstage-platform-template&owner=moatazeldebsy
         title: "feat(infra): add S3 bucket with CRR ${{ parameters.bucketName }}"
         description: |
           Provisions an S3 bucket with Cross-Region Replication via Crossplane Claim.

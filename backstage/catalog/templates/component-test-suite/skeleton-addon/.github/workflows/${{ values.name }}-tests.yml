@@ -18,8 +18,9 @@ jobs:
         image: wiremock/wiremock:3.9.1
         ports:
           - 8089:8080
-        volumes:
-          - ${{ '${{ github.workspace }}' }}/test-suites/${{ values.name }}/wiremock:/home/wiremock
+        # No volume: service containers start before checkout, so Docker created
+        # the mounted test-suites/ path as root and actions/checkout then failed
+        # (EACCES). The stubs are loaded through the admin API after checkout.
         options: --health-cmd="curl -fsS http://localhost:8080/__admin/health || exit 1" --health-interval=5s --health-retries=10
 
       service-under-test:
@@ -30,26 +31,40 @@ jobs:
           # Point the service at WireMock for outbound HTTP. Override these env
           # vars to match the names your service actually uses.
           DOWNSTREAM_BASE_URL: http://wiremock:8080
-        options: --health-cmd="curl -fsS http://localhost:${{ values.servicePort }}/healthz || exit 1" --health-interval=5s --health-retries=20
+        # No --health-cmd: it runs inside the image, and the golden-path images
+        # are distroless (no shell, no curl), so the container never became
+        # healthy and the job failed before any test ran. "Wait for stack"
+        # below checks /healthz from the runner instead.
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install test deps
         working-directory: test-suites/${{ values.name }}
-        run: npm ci || npm install
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Wait for stack
         run: |
           for url in http://localhost:8089/__admin/health http://localhost:${{ values.servicePort }}/healthz; do
+            ok=false
             for i in {1..30}; do
-              if curl -fsS "$url" >/dev/null; then echo "OK: $url"; break; fi
+              if curl -fsS "$url" >/dev/null; then echo "OK: $url"; ok=true; break; fi
               sleep 2
             done
+            $ok || { echo "::error::$url did not answer within 60s — check the image and servicePort (${{ values.servicePort }})"; exit 1; }
+          done
+
+      - name: Load WireMock stubs
+        run: |
+          shopt -s nullglob
+          for f in test-suites/${{ values.name }}/wiremock/mappings/*.json; do
+            curl -fsS -X POST http://localhost:8089/__admin/mappings \
+              -H 'Content-Type: application/json' --data-binary "@$f" >/dev/null
+            echo "loaded $f"
           done
 
       - name: Run component tests

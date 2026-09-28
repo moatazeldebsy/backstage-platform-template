@@ -13,7 +13,7 @@ Axe-core + Playwright accessibility test suite for **${{ values.targetService }}
 
 ## What is tested
 
-Every page listed in `tests/a11y.spec.ts` is scanned with axe-core against the configured WCAG ruleset. Any violation causes the test to fail with a detailed report of the affected element, the rule, and a remediation link.
+Every page listed in `tests/a11y.e2e.ts` is scanned with axe-core against the configured WCAG ruleset. Any violation causes the test to fail with a detailed report of the affected element, the rule, and a remediation link.
 
 ## Running locally
 
@@ -26,7 +26,7 @@ npx playwright show-report
 
 ## Adding pages
 
-Add a new `test()` block in `tests/a11y.spec.ts`:
+Add a new `test()` block in `tests/a11y.e2e.ts`:
 
 ```typescript
 test('login page has no violations', async ({ page }) => {

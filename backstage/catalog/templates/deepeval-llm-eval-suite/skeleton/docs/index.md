@@ -14,7 +14,7 @@ DeepEval LLM evaluation suite targeting **${{ values.targetAgent }}**.
 ```bash
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
-deepeval test run tests/test_agent.py -v
+deepeval test run tests/eval_agent.py -v
 ```
 
 ## Metrics
