@@ -78,6 +78,10 @@ const GRID_BROWSERS: Record<string, { name: string; version: string; platform: s
 
 export default defineConfig({
   testDir: './tests',
+  // *.e2e.ts, not *.spec.ts: this suite lives inside the service's repo, and
+  // the service's own Jest/Vitest collect *.spec.ts — they tried to run these
+  // Playwright specs and failed the service's unit-test job.
+  testMatch: '**/*.e2e.ts',
   fullyParallel: false,
   retries: 0,
   reporter: [['html', { open: 'never' }], ['github']],

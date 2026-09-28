@@ -17,7 +17,7 @@ permissions:
   id-token: write  # required for AWS OIDC
 
 env:
-  AWS_REGION: ${{ '${{ secrets.AWS_REGION || ' }}"us-east-1"${{ ' }}' }}
+  AWS_REGION: ${{ '${{ secrets.AWS_REGION || ' }}'us-east-1'${{ ' }}' }}
   PLATFORM: "${{ values.platform }}"
   ENVIRONMENT: "${{ values.environment }}"
 
@@ -28,6 +28,21 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      # Say which secrets are missing up front instead of failing inside the
+      # AWS login with "Credentials could not be loaded".
+      - name: Check signing secrets
+        env:
+          AWS_ROLE_ARN: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          APPLE_ID: ${{ '${{ secrets.APPLE_ID }}' }}
+          MATCH_PASSWORD: ${{ '${{ secrets.MATCH_PASSWORD }}' }}
+        run: |
+          missing=""
+          for s in AWS_ROLE_ARN APPLE_ID MATCH_PASSWORD; do [ -n "${!s}" ] || missing="$missing $s"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing — see docs/code-signing-setup.md."
+            exit 1
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -40,8 +55,8 @@ jobs:
 
       - name: Sync iOS certificates (Fastlane Match)
         env:
-          MATCH_GIT_URL: ${{ '${{ secrets.MATCH_GIT_URL || ' }}"s3://${{ values.codeSignS3Bucket }}/match"${{ ' }}' }}
-          CODE_SIGN_S3_BUCKET: ${{ '${{ secrets.CODE_SIGN_S3_BUCKET || ' }}"${{ values.codeSignS3Bucket }}"${{ ' }}' }}
+          MATCH_GIT_URL: ${{ '${{ secrets.MATCH_GIT_URL || ' }}'s3://${{ values.codeSignS3Bucket }}/match'${{ ' }}' }}
+          CODE_SIGN_S3_BUCKET: ${{ '${{ secrets.CODE_SIGN_S3_BUCKET || ' }}'${{ values.codeSignS3Bucket }}'${{ ' }}' }}
           APPLE_ID: ${{ '${{ secrets.APPLE_ID }}' }}
           MATCH_PASSWORD: ${{ '${{ secrets.MATCH_PASSWORD }}' }}
         run: fastlane match ${{ values.environment }} --readonly
@@ -53,6 +68,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Say which secrets are missing up front instead of failing inside the
+      # AWS login with "Credentials could not be loaded".
+      - name: Check signing secrets
+        env:
+          AWS_ROLE_ARN: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
+          KEYSTORE_STORE_PASSWORD: ${{ '${{ secrets.KEYSTORE_STORE_PASSWORD }}' }}
+        run: |
+          missing=""
+          for s in AWS_ROLE_ARN KEYSTORE_STORE_PASSWORD; do [ -n "${!s}" ] || missing="$missing $s"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing — see docs/code-signing-setup.md."
+            exit 1
+          fi
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/,
+      # so it failed on every native app.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -66,18 +102,18 @@ jobs:
             --secret-id "mobile/${{ values.packageName | default('android') }}/${{ values.environment }}/keystore" \
             --query 'SecretString' \
             --output text)
-          echo "$SECRET_VALUE" | base64 --decode > android/app/release.keystore
+          echo "$SECRET_VALUE" | base64 --decode > "$ANDROID_DIR/app/release.keystore"
           echo "Keystore downloaded successfully"
 
       - name: Verify keystore
         run: |
           keytool -list -v \
-            -keystore android/app/release.keystore \
+            -keystore "$ANDROID_DIR/app/release.keystore" \
             -storepass "${{ '${{ secrets.KEYSTORE_STORE_PASSWORD }}' }}" \
             2>/dev/null | grep "Alias name:"
 
       - name: Clean up keystore
         if: always()
-        run: rm -f android/app/release.keystore
+        run: rm -f "$ANDROID_DIR/app/release.keystore"
 
 {% endif %}

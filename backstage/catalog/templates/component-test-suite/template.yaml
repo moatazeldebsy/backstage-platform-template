@@ -65,8 +65,9 @@ spec:
         serviceContainerImage:
           title: Service Container Image
           type: string
-          description: 'Image tag the service is built to in CI (e.g. ghcr.io/<org>/<svc>:${{GITHUB_SHA}})'
-          default: 'ghcr.io/moatazeldebsy/<repo>:latest'
+          description: 'Image the service is built to in CI. Leave empty for ghcr.io/<owner>/<repo>:latest of the target repository — what the golden-path service templates publish.'
+          # No default: it used to be the literal 'ghcr.io/moatazeldebsy/<repo>:latest',
+          # which reached the workflow as-is ("invalid reference format").
         servicePort:
           title: Service Port
           type: integer
@@ -82,7 +83,7 @@ spec:
           name: ${{ parameters.name }}
           owner: ${{ parameters.owner }}
           targetService: ${{ parameters.targetService }}
-          serviceContainerImage: ${{ parameters.serviceContainerImage }}
+          serviceContainerImage: ${{ parameters.serviceContainerImage or ('ghcr.io/' + (parameters.targetRepoUrl | parseRepoUrl).owner + '/' + (parameters.targetRepoUrl | parseRepoUrl).repo + ':latest') }}
           servicePort: ${{ parameters.servicePort }}
           githubOrg: ${{ (parameters.targetRepoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.targetRepoUrl | parseRepoUrl).repo }}

@@ -18,11 +18,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          cache-dependency-path: test-suites/${{ values.name }}/package.json
 
       - name: Install dependencies
-        run: npm ci
+        run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       # Mutation testing mutates the code in this repo and re-runs its tests. A
       # freshly scaffolded suite has the Stryker config but no code yet, so skip

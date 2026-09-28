@@ -7,10 +7,10 @@ offline — no live cluster or MCP server required.
 
 Run locally:
     export ANTHROPIC_API_KEY=sk-ant-...
-    deepeval test run tests/test_agent.py -v
+    deepeval test run tests/eval_agent.py -v
 
 Or via pytest directly:
-    pytest tests/test_agent.py -v
+    pytest tests/eval_agent.py -v
 """
 
 import json
