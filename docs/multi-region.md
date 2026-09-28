@@ -139,7 +139,7 @@ All four live under `backstage/catalog/templates/` and are indexed in
 
 | Template | What it creates |
 |----------|----------------|
-| `aurora-global-cluster` | Renders Terraform tfvars + opens a PR; platform team applies via `terraform/global/` |
+| `aurora-global-cluster` | **Disabled** — its tfvars targeted the platform's own Backstage cluster in `terraform/global/`; see `backstage/catalog/templates/aurora-global-cluster/DISABLED.md` |
 | `dynamodb-global-table` | Crossplane `DynamoTable` claim with `globalTable: true` and `replicaRegions: [us-east-1]` |
 | `s3-multiregion-access-point` | Crossplane `S3Bucket` claim with `crossRegionReplication: true` and `multiRegionAccessPoint: true` |
 | `eks-multi-region` | ArgoCD `ApplicationSet` (matrix generator) targeting both clusters; sync-wave 0 (eu-central-1) → wave 1 (us-east-1) |
