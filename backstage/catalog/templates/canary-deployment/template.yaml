@@ -33,16 +33,21 @@ spec:
         environment:
           title: Environment
           type: string
-          description: Which environment's values file to update
-          default: aws
+          # The value is the `env` the ApplicationSets substitute into
+          # helm-values-rollout-{{env}}.yaml: dev (idp-services, AWS), staging,
+          # prod. Dev used to be `aws`, so the default wrote
+          # helm-values-rollout-aws.yaml, which no ApplicationSet loads, and the
+          # service never became a canary.
+          description: Which environment gets the canary rollout
+          default: dev
           enum:
-            - aws
+            - dev
             - staging
             - prod
           enumNames:
-            - Dev (helm-values-aws.yaml)
-            - Staging (helm-values-staging.yaml)
-            - Production (helm-values.yaml)
+            - Dev (services-dev)
+            - Staging (services-staging)
+            - Production (services-prod)
 
     - title: Strategy
       required:
