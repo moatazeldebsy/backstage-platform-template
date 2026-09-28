@@ -52,7 +52,7 @@ A Backstage developer portal, golden-path Helm chart, 64 scaffold templates (ser
 | Capability | Details |
 |---|---|
 | **Developer portal** | Backstage v1.50.4 — catalog, TechDocs, Tech Radar (92 entries), custom scaffolder actions |
-| **Software templates** | 64 templates: 12 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, LLM App, LangGraph Agent, Team namespace, Create namespace, Add-secret, Decommission) + 52 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (63 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`) |
+| **Software templates** | 61 templates: 12 blessed golden-path (Node.js, Python, Go, Ruby, JVM, React, LLM App, LangGraph Agent, Team namespace, Create namespace, Add-secret, Decommission) + 49 advanced (infra, QA, mobile, AI/ML, multi-region, observability). Adding one is a single line in `backstage/catalog/all-templates.yaml` (60 there; `deploy-to-kind` is local-only, registered in `app-config.local.yaml`). Three more — `eks-cluster`, `eks-multi-region`, `aurora-global-cluster` — are disabled pending a redesign; each directory's `DISABLED.md` says why. CI renders every template that opens a PR against this repo and validates what it would commit (`platform-outputs` job) |
 | **QA / test templates** | 18 testing scaffold types — Playwright, k6, Pact, Newman, ZAP, Datadog, Visual Regression, Accessibility, Cucumber, Appium, Chaos Mesh, Stryker Mutation, Testcontainers, DeepEval, Unit, Component, IaC, Flutter Integration. See [CLI Reference](docs/cli-reference.md) |
 | **Team isolation** | Per-team namespace (quota + LimitRange + NetworkPolicy + ArgoCD AppProject), per-team SecretStore + Grafana folder, Kyverno-injected `idp:team` tags. See [docs/team-management.md](docs/team-management.md) |
 | **Mobile platform** | 7 mobile golden-path templates (Android/iOS/Flutter/SDK/Code Signing/App Store/Device Farm) + a 5-check mobile scorecard whose tiers gate on named requirements rather than a count. See [docs/mobile-platform.md](docs/mobile-platform.md) |
@@ -195,7 +195,7 @@ grant.
 | Plane | What's in it |
 |---|---|
 | **Experience** | The Backstage portal, the `idp` CLI and TechDocs for people; Claude Code, Copilot or any MCP client for agents. Sign-in is GitHub OAuth, with catalog groups synced from GitHub Org Teams |
-| **Control** | Backstage: catalog, scaffolder (64 templates), Tech Insights scorecard plus the compliance watcher, RAG search, Engineering Intelligence; Terraform and Crossplane for infrastructure |
+| **Control** | Backstage: catalog, scaffolder (61 templates), Tech Insights scorecard plus the compliance watcher, RAG search, Engineering Intelligence; Terraform and Crossplane for infrastructure |
 | **Delivery** | Argo CD, Workflows and Rollouts; Kyverno guardrails; Kind or EKS with Karpenter; the approval service (human approvals + user consent for agent actions) and the agent event router |
 | **AI & ML** *(optional)* | The **AI Gateway** is the single entry point: agentgateway routes every MCP tool call and every model call, and LiteLLM behind it serves Anthropic and Bedrock with virtual keys and spend tracking. Behind it: 9 KAgent agents, 8 MCP servers, MLflow, Ollama, Langfuse and DeepEval |
 | **Observability** *(optional)* | Prometheus, Grafana, Loki, Tempo, Alertmanager; DORA, flaky-test and Tech Insights exporters; OpenCost and Sloth SLOs; Engineering Intelligence scoring |
@@ -299,7 +299,7 @@ quote.
 | Channel | Who | Entry point |
 |---------|-----|-------------|
 | **1 — CLI** | Developer | `idp scaffold service` / `idp ai "list templates"` → Scaffolder Engine → GitHub repo |
-| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 64 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
+| **2 — Backstage Portal** | Developer / Platform Engineer | Software Catalog, 61 templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights scorecard |
 | **3 — AI Agent / MCP** | AI Agent (KAgent + Claude / GPT-4o) | IDP MCP Server, QA MCP Server, Contract MCP Server → Platform APIs |
 
 ## Screenshots
@@ -325,7 +325,7 @@ Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA,
 
 ### Golden path — scaffold → repo → deploy
 
-64 templates in the Scaffolder, filtered by category, tag or owner:
+61 templates in the Scaffolder, filtered by category, tag or owner:
 
 ![Scaffolder templates](docs/assets/screenshots/scaffolder-templates.jpg)
 
@@ -450,7 +450,7 @@ backstage-platform-template/
 ├── scripts/                    # setup.sh · bootstrap-local.sh · bootstrap-ai.sh · cleanup.sh
 ├── backstage/
 │   ├── app/                    # Backstage monorepo (v1.50.4)
-│   ├── catalog/templates/      # 64 golden-path templates
+│   ├── catalog/templates/      # 61 templates (+3 disabled, see DISABLED.md)
 │   ├── app-config.yaml         # base config
 │   ├── app-config.local.yaml   # Kind overrides
 │   └── app-config.aws.yaml     # EKS overrides
@@ -638,7 +638,7 @@ Stated plainly, because finding these by surprise is worse than reading them her
 
 | Limitation | Detail |
 |---|---|
-| **Coarse authorization** | Any authenticated user can run any of the 64 templates against any namespace — GitHub Org Team sync (below) gates sign-in, not template execution. [ADR-0004](docs/design/adr-0004-identity-and-access.md), issues #153 and #155 |
+| **Coarse authorization** | Any authenticated user can run any of the 61 templates against any namespace — GitHub Org Team sync (below) gates sign-in, not template execution. [ADR-0004](docs/design/adr-0004-identity-and-access.md), issues #153 and #155 |
 | **Sloth has no in-cluster operator** | SLO rules are vendored; editing a source file without the `sloth` binary silently changes nothing |
 | **No CI exercises an AWS bootstrap** | `terraform validate` and a guard against committed account ids is all that gates it |
 
@@ -687,7 +687,7 @@ behaves inside this repo.
 | `platform-architect` | Deciding *where* a change belongs — Terraform vs Crossplane vs Helm vs `kubernetes/`, which of the three interaction channels exposes a capability, which app-config layer |
 | `platform-engineer` | Actually building the change across components; knows the per-component CI gate and runs it |
 | `platform-reviewer` | Reviewing a diff against this repo's conventions (dual local/AWS coverage, both template front doors, accepted risks) |
-| `golden-path-steward` | The 64 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
+| `golden-path-steward` | The 61 scaffolder templates and the `idp` CLI scaffolder that must stay in sync with them |
 | `qa-shift-left` | Test strategy, the Bronze/Silver/Gold scorecard, contract testing, flaky-test quarantine |
 | `security-advisor` | Kyverno/PSS, IRSA and least-privilege IAM, External Secrets, Dependabot triage |
 | `sre-responder` | Live incidents, SLOs and burn-rate alerts, rollback, DR failover, postmortems |

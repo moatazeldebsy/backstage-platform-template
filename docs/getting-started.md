@@ -234,10 +234,13 @@ unchanged:
 
 ## Adding AWS CD to a Scaffolded Service
 
-Scaffolded service repos ship with CI only (`test` job). To add AWS deployment:
+A scaffolded service's `.github/workflows/ci.yml` tests, scans and publishes its
+image to GHCR. On AWS, ArgoCD pulls from the ECR repository named in the
+platform repo's `services/<name>/helm-values-aws.yaml`, so the image has to be
+pushed there too:
 
 1. Add the four secrets above to the GitHub repo
-2. Add a `deploy` job to `.github/workflows/build-and-deploy.yml`:
+2. Add a `deploy` job to the service's `.github/workflows/ci.yml`:
 
 ```yaml
 deploy:
