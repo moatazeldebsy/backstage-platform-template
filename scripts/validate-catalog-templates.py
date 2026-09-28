@@ -374,6 +374,8 @@ def main() -> int:
                 continue
             shared.add(resolved.parent.name)
 
+    disabled: list[str] = []
+
     # app-config.local.yaml — local-only registrations.
     local: set[str] = set()
     doc = load(LOCAL_CONFIG)
@@ -385,6 +387,14 @@ def main() -> int:
 
     for d in template_dirs:
         n = d.name
+        # A template can be taken out of the portal without deleting it: a
+        # DISABLED.md in its directory says why, and it must then NOT be
+        # registered, so it cannot quietly come back while the reason stands.
+        if (d / "DISABLED.md").is_file():
+            if n in shared or n in local:
+                err(d, "has DISABLED.md but is still registered — unregister it or delete DISABLED.md")
+            disabled.append(n)
+            continue
         if n not in shared and n not in local:
             err(d, "not registered in all-templates.yaml or app-config.local.yaml")
         elif n in shared and n in local:
@@ -410,7 +420,9 @@ def main() -> int:
     print(
         f"✓ {total} templates valid "
         f"({blessed} blessed, {advanced} advanced; "
-        f"{len(shared)} shared, {len(local)} local-only)"
+        f"{len(shared)} shared, {len(local)} local-only"
+        + (f"; disabled: {', '.join(disabled)}" if disabled else "")
+        + ")"
     )
     return 0
 
