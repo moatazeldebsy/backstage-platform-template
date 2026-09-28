@@ -61,6 +61,7 @@ jobs:
       kagent: ${{ steps.filter.outputs.kagent }}
       mcp-servers: ${{ steps.filter.outputs.mcp-servers }}
       scripts: ${{ steps.filter.outputs.scripts }}
+      platform-outputs: ${{ steps.filter.outputs.platform-outputs }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -92,7 +93,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s kagent backstage catalog techdocs terraform python-obs contract-mcp mcp-common mcp-servers scripts; do
+            for k in go-service cli helm k8s kagent backstage catalog techdocs terraform python-obs contract-mcp mcp-common mcp-servers scripts platform-outputs; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -160,6 +161,10 @@ jobs:
             # jobs and reported green. Observed 2026-08-13.
             echo "mcp-servers=$(match '^services/((idp|qa|github|argocd|cost|incident|security)-mcp-server|agent-event-router|approval-service)/')"
             echo "scripts=$(match '^scripts/.*\.sh$')"
+            # What templates commit to this repo, and where it lands: the
+            # templates themselves, the paths their PRs write, and everything
+            # the checks read (chart, policies, XRDs, the scripts).
+            echo "platform-outputs=$(match '^(backstage/catalog/templates/|backstage/catalog/all-templates\.yaml$|terraform/infra/|services/[^/]+/(claims/|secrets/|helm-values-)|kubernetes/(teams|policies|namespaces)/|observability/slo/|helm/service-template/|aws/crossplane/compositions/|scripts/(render-template\.js|validate-platform-outputs\.py)$)')"
           } >> "$GITHUB_OUTPUT"
 
   # backstage/catalog/ matched no filter at all, so a PR touching only
@@ -786,6 +791,67 @@ jobs:
 
       - name: Validate MCP tool-name uniqueness
         run: python3 scripts/validate-mcp-tool-names.py
+
+  # Templates that open a PR against this repo were only ever checked as
+  # template source. Rendered, several were broken — Deployments with no
+  # containerPort, invalid Terraform, PRs that replaced the repo's README.md and
+  # terraform/ root, files written where nothing applies them — and none of it
+  # was caught, because the paths they write (terraform/infra/, services/*/claims,
+  # services/*/secrets, onboarding values) matched no other job. This renders
+  # every such template and checks its PR the way the cluster and CI would, then
+  # checks the same committed paths. See scripts/validate-platform-outputs.py.
+  platform-outputs:
+    needs: changes
+    if: needs.changes.outputs.platform-outputs == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+
+      # Only the two modules render-template.js needs, at the versions Backstage
+      # itself resolves — not a full `yarn install` of backstage/app.
+      - name: Install template renderer deps
+        run: npm install --prefix "$RUNNER_TEMP/render" --no-save --no-audit --no-fund nunjucks@3.2.4 yaml@2.8.3
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+
+      - name: Install Python deps
+        run: pip install pyyaml==6.* jsonschema==4.*
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+        with:
+          terraform_version: '1.10.5'
+          terraform_wrapper: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+        with:
+          version: v3.17.0
+
+      - name: Install kubeconform and gator
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -sSLO "https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz"
+          curl -sSLO "https://github.com/yannh/kubeconform/releases/download/v0.6.7/CHECKSUMS"
+          grep "kubeconform-linux-amd64.tar.gz" CHECKSUMS | sha256sum -c
+          tar -xz -f kubeconform-linux-amd64.tar.gz && sudo mv kubeconform /usr/local/bin/
+          curl -sSLO "https://github.com/open-policy-agent/gatekeeper/releases/download/v3.23.1/gator-v3.23.1-linux-amd64.tar.gz"
+          echo "c268d7b809c9fe59a110ab0bf7c296ab00b0b6c894c209cd15e94194590291bb  gator-v3.23.1-linux-amd64.tar.gz" | sha256sum -c
+          tar -xz -f gator-v3.23.1-linux-amd64.tar.gz gator && sudo mv gator /usr/local/bin/
+
+      - name: Validate template PR output and committed platform paths
+        env:
+          RENDER_NODE_PATH: ${{ runner.temp }}/render
+        run: python3 scripts/validate-platform-outputs.py
 
   terraform-check:
     needs: changes
