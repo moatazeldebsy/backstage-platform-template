@@ -184,30 +184,6 @@ spec:
 
                   enum: [aws]
 
-                awsRoleArn:
-
-                  title: AWS IAM Role ARN for CI/CD
-
-                  type: string
-
-                  description: >-
-
-                    The OIDC role GitHub Actions assumes to push images to ECR.
-
-                    Get it from the platform repo with:
-
-                    cd terraform && terraform output -raw github_actions_role_arn
-
-                  # Fails at the form rather than three minutes into the first CI
-
-                  # run with an opaque STS error.
-
-                  pattern: '^arn:aws:iam::[0-9]{12}:role/.+$'
-
-                  ui:help: "terraform output -raw github_actions_role_arn"
-
-                  ui:placeholder: 'arn:aws:iam::123456789012:role/idp-mvp-github-actions'
-
                 clusterName:
 
                   title: Cluster Name
@@ -231,8 +207,6 @@ spec:
                   ui:help: "Must match the region the cluster and its ECR repos live in."
 
               required:
-
-                - awsRoleArn
 
                 - clusterName
 
@@ -273,6 +247,9 @@ spec:
           githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
           grafanaUrl: ${{ steps["platform-urls"].output.grafana }}
+          # Where the publish job pushes for AWS (see provision-ecr).
+          ecrRepository: ${{ (parameters.clusterName or 'idp-mvp') + '/' + parameters.name }}
+          awsRegion: ${{ parameters.awsRegion or 'us-east-1' }}
 
     # Each platform folder ships only for the platforms the app targets, so an
     # iOS-only app does not carry an Android project it never builds. The CI
@@ -338,6 +315,21 @@ spec:
           - team: ${{ parameters.owner }}
             access: maintain
 
+    # The service's ECR repository, and the IAM role its CI assumes to push
+    # there — trusted only by this repo's main branch, push-only (see
+    # idp:provision-ecr). It used to ask for the platform's github-actions role,
+    # which only trusts the platform repo, so no service could push to ECR.
+    - id: provision-ecr
+      name: Provision ECR Repository
+      if: ${{ parameters.deployTarget === 'aws' }}
+      action: idp:provision-ecr
+      input:
+        serviceName: ${{ parameters.name }}
+        clusterName: ${{ parameters.clusterName }}
+        awsRegion: ${{ parameters.awsRegion }}
+        githubOwner: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+        githubRepo: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
     - id: fetch-platform-values
       name: Prepare Platform GitOps Values
       if: ${{ parameters.enableWebDeploy }}
@@ -379,7 +371,7 @@ spec:
       input:
         repoUrl: ${{ steps.publish.output.remoteUrl }}
         secrets:
-          AWS_ROLE_ARN: ${{ parameters.awsRoleArn }}
+          AWS_ROLE_ARN: ${{ steps['provision-ecr'].output.pushRoleArn }}
 
     - id: seed-image
       name: Seed placeholder web image in local registry

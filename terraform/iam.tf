@@ -116,6 +116,37 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
   })
 }
 
+# Upper bound for the per-service image-push roles idp:provision-ecr creates:
+# push to (and read from) this cluster's ECR repositories, nothing else. Each
+# role's own inline policy narrows it further to the one repository.
+resource "aws_iam_policy" "service_image_push_boundary" {
+  name        = "${var.cluster_name}-service-image-push-boundary"
+  description = "Permissions boundary for Backstage-created service CI image-push roles"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:CompleteLayerUpload",
+          "ecr:InitiateLayerUpload",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart",
+        ]
+        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.cluster_name}/*"
+      },
+    ]
+  })
+}
+
 # Backstage IRSA — needs read access to K8s and AWS resources for catalog,
 # plus Secrets Manager and S3 for TechDocs. Also used by ESO SecretStore.
 module "backstage_irsa" {
@@ -191,6 +222,47 @@ resource "aws_iam_role_policy" "backstage" {
           "ecr:TagResource"
         ]
         Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.cluster_name}/*"
+      },
+      {
+        # idp:provision-ecr also creates the role a scaffolded service's CI
+        # assumes to push its image (the github-actions role above only trusts
+        # the platform repo, and is near-admin). Only roles under the
+        # <cluster>-svc-push- prefix, and only while they carry the push-only
+        # permissions boundary — so nothing written here can exceed an image push.
+        Sid    = "ScaffolderServicePushRoles"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:PutRolePolicy",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.cluster_name}-svc-push-*"
+        Condition = {
+          StringEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.service_image_push_boundary.arn
+          }
+        }
+      },
+      {
+        # Re-pointing an existing push role's trust at a re-created repository,
+        # and tagging it. Neither can widen what the boundary allows.
+        Sid    = "ScaffolderServicePushRolesUpdate"
+        Effect = "Allow"
+        Action = [
+          "iam:UpdateAssumeRolePolicy",
+          "iam:TagRole",
+          "iam:GetRole",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.cluster_name}-svc-push-*"
+      },
+      {
+        Sid    = "ScaffolderServicePushRolesKeepBoundary"
+        Effect = "Deny"
+        Action = [
+          "iam:DeleteRolePermissionsBoundary",
+          "iam:PutRolePermissionsBoundary",
+          "iam:AttachRolePolicy",
+        ]
+        Resource = "*"
       },
       {
         Effect = "Allow"

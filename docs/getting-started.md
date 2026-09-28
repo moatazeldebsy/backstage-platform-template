@@ -155,14 +155,11 @@ spend less: [README → What it costs on AWS](https://github.com/moatazeldebsy/b
 
 ### 4. GitHub Actions secrets
 
-Add these secrets to any scaffolded service repo to enable AWS CD:
-
-| Secret | Value |
-|--------|-------|
-| `AWS_ROLE_ARN` | `cd terraform && terraform output github_actions_role_arn` |
-| `AWS_REGION` | `us-east-1` |
-| `ECR_REGISTRY` | `<account>.dkr.ecr.us-east-1.amazonaws.com` |
-| `EKS_CLUSTER` | `idp-mvp` |
+Service repos scaffolded with **Deployment Target: AWS** get their `AWS_ROLE_ARN`
+secret automatically — a push-only role for that repository's own ECR repository
+(see [Adding AWS CD to a Scaffolded Service](#adding-aws-cd-to-a-scaffolded-service)).
+Do not give a service repository the platform's `github_actions_role_arn`: it
+only trusts the platform repo, and carries near-admin permissions.
 
 Add these to the **platform repo** to enable the auto-merge workflow (recommended over a PAT):
 
@@ -234,54 +231,23 @@ unchanged:
 
 ## Adding AWS CD to a Scaffolded Service
 
-A scaffolded service's `.github/workflows/ci.yml` tests, scans and publishes its
-image to GHCR. On AWS, ArgoCD pulls from the ECR repository named in the
-platform repo's `services/<name>/helm-values-aws.yaml`, so the image has to be
-pushed there too:
+Nothing to add. Scaffold the service with **Deployment Target: AWS** and the
+template sets it up:
 
-1. Add the four secrets above to the GitHub repo
-2. Add a `deploy` job to the service's `.github/workflows/ci.yml`:
+1. `idp:provision-ecr` creates the ECR repository `<cluster>/<service>` and an IAM
+   role, `<cluster>-svc-push-<service>`, that only the new repository's `main`
+   branch can assume and that can only push to that ECR repository (Terraform's
+   `<cluster>-service-image-push-boundary` caps what such roles may ever do).
+2. The role's ARN is written to the new repository as the `AWS_ROLE_ARN` secret.
+3. The GitOps pull request adds `services/<service>/helm-values-aws.yaml` to the
+   platform repo, pointing at that ECR repository.
 
-```yaml
-deploy:
-  needs: test
-  runs-on: ubuntu-latest
-  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  steps:
-    - uses: actions/checkout@v4
+From then on the service's `ci.yml` pushes every `main` build to GHCR and to ECR
+(SHA and `latest` tags); with a `GH_PAT` secret it also bumps the tag in the
+platform repo. ArgoCD deploys it — no Helm or kubectl from the service's CI.
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
-
-    - name: Log in to ECR
-      uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Build and push image
-      env:
-        REGISTRY: ${{ secrets.ECR_REGISTRY }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $REGISTRY/${{ env.SERVICE_NAME }}:$IMAGE_TAG .
-        docker push $REGISTRY/${{ env.SERVICE_NAME }}:$IMAGE_TAG
-
-    - name: Update kubeconfig
-      run: aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER }}
-
-    - name: Deploy via Helm
-      env:
-        REGISTRY: ${{ secrets.ECR_REGISTRY }}
-      run: |
-        helm upgrade --install ${{ env.SERVICE_NAME }} \
-          oci://$REGISTRY/helm/service-template \
-          --namespace services --create-namespace \
-          --set image.repository=$REGISTRY/${{ env.SERVICE_NAME }} \
-          --set image.tag=${{ github.sha }} \
-          --values helm-values-aws.yaml \
-          --wait --timeout 120s
-```
+The platform's own `github-actions` role is deliberately not used here: it trusts
+only the platform repository and carries near-admin permissions.
 
 ## Teardown
 

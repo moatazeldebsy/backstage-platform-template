@@ -164,6 +164,9 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write  # OIDC, to assume AWS_ROLE_ARN for the ECR push
+    env:
+      AWS_ROLE_ARN: ${{ '${{ secrets.AWS_ROLE_ARN }}' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -183,6 +186,33 @@ jobs:
           docker push ${IMAGE}:${SHORT_SHA}
           docker push ${IMAGE}:latest
           echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_ENV"
+
+      # AWS: ArgoCD deploys this service from its ECR repository (the image the
+      # platform repo's services/${{ values.name }}/helm-values-aws.yaml names), so the
+      # image goes there too. A repo scaffolded for AWS has AWS_ROLE_ARN: a role
+      # only this repo's main branch can assume, allowed to push only to that
+      # repository. Without it (a local scaffold) these steps skip.
+      - name: Configure AWS credentials (ECR push)
+        if: env.AWS_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ '${{ env.AWS_ROLE_ARN }}' }}
+          aws-region: ${{ values.awsRegion }}
+
+      - name: Log in to ECR
+        id: ecr
+        if: env.AWS_ROLE_ARN != ''
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push image to ECR
+        if: env.AWS_ROLE_ARN != ''
+        run: |
+          IMAGE=ghcr.io/${{ values.githubOrg }}/${{ values.repoName }}
+          ECR_IMAGE=${{ '${{ steps.ecr.outputs.registry }}' }}/${{ values.ecrRepository }}
+          for tag in "${SHORT_SHA}" latest; do
+            docker tag "${IMAGE}:${tag}" "${ECR_IMAGE}:${tag}"
+            docker push "${ECR_IMAGE}:${tag}"
+          done
 
       - name: Update image tag in platform repo
         env:
