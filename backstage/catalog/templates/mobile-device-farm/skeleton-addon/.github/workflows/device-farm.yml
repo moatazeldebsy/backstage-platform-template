@@ -19,13 +19,57 @@ env:
 {%- endif %}
 
 jobs:
+  # Every provider job used to run on each push and fail at its login until
+  # the account existed. They now run only once the provider's secrets are set,
+  # and say which are missing otherwise.
+  credentials:
+    name: Detect device-farm credentials
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ '${{ steps.check.outputs.ready }}' }}
+    steps:
+      - id: check
+        env:
+{%- if values.provider === 'firebase-test-lab' %}
+          GCP_SERVICE_ACCOUNT_KEY: ${{ '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' }}
+{%- set credNames = 'GCP_SERVICE_ACCOUNT_KEY' %}
+{%- elif values.provider === 'lambdatest' %}
+          LT_USERNAME: ${{ '${{ secrets.LT_USERNAME }}' }}
+          LT_ACCESS_KEY: ${{ '${{ secrets.LT_ACCESS_KEY }}' }}
+{%- set credNames = 'LT_USERNAME LT_ACCESS_KEY' %}
+{%- elif values.provider === 'browserstack' %}
+          BROWSERSTACK_USERNAME: ${{ '${{ secrets.BROWSERSTACK_USERNAME }}' }}
+          BROWSERSTACK_ACCESS_KEY: ${{ '${{ secrets.BROWSERSTACK_ACCESS_KEY }}' }}
+{%- set credNames = 'BROWSERSTACK_USERNAME BROWSERSTACK_ACCESS_KEY' %}
+{%- else %}
+          SAUCE_USERNAME: ${{ '${{ secrets.SAUCE_USERNAME }}' }}
+          SAUCE_ACCESS_KEY: ${{ '${{ secrets.SAUCE_ACCESS_KEY }}' }}
+{%- set credNames = 'SAUCE_USERNAME SAUCE_ACCESS_KEY' %}
+{%- endif %}
+        run: |
+          missing=""
+          for s in ${{ credNames }}; do [ -n "${!s}" ] || missing="$missing $s"; done
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Device-farm run skipped — add these repository secrets to enable it:$missing"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
 {% if values.provider === 'firebase-test-lab' %}
 {% if values.platform === 'android' %}
   device-farm-android:
     name: Firebase Test Lab — Android (${{ values.testFramework }})
+    needs: credentials
+    if: needs.credentials.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -47,7 +91,7 @@ jobs:
 
       - name: Build test APK
         run: |
-          cd android
+          cd "$ANDROID_DIR"
           ./gradlew assembleDebug assembleDebugAndroidTest
 
       - name: Authenticate with Google Cloud
@@ -64,8 +108,8 @@ jobs:
         run: |
           gcloud firebase test android run \
             --type instrumentation \
-            --app android/app/build/outputs/apk/debug/app-debug.apk \
-            --test android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --app $ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk \
+            --test $ANDROID_DIR/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
             --device-spec device-matrix/firebase/${{ values.deviceCoverage }}.yml \
             --results-bucket gs://${{ '${{ env.FIREBASE_PROJECT }}' }}-test-results \
             --results-dir "${{ '${{ github.run_id }}' }}" \
@@ -111,9 +155,17 @@ jobs:
 {% elif values.platform === 'ios' %}
   device-farm-ios:
     name: Firebase Test Lab — iOS (XCUITest)
+    needs: credentials
+    if: needs.credentials.outputs.ready == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
       - name: Build XCTest zip
         run: |
@@ -180,9 +232,17 @@ jobs:
 {% elif values.platform === 'flutter' %}
   device-farm-flutter:
     name: Firebase Test Lab — Flutter (integration_test)
+    needs: credentials
+    if: needs.credentials.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -281,9 +341,17 @@ jobs:
 {%- endif %}
   device-farm-lambdatest:
     name: LambdaTest — ${{ values.platform }} (${{ values.testFramework }})
+    needs: credentials
+    if: needs.credentials.outputs.ready == 'true'
     runs-on: ${{ ltRunner }}
     steps:
       - uses: actions/checkout@v4
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
 {%- if values.platform === 'android' %}
 
@@ -307,7 +375,7 @@ jobs:
 
       - name: Build app + test APKs
         run: |
-          cd android
+          cd "$ANDROID_DIR"
           ./gradlew assembleDebug assembleDebugAndroidTest
 {%- elif values.platform === 'flutter' %}
 
@@ -400,8 +468,8 @@ jobs:
             exit 1
           fi
 {%- if values.platform === 'android' %}
-          APP_FILE=android/app/build/outputs/apk/debug/app-debug.apk
-          TEST_FILE=android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          APP_FILE=$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk
+          TEST_FILE=$ANDROID_DIR/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 {%- elif values.platform === 'flutter' %}
           APP_FILE=build/app/outputs/apk/debug/app-debug.apk
           TEST_FILE=build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
@@ -526,9 +594,17 @@ jobs:
 {%- endif %}
   device-farm-browserstack:
     name: BrowserStack — ${{ values.platform }} (${{ values.testFramework }})
+    needs: credentials
+    if: needs.credentials.outputs.ready == 'true'
     runs-on: ${{ bsRunner }}
     steps:
       - uses: actions/checkout@v4
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
 {%- if values.platform === 'android' %}
 
@@ -552,7 +628,7 @@ jobs:
 
       - name: Build app + test APKs
         run: |
-          cd android
+          cd "$ANDROID_DIR"
           ./gradlew assembleDebug assembleDebugAndroidTest
 {%- elif values.platform === 'flutter' %}
 
@@ -613,8 +689,8 @@ jobs:
           fi
           AUTH="$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY"
 {%- if values.platform === 'android' %}
-          APP_FILE=android/app/build/outputs/apk/debug/app-debug.apk
-          TEST_FILE=android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          APP_FILE=$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk
+          TEST_FILE=$ANDROID_DIR/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 {%- elif values.platform === 'flutter' %}
           APP_FILE=build/app/outputs/apk/debug/app-debug.apk
           TEST_FILE=build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
@@ -727,9 +803,17 @@ jobs:
 {% else %}
   device-farm-saucelabs:
     name: Sauce Labs — ${{ values.platform }} (${{ values.testFramework }})
+    needs: credentials
+    if: needs.credentials.outputs.ready == 'true'
     runs-on: {% if values.platform === 'ios' %}macos-15{% else %}ubuntu-latest{% endif %}
     steps:
       - uses: actions/checkout@v4
+
+      # A Flutter app keeps its Gradle project in android/; a native app (the
+      # android-app template) at the repo root. This used to assume android/.
+      - name: Locate Android project
+        run: |
+          if [ -f android/gradlew ]; then echo "ANDROID_DIR=android" >> "$GITHUB_ENV"; else echo "ANDROID_DIR=." >> "$GITHUB_ENV"; fi
 
 {%- if values.platform === 'android' %}
 
@@ -753,7 +837,7 @@ jobs:
 
       - name: Build app + test APKs
         run: |
-          cd android
+          cd "$ANDROID_DIR"
           ./gradlew assembleDebug assembleDebugAndroidTest
 {%- elif values.platform === 'flutter' %}
 

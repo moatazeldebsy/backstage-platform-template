@@ -122,6 +122,11 @@ spec:
 
           **Test runner:** ${{ parameters.testRunner }}
 
+          **Prerequisite:** the tests use the `integration_test` SDK package. Apps scaffolded from
+          the flutter-app template already declare it; otherwise run
+          `flutter pub add --dev integration_test --sdk=flutter` and commit `pubspec.yaml`,
+          or `flutter analyze` will fail on the new tests.
+
           After merging, register the catalog entry via Backstage → Register existing component.
 
           > Scaffolded via the IDP QA Platform
