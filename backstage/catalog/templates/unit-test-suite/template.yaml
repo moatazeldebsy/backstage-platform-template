@@ -8,7 +8,7 @@ metadata:
     idp.io/topic: testing
     idp.io/tutorial-type: template
   title: Unit Test Suite (brownfield)
-  description: Add a standardized unit-test scaffold + coverage gate (70%) + JUnit output to an existing service repo. Language-aware (Go, Node/TS, Python).
+  description: Add a unit-test workflow + coverage gate (70%) + JUnit output to an existing service repo, using the runner it already has. Language-aware (Go, Node — Jest or Vitest, Python).
   tags:
     - unit-testing
     - coverage
@@ -126,14 +126,17 @@ spec:
         description: |
           ## Add Unit Test Suite — ${{ parameters.language }}
 
-          Adds a standardized unit-test scaffold to this repo:
+          Adds a unit-test workflow to this repo:
 
-          - GitHub Actions workflow at `.github/workflows/unit-tests.yml`
-          - Coverage gate at **${{ parameters.coverageThreshold }}%** (lines)
+          - GitHub Actions workflow at `.github/workflows/unit-tests.yml`, running the repo's
+            own tests with the runner it already uses (Node: Jest or Vitest, detected from
+            `package.json`; Go: `go test`; Python: `pytest`)
+          - Coverage gate at **${{ parameters.coverageThreshold }}%** (lines) — advisory until you
+            remove `COVERAGE_ADVISORY` from the workflow
           - JUnit XML output (feeds the platform's flaky-test exporter)
-          - `idp.io/quality-gates: unit` added to `catalog-info.yaml`
 
-          After merge, the Tech Insights scorecard's `has-coverage-gate` check turns green within 15 min.
+          To light up the scorecard's `has-coverage-gate` check, add `coverage` to the
+          `idp.io/quality-gates` annotation in this service's `catalog-info.yaml`.
 
           > Scaffolded via the IDP QA Platform
         sourcePath: .
