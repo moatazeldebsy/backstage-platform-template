@@ -103,7 +103,9 @@ jobs:
 
           {
             echo "go-service=$(match '^services/hello-service/')"
-            echo "cli=$(match '^cli/')"
+            # templates/ too: cli/cmd/idp/template_parity_test.go reads every
+            # template.yaml, so a renamed or newly-required parameter must fail here.
+            echo "cli=$(match '^(cli/|backstage/catalog/templates/)')"
             echo "helm=$(match '^helm/')"
             # observability/alertmanager/ holds AlertmanagerConfig and PrometheusRule
             # CRs. It matched only python-obs, which runs py_compile and never parses

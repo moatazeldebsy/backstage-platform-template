@@ -1,6 +1,8 @@
 package backstage
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -206,7 +208,7 @@ func TestScaffoldService(t *testing.T) {
 		defer srv.Close()
 		c := NewClient(srv.URL, "")
 		err := c.ScaffoldService(t.Context(), ScaffoldRequest{
-			Name: "my-svc", Type: "go", Namespace: "services",
+			Name: "my-svc", Type: "go",
 			Owner: "team-platform", GHOrg: "myorg",
 		})
 		if err == nil {
@@ -238,7 +240,7 @@ func TestScaffoldService(t *testing.T) {
 		defer srv.Close()
 		c := NewClient(srv.URL, "tok")
 		err := c.ScaffoldService(t.Context(), ScaffoldRequest{
-			Name: "my-svc", Type: "go", Namespace: "services",
+			Name: "my-svc", Type: "go",
 			Owner: "team-platform", GHOrg: "myorg",
 		})
 		if err != nil {
@@ -421,4 +423,126 @@ func TestScaffoldTestSuite(t *testing.T) {
 			t.Errorf("expected cloudGrid=browserstack in request body, got: %s", capturedBody)
 		}
 	})
+}
+
+func TestTestSuiteValues(t *testing.T) {
+	t.Run("greenfield creates a new repo", func(t *testing.T) {
+		v := TestSuiteValues(TestSuiteRequest{Name: "e2e", GHOrg: "myorg", Service: "svc"})
+		if v["deploymentMode"] != "new-repository" || v["repoUrl"] != "github.com?owner=myorg&repo=e2e" {
+			t.Errorf("unexpected values: %v", v)
+		}
+		if _, ok := v["targetRepoUrl"]; ok {
+			t.Error("greenfield must not send targetRepoUrl")
+		}
+	})
+	t.Run("brownfield targets the existing repo", func(t *testing.T) {
+		v := TestSuiteValues(TestSuiteRequest{Name: "e2e", GHOrg: "myorg", TargetRepo: "acme/orders"})
+		if v["deploymentMode"] != "add-to-existing" || v["targetRepoUrl"] != "github.com?owner=acme&repo=orders" {
+			t.Errorf("unexpected values: %v", v)
+		}
+		if _, ok := v["repoUrl"]; ok {
+			t.Error("brownfield must not send repoUrl")
+		}
+	})
+	t.Run("extra values override", func(t *testing.T) {
+		v := TestSuiteValues(TestSuiteRequest{Extra: map[string]any{"language": "go"}})
+		if v["language"] != "go" {
+			t.Errorf("expected language=go, got %v", v)
+		}
+	})
+}
+
+func TestServiceValues(t *testing.T) {
+	v := ServiceValues(ScaffoldRequest{Name: "svc", GHOrg: "o", CostCenter: "cc"})
+	if v["deployTarget"] != "local" || v["costCenter"] != "cc" {
+		t.Errorf("unexpected values: %v", v)
+	}
+	if _, ok := v["clusterName"]; ok {
+		t.Error("local deploy must not send clusterName")
+	}
+	v = ServiceValues(ScaffoldRequest{Name: "svc", DeployTarget: "aws", ClusterName: "c", AWSRegion: "eu-west-1"})
+	if v["clusterName"] != "c" || v["awsRegion"] != "eu-west-1" {
+		t.Errorf("aws deploy should send cluster and region: %v", v)
+	}
+}
+
+// templateServer serves one template entity plus the scaffolder task endpoints,
+// capturing the POSTed task body.
+func templateServer(t *testing.T, params string, captured *[]byte) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/catalog/entities/by-name/template/"):
+			w.Write([]byte(`{"spec":{"parameters":` + params + `}}`)) //nolint:errcheck
+		case r.Method == http.MethodPost:
+			*captured, _ = io.ReadAll(r.Body)
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"id":"t1"}`)) //nolint:errcheck
+		case strings.Contains(r.URL.Path, "/eventstream"):
+			w.Write([]byte("data:{\"type\":\"completion\",\"body\":{\"message\":\"Run completed with status: completed\"}}\n\n")) //nolint:errcheck
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+func TestRunTemplate(t *testing.T) {
+	params := `[{"required":["targetRepoUrl","language"],"properties":{"targetRepoUrl":{"type":"string"},"language":{"type":"string"},"coverageThreshold":{"type":"integer"}}}]`
+
+	t.Run("drops undeclared keys and coerces types", func(t *testing.T) {
+		var body []byte
+		srv := templateServer(t, params, &body)
+		defer srv.Close()
+		err := NewClient(srv.URL, "").RunTemplate(t.Context(), "unit-test-suite", map[string]any{
+			"targetRepoUrl": "github.com?owner=a&repo=b", "language": "go",
+			"coverageThreshold": "80", "deploymentMode": "add-to-existing",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var p taskPayload
+		if err := json.Unmarshal(body, &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.TemplateRef != "template:default/unit-test-suite" {
+			t.Errorf("templateRef = %s", p.TemplateRef)
+		}
+		if _, ok := p.Values["deploymentMode"]; ok {
+			t.Error("undeclared deploymentMode should be dropped")
+		}
+		if p.Values["coverageThreshold"] != float64(80) {
+			t.Errorf("coverageThreshold should be a number, got %#v", p.Values["coverageThreshold"])
+		}
+	})
+
+	t.Run("reports missing required parameters before creating a task", func(t *testing.T) {
+		var body []byte
+		srv := templateServer(t, params, &body)
+		defer srv.Close()
+		err := NewClient(srv.URL, "").RunTemplate(t.Context(), "unit-test-suite", map[string]any{"language": "go"})
+		if err == nil || !strings.Contains(err.Error(), "targetRepoUrl") {
+			t.Fatalf("expected missing targetRepoUrl error, got %v", err)
+		}
+		if body != nil {
+			t.Error("no task should be created when parameters are missing")
+		}
+	})
+}
+
+func TestListTemplates(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("filter") != "kind=template" {
+			t.Errorf("unexpected filter %q", r.URL.RawQuery)
+		}
+		w.Write([]byte(`[{"metadata":{"name":"s3-bucket","title":"S3","tags":["aws"]},"spec":{"type":"resource"}},` + //nolint:errcheck
+			`{"metadata":{"name":"go-service","title":"Go"},"spec":{"type":"service"}}]`))
+	}))
+	defer srv.Close()
+	got, err := NewClient(srv.URL, "").ListTemplates(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Name != "go-service" || got[1].Tags[0] != "aws" {
+		t.Errorf("unexpected templates: %+v", got)
+	}
 }

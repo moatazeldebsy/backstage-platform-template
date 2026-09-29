@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/backstage"
 	"github.com/YOUR_GITHUB_ORG/backstage-idp-starter/cli/internal/scaffold"
@@ -28,7 +30,12 @@ var templateRef = map[string]string{
 	"iac":                 "iac-test-suite",
 	"flutter-integration": "flutter-integration-test-suite",
 	"deepeval":            "deepeval-llm-eval-suite",
+	"contract":            "enable-contract-testing",
+	"security":            "enable-security-scanning",
 }
+
+// supportedTypes lists templateRef keys in help-text order.
+const supportedTypes = "playwright k6 pact newman zap datadog visual accessibility cucumber appium chaos mutation testcontainers unit component iac flutter-integration deepeval contract security"
 
 var (
 	tsName      string
@@ -40,6 +47,18 @@ var (
 	tsLocal     bool
 	tsDryRun    bool
 	tsURL       string
+	tsTarget    string
+	tsTargetURL string
+	tsSet       []string
+
+	// unit
+	tsLanguage string
+	tsCoverage int
+
+	// deepeval
+	tsAgentPrompt string
+	tsAgentTools  string
+	tsTargetAgent string
 
 	// k6
 	tsVUs          int
@@ -96,11 +115,19 @@ files locally under test-suites/<name>/.
 Supported types:
   playwright | k6 | pact | newman | zap | datadog | visual |
   accessibility | cucumber | appium | chaos | mutation | testcontainers |
-  unit | component | iac | flutter-integration | deepeval
+  unit | component | iac | flutter-integration | deepeval | contract | security
 
-Note: 'unit', 'component', 'iac', 'flutter-integration', and 'deepeval'
-work only via the Backstage API (omit --local). They open a PR against an
-existing service repo rather than creating a standalone test-suites/ directory.`,
+Greenfield vs brownfield:
+  By default the suite goes into a NEW GitHub repo named --name.
+  Pass --target-repo owner/repo to open a PR against an EXISTING repo instead.
+
+  'unit', 'component', 'iac', 'flutter-integration' and 'security' are
+  brownfield-only: they require --target-repo. 'deepeval' and 'contract'
+  need Backstage but create a new repo. None of these seven have a local
+  generator, so they can't be used with --local.
+
+Any other template parameter can be passed with --set key=value
+(see 'idp template params <template>').`,
 	Example: `  # Playwright E2E suite for hello-service
   idp scaffold test-suite --name hello-e2e --type playwright --service hello-service
 
@@ -128,6 +155,18 @@ existing service repo rather than creating a standalone test-suites/ directory.`
   idp scaffold test-suite --name hello-mutation --type mutation --service hello-service \
     --score 80
 
+  # Brownfield: add Playwright tests to an existing repo (opens a PR)
+  idp scaffold test-suite --name hello-e2e --type playwright --service hello-service \
+    --target-repo my-org/hello-service
+
+  # Brownfield-only: unit-test scaffolding for a Go service
+  idp scaffold test-suite --name hello-unit --type unit --service hello-service \
+    --target-repo my-org/hello-service --language go
+
+  # SAST/SCA (SonarCloud + Snyk) for an existing repo
+  idp scaffold test-suite --name hello-sec-scan --type security --service hello-service \
+    --target-repo my-org/hello-service
+
   # Force local generation (offline / pre-Backstage)
   idp scaffold test-suite --name hello-e2e --type playwright --service hello-service --local`,
 	RunE: runScaffoldTestSuite,
@@ -145,6 +184,18 @@ func init() {
 	f.BoolVar(&tsLocal, "local", false, "Skip Backstage API, generate files locally")
 	f.BoolVar(&tsDryRun, "dry-run", false, "Print files that would be generated without writing them")
 	f.StringVar(&tsURL, "backstage-url", "", "Backstage base URL (auto-resolved from IDP_BACKSTAGE_URL / IDP_DOMAIN when --env aws)")
+	f.StringVar(&tsTarget, "target-repo", "", "Existing repo to open a PR against (owner/repo or GitHub URL) — brownfield mode")
+	f.StringVar(&tsTargetURL, "target-url", "", "URL of the running service under test (k6/zap/datadog/playwright/newman/visual/accessibility/cucumber)")
+	f.StringArrayVar(&tsSet, "set", nil, "Extra template parameter as key=value (repeatable)")
+
+	// unit
+	f.StringVar(&tsLanguage, "language", "", "unit: service language (go|nodejs|python) — required for --type unit")
+	f.IntVar(&tsCoverage, "coverage", 70, "unit: minimum line coverage percentage")
+
+	// deepeval
+	f.StringVar(&tsAgentPrompt, "agent-prompt", "", "deepeval: system prompt of the agent under test (required for --type deepeval)")
+	f.StringVar(&tsAgentTools, "agent-tools", "", "deepeval: comma-separated tool names the agent may call (required for --type deepeval)")
+	f.StringVar(&tsTargetAgent, "target-agent", "", "deepeval: KAgent agent name under test")
 
 	// k6
 	f.IntVar(&tsVUs, "vus", 10, "k6: number of virtual users")
@@ -152,8 +203,8 @@ func init() {
 	f.IntVar(&tsP95Threshold, "p95", 500, "k6: p95 latency threshold in ms")
 
 	// pact
-	f.StringVar(&tsConsumer, "consumer", "", "pact: consumer name (default: <name>-consumer)")
-	f.StringVar(&tsProvider, "provider", "", "pact: provider name (default: <service>)")
+	f.StringVar(&tsConsumer, "consumer", "", "pact/contract: consumer name (default: <name>-consumer)")
+	f.StringVar(&tsProvider, "provider", "", "pact/contract: provider name (default: <service>)")
 	f.StringVar(&tsBrokerURL, "broker-url", "https://YOUR_ORG.pactflow.io", "pact: Pact Broker URL")
 
 	// zap
@@ -197,7 +248,14 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--name must be lowercase alphanumeric with hyphens (got %q)", tsName)
 	}
 	if _, ok := templateRef[tsType]; !ok {
-		return fmt.Errorf("unknown --type %q; supported: playwright k6 pact newman zap datadog visual accessibility cucumber appium chaos mutation testcontainers unit component iac flutter-integration deepeval", tsType)
+		return fmt.Errorf("unknown --type %q; supported: %s", tsType, supportedTypes)
+	}
+	if err := validateTestSuiteMode(); err != nil {
+		return err
+	}
+	extra, err := testSuiteExtras(cmd)
+	if err != nil {
+		return err
 	}
 	// Catch a bad --device-farm here rather than emitting a wdio.config.ts that
 	// points at a hub that does not exist and only fails in CI.
@@ -225,8 +283,8 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		Service:       tsService,
 		Namespace:     tsNamespace,
 		RootDir:       rootDir(),
-		BaseURL:       "http://localhost:3000",
-		TargetURL:     "http://localhost:8080",
+		BaseURL:       firstNonEmpty(tsTargetURL, "http://localhost:3000"),
+		TargetURL:     firstNonEmpty(tsTargetURL, "http://localhost:8080"),
 		VUs:           tsVUs,
 		Duration:      tsDuration,
 		P95Threshold:  tsP95Threshold,
@@ -251,6 +309,10 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		DryRun:        tsDryRun,
 	}
 
+	if tsDryRun && needsBackstage(tsType) {
+		return previewValues(templateRef[tsType], backstage.TestSuiteValues(buildTestSuiteRequest(extra)))
+	}
+
 	if !tsLocal && !tsDryRun {
 		url := resolveBackstageURL(scaffoldEnv, tsURL, rootDir())
 		token := resolveToken(scaffoldEnv, scaffoldToken, rootDir())
@@ -260,26 +322,184 @@ func runScaffoldTestSuite(cmd *cobra.Command, _ []string) error {
 		client := backstage.NewClient(url, token)
 		if client.Healthy(cmd.Context()) {
 			fmt.Printf("[idp] Backstage reachable at %s — using Scaffolder API\n", url)
-			if tsDesc == "" {
-				tsDesc = tsType + " test suite for " + tsService
-			}
-			return client.ScaffoldTestSuite(cmd.Context(), backstage.TestSuiteRequest{
-				Name:         tsName,
-				TemplateRef:  templateRef[tsType],
-				Service:      tsService,
-				Namespace:    tsNamespace,
-				GHOrg:        ghOrg(),
-				Owner:        tsOwner,
-				Desc:         tsDesc,
-				ConsumerName: tsConsumer,
-				ProviderName: tsProvider,
-				DDSite:       tsDDSite,
-				DeviceFarm:   tsDeviceFarm,
-				CloudGrid:    tsCloudGrid,
-			})
+			return client.ScaffoldTestSuite(cmd.Context(), buildTestSuiteRequest(extra))
+		}
+		if needsBackstage(tsType) {
+			return fmt.Errorf("Backstage is not reachable at %s; --type %s has no local generator", url, tsType)
 		}
 		fmt.Println("[idp] Backstage not reachable — falling back to local generation")
 	}
 
 	return scaffold.LocalTestSuite(cfg)
+}
+
+// needsBackstage reports whether the type can only be scaffolded through the
+// Backstage API: brownfield mode, PR-only types, and types without a local generator.
+func needsBackstage(t string) bool {
+	return tsTarget != "" || scaffold.APIOnlyTypes[t]
+}
+
+// validateTestSuiteMode checks the greenfield/brownfield flags before any network call.
+func validateTestSuiteMode() error {
+	if tsTarget != "" {
+		owner, repo, err := parseRepo(tsTarget)
+		if err != nil {
+			return err
+		}
+		tsTarget = owner + "/" + repo
+		if tsLocal {
+			return fmt.Errorf("--target-repo opens a PR through Backstage and can't be combined with --local")
+		}
+		if tsType == "contract" {
+			return fmt.Errorf("--type contract deploys the contract MCP server and creates a new test repo; it doesn't take --target-repo")
+		}
+	}
+	if scaffold.PROnlyTypes[tsType] && tsTarget == "" {
+		return fmt.Errorf("--type %s opens a PR against an existing repo; pass --target-repo owner/repo", tsType)
+	}
+	if tsLocal && scaffold.APIOnlyTypes[tsType] {
+		return fmt.Errorf("--type %s requires Backstage (no local generator); remove --local", tsType)
+	}
+	switch tsType {
+	case "unit":
+		switch tsLanguage {
+		case "go", "nodejs", "python":
+		default:
+			return fmt.Errorf("--type unit needs --language go|nodejs|python (got %q)", tsLanguage)
+		}
+	case "deepeval":
+		if tsAgentPrompt == "" || tsAgentTools == "" {
+			return fmt.Errorf("--type deepeval needs --agent-prompt and --agent-tools")
+		}
+	}
+	return nil
+}
+
+// testSuiteExtras maps type-specific flags to template parameter names.
+// Flags are forwarded only when the user set them, so the template's own
+// defaults apply otherwise — the CLI defaults exist for local generation.
+func testSuiteExtras(cmd *cobra.Command) (map[string]any, error) {
+	changed := cmd.Flags().Changed
+	extra := map[string]any{}
+	set := func(flag, key string, v any) {
+		if changed(flag) {
+			extra[key] = v
+		}
+	}
+	set("target-url", "targetUrl", tsTargetURL)
+	set("target-url", "baseUrl", tsTargetURL)
+
+	switch tsType {
+	case "k6":
+		set("vus", "vus", tsVUs)
+		set("duration", "duration", tsDuration)
+		set("p95", "p95Threshold", tsP95Threshold)
+	case "pact":
+		set("broker-url", "pactBrokerUrl", tsBrokerURL)
+		set("target-url", "providerBaseUrl", tsTargetURL)
+	case "zap":
+		set("scan-type", "scanType", tsScanType)
+		set("openapi-url", "openApiUrl", tsOpenAPIURL)
+		set("fail-risk", "failOnRiskLevel", tsFailRisk)
+	case "visual":
+		if changed("threshold") {
+			f, err := strconv.ParseFloat(tsDiffThreshold, 64)
+			if err != nil {
+				return nil, fmt.Errorf("--threshold must be a number (got %q)", tsDiffThreshold)
+			}
+			extra["diffThreshold"] = f
+		}
+	case "accessibility":
+		set("wcag", "wcagLevel", tsWCAGLevel)
+	case "appium":
+		set("platform", "platform", tsPlatform)
+		set("appium-server", "appiumServer", tsAppiumServer)
+	case "chaos":
+		set("experiments", "experiments", splitList(tsExperiments))
+		set("chaos-duration", "duration", tsChaosDuration)
+		set("namespace", "namespace", tsNamespace)
+	case "mutation":
+		set("score", "mutationScore", tsMutationScore)
+		set("test-runner", "testRunner", tsTestRunner)
+	case "testcontainers":
+		set("containers", "containers", splitList(tsContainers))
+		set("test-runner", "testRunner", tsTestRunner)
+	case "unit":
+		extra["language"] = tsLanguage
+		set("coverage", "coverageThreshold", tsCoverage)
+	case "deepeval":
+		extra["agentSystemPrompt"] = tsAgentPrompt
+		extra["agentTools"] = tsAgentTools
+		set("target-agent", "targetAgent", tsTargetAgent)
+	case "contract":
+		extra["createTestRepo"] = true
+		set("namespace", "targetNamespace", tsNamespace)
+	}
+
+	sets, err := parseSets(tsSet)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range sets {
+		extra[k] = v
+	}
+	return extra, nil
+}
+
+func splitList(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// buildTestSuiteRequest assembles the Backstage request from the parsed flags.
+func buildTestSuiteRequest(extra map[string]any) backstage.TestSuiteRequest {
+	desc := tsDesc
+	if desc == "" {
+		desc = tsType + " test suite for " + tsService
+	}
+	req := backstage.TestSuiteRequest{
+		Name:         tsName,
+		TemplateRef:  templateRef[tsType],
+		Service:      tsService,
+		Namespace:    tsNamespace,
+		GHOrg:        ghOrg(),
+		Owner:        tsOwner,
+		Desc:         desc,
+		TargetRepo:   tsTarget,
+		ConsumerName: tsConsumer,
+		ProviderName: tsProvider,
+		Extra:        extra,
+	}
+	switch tsType {
+	case "datadog":
+		req.DDSite = tsDDSite
+	case "appium":
+		req.DeviceFarm = tsDeviceFarm
+	case "playwright", "visual":
+		req.CloudGrid = tsCloudGrid
+	}
+	if tsType == "pact" || tsType == "contract" {
+		// Pact and contract templates require both names; mirror the local defaults.
+		if req.ConsumerName == "" {
+			req.ConsumerName = tsName + "-consumer"
+		}
+		if req.ProviderName == "" {
+			req.ProviderName = tsService
+		}
+	}
+	return req
 }

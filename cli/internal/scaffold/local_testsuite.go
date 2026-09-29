@@ -66,6 +66,28 @@ type TestSuiteConfig struct {
 	DryRun bool
 }
 
+// PROnlyTypes are test-suite types whose templates only support opening a
+// PR against an existing repo (brownfield) — they need a target repo.
+var PROnlyTypes = map[string]bool{
+	"unit":                true,
+	"component":           true,
+	"iac":                 true,
+	"flutter-integration": true,
+	"security":            true,
+}
+
+// APIOnlyTypes have no local generator and must go through the Backstage API:
+// every PR-only type, plus deepeval and contract (which create a new repo).
+var APIOnlyTypes = map[string]bool{
+	"unit":                true,
+	"component":           true,
+	"iac":                 true,
+	"flutter-integration": true,
+	"security":            true,
+	"deepeval":            true,
+	"contract":            true,
+}
+
 // LocalTestSuite generates a test suite scaffold under <RootDir>/test-suites/<Name>.
 func LocalTestSuite(cfg TestSuiteConfig) error {
 	cfg = applyTestSuiteDefaults(cfg)
@@ -77,17 +99,10 @@ func LocalTestSuite(cfg TestSuiteConfig) error {
 		}
 	}
 
-	// These types open a PR on an existing repo via the Backstage Scaffolder
-	// API and have no meaningful local-generation equivalent.
-	apiOnlyTypes := map[string]bool{
-		"unit":                true,
-		"component":           true,
-		"iac":                 true,
-		"flutter-integration": true,
-		"deepeval":            true,
-	}
-	if apiOnlyTypes[cfg.Type] {
-		return fmt.Errorf("--type %q requires Backstage to be reachable (it opens a PR on an existing repo); remove --local and ensure Backstage is running at %s", cfg.Type, cfg.RootDir)
+	// These types only exist as Backstage templates (most open a PR on an
+	// existing repo) and have no meaningful local-generation equivalent.
+	if APIOnlyTypes[cfg.Type] {
+		return fmt.Errorf("--type %q has no local generator and requires Backstage to be reachable; remove --local", cfg.Type)
 	}
 
 	generators := map[string]func(TestSuiteConfig, string) error{

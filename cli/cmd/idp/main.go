@@ -27,6 +27,8 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logsCmd)
 	rootCmd.AddCommand(runnerCmd)
+	rootCmd.AddCommand(templateCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 func main() {

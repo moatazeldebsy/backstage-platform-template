@@ -468,15 +468,18 @@ backstage-platform-template/
 
 ## `idp` CLI
 
-Built automatically by `setup.sh` (`make cli-build` → `./bin/idp`). Scaffolds services and 18 types of test suites via the Backstage API when reachable, or locally otherwise:
+Built automatically by `setup.sh` (`make cli-build` → `./bin/idp`). Scaffolds services and 20 types of test suites via the Backstage API when reachable, or locally otherwise — into a new repo (greenfield) or as a PR against an existing one (brownfield, `--target-repo`). `idp template run` reaches every other template:
 
 ```bash
-idp scaffold service --name my-svc --type nodejs           # nodejs | python | go
+idp scaffold service --name my-svc --type nodejs           # nodejs | python | go | jvm | ruby | react
 idp scaffold test-suite --name my-e2e --type playwright --service my-svc
+idp scaffold test-suite --name my-unit --type unit --service my-svc \
+  --target-repo my-org/my-svc --language go                # brownfield: opens a PR
+idp template run s3-bucket-crossplane --set name=orders-archive
 idp doctor                                                  # check local tool versions + cluster health
 ```
 
-Full command reference, all 18 test-suite types, and DX commands (`idp context inject`, `idp learn`, `idp mcp status`, …): [docs/cli-reference.md](docs/cli-reference.md).
+Full command reference, all 20 test-suite types, and DX/day-2 commands (`idp template`, `idp deploy`, `idp context inject`, `idp mcp status`, …): [docs/cli-reference.md](docs/cli-reference.md).
 
 ## The Golden Path
 

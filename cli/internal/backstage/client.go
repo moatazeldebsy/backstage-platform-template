@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -66,14 +67,18 @@ func (c *Client) Healthy(ctx context.Context) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-// ScaffoldRequest holds the values forwarded to the Backstage Scaffolder template.
+// ScaffoldRequest holds the values forwarded to a Backstage service template.
 type ScaffoldRequest struct {
-	Name      string
-	Type      string
-	Namespace string
-	Owner     string
-	Desc      string
-	GHOrg     string
+	Name         string
+	Type         string // nodejs | python | go | …; used when TemplateRef is empty
+	TemplateRef  string // e.g. "react-frontend"; defaults to "<Type>-service"
+	Owner        string
+	Desc         string
+	GHOrg        string
+	CostCenter   string
+	DeployTarget string // local | aws
+	ClusterName  string // aws only
+	AWSRegion    string // aws only
 }
 
 type taskPayload struct {
@@ -85,47 +90,41 @@ type taskCreated struct {
 	ID string `json:"id"`
 }
 
+// RepoURL formats an owner/repo pair the way RepoUrlPicker fields expect it.
+func RepoURL(owner, repo string) string {
+	return fmt.Sprintf("github.com?owner=%s&repo=%s", owner, repo)
+}
+
+// ServiceValues builds the scaffolder values for a golden-path service template.
+func ServiceValues(req ScaffoldRequest) map[string]any {
+	target := req.DeployTarget
+	if target == "" {
+		target = "local"
+	}
+	values := map[string]any{
+		"name":         req.Name,
+		"owner":        req.Owner,
+		"description":  req.Desc,
+		"repoUrl":      RepoURL(req.GHOrg, req.Name),
+		"deployTarget": target,
+	}
+	if req.CostCenter != "" {
+		values["costCenter"] = req.CostCenter
+	}
+	if target == "aws" {
+		values["clusterName"] = req.ClusterName
+		values["awsRegion"] = req.AWSRegion
+	}
+	return values
+}
+
 // ScaffoldService creates a scaffolder task and streams its log until completion.
 func (c *Client) ScaffoldService(ctx context.Context, req ScaffoldRequest) error {
-	payload := taskPayload{
-		TemplateRef: fmt.Sprintf("template:default/%s-service", req.Type),
-		Values: map[string]any{
-			"name":        req.Name,
-			"namespace":   req.Namespace,
-			"owner":       req.Owner,
-			"description": req.Desc,
-			"repoUrl":     fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
-		},
+	ref := req.TemplateRef
+	if ref == "" {
+		ref = req.Type + "-service"
 	}
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("encoding request: %w", err)
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.base+"/api/scaffolder/v2/tasks", bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.setHeaders(httpReq)
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(httpReq)
-	if err != nil {
-		return fmt.Errorf("scaffolder API: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("scaffolder API returned %d: %s", resp.StatusCode, b)
-	}
-
-	var task taskCreated
-	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
-		return fmt.Errorf("parsing task response: %w", err)
-	}
-	fmt.Printf("[idp] Scaffolder task created: %s\n", task.ID)
-	return c.streamTask(ctx, task.ID)
+	return c.RunTemplate(ctx, ref, ServiceValues(req))
 }
 
 // TestSuiteRequest holds the values forwarded to a Backstage test suite template.
@@ -137,22 +136,34 @@ type TestSuiteRequest struct {
 	GHOrg        string
 	Owner        string
 	Desc         string
-	ConsumerName string // pact only
-	ProviderName string // pact only
+	TargetRepo   string // owner/repo — set for brownfield (PR into an existing repo)
+	ConsumerName string // pact / contract
+	ProviderName string // pact / contract
 	DDSite       string // datadog only
 	DeviceFarm   string // appium only
 	CloudGrid    string // playwright / visual only
+	// Extra carries type-specific template values (vus, wcagLevel, language, …)
+	// keyed by template parameter name.
+	Extra map[string]any
 }
 
-// ScaffoldTestSuite creates a scaffolder task for a test suite template.
-func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) error {
+// TestSuiteValues builds the scaffolder values for a test-suite template.
+// It is deliberately a superset: RunTemplate drops whatever the chosen
+// template doesn't declare (e.g. deploymentMode on PR-only templates).
+func TestSuiteValues(req TestSuiteRequest) map[string]any {
 	values := map[string]any{
-		"name":           req.Name,
-		"description":    req.Desc,
-		"owner":          req.Owner,
-		"targetService":  fmt.Sprintf("component:default/%s", req.Service),
-		"deploymentMode": "new-repository",
-		"repoUrl":        fmt.Sprintf("github.com?owner=%s&repo=%s", req.GHOrg, req.Name),
+		"name":          req.Name,
+		"description":   req.Desc,
+		"owner":         req.Owner,
+		"targetService": fmt.Sprintf("component:default/%s", req.Service),
+	}
+	if req.TargetRepo != "" {
+		owner, repo, _ := strings.Cut(req.TargetRepo, "/")
+		values["deploymentMode"] = "add-to-existing"
+		values["targetRepoUrl"] = RepoURL(owner, repo)
+	} else {
+		values["deploymentMode"] = "new-repository"
+		values["repoUrl"] = RepoURL(req.GHOrg, req.Name)
 	}
 	if req.ConsumerName != "" {
 		values["consumerName"] = req.ConsumerName
@@ -171,8 +182,55 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 	if req.CloudGrid != "" {
 		values["cloudGrid"] = req.CloudGrid
 	}
+	for k, v := range req.Extra {
+		values[k] = v
+	}
+	return values
+}
+
+// ScaffoldTestSuite creates a scaffolder task for a test suite template.
+func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) error {
+	return c.RunTemplate(ctx, req.TemplateRef, TestSuiteValues(req))
+}
+
+// GetTemplateSchema fetches a template entity and flattens its parameters.
+func (c *Client) GetTemplateSchema(ctx context.Context, name string) (*TemplateSchema, error) {
+	entity, err := c.GetEntity(ctx, "template", "default", name)
+	if err != nil {
+		return nil, err
+	}
+	spec, _ := entity["spec"].(map[string]any)
+	return ParseTemplateSchema(spec["parameters"]), nil
+}
+
+// PrepareValues filters values to what the template declares and fails if a
+// required parameter is missing — a clearer error than Backstage's 400. If the
+// schema can't be read, values are returned unchanged and Backstage validates.
+func (c *Client) PrepareValues(ctx context.Context, name string, values map[string]any) (map[string]any, error) {
+	schema, err := c.GetTemplateSchema(ctx, name)
+	if err != nil {
+		fmt.Printf("[idp] Could not read template %q schema (%v) — sending values unvalidated\n", name, err)
+		return values, nil
+	}
+	kept, _ := schema.Filter(values)
+	if err := schema.Coerce(kept); err != nil {
+		return nil, err
+	}
+	if missing := schema.Missing(kept); len(missing) > 0 {
+		return nil, fmt.Errorf("template %q is missing required parameter(s): %s", name, strings.Join(missing, ", "))
+	}
+	return kept, nil
+}
+
+// RunTemplate validates values against the template, creates a scaffolder
+// task and streams its log until completion.
+func (c *Client) RunTemplate(ctx context.Context, name string, values map[string]any) error {
+	values, err := c.PrepareValues(ctx, name, values)
+	if err != nil {
+		return err
+	}
 	payload := taskPayload{
-		TemplateRef: "template:default/" + req.TemplateRef,
+		TemplateRef: "template:default/" + name,
 		Values:      values,
 	}
 	body, err := json.Marshal(payload)
@@ -203,6 +261,53 @@ func (c *Client) ScaffoldTestSuite(ctx context.Context, req TestSuiteRequest) er
 	}
 	fmt.Printf("[idp] Scaffolder task created: %s\n", task.ID)
 	return c.streamTask(ctx, task.ID)
+}
+
+// TemplateSummary is one row of `idp template list`.
+type TemplateSummary struct {
+	Name  string
+	Title string
+	Type  string
+	Tags  []string
+}
+
+// ListTemplates returns every Template entity in the catalog, sorted by name.
+func (c *Client) ListTemplates(ctx context.Context) ([]TemplateSummary, error) {
+	url := c.base + "/api/catalog/entities?filter=kind=template" +
+		"&fields=metadata.name,metadata.title,metadata.tags,spec.type"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("catalog API: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("catalog API returned %d: %s", resp.StatusCode, b)
+	}
+	var entities []struct {
+		Metadata struct {
+			Name  string   `json:"name"`
+			Title string   `json:"title"`
+			Tags  []string `json:"tags"`
+		} `json:"metadata"`
+		Spec struct {
+			Type string `json:"type"`
+		} `json:"spec"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&entities); err != nil {
+		return nil, fmt.Errorf("parsing catalog response: %w", err)
+	}
+	out := make([]TemplateSummary, 0, len(entities))
+	for _, e := range entities {
+		out = append(out, TemplateSummary{Name: e.Metadata.Name, Title: e.Metadata.Title, Type: e.Spec.Type, Tags: e.Metadata.Tags})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
 }
 
 type sseEvent struct {

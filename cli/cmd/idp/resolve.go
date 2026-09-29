@@ -46,8 +46,8 @@ func resolveBackstageURL(env, explicit, root string) string {
 //
 // For --env local (priority order):
 //
-//	--token flag → BACKSTAGE_TOKEN env → BACKSTAGE_AUTH_SECRET in local/backstage/.env
-//	→ static token in backstage/app-config.local.yaml
+//	--token flag → BACKSTAGE_TOKEN env → static externalAccess token in
+//	backstage/app-config.local.yaml
 //
 // For --env aws (priority order):
 //
@@ -71,10 +71,9 @@ func resolveToken(env, explicit, root string) string {
 		}
 		return ""
 	}
-	// local: docker-compose env file and static config
-	if t := keyFromEnvFile(root+"/local/backstage/.env", "BACKSTAGE_AUTH_SECRET"); t != "" {
-		return t
-	}
+	// local: the static externalAccess token. BACKSTAGE_AUTH_SECRET is not a
+	// candidate: it is the backend.auth.keys signing key, which Backstage rejects
+	// as a bearer token ("Illegal token") and which shouldn't leave the host.
 	if t := staticTokenFromConfig(root + "/backstage/app-config.local.yaml"); t != "" {
 		fmt.Printf("[idp] Using static token from app-config.local.yaml\n")
 		return t
