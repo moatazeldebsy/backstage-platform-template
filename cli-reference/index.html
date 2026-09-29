@@ -1076,6 +1076,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#greenfield-vs-brownfield" class="md-nav__link">
+    <span class="md-ellipsis">
+      Greenfield vs brownfield
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       Installation
@@ -1116,6 +1125,24 @@
   <a href="#idp-scaffold-test-suite" class="md-nav__link">
     <span class="md-ellipsis">
       idp scaffold test-suite
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idp-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      idp template
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-2-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day-2 commands
     </span>
   </a>
   
@@ -2448,7 +2475,45 @@
 
 
 <h1 id="idp-cli-reference">IDP CLI Reference<a class="headerlink" href="#idp-cli-reference" title="Permanent link">&para;</a></h1>
-<p>The <code>idp</code> CLI is the terminal companion to the Backstage portal. It scaffolds services and test suites using the Backstage Scaffolder API when the platform is reachable, and falls back to local file generation when offline.</p>
+<p>The <code>idp</code> CLI is the terminal companion to the Backstage portal. It scaffolds services and test suites using the Backstage Scaffolder API when the platform is reachable, and falls back to local file generation when offline. <code>idp template run</code> reaches every other software template in the catalog.</p>
+<h2 id="greenfield-vs-brownfield">Greenfield vs brownfield<a class="headerlink" href="#greenfield-vs-brownfield" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>You have…</th>
+<th>Use</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nothing yet — a new service</td>
+<td><code>idp scaffold service --type &lt;lang&gt;</code></td>
+<td>New GitHub repo from the golden path</td>
+</tr>
+<tr>
+<td>A new standalone test repo</td>
+<td><code>idp scaffold test-suite --type &lt;type&gt;</code></td>
+<td>New GitHub repo named <code>--name</code></td>
+</tr>
+<tr>
+<td>An existing service repo that needs tests</td>
+<td><code>idp scaffold test-suite --type &lt;type&gt; --target-repo owner/repo</code></td>
+<td>PR against that repo</td>
+</tr>
+<tr>
+<td>An existing repo that needs SAST/SCA</td>
+<td><code>idp scaffold test-suite --type security --target-repo owner/repo</code></td>
+<td>PR adding SonarCloud + Snyk</td>
+</tr>
+<tr>
+<td>Anything else (S3, RDS, namespace, secret, SLO, decommission, <code>enable-*</code> add-ons…)</td>
+<td><code>idp template run &lt;template&gt; --set k=v</code></td>
+<td>Whatever the template does</td>
+</tr>
+</tbody>
+</table>
+<p><code>unit</code>, <code>component</code>, <code>iac</code>, <code>flutter-integration</code> and <code>security</code> are brownfield-only and require <code>--target-repo</code>.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -2480,7 +2545,7 @@ idp<span class="w"> </span>completion<span class="w"> </span>fish<span class="w"
 </code></pre></div></td></tr></table></div>
 <h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
 <h3 id="idp-scaffold-service"><code>idp scaffold service</code><a class="headerlink" href="#idp-scaffold-service" title="Permanent link">&para;</a></h3>
-<p>Scaffold a new microservice. Uses the Backstage Scaffolder API when reachable; falls back to generating files locally under <code>services/&lt;name&gt;/</code>.</p>
+<p>Scaffold a new service (greenfield). Uses the Backstage Scaffolder API when reachable; falls back to generating files locally under <code>services/&lt;name&gt;/</code>. Only <code>nodejs</code>, <code>python</code> and <code>go</code> have a local generator — <code>jvm</code>, <code>ruby</code> and <code>react</code> need Backstage.</p>
 <p><strong>Flags:</strong></p>
 <table>
 <thead>
@@ -2499,12 +2564,32 @@ idp<span class="w"> </span>completion<span class="w"> </span>fish<span class="w"
 <tr>
 <td><code>--type</code></td>
 <td><code>nodejs</code></td>
-<td><code>nodejs</code> | <code>python</code> | <code>go</code></td>
+<td><code>nodejs</code> | <code>python</code> | <code>go</code> | <code>jvm</code> | <code>ruby</code> | <code>react</code> (→ <code>react-frontend</code> template)</td>
 </tr>
 <tr>
 <td><code>--namespace</code></td>
-<td><code>services</code></td>
-<td>Kubernetes namespace</td>
+<td><code>services-dev</code></td>
+<td>Kubernetes namespace (local generation only)</td>
+</tr>
+<tr>
+<td><code>--env</code></td>
+<td><code>local</code></td>
+<td><code>local</code> | <code>aws</code> — sent to the template as <code>deployTarget</code></td>
+</tr>
+<tr>
+<td><code>--cluster-name</code></td>
+<td><code>idp-mvp</code></td>
+<td>EKS cluster name (<code>--env aws</code> only)</td>
+</tr>
+<tr>
+<td><code>--aws-region</code></td>
+<td><code>AWS_REGION</code> or <code>us-east-1</code></td>
+<td>AWS region (<code>--env aws</code> only)</td>
+</tr>
+<tr>
+<td><code>--cost-center</code></td>
+<td><code>eng-platform</code></td>
+<td><code>cost-center</code> pod label (required by <code>require-cost-tags</code>)</td>
 </tr>
 <tr>
 <td><code>--local</code></td>
@@ -2544,7 +2629,10 @@ idp<span class="w"> </span>completion<span class="w"> </span>fish<span class="w"
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
 <span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Node.js service (auto-detects Backstage)</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Node.js service (auto-detects Backstage)</span>
 idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>order-svc<span class="w"> </span>--type<span class="w"> </span>nodejs
 
 <span class="c1"># Python FastAPI service, force local generation</span>
@@ -2552,6 +2640,9 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w
 
 <span class="c1"># Go service</span>
 idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>inventory-svc<span class="w"> </span>--type<span class="w"> </span>go
+
+<span class="c1"># Spring Boot service on EKS</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>ledger-svc<span class="w"> </span>--type<span class="w"> </span>jvm<span class="w"> </span>--env<span class="w"> </span>aws
 
 <span class="c1"># Preview what would be generated without writing anything</span>
 idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>billing-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w"> </span>--dry-run
@@ -2592,7 +2683,7 @@ promotion. <code>--owner</code> and <code>--cost-center</code> fill the <code>te
 labels the <code>require-cost-tags</code> Gatekeeper policy enforces in <code>services-*</code>.</p>
 <hr />
 <h3 id="idp-scaffold-test-suite"><code>idp scaffold test-suite</code><a class="headerlink" href="#idp-scaffold-test-suite" title="Permanent link">&para;</a></h3>
-<p>Scaffold a QA/testing suite. Supports 18 test types.</p>
+<p>Scaffold a QA/testing suite. Supports 20 test types. By default the suite goes into a new repo; <code>--target-repo</code> opens a PR against an existing one instead.</p>
 <p><strong>Common flags:</strong></p>
 <table>
 <thead>
@@ -2648,8 +2739,24 @@ labels the <code>require-cost-tags</code> Gatekeeper policy enforces in <code>se
 <td></td>
 <td>Short description</td>
 </tr>
+<tr>
+<td><code>--target-repo</code></td>
+<td></td>
+<td>Existing repo (<code>owner/repo</code> or GitHub URL) to open a PR against — brownfield mode</td>
+</tr>
+<tr>
+<td><code>--target-url</code></td>
+<td></td>
+<td>URL of the running service under test (sent as <code>targetUrl</code> / <code>baseUrl</code> / <code>providerBaseUrl</code>)</td>
+</tr>
+<tr>
+<td><code>--set</code></td>
+<td></td>
+<td>Any other template parameter as <code>key=value</code> (repeatable) — see <code>idp template params</code></td>
+</tr>
 </tbody>
 </table>
+<p>Type-specific flags are forwarded to Backstage only when you set them; otherwise the template's own defaults apply. With <code>--dry-run</code>, Backstage-only types print the values that would be sent, checked against the template in your checkout.</p>
 <p><strong>Supported types:</strong></p>
 <table>
 <thead>
@@ -2727,28 +2834,38 @@ labels the <code>require-cost-tags</code> Gatekeeper policy enforces in <code>se
 </tr>
 <tr>
 <td><code>unit</code></td>
-<td>Brownfield unit-test scaffold (Go / Node / Python) with coverage gate</td>
-<td>Backstage API only</td>
+<td>Unit-test scaffold (Go / Node / Python) with coverage gate</td>
+<td><strong>Requires <code>--target-repo</code></strong>; <code>--language</code> (go|nodejs|python), <code>--coverage</code> (70)</td>
 </tr>
 <tr>
 <td><code>component</code></td>
 <td>Service-as-black-box tests with WireMock-stubbed deps</td>
-<td>Backstage API only</td>
+<td><strong>Requires <code>--target-repo</code></strong></td>
 </tr>
 <tr>
 <td><code>iac</code></td>
 <td>Terraform IaC checks (tflint + Checkov + optional Terratest)</td>
-<td>Backstage API only</td>
+<td><strong>Requires <code>--target-repo</code></strong></td>
 </tr>
 <tr>
 <td><code>flutter-integration</code></td>
 <td>Flutter integration test suite</td>
-<td>Backstage API only</td>
+<td><strong>Requires <code>--target-repo</code></strong></td>
+</tr>
+<tr>
+<td><code>security</code></td>
+<td>SAST/SCA — SonarCloud + Snyk (<code>enable-security-scanning</code>)</td>
+<td><strong>Requires <code>--target-repo</code></strong></td>
 </tr>
 <tr>
 <td><code>deepeval</code></td>
 <td>LLM output evaluation (DeepEval)</td>
-<td>Backstage API only</td>
+<td>Backstage only; <code>--agent-prompt</code>, <code>--agent-tools</code> (required), <code>--target-agent</code></td>
+</tr>
+<tr>
+<td><code>contract</code></td>
+<td>MCP-driven contract testing (<code>enable-contract-testing</code>) — preferred over <code>pact</code></td>
+<td>Backstage only; <code>--consumer</code>, <code>--provider</code>, <code>--namespace</code></td>
 </tr>
 </tbody>
 </table>
@@ -2784,7 +2901,19 @@ labels the <code>require-cost-tags</code> Gatekeeper policy enforces in <code>se
 <span class="normal">29</span>
 <span class="normal">30</span>
 <span class="normal">31</span>
-<span class="normal">32</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Playwright E2E suite</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Playwright E2E suite</span>
 idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service
 
 <span class="c1"># k6 load test — 50 VUs, 5 min, p95 &lt; 300 ms</span>
@@ -2811,13 +2940,25 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class
 idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-mutation<span class="w"> </span>--type<span class="w"> </span>mutation<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--score<span class="w"> </span><span class="m">80</span>
 
+<span class="c1"># Brownfield: add Playwright tests to an existing repo (opens a PR)</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-repo<span class="w"> </span>my-org/hello-service
+
+<span class="c1"># Brownfield-only: unit tests with an 80% coverage gate</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-unit<span class="w"> </span>--type<span class="w"> </span>unit<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-repo<span class="w"> </span>my-org/hello-service<span class="w"> </span>--language<span class="w"> </span>go<span class="w"> </span>--coverage<span class="w"> </span><span class="m">80</span>
+
+<span class="c1"># SonarCloud + Snyk on an existing repo</span>
+idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-scan<span class="w"> </span>--type<span class="w"> </span>security<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-repo<span class="w"> </span>my-org/hello-service
+
 <span class="c1"># Preview what would be generated</span>
 idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span>--dry-run
 
 <span class="c1"># Force local generation (offline)</span>
 idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>hello-e2e<span class="w"> </span>--type<span class="w"> </span>playwright<span class="w"> </span>--service<span class="w"> </span>hello-service<span class="w"> </span>--local
 </code></pre></div></td></tr></table></div>
-<p><strong>Generated directory structure (all types):</strong></p>
+<p><strong>Generated directory structure (greenfield types with a local generator):</strong></p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -2832,6 +2973,82 @@ idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class
 └── docs/
     └── index.md
 </code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="idp-template"><code>idp template</code><a class="headerlink" href="#idp-template" title="Permanent link">&para;</a></h3>
+<p>Generic access to every software template in the catalog — infrastructure (S3, RDS, Kafka, DynamoDB, SQS; Terraform and Crossplane variants), namespaces, secrets, SLOs, canary rollouts, decommissioning, AI agents, MCP servers, and the <code>enable-*</code> brownfield add-ons. Requires Backstage.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idp template list [--tag &lt;tag&gt;]</code></td>
+<td>List registered templates (name, type, title, tags)</td>
+</tr>
+<tr>
+<td><code>idp template params &lt;template&gt;</code></td>
+<td>Show each parameter's type, whether it's required, allowed values and default</td>
+</tr>
+<tr>
+<td><code>idp template run &lt;template&gt; [--set k=v]… [--values file.yaml] [--dry-run]</code></td>
+<td>Run the template and stream the scaffolder log</td>
+</tr>
+</tbody>
+</table>
+<p><code>run</code> converts <code>--set</code> strings to the types the template declares (integer, number, boolean, comma-separated or JSON array), drops keys the template doesn't declare, and reports missing required parameters — including conditional ones such as <code>targetRepoUrl</code> — before a task is created. <code>--set</code> wins over <code>--values</code>. <code>--dry-run</code> validates against the live template and prints the values without creating a task.</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>idp<span class="w"> </span>template<span class="w"> </span>list<span class="w"> </span>--tag<span class="w"> </span>crossplane
+idp<span class="w"> </span>template<span class="w"> </span>params<span class="w"> </span>s3-bucket-crossplane
+idp<span class="w"> </span>template<span class="w"> </span>run<span class="w"> </span>s3-bucket-crossplane<span class="w"> </span>--set<span class="w"> </span><span class="nv">name</span><span class="o">=</span>orders-archive<span class="w"> </span>--set<span class="w"> </span><span class="nv">owner</span><span class="o">=</span>group:default/payments
+
+<span class="c1"># Brownfield add-on to an existing repo</span>
+idp<span class="w"> </span>template<span class="w"> </span>run<span class="w"> </span>enable-datadog-apm<span class="w"> </span>--values<span class="w"> </span>apm.yaml<span class="w"> </span>--dry-run
+</code></pre></div></td></tr></table></div>
+<hr />
+<h3 id="day-2-commands">Day-2 commands<a class="headerlink" href="#day-2-commands" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+<th>Flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idp deploy --service &lt;name&gt;</code></td>
+<td><code>helm upgrade --install</code> with <code>helm/service-template</code> and the service's <code>helm-values-&lt;env&gt;.yaml</code></td>
+<td><code>--namespace</code> (services), <code>--env</code> (local|aws), <code>--dry-run</code></td>
+</tr>
+<tr>
+<td><code>idp status --service &lt;name&gt;</code></td>
+<td>Deployment/pod status, plus ArgoCD sync status if available</td>
+<td><code>--namespace</code> (services)</td>
+</tr>
+<tr>
+<td><code>idp logs --service &lt;name&gt;</code></td>
+<td>Tail the deployment's logs</td>
+<td><code>--namespace</code> (services), <code>-f/--follow</code>, <code>--tail</code> (100)</td>
+</tr>
+<tr>
+<td><code>idp runner setup --repo &lt;name&gt;</code></td>
+<td>Register and start a GitHub Actions self-hosted runner (wraps <code>scripts/setup-runner.sh</code>)</td>
+<td><code>--repo</code></td>
+</tr>
+<tr>
+<td><code>idp ai "&lt;message&gt;"</code></td>
+<td>Ask the <code>idp-assistant</code> KAgent agent in natural language</td>
+<td><code>--env</code>, <code>--kagent-url</code>, <code>--timeout</code> (300), <code>--backstage-url</code></td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="idp-completion"><code>idp completion</code><a class="headerlink" href="#idp-completion" title="Permanent link">&para;</a></h3>
 <p>Generate shell completion scripts (auto-provided by Cobra):</p>
@@ -2883,11 +3100,11 @@ idp<span class="w"> </span>completion<span class="w"> </span>powershell
 <h3 id="token-resolution-order">Token resolution order<a class="headerlink" href="#token-resolution-order" title="Permanent link">&para;</a></h3>
 <p>When calling the Backstage Scaffolder API, the CLI resolves the auth token in this priority order:</p>
 <ol>
-<li><code>--token</code> flag (explicit override on the <code>scaffold</code> parent command)</li>
+<li><code>--token</code> flag (on <code>idp scaffold</code> and <code>idp template</code>)</li>
 <li><code>BACKSTAGE_TOKEN</code> environment variable</li>
-<li><code>BACKSTAGE_AUTH_SECRET</code> in <code>local/backstage/.env</code></li>
 <li>First static <code>externalAccess</code> token in <code>backstage/app-config.local.yaml</code></li>
 </ol>
+<p><code>BACKSTAGE_AUTH_SECRET</code> in <code>local/backstage/.env</code> is never used: it is the backend's service-token signing key, not a bearer token, and Backstage rejects it with <code>401 Illegal token</code>.</p>
 <h3 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
