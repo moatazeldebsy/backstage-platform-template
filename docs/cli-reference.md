@@ -1,6 +1,18 @@
 # IDP CLI Reference
 
-The `idp` CLI is the terminal companion to the Backstage portal. It scaffolds services and test suites using the Backstage Scaffolder API when the platform is reachable, and falls back to local file generation when offline.
+The `idp` CLI is the terminal companion to the Backstage portal. It scaffolds services and test suites using the Backstage Scaffolder API when the platform is reachable, and falls back to local file generation when offline. `idp template run` reaches every other software template in the catalog.
+
+## Greenfield vs brownfield
+
+| You have… | Use | Result |
+|---|---|---|
+| Nothing yet — a new service | `idp scaffold service --type <lang>` | New GitHub repo from the golden path |
+| A new standalone test repo | `idp scaffold test-suite --type <type>` | New GitHub repo named `--name` |
+| An existing service repo that needs tests | `idp scaffold test-suite --type <type> --target-repo owner/repo` | PR against that repo |
+| An existing repo that needs SAST/SCA | `idp scaffold test-suite --type security --target-repo owner/repo` | PR adding SonarCloud + Snyk |
+| Anything else (S3, RDS, namespace, secret, SLO, decommission, `enable-*` add-ons…) | `idp template run <template> --set k=v` | Whatever the template does |
+
+`unit`, `component`, `iac`, `flutter-integration` and `security` are brownfield-only and require `--target-repo`.
 
 ## Installation
 
@@ -31,15 +43,19 @@ idp completion fish | source
 
 ### `idp scaffold service`
 
-Scaffold a new microservice. Uses the Backstage Scaffolder API when reachable; falls back to generating files locally under `services/<name>/`.
+Scaffold a new service (greenfield). Uses the Backstage Scaffolder API when reachable; falls back to generating files locally under `services/<name>/`. Only `nodejs`, `python` and `go` have a local generator — `jvm`, `ruby` and `react` need Backstage.
 
 **Flags:**
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--name` | *(required)* | Service name — lowercase alphanumeric + hyphens |
-| `--type` | `nodejs` | `nodejs` \| `python` \| `go` |
-| `--namespace` | `services` | Kubernetes namespace |
+| `--type` | `nodejs` | `nodejs` \| `python` \| `go` \| `jvm` \| `ruby` \| `react` (→ `react-frontend` template) |
+| `--namespace` | `services-dev` | Kubernetes namespace (local generation only) |
+| `--env` | `local` | `local` \| `aws` — sent to the template as `deployTarget` |
+| `--cluster-name` | `idp-mvp` | EKS cluster name (`--env aws` only) |
+| `--aws-region` | `AWS_REGION` or `us-east-1` | AWS region (`--env aws` only) |
+| `--cost-center` | `eng-platform` | `cost-center` pod label (required by `require-cost-tags`) |
 | `--local` | `false` | Skip Backstage API, generate files locally |
 | `--dry-run` | `false` | Print files that would be generated without writing them |
 | `--backstage-url` | `http://backstage.idp.local` | Backstage base URL |
@@ -57,6 +73,9 @@ idp scaffold service --name data-pipeline --type python --local
 
 # Go service
 idp scaffold service --name inventory-svc --type go
+
+# Spring Boot service on EKS
+idp scaffold service --name ledger-svc --type jvm --env aws
 
 # Preview what would be generated without writing anything
 idp scaffold service --name billing-svc --type nodejs --dry-run
@@ -95,7 +114,7 @@ labels the `require-cost-tags` Gatekeeper policy enforces in `services-*`.
 
 ### `idp scaffold test-suite`
 
-Scaffold a QA/testing suite. Supports 18 test types.
+Scaffold a QA/testing suite. Supports 20 test types. By default the suite goes into a new repo; `--target-repo` opens a PR against an existing one instead.
 
 **Common flags:**
 
@@ -110,6 +129,11 @@ Scaffold a QA/testing suite. Supports 18 test types.
 | `--backstage-url` | `http://backstage.idp.local` | Backstage base URL |
 | `--owner` | `group:default/platform-team` | Backstage catalog owner ref |
 | `--description` | | Short description |
+| `--target-repo` | | Existing repo (`owner/repo` or GitHub URL) to open a PR against — brownfield mode |
+| `--target-url` | | URL of the running service under test (sent as `targetUrl` / `baseUrl` / `providerBaseUrl`) |
+| `--set` | | Any other template parameter as `key=value` (repeatable) — see `idp template params` |
+
+Type-specific flags are forwarded to Backstage only when you set them; otherwise the template's own defaults apply. With `--dry-run`, Backstage-only types print the values that would be sent, checked against the template in your checkout.
 
 **Supported types:**
 
@@ -128,11 +152,13 @@ Scaffold a QA/testing suite. Supports 18 test types.
 | `chaos` | Chaos Mesh experiments | `--experiments`, `--chaos-duration` (1m) |
 | `mutation` | Stryker mutation testing | `--score` (70), `--test-runner` (jest\|mocha\|jasmine) |
 | `testcontainers` | Integration tests with containers | `--containers` (postgres) |
-| `unit` | Brownfield unit-test scaffold (Go / Node / Python) with coverage gate | Backstage API only |
-| `component` | Service-as-black-box tests with WireMock-stubbed deps | Backstage API only |
-| `iac` | Terraform IaC checks (tflint + Checkov + optional Terratest) | Backstage API only |
-| `flutter-integration` | Flutter integration test suite | Backstage API only |
-| `deepeval` | LLM output evaluation (DeepEval) | Backstage API only |
+| `unit` | Unit-test scaffold (Go / Node / Python) with coverage gate | **Requires `--target-repo`**; `--language` (go\|nodejs\|python), `--coverage` (70) |
+| `component` | Service-as-black-box tests with WireMock-stubbed deps | **Requires `--target-repo`** |
+| `iac` | Terraform IaC checks (tflint + Checkov + optional Terratest) | **Requires `--target-repo`** |
+| `flutter-integration` | Flutter integration test suite | **Requires `--target-repo`** |
+| `security` | SAST/SCA — SonarCloud + Snyk (`enable-security-scanning`) | **Requires `--target-repo`** |
+| `deepeval` | LLM output evaluation (DeepEval) | Backstage only; `--agent-prompt`, `--agent-tools` (required), `--target-agent` |
+| `contract` | MCP-driven contract testing (`enable-contract-testing`) — preferred over `pact` | Backstage only; `--consumer`, `--provider`, `--namespace` |
 
 **Examples:**
 
@@ -164,6 +190,18 @@ idp scaffold test-suite --name hello-chaos --type chaos --service hello-service 
 idp scaffold test-suite --name hello-mutation --type mutation --service hello-service \
   --score 80
 
+# Brownfield: add Playwright tests to an existing repo (opens a PR)
+idp scaffold test-suite --name hello-e2e --type playwright --service hello-service \
+  --target-repo my-org/hello-service
+
+# Brownfield-only: unit tests with an 80% coverage gate
+idp scaffold test-suite --name hello-unit --type unit --service hello-service \
+  --target-repo my-org/hello-service --language go --coverage 80
+
+# SonarCloud + Snyk on an existing repo
+idp scaffold test-suite --name hello-scan --type security --service hello-service \
+  --target-repo my-org/hello-service
+
 # Preview what would be generated
 idp scaffold test-suite --name hello-e2e --type playwright --service hello-service --dry-run
 
@@ -171,7 +209,7 @@ idp scaffold test-suite --name hello-e2e --type playwright --service hello-servi
 idp scaffold test-suite --name hello-e2e --type playwright --service hello-service --local
 ```
 
-**Generated directory structure (all types):**
+**Generated directory structure (greenfield types with a local generator):**
 
 ```
 test-suites/<name>/
@@ -182,6 +220,41 @@ test-suites/<name>/
 └── docs/
     └── index.md
 ```
+
+---
+
+### `idp template`
+
+Generic access to every software template in the catalog — infrastructure (S3, RDS, Kafka, DynamoDB, SQS; Terraform and Crossplane variants), namespaces, secrets, SLOs, canary rollouts, decommissioning, AI agents, MCP servers, and the `enable-*` brownfield add-ons. Requires Backstage.
+
+| Command | Purpose |
+|---------|---------|
+| `idp template list [--tag <tag>]` | List registered templates (name, type, title, tags) |
+| `idp template params <template>` | Show each parameter's type, whether it's required, allowed values and default |
+| `idp template run <template> [--set k=v]… [--values file.yaml] [--dry-run]` | Run the template and stream the scaffolder log |
+
+`run` converts `--set` strings to the types the template declares (integer, number, boolean, comma-separated or JSON array), drops keys the template doesn't declare, and reports missing required parameters — including conditional ones such as `targetRepoUrl` — before a task is created. `--set` wins over `--values`. `--dry-run` validates against the live template and prints the values without creating a task.
+
+```bash
+idp template list --tag crossplane
+idp template params s3-bucket-crossplane
+idp template run s3-bucket-crossplane --set name=orders-archive --set owner=group:default/payments
+
+# Brownfield add-on to an existing repo
+idp template run enable-datadog-apm --values apm.yaml --dry-run
+```
+
+---
+
+### Day-2 commands
+
+| Command | Purpose | Flags |
+|---------|---------|-------|
+| `idp deploy --service <name>` | `helm upgrade --install` with `helm/service-template` and the service's `helm-values-<env>.yaml` | `--namespace` (services), `--env` (local\|aws), `--dry-run` |
+| `idp status --service <name>` | Deployment/pod status, plus ArgoCD sync status if available | `--namespace` (services) |
+| `idp logs --service <name>` | Tail the deployment's logs | `--namespace` (services), `-f/--follow`, `--tail` (100) |
+| `idp runner setup --repo <name>` | Register and start a GitHub Actions self-hosted runner (wraps `scripts/setup-runner.sh`) | `--repo` |
+| `idp ai "<message>"` | Ask the `idp-assistant` KAgent agent in natural language | `--env`, `--kagent-url`, `--timeout` (300), `--backstage-url` |
 
 ---
 
@@ -222,10 +295,11 @@ Print the CLI version. Binaries built with `make cli-build` embed the git tag/sh
 
 When calling the Backstage Scaffolder API, the CLI resolves the auth token in this priority order:
 
-1. `--token` flag (explicit override on the `scaffold` parent command)
+1. `--token` flag (on `idp scaffold` and `idp template`)
 2. `BACKSTAGE_TOKEN` environment variable
-3. `BACKSTAGE_AUTH_SECRET` in `local/backstage/.env`
-4. First static `externalAccess` token in `backstage/app-config.local.yaml`
+3. First static `externalAccess` token in `backstage/app-config.local.yaml`
+
+`BACKSTAGE_AUTH_SECRET` in `local/backstage/.env` is never used: it is the backend's service-token signing key, not a bearer token, and Backstage rejects it with `401 Illegal token`.
 
 ### Environment variables
 

@@ -187,7 +187,7 @@ vendor's credentials, and run per pull request as well.
 Also available from the CLI:
 
 ```bash
-idp testsuite --type appium --name my-mobile-suite --service my-app \
+idp scaffold test-suite --type appium --name my-mobile-suite --service my-app \
   --device-farm lambdatest
 ```
 
