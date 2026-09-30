@@ -376,8 +376,9 @@ func validateTestSuiteMode() error {
 }
 
 // testSuiteExtras maps type-specific flags to template parameter names.
-// Flags are forwarded only when the user set them, so the template's own
-// defaults apply otherwise — the CLI defaults exist for local generation.
+// Flags are forwarded only when the user set them; otherwise RunTemplate
+// fills in the template's declared default (the CLI defaults exist for
+// local generation and don't always match the template's).
 func testSuiteExtras(cmd *cobra.Command) (map[string]any, error) {
 	changed := cmd.Flags().Changed
 	extra := map[string]any{}
