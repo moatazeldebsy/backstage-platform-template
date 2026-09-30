@@ -121,3 +121,18 @@ func TestCoerce(t *testing.T) {
 		t.Error("expected error converting non-integer")
 	}
 }
+
+func TestApplyDefaults(t *testing.T) {
+	s := ParseTemplateSchema(suiteParams())
+	v := map[string]any{"name": "a", "vus": 50}
+	s.ApplyDefaults(v)
+	if v["vus"] != 50 {
+		t.Errorf("explicit value must win, got %v", v["vus"])
+	}
+	if v["deploymentMode"] != "new-repository" {
+		t.Errorf("expected default deploymentMode, got %v", v["deploymentMode"])
+	}
+	if _, ok := v["containers"]; ok {
+		t.Error("parameters without a default must stay absent")
+	}
+}

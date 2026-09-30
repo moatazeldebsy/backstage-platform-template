@@ -125,10 +125,34 @@ func (s *TemplateSchema) Filter(values map[string]any) (map[string]any, []string
 	return kept, dropped
 }
 
+// ApplyDefaults fills in declared defaults for absent keys, the way the
+// Backstage web form does. The scaffolder API applies no defaults itself, so
+// without this an optional parameter the caller didn't set reaches the
+// skeleton as an empty string (e.g. a coverage gate with no threshold).
+// Defaults of the conditional branch the values select are applied too.
+func (s *TemplateSchema) ApplyDefaults(values map[string]any) {
+	fill := func(props map[string]Param) {
+		for k, p := range props {
+			if _, ok := values[k]; !ok && p.Default != nil {
+				values[k] = p.Default
+			}
+		}
+	}
+	fill(s.Props)
+	for key, branches := range s.deps {
+		for _, b := range branches {
+			if b.selects(key, values[key]) {
+				fill(b.props)
+				break
+			}
+		}
+	}
+}
+
 // Missing returns the sorted required keys absent from values — the
 // top-level ones plus those of whichever conditional branch the values select.
-// Backstage rejects a task with any of these missing, even when the
-// parameter declares a default (defaults are only applied by the web form).
+// Call ApplyDefaults first: Backstage rejects a task with any of these
+// missing, even when the parameter declares a default.
 func (s *TemplateSchema) Missing(values map[string]any) []string {
 	var missing []string
 	check := func(keys []string) {
