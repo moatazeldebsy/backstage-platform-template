@@ -231,6 +231,7 @@ func previewValues(template string, values map[string]any) error {
 		return printValues(template, values)
 	}
 	kept, _ := schema.Filter(values)
+	schema.ApplyDefaults(kept)
 	if err := schema.Coerce(kept); err != nil {
 		return err
 	}

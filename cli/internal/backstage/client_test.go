@@ -138,6 +138,16 @@ func TestHandleEvent(t *testing.T) {
 		}
 	})
 
+	t.Run("completion with output links still completes", func(t *testing.T) {
+		// Shape captured from a live unit-test-suite run.
+		raw := `{"type":"completion","body":{"message":"Run completed with status: completed",` +
+			`"output":{"links":[{"title":"Pull Request","url":"https://github.com/o/r/pull/2"}]}}}`
+		done, err := c.handleEvent(raw)
+		if err != nil || !done {
+			t.Errorf("expected done=true, nil; got %v, %v", done, err)
+		}
+	})
+
 	t.Run("completion with status failed returns error", func(t *testing.T) {
 		raw := `{"type":"completion","body":{"message":"Run completed with status: failed"}}`
 		done, err := c.handleEvent(raw)
@@ -487,7 +497,7 @@ func templateServer(t *testing.T, params string, captured *[]byte) *httptest.Ser
 }
 
 func TestRunTemplate(t *testing.T) {
-	params := `[{"required":["targetRepoUrl","language"],"properties":{"targetRepoUrl":{"type":"string"},"language":{"type":"string"},"coverageThreshold":{"type":"integer"}}}]`
+	params := `[{"required":["targetRepoUrl","language"],"properties":{"targetRepoUrl":{"type":"string"},"language":{"type":"string"},"coverageThreshold":{"type":"integer","default":70}}}]`
 
 	t.Run("drops undeclared keys and coerces types", func(t *testing.T) {
 		var body []byte
@@ -512,6 +522,27 @@ func TestRunTemplate(t *testing.T) {
 		}
 		if p.Values["coverageThreshold"] != float64(80) {
 			t.Errorf("coverageThreshold should be a number, got %#v", p.Values["coverageThreshold"])
+		}
+	})
+
+	t.Run("fills declared defaults the API would otherwise leave empty", func(t *testing.T) {
+		// Regression: unit-test-suite rendered a coverage gate with an empty
+		// threshold because the scaffolder API applies no defaults.
+		var body []byte
+		srv := templateServer(t, params, &body)
+		defer srv.Close()
+		err := NewClient(srv.URL, "").RunTemplate(t.Context(), "unit-test-suite", map[string]any{
+			"targetRepoUrl": "github.com?owner=a&repo=b", "language": "go",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var p taskPayload
+		if err := json.Unmarshal(body, &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.Values["coverageThreshold"] != float64(70) {
+			t.Errorf("coverageThreshold should default to 70, got %#v", p.Values["coverageThreshold"])
 		}
 	})
 

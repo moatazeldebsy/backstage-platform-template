@@ -82,6 +82,7 @@ func loadSchema(t *testing.T, ref string) *backstage.TemplateSchema {
 func checkValues(t *testing.T, schema *backstage.TemplateSchema, values map[string]any) {
 	t.Helper()
 	kept, _ := schema.Filter(values)
+	schema.ApplyDefaults(kept)
 	if err := schema.Coerce(kept); err != nil {
 		t.Error(err)
 	}

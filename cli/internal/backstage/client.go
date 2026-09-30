@@ -213,6 +213,7 @@ func (c *Client) PrepareValues(ctx context.Context, name string, values map[stri
 		return values, nil
 	}
 	kept, _ := schema.Filter(values)
+	schema.ApplyDefaults(kept)
 	if err := schema.Coerce(kept); err != nil {
 		return nil, err
 	}
@@ -332,6 +333,13 @@ type completionBody struct {
 	Error   *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
+	// Output is the template's `output:` block, e.g. the PR or repo link.
+	Output struct {
+		Links []struct {
+			Title string `json:"title"`
+			URL   string `json:"url"`
+		} `json:"links"`
+	} `json:"output"`
 }
 
 // completionStatusRE captures the status word from a completion event message.
@@ -420,6 +428,11 @@ func (c *Client) handleEvent(raw string) (completed bool, err error) {
 		switch status {
 		case "completed":
 			fmt.Printf("[idp] Task completed\n")
+			for _, l := range b.Output.Links {
+				if l.URL != "" {
+					fmt.Printf("[idp] %s: %s\n", l.Title, l.URL)
+				}
+			}
 			return true, nil
 		case "failed":
 			msg := b.Message
