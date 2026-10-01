@@ -52,12 +52,29 @@ resource "aws_db_instance" "backstage" {
 
   multi_az          = var.rds_multi_az
   allocated_storage = var.rds_allocated_storage
+  # Storage autoscaling: a full volume turns the catalog DB read-only, which is
+  # an outage with no warning in Backstage itself. null when disabled — 0 is
+  # also accepted by the API but reads as "unset" in the plan.
+  max_allocated_storage = var.rds_max_allocated_storage > 0 ? var.rds_max_allocated_storage : null
+  # gp3 is cheaper per GB than gp2 and has a 3000 IOPS baseline at any size,
+  # where gp2 at 20-100 GB bursts from 60-300. Switching is an online change.
+  storage_type = "gp3"
 
   backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-backstage-final"
   deletion_protection       = var.environment == "prod" ? true : false
+  copy_tags_to_snapshot     = true
+
+  # Explicit, non-overlapping windows (UTC) instead of AWS's random ones: backups
+  # run before the cost optimizer's 07:00 scale-up, maintenance on Sunday night.
+  backup_window              = "03:00-04:00"
+  maintenance_window         = "sun:04:30-sun:05:30"
+  auto_minor_version_upgrade = true
+
+  performance_insights_enabled          = var.rds_performance_insights_enabled
+  performance_insights_retention_period = var.rds_performance_insights_enabled ? 7 : null
 
   tags = {
     Name = "${var.cluster_name}-backstage-db"
@@ -103,11 +120,17 @@ resource "aws_db_instance" "langfuse" {
   db_subnet_group_name   = aws_db_subnet_group.backstage.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  multi_az          = false
+  # Follows the profile, like the Backstage instance. Was hard-coded false,
+  # which left this DB as the one single-AZ dependency on a Multi-AZ install.
+  multi_az          = var.rds_multi_az
   allocated_storage = 20
+  storage_type      = "gp3"
 
   backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true
+  copy_tags_to_snapshot     = true
+  backup_window             = "03:00-04:00"
+  maintenance_window        = "sun:04:30-sun:05:30"
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-langfuse-final"
   deletion_protection       = var.environment == "prod" ? true : false
@@ -125,7 +148,7 @@ resource "aws_secretsmanager_secret" "langfuse" {
 
   name                    = "idp-mvp/langfuse"
   description             = "Langfuse self-hosted credentials — Postgres password and app secrets"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "langfuse" {
@@ -190,11 +213,17 @@ resource "aws_db_instance" "litellm" {
   db_subnet_group_name   = aws_db_subnet_group.backstage.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  multi_az          = false
+  # Follows the profile, like the Backstage instance. Was hard-coded false,
+  # which left this DB as the one single-AZ dependency on a Multi-AZ install.
+  multi_az          = var.rds_multi_az
   allocated_storage = 20
+  storage_type      = "gp3"
 
   backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true
+  copy_tags_to_snapshot     = true
+  backup_window             = "03:00-04:00"
+  maintenance_window        = "sun:04:30-sun:05:30"
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = "${var.cluster_name}-litellm-final"
   deletion_protection       = var.environment == "prod" ? true : false
@@ -215,7 +244,7 @@ resource "aws_secretsmanager_secret" "litellm_db" {
 
   name                    = "idp-mvp/litellm"
   description             = "LiteLLM Postgres connection string (virtual keys, spend tracking) — ADR-0008"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "litellm_db" {

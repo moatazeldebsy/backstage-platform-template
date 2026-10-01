@@ -17,6 +17,19 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   replicas with zone + node spread and a `maxUnavailable: 1` PDB. `small` and
   no-profile installs are unchanged (single replica), since Redis HA's hard
   anti-affinity needs at least 3 nodes.
+- **Terraform reliability hardening** (on in `profiles/medium` and `large`):
+  - Langfuse and LiteLLM RDS follow `rds_multi_az` (were hard-coded single-AZ;
+    LiteLLM is on every model call's path).
+  - All RDS instances: gp3 storage, `copy_tags_to_snapshot`, explicit backup
+    (03:00–04:00 UTC) and maintenance (Sun 04:30–05:30 UTC) windows. Backstage
+    also gets storage autoscaling (`rds_max_allocated_storage`, default 100 GB)
+    and optional Performance Insights (`rds_performance_insights_enabled`).
+  - VPC endpoints: S3 gateway (free) always; ECR api/dkr, STS, Secrets Manager
+    and CloudWatch Logs interface endpoints behind `enable_vpc_interface_endpoints`
+    (~$110/month for 5 endpoints × 3 AZs).
+  - `secret_recovery_window_days` (default 0, 7 on medium/large) for every
+    Terraform-owned secret; `cleanup.sh` purges secrets pending deletion after
+    `terraform destroy` so a rebuild within the window still works.
 - **`bootstrap.sh --profile small|medium|large`.** Applies
   `terraform/profiles/<p>.tfvars` on top of `terraform.tfvars` — the profiles were
   where per-AZ NAT and RDS Multi-AZ live (ADR-0009), but nothing applied them, so

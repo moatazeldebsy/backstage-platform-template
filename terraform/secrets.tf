@@ -15,7 +15,7 @@ resource "random_password" "backstage_auth" {
 resource "aws_secretsmanager_secret" "backstage" {
   name                    = "idp-mvp/backstage"
   description             = "Backstage IDP platform credentials"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "backstage" {
@@ -61,7 +61,7 @@ resource "aws_secretsmanager_secret_version" "backstage" {
 resource "aws_secretsmanager_secret" "dora_exporter" {
   name                    = "idp-mvp/dora-exporter"
   description             = "DORA exporter credentials — GITHUB_TOKEN for GitHub API access"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "dora_exporter" {
@@ -75,7 +75,7 @@ resource "aws_secretsmanager_secret_version" "dora_exporter" {
 resource "aws_secretsmanager_secret" "slack_webhook" {
   name                    = "idp-mvp/slack-webhook"
   description             = "Slack incoming webhook URL for cost alerts"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "slack_webhook" {
@@ -105,7 +105,7 @@ output "slack_webhook_secret_arn" {
 resource "aws_secretsmanager_secret" "kagent" {
   name                    = "idp-mvp/kagent"
   description             = "KAgent AI platform credentials — Anthropic API key, LiteLLM master key"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "kagent" {
@@ -129,7 +129,7 @@ output "kagent_secret_arn" {
 resource "aws_secretsmanager_secret" "datadog" {
   name                    = "idp-mvp/datadog"
   description             = "Datadog API/App keys for the cluster-wide Datadog Agent"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secret_recovery_window_days
 }
 
 resource "aws_secretsmanager_secret_version" "datadog" {

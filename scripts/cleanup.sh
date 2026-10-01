@@ -493,7 +493,7 @@ else
   log "  No Karpenter instances found"
 fi
 
-# Terraform-owned secrets use recovery_window_in_days = 0, so match that.
+# Deleted immediately, like the Terraform-owned secrets end up after Phase 6.
 # bootstrap-ai.sh creates this one with the CLI (not Terraform) when Langfuse
 # is enabled on AWS.
 SCRIPT_SECRETS=("${CLUSTER_NAME}/langfuse/project-keys")
@@ -603,6 +603,25 @@ for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
   fi
 done
 rm -f "$TF_DESTROY_LOG"
+
+# On medium/large, secret_recovery_window_days = 7, so destroy only SCHEDULES the
+# Terraform-owned secrets for deletion. A bootstrap.sh within that week would
+# then fail on CreateSecret ("scheduled for deletion") for every one of them.
+# This script is an explicit full teardown, not the accident the window guards
+# against, so finish the deletion. Only secrets already pending deletion are
+# touched: the DeletedDate filter can never match a live secret.
+for _prefix in "idp-mvp/" "${CLUSTER_NAME}/"; do
+  aws secretsmanager list-secrets --region "${AWS_REGION}" --include-planned-deletion \
+      --filters "Key=name,Values=${_prefix}" \
+      --query 'SecretList[?DeletedDate!=`null`].Name' --output text 2>/dev/null \
+    | tr '\t' '\n'
+done | sort -u | while IFS= read -r secret; do
+  [[ -z "$secret" || "$secret" == "None" ]] && continue
+  log "  Purging secret pending deletion: ${secret}"
+  aws secretsmanager delete-secret --secret-id "$secret" --region "${AWS_REGION}" \
+    --force-delete-without-recovery >/dev/null 2>&1 || warn "  Could not purge ${secret}"
+done
+
 # Nothing left to size; a fresh bootstrap.sh should start from an explicit choice.
 rm -f "${TF_DIR}/.idp-profile"
 
