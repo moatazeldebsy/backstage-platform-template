@@ -33,8 +33,11 @@ does this on every run:
 
 If neither is available the bootstrap warns and the Grafana SRE dashboard reports
 "no `sloth_slo_info` metrics found" — which is the symptom to look for when error budgets
-are empty on a fresh cluster. **After editing an SLO source file without `sloth` installed,
-regenerate and commit the rules**, or the cluster keeps applying the stale committed copy.
+are empty on a fresh cluster. **After editing an SLO source file, run
+`./scripts/generate-slo-rules.sh` and commit `observability/slo/generated/`**, or the cluster
+keeps applying the stale committed copy. The script downloads a pinned, checksum-verified sloth
+build, so it needs no local install, and the `slo-drift` CI job runs it with `--check` to fail any
+PR where a source and its generated rules disagree (or a new source has no generated file).
 
 ### Multi-window burn-rate alerts
 
