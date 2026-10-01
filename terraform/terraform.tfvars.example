@@ -2,7 +2,7 @@ aws_region              = "us-east-1"
 github_org              = "your-github-org"   # GitHub org or username (e.g. acme-corp)
 environment             = "dev"
 cluster_name            = "idp-mvp"
-cluster_version         = "1.32"
+cluster_version         = "1.35" # keep in EKS standard support — extended support is 6x the control-plane price
 vpc_cidr                = "10.0.0.0/16"
 # One NAT gateway per AZ. false = single shared NAT (cheaper; its AZ failing
 # cuts all private-subnet egress). Set true for production — see ADR-0009.

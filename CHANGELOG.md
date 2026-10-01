@@ -90,6 +90,25 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   default and can be set to `https://api.anthropic.com` to bypass it when
   running outside the cluster.
 
+### Changed
+
+- **EKS 1.32 → 1.35, and the control plane can no longer slide into extended
+  support.** 1.32 left EKS standard support on 2026-03-23, and from then every
+  cluster hour billed $0.60 instead of $0.10. That was ~$70 of a ~$300 August
+  bill. `cluster_version` now defaults to 1.35, and
+  `cluster_upgrade_policy = { support_type = "STANDARD" }` makes EKS upgrade
+  the cluster at end of standard support rather than bill extended support.
+  **A local `terraform.tfvars` that sets `cluster_version = "1.32"` overrides
+  this. Change it there too.**
+- **Karpenter now works on v1 at all** (medium/large). The chart was pinned
+  at 1.0.6, which supports Kubernetes only up to 1.31. The module attached the
+  v0.33–v0.37 IAM policy (`enable_v1_permissions` was unset). The
+  `EC2NodeClass` lacked the required `amiSelectorTerms`, and the `NodePool`
+  set a `kubelet` field the v1 API does not have. Now: chart 1.14.1 (supports
+  Kubernetes 1.35 and 1.36), v1 IAM permissions,
+  `amiSelectorTerms: [{alias: al2023@latest}]`, and `kubelet.maxPods` moved to
+  the `EC2NodeClass`. Both manifests validate against the 1.14.1 CRD schemas.
+
 ### Removed
 
 - **Multi-region (active-standby) AWS topology.** `scripts/bootstrap-multiregion.sh`,

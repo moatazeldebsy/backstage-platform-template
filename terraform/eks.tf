@@ -54,6 +54,17 @@ module "eks" {
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
 
+  # STANDARD: when this version's standard support ends, EKS upgrades the
+  # control plane to the next version instead of silently moving the cluster
+  # to extended support, which bills $0.60/h rather than $0.10/h. That is
+  # exactly what happened on 1.32 (~$0.50/h extra for every hour the cluster
+  # was up). The trade-off is an unscheduled minor-version upgrade if
+  # cluster_version is never bumped, which is the better failure for a
+  # platform that is rebuilt from IaC.
+  cluster_upgrade_policy = {
+    support_type = "STANDARD"
+  }
+
   vpc_id                         = module.vpc.vpc_id
   subnet_ids                     = module.vpc.private_subnets
   cluster_endpoint_public_access = true

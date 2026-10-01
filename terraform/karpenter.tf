@@ -16,6 +16,10 @@ module "karpenter" {
   cluster_name           = module.eks.cluster_name
   irsa_oidc_provider_arn = module.eks.oidc_provider_arn
 
+  # The controller is Karpenter v1+. Without this the module attaches the IAM
+  # policy for v0.33-v0.37, which the v1 controller cannot provision nodes with.
+  enable_v1_permissions = true
+
   # SQS queue for spot interruption and rebalance notifications — Karpenter
   # watches this queue and gracefully drains nodes before termination.
   enable_irsa                     = true
@@ -37,8 +41,12 @@ resource "helm_release" "karpenter" {
   name       = "karpenter"
   repository = "oci://public.ecr.aws/karpenter"
   chart      = "karpenter"
-  version    = "1.0.6"
-  namespace  = "kube-system"
+  # Must support cluster_version: Kubernetes 1.35 needs >= 1.9, 1.36 >= 1.13
+  # (https://karpenter.sh/docs/upgrading/compatibility/). 1.0.6 supported only
+  # up to 1.31. Helm does not upgrade CRDs, so an existing cluster moving
+  # between Karpenter minors also needs the karpenter-crd chart applied first.
+  version   = "1.14.1"
+  namespace = "kube-system"
 
   set {
     name  = "settings.clusterName"
@@ -78,8 +86,14 @@ resource "kubectl_manifest" "karpenter_node_class" {
     metadata:
       name: default
     spec:
-      amiFamily: AL2023
+      # Required by the v1 API (amiFamily alone is rejected). The alias pins
+      # the family and tracks the latest EKS-optimised AL2023 AMI.
+      amiSelectorTerms:
+        - alias: al2023@latest
       role: ${module.karpenter[0].node_iam_role_name}
+      # Moved here from the NodePool in the v1 API, which has no kubelet field.
+      kubelet:
+        maxPods: 110
       subnetSelectorTerms:
         - tags:
             karpenter.sh/discovery: ${module.eks.cluster_name}
@@ -131,9 +145,6 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             - key: karpenter.k8s.aws/instance-size
               operator: NotIn
               values: [nano, micro, small]
-          # Kubelet config for faster pod startup
-          kubelet:
-            maxPods: 110
       limits:
         cpu: 1000         # max 1000 vCPUs across all Karpenter-managed nodes
         memory: 4000Gi

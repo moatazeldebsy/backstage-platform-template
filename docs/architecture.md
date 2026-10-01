@@ -58,7 +58,7 @@ The diagram is generated from [`diagrams/platform-planes.html`](diagrams/README.
 
 | Layer | Local | AWS |
 |-------|-------|-----|
-| Compute | Kind (Kubernetes in Docker) | Amazon EKS 1.32 |
+| Compute | Kind (Kubernetes in Docker) | Amazon EKS 1.35 |
 | Container registry | Local registry (`localhost:5003`) | Amazon ECR |
 | Ingress | nginx ingress controller | AWS Load Balancer Controller (ALB) |
 | CI / CD | GitHub Actions → `idp:deploy-local` Backstage action | GitHub Actions (OIDC → ECR → EKS) |
@@ -81,7 +81,7 @@ Three channels connect developers, platform engineers, and AI agents to the plat
 | 2 | **Backstage Portal** | Software Catalog, 21 software templates, 18 QA templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights | Scaffolder Backend → Catalog API → ArgoCD |
 | 3 | **AI Agent / MCP** | KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs |
 
-All three channels converge on the **Platform Control Plane**: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.32 in production.
+All three channels converge on the **Platform Control Plane**: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.35 in production.
 
 ---
 

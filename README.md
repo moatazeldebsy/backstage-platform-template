@@ -75,7 +75,7 @@ All URLs and credentials: [Local Setup → Access services](docs/local-setup.md#
 | Component | Tested version |
 |---|---|
 | Backstage | v1.50.4 |
-| Kubernetes | 1.32 (EKS) · 1.33.1 (Kind) |
+| Kubernetes | 1.35 (EKS) · 1.33.1 (Kind) |
 | Helm | 3.x / 4.x |
 | Kind | ≥ 0.27 |
 | ArgoCD | v3.4 (chart 9.5.13) |
