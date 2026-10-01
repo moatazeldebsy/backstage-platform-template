@@ -11,6 +11,12 @@ global:
 
 server:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -34,11 +40,23 @@ server:
   livenessProbe:
     timeoutSeconds: 15
 
+# ── Metrics (#160) ───────────────────────────────────────────────────────────
+# controller / server / repoServer / applicationSet each get a metrics Service
+# and a ServiceMonitor below. `release: prometheus` matches kube-prometheus-stack's
+# default serviceMonitorSelector. The chart only renders a ServiceMonitor when the
+# monitoring.coreos.com CRD exists, so an install without Prometheus still works.
+
 # Does the heavy lifting on "Refresh"/sync (reconciliation diffing against
 # every Application's live state) — caps it so a refresh can't starve the
 # node and take down ingress-nginx + every other *.idp.local service with it.
 controller:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 100m
@@ -60,6 +78,12 @@ controller:
 
 repoServer:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 100m
@@ -75,6 +99,12 @@ repoServer:
 
 applicationSet:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 50m
