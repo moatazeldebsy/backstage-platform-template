@@ -2491,11 +2491,11 @@
 </tr>
 <tr>
 <td><code>bootstrap-ai.sh</code></td>
-<td>Add AI/ML stack on top of a running cluster. <strong>Local only</strong> — on AWS, <code>bootstrap.sh</code> already runs this for you. Full flag list below under <a href="#bootstrap-aish-flags">bootstrap-ai.sh flags</a>; the one worth knowing up front is <code>--agents</code>, which controls how many agent pods you install.</td>
+<td>Add the AI/ML stack on top of a running cluster. Locally run it directly; on AWS use <code>bootstrap.sh --with-ai</code> (which calls <code>bootstrap-ai.sh --aws</code>), or run <code>bootstrap-ai.sh --aws</code> against an existing cluster. Full flag list below under <a href="#bootstrap-aish-flags">bootstrap-ai.sh flags</a>; the one worth knowing up front is <code>--agents</code>, which controls how many agent pods you install.</td>
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>AWS single-region bootstrap: Terraform → EKS → full platform <strong>including AI/ML</strong> (~40–70 min). Pass <code>--skip-ai</code> to opt out; full list under <a href="#bootstrapsh-flags">bootstrap.sh flags</a></td>
+<td>AWS single-region bootstrap: Terraform → EKS → core platform (~40–70 min). The AI/ML stack is <strong>opt-in</strong> with <code>--with-ai</code> (or <code>--adp</code>); full list under <a href="#bootstrapsh-flags">bootstrap.sh flags</a></td>
 </tr>
 <tr>
 <td><code>verify-secrets.sh</code></td>
@@ -2560,7 +2560,7 @@
 </tr>
 <tr>
 <td><code>bootstrap.sh</code></td>
-<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — <strong>including the AI/ML stack</strong> (Phase 6 runs <code>bootstrap-ai.sh --aws</code> internally, unless <code>--skip-ai</code> is passed) — and pushes <code>hello-service</code> to ECR. ~40–70 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
+<td>Provisions AWS EKS, ECR, IAM (Terraform), deploys the core platform components — the AI/ML stack only with <code>--with-ai</code>/<code>--adp</code> (Phase 6 then runs <code>bootstrap-ai.sh --aws</code> internally) — and pushes <code>hello-service</code> to ECR. ~40–70 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
 <td><code>setup.sh</code> → AWS path, or standalone</td>
 </tr>
 <tr>
@@ -2679,7 +2679,7 @@
 <tbody>
 <tr>
 <td><code>--with-ai</code></td>
-<td>Install the AI/ML stack (Phase 6 runs <code>bootstrap-ai.sh --aws</code>). On by default; <code>--skip-ai</code> opts out.</td>
+<td>Install the AI/ML stack (KAgent, MLflow, Langfuse, MCP servers; Phase 6 runs <code>bootstrap-ai.sh --aws</code>). Off by default.</td>
 </tr>
 <tr>
 <td><code>--adp</code></td>
@@ -2687,11 +2687,11 @@
 </tr>
 <tr>
 <td><code>--skip-ai</code></td>
-<td>Skip the AI/ML stack entirely.</td>
+<td>Deprecated no-op — skipping AI is already the default. Accepted for one release so existing scripts don't break; prints a notice.</td>
 </tr>
 <tr>
 <td><code>--remove-ai-infra</code></td>
-<td>Tear down the AI-specific AWS infrastructure.</td>
+<td>Destroy AI/ML infrastructure that already exists (Langfuse RDS — with its data —, S3 buckets, IRSA roles). Never implied by omitting <code>--with-ai</code>: without this flag, existing AI infrastructure is kept.</td>
 </tr>
 <tr>
 <td><code>--cluster-name &lt;name&gt;</code></td>
