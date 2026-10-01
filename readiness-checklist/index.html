@@ -2576,13 +2576,13 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS <code>deletion_protection = true</code> ✅ (fixed)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS <code>skip_final_snapshot = false</code> ✅ (fixed)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS password uses <code>special = true</code> for full entropy ✅ (fixed)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> IAM roles follow least privilege — review and scope down <code>PowerUserAccess</code> to ECR + EKS + S3 only</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> IAM roles follow least privilege — the CI role still has <code>PowerUserAccess</code> + <code>IAMFullAccess</code>; scope it to ECR + EKS + S3 (<a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/315">#315</a>)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> S3 buckets for TechDocs have bucket versioning and server-side encryption enabled</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS egress security group rule restricts to VPC CIDR, not <code>0.0.0.0/0</code></li>
 </ul>
 <h3 id="infrastructure-crossplane">Infrastructure (Crossplane)<a class="headerlink" href="#infrastructure-crossplane" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Crossplane IRSA role attaches AWS-managed <code>*FullAccess</code> policies — tighten to least-privilege custom policies before prod</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Crossplane IRSA role is least-privilege ✅ — <code>terraform/iam-crossplane.tf</code> uses scoped inline policies (S3, RDS, Kafka, DynamoDB, SQS, tagging) restricted to <code>idp-*</code> resources, no AWS-managed policies</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> All Crossplane-provisioned resources carry <code>idp:provisioner=crossplane</code>, <code>idp:owner</code>, <code>idp:cost-center</code> tags ✅ (enforced by Compositions)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>kubectl get providers.pkg.crossplane.io</code> shows all five providers <code>HEALTHY=True</code></li>
@@ -2598,7 +2598,7 @@
 <h3 id="github-actions">GitHub Actions<a class="headerlink" href="#github-actions" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No <code>pull_request_target</code> trigger used with checkout of untrusted code</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Consider pinning actions to commit SHAs for supply-chain security (currently using <code>@v4</code>/<code>@v5</code>)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Every <code>uses:</code> pinned to a 40-char commit SHA with a version comment ✅ — keep new actions pinned the same way</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>ANTHROPIC_API_KEY</code> secret is set in repository settings before running eval workflow</li>
 </ul>
 <hr />
@@ -2653,7 +2653,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Backstage users are provisioned via GitHub org membership, not manual catalog entries</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ArgoCD RBAC policy restricts non-admins to read-only on production apps</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>permission.enabled: true</code> set in <code>backstage/app-config.aws.yaml</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Permission backend plugin wired in <code>packages/backend/src/plugins/permission.ts</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Permission backend plugin wired ✅ — policy in <code>packages/backend/src/modules/idpPermissionPolicy.ts</code>, registered in <code>packages/backend/src/index.ts</code>, tested in <code>modules/__tests__/idpPermissionPolicy.test.ts</code></li>
 </ul>
 <h3 id="team-isolation">Team Isolation<a class="headerlink" href="#team-isolation" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
