@@ -46,9 +46,9 @@ variable "cluster_name" {
 }
 
 variable "cluster_version" {
-  description = "Kubernetes version for EKS cluster"
+  description = "Kubernetes version for EKS cluster. Keep this on a version in EKS *standard* support: once a version leaves it, the control plane bills extended support at $0.60/h instead of $0.10/h (6x). 1.32 crossed that line on 2026-03-23 and was costing ~$0.50/h extra. Check with: aws eks describe-cluster-versions --query 'clusterVersions[].[clusterVersion,versionStatus]'"
   type        = string
-  default     = "1.32"
+  default     = "1.35"
 }
 
 variable "vpc_cidr" {
