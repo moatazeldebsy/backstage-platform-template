@@ -6,7 +6,11 @@ metadata:
   labels:
     {{- include "service-template.labels" . | nindent 4 }}
 spec:
+  {{- if hasKey .Values.podDisruptionBudget "minAvailable" }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "service-template.selectorLabels" . | nindent 6 }}

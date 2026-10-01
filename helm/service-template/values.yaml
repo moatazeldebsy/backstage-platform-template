@@ -160,11 +160,17 @@ rbac:
   #     resources: ["deployments"]
   #     verbs: ["get", "list", "watch"]
 
-# PodDisruptionBudget — keeps minAvailable pods running during voluntary disruptions
-# (node drains, cluster upgrades). Disable only for single-replica dev overlays.
+# PodDisruptionBudget — limits how many pods voluntary disruptions (node drains,
+# cluster upgrades) can take down at once.
+# maxUnavailable rather than minAvailable: with 2+ replicas a drain still keeps
+# one serving, but a single-replica release (every helm-values-local.yaml, and
+# the AWS overlays that pin replicaCount: 1) stays evictable. minAvailable: 1 on
+# one replica allows zero disruptions, so it blocked node drains and EKS node
+# group upgrades indefinitely (#318). Setting minAvailable in an overlay still
+# works and takes precedence over maxUnavailable.
 podDisruptionBudget:
   enabled: true
-  minAvailable: 1
+  maxUnavailable: 1
 
 podAnnotations:
   prometheus.io/scrape: "true"
