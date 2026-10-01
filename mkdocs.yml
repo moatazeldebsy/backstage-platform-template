@@ -19,6 +19,7 @@ plugins:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Screenshots: screenshots.md
   - Architecture: architecture.md
   - Multi-Region: multi-region.md
   - Golden Path: golden-path.md

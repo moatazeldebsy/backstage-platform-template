@@ -36,6 +36,39 @@ Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
 
 Six layers — Developer Portal (Backstage + templates + AI), Golden Paths (21 service templates + 18 QA templates + 5 Crossplane Claims), AI-Native IDP (KAgent agents + MLflow + MCP servers + Argo Workflows), Delivery & Quality (GitHub Actions + ArgoCD + Helm + scorecard gates), Runtime (Kubernetes: Kind locally, EKS on AWS + Crossplane), Observability & Infra (Prometheus + Grafana + DORA + Terraform).
 
+## Platform Planes
+
+![Platform Planes](assets/platform-planes.png)
+
+The systems view: five planes, each independently installable. The core IDP runs without the AI and
+Observability planes, and the AI plane holds no privilege the planes above it do not already
+grant.
+
+| Plane | What's in it |
+|---|---|
+| **Experience** | The Backstage portal, the `idp` CLI and TechDocs for people; Claude Code, Copilot or any MCP client for agents. Sign-in is GitHub OAuth, with catalog groups synced from GitHub Org Teams |
+| **Control** | Backstage: catalog, scaffolder (61 templates), Tech Insights scorecard plus the compliance watcher, RAG search, Engineering Intelligence; Terraform and Crossplane for infrastructure |
+| **Delivery** | Argo CD, Workflows and Rollouts; Kyverno guardrails; Kind or EKS with Karpenter; the approval service (human approvals + user consent for agent actions) and the agent event router |
+| **AI & ML** *(optional)* | The **AI Gateway** is the single entry point: agentgateway routes every MCP tool call and every model call, and LiteLLM behind it serves Anthropic and Bedrock with virtual keys and spend tracking. Behind it: 9 KAgent agents, 8 MCP servers, MLflow, Ollama, Langfuse and DeepEval |
+| **Observability** *(optional)* | Prometheus, Grafana, Loki, Tempo, Alertmanager; DORA, flaky-test and Tech Insights exporters; OpenCost and Sloth SLOs; Engineering Intelligence scoring |
+
+The diagram is generated from [`diagrams/platform-planes.html`](diagrams/README.md), so update it there when a plane changes.
+
+## Local vs AWS at a glance
+
+| Layer | Local | AWS |
+|-------|-------|-----|
+| Compute | Kind (Kubernetes in Docker) | Amazon EKS 1.32 |
+| Container registry | Local registry (`localhost:5003`) | Amazon ECR |
+| Ingress | nginx ingress controller | AWS Load Balancer Controller (ALB) |
+| CI / CD | GitHub Actions → `idp:deploy-local` Backstage action | GitHub Actions (OIDC → ECR → EKS) |
+| IaC (foundation) | — | Terraform (EKS, VPC, ECR, IAM, RDS, S3, Secrets Manager) |
+| IaC (per-service) | — | Crossplane (S3, RDS, MSK, DynamoDB, SQS) — Claims in Git, reconciled by ArgoCD |
+| Deployment | Helm (`helm/service-template`) | Helm (`helm/service-template`) |
+| Developer portal | Backstage (Docker Compose) | Backstage (EKS) |
+| Observability | Prometheus + Grafana | CloudWatch + Grafana + Datadog Agent (infra/APM) |
+| LLM observability | Langfuse (default) — in-cluster Postgres + ClickHouse + MinIO | Langfuse (default) — RDS + S3 via Terraform, IRSA-scoped |
+
 ## Interaction Model
 
 ![Developer & Platform Engineer Interaction Flows](assets/interaction-flows.jpg)
@@ -303,6 +336,15 @@ Host ~/.kube/config         docker-compose mounts as read-only
 
 Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.32 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data & Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).
 
+### Multi-Region (V2, opt-in)
+
+Active-standby across eu-central-1 (primary) and us-east-1 (warm standby), deployed with
+`./scripts/bootstrap-multiregion.sh`. Single-region setups are unaffected.
+
+![AWS V2 — Active-Standby Multi-Region](assets/aws-architecture-v2.jpg)
+
+Topology, DR tiers, and the six rollout phases: [multi-region.md](multi-region.md).
+
 ### Network Topology
 
 ```
@@ -531,3 +573,13 @@ kubectl get ingress -A --no-headers | awk '{printf "%-30s %-20s %s\n", $1, $2, $
 | `services-dev` | (hello-service) | `hello-service-dev:80` |
 | `kagent` | `kagent-ui` | `kagent-ui:8080` |
 | `ml-platform` | `mlflow` | `mlflow:5000` |
+
+## Known limitations
+
+Stated plainly, because finding these by surprise is worse than reading them here:
+
+| Limitation | Detail |
+|---|---|
+| **Coarse authorization** | Any authenticated user can run any of the 61 templates against any namespace — GitHub Org Team sync gates sign-in, not template execution. [ADR-0004](design/adr-0004-identity-and-access.md), issues #153 and #155 |
+| **Sloth has no in-cluster operator** | SLO rules are vendored; editing a source file without the `sloth` binary silently changes nothing |
+| **No CI exercises an AWS bootstrap** | `terraform validate` and a guard against committed account ids is all that gates it |
