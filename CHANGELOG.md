@@ -58,6 +58,14 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`--profile large` could not apply.** `profiles/large.tfvars` set
+  `vpc_cidr = "10.0.0.0/8"`, which `CreateVpc` rejects (AWS allows /16–/28), and
+  the platform node group was capped at `max_size = 6` whenever Karpenter is on —
+  below large's min (8) and desired (12), so EKS would have rejected it after the
+  control plane was already up. Large now uses `10.0.0.0/16`; the Karpenter cap
+  never drops below the profile's min/desired. `vpc_cidr` has a /16–/24
+  validation and a precondition enforces min ≤ desired ≤ max, so both fail at
+  `terraform plan` instead of mid-apply. Small and medium are unchanged.
 - **Build and Deploy no longer fails on every `main` push after an AWS teardown.**
   `cleanup.sh` destroyed the GitHub OIDC role but left the repo's `AWS_ROLE_ARN`
   secret pointing at it, so the workflow's "secret is set" guard passed and the ECR

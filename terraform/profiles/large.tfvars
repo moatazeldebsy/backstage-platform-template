@@ -19,8 +19,11 @@ rds_instance_class    = "db.r5.xlarge"
 rds_multi_az          = true
 rds_allocated_storage = 500
 
-# Networking — expand CIDR to /8 to support multi-cluster peering and 100+ namespaces
-vpc_cidr = "10.0.0.0/8"
+# Networking — /16 is the largest CIDR AWS allows on a VPC (/16–/28); the /8 this
+# used to set was rejected by CreateVpc. The /20 private subnets it yields (~4k IPs
+# each) cover this tier once VPC-CNI prefix delegation is on; beyond that, add a
+# secondary CIDR (100.64.0.0/16) for pods rather than widening the primary one.
+vpc_cidr = "10.0.0.0/16"
 
 # One NAT gateway per AZ — AZ-level egress resilience (see ADR-0009)
 enable_multi_az_nat = true
