@@ -49,7 +49,7 @@ the static Groups and Users remain the seed.
 ### 3. Authorization stays coarse, and that is stated plainly
 
 `idpPermissionPolicy.ts` is unchanged: any authenticated user can run any of the
-64 scaffolder templates against any team's namespace. That is a real limitation
+59 scaffolder templates against any team's namespace. That is a real limitation
 of the current design, not an oversight, and it is written here so nobody has to
 rediscover it by reading the policy.
 
@@ -129,7 +129,7 @@ Consequences:
   from the next org sync. The template's old `catalog-skeleton/` step is
   removed.
 - **Rollout requirement:** every `spec.owner: platform-team` /
-  `owner: qa-platform-team` / etc. reference across the 64 scaffolder templates
+  `owner: qa-platform-team` / etc. reference across the 60 scaffolder templates
   and registered services now points at what must be a *real* GitHub Team of
   that slug — these were created in the org as part of rollout (one-time,
   outside this repo) since template ownership defaults assume they exist. The
@@ -137,7 +137,7 @@ Consequences:
   slug actually chosen when the team was created in `platform-demo-idp`.
 - **The `platform-demo-idp` / `moatazeldebsy` split is a personalisation
   variable, not a hardcoded value.** `scripts/placeholders.conf` gained a
-  `GITHUB_TEAMS_ORG` row (placeholder `YOUR_GITHUB_TEAMS_ORG`, literal
+  `GITHUB_TEAMS_ORG` row (placeholder `platform-demo-idp`, literal
   `platform-demo-idp`) alongside the existing `GITHUB_ORG` row (literal
   `moatazeldebsy`) — this repo is itself a GitHub template other adopters
   fork, so nothing about *this* deployment's org names may be baked in as a
