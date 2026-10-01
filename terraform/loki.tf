@@ -4,7 +4,7 @@
 # read/write/backend components.
 
 resource "aws_s3_bucket" "loki_chunks" {
-  bucket = "idp-mvp-loki-chunks-${data.aws_caller_identity.current.account_id}"
+  bucket = "idp-mvp-loki-chunks-${data.aws_caller_identity.current.account_id}${var.s3_bucket_suffix}"
 
   tags = {
     Name = "idp-mvp-loki-chunks"

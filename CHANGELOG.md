@@ -35,6 +35,14 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   wired in by `aws/observability/grafana-db-values.yaml`. On medium/large,
   `grafana-ha-values.yaml` runs 2 zone-spread replicas with a PDB and
   unified-alerting gossip, so Grafana-managed alerts are not sent twice.
+- **Regional Rebuild runbook** (`docs/runbooks/regional-rebuild.md`) for the
+  recovery path ADR-0009 accepts: rebuild from IaC in another region. Writing it
+  turned up three same-account blockers, now handled. `s3_bucket_suffix` (the
+  platform bucket names are global and region-less). Importing the
+  account-wide GitHub OIDC provider. `cleanup.sh --replaced-stack`, which tears
+  an old stack down without deleting `services/*` from git, clearing the repo's
+  `AWS_ROLE_ARN`, or destroying the shared OIDC provider. ADR-0009 gains an
+  addendum recording that second-region backups were considered and declined.
 - **Platform HA on `--profile medium|large`.** ArgoCD installs with a new
   overlay, `aws/argocd/argocd-ha-values.yaml`: Redis HA (3-node Sentinel behind
   HAProxy) replaces the single Redis, server / repo-server / applicationset run

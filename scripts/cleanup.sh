@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # cleanup.sh — Clean up all AWS resources safely
-# Usage: ./scripts/cleanup.sh [--region us-east-1] [--cluster-name idp-mvp] [--force]
+# Usage: ./scripts/cleanup.sh [--region us-east-1] [--cluster-name idp-mvp] [--force] [--replaced-stack]
+#   --replaced-stack  tear down a stack that another one has replaced (the old
+#                     region after docs/runbooks/regional-rebuild.md): leave the
+#                     state the two share alone — services/<name>/ in git and
+#                     their GitHub topics (Phase 3), and the repo's AWS_ROLE_ARN
 #
 # Destruction order matters:
 #   1. ALBs (K8s-managed, block VPC deletion) + stale ALB-controller security groups
@@ -22,6 +26,7 @@ CLUSTER_NAME="${CLUSTER_NAME:-idp-mvp}"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform"
 FORCE="${FORCE:-false}"
+REPLACED_STACK=false
 
 # shellcheck source=scripts/lib.sh
 source "${ROOT_DIR}/scripts/lib.sh"
@@ -37,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     --region)        AWS_REGION="$2"; shift 2 ;;
     --cluster-name)  CLUSTER_NAME="$2"; shift 2 ;;
     --force)         FORCE=true; shift ;;
+    --replaced-stack) REPLACED_STACK=true; shift ;;
     *) err "Unknown flag: $1" ;;
   esac
 done
@@ -336,8 +342,16 @@ done
 # resources were deleted first while a service's Claim (and thus Crossplane's
 # controller reconciliation) still existed, Crossplane would just recreate
 # them to match the still-live Claim's desired state.
-log "Phase 3: Cleaning up scaffolded services from ArgoCD, Helm, and git repo..."
-_cleanup_scaffolded_services "dev"
+# --replaced-stack skips this phase entirely. It deletes services/<name>/ from
+# git and pushes, regardless of which cluster is being destroyed. Tearing down
+# an OLD stack after a regional rebuild (docs/runbooks/regional-rebuild.md)
+# must not do that: those directories now drive the NEW cluster.
+if [[ "$REPLACED_STACK" == "true" ]]; then
+  log "Phase 3: skipped (--replaced-stack) — services/ and their GitHub topics left untouched."
+else
+  log "Phase 3: Cleaning up scaffolded services from ArgoCD, Helm, and git repo..."
+  _cleanup_scaffolded_services "dev"
+fi
 
 # ── Phase 4: Crossplane-orphaned resources ───────────────────────────────────
 # Resources tagged idp:provisioner=crossplane were provisioned by Crossplane
@@ -559,6 +573,15 @@ fi
 #   - DependencyViolation / security group errors: ALB-controller-created SGs
 #     that Phase 1 couldn't fully clear yet (ENIs release asynchronously).
 # terraform destroy is idempotent to rerun against a partially-destroyed state.
+# The GitHub Actions OIDC provider is one per AWS account, so a same-account
+# replacement stack imports this same provider into its own state. Destroying
+# it here would cut the replacement's CI off from AWS. Forget it instead.
+if [[ "$REPLACED_STACK" == "true" ]] && terraform state list 2>/dev/null \
+     | grep -qx 'aws_iam_openid_connect_provider.github_actions'; then
+  log "  Removing the shared GitHub OIDC provider from this state (--replaced-stack) — not destroying it."
+  terraform state rm aws_iam_openid_connect_provider.github_actions >/dev/null
+fi
+
 TF_DESTROY_LOG=$(mktemp)
 MAX_ATTEMPTS=3
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
@@ -631,8 +654,13 @@ done
 rm -f "${TF_DIR}/.idp-profile"
 
 # The GitHub OIDC role is gone now; clear the secret that points at it so CI
-# skips the ECR push instead of failing on every main push.
-sync_actions_role_secret ""
+# skips the ECR push instead of failing on every main push. Not for a replaced
+# stack: the secret already points at the replacement's role.
+if [[ "$REPLACED_STACK" == "true" ]]; then
+  log "  Leaving the repo's AWS_ROLE_ARN secret alone (--replaced-stack)."
+else
+  sync_actions_role_secret ""
+fi
 
 # ── Phase 7: CloudWatch log groups ───────────────────────────────────────────
 # EKS creates /aws/eks/<cluster>/cluster and /aws/containerinsights/<cluster>/*

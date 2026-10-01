@@ -84,4 +84,5 @@ nav:
     - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
     - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
     - KAgent Guardrails: runbooks/kagent-guardrails.md
+    - Regional Rebuild: runbooks/regional-rebuild.md
   - Post-Mortem Template: postmortem-template.md
