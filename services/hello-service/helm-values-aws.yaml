@@ -14,6 +14,10 @@ ingress:
   className: "alb"
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
+    # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
+    # hello-service is its listener on :8081.
+    alb.ingress.kubernetes.io/group.name: idp-platform
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 8081}]'
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
   hosts:

@@ -56,6 +56,10 @@ langfuse:
     className: alb
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
+      # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
+      # Langfuse is its listener on :3001.
+      alb.ingress.kubernetes.io/group.name: idp-platform
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 3001}]'
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
     # No host: the ALB hostname is not known at render time.

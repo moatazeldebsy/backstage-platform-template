@@ -11,6 +11,10 @@ metadata:
     app: idp-assistant
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
+    # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
+    # IDP Assistant (A2A) is its listener on :8084.
+    alb.ingress.kubernetes.io/group.name: idp-platform
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 8084}]'
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
     alb.ingress.kubernetes.io/proxy-read-timeout: "120"

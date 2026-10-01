@@ -15,6 +15,18 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   replicas could share an AZ and go down together. `zoneSpread` (on by default,
   `ScheduleAnyway`) adds a zone `topologySpreadConstraints` to both the
   Deployment and the Rollout. It never blocks scheduling, including on Kind.
+- **Cheaper AWS runs: one shared ALB and spot nodes.** Every platform UI
+  Ingress (ArgoCD, Grafana, hello-service, and on the AI stack
+  agent-event-router, KAgent UI, IDP Assistant, MLflow, Langfuse, Argo
+  Workflows) now joins one internet-facing ALB, IngressGroup `idp-platform`,
+  on its own listener port. That replaces ~9 ALBs, each ~$0.0375/h with its
+  public IPv4s. URLs become `http://<shared-alb>:<port>`. `bootstrap.sh`
+  prints them, and `scripts/lib.sh alb_ingress_url` reads one.
+  `validate-deployment.sh` flags any internet-facing Ingress left outside the
+  group. The platform node group runs **spot** unless `environment = "prod"`
+  (`node_capacity_type` overrides), with same-size alternative instance types
+  so a single spot pool running dry cannot block node launches. Backstage keeps
+  its NLB.
 - **Grafana on Postgres, and HA on `--profile medium|large`.** A dedicated
   RDS instance (`terraform/grafana.tf`, `enable_grafana_db`, on by default,
   Multi-AZ with the profile) holds Grafana's users, sessions and

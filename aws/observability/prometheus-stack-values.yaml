@@ -15,9 +15,8 @@
 #     --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}"
 
 prometheus:
-  # Ingress deliberately OFF. Every ALB Ingress here provisions its own ALB
-  # (~$16/mo each, and none of these can share one: they all serve `path: /`
-  # with no hostname, so a shared group.name would make them collide). Prometheus
+  # Ingress deliberately OFF. (Platform UIs now share one ALB, group
+  # idp-platform, one listener port each, so cost is no longer the reason.) Prometheus
   # is an operator tool, not a user-facing surface — Grafana is what people use,
   # and it reads Prometheus in-cluster. Exposing the raw query API to the public
   # internet with no auth was also the weakest link in this stack.
@@ -123,6 +122,10 @@ grafana:
     ingressClassName: alb
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
+      # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
+      # Grafana is its listener on :3000.
+      alb.ingress.kubernetes.io/group.name: idp-platform
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 3000}]'
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
       alb.ingress.kubernetes.io/success-codes: "200-399"

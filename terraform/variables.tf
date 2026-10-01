@@ -382,3 +382,14 @@ variable "grafana_rds_instance_class" {
   type        = string
   default     = "db.t4g.micro"
 }
+
+variable "node_capacity_type" {
+  description = "Capacity type for the platform node group: SPOT or ON_DEMAND. null (default) picks SPOT unless environment = \"prod\" (profiles/medium and large), since this platform is rebuilt from IaC and spot is ~60-70% cheaper. EKS drains a spot node when AWS reclaims it, and the pods reschedule."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.node_capacity_type == null || contains(["SPOT", "ON_DEMAND"], coalesce(var.node_capacity_type, "SPOT"))
+    error_message = "node_capacity_type must be SPOT, ON_DEMAND or null."
+  }
+}

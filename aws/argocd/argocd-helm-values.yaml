@@ -54,6 +54,10 @@ server:
     annotations:
       kubernetes.io/ingress.class: alb
       alb.ingress.kubernetes.io/scheme: internet-facing
+      # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
+      # ArgoCD is its listener on :8080.
+      alb.ingress.kubernetes.io/group.name: idp-platform
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 8080}]'
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
     hosts: []   # Empty = match any hostname via ALB DNS; set to real domain when DNS is configured
