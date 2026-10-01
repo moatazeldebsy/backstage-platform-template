@@ -8,7 +8,7 @@ Engineers can self-service a complete test suite in minutes — either through t
 - **18 golden-path testing scaffolds** — every major test type covered (see table below)
 - **CI quality gates** — SonarCloud SAST enforced on every PR; blocks on blocker/critical issues
 - **Cross-browser E2E** — LambdaTest integration for Playwright suites across 3000+ browser/OS combos
-- **Synthetic monitoring** — Datadog API and browser synthetics with multi-region coverage
+- **Synthetic monitoring** — Datadog API and browser synthetics run from multiple Datadog locations
 - **QA KPI dashboards** — Grafana dashboards tracking test pass rates, flakiness, and coverage trends
 
 ## Scaffold Templates
@@ -45,7 +45,7 @@ All templates are available in the Backstage **Create** page (`http://backstage.
 | Template | Tool | What it tests |
 |----------|------|--------------|
 | `zap-dast-suite` | OWASP ZAP | Dynamic security scanning (baseline / full / API) |
-| `datadog-synthetic-suite` | Datadog Synthetics | API + browser synthetic monitors, multi-region |
+| `datadog-synthetic-suite` | Datadog Synthetics | API + browser synthetic monitors from multiple locations |
 | `mutation-testing-suite` | Stryker | Test suite quality — mutation score threshold |
 
 ### Brownfield & Coverage

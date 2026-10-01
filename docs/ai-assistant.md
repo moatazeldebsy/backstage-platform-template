@@ -859,7 +859,7 @@ AI search across TechDocs, runbooks, catalog:
 # → Returns relevant runbooks, ADRs, documentation
 ```
 
-Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the `pgvector/pgvector` image in `local/backstage/docker-compose.yml`, initialised by `local/backstage/init-pgvector.sql`; on AWS, the `vector` extension on the same Aurora/RDS instance.
+Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the `pgvector/pgvector` image in `local/backstage/docker-compose.yml`, initialised by `local/backstage/init-pgvector.sql`; on AWS, the `vector` extension on the same RDS instance.
 
 ### AI Observability Dashboard ✅
 

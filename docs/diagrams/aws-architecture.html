@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AWS Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  :root { --page:#0d0e10; --ink:#f4f4f5; --muted:#a9a9b2; --accent:#f5a524; --line:#3a3324; }
+  body { margin:0; background:var(--page); color:var(--ink);
+         font-family:Poppins, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  .canvas { padding:40px 48px 48px; width:1440px; }
+  h1 { margin:0 0 6px; text-align:center; font-size:38px; font-weight:600; }
+  .sub { text-align:center; color:var(--muted); font-size:17px; margin-bottom:26px; }
+  .box { border:2px solid var(--accent); border-radius:14px; padding:20px 24px; }
+  .dash { border:2px dashed var(--accent); border-radius:10px; padding:14px; }
+  .label { color:var(--accent); font-weight:600; font-size:19px; margin-bottom:12px; }
+  .card { border:1.5px solid var(--accent); border-radius:8px; padding:10px 14px; font-size:16px;
+          background:#15140f; }
+  .card small { display:block; color:var(--muted); font-size:13px; margin-top:2px; }
+  .muted { color:var(--muted); font-size:14px; }
+  .row { display:flex; gap:16px; align-items:center; }
+  .edge { display:flex; gap:22px; align-items:center; justify-content:center; margin-bottom:18px; }
+  .edge .card { min-width:250px; text-align:center; }
+  .to { color:var(--accent); font-size:26px; }
+  .main { display:grid; grid-template-columns:1fr 300px; gap:22px; align-items:start; }
+  .azs { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .az .card + .card { margin-top:10px; }
+  .span { margin-top:14px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .db { margin-top:14px; }
+  .side .card + .card { margin-top:10px; }
+  .foot { margin-top:22px; display:flex; flex-wrap:wrap; gap:10px 28px; justify-content:center;
+          border:2px solid var(--accent); border-radius:12px; padding:14px 20px; font-size:16px; }
+  .foot span::before { content:"•"; color:var(--accent); margin-right:10px; }
+  .foot span:first-child::before { content:none; }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <h1>AWS Deployment — One Region, Three Availability Zones</h1>
+  <div class="sub">Resilient to the loss of one AZ · regional outage = rebuild from IaC + restore backups (ADR-0009)</div>
+
+  <div class="box">
+    <div class="label">AWS Region (<code>aws_region</code>, default eu-central-1)</div>
+
+    <div class="edge">
+      <div class="card">Route 53 + ACM<small>optional — only when <code>domain_name</code> is set</small></div>
+      <span class="to">→</span>
+      <div class="card">Application Load Balancer<small>AWS Load Balancer Controller</small></div>
+    </div>
+
+    <div class="main">
+      <div class="dash">
+        <div class="label">VPC — subnets in 3 AZs</div>
+        <div class="azs">
+          <div class="dash az"><div class="label">AZ-a</div>
+            <div class="card">NAT gateway<small>public subnet</small></div>
+            <div class="card">EKS nodes<small>private subnet</small></div></div>
+          <div class="dash az"><div class="label">AZ-b</div>
+            <div class="card">NAT gateway<small>medium / large only</small></div>
+            <div class="card">EKS nodes<small>private subnet</small></div></div>
+          <div class="dash az"><div class="label">AZ-c</div>
+            <div class="card">NAT gateway<small>medium / large only</small></div>
+            <div class="card">EKS nodes<small>private subnet</small></div></div>
+        </div>
+        <div class="span">
+          <div class="card">Backstage</div>
+          <div class="card">ArgoCD + Argo Rollouts</div>
+          <div class="card">Crossplane</div>
+          <div class="card">Prometheus · Grafana<small>Loki · Tempo</small></div>
+          <div class="card">KAgent · AI Gateway<small>LiteLLM · MCP servers · MLflow</small></div>
+          <div class="card">Karpenter<small>medium / large</small></div>
+        </div>
+        <div class="card db">RDS PostgreSQL — Backstage, Langfuse, LiteLLM
+          <small>Multi-AZ standby in a second AZ on medium / large</small></div>
+      </div>
+
+      <div class="side">
+        <div class="label">Regional services</div>
+        <div class="card">S3<small>TechDocs · Loki · Tempo</small></div>
+        <div class="card">ECR</div>
+        <div class="card">Secrets Manager<small>External Secrets · rotation</small></div>
+        <div class="card">Crossplane claims<small>S3 · RDS · DynamoDB · Kafka topics · SQS</small></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>Terraform (VPC · EKS · IAM OIDC/IRSA · RDS)</span>
+      <span>CloudWatch</span>
+      <span>AWS Budgets + Cost Anomaly Detection</span>
+      <span>Overnight cost optimizer (Lambda)</span>
+      <span>Datadog Agent</span>
+    </div>
+  </div>
+</div>
+<script>window.redrawWires = () => {};</script>
+</body>
+</html>

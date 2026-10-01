@@ -31,6 +31,21 @@ byte for byte.
 
 To change what the diagram says, edit `platform-planes.html` and re-run both steps.
 
+## Architecture diagrams
+
+`docs/assets/platform-architecture.png` (the eight-layer view) and
+`docs/assets/aws-architecture.png` (the single-region, three-AZ AWS deployment) are
+text-only, so they skip the logo build step and render straight from source:
+
+```bash
+cd backstage/app
+node ../../docs/diagrams/render.mjs ../../docs/diagrams/platform-architecture.html ../../docs/assets/platform-architecture.png
+node ../../docs/diagrams/render.mjs ../../docs/diagrams/aws-architecture.html ../../docs/assets/aws-architecture.png
+```
+
+Keep them in step with the platform: template counts, MCP server count, and
+anything added to or removed from `terraform/`.
+
 ## Why the logos are not committed
 
 The marks belong to their projects. They are used here nominatively — to identify

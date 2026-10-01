@@ -32,9 +32,9 @@ Recorded as ADRs under `docs/design/`, so the reasoning survives the decision:
 
 ## Overview
 
-![Platform Architecture](assets/platform-architecture.jpg)
+![Platform Architecture](assets/platform-architecture.png)
 
-Six layers — Developer Portal (Backstage + templates + AI), Golden Paths (21 service templates + 18 QA templates + 5 Crossplane Claims), AI-Native IDP (KAgent agents + MLflow + MCP servers + Argo Workflows), Delivery & Quality (GitHub Actions + ArgoCD + Helm + scorecard gates), Runtime (Kubernetes: Kind locally, EKS on AWS + Crossplane), Observability & Infra (Prometheus + Grafana + DORA + Terraform).
+Eight layers, top to bottom: the people and agents using the platform → the Backstage portal (59 templates) → golden paths (idp CLI, Helm chart, GitHub Actions) → GitOps (ArgoCD, ApplicationSet, Argo Rollouts) → AI/ML and agents (KAgent, AI Gateway + LiteLLM, 8 MCP servers, MLflow, ADP gate) → quality gates → observability (Prometheus, Grafana, Loki, Tempo, Datadog, DORA, OpenCost) → infrastructure (Terraform, Crossplane, Kind locally, EKS on AWS). Source: `docs/diagrams/platform-architecture.html`.
 
 ## Platform Planes
 
@@ -332,16 +332,16 @@ Host ~/.kube/config         docker-compose mounts as read-only
 
 ## AWS Architecture
 
-![AWS Architecture](assets/aws-architecture.jpg)
+![AWS Architecture](assets/aws-architecture.png)
 
-Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.32 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data & Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).
+One AWS region with VPC subnets in three AZs. Route 53 + ACM (only when `domain_name` is set) → ALB → EKS nodes spread across the AZs, running Backstage, ArgoCD, Crossplane, the observability stack and the AI layer. RDS PostgreSQL (Backstage, Langfuse, LiteLLM) with a Multi-AZ standby, and one NAT gateway per AZ, on the `medium`/`large` profiles. Regional services: S3, ECR, Secrets Manager, plus Crossplane-claimed S3 / RDS / DynamoDB / Kafka topics / SQS. Source: `docs/diagrams/aws-architecture.html`.
 
 ### Availability model
 
 One region, resilient across Availability Zones: subnets in 3 AZs, per-AZ NAT and
 RDS Multi-AZ on the `medium`/`large` profiles. A full regional outage is recovered by
 rebuilding from IaC and restoring backups. See
-[ADR-0009](design/adr-0009-single-region-multi-az.md) for why multi-region was removed.
+[ADR-0009](design/adr-0009-single-region-multi-az.md) for the reasoning.
 
 ### Network Topology
 

@@ -2518,7 +2518,7 @@ else
       check "ConfigMap approval-service-policy ready"
 
       if [[ "$DEPLOY_MODE" == "aws" ]]; then
-        # approval-service reuses Backstage's own Aurora/RDS Postgres — copy the
+        # approval-service reuses Backstage's own RDS Postgres — copy the
         # connection secret across namespaces since K8s secrets are namespace-scoped.
         if kubectl get secret backstage-secrets -n backstage &>/dev/null; then
           info "Copying backstage-secrets (namespace: backstage) → approval-service-db (namespace: services-dev)..."

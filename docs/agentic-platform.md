@@ -115,7 +115,7 @@ UI, how to test the gate, and troubleshooting.
 
 | Component | Path |
 |-----------|------|
-| `approval-service` — REST API, `agent_approvals` table on the existing Backstage Postgres (Aurora/RDS in AWS, docker-compose pgvector image locally, reached via `host.docker.internal` from Kind pods) | `services/approval-service/` |
+| `approval-service` — REST API, `agent_approvals` table on the existing Backstage Postgres (RDS in AWS, docker-compose pgvector image locally, reached via `host.docker.internal` from Kind pods) | `services/approval-service/` |
 | Policy-as-Prompt rules (e.g. "sync_app on `prod-*` requires approval; rollback_app always does") | `kubernetes/kagent/policies/configmap.yaml`, evaluated by `services/approval-service/src/policy.ts` |
 | `check_policy`/`request_approval`/`get_approval_status` tools (proxy to approval-service) | `services/idp-mcp-server/src/server.ts` |
 | Tool-server-level enforcement — `sync_app`/`rollback_app`/`approve_pr` reject a real call without an `approval_id` whose recorded status is `approved`, unless `APPROVAL_SERVICE_URL` is unset (on by default — declared in each server's helm values) | `services/argocd-mcp-server/src/server.ts`, `services/github-mcp-server/src/server.ts` |

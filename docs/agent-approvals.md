@@ -47,7 +47,7 @@ A mutating tool call fails unless it carries an `approval_id` whose recorded sta
 | Enforcement on `approve_pr` | `services/github-mcp-server/src/server.ts` |
 | Approvals UI | `backstage/app/packages/app/src/extensions.tsx` (`ApprovalsPage`) |
 
-The `agent_approvals` table lives on the **existing Backstage Postgres** — Aurora/RDS on AWS, the docker-compose pgvector container locally (reached from Kind pods via `host.docker.internal`). No new database.
+The `agent_approvals` table lives on the **existing Backstage Postgres** — RDS on AWS, the docker-compose pgvector container locally (reached from Kind pods via `host.docker.internal`). No new database.
 
 ### Enforcement is opt-in, and silent when off
 

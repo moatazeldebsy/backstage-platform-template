@@ -8,7 +8,7 @@ The platform had three ways to run work that isn't a long-lived service, and no
 written rule for choosing between them. That produced a specific oddity: Argo
 Workflows was installed in every environment — opt-in locally, on by default on
 AWS, with an S3 artifact bucket and an IRSA role — to carry **exactly one
-manifest**, a DR failover runbook. Zero `WorkflowTemplate`s, zero `CronWorkflow`s.
+manifest**, an operational runbook. Zero `WorkflowTemplate`s, zero `CronWorkflow`s.
 
 Meanwhile the ML training story it had been installed for was a single bare
 `kind: Job`, submitted by the `idp:run-training-job` scaffolder action.
@@ -63,8 +63,8 @@ was already there:
   forces the fallback.
 - The fallback path silently loses the accuracy gate and the approval step. The
   action logs a warning saying so rather than pretending they ran.
-- The DR failover runbook this ADR originally kept on Argo Workflows was removed
-  with the multi-region topology ([ADR-0009](adr-0009-single-region-multi-az.md)).
+- The one runbook manifest this ADR originally kept on Argo Workflows has since
+  been removed ([ADR-0009](adr-0009-single-region-multi-az.md)).
 - The training pipeline runs 5 pods where the Job ran 1. Requests are modest and
   the Job fallback remains for constrained clusters.
 
