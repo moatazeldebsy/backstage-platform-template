@@ -10,6 +10,11 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Golden-path chart spreads replicas across AZs by default.** The
+  `helm/service-template` anti-affinity only separated nodes, so a service's two
+  replicas could share an AZ and go down together. `zoneSpread` (on by default,
+  `ScheduleAnyway`) adds a zone `topologySpreadConstraints` to both the
+  Deployment and the Rollout. It never blocks scheduling, including on Kind.
 - **Grafana on Postgres, and HA on `--profile medium|large`.** A dedicated
   RDS instance (`terraform/grafana.tf`, `enable_grafana_db`, on by default,
   Multi-AZ with the profile) holds Grafana's users, sessions and
@@ -113,6 +118,9 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it. It now has its own SecretStore and `litellm-eso` IRSA role scoped to those
   two secrets. The Backstage role was deliberately not widened: Backstage pods
   share it, and would then have been able to read the Anthropic key.
+- **Cost optimizer scale-up lifted the platform node group cap.** It restored
+  `maxSize` from `node_group_max_size` rather than the effective max in
+  `eks.tf`. With Karpenter on, those differ.
 - **Grafana lost its state on every restart on AWS.** It ran on in-pod SQLite
   with persistence disabled, so users, UI-made dashboards and service-account
   tokens (including Backstage's `GRAFANA_TOKEN`) vanished whenever the pod was

@@ -91,6 +91,19 @@ spec:
                     {{- include "service-template.selectorLabels" . | nindent 20 }}
                 topologyKey: kubernetes.io/hostname
       {{- end }}
+      {{- if .Values.zoneSpread.enabled }}
+      # Spread replicas across availability zones. The anti-affinity above
+      # only separates nodes, so both replicas could share one AZ and go down
+      # with it. ScheduleAnyway: on Kind (no zone labels) or a lopsided node
+      # pool this only affects scoring and never blocks scheduling.
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.zoneSpread.maxSkew }}
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: {{ .Values.zoneSpread.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              {{- include "service-template.selectorLabels" . | nindent 14 }}
+      {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}

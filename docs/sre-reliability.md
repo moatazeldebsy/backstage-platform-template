@@ -77,6 +77,25 @@ podDisruptionBudget:
   minAvailable: 2   # increase for critical services
 ```
 
+### Zone spread
+
+A PDB alone does not survive an AZ outage. The chart's pod anti-affinity only
+keeps replicas on *different nodes*, and those nodes can share an AZ. Replicas
+are therefore also spread across zones by default, through a
+`topologySpreadConstraints` entry on `topology.kubernetes.io/zone`:
+
+```yaml
+zoneSpread:
+  enabled: true
+  maxSkew: 1
+  whenUnsatisfiable: ScheduleAnyway   # DoNotSchedule makes it a hard requirement
+```
+
+`ScheduleAnyway` makes it a scoring preference, so it can never leave a pod
+Pending. That matters on Kind, whose nodes carry no zone label, and while a node
+pool is briefly uneven. Use `DoNotSchedule` only for services whose replicas
+must never share an AZ, and only with node capacity in every zone.
+
 ---
 
 ## Blameless Postmortem Process
