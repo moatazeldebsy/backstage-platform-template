@@ -77,28 +77,6 @@ prometheus:
               # rebuild — but a fresh install should start with headroom.
               storage: 20Gi
 
-    # ── Thanos sidecar (V2 multi-region) ──────────────────────────────────────
-    # Enables long-term storage to S3 and cross-region query federation.
-    # The thanos-objstore-config Secret is created by the ExternalSecret in
-    # aws/observability/thanos/thanos-sidecar-patch.yaml (populated from
-    # Secrets Manager by terraform/global/thanos-config.tf).
-    thanos:
-      image: quay.io/thanos/thanos:v0.36.1
-      objectStorageConfig:
-        existingSecret:
-          name: thanos-objstore-config
-          key: objstore.yml
-      # Expose gRPC port so Thanos Query can scrape in-memory (recent) blocks
-      grpcListenLocal: false
-      httpListenLocal: false
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
-
 alertmanager:
   enabled: true
   # Ingress deliberately OFF — operator tool, own ALB, no auth. See the note on
@@ -154,24 +132,9 @@ grafana:
 
   sidecar:
     datasources:
-      # kube-prometheus-stack normally auto-provisions a Prometheus datasource
-      # (uid: prometheus, isDefault: true) via its own grafana_datasource-labeled
-      # ConfigMap. V2 replaces that with the multi-region datasources ConfigMap
-      # (aws/observability/grafana-multi-region-datasources.yaml), which sets
-      # Thanos as isDefault and re-declares uid: prometheus for dashboard
-      # compatibility. Disable the chart's auto datasource so the two
-      # grafana_datasource ConfigMaps don't both set isDefault: true (that
-      # combination crashes Grafana on startup).
-      defaultDatasourceEnabled: false
-
-  # kube-prometheus-stack's auto-provisioned Prometheus datasource is disabled above
-  # (see sidecar.datasources). Datasources are instead provisioned via
-  # aws/observability/grafana-multi-region-datasources.yaml — do not add a second
-  # isDefault entry here.
-  datasources:
-    datasources.yaml:
-      apiVersion: 1
-      datasources: []
+      # Let kube-prometheus-stack auto-provision its Prometheus datasource
+      # (uid: prometheus, isDefault: true) — the dashboards reference that uid.
+      defaultDatasourceEnabled: true
 
   # Dashboard folder providers — one entry per ConfigMap.
   dashboardProviders:

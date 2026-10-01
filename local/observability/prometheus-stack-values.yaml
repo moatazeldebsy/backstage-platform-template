@@ -24,7 +24,7 @@ prometheus:
     # hours of local history to look back over — closing the "no long-term
     # metric store locally" gap called out in
     # docs/engineering-intelligence/roadmap.md's cross-cutting debt table.
-    # This is a lighter fix than mirroring AWS's Thanos sidecar: no new
+    # This is a lighter fix than adding a long-term store (Thanos/Mimir): no new
     # component, still bounded, still lost on PVC deletion — good enough for
     # local dev, not a substitute for real long-term storage.
     retention: 24h
@@ -35,8 +35,8 @@ prometheus:
     # (6h→24h) so this still sits comfortably below the PVC size, not at it.
     # Not "in step with" aws/observability/prometheus-stack-values.yaml's
     # retention/retentionSize by design now — AWS's 3d/15GB is calibrated for
-    # its own storage class and its Thanos sidecar drains data before local
-    # retention expires; local has neither, so the numbers diverge on purpose.
+    # its own storage class (gp3, 20Gi); local runs on a smaller PVC, so the
+    # numbers diverge on purpose.
     retentionSize: 6000MB
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}

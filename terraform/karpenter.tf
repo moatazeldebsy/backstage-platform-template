@@ -6,7 +6,7 @@
 #   platform node group (managed, on-demand) → runs with label role=platform
 #   Karpenter NodePool (spot+on-demand mix)   → runs everything else
 #
-# Only provisioned when enable_karpenter = true (set in tfvars/eu-central-1.tfvars)
+# Only provisioned when enable_karpenter = true (set in profiles/medium.tfvars and profiles/large.tfvars)
 
 module "karpenter" {
   count   = var.enable_karpenter ? 1 : 0

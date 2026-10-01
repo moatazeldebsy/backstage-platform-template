@@ -28,8 +28,7 @@
 #   --skip-argo-workflows
 #                      Skip Argo Workflows. Costs ~5m of the install. You lose
 #                       the ml-training-pipeline and llm-eval-pipeline
-#                       WorkflowTemplates, and on multi-region the DR failover
-#                       runbook. idp:run-training-job falls back to a plain Job
+#                       WorkflowTemplates. idp:run-training-job falls back to a plain Job
 #                       automatically (without the accuracy gate or the human
 #                       approval step). See docs/design/adr-0001-batch-orchestration.md
 #   --agents <list>    Comma-separated KAgent agents to install. Default is the
@@ -1473,8 +1472,7 @@ timer_end "3. MLflow (launch)"
 # It used to be installed only by bootstrap.sh (behind --with-ai) and
 # bootstrap-local.sh (behind --install-argo-workflows), never here. On AWS that
 # left the live cluster with no argo-workflows namespace after a
-# `bootstrap-ai.sh --aws` run, so both pipelines and the DR failover runbook
-# were unavailable. Observed 2026-08-16.
+# `bootstrap-ai.sh --aws` run, so both pipelines were unavailable. Observed 2026-08-16.
 timer_start "3-bis. Argo Workflows"
 if [[ "$SKIP_ARGO_WORKFLOWS" == "true" ]]; then
   info "Skipping Argo Workflows (--skip-argo-workflows)."
@@ -1484,8 +1482,6 @@ if [[ "$SKIP_ARGO_WORKFLOWS" == "true" ]]; then
   # endpoints GitHub Actions cannot reach.
   warn "  ml-training-pipeline and llm-eval-pipeline will not be available."
   warn "  idp:run-training-job falls back to a plain Job — no accuracy gate, no approval step."
-  [[ "$DEPLOY_MODE" == "aws" ]] && \
-    warn "  The multi-region DR failover runbook will not be available."
 else
   log "Step 3-bis: Installing Argo Workflows..."
   if [[ "$DEPLOY_MODE" == "aws" ]]; then

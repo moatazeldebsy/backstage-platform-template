@@ -43,22 +43,7 @@ output "litellm_bedrock_role_arn" {
   value       = aws_iam_role.litellm_bedrock.arn
 }
 
-output "secondary_region" {
-  description = "Secondary (standby) AWS region configured for this workspace"
-  value       = var.secondary_region
-}
-
-output "is_primary_region" {
-  description = "Whether this workspace is the primary region (eu-central-1)"
-  value       = var.is_primary_region
-}
-
 output "configure_kubectl_cmd" {
   description = "Command to add this cluster to kubeconfig"
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
-}
-
-output "argocd_cluster_secret_name" {
-  description = "Secrets Manager secret name to populate for ArgoCD hub-spoke cluster registration"
-  value       = "idp-mvp/argocd/cluster-${var.aws_region}"
 }

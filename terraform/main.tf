@@ -54,21 +54,6 @@ provider "aws" {
   }
 }
 
-# Secondary region provider — used for cross-region data lookups and replication.
-# Resources that target the secondary region must set provider = aws.secondary.
-provider "aws" {
-  alias  = "secondary"
-  region = var.secondary_region
-
-  default_tags {
-    tags = {
-      Project     = "idp-mvp"
-      Environment = var.environment
-      ManagedBy   = "terraform"
-    }
-  }
-}
-
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)

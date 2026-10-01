@@ -260,7 +260,7 @@ export function createServer(agentId: string = 'unknown') {
     'get_runbook',
     'Fetch a runbook markdown file from docs/runbooks/ in the platform repo',
     {
-      name: z.string().describe('Runbook filename without extension, e.g. "dr-region-failover" or "kagent-guardrails"'),
+      name: z.string().describe('Runbook filename without extension, e.g. "deployment-rollback" or "kagent-guardrails"'),
     },
     async ({ name }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_runbook' });

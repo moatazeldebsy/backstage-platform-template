@@ -124,7 +124,7 @@ describe('get_runbook', () => {
   it('lists available runbooks when the requested one is not found', async () => {
     fetchMock()
       .mockResolvedValueOnce(makeResponse('Not Found', 404))
-      .mockResolvedValueOnce(makeResponse([{ name: 'kagent-guardrails.md' }, { name: 'dr-region-failover.md' }]));
+      .mockResolvedValueOnce(makeResponse([{ name: 'kagent-guardrails.md' }, { name: 'deployment-rollback.md' }]));
     const client = await buildClient();
     const result = await client.callTool({ name: 'get_runbook', arguments: { name: 'does-not-exist' } });
     const data = parseResult(result as { content: Array<{ type: string; text?: string }> }) as { found: boolean; available_runbooks: string[] };
