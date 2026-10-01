@@ -626,6 +626,59 @@ output "kagent_eso_role_arn" {
   value       = module.kagent_eso_irsa.iam_role_arn
 }
 
+# LiteLLM ESO IRSA — the litellm-keys ExternalSecret needs idp-mvp/kagent
+# (ANTHROPIC_API_KEY, LITELLM_MASTER_KEY) and idp-mvp/litellm (DATABASE_URL).
+# It used the shared aws-secretsmanager ClusterSecretStore, which runs as the
+# Backstage role — and that role can read neither, so the ExternalSecret never
+# synced: litellm-keys only ever held what bootstrap-ai.sh wrote imperatively,
+# and a key rotated in Secrets Manager never reached LiteLLM. Granting the
+# Backstage role instead would hand the Anthropic key to the Backstage pods
+# that share it, so this is a dedicated role, same pattern as kagent_eso_irsa.
+module "litellm_eso_irsa" {
+  count = var.enable_litellm ? 1 : 0
+
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-litellm-eso"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["ml-platform:litellm-eso-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "litellm_eso" {
+  count = var.enable_litellm ? 1 : 0
+
+  name = "litellm-eso-secrets-read"
+  role = module.litellm_eso_irsa[0].iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.kagent.arn,
+          aws_secretsmanager_secret.litellm_db[0].arn,
+        ]
+      }
+    ]
+  })
+}
+
+output "litellm_eso_role_arn" {
+  description = "IAM role ARN for the LiteLLM ESO ServiceAccount (IRSA) — reads idp-mvp/kagent and idp-mvp/litellm. Empty when enable_litellm = false."
+  value       = one(module.litellm_eso_irsa[*].iam_role_arn)
+}
+
 # Datadog ESO IRSA — allows External Secrets Operator in the datadog namespace to
 # read the Datadog API/App keys from Secrets Manager (idp-mvp/datadog).
 module "datadog_eso_irsa" {
