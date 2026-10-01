@@ -512,29 +512,11 @@ kubernetes:
 
 permission:
   enabled: true
-  # Policy: allow all for authenticated users; deny for unauthenticated (guest).
-  # Replace with a custom OPA/Cedar policy plugin for fine-grained team RBAC.
-  # The minimal policy below blocks the scaffolder for unauthenticated users,
-  # which is the highest-risk default at org scale.
+  # Policy: packages/backend/src/modules/idpPermissionPolicy.ts (registered in
+  # packages/backend/src/index.ts). Guests get read-only access: they cannot run
+  # or cancel scaffolder tasks or delete/refresh catalog entities. Authenticated
+  # users get full access.
   #
-  # To add team-scoped template visibility (item 7 from the scaling checklist),
-  # implement a custom PolicyDecision that checks the user's Backstage Group
-  # membership against the template's spec.owner before allowing execution.
-  #
-  # Ref: packages/backend/src/plugins/permission.ts (add this file)
-  #   import { createRouter } from '@backstage/plugin-permission-backend';
-  #   import { AuthorizeResult } from '@backstage/plugin-permission-common';
-  #   export default async function createPlugin(env) {
-  #     return createRouter({
-  #       config: env.config,
-  #       logger: env.logger,
-  #       discovery: env.discovery,
-  #       identity: env.identity,
-  #       policy: {
-  #         async handle(request, user) {
-  #           if (!user) return { result: AuthorizeResult.DENY };
-  #           return { result: AuthorizeResult.ALLOW };
-  #         }
-  #       }
-  #     });
-  #   }
+  # To add team-scoped template visibility or owner-based catalog writes, extend
+  # that module so it checks the user's Backstage Group membership against the
+  # entity's spec.owner — see #155.
