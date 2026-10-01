@@ -55,6 +55,13 @@ variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
   default     = "10.0.0.0/16"
+
+  # AWS only accepts /16–/28 on a VPC. vpc.tf also carves subnets with
+  # cidrsubnet(vpc_cidr, 4, i) for up to 8 of them, which needs at least a /24.
+  validation {
+    condition     = try(tonumber(split("/", var.vpc_cidr)[1]) >= 16 && tonumber(split("/", var.vpc_cidr)[1]) <= 24 && can(cidrhost(var.vpc_cidr, 0)), false)
+    error_message = "vpc_cidr must be a valid IPv4 CIDR between /16 and /24 (AWS rejects VPCs larger than /16)."
+  }
 }
 
 variable "node_instance_types" {

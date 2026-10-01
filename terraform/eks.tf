@@ -1,3 +1,30 @@
+locals {
+  # With Karpenter on, team-service burst goes to Karpenter nodes, so the platform
+  # node group is capped instead of growing to node_group_max_size. The cap used to
+  # be a flat 6, which is below profiles/large's min (8) and desired (12): EKS
+  # rejected the node group with min > max ~15 minutes into the apply, after the
+  # control plane was already up. The cap now never drops below what the profile
+  # asks the group to run.
+  platform_node_group_max_size = (
+    var.enable_karpenter
+    ? max(6, var.node_group_min_size, var.node_group_desired_size)
+    : var.node_group_max_size
+  )
+}
+
+# Fails `terraform plan` instead of the EKS CreateNodegroup call.
+resource "terraform_data" "node_group_sizing_check" {
+  lifecycle {
+    precondition {
+      condition = (
+        var.node_group_min_size <= var.node_group_desired_size &&
+        var.node_group_desired_size <= local.platform_node_group_max_size
+      )
+      error_message = "Platform node group sizing must satisfy min <= desired <= max (min=${var.node_group_min_size}, desired=${var.node_group_desired_size}, max=${local.platform_node_group_max_size})."
+    }
+  }
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -73,7 +100,7 @@ module "eks" {
     platform = {
       instance_types = var.node_instance_types
       min_size       = var.node_group_min_size
-      max_size       = var.enable_karpenter ? 6 : var.node_group_max_size # cap platform NG when Karpenter takes over burst
+      max_size       = local.platform_node_group_max_size
       desired_size   = var.node_group_desired_size
 
       labels = {

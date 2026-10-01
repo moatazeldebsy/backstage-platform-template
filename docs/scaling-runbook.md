@@ -51,12 +51,12 @@ Key changes per tier:
 - **Small → Medium**: EKS nodes t3.large→m5.xlarge, RDS db.t3.medium→db.m5.large,
   `rds_multi_az=true` (triggers RDS modification, brief failover), Karpenter enabled.
 - **Medium → Large**: EKS nodes m5.xlarge→m5.2xlarge, RDS db.m5.large→db.r5.xlarge,
-  VPC CIDR expands (requires VPC replacement — plan a maintenance window).
+  platform node group grows to the profile's desired size (Karpenter still takes service burst).
 
-> **Large tier VPC note**: Expanding `vpc_cidr` from `10.0.0.0/16` to `10.0.0.0/8` requires
-> destroying and recreating the VPC and all dependent resources. Do this with a blue/green
-> cluster approach — provision the new VPC in a separate Terraform workspace, migrate teams,
-> then decommission the old one.
+> **Large tier VPC note**: all tiers use `vpc_cidr = 10.0.0.0/16` — the largest CIDR AWS
+> accepts on a VPC (`/16`–`/28`), so there is no VPC replacement between tiers. If pod IPs run
+> short at this scale, add a secondary CIDR block (e.g. `100.64.0.0/16`) with VPC-CNI custom
+> networking and enable prefix delegation, rather than widening the primary CIDR.
 
 ---
 
