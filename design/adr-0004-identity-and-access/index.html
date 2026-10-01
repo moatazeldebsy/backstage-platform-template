@@ -2446,7 +2446,7 @@ only for org-backed adopters. Instead it stays unimplemented and documented, and
 the static Groups and Users remain the seed.</p>
 <h3 id="3-authorization-stays-coarse-and-that-is-stated-plainly">3. Authorization stays coarse, and that is stated plainly<a class="headerlink" href="#3-authorization-stays-coarse-and-that-is-stated-plainly" title="Permanent link">&para;</a></h3>
 <p><code>idpPermissionPolicy.ts</code> is unchanged: any authenticated user can run any of the
-64 scaffolder templates against any team's namespace. That is a real limitation
+59 scaffolder templates against any team's namespace. That is a real limitation
 of the current design, not an oversight, and it is written here so nobody has to
 rediscover it by reading the policy.</p>
 <h2 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h2>
@@ -2522,7 +2522,7 @@ and registered (<code>backstage/app/packages/backend/src/index.ts</code>), and
   from the next org sync. The template's old <code>catalog-skeleton/</code> step is
   removed.</li>
 <li><strong>Rollout requirement:</strong> every <code>spec.owner: platform-team</code> /
-  <code>owner: qa-platform-team</code> / etc. reference across the 64 scaffolder templates
+  <code>owner: qa-platform-team</code> / etc. reference across the 60 scaffolder templates
   and registered services now points at what must be a <em>real</em> GitHub Team of
   that slug — these were created in the org as part of rollout (one-time,
   outside this repo) since template ownership defaults assume they exist. The
@@ -2530,7 +2530,7 @@ and registered (<code>backstage/app/packages/backend/src/index.ts</code>), and
   slug actually chosen when the team was created in <code>platform-demo-idp</code>.</li>
 <li><strong>The <code>platform-demo-idp</code> / <code>moatazeldebsy</code> split is a personalisation
   variable, not a hardcoded value.</strong> <code>scripts/placeholders.conf</code> gained a
-  <code>GITHUB_TEAMS_ORG</code> row (placeholder <code>YOUR_GITHUB_TEAMS_ORG</code>, literal
+  <code>GITHUB_TEAMS_ORG</code> row (placeholder <code>platform-demo-idp</code>, literal
   <code>platform-demo-idp</code>) alongside the existing <code>GITHUB_ORG</code> row (literal
   <code>moatazeldebsy</code>) — this repo is itself a GitHub template other adopters
   fork, so nothing about <em>this</em> deployment's org names may be baked in as a
