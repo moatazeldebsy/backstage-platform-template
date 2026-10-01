@@ -29,3 +29,9 @@ enable_karpenter = true
 # FinOps — higher cap; overnight scale-down optional in prod
 budget_monthly_limit_usd = "2000"
 enable_cost_optimizer    = false
+
+# Reliability hardening — see variables.tf for each
+secret_recovery_window_days      = 7
+rds_max_allocated_storage        = 500
+rds_performance_insights_enabled = true
+enable_vpc_interface_endpoints   = true

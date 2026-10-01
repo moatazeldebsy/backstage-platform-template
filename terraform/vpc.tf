@@ -36,3 +36,51 @@ module "vpc" {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 }
+
+# ── VPC endpoints ─────────────────────────────────────────────────────────────
+# Keeps the traffic the platform cannot run without off the NAT gateways:
+#   - S3 (gateway, free): ECR image layers are served from S3, plus TechDocs,
+#     Loki/Tempo chunks, Velero backups and Terraform state.
+#   - ECR api/dkr, STS, Secrets Manager, CloudWatch Logs (interface, opt-in):
+#     image pulls, IRSA token exchange (every pod with an AWS role), External
+#     Secrets sync and log shipping.
+# With these, losing a NAT gateway (or its AZ on profiles/small, which has
+# only one) no longer stops pods from pulling images or reading their secrets.
+# It also stops NAT data-processing charges ($0.045/GB) on what is by far the
+# largest egress: image layers.
+module "vpc_endpoints" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "~> 5.0"
+
+  vpc_id = module.vpc.vpc_id
+
+  create_security_group      = var.enable_vpc_interface_endpoints
+  security_group_name_prefix = "${var.cluster_name}-vpce-"
+  security_group_description = "HTTPS from inside the VPC to interface endpoints"
+  security_group_rules = {
+    ingress_https = {
+      description = "HTTPS from the VPC"
+      cidr_blocks = [module.vpc.vpc_cidr_block]
+    }
+  }
+
+  endpoints = merge(
+    {
+      s3 = {
+        service         = "s3"
+        service_type    = "Gateway"
+        route_table_ids = module.vpc.private_route_table_ids
+        tags            = { Name = "${var.cluster_name}-s3" }
+      }
+    },
+    var.enable_vpc_interface_endpoints ? {
+      for svc in ["ecr.api", "ecr.dkr", "sts", "secretsmanager", "logs"] :
+      replace(svc, ".", "_") => {
+        service             = svc
+        private_dns_enabled = true
+        subnet_ids          = module.vpc.private_subnets
+        tags                = { Name = "${var.cluster_name}-${svc}" }
+      }
+    } : {}
+  )
+}

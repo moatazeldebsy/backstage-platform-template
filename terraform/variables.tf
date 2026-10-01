@@ -339,3 +339,34 @@ variable "jira_url" {
   type        = string
   default     = ""
 }
+
+# ── Reliability hardening (on in profiles/medium + large) ─────────────────────
+
+variable "secret_recovery_window_days" {
+  description = "Recovery window for Terraform-managed Secrets Manager secrets. 0 deletes immediately (dev: lets destroy + re-bootstrap reuse the same names). 7-30 makes an accidental delete or a bad apply recoverable with `aws secretsmanager restore-secret`; cleanup.sh force-deletes them after terraform destroy either way."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.secret_recovery_window_days == 0 || (var.secret_recovery_window_days >= 7 && var.secret_recovery_window_days <= 30)
+    error_message = "secret_recovery_window_days must be 0 or between 7 and 30 (the Secrets Manager limits)."
+  }
+}
+
+variable "rds_max_allocated_storage" {
+  description = "Upper bound in GB for RDS storage autoscaling on the Backstage instance. Storage grows automatically (no downtime) when free space runs low, instead of the instance going read-only. 0 disables autoscaling."
+  type        = number
+  default     = 100
+}
+
+variable "rds_performance_insights_enabled" {
+  description = "Enable Performance Insights (7-day retention, free tier) on the Backstage RDS instance. Not supported on db.t3.micro / db.t4g.micro, so off by default and enabled by the medium/large profiles."
+  type        = bool
+  default     = false
+}
+
+variable "enable_vpc_interface_endpoints" {
+  description = "Create interface VPC endpoints (ECR api/dkr, STS, Secrets Manager, CloudWatch Logs) so image pulls, IRSA token exchange and secret sync keep working without NAT, and stop paying NAT per-GB for that traffic. About $7/month per endpoint per AZ (~$110/month for 5 x 3 AZs). The S3 gateway endpoint is free and always created."
+  type        = bool
+  default     = false
+}
