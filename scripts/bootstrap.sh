@@ -133,9 +133,11 @@ fi
 # Pending pods.
 case "$TF_PROFILE" in
   medium|large)
+    PLATFORM_HA=true
     ARGOCD_HA_VALUES=(--values aws/argocd/argocd-ha-values.yaml)
     BACKSTAGE_REPLICAS=2 ;;
   *)
+    PLATFORM_HA=false
     ARGOCD_HA_VALUES=()
     BACKSTAGE_REPLICAS=1 ;;
 esac
@@ -592,6 +594,36 @@ kubectl apply -f kubernetes/monitoring/grafana-finops-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-sre-dashboard-configmap.yaml
 kubectl apply -f kubernetes/monitoring/grafana-ai-dashboard-configmap.yaml
 
+# Grafana's own database (terraform/grafana.tf, enable_grafana_db). Synced into
+# the grafana-db Secret before the chart installs, so the first Grafana pod
+# starts on Postgres instead of creating a throwaway SQLite DB. If the sync is
+# not Ready in time, Grafana installs on in-pod SQLite for this run rather than
+# hanging helm --wait on a pod that cannot read its Secret; the next run picks
+# Postgres up. The HA overlay (2 replicas) is only safe on the shared DB.
+GRAFANA_VALUES=()
+GRAFANA_ESO_ROLE_ARN=$(tf_output grafana_eso_role_arn)
+if [[ -n "$GRAFANA_ESO_ROLE_ARN" ]]; then
+  sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+    aws/observability/grafana-db-external-secret.yaml | kubectl apply -f -
+  kubectl annotate serviceaccount grafana-eso-sa -n monitoring \
+    "eks.amazonaws.com/role-arn=${GRAFANA_ESO_ROLE_ARN}" --overwrite
+  if kubectl wait --for=condition=Ready externalsecret/grafana-db \
+       -n monitoring --timeout=180s >/dev/null 2>&1; then
+    GRAFANA_VALUES=(--values aws/observability/grafana-db-values.yaml)
+    if [[ "$PLATFORM_HA" == "true" ]]; then
+      GRAFANA_VALUES+=(--values aws/observability/grafana-ha-values.yaml)
+      log "  Grafana: Postgres backend, 2 replicas."
+    else
+      log "  Grafana: Postgres backend, 1 replica."
+    fi
+  else
+    warn "  ExternalSecret grafana-db not Ready after 180s — Grafana stays on in-pod SQLite (state lost on restart) for this run."
+    warn "  Check: kubectl describe externalsecret grafana-db -n monitoring"
+  fi
+else
+  log "  Grafana: enable_grafana_db is off — in-pod SQLite, single replica."
+fi
+
 # Substitute region and Grafana IRSA ARN placeholders in the values file
 tmp_obs_values=$(mktemp /tmp/prometheus-stack-values-aws.XXXXXX)
 sed \
@@ -619,6 +651,7 @@ helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-s
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
+  ${GRAFANA_VALUES[@]+"${GRAFANA_VALUES[@]}"} \
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
   --wait --timeout "${HELM_WAIT_MED}"
 rm -f "${tmp_obs_values}"

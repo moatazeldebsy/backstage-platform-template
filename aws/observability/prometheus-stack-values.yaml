@@ -108,9 +108,10 @@ alertmanager:
 
 grafana:
   # Password set via --set grafana.adminPassword at install time (from Secrets Manager / env var)
-  # 1 replica — ALB has no sticky sessions, so multiple replicas cause session routing
-  # failures (login succeeds on pod A, next request hits pod B, session not found).
-  # To scale out, either enable ALB sticky sessions or configure a Postgres session backend.
+  # 1 replica here. With per-pod SQLite a second replica would have its own users
+  # and sessions (login on pod A, unknown on pod B). bootstrap.sh layers
+  # grafana-db-values.yaml (shared Postgres, terraform/grafana.tf) on every
+  # profile, and grafana-ha-values.yaml (2 replicas) on --profile medium|large.
   replicas: 1
   serviceAccount:
     annotations:

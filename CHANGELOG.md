@@ -10,6 +10,14 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Grafana on Postgres, and HA on `--profile medium|large`.** A dedicated
+  RDS instance (`terraform/grafana.tf`, `enable_grafana_db`, on by default,
+  Multi-AZ with the profile) holds Grafana's users, sessions and
+  service-account tokens. It is synced through its own least-privilege ESO role
+  and SecretStore (`aws/observability/grafana-db-external-secret.yaml`) and
+  wired in by `aws/observability/grafana-db-values.yaml`. On medium/large,
+  `grafana-ha-values.yaml` runs 2 zone-spread replicas with a PDB and
+  unified-alerting gossip, so Grafana-managed alerts are not sent twice.
 - **Platform HA on `--profile medium|large`.** ArgoCD installs with a new
   overlay, `aws/argocd/argocd-ha-values.yaml`: Redis HA (3-node Sentinel behind
   HAProxy) replaces the single Redis, server / repo-server / applicationset run
@@ -78,6 +86,15 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Grafana lost its state on every restart on AWS.** It ran on in-pod SQLite
+  with persistence disabled, so users, UI-made dashboards and service-account
+  tokens (including Backstage's `GRAFANA_TOKEN`) vanished whenever the pod was
+  rescheduled. Mint `GRAFANA_TOKEN` once more after upgrading; from then on it
+  persists.
+- **`cleanup.sh` could not tear down prod installs with Langfuse or LiteLLM.**
+  Phase 2 only lifted deletion protection on the Backstage RDS instance, so
+  `terraform destroy` failed on the others. It now covers every Terraform-owned
+  instance (backstage, langfuse, litellm, grafana).
 - **`--profile large` could not apply.** `profiles/large.tfvars` set
   `vpc_cidr = "10.0.0.0/8"`, which `CreateVpc` rejects (AWS allows /16–/28), and
   the platform node group was capped at `max_size = 6` whenever Karpenter is on —

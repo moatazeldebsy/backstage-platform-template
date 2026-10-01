@@ -4,7 +4,7 @@
 #
 # Destruction order matters:
 #   1. ALBs (K8s-managed, block VPC deletion) + stale ALB-controller security groups
-#   2. Backstage RDS deletion-protection off
+#   2. RDS deletion-protection off (backstage, langfuse, litellm, grafana)
 #   3. Scaffolded services: ArgoCD Applications + Crossplane Claims (must go
 #      before Phase 4, or Crossplane recreates what Phase 4 deletes)
 #   4. Crossplane-orphaned resources (idp:provisioner=crossplane tag)
@@ -304,25 +304,30 @@ fi
 log "  Cleaning up stale k8s-managed security groups..."
 _cleanup_stale_k8s_security_groups
 
-# ── Phase 2: Disable RDS deletion protection (Backstage DB) ──────────────────
+# ── Phase 2: Disable RDS deletion protection (Terraform-owned DBs) ───────────
+# Every Terraform-owned instance gets deletion_protection in prod, and
+# terraform destroy fails on any one still protected. This used to cover only
+# Backstage, so a prod teardown with Langfuse or LiteLLM enabled stopped there.
 log "Phase 2: Disabling RDS deletion protection..."
 
-RDS_INSTANCE="${CLUSTER_NAME}-backstage"
-if aws rds describe-db-instances \
-  --db-instance-identifier "$RDS_INSTANCE" \
-  --region "${AWS_REGION}" \
-  --query 'DBInstances[0].DBInstanceIdentifier' \
-  --output text &>/dev/null 2>&1; then
-
-  log "  Disabling deletion protection for $RDS_INSTANCE"
-  aws rds modify-db-instance \
+for _db in backstage langfuse litellm grafana; do
+  RDS_INSTANCE="${CLUSTER_NAME}-${_db}"
+  if aws rds describe-db-instances \
     --db-instance-identifier "$RDS_INSTANCE" \
-    --no-deletion-protection \
-    --apply-immediately \
-    --region "${AWS_REGION}" 2>/dev/null || true
-else
-  log "  RDS instance not found (already deleted?)"
-fi
+    --region "${AWS_REGION}" \
+    --query 'DBInstances[0].DBInstanceIdentifier' \
+    --output text &>/dev/null 2>&1; then
+
+    log "  Disabling deletion protection for $RDS_INSTANCE"
+    aws rds modify-db-instance \
+      --db-instance-identifier "$RDS_INSTANCE" \
+      --no-deletion-protection \
+      --apply-immediately \
+      --region "${AWS_REGION}" 2>/dev/null || true
+  else
+    log "  ${RDS_INSTANCE}: not found (not enabled, or already deleted)"
+  fi
+done
 
 # ── Phase 3: Clean up scaffolded services ────────────────────────────────────
 # Must run while EKS is still up so ArgoCD can cascade-delete K8s resources
