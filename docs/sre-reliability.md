@@ -60,13 +60,12 @@ The SLO dashboard shows current error budget burn rate, remaining budget percent
 
 ### What ships by default
 
-The golden-path Helm chart (`helm/service-template/`) includes a `PodDisruptionBudget` with `minAvailable: 1` enabled by default. This prevents voluntary disruptions (node drains, rolling upgrades) from taking all replicas offline simultaneously.
+The golden-path Helm chart (`helm/service-template/`) includes a `PodDisruptionBudget` with `maxUnavailable: 1` enabled by default. This stops voluntary disruptions (node drains, cluster upgrades) from evicting more than one replica of a service at a time.
 
-### What `minAvailable: 1` means in practice
+### What `maxUnavailable: 1` means in practice
 
-- During a `kubectl drain`, Kubernetes will not evict the last running pod of a service.
-- Rolling deployments always keep at least one healthy replica serving traffic.
-- For single-replica services this is a no-op — scale to at least 2 replicas to benefit fully.
+- With 2+ replicas, a `kubectl drain` evicts one pod at a time and waits for its replacement, so at least one replica keeps serving.
+- With a single replica, the pod can still be evicted, so the service is briefly down during a drain. That is deliberate: `minAvailable: 1` on one replica allows zero disruptions and blocks node drains and EKS node group upgrades indefinitely (#318). Scale to at least 2 replicas if the service must stay up through a drain.
 
 ### Overriding
 
@@ -74,7 +73,8 @@ The golden-path Helm chart (`helm/service-template/`) includes a `PodDisruptionB
 # helm-values-local.yaml or helm-values-aws.yaml
 podDisruptionBudget:
   enabled: true
-  minAvailable: 2   # increase for critical services
+  minAvailable: 2   # critical services; takes precedence over maxUnavailable.
+                    # Keep it below replicaCount/minReplicas or drains block.
 ```
 
 ### Zone spread

@@ -30,4 +30,4 @@ rollout:
     latencyThresholdSeconds: "${{ (values.latencyThresholdMs / 1000) }}"
 
 # HPA remains active and targets the Rollout resource automatically.
-# PodDisruptionBudget remains active (minAvailable: 1).
+# PodDisruptionBudget remains active (maxUnavailable: 1).
