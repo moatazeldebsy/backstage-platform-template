@@ -31,8 +31,20 @@ global:
 #   helm template argocd argo/argo-cd -f aws/argocd/argocd-helm-values.yaml \
 #     | grep -A4 'resources:'
 
+# ── Metrics (#160) ───────────────────────────────────────────────────────────
+# controller / server / repoServer / applicationSet each get a metrics Service
+# and a ServiceMonitor below. `release: prometheus` matches kube-prometheus-stack's
+# default serviceMonitorSelector. The chart only renders a ServiceMonitor when the
+# monitoring.coreos.com CRD exists, so an install without Prometheus still works.
+
 controller:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 250m
@@ -42,6 +54,12 @@ controller:
 
 server:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 100m
@@ -67,6 +85,12 @@ server:
 
 repoServer:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 100m
@@ -76,6 +100,12 @@ repoServer:
 
 applicationSet:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: prometheus
   resources:
     requests:
       cpu: 50m
