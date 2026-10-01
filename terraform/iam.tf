@@ -190,10 +190,13 @@ resource "aws_iam_role_policy" "backstage" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        # Backstage secret + any secret the ClusterSecretStore needs to sync
+        # Backstage secret + any secret the ClusterSecretStore needs to sync.
+        # langfuse/project-keys is written by bootstrap-ai.sh (not Terraform) and
+        # read by aws/backstage/langfuse-external-secret.yaml (#317).
         Resource = [
           aws_secretsmanager_secret.backstage.arn,
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:idp-mvp/dora-exporter*"
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:idp-mvp/dora-exporter*",
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:idp-mvp/langfuse/project-keys*"
         ]
       },
       {

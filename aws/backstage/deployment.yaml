@@ -41,6 +41,14 @@ spec:
           ports:
             - containerPort: 7007
           command: ["node", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
+          # LANGFUSE_BASIC_AUTH for the /langfuse proxy. Synced by
+          # langfuse-external-secret.yaml, which bootstrap-ai.sh applies once
+          # Langfuse exists. Optional so Backstage starts without the AI stack;
+          # the proxy then falls back to its not-configured default.
+          envFrom:
+            - secretRef:
+                name: backstage-langfuse
+                optional: true
           env:
             - name: POSTGRES_HOST
               valueFrom:
