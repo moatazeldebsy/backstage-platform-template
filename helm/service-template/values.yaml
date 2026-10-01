@@ -229,6 +229,15 @@ tolerations: []
 # affinity is built by the chart template using selectorLabels — override here if needed
 affinity: {}
 
+# Spread replicas across availability zones (on top of the per-node
+# anti-affinity above), so losing one AZ never takes every replica of a
+# service. ScheduleAnyway keeps it a preference: it cannot leave pods Pending.
+# Set whenUnsatisfiable: DoNotSchedule to make it a hard requirement.
+zoneSpread:
+  enabled: true
+  maxSkew: 1
+  whenUnsatisfiable: ScheduleAnyway
+
 # Prometheus ServiceMonitor — enable to have prometheus-operator scrape this service
 metrics:
   enabled: true

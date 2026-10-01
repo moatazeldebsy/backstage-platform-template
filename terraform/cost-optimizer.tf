@@ -132,7 +132,9 @@ resource "aws_lambda_function" "eks_node_scaler" {
       # the node group fighting the next `terraform apply`.
       MIN_SIZE     = tostring(var.node_group_min_size)
       DESIRED_SIZE = tostring(var.node_group_desired_size)
-      MAX_SIZE     = tostring(var.node_group_max_size)
+      # The node group's effective max (eks.tf), not the raw var: with Karpenter
+      # on they differ, and scale-up would otherwise lift the platform cap.
+      MAX_SIZE = tostring(local.platform_node_group_max_size)
     }
   }
 
