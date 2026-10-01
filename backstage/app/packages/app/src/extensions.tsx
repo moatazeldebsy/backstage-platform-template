@@ -15,7 +15,12 @@ import {
   visibleChecks,
 } from './scorecard';
 import { firstMatch } from './pick';
-import { describeAgentFailure, findFailedTurn } from './aiAgentErrors';
+import {
+  describeAgentFailure,
+  describeHumanInputRequest,
+  findFailedTurn,
+  isHumanInputCall,
+} from './aiAgentErrors';
 import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef, FrontendPlugin } from '@backstage/frontend-plugin-api';
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
@@ -686,10 +691,19 @@ function AiAssistantPage() {
         // [0] is the newest agent event (events are newest-first)
         const newest = agentEvents[0];
         const parts: any[] = newest.Content.parts;
-        const activeTool = parts.find((p: any) => p.functionCall)?.functionCall?.name;
+        const functionCall = parts.find((p: any) => p.functionCall)?.functionCall;
+        const activeTool = functionCall?.name;
         const textParts = parts.filter((p: any) => p.text);
 
-        if (activeTool) {
+        if (isHumanInputCall(functionCall)) {
+          // The turn is now waiting on a human answer this page cannot send, so
+          // it will never finish. Stop now instead of at the 5-minute deadline,
+          // and drop the session: reusing it would hang every later message in
+          // this conversation the same way. See aiAgentErrors.ts (#516).
+          contextIdRef.current = null;
+          if (userRef) localStorage.removeItem(`ai-chat-ctx:${userRef}`);
+          throw new Error(describeHumanInputRequest(functionCall));
+        } else if (activeTool) {
           // Show which tool is running so the user knows it's working
           const labels: Record<string, string> = {
             list_templates: 'Fetching available templates…',
