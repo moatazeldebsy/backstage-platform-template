@@ -2550,6 +2550,9 @@ organisation grows, what to apply at each step, and how to verify the outcome.</
 - RDS CPU &gt; 60% sustained (Backstage catalog queries)</p>
 <hr />
 <h2 id="step-1-apply-terraform-profile-infrastructure-resize">Step 1 — Apply Terraform profile (infrastructure resize)<a class="headerlink" href="#step-1-apply-terraform-profile-infrastructure-resize" title="Permanent link">&para;</a></h2>
+<p>Preferred: <code>./scripts/bootstrap.sh --profile medium</code> applies the profile and remembers
+it, so later bootstrap runs don't silently fall back to <code>terraform.tfvars</code>. To inspect
+the change by hand first:</p>
 <div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>

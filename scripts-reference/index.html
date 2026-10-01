@@ -2702,6 +2702,10 @@
 <td>AWS region.</td>
 </tr>
 <tr>
+<td><code>--profile &lt;small\|medium\|large\|none&gt;</code></td>
+<td>Apply <code>terraform/profiles/&lt;p&gt;.tfvars</code> on top of <code>terraform.tfvars</code>. <code>medium</code>/<code>large</code> give one NAT gateway per AZ and RDS Multi-AZ (<a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a>). Remembered in <code>terraform/.idp-profile</code>, so later runs (and <code>cleanup.sh</code>) reuse it; <code>none</code> clears it. Without a profile you get one shared NAT gateway.</td>
+</tr>
+<tr>
 <td><code>--skip-velero</code></td>
 <td>Skip installing Velero (cluster backup/restore). Backups are on by default; skipping leaves you with no restore path.</td>
 </tr>

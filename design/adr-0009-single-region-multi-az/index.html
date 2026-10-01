@@ -2454,7 +2454,9 @@ file was used:</p>
 </tbody>
 </table>
 <p><code>profiles/small</code> keeps a single NAT and single-AZ RDS deliberately: it is the
-cost-optimised dev tier.</p>
+cost-optimised dev tier. Profiles are applied with <code>./scripts/bootstrap.sh --profile
+&lt;small|medium|large&gt;</code>; a run with no profile uses <code>terraform.tfvars</code> alone, which
+means one shared NAT gateway.</p>
 <h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
