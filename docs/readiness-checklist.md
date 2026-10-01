@@ -47,12 +47,12 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] RDS `deletion_protection = true` ✅ (fixed)
 - [ ] RDS `skip_final_snapshot = false` ✅ (fixed)
 - [ ] RDS password uses `special = true` for full entropy ✅ (fixed)
-- [ ] IAM roles follow least privilege — review and scope down `PowerUserAccess` to ECR + EKS + S3 only
+- [ ] IAM roles follow least privilege — the CI role still has `PowerUserAccess` + `IAMFullAccess`; scope it to ECR + EKS + S3 ([#315](https://github.com/moatazeldebsy/backstage-platform-template/issues/315))
 - [ ] S3 buckets for TechDocs have bucket versioning and server-side encryption enabled
 - [ ] RDS egress security group rule restricts to VPC CIDR, not `0.0.0.0/0`
 
 ### Infrastructure (Crossplane)
-- [ ] Crossplane IRSA role attaches AWS-managed `*FullAccess` policies — tighten to least-privilege custom policies before prod
+- [ ] Crossplane IRSA role is least-privilege ✅ — `terraform/iam-crossplane.tf` uses scoped inline policies (S3, RDS, Kafka, DynamoDB, SQS, tagging) restricted to `idp-*` resources, no AWS-managed policies
 - [ ] All Crossplane-provisioned resources carry `idp:provisioner=crossplane`, `idp:owner`, `idp:cost-center` tags ✅ (enforced by Compositions)
 - [ ] No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)
 - [ ] `kubectl get providers.pkg.crossplane.io` shows all five providers `HEALTHY=True`
@@ -66,7 +66,7 @@ Use this checklist before promoting the IDP to a production environment.
 
 ### GitHub Actions
 - [ ] No `pull_request_target` trigger used with checkout of untrusted code
-- [ ] Consider pinning actions to commit SHAs for supply-chain security (currently using `@v4`/`@v5`)
+- [ ] Every `uses:` pinned to a 40-char commit SHA with a version comment ✅ — keep new actions pinned the same way
 - [ ] `ANTHROPIC_API_KEY` secret is set in repository settings before running eval workflow
 
 ---
@@ -119,7 +119,7 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] Backstage users are provisioned via GitHub org membership, not manual catalog entries
 - [ ] ArgoCD RBAC policy restricts non-admins to read-only on production apps
 - [ ] `permission.enabled: true` set in `backstage/app-config.aws.yaml`
-- [ ] Permission backend plugin wired in `packages/backend/src/plugins/permission.ts`
+- [ ] Permission backend plugin wired ✅ — policy in `packages/backend/src/modules/idpPermissionPolicy.ts`, registered in `packages/backend/src/index.ts`, tested in `modules/__tests__/idpPermissionPolicy.test.ts`
 
 ### Team Isolation
 - [ ] At least one team namespace provisioned via the **Provision Team Namespace** scaffold
