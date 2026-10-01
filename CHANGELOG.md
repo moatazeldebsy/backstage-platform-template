@@ -10,6 +10,13 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Platform HA on `--profile medium|large`.** ArgoCD installs with a new
+  overlay, `aws/argocd/argocd-ha-values.yaml`: Redis HA (3-node Sentinel behind
+  HAProxy) replaces the single Redis, server / repo-server / applicationset run
+  2 replicas with PDBs, and every component is zone-spread. Backstage runs 2
+  replicas with zone + node spread and a `maxUnavailable: 1` PDB. `small` and
+  no-profile installs are unchanged (single replica), since Redis HA's hard
+  anti-affinity needs at least 3 nodes.
 - **`bootstrap.sh --profile small|medium|large`.** Applies
   `terraform/profiles/<p>.tfvars` on top of `terraform.tfvars` — the profiles were
   where per-AZ NAT and RDS Multi-AZ live (ADR-0009), but nothing applied them, so
@@ -66,6 +73,13 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   never drops below the profile's min/desired. `vpc_cidr` has a /16–/24
   validation and a precondition enforces min ≤ desired ≤ max, so both fail at
   `terraform plan` instead of mid-apply. Small and medium are unchanged.
+- **Engineering Intelligence views went stale on all but one Backstage
+  replica.** The Platform / AI cost / evaluation / AI readiness views live in
+  process memory and only the replica holding the scheduler lock refreshed them;
+  any other replica collected once on its first request and then served that
+  result indefinitely. Views now re-collect on demand once they are older than
+  1.5× `refreshMinutes` (concurrent requests share one collection), and those
+  on-demand collections do not write trend snapshots.
 - **Build and Deploy no longer fails on every `main` push after an AWS teardown.**
   `cleanup.sh` destroyed the GitHub OIDC role but left the repo's `AWS_ROLE_ARN`
   secret pointing at it, so the workflow's "secret is set" guard passed and the ECR

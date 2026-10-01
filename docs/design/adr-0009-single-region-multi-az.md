@@ -56,7 +56,7 @@ file was used:
 | VPC | Subnets across 3 AZs (`terraform/vpc.tf`) |
 | Egress | One NAT gateway per AZ — `enable_multi_az_nat = true` in `profiles/medium` and `profiles/large` |
 | EKS nodes | Managed node group / Karpenter spread across the 3 private subnets |
-| Workloads | PodDisruptionBudgets + replicas ≥ 2 for platform-core services |
+| Workloads | PodDisruptionBudgets + replicas ≥ 2, spread across zones, for platform-core services — on medium/large: ArgoCD HA overlay (`aws/argocd/argocd-ha-values.yaml`) and 2 Backstage replicas, set by `bootstrap.sh` from the profile. Grafana is still single-replica (sessions live in a per-pod SQLite DB) |
 | Database | RDS Multi-AZ standby — `rds_multi_az = true` in `profiles/medium` and `profiles/large` |
 | Object storage, ECR, Secrets Manager | Regional services, multi-AZ by design |
 

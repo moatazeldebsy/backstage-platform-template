@@ -1,0 +1,57 @@
+# ArgoCD HA overlay, layered on top of argocd-helm-values.yaml.
+#
+# Applied by bootstrap.sh only for --profile medium|large (see ADR-0009): those
+# profiles run the platform node group across 3 AZs with min_size >= 4, which is
+# what Redis HA's hard anti-affinity needs (3 Redis + 3 HAProxy pods, one per
+# node). Applying it on profiles/small (min_size 0) would leave Redis Pending.
+#
+# Verify with:
+#   helm template argocd argo/argo-cd \
+#     -f aws/argocd/argocd-helm-values.yaml -f aws/argocd/argocd-ha-values.yaml \
+#     | grep -E '^kind: (PodDisruptionBudget|StatefulSet)|replicas:'
+
+global:
+  # Spread every component across AZs, not just across nodes. The chart fills in
+  # each component's own labelSelector when it is omitted. ScheduleAnyway, so a
+  # temporarily lopsided node group delays nothing.
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+
+# Redis is ArgoCD's cache (manifests, app state). The single-node Deployment is
+# the one component whose loss stalls every sync and blanks the UI; redis-ha
+# replaces it with a 3-node Sentinel set behind HAProxy. No persistence: the
+# cache is rebuilt from git and the cluster.
+redis:
+  enabled: false
+redis-ha:
+  enabled: true
+  topologySpreadConstraints:
+    enabled: true
+
+# Stateless; behind the ALB with no session affinity needed (auth is a JWT).
+server:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+repoServer:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+applicationSet:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# The application controller stays at 1 and gets no PDB. Extra replicas are
+# shards, not standbys: with one cluster a second shard owns nothing. And a
+# minAvailable: 1 PDB on a single replica blocks every drain, so EKS node group
+# upgrades would fail with PodEvictionFailure. It is a StatefulSet with no
+# volume, so losing its node or AZ just reschedules it: syncs pause for about a
+# minute and nothing is lost.

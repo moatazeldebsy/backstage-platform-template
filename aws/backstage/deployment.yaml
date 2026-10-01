@@ -4,6 +4,10 @@ metadata:
   name: backstage
   namespace: backstage
 spec:
+  # 1 in git; bootstrap.sh rewrites this line to 2 for --profile medium|large.
+  # Running more than one is safe: catalog, scaffolder tasks, search (pg engine)
+  # and the custom plugins all keep state in Postgres, and scheduled tasks are
+  # global (one replica runs each, under a DB lock).
   replicas: 1
   selector:
     matchLabels:
@@ -14,6 +18,22 @@ spec:
         app: backstage
     spec:
       serviceAccountName: backstage
+      # Keep replicas in different AZs and on different nodes, so one AZ or node
+      # loss leaves a replica serving. ScheduleAnyway: with one replica, or a
+      # node group that is briefly lopsided, scheduling is never blocked.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: backstage
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: backstage
       containers:
         - name: backstage
           image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:BACKSTAGE_IMAGE_TAG
@@ -308,6 +328,20 @@ spec:
         - name: rds-ca-bundle
           configMap:
             name: rds-ca-bundle
+---
+# maxUnavailable rather than minAvailable: with 2 replicas, a drain keeps one
+# serving; with the single replica of profiles/small, it still lets node
+# upgrades and Karpenter consolidation evict it instead of blocking forever.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: backstage
 ---
 apiVersion: v1
 kind: Service

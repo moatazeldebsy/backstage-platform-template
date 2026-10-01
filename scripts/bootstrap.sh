@@ -126,6 +126,20 @@ if [[ -z "$TF_PROFILE" ]]; then
   log "  Production: re-run with --profile medium (or large). See ADR-0009."
 fi
 
+# Platform HA follows the profile: medium/large run the platform node group
+# across 3 AZs with min_size >= 4, which is what ArgoCD's Redis HA (hard
+# anti-affinity, one pod per node) and a zone-spread second Backstage replica
+# need. small and no-profile stay single-replica, where they would only add
+# Pending pods.
+case "$TF_PROFILE" in
+  medium|large)
+    ARGOCD_HA_VALUES=(--values aws/argocd/argocd-ha-values.yaml)
+    BACKSTAGE_REPLICAS=2 ;;
+  *)
+    ARGOCD_HA_VALUES=()
+    BACKSTAGE_REPLICAS=1 ;;
+esac
+
 # ── Phase 1: Terraform — EKS + ECR + IAM + RDS + S3 + Secrets Manager ────────
 timer_start "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 log "Phase 1: Provisioning infrastructure with Terraform..."
@@ -1046,6 +1060,7 @@ if ! helm_upgrade_cached argocd argocd argo/argo-cd \
   --namespace argocd \
   --create-namespace \
   --values aws/argocd/argocd-helm-values.yaml \
+  ${ARGOCD_HA_VALUES[@]+"${ARGOCD_HA_VALUES[@]}"} \
   --wait --timeout "${HELM_WAIT_SHORT}"; then
   warn "Phase 4.5 (ArgoCD) failed on first attempt — clearing the stuck release and retrying with an extended timeout..."
 
@@ -1079,6 +1094,7 @@ if ! helm_upgrade_cached argocd argocd argo/argo-cd \
     --namespace argocd \
     --create-namespace \
     --values aws/argocd/argocd-helm-values.yaml \
+    ${ARGOCD_HA_VALUES[@]+"${ARGOCD_HA_VALUES[@]}"} \
     --wait --timeout "${HELM_WAIT_LONG}" \
     || err "ArgoCD failed to install after a retry. Raise the budget and re-run:
   HELM_WAIT_SHORT=15m ./scripts/bootstrap.sh --region ${AWS_REGION} --cluster-name ${CLUSTER_NAME}"
@@ -1325,8 +1341,11 @@ apply_backstage_configmaps
 # The second expression catches the standalone BACKSTAGE_IMAGE_TAG placeholders
 # (DD_VERSION), which the image-line pattern above does not match — they used to
 # reach the cluster as the literal string "BACKSTAGE_IMAGE_TAG". Observed 2026-08-13.
+# The replicas line is anchored to the Deployment's 2-space indent so nothing
+# else in the file can match; BACKSTAGE_REPLICAS comes from the profile above.
 sed -e "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BACKSTAGE_IMAGE_TAG}|g" \
     -e "s|BACKSTAGE_IMAGE_TAG|${BACKSTAGE_IMAGE_TAG}|g" \
+    -e "s|^  replicas: 1$|  replicas: ${BACKSTAGE_REPLICAS}|" \
   aws/backstage/deployment.yaml | kubectl apply -f -
 
 # Wait for the Backstage, ArgoCD and Grafana load balancers to be assigned

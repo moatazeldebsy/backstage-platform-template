@@ -24,6 +24,7 @@ import {
 import {
   engineeringIntelligencePlugin,
   route,
+  viewsAreStale,
 } from '../idpEngineeringIntelligence';
 
 const OBSERVED = '2026-08-28T09:00:00.000Z';
@@ -321,6 +322,30 @@ describe('route', () => {
     await new Promise(resolve => setImmediate(resolve));
     expect(next).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({ ok: true });
+  });
+});
+
+// With 2+ Backstage replicas only the scheduler-lock holder runs the refresh
+// task. Replicas that do not hold it must still refresh their in-memory views,
+// or they serve their first collection forever.
+describe('viewsAreStale', () => {
+  const MIN = 60_000;
+  const now = Date.parse(OBSERVED);
+
+  it('is stale before the first collection in this process', () => {
+    expect(viewsAreStale(undefined, now, 30)).toBe(true);
+  });
+
+  it('is fresh while the scheduled task is keeping up', () => {
+    expect(viewsAreStale(now - 30 * MIN, now, 30)).toBe(false);
+  });
+
+  it('tolerates a scheduled run that is merely late', () => {
+    expect(viewsAreStale(now - 44 * MIN, now, 30)).toBe(false);
+  });
+
+  it('is stale past 1.5x the interval, as on a replica without the lock', () => {
+    expect(viewsAreStale(now - 46 * MIN, now, 30)).toBe(true);
   });
 });
 
