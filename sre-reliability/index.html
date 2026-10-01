@@ -2078,9 +2078,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-minavailable-1-means-in-practice" class="md-nav__link">
+  <a href="#what-maxunavailable-1-means-in-practice" class="md-nav__link">
     <span class="md-ellipsis">
-      What minAvailable: 1 means in practice
+      What maxUnavailable: 1 means in practice
     </span>
   </a>
   
@@ -2980,21 +2980,22 @@ regenerate and commit the rules</strong>, or the cluster keeps applying the stal
 <hr />
 <h2 id="poddisruptionbudgets">PodDisruptionBudgets<a class="headerlink" href="#poddisruptionbudgets" title="Permanent link">&para;</a></h2>
 <h3 id="what-ships-by-default">What ships by default<a class="headerlink" href="#what-ships-by-default" title="Permanent link">&para;</a></h3>
-<p>The golden-path Helm chart (<code>helm/service-template/</code>) includes a <code>PodDisruptionBudget</code> with <code>minAvailable: 1</code> enabled by default. This prevents voluntary disruptions (node drains, rolling upgrades) from taking all replicas offline simultaneously.</p>
-<h3 id="what-minavailable-1-means-in-practice">What <code>minAvailable: 1</code> means in practice<a class="headerlink" href="#what-minavailable-1-means-in-practice" title="Permanent link">&para;</a></h3>
+<p>The golden-path Helm chart (<code>helm/service-template/</code>) includes a <code>PodDisruptionBudget</code> with <code>maxUnavailable: 1</code> enabled by default. This stops voluntary disruptions (node drains, cluster upgrades) from evicting more than one replica of a service at a time.</p>
+<h3 id="what-maxunavailable-1-means-in-practice">What <code>maxUnavailable: 1</code> means in practice<a class="headerlink" href="#what-maxunavailable-1-means-in-practice" title="Permanent link">&para;</a></h3>
 <ul>
-<li>During a <code>kubectl drain</code>, Kubernetes will not evict the last running pod of a service.</li>
-<li>Rolling deployments always keep at least one healthy replica serving traffic.</li>
-<li>For single-replica services this is a no-op — scale to at least 2 replicas to benefit fully.</li>
+<li>With 2+ replicas, a <code>kubectl drain</code> evicts one pod at a time and waits for its replacement, so at least one replica keeps serving.</li>
+<li>With a single replica, the pod can still be evicted, so the service is briefly down during a drain. That is deliberate: <code>minAvailable: 1</code> on one replica allows zero disruptions and blocks node drains and EKS node group upgrades indefinitely (#318). Scale to at least 2 replicas if the service must stay up through a drain.</li>
 </ul>
 <h3 id="overriding">Overriding<a class="headerlink" href="#overriding" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
-<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># helm-values-local.yaml or helm-values-aws.yaml</span>
+<span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># helm-values-local.yaml or helm-values-aws.yaml</span>
 <span class="nt">podDisruptionBudget</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">minAvailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">   </span><span class="c1"># increase for critical services</span>
+<span class="w">  </span><span class="nt">minAvailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">   </span><span class="c1"># critical services; takes precedence over maxUnavailable.</span>
+<span class="w">                    </span><span class="c1"># Keep it below replicaCount/minReplicas or drains block.</span>
 </code></pre></div></td></tr></table></div>
 <h3 id="zone-spread">Zone spread<a class="headerlink" href="#zone-spread" title="Permanent link">&para;</a></h3>
 <p>A PDB alone does not survive an AZ outage. The chart's pod anti-affinity only
