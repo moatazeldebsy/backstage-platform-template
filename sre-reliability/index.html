@@ -2095,6 +2095,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#zone-spread" class="md-nav__link">
+    <span class="md-ellipsis">
+      Zone spread
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2966,6 +2975,23 @@ regenerate and commit the rules</strong>, or the cluster keeps applying the stal
 <span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">  </span><span class="nt">minAvailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">   </span><span class="c1"># increase for critical services</span>
 </code></pre></div></td></tr></table></div>
+<h3 id="zone-spread">Zone spread<a class="headerlink" href="#zone-spread" title="Permanent link">&para;</a></h3>
+<p>A PDB alone does not survive an AZ outage. The chart's pod anti-affinity only
+keeps replicas on <em>different nodes</em>, and those nodes can share an AZ. Replicas
+are therefore also spread across zones by default, through a
+<code>topologySpreadConstraints</code> entry on <code>topology.kubernetes.io/zone</code>:</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nt">zoneSpread</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">maxSkew</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">whenUnsatisfiable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ScheduleAnyway</span><span class="w">   </span><span class="c1"># DoNotSchedule makes it a hard requirement</span>
+</code></pre></div></td></tr></table></div>
+<p><code>ScheduleAnyway</code> makes it a scoring preference, so it can never leave a pod
+Pending. That matters on Kind, whose nodes carry no zone label, and while a node
+pool is briefly uneven. Use <code>DoNotSchedule</code> only for services whose replicas
+must never share an AZ, and only with node capacity in every zone.</p>
 <hr />
 <h2 id="blameless-postmortem-process">Blameless Postmortem Process<a class="headerlink" href="#blameless-postmortem-process" title="Permanent link">&para;</a></h2>
 <p>The platform includes a blameless postmortem template at <a href="../postmortem-template/"><code>docs/postmortem-template.md</code></a>.</p>
