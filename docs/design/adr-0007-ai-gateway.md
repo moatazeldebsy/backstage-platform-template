@@ -160,14 +160,11 @@ the platform generates.
 | Gateway | default, ~9 MiB | default, ~9 MiB |
 | Provider key | bootstrap-created Secret | ExternalSecret from `idp-mvp/kagent` |
 | Bedrock | opt-in via `--litellm`, unreachable without it | wired via LiteLLM + IRSA (ADR-0008), on by default |
-| Multi-region | n/a | one gateway **per region**, spoke-local |
 
 - **The gateway is a single point of failure for the agent layer.** It was
   already true of every individual MCP server; it is now concentrated. It has no
   PDB and one replica, which is right for a component whose dependents are all
   best-effort, and wrong the day an agent becomes load-bearing.
-- **Multi-region:** never a hub singleton. A standby-region agent calling the
-  primary's gateway is a cross-region hop on every token and every tool call.
 - **Bedrock becomes cheap** — `provider: bedrock` with `auth.aws` on an
   IRSA-annotated ServiceAccount, one entry in the `llm:` block. Deliberately not
   wired here: it needs a Terraform IAM role that cannot be exercised without a

@@ -47,7 +47,7 @@ grant.
 | Plane | What's in it |
 |---|---|
 | **Experience** | The Backstage portal, the `idp` CLI and TechDocs for people; Claude Code, Copilot or any MCP client for agents. Sign-in is GitHub OAuth, with catalog groups synced from GitHub Org Teams |
-| **Control** | Backstage: catalog, scaffolder (61 templates), Tech Insights scorecard plus the compliance watcher, RAG search, Engineering Intelligence; Terraform and Crossplane for infrastructure |
+| **Control** | Backstage: catalog, scaffolder (59 templates), Tech Insights scorecard plus the compliance watcher, RAG search, Engineering Intelligence; Terraform and Crossplane for infrastructure |
 | **Delivery** | Argo CD, Workflows and Rollouts; Kyverno guardrails; Kind or EKS with Karpenter; the approval service (human approvals + user consent for agent actions) and the agent event router |
 | **AI & ML** *(optional)* | The **AI Gateway** is the single entry point: agentgateway routes every MCP tool call and every model call, and LiteLLM behind it serves Anthropic and Bedrock with virtual keys and spend tracking. Behind it: 9 KAgent agents, 8 MCP servers, MLflow, Ollama, Langfuse and DeepEval |
 | **Observability** *(optional)* | Prometheus, Grafana, Loki, Tempo, Alertmanager; DORA, flaky-test and Tech Insights exporters; OpenCost and Sloth SLOs; Engineering Intelligence scoring |
@@ -336,14 +336,12 @@ Host ~/.kube/config         docker-compose mounts as read-only
 
 Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.32 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data & Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).
 
-### Multi-Region (V2, opt-in)
+### Availability model
 
-Active-standby across eu-central-1 (primary) and us-east-1 (warm standby), deployed with
-`./scripts/bootstrap-multiregion.sh`. Single-region setups are unaffected.
-
-![AWS V2 — Active-Standby Multi-Region](assets/aws-architecture-v2.jpg)
-
-Topology, DR tiers, and the six rollout phases: [multi-region.md](multi-region.md).
+One region, resilient across Availability Zones: subnets in 3 AZs, per-AZ NAT and
+RDS Multi-AZ on the `medium`/`large` profiles. A full regional outage is recovered by
+rebuilding from IaC and restoring backups. See
+[ADR-0009](design/adr-0009-single-region-multi-az.md) for why multi-region was removed.
 
 ### Network Topology
 
@@ -580,6 +578,6 @@ Stated plainly, because finding these by surprise is worse than reading them her
 
 | Limitation | Detail |
 |---|---|
-| **Coarse authorization** | Any authenticated user can run any of the 61 templates against any namespace — GitHub Org Team sync gates sign-in, not template execution. [ADR-0004](design/adr-0004-identity-and-access.md), issues #153 and #155 |
+| **Coarse authorization** | Any authenticated user can run any of the 59 templates against any namespace — GitHub Org Team sync gates sign-in, not template execution. [ADR-0004](design/adr-0004-identity-and-access.md), issues #153 and #155 |
 | **Sloth has no in-cluster operator** | SLO rules are vendored; editing a source file without the `sloth` binary silently changes nothing |
 | **No CI exercises an AWS bootstrap** | `terraform validate` and a guard against committed account ids is all that gates it |
