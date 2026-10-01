@@ -92,8 +92,11 @@ useStaticCredentials: false
 
 artifactRepository:
   s3:
-    bucket: argo-workflows-artifacts-CLUSTER_NAME_PLACEHOLDER
+    bucket: ARGO_WORKFLOWS_BUCKET_PLACEHOLDER   # terraform output argo_workflows_bucket_name
     region: REGION_PLACEHOLDER
-    roleARN: ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER
+    # No roleARN: with it set, the SDK calls sts:AssumeRole into that role on
+    # top of the IRSA credentials it already holds — a self-assume the IRSA
+    # trust policy (web identity only) does not allow. The ServiceAccount
+    # annotations above are what grant the role.
     useSDKCreds: true
   archiveLogs: true
