@@ -595,6 +595,9 @@ if $DESTROY; then
   helm uninstall langfuse --namespace ml-platform 2>/dev/null || true
   kubectl delete secret langfuse-secrets    -n ml-platform 2>/dev/null || true
   kubectl delete secret langfuse-kagent-otel -n kagent      2>/dev/null || true
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    kubectl delete -f "${REPO_ROOT}/aws/backstage/langfuse-external-secret.yaml" 2>/dev/null || true
+  fi
 
   # KAgent contract resources
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/contract-agent.yaml"      2>/dev/null || true
@@ -1781,7 +1784,7 @@ else
     # bootstrap-local.sh always starts Backstage before this script runs. Without
     # this recreate a fresh install ends with the AI Observability page showing a
     # 401 banner, which reads as a broken deploy rather than a pending step.
-    # The AWS branch below gets this for free: `kubectl set env` rolls the pod.
+    # The AWS branch below restarts the Deployment itself.
     if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "backstage-backstage-1"; then
       _lf_compose="docker compose -f ${REPO_ROOT}/local/backstage/docker-compose.yml"
       # Defaulted rather than bare: the script runs under `set -u`, and _provider
@@ -1802,8 +1805,33 @@ else
       info "  Start Backstage with ./scripts/bootstrap-local.sh --start-backstage to pick it up."
     fi
   elif kubectl get deployment backstage -n backstage >/dev/null 2>&1; then
-    kubectl set env deployment/backstage -n backstage "LANGFUSE_BASIC_AUTH=${_LF_BASIC}" >/dev/null
-    check "LANGFUSE_BASIC_AUTH set on the Backstage deployment"
+    # Through External Secrets, not `kubectl set env`: that put the credential in
+    # plaintext in the Deployment spec and any re-apply of deployment.yaml dropped
+    # it (#317). The ExternalSecret reads the pair _mirror_langfuse_keys_to_secrets_manager
+    # just wrote; deployment.yaml picks it up via an optional envFrom.
+    kubectl apply -f "${REPO_ROOT}/aws/backstage/langfuse-external-secret.yaml" >/dev/null
+    # Force a sync now rather than waiting out refreshInterval — the keys may
+    # have just been re-minted.
+    kubectl annotate externalsecret backstage-langfuse -n backstage \
+      "force-sync=$(date +%s)" --overwrite >/dev/null
+    if kubectl wait externalsecret/backstage-langfuse -n backstage \
+         --for=condition=Ready --timeout=60s >/dev/null 2>&1; then
+      check "ExternalSecret backstage-langfuse synced"
+      # Clusters bootstrapped before #317 carry a literal LANGFUSE_BASIC_AUTH env
+      # entry, which would shadow the envFrom value; remove it (no-op when
+      # absent). Only once the Secret has synced, so a failed sync never leaves
+      # Backstage with no credential at all. The restart is still needed:
+      # envFrom is read at pod start only.
+      kubectl set env deployment/backstage -n backstage LANGFUSE_BASIC_AUTH- >/dev/null 2>&1 || true
+      kubectl rollout restart deployment/backstage -n backstage >/dev/null
+      check "Backstage restarted with LANGFUSE_BASIC_AUTH from External Secrets"
+    else
+      # Most likely the Backstage IRSA role predates the terraform/iam.tf grant
+      # on idp-mvp/langfuse/project-keys — bootstrap.sh's terraform apply adds it.
+      warn "  ExternalSecret backstage-langfuse not Ready after 60s — the AI Observability page will show a 401 until it syncs."
+      warn "    kubectl describe externalsecret backstage-langfuse -n backstage"
+      warn "    If it reports AccessDenied, run terraform apply (or ./scripts/bootstrap.sh) to grant the Backstage role read access."
+    fi
   fi
 
   # Terraform outputs are read here, on the main thread, so a missing output

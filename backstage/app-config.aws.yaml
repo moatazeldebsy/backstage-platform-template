@@ -179,8 +179,8 @@ proxy:
     # Langfuse public API behind the AI Observability page. In-cluster Service
     # DNS rather than the ALB: the ALB hostname is only known after
     # bootstrap-ai.sh runs, and this config is rendered into a ConfigMap before
-    # that. LANGFUSE_BASIC_AUTH is set on the Backstage deployment by
-    # bootstrap-ai.sh from the langfuse-init Secret.
+    # that. LANGFUSE_BASIC_AUTH comes from the backstage-langfuse Secret
+    # (aws/backstage/langfuse-external-secret.yaml, applied by bootstrap-ai.sh).
     /langfuse:
       target: http://langfuse-web.ml-platform.svc.cluster.local:3000
       allowedMethods: ['GET']
