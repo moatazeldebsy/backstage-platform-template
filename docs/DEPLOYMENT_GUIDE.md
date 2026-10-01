@@ -84,7 +84,10 @@ Replaces `moatazeldebsy` and other placeholders across all template files, creat
 `terraform.tfvars` and is remembered for later runs (`--profile none` clears it).
 `medium` and `large` also install ArgoCD in HA mode (`aws/argocd/argocd-ha-values.yaml`:
 Redis HA, two server/repo-server/applicationset replicas with PDBs) and run two
-Backstage replicas spread across AZs; `small` and no-profile stay single-replica.
+Backstage and two Grafana replicas spread across AZs; `small` and no-profile stay
+single-replica. On every profile Grafana keeps its state (users, sessions,
+service-account tokens such as Backstage's `GRAFANA_TOKEN`) in a dedicated Postgres
+(`terraform/grafana.tf`, `enable_grafana_db`), so it survives pod restarts.
 Without `medium` or `large`, losing the AZ that hosts the single NAT gateway cuts all
 outbound traffic from the private subnets — see
 [ADR-0009](design/adr-0009-single-region-multi-az.md).

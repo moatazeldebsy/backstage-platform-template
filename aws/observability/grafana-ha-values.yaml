@@ -1,0 +1,29 @@
+# Grafana HA — layered on top of grafana-db-values.yaml by bootstrap.sh for
+# --profile medium|large only. Needs the shared Postgres: with per-pod SQLite a
+# login on one replica is unknown to the other, which is why this ran at 1.
+grafana:
+  replicas: 2
+
+  podDisruptionBudget:
+    minAvailable: 1
+
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: grafana
+
+  # Unified alerting runs in every replica. Without gossip between them, each
+  # evaluates the same Grafana-managed rules and sends its own copy of every
+  # notification. The chart already exposes POD_IP and port 9094; the headless
+  # Service gives the replicas a DNS name to find each other.
+  # (PrometheusRule alerts go through Alertmanager and are unaffected.)
+  headlessService: true
+  grafana.ini:
+    unified_alerting:
+      enabled: true
+      ha_peers: prometheus-grafana-headless.monitoring.svc.cluster.local:9094
+      ha_listen_address: ${POD_IP}:9094
+      ha_advertise_address: ${POD_IP}:9094

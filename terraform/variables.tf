@@ -370,3 +370,15 @@ variable "enable_vpc_interface_endpoints" {
   type        = bool
   default     = false
 }
+
+variable "enable_grafana_db" {
+  description = "Give Grafana a dedicated Postgres (terraform/grafana.tf) instead of in-pod SQLite. Without it Grafana's users, sessions and service-account tokens (incl. Backstage's GRAFANA_TOKEN) are lost on every pod restart, and Grafana cannot run more than one replica."
+  type        = bool
+  default     = true
+}
+
+variable "grafana_rds_instance_class" {
+  description = "RDS instance class for Grafana's Postgres. It holds Grafana's own metadata only (users, sessions, dashboards), not metrics."
+  type        = string
+  default     = "db.t4g.micro"
+}

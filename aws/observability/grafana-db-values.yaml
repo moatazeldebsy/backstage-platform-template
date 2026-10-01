@@ -1,0 +1,16 @@
+# Grafana on Postgres — layered on prometheus-stack-values.yaml by bootstrap.sh
+# whenever terraform/grafana.tf provisioned the database (enable_grafana_db,
+# on by default). Without it Grafana keeps its state in in-pod SQLite, which
+# persistence.enabled: false throws away on every restart.
+#
+# Host, name, user and password come from the `grafana-db` Secret
+# (aws/observability/grafana-db-external-secret.yaml) as GF_DATABASE_* env
+# vars, which override grafana.ini. Only the non-secret settings live here.
+grafana:
+  envFromSecret: grafana-db
+  grafana.ini:
+    database:
+      type: postgres
+      # RDS Postgres 17 enforces TLS (rds.force_ssl=1). `require` encrypts
+      # without verifying the CA, same trade-off as Backstage's PGSSLMODE.
+      ssl_mode: require
