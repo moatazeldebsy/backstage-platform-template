@@ -2992,7 +2992,10 @@
 <code>terraform.tfvars</code> and is remembered for later runs (<code>--profile none</code> clears it).
 <code>medium</code> and <code>large</code> also install ArgoCD in HA mode (<code>aws/argocd/argocd-ha-values.yaml</code>:
 Redis HA, two server/repo-server/applicationset replicas with PDBs) and run two
-Backstage replicas spread across AZs; <code>small</code> and no-profile stay single-replica.
+Backstage and two Grafana replicas spread across AZs; <code>small</code> and no-profile stay
+single-replica. On every profile Grafana keeps its state (users, sessions,
+service-account tokens such as Backstage's <code>GRAFANA_TOKEN</code>) in a dedicated Postgres
+(<code>terraform/grafana.tf</code>, <code>enable_grafana_db</code>), so it survives pod restarts.
 Without <code>medium</code> or <code>large</code>, losing the AZ that hosts the single NAT gateway cuts all
 outbound traffic from the private subnets — see
 <a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a>.</p>

@@ -2441,11 +2441,11 @@ file was used:</p>
 </tr>
 <tr>
 <td>Workloads</td>
-<td>PodDisruptionBudgets + replicas ≥ 2, spread across zones, for platform-core services — on medium/large: ArgoCD HA overlay (<code>aws/argocd/argocd-ha-values.yaml</code>) and 2 Backstage replicas, set by <code>bootstrap.sh</code> from the profile. Grafana is still single-replica (sessions live in a per-pod SQLite DB)</td>
+<td>PodDisruptionBudgets + replicas ≥ 2, spread across zones, for platform-core services — on medium/large: ArgoCD HA overlay (<code>aws/argocd/argocd-ha-values.yaml</code>), 2 Backstage replicas and 2 Grafana replicas (on a shared Postgres, with alerting gossip), set by <code>bootstrap.sh</code> from the profile</td>
 </tr>
 <tr>
 <td>Database</td>
-<td>RDS Multi-AZ standby for Backstage, Langfuse and LiteLLM — <code>rds_multi_az = true</code> in <code>profiles/medium</code> and <code>profiles/large</code>; storage autoscaling so a full volume never turns a DB read-only</td>
+<td>RDS Multi-AZ standby for Backstage, Langfuse, LiteLLM and Grafana — <code>rds_multi_az = true</code> in <code>profiles/medium</code> and <code>profiles/large</code>; storage autoscaling so a full volume never turns a DB read-only</td>
 </tr>
 <tr>
 <td>AWS APIs from pods</td>
