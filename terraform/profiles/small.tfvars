@@ -15,8 +15,10 @@ rds_instance_class    = "db.t3.medium"
 rds_multi_az          = false
 rds_allocated_storage = 20
 
-# Networking
-vpc_cidr = "10.0.0.0/16"
+# Networking — single shared NAT gateway: losing its AZ cuts egress for every
+# private subnet. Acceptable for dev; set true for anything production-facing.
+vpc_cidr            = "10.0.0.0/16"
+enable_multi_az_nat = false
 
 # Karpenter — not needed at this scale; Cluster Autoscaler is sufficient
 enable_karpenter = false

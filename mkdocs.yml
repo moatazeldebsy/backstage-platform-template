@@ -57,6 +57,7 @@ nav:
     - "ADR-0006: Engineering Intelligence": design/adr-0006-engineering-intelligence.md
     - "ADR-0007: AI Gateway": design/adr-0007-ai-gateway.md
     - "ADR-0008: LiteLLM multi-provider gateway": design/adr-0008-litellm-multiprovider-gateway.md
+    - "ADR-0009: Single-region, multi-AZ": design/adr-0009-single-region-multi-az.md
   - Team Management: team-management.md
   - GitHub App Setup: github-app-setup.md
   - Scaling Runbook: scaling-runbook.md

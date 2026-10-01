@@ -17,7 +17,7 @@ variable "is_primary_region" {
 }
 
 variable "enable_multi_az_nat" {
-  description = "Deploy one NAT gateway per AZ instead of a single shared one. Required for production HA; costs ~$100/month extra per region."
+  description = "Deploy one NAT gateway per AZ instead of a single shared one. With the default single NAT, an outage in its AZ cuts egress for every private subnet. Set true for production (profiles/medium + large do); costs ~$65-100/month extra. See ADR-0009."
   type        = bool
   default     = false
 }

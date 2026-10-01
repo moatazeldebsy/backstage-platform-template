@@ -22,6 +22,9 @@ rds_allocated_storage = 500
 # Networking — expand CIDR to /8 to support multi-cluster peering and 100+ namespaces
 vpc_cidr = "10.0.0.0/8"
 
+# One NAT gateway per AZ — AZ-level egress resilience (see ADR-0009)
+enable_multi_az_nat = true
+
 # Karpenter required at this scale for fast scale-out and cost-efficient bin-packing
 enable_karpenter = true
 
