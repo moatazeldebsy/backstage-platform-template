@@ -57,7 +57,7 @@ resources:
 env:
   - name: PORT
     value: "3009"
-  # Reuses Backstage's own Aurora/RDS Postgres instance — credentials are copied
+  # Reuses Backstage's own RDS Postgres instance — credentials are copied
   # from the backstage-secrets secret (namespace: backstage) into
   # approval-service-db (namespace: services-dev) by bootstrap-ai.sh --adp, since
   # Kubernetes secrets can't be referenced cross-namespace directly.
