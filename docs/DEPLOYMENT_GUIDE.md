@@ -583,6 +583,81 @@ Where the money goes, and what has already been done about it:
   ~$112/mo more. See [Consolidating ALBs](#consolidating-albs) — it needs real
   DNS, so it is a project rather than a flag.
 
+### Measured: a full six-node cluster with AI/ML
+
+Measured against a running `idp-mvp` cluster in `us-east-1` on 2026-08-14, at
+on-demand list prices, for continuous 24/7 running — that is, before the
+overnight scale-down `enable_cost_optimizer` performs by default.
+**Local is free** — this is only the EKS path. These are **AWS infrastructure
+charges only**; see [what the measurement excludes](#what-the-measurement-excludes) below
+before treating the total as your bill.
+
+> **This is a measurement, not the repo default.** The table reflects a running
+> `idp-mvp` cluster with the node group scaled up to six `t3.large`.
+> `terraform/variables.tf` ships `node_group_desired_size = 1` (min 0, max 2), so
+> a bootstrap using the defaults costs substantially less — and will not fit the
+> full stack. Scale the node group deliberately rather than inferring it from
+> this table.
+
+| Component | Qty | ~$/month |
+|---|---:|---:|
+| EKS control plane | 1 | 73 |
+| Worker nodes (`t3.large`) | 6 | 364 |
+| NAT gateway | 1 | 33 + data |
+| Application Load Balancers — core | 4 | 66 |
+| RDS for Backstage (`db.t3.micro`) | 1 | 12 |
+| S3 / ECR / Secrets Manager / CloudWatch | — | ~15 |
+| **Core platform subtotal** | | **~565** |
+| Application Load Balancers — AI/ML | 11 | 181 |
+| RDS for Langfuse (`db.t4g.micro`) | 1 | 11 |
+| S3 for MLflow + Langfuse artifacts | 2 | ~2 |
+| **AI/ML layer subtotal** (`--with-ai`) | | **~195** |
+| **Total with AI/ML** | | **~760** |
+
+**The load balancers are the surprise.** Every ALB is ~$16/month before traffic,
+and the AI/ML layer creates **eleven** of the fifteen — one per MCP server, plus
+KAgent, the IDP assistant, MLflow and Langfuse. That is more than the RDS
+instances and S3 combined, and it is why the AI layer is opt-in
+(`./scripts/bootstrap.sh --with-ai`) rather than default.
+
+Ways to spend less, roughly in order of effect:
+
+- **Skip the AI/ML layer.** Saves ~$195/month. `enable_ai` and `enable_langfuse`
+  gate the infrastructure too, so nothing is provisioned for it.
+- **Leave `enable_cost_optimizer = true`** (the default). Scales nodes to zero
+  and stops RDS overnight — roughly halves the node and RDS lines if you only
+  work office hours. Because it is on by default, a stock deployment on an
+  office-hours schedule already lands well under the table above, which measures
+  the optimizer-disabled case.
+- **Drop the node count.** Six `t3.large` is sized for the full stack including
+  AI; the core platform alone fits in fewer. Note the constraint documented on
+  `node_instance_types`: nodes are sized by **pod IP capacity**, not CPU/RAM.
+- **Tear down when idle.** `./scripts/cleanup.sh`, not a bare `terraform destroy`.
+  Several things the platform runs are created by in-cluster controllers rather
+  than Terraform: ALBs, the EBS disks behind PersistentVolumes, Crossplane
+  resources. They survive `terraform destroy` and keep billing. On one account
+  the PVC disks alone kept ~$13/month running after the cluster was gone.
+  `cleanup.sh` deletes them, and its final verification reports anything left
+  over. The full list is in
+  [what Terraform cannot destroy](#what-terraform-owns-and-what-it-cannot-destroy).
+
+#### What the measurement excludes
+
+The total is the platform's own AWS footprint. It is not an all-in run rate:
+
+| Not counted | Why it can matter |
+|---|---|
+| **Data transfer and NAT data processing** | Charged per GB on top of the NAT hourly rate. Image pulls and cross-AZ traffic dominate it, so it scales with your workload, not with the platform |
+| **LLM API spend** | KAgent runs Claude and GPT-4o, and AI Search needs a `VOYAGE_API_KEY`. Those are Anthropic / OpenAI / Voyage bills, not AWS — and on an agent-heavy platform they can exceed the infrastructure. This is precisely what the [Langfuse](ai-assistant.md#llm-observability-langfuse) page exists to show you |
+| **Datadog** | Third-party SaaS priced per host and per ingested GB, alongside the Prometheus/Grafana stack that is included |
+| **Multi-region V2** | A standby region is close to a second copy of the infrastructure. See [docs/multi-region.md](multi-region.md) |
+| **Your own services** | Everything above is the platform. Whatever your teams scaffold onto it is additional |
+| **Savings Plans / Reserved Instances** | List prices only. Committed-use discounts take a meaningful cut off the node line |
+
+Verify against the [AWS pricing calculator](https://calculator.aws) for your
+region before committing — this table is a measurement of one cluster, not a
+quote.
+
 ### Consolidating ALBs
 
 Eight services still publish their own internet-facing ALB at ~$16/mo each. They

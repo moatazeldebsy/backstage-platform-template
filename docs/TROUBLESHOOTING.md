@@ -29,6 +29,31 @@ grep -r "moatazeldebsy" backstage/catalog/ local/argocd/ 2>/dev/null && echo "PL
 
 ---
 
+## Common issues at a glance
+
+### Local
+
+| Issue | Workaround |
+|---|---|
+| `/kubernetes` standalone page crashes | By design — disabled in local config. Use the Kubernetes tab on any catalog entity instead |
+| `Cost Overview` shows "OpenCost returned 500" | Wait for the OpenCost pod: `kubectl get pods -n opencost` |
+| ArgoCD page shows "📊 Demo data — ArgoCD proxy returned an error" | `ARGOCD_AUTH_TOKEN` is missing, usually because the cluster was recreated. Run `./scripts/bootstrap-local.sh --install-argocd` (mints a token for the `backstage` account), then `--start-backstage` to recreate the container |
+| `ImagePullBackOff` after scaffold | Image hasn't been pushed to the local registry yet. See [ImagePullBackOff runbook](runbooks/image-pull-backoff.md) |
+| Backstage K8s tab shows "unknown" for CPU/memory | metrics-server not running (auto-installed by `bootstrap-local.sh`) |
+
+### AWS
+
+| Issue | Workaround |
+|---|---|
+| `terraform init` fails with `AccessDenied` or "Backend configuration required" | `terraform/backend.hcl` has not been generated. Run `./scripts/setup.sh`, or let `bootstrap.sh` create it on first run |
+| Nodes fail with `NodeCreationFailure: Instances failed to join the kubernetes cluster` ~20 min in | Usually a VPC/quota issue, or a cold-start apply that reached EKS without the NAT route. `bootstrap.sh` targets `module.vpc` alongside `module.eks` to prevent the latter |
+| `Error acquiring the state lock` | An interrupted apply left a stale lock: `cd terraform && terraform force-unlock <lock-id>` |
+| Scaffolder tasks fail with "requires `--no-node-snapshot`" | `NODE_OPTIONS` in the deployment replaced the image's value instead of appending. It must contain both `--no-node-snapshot` and `--require dd-trace/init` |
+| Tearing down leaves resources behind | Use `./scripts/cleanup.sh`, not `terraform destroy`. Orphaned ALBs hold the subnets Terraform is trying to delete, and the EBS disks behind PersistentVolumes are never in Terraform state at all |
+| Small AWS charges continue after a teardown | Almost always leftovers Terraform never owned. Read the verification summary at the end of `cleanup.sh`. After a bare `terraform destroy`, look for `available` EBS volumes tagged `kubernetes.io/cluster/<cluster>=owned`, and check Cost Explorer grouped by **usage type** (`EBS:VolumeUsage*` is the tell) |
+
+Why each AWS issue was possible, and which file now prevents it: [Known Failure Modes](aws-install-failure-modes.md).
+
 ## Phase 0 — Personalisation (`setup.sh`)
 
 ### Symptom: ArgoCD shows no applications

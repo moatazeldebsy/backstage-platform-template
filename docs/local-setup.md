@@ -332,6 +332,12 @@ sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
 | **KAgent UI** | http://kagent.idp.local | — (agent management) |
 | **MLflow** | http://mlflow.idp.local | — (experiment tracking & model registry) |
 | **Argo Workflows** | http://argo-workflows.idp.local | — (if `--install-argo-workflows` flag used) |
+| **AI Search** | http://backstage.idp.local/ai-search | requires `bootstrap-ai.sh` + `VOYAGE_API_KEY` |
+| **AI Gateway** (admin console) | http://ai-gateway.idp.local — routes, MCP targets, model list, Chat/Tool Playgrounds | requires `bootstrap-ai.sh`; local only, no AWS Ingress (`--skip-gateway` opts out) |
+| **LiteLLM** (spend dashboard) | http://litellm.idp.local (also the **LiteLLM Spend** page in Backstage) | installed by `bootstrap-ai.sh` (`--skip-litellm` opts out) |
+| **AI Observability** / **Langfuse** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | installed by `bootstrap-ai.sh` (`--skip-langfuse` opts out); admin password in the `langfuse-init` Secret |
+| **MCP servers** (8) | `http://<name>-mcp-server.idp.local/healthz` — `idp`, `qa`, `contract`, `github`, `cost`, `argocd`, `incident`, `security` | requires `bootstrap-ai.sh` |
+| **Approval Service** / **Agent Event Router** | http://approval-service.idp.local · http://agent-event-router.idp.local | requires `bootstrap-ai.sh --adp` |
 | **Local registry** | localhost:5003 | — (no auth) |
 
 ArgoCD initial admin password:
@@ -344,6 +350,32 @@ Alternatively, use `kubectl port-forward` for any service:
 ```bash
 kubectl port-forward svc/hello-service 8080:80 -n services
 ```
+
+## Optional third-party integrations
+
+**You do not need any third-party account to run this platform.** Every
+integration below is optional and fails soft: the portal boots, the cluster comes
+up, and the relevant tab renders an empty state rather than an error. Nothing is
+stubbed or mocked — the config, proxy wiring and secret plumbing are real, so if
+you *do* have an account, filling in one variable is all that's needed.
+
+Credentials are supplied by `local/backstage/.env` locally (start from
+`local/backstage/.env.example`, which documents each one) and by AWS Secrets
+Manager → External Secrets on EKS.
+
+| Integration | What you need | Without it |
+|---|---|---|
+| **GitHub** (catalog, scaffolder) | PAT in `GITHUB_TOKEN`, scopes `repo`, `read:org`, `workflow`, `delete_repo` | Catalog import and scaffolding to real repos don't work — the rest of the portal is unaffected. In practice this is the one worth setting. |
+| **GitHub OAuth** | OAuth App → `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET` | Guest mode only — no "Sign in with GitHub" |
+| **SonarCloud** / **Snyk** | Free-tier tokens → `SONAR_TOKEN` / `SNYK_TOKEN` | Security tab renders empty; scaffolded CI skips those steps and stays green |
+| **Datadog** | `DD_API_KEY` + `DD_APP_KEY` | Datadog tab renders empty. On AWS these also drive the Datadog Agent and APM |
+| **PagerDuty** | Read-only REST API key → `PAGERDUTY_TOKEN` | On-call tab renders empty. |
+| **Jira** | `JIRA_URL` + `JIRA_TOKEN` = Base64(`email:api_token`) | Issues tab renders empty. |
+| **Voyage AI** | `VOYAGE_API_KEY` (free tier: 200M tokens/month) | `/ai-search` returns HTTP 503. Everything else in the AI layer still works |
+| **Firebase Test Lab / GCP** | Service-account JSON, base64 → `GCP_SERVICE_ACCOUNT_KEY` | The mobile device-farm and Flutter test-suite templates scaffold fine but their CI can't authenticate |
+| **LambdaTest** | Username + access key → `LT_USERNAME` / `LT_ACCESS_KEY` | The device-farm, Appium and Playwright templates scaffold fine, but their LambdaTest jobs can't authenticate |
+| **BrowserStack** / **Sauce Labs** | Username + access key → `BROWSERSTACK_*` / `SAUCE_*` | Those device-farm providers scaffold fine but their CI can't authenticate |
+| **Grafana**, **ArgoCD** | — | Auto-populated by `bootstrap-local.sh`; no account needed |
 
 ## Start Backstage
 
