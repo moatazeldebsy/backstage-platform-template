@@ -589,6 +589,63 @@ output "langfuse_role_arn" {
   value       = one(module.langfuse_irsa[*].iam_role_arn)
 }
 
+# Argo Workflows IRSA — read/write the artifact bucket. Three ServiceAccounts:
+# the controller (archives step logs, artifact GC), the server (serves
+# artifacts and logs in the UI) and ml-pipeline-runner, the identity
+# WorkflowTemplate pods run under, whose wait container does the upload.
+# scripts/lib.sh install_argo_workflows reads argo_workflows_role_arn (#357).
+module "argo_workflows_irsa" {
+  count = var.enable_ai ? 1 : 0
+
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-argo-workflows"
+
+  oidc_providers = {
+    main = {
+      provider_arn = module.eks.oidc_provider_arn
+      namespace_service_accounts = [
+        "argo-workflows:argo-workflows-workflow-controller",
+        "argo-workflows:argo-workflows-server",
+        "ml-platform:ml-pipeline-runner",
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "argo_workflows" {
+  count = var.enable_ai ? 1 : 0
+
+  name = "argo-workflows-s3-artifacts"
+  role = module.argo_workflows_irsa[0].iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+        Resource = [
+          aws_s3_bucket.argo_workflows_artifacts[0].arn,
+          "${aws_s3_bucket.argo_workflows_artifacts[0].arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+output "argo_workflows_role_arn" {
+  description = "IAM role ARN for the Argo Workflows controller, server and ml-pipeline-runner ServiceAccounts (IRSA) — artifact bucket access. Empty when enable_ai = false."
+  value       = one(module.argo_workflows_irsa[*].iam_role_arn)
+}
+
 # KAgent ESO IRSA — allows External Secrets Operator in the kagent namespace to
 # read the Anthropic API key from Secrets Manager (idp-mvp/kagent).
 module "kagent_eso_irsa" {
