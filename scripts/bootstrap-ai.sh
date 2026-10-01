@@ -1550,9 +1550,19 @@ if [[ "$LITELLM" == "true" ]]; then
     # the old ai-gateway-llm-keys (optional: true), so the Secret must exist
     # before rollout status is checked or a fresh install always warns with a
     # CreateContainerConfigError that only self-heals once ESO reconciles.
-    # This manifest has no templated placeholders (unlike aws/kagent/external-secret.yaml's
-    # AWS_REGION_PLACEHOLDER), so nothing later in the script needs to run first.
-    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-external-secret.yaml"
+    # Its own SecretStore + litellm-eso-sa (IRSA role from terraform/iam.tf),
+    # same shape as aws/kagent/external-secret.yaml. Until this existed it used
+    # the shared ClusterSecretStore, whose role cannot read idp-mvp/kagent or
+    # idp-mvp/litellm, so the ExternalSecret never synced.
+    LITELLM_ESO_ROLE_ARN=$(tf_output litellm_eso_role_arn)
+    sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+      "${REPO_ROOT}/aws/ml-platform/litellm-external-secret.yaml" | kubectl apply -f -
+    if [[ -n "$LITELLM_ESO_ROLE_ARN" ]]; then
+      kubectl annotate serviceaccount litellm-eso-sa -n ml-platform \
+        "eks.amazonaws.com/role-arn=${LITELLM_ESO_ROLE_ARN}" --overwrite
+    else
+      warn "litellm_eso_role_arn missing from Terraform outputs (enable_litellm not applied?) — litellm-keys will keep the values written above but will not sync from Secrets Manager."
+    fi
     # serviceAccountName defaults to "default" in the shared manifest (Kind has
     # no OIDC provider to federate against); patch it to the IRSA-annotated SA
     # here rather than forking the Deployment into two files. Strategic merge,

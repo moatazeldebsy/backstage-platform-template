@@ -155,7 +155,7 @@ Scaffolded service workflows run `test` on `ubuntu-latest`. No self-hosted runne
 GitHub Actions authenticates to AWS via OIDC (`aws-actions/configure-aws-credentials`), eliminating long-lived secrets. The IAM role is scoped to the specific GitHub org.
 
 ### IRSA for pod-level AWS access
-Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA). IRSA roles exist for: Backstage, ESO (shared), DORA exporter, Grafana (CloudWatch read), Grafana ESO (reads only `idp-mvp/grafana`), MLflow (S3), KAgent ESO (Secrets Manager).
+Kubernetes service accounts are annotated with IAM role ARNs. Pods assume fine-grained IAM roles without node-level credentials (EKS IRSA). IRSA roles exist for: Backstage, ESO (shared), DORA exporter, Grafana (CloudWatch read), Grafana ESO (reads only `idp-mvp/grafana`), LiteLLM ESO (reads only `idp-mvp/kagent` + `idp-mvp/litellm`), MLflow (S3), KAgent ESO (Secrets Manager).
 
 ### External Secrets Operator (AWS)
 ESO syncs secrets from AWS Secrets Manager into Kubernetes `Secret` objects. A single cluster-scoped `ClusterSecretStore` named `aws-secretsmanager` is created during bootstrap and shared by all `ExternalSecret` resources (Backstage credentials, DORA exporter token, KAgent API key). The ESO ServiceAccount is annotated with the Backstage IRSA role ARN so it can read `idp-mvp/*` secrets without static credentials.

@@ -86,6 +86,14 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **LiteLLM's ExternalSecret never synced on AWS.** `litellm-keys` used the
+  shared `aws-secretsmanager` ClusterSecretStore, which authenticates as the
+  Backstage IRSA role, and that role can read neither `idp-mvp/kagent` nor
+  `idp-mvp/litellm`. LiteLLM still started because `bootstrap-ai.sh` writes the
+  Secret imperatively first, but a key rotated in Secrets Manager never reached
+  it. It now has its own SecretStore and `litellm-eso` IRSA role scoped to those
+  two secrets. The Backstage role was deliberately not widened: Backstage pods
+  share it, and would then have been able to read the Anthropic key.
 - **Grafana lost its state on every restart on AWS.** It ran on in-pod SQLite
   with persistence disabled, so users, UI-made dashboards and service-account
   tokens (including Backstage's `GRAFANA_TOKEN`) vanished whenever the pod was

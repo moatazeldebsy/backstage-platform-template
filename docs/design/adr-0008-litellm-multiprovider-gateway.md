@@ -122,8 +122,12 @@ per ADR-0007's Context).
 inside the existing `idp-mvp/kagent` Secrets Manager entry
 (`terraform/secrets.tf`), rather than a new secret — same reuse decision
 ADR-0007 made for the Anthropic key sync. `aws/ml-platform/litellm-external-secret.yaml`
-syncs both `ANTHROPIC_API_KEY` and `LITELLM_MASTER_KEY` from it into a
-`litellm-keys` Secret in `ml-platform`.
+syncs both `ANTHROPIC_API_KEY` and `LITELLM_MASTER_KEY` from it (plus
+`DATABASE_URL` from `idp-mvp/litellm`) into a `litellm-keys` Secret in
+`ml-platform`, through its own SecretStore and `litellm-eso-sa` IRSA role that
+can read only those two entries. (It originally used the shared
+`aws-secretsmanager` ClusterSecretStore, whose Backstage role could read
+neither, so the sync never succeeded.)
 
 The old `ai-gateway-llm-keys` Secret and its ExternalSecret
 (`aws/ml-platform/ai-gateway-external-secret.yaml`) are deleted, not left as a
