@@ -92,3 +92,43 @@ S3 replication for Terraform state and TechDocs, ECR replication. That gives an
 RTO of hours at near-zero standing cost and keeps data in the EU. Only a
 customer-facing workload with a contractual regional SLA justifies going
 further than that.
+
+## Addendum (2026-10-01): second-region backups considered and declined
+
+The DR approach above was re-evaluated during the AWS reliability review
+(#593–#600) and **not implemented**: no AWS Backup cross-region copies, no S3 or
+ECR replication. For how this platform is actually used, they would cost more
+than they protect:
+
+- **What is irreplaceable is small.** The catalog, templates, service config and
+  claims live in git and redeploy. What a region loss destroys for good is
+  Backstage's scaffolder history and Learning Center progress, Engineering
+  Intelligence trend snapshots, Grafana users and tokens, and LiteLLM/Langfuse
+  metadata. That is inconvenient, not business-critical, for an internal tool.
+- **Rebuilding is the normal operating mode.** The dev cluster is torn down and
+  re-created routinely, so the rebuild path is exercised far more often than a
+  standby would be.
+- **Replication has standing cost and a residency question.** Copies to a
+  second region bill continuously and need monitoring. Which region they may go
+  to (the deployment runs in us-east-1, while this ADR assumes EU data) is a
+  decision nobody has made.
+
+**What exists instead:** [Regional Rebuild](../runbooks/regional-rebuild.md),
+the step-by-step rebuild in another region. Writing it found three things that
+would have blocked a same-account rebuild, now handled:
+
+- the S3 bucket names are global and region-less → `s3_bucket_suffix`;
+- the GitHub OIDC provider is one per account → imported, and kept out of the
+  old stack's destroy;
+- `cleanup.sh` on the old stack would delete `services/*` from git and clear
+  the repo's `AWS_ROLE_ARN` → `cleanup.sh --replaced-stack`.
+
+It also records a limit nothing in this repo removes: **IAM writes are served
+from us-east-1**, the default region here, so a us-east-1 outage can block
+creating the replacement's IAM roles in any region.
+
+**Revisit when:** a workload holds data that cannot be re-created from git, or
+someone needs a stated RPO better than "since the last commit". The first step
+is still the one above: AWS Backup cross-region copies for RDS, S3 replication
+for state and TechDocs, ECR replication. **The runbook's RTO is unmeasured
+until someone performs it once.**

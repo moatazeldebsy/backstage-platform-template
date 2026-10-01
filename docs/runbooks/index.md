@@ -30,6 +30,14 @@ tracked incident record.
 | `ExternalSecret` error — SecretStore not found | Warning | `platform` | [TROUBLESHOOTING.md § ExternalSecret error](../TROUBLESHOOTING.md#symptom-externalsecret-error-secretstore-not-found-team-secrets) |
 | `team=unknown` on DORA metrics | Info | `dora` | [TROUBLESHOOTING.md § team=unknown](../TROUBLESHOOTING.md#symptom-teamunknown-on-dora-prometheus-metrics) |
 
+## Disaster recovery
+
+Not alert-driven. Use it when the whole AWS region is gone.
+
+| Situation | Runbook |
+|---|---|
+| The platform's AWS region is unavailable: rebuild elsewhere from IaC ([ADR-0009](../design/adr-0009-single-region-multi-az.md)) | [Regional Rebuild](regional-rebuild.md) |
+
 ## Local Dev Issues
 
 These are not alert-driven but are common when running the platform locally with Kind or Rancher Desktop.

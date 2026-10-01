@@ -393,3 +393,14 @@ variable "node_capacity_type" {
     error_message = "node_capacity_type must be SPOT, ON_DEMAND or null."
   }
 }
+
+variable "s3_bucket_suffix" {
+  description = "Appended to the platform's S3 bucket names (idp-mvp-<purpose>-<account><suffix>). Leave empty normally. S3 names are global and these include no region, so rebuilding in another region of the same account while the old buckets still exist (a regional outage) needs a suffix, e.g. \"-usw2\". See docs/runbooks/regional-rebuild.md."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = can(regex("^(-[a-z0-9]+)*$", var.s3_bucket_suffix)) && length(var.s3_bucket_suffix) <= 12
+    error_message = "s3_bucket_suffix must be empty or like \"-usw2\": lowercase letters, digits and hyphens, starting with a hyphen, at most 12 characters."
+  }
+}

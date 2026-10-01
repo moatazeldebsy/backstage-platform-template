@@ -4,7 +4,7 @@
 # distributor/ingester/querier/compactor components.
 
 resource "aws_s3_bucket" "tempo_traces" {
-  bucket = "idp-mvp-tempo-traces-${data.aws_caller_identity.current.account_id}"
+  bucket = "idp-mvp-tempo-traces-${data.aws_caller_identity.current.account_id}${var.s3_bucket_suffix}"
 
   tags = {
     Name = "idp-mvp-tempo-traces"

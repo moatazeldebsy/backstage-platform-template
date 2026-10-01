@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "techdocs" {
-  bucket = "idp-mvp-techdocs-${data.aws_caller_identity.current.account_id}"
+  bucket = "idp-mvp-techdocs-${data.aws_caller_identity.current.account_id}${var.s3_bucket_suffix}"
 
   tags = {
     Name = "idp-mvp-techdocs"
@@ -60,7 +60,7 @@ output "techdocs_bucket_name" {
 resource "aws_s3_bucket" "mlflow_artifacts" {
   count = var.enable_ai ? 1 : 0
 
-  bucket = "idp-mvp-mlflow-${data.aws_caller_identity.current.account_id}"
+  bucket = "idp-mvp-mlflow-${data.aws_caller_identity.current.account_id}${var.s3_bucket_suffix}"
 
   tags = {
     Name = "idp-mvp-mlflow-artifacts"
@@ -150,7 +150,7 @@ output "mlflow_artifacts_bucket_name" {
 resource "aws_s3_bucket" "langfuse_blobs" {
   count = var.enable_ai ? 1 : 0
 
-  bucket = "idp-mvp-langfuse-${data.aws_caller_identity.current.account_id}"
+  bucket = "idp-mvp-langfuse-${data.aws_caller_identity.current.account_id}${var.s3_bucket_suffix}"
 
   tags = {
     Name = "idp-mvp-langfuse-blobs"
@@ -219,7 +219,7 @@ output "langfuse_blobs_bucket_name" {
 
 # ── Velero cluster backup storage ───────────────────────────────────────────────────
 resource "aws_s3_bucket" "velero_backups" {
-  bucket = "idp-mvp-velero-${data.aws_caller_identity.current.account_id}"
+  bucket = "idp-mvp-velero-${data.aws_caller_identity.current.account_id}${var.s3_bucket_suffix}"
 
   tags = {
     Name = "idp-mvp-velero-backups"
