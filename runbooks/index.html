@@ -2073,6 +2073,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#disaster-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Disaster recovery
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#local-dev-issues" class="md-nav__link">
     <span class="md-ellipsis">
       Local Dev Issues
@@ -2318,6 +2327,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="regional-rebuild/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Regional Rebuild
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2466,6 +2496,22 @@ tracked incident record.
 | Crossplane claim rejected by Kyverno | Warning | <code>platform</code> | <a href="../TROUBLESHOOTING/#symptom-crossplane-claim-rejected-owner-is-required">TROUBLESHOOTING.md § Crossplane claim rejected</a> |
 | <code>ExternalSecret</code> error — SecretStore not found | Warning | <code>platform</code> | <a href="../TROUBLESHOOTING/#symptom-externalsecret-error-secretstore-not-found-team-secrets">TROUBLESHOOTING.md § ExternalSecret error</a> |
 | <code>team=unknown</code> on DORA metrics | Info | <code>dora</code> | <a href="../TROUBLESHOOTING/#symptom-teamunknown-on-dora-prometheus-metrics">TROUBLESHOOTING.md § team=unknown</a> |</p>
+<h2 id="disaster-recovery">Disaster recovery<a class="headerlink" href="#disaster-recovery" title="Permanent link">&para;</a></h2>
+<p>Not alert-driven. Use it when the whole AWS region is gone.</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Runbook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The platform's AWS region is unavailable: rebuild elsewhere from IaC (<a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a>)</td>
+<td><a href="regional-rebuild/">Regional Rebuild</a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="local-dev-issues">Local Dev Issues<a class="headerlink" href="#local-dev-issues" title="Permanent link">&para;</a></h2>
 <p>These are not alert-driven but are common when running the platform locally with Kind or Rancher Desktop.</p>
 <table>
