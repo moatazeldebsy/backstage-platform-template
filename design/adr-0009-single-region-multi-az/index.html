@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../kagent-guardrails/">
+        <link rel="prev" href="../adr-0008-litellm-multiprovider-gateway/">
       
       
-        <link rel="next" href="../../postmortem-template/">
+        <link rel="next" href="../../team-management/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>DR Region Failover - Internal Developer Platform</title>
+        <title>ADR-0009: Single-region, multi-AZ - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dr-region-failover-runbook" class="md-skip">
+        <a href="#adr-0009-single-region-multi-az-drop-the-active-standby-multi-region-topology" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              DR Region Failover
+              ADR-0009: Single-region, multi-AZ
             
           </span>
         </div>
@@ -197,23 +197,6 @@
     
   
   Architecture
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../multi-region/" class="md-tabs__link">
-        
-  
-    
-  
-  Multi-Region
 
       </a>
     </li>
@@ -497,11 +480,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../design/adr-0001-batch-orchestration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../adr-0001-batch-orchestration/" class="md-tabs__link">
           
   
   Design Decisions
@@ -669,13 +654,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../runbooks/" class="md-tabs__link">
           
   
   Runbooks
@@ -837,26 +820,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../multi-region/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Multi-Region
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../golden-path/" class="md-nav__link">
         
   
@@ -929,10 +892,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -943,8 +906,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             AWS Deployment
           </label>
@@ -1259,10 +1222,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1273,8 +1236,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_21">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_20">
             <span class="md-nav__icon md-icon"></span>
             Engineering Intelligence
           </label>
@@ -1438,25 +1401,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" checked>
         
           
-          <label class="md-nav__link" for="__nav_22" id="__nav_22_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1467,8 +1435,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_22">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_21">
             <span class="md-nav__icon md-icon"></span>
             Design Decisions
           </label>
@@ -1481,7 +1449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0001-batch-orchestration/" class="md-nav__link">
+      <a href="../adr-0001-batch-orchestration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1502,7 +1470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0002-delivery-model/" class="md-nav__link">
+      <a href="../adr-0002-delivery-model/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1523,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0003-incident-management/" class="md-nav__link">
+      <a href="../adr-0003-incident-management/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1544,7 +1512,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0004-identity-and-access/" class="md-nav__link">
+      <a href="../adr-0004-identity-and-access/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1565,7 +1533,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
+      <a href="../adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1586,7 +1554,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0006-engineering-intelligence/" class="md-nav__link">
+      <a href="../adr-0006-engineering-intelligence/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1607,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0007-ai-gateway/" class="md-nav__link">
+      <a href="../adr-0007-ai-gateway/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1628,7 +1596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+      <a href="../adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1637,6 +1605,109 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    ADR-0009: Single-region, multi-AZ
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    ADR-0009: Single-region, multi-AZ
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consequences
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Consequences">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#if-regional-dr-is-ever-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      If regional DR is ever required
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1728,10 +1799,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_26" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_25" >
         
           
-          <label class="md-nav__link" for="__nav_26" id="__nav_26_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_25" id="__nav_25_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1742,8 +1813,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_26_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_26">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_25">
             <span class="md-nav__icon md-icon"></span>
             Shift-Left Quality
           </label>
@@ -1986,30 +2057,25 @@
       
   
   
-    
   
   
-  
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_32" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_31" >
         
           
-          <label class="md-nav__link" for="__nav_32" id="__nav_32_label" tabindex="">
+          <label class="md-nav__link" for="__nav_31" id="__nav_31_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2020,8 +2086,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_32_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_32">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_31_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_31">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2034,7 +2100,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../runbooks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2055,7 +2121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../incident-severity/" class="md-nav__link">
+      <a href="../../runbooks/incident-severity/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2076,7 +2142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment-rollback/" class="md-nav__link">
+      <a href="../../runbooks/deployment-rollback/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2097,7 +2163,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pod-crash-loop/" class="md-nav__link">
+      <a href="../../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2118,7 +2184,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-memory/" class="md-nav__link">
+      <a href="../../runbooks/high-memory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2139,7 +2205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../high-cpu/" class="md-nav__link">
+      <a href="../../runbooks/high-cpu/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2160,7 +2226,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../db-recovery/" class="md-nav__link">
+      <a href="../../runbooks/db-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2181,7 +2247,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../image-pull-backoff/" class="md-nav__link">
+      <a href="../../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2202,7 +2268,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kind-node-ip-mismatch/" class="md-nav__link">
+      <a href="../../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2223,7 +2289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cost-budget-exceeded/" class="md-nav__link">
+      <a href="../../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2244,7 +2310,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kagent-guardrails/" class="md-nav__link">
+      <a href="../../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2253,181 +2319,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    DR Region Failover
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    DR Region Failover
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#alert-description" class="md-nav__link">
-    <span class="md-ellipsis">
-      Alert Description
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#impact" class="md-nav__link">
-    <span class="md-ellipsis">
-      Impact
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pre-Checks
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#failover-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Failover Steps
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Failover Steps">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-promote-the-aurora-global-secondary-to-a-standalone-writer" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Promote the Aurora Global secondary to a standalone writer
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-flip-the-crossplane-providerconfig-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Flip the Crossplane ProviderConfig default
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cut-argocd-hub-spoke-traffic-to-us-east-1" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Cut ArgoCD hub-spoke traffic to us-east-1
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-shift-traffic" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Shift traffic
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-verify" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Verify
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rollback-failback-to-eu-central-1" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rollback (failback to eu-central-1)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#escalation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Escalation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#post-incident" class="md-nav__link">
-    <span class="md-ellipsis">
-      Post-Incident
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2475,7 +2366,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/runbooks/dr-region-failover.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/design/adr-0009-single-region-multi-az.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2483,117 +2374,132 @@
   
 
 
-<h1 id="dr-region-failover-runbook">DR Region Failover Runbook<a class="headerlink" href="#dr-region-failover-runbook" title="Permanent link">&para;</a></h1>
-<h2 id="alert-description">Alert Description<a class="headerlink" href="#alert-description" title="Permanent link">&para;</a></h2>
-<p>Triggered when eu-central-1 (primary) is degraded or unreachable in a multi-region (V2) deployment: Global Accelerator health checks failing, Aurora Global writer unavailable, or a regional AWS outage. See <a href="../../multi-region/">docs/multi-region.md</a> for the full V2 architecture this runbook operates against.</p>
-<h2 id="impact">Impact<a class="headerlink" href="#impact" title="Permanent link">&para;</a></h2>
+<h1 id="adr-0009-single-region-multi-az-drop-the-active-standby-multi-region-topology">ADR-0009: Single-region, multi-AZ — drop the active-standby multi-region topology<a class="headerlink" href="#adr-0009-single-region-multi-az-drop-the-active-standby-multi-region-topology" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted · <strong>Date:</strong> 2026-10-01</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>The platform shipped an opt-in "V2" multi-region topology behind
+<code>scripts/bootstrap-multiregion.sh</code>: eu-central-1 primary, us-east-1 warm
+standby, with Aurora Global, Global Accelerator, CloudFront, Transit Gateway,
+cross-region ECR / S3 / Secrets Manager replication, Thanos and a hub-spoke
+ArgoCD. Its stated target was RTO &lt; 15 min / RPO &lt; 1 s for platform-core
+("Gold") services.</p>
+<p>Three things made that target a poor fit for what this repo actually deploys:</p>
 <ul>
-<li>Backstage, ArgoCD hub, and all <code>services-dev</code> workloads in eu-central-1 are unreachable.</li>
-<li>Writes to Aurora Global and DynamoDB Global Tables stop until failover completes.</li>
-<li>us-east-1 is a warm standby — read replicas are live, but not yet accepting writes or primary traffic.</li>
+<li><strong>What an outage costs.</strong> The workloads are an Internal Developer Platform —
+  Backstage, ArgoCD, the MCP servers, observability. When they are down,
+  developers wait; product traffic keeps flowing on the clusters those teams
+  deploy to. A 15-minute regional RTO is a customer-facing SLA bought for an
+  internal tool.</li>
+<li><strong>Cost and operational load.</strong> A second full region (EKS, Aurora Global
+  writer/reader, Global Accelerator, Transit Gateway, inter-region transfer) is
+  roughly 2–2.5× the AWS bill of one region, plus failover drills, two clusters
+  to upgrade, replication lag to monitor and a hub-spoke ArgoCD to reason about.</li>
+<li><strong>Data residency.</strong> The design replicated EU data to us-east-1. The
+  topology's own go-live checklist required legal sign-off on that transfer
+  path before production use; that sign-off never existed.</li>
 </ul>
-<h2 id="pre-checks">Pre-Checks<a class="headerlink" href="#pre-checks" title="Permanent link">&para;</a></h2>
-<p>Before failing over, confirm this is a genuine regional failure, not a transient blip:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Global Accelerator endpoint health (primary should show UNHEALTHY, not just DEGRADED)</span>
-aws<span class="w"> </span>globalaccelerator<span class="w"> </span>describe-endpoint-group<span class="w"> </span>--endpoint-group-arn<span class="w"> </span>&lt;eu-central-1-endpoint-group-arn&gt;
-
-<span class="c1"># Aurora Global cluster status</span>
-aws<span class="w"> </span>rds<span class="w"> </span>describe-global-clusters<span class="w"> </span>--global-cluster-identifier<span class="w"> </span>idp-mvp-global<span class="w"> </span>--region<span class="w"> </span>eu-central-1
-</code></pre></div></td></tr></table></div>
-<p>If the primary recovers within a few minutes, do not fail over — Global Accelerator and Route 53 health checks will route traffic back automatically. Failover is a one-way door: failing back requires re-establishing Aurora Global replication from scratch (see Rollback below).</p>
-<h2 id="failover-steps">Failover Steps<a class="headerlink" href="#failover-steps" title="Permanent link">&para;</a></h2>
-<h3 id="1-promote-the-aurora-global-secondary-to-a-standalone-writer">1. Promote the Aurora Global secondary to a standalone writer<a class="headerlink" href="#1-promote-the-aurora-global-secondary-to-a-standalone-writer" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>rds<span class="w"> </span>failover-global-cluster<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--global-cluster-identifier<span class="w"> </span>idp-mvp-global<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--target-db-cluster-identifier<span class="w"> </span>idp-mvp-us-east-1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--region<span class="w"> </span>us-east-1
-
-<span class="c1"># Wait for promotion to complete</span>
-aws<span class="w"> </span>rds<span class="w"> </span>describe-global-clusters<span class="w"> </span>--global-cluster-identifier<span class="w"> </span>idp-mvp-global<span class="w"> </span>--region<span class="w"> </span>us-east-1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--query<span class="w"> </span><span class="s1">&#39;GlobalClusters[0].GlobalClusterMembers[*].{Cluster:DBClusterArn,IsWriter:IsWriter}&#39;</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="2-flip-the-crossplane-providerconfig-default">2. Flip the Crossplane ProviderConfig default<a class="headerlink" href="#2-flip-the-crossplane-providerconfig-default" title="Permanent link">&para;</a></h3>
-<p>Per-service Crossplane claims resolve resources via the <code>default</code> <code>ProviderConfig</code> — repoint it so new claims (and any that reconcile during the incident) target us-east-1:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>--context<span class="w"> </span>us-east-1<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>aws/crossplane/providers/provider-config.yaml
-</code></pre></div></td></tr></table></div>
-<blockquote>
-<p>The path above previously pointed at <code>aws/crossplane/provider-config-us-east-1-primary.yaml</code>,
-which does not exist in this repo — the file defining the <code>default</code>
-ProviderConfig is <code>providers/provider-config.yaml</code>.</p>
-<p>Verify this step on a drill before relying on it. Both ProviderConfigs use
-<code>credentials.source: IRSA</code>, so the AWS account and role come from whichever
-cluster the provider pod runs in, and the <em>region</em> of a provisioned resource
-comes from <code>spec.forProvider.region</code> on the claim — not from the
-ProviderConfig. Applying <code>default</code> in the us-east-1 cluster is therefore
-likely a no-op if the standby stack already bootstrapped it, and it does not
-by itself repoint existing claims.</p>
-</blockquote>
-<p>This does not need to run against eu-central-1 — if that cluster's API server is unreachable, skip it and clean up when the region recovers.</p>
-<h3 id="3-cut-argocd-hub-spoke-traffic-to-us-east-1">3. Cut ArgoCD hub-spoke traffic to us-east-1<a class="headerlink" href="#3-cut-argocd-hub-spoke-traffic-to-us-east-1" title="Permanent link">&para;</a></h3>
-<p>The V2 ApplicationSet matrix generator (see <code>docs/multi-region.md</code> § GitOps) orders sync waves eu-central-1 (wave 0) → us-east-1 (wave 1). During failover, promote us-east-1 to wave 0 so it syncs independently of the (possibly unreachable) primary:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>--context<span class="w"> </span>us-east-1<span class="w"> </span>patch<span class="w"> </span>applicationset<span class="w"> </span>idp-platform<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;generators&quot;:[{&quot;matrix&quot;:{&quot;generators&quot;:[{&quot;list&quot;:{&quot;elements&quot;:[{&quot;region&quot;:&quot;us-east-1&quot;,&quot;cluster&quot;:&quot;https://eks-us-east-1.internal&quot;,&quot;priority&quot;:&quot;primary&quot;,&quot;wave&quot;:&quot;0&quot;}]}}]}}]}}&#39;</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="4-shift-traffic">4. Shift traffic<a class="headerlink" href="#4-shift-traffic" title="Permanent link">&para;</a></h3>
-<p>Global Accelerator should already be failing traffic over automatically via its health checks — confirm:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>globalaccelerator<span class="w"> </span>describe-accelerator<span class="w"> </span>--accelerator-arn<span class="w"> </span>&lt;accelerator-arn&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--query<span class="w"> </span><span class="s1">&#39;Accelerator.{Status:Status,IpSets:IpSets}&#39;</span>
-</code></pre></div></td></tr></table></div>
-<p>If traffic hasn't shifted (e.g. Route 53 health-check-based failover for a Silver-tier service), force it:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>route53<span class="w"> </span>change-resource-record-sets<span class="w"> </span>--hosted-zone-id<span class="w"> </span>&lt;zone-id&gt;<span class="w"> </span>--change-batch<span class="w"> </span>file://failover-to-us-east-1.json
-</code></pre></div></td></tr></table></div>
-<h3 id="5-verify">5. Verify<a class="headerlink" href="#5-verify" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span>
-<span class="normal">9</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Backstage reachable via us-east-1</span>
-curl<span class="w"> </span>-sf<span class="w"> </span>https://backstage.idp.local/healthcheck
-
-<span class="c1"># Aurora accepting writes in us-east-1</span>
-kubectl<span class="w"> </span>--context<span class="w"> </span>us-east-1<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>deployment/backstage<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>psql<span class="w"> </span>-h<span class="w"> </span>&lt;us-east-1-writer-endpoint&gt;<span class="w"> </span>-U<span class="w"> </span>backstage<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;SELECT 1;&quot;</span>
-
-<span class="c1"># ArgoCD apps synced against us-east-1</span>
-kubectl<span class="w"> </span>--context<span class="w"> </span>us-east-1<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-n<span class="w"> </span>argocd
-</code></pre></div></td></tr></table></div>
-<h2 id="rollback-failback-to-eu-central-1">Rollback (failback to eu-central-1)<a class="headerlink" href="#rollback-failback-to-eu-central-1" title="Permanent link">&para;</a></h2>
-<p>Failback is <strong>not</strong> the reverse of the steps above — Aurora Global replication direction has to be rebuilt:</p>
-<ol>
-<li>Once eu-central-1 is healthy again, delete the old (now orphaned) eu-central-1 cluster from the global cluster.</li>
-<li>Re-add eu-central-1 as a new Aurora Global <strong>secondary</strong> attached to the now-promoted us-east-1 writer, and let it fully replicate.</li>
-<li>Only after replication lag is 0 do a second, planned <code>failover-global-cluster</code> back to eu-central-1.</li>
-<li>Revert the Crossplane <code>ProviderConfig</code> default and the ArgoCD ApplicationSet sync-wave patch from steps 2–3 above.</li>
-</ol>
-<p>Treat failback as a separate, scheduled maintenance window — not an emergency action.</p>
-<h2 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h2>
+<p>Removing it also surfaced defects that were affecting <em>single-region</em> installs:</p>
 <ul>
-<li>Failover taking &gt; 15 min (Gold-tier RTO target, see <code>docs/multi-region.md</code> § Disaster Recovery Tiers) → open AWS Support ticket (severity: Urgent) and page the platform team lead.</li>
-<li>Aurora Global promotion fails or reports data loss risk → do not retry blindly; engage AWS Support before further write operations.</li>
+<li><code>terraform/secrets.tf</code> defaulted <code>is_primary_region = true</code> and
+  <code>secondary_region = "us-east-1"</code>, so every single-region apply created
+  us-east-1 replicas of six secrets — and failed outright when <code>aws_region</code>
+  itself was us-east-1.</li>
+<li>The Crossplane compositions rendered their "multi-region only" resources for
+  every claim (DynamoDB <code>replicaRegions</code> defaulted to <code>["us-east-1"]</code>), targeting
+  a <code>us-east-1</code> ProviderConfig single-region never installs.</li>
+<li><code>enable_multi_az_nat = true</code> was set only in the multi-region tfvars, so every
+  single-region install ran a single NAT gateway — an AZ-level single point of
+  failure for all private-subnet egress.</li>
 </ul>
-<h2 id="post-incident">Post-Incident<a class="headerlink" href="#post-incident" title="Permanent link">&para;</a></h2>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p><strong>One AWS region, resilient across Availability Zones. The multi-region
+topology is removed, not kept as an option.</strong></p>
+<p>Keeping it opt-in was considered and rejected: unexercised failover code rots,
+and it was already leaking into the default path (above). A deleted feature
+cannot be half-on.</p>
+<p>Multi-AZ is made the production default rather than an accident of which tfvars
+file was used:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>How it survives an AZ loss</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VPC</td>
+<td>Subnets across 3 AZs (<code>terraform/vpc.tf</code>)</td>
+</tr>
+<tr>
+<td>Egress</td>
+<td>One NAT gateway per AZ — <code>enable_multi_az_nat = true</code> in <code>profiles/medium</code> and <code>profiles/large</code></td>
+</tr>
+<tr>
+<td>EKS nodes</td>
+<td>Managed node group / Karpenter spread across the 3 private subnets</td>
+</tr>
+<tr>
+<td>Workloads</td>
+<td>PodDisruptionBudgets + replicas ≥ 2 for platform-core services</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>RDS Multi-AZ standby — <code>rds_multi_az = true</code> in <code>profiles/medium</code> and <code>profiles/large</code></td>
+</tr>
+<tr>
+<td>Object storage, ECR, Secrets Manager</td>
+<td>Regional services, multi-AZ by design</td>
+</tr>
+</tbody>
+</table>
+<p><code>profiles/small</code> keeps a single NAT and single-AZ RDS deliberately: it is the
+cost-optimised dev tier.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>Covered?</th>
+<th>Recovery</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pod / node</td>
+<td>✅</td>
+<td>Automatic (Kubernetes rescheduling)</td>
+</tr>
+<tr>
+<td>One Availability Zone</td>
+<td>✅ on medium/large</td>
+<td>Automatic (per-AZ NAT, RDS failover, pod rescheduling)</td>
+</tr>
+<tr>
+<td>Whole region</td>
+<td>❌</td>
+<td>Rebuild from IaC + restore from backups — RTO measured in hours</td>
+</tr>
+</tbody>
+</table>
 <ul>
-<li>Confirm the <a href="../../multi-region/#go-live-readiness-checklist">Go-Live Readiness Checklist</a> items still hold (alerting on standby region, DR tier assignments) before considering the incident closed.</li>
-<li>Document actual RTO/RPO achieved vs. the tier target in <code>#incidents</code>.</li>
-<li>If this was a drill rather than a real incident, note the rehearsal in the checklist so "Failover runbook rehearsed" reflects a real, recent run.</li>
+<li>AWS spend and operational surface drop substantially; there is one cluster to
+  upgrade and one ArgoCD to reason about.</li>
+<li>No EU→US data transfer path exists any more.</li>
+<li>Existing single-region stacks will see, on their next <code>terraform apply</code>, the
+  deletion of the six us-east-1 secret replicas and (on medium/large) the
+  addition of per-AZ NAT gateways. Both are expected.</li>
+<li>Crossplane XRDs lose the V2 fields (<code>crossRegionReplication</code>, <code>globalTable</code>,
+  <code>replicaRegions</code>, <code>globalDatabase</code>, <code>multiRegionAccessPoint</code>, …). Claims that
+  set them must drop those fields.</li>
 </ul>
+<h3 id="if-regional-dr-is-ever-required">If regional DR is ever required<a class="headerlink" href="#if-regional-dr-is-ever-required" title="Permanent link">&para;</a></h3>
+<p>Reach for <strong>backup-and-restore to a second EU region</strong> (e.g. eu-west-1) before
+reintroducing a warm standby: AWS Backup cross-region copies of RDS snapshots,
+S3 replication for Terraform state and TechDocs, ECR replication. That gives an
+RTO of hours at near-zero standing cost and keeps data in the EU. Only a
+customer-facing workload with a contractual regional SLA justifies going
+further than that.</p>
 
 
 
@@ -2623,7 +2529,7 @@ kubectl<span class="w"> </span>--context<span class="w"> </span>us-east-1<span c
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../kagent-guardrails/" class="md-footer__link md-footer__link--prev" aria-label="Previous: KAgent Guardrails">
+          <a href="../adr-0008-litellm-multiprovider-gateway/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADR-0008: LiteLLM multi-provider gateway">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2633,20 +2539,20 @@ kubectl<span class="w"> </span>--context<span class="w"> </span>us-east-1<span c
                 Previous
               </span>
               <div class="md-ellipsis">
-                KAgent Guardrails
+                ADR-0008: LiteLLM multi-provider gateway
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../postmortem-template/" class="md-footer__link md-footer__link--next" aria-label="Next: Post-Mortem Template">
+          <a href="../../team-management/" class="md-footer__link md-footer__link--next" aria-label="Next: Team Management">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Post-Mortem Template
+                Team Management
               </div>
             </div>
             <div class="md-footer__button md-icon">
