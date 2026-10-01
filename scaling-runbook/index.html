@@ -2571,12 +2571,12 @@ terraform<span class="w"> </span>apply<span class="w"> </span>-var-file<span cla
 - <strong>Small → Medium</strong>: EKS nodes t3.large→m5.xlarge, RDS db.t3.medium→db.m5.large,
   <code>rds_multi_az=true</code> (triggers RDS modification, brief failover), Karpenter enabled.
 - <strong>Medium → Large</strong>: EKS nodes m5.xlarge→m5.2xlarge, RDS db.m5.large→db.r5.xlarge,
-  VPC CIDR expands (requires VPC replacement — plan a maintenance window).</p>
+  platform node group grows to the profile's desired size (Karpenter still takes service burst).</p>
 <blockquote>
-<p><strong>Large tier VPC note</strong>: Expanding <code>vpc_cidr</code> from <code>10.0.0.0/16</code> to <code>10.0.0.0/8</code> requires
-destroying and recreating the VPC and all dependent resources. Do this with a blue/green
-cluster approach — provision the new VPC in a separate Terraform workspace, migrate teams,
-then decommission the old one.</p>
+<p><strong>Large tier VPC note</strong>: all tiers use <code>vpc_cidr = 10.0.0.0/16</code> — the largest CIDR AWS
+accepts on a VPC (<code>/16</code>–<code>/28</code>), so there is no VPC replacement between tiers. If pod IPs run
+short at this scale, add a secondary CIDR block (e.g. <code>100.64.0.0/16</code>) with VPC-CNI custom
+networking and enable prefix delegation, rather than widening the primary CIDR.</p>
 </blockquote>
 <hr />
 <h2 id="step-2-apply-helm-tier-values-platform-service-resize">Step 2 — Apply Helm tier values (platform service resize)<a class="headerlink" href="#step-2-apply-helm-tier-values-platform-service-resize" title="Permanent link">&para;</a></h2>
