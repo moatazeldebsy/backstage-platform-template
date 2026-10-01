@@ -61,7 +61,9 @@ file was used:
 | Object storage, ECR, Secrets Manager | Regional services, multi-AZ by design |
 
 `profiles/small` keeps a single NAT and single-AZ RDS deliberately: it is the
-cost-optimised dev tier.
+cost-optimised dev tier. Profiles are applied with `./scripts/bootstrap.sh --profile
+<small|medium|large>`; a run with no profile uses `terraform.tfvars` alone, which
+means one shared NAT gateway.
 
 ## Consequences
 

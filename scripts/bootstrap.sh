@@ -35,6 +35,9 @@ WITH_ADP="${WITH_ADP:-false}"
 # implied by omitting --with-ai; see the guard before the Terraform apply.
 REMOVE_AI_INFRA="${REMOVE_AI_INFRA:-false}"
 SKIP_VELERO="${SKIP_VELERO:-false}"
+# Sizing profile (terraform/profiles/<name>.tfvars). Empty = reuse the one
+# remembered from the last run, if any — see tf_profile_resolve in lib.sh.
+IDP_PROFILE="${IDP_PROFILE:-}"
 
 log()  { echo "[$(date +%T)] INFO  $*"; }
 err()  { echo "[$(date +%T)] ERROR $*" >&2; exit 1; }
@@ -44,6 +47,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --region)        AWS_REGION="$2"; shift 2 ;;
     --cluster-name)  CLUSTER_NAME="$2"; shift 2 ;;
+    --profile)       IDP_PROFILE="$2"; shift 2 ;;
     --skip-gitops)   SKIP_GITOPS=true; shift ;;
     --skip-policies) SKIP_POLICIES=true; shift ;;
     --skip-dora)     SKIP_DORA=true; shift ;;
@@ -59,6 +63,9 @@ while [[ $# -gt 0 ]]; do
 Usage: bootstrap.sh [flags]
   --region <r>          AWS region
   --cluster-name <n>    EKS cluster name
+  --profile <p>         Sizing profile: small | medium | large (terraform/profiles/<p>.tfvars).
+                        medium/large give per-AZ NAT + RDS Multi-AZ. Remembered for later
+                        runs; 'none' clears it. Without one, only terraform.tfvars applies.
   --with-ai             Also install the AI/ML stack (KAgent, MLflow, Langfuse, MCP servers)
   --adp                 Implies --with-ai, and adds the agentic development platform
   --remove-ai-infra     Destroy existing AI/ML infrastructure (Langfuse RDS, S3 buckets, IRSA)
@@ -111,7 +118,13 @@ if [[ "$_vpc_used" =~ ^[0-9]+$ && "$_vpc_limit" =~ ^[0-9]+$ ]] && (( _vpc_used >
   warn "  VPCs: ${_vpc_used}/${_vpc_limit} in ${AWS_REGION} — at quota. Request an increase first, or the node group fails ~20 min into the run."
 fi
 
-log "Starting IDP MVP bootstrap (cluster=$CLUSTER_NAME, region=$AWS_REGION)"
+tf_profile_resolve "$TF_DIR" "$IDP_PROFILE"
+log "Starting IDP MVP bootstrap (cluster=$CLUSTER_NAME, region=$AWS_REGION, profile=${TF_PROFILE:-none})"
+if [[ -z "$TF_PROFILE" ]]; then
+  log "  No sizing profile — terraform.tfvars only. Unless it sets enable_multi_az_nat=true,"
+  log "  that is ONE NAT gateway: losing its AZ cuts all private-subnet egress."
+  log "  Production: re-run with --profile medium (or large). See ADR-0009."
+fi
 
 # ── Phase 1: Terraform — EKS + ECR + IAM + RDS + S3 + Secrets Manager ────────
 timer_start "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
@@ -191,6 +204,7 @@ fi
 if ! grep -q '^module\.eks\.aws_eks_cluster' <<<"$_tf_state_output"; then
   log "  Cold state detected — applying module.vpc + module.eks first (the kubectl provider needs a known cluster endpoint)."
   terraform apply -auto-approve -target=module.vpc -target=module.eks \
+    ${TF_PROFILE_ARGS[@]+"${TF_PROFILE_ARGS[@]}"} \
     -var "aws_region=${AWS_REGION}" \
     -var "cluster_name=${CLUSTER_NAME}"
 else
@@ -198,6 +212,7 @@ else
 fi
 
 terraform apply -auto-approve \
+  ${TF_PROFILE_ARGS[@]+"${TF_PROFILE_ARGS[@]}"} \
   -var "aws_region=${AWS_REGION}" \
   -var "cluster_name=${CLUSTER_NAME}" \
   "${TF_AI_VARS[@]}"

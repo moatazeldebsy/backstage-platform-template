@@ -33,6 +33,10 @@ Move from **Medium → Large** when any of these are true:
 
 ## Step 1 — Apply Terraform profile (infrastructure resize)
 
+Preferred: `./scripts/bootstrap.sh --profile medium` applies the profile and remembers
+it, so later bootstrap runs don't silently fall back to `terraform.tfvars`. To inspect
+the change by hand first:
+
 ```bash
 cd terraform
 

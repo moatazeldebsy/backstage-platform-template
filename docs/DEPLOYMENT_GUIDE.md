@@ -76,8 +76,15 @@ Replaces `moatazeldebsy` and other placeholders across all template files, creat
 ### Step 2: Bootstrap AWS Infrastructure
 
 ```bash
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh                     # evaluation: terraform.tfvars only, one shared NAT gateway
+./scripts/bootstrap.sh --profile medium    # production: per-AZ NAT + RDS Multi-AZ, Karpenter
 ```
+
+`--profile small|medium|large` applies `terraform/profiles/<p>.tfvars` on top of
+`terraform.tfvars` and is remembered for later runs (`--profile none` clears it).
+Without `medium` or `large`, losing the AZ that hosts the single NAT gateway cuts all
+outbound traffic from the private subnets — see
+[ADR-0009](design/adr-0009-single-region-multi-az.md).
 
 **What it deploys (in order):**
 

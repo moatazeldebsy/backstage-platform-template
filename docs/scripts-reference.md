@@ -91,6 +91,7 @@ Taken from the script's own argument parser.
 | `--remove-ai-infra` | Tear down the AI-specific AWS infrastructure. |
 | `--cluster-name <name>` | EKS cluster name to create or target. |
 | `--region <region>` | AWS region. |
+| `--profile <small\|medium\|large\|none>` | Apply `terraform/profiles/<p>.tfvars` on top of `terraform.tfvars`. `medium`/`large` give one NAT gateway per AZ and RDS Multi-AZ ([ADR-0009](design/adr-0009-single-region-multi-az.md)). Remembered in `terraform/.idp-profile`, so later runs (and `cleanup.sh`) reuse it; `none` clears it. Without a profile you get one shared NAT gateway. |
 | `--skip-velero` | Skip installing Velero (cluster backup/restore). Backups are on by default; skipping leaves you with no restore path. |
 | `--skip-gitops` | Skip ArgoCD and the app-of-apps ApplicationSet. |
 | `--skip-policies` | Skip Gatekeeper and Kyverno policy installation. |

@@ -513,6 +513,41 @@ sync_actions_role_secret() {
   return 0
 }
 
+# Sizing profile (terraform/profiles/<name>.tfvars) for bootstrap.sh / cleanup.sh.
+#
+# The profiles are what turn on per-AZ NAT and RDS Multi-AZ (ADR-0009), but
+# nothing used to apply them: bootstrap.sh relied on terraform.tfvars alone, so
+# every scripted install got one NAT gateway — an AZ-level egress SPOF.
+#
+# The chosen profile is remembered in terraform/.idp-profile (gitignored, next to
+# backend.hcl). Without that, a plain re-run after `--profile medium` would quietly
+# fall back to terraform.tfvars and turn Multi-AZ RDS off, drop to one NAT and
+# shrink the node group.
+#
+#   tf_profile_resolve <tf_dir> [requested]
+#     requested = small|medium|large → validate, remember, use it
+#     requested = none               → forget any remembered profile, use none
+#     requested empty                → reuse the remembered profile, if any
+#   Sets TF_PROFILE (name or "") and TF_PROFILE_ARGS (array, -var-file=… or empty).
+tf_profile_resolve() {
+  local tf_dir="$1" requested="${2:-}" state_file="$1/.idp-profile"
+  TF_PROFILE=""
+  TF_PROFILE_ARGS=()
+  case "$requested" in
+    none)
+      rm -f "$state_file"
+      return 0 ;;
+    "")
+      [[ -f "$state_file" ]] && requested=$(tr -d '[:space:]' < "$state_file")
+      [[ -n "$requested" ]] || return 0 ;;
+  esac
+  [[ -f "${tf_dir}/profiles/${requested}.tfvars" ]] \
+    || err "Unknown profile '${requested}' — expected one of: $(cd "${tf_dir}/profiles" && ls *.tfvars | sed 's/\.tfvars$//' | paste -sd' ' -), or 'none'"
+  TF_PROFILE="$requested"
+  TF_PROFILE_ARGS=(-var-file="${tf_dir}/profiles/${requested}.tfvars")
+  printf '%s\n' "$requested" > "$state_file"
+}
+
 # Create the Terraform S3 state bucket and DynamoDB lock table, then write
 # terraform/backend.hcl for `terraform init -backend-config=`.
 #

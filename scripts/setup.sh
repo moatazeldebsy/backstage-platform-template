@@ -216,12 +216,23 @@ Install them and re-run this script, or run manually:
     log "terraform/terraform.tfvars already exists — using it as-is."
   fi
 
+  # ── Sizing profile ───────────────────────────────────────────────────────────
+  echo ""
+  echo "Sizing profile (terraform/profiles/<name>.tfvars, applied on top of terraform.tfvars):"
+  echo "  none    — terraform.tfvars only; one shared NAT gateway (evaluation)"
+  echo "  small   — ≤ 25 teams; cost-optimised, single NAT, single-AZ RDS"
+  echo "  medium  — 26–75 teams; per-AZ NAT + RDS Multi-AZ, Karpenter (production)"
+  echo "  large   — 75+ teams; per-AZ NAT + RDS Multi-AZ, larger nodes"
+  read -rp "$(echo -e "${CYAN}Profile${RESET} [none/small/medium/large]: ")" TF_PROFILE_CHOICE
+  TF_PROFILE_CHOICE="${TF_PROFILE_CHOICE:-none}"
+
   # ── Bootstrap AWS ────────────────────────────────────────────────────────────
-  step "Bootstrapping AWS EKS platform (single-region)..."
+  step "Bootstrapping AWS EKS platform (single-region, profile=${TF_PROFILE_CHOICE})..."
   log "Running scripts/bootstrap.sh (this takes 40–70 minutes)..."
   "${ROOT_DIR}/scripts/bootstrap.sh" \
     --region "${AWS_REGION}" \
-    --cluster-name "${CLUSTER_NAME}"
+    --cluster-name "${CLUSTER_NAME}" \
+    --profile "${TF_PROFILE_CHOICE}"
 
   # ── Summary ──────────────────────────────────────────────────────────────────
   step "Done!"
