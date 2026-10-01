@@ -267,11 +267,7 @@ from Datadog.
   `datadog/datadog` chart: Cluster Agent + node DaemonSet, log collection, APM trace intake on
   port 8126. Installed directly via `helm upgrade --install` in `bootstrap.sh` (Phase 4.4-pre-d),
   same mechanism as Loki/Tempo above it — not an ArgoCD Application (that pattern is reserved for
-  add-ons like Argo Rollouts/Thanos that aren't wired into `bootstrap.sh`).
-- Primary cluster (eu-central-1) only today — the standby cluster intentionally runs no full
-  observability stack (see `bootstrap-multiregion.sh`'s "no Backstage, no full observability —
-  this cluster is a warm standby" design). The standby Backstage deployment still sets dd-trace
-  env vars (`DD_ENV=standby`); they're inert until an Agent is deployed there.
+  add-ons that aren't wired into `bootstrap.sh`).
 - Site: `datadoghq.eu` for all Datadog integrations (Agent, Backstage `/datadog` proxy, dd-trace,
   scaffolder default) — matches the existing `datadog-synthetic-suite` template.
 

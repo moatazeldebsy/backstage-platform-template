@@ -23,7 +23,7 @@ Each entity page carries the platform's own tabs — TechDocs, Kubernetes, DORA,
 
 ## Golden path — scaffold → repo → deploy
 
-61 templates in the Scaffolder, filtered by category, tag or owner:
+59 templates in the Scaffolder, filtered by category, tag or owner:
 
 ![Scaffolder templates](assets/screenshots/scaffolder-templates.jpg)
 

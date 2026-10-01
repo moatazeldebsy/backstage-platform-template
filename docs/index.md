@@ -12,7 +12,6 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 
 ### Core Concepts
 - [Golden Path](golden-path.md) — Conventions every service must follow
-- [Multi-Region (V2)](multi-region.md) — Active-standby AWS across eu-central-1 + us-east-1, opt-in
 - [Mobile Platform](mobile-platform.md) — 7 mobile golden-path templates (Android, iOS, Flutter, SDK, code signing, app store, device farm)
 - [Crossplane](crossplane.md) — Self-serve per-service AWS resources via in-cluster Claims
 - [Crossplane vs Terraform](crossplane-vs-terraform.md) — Which tool owns what, and why
@@ -45,7 +44,7 @@ Welcome to the IDP MVP documentation. Use the navigation above to explore the pl
 
 ### Operations
 - [Troubleshooting](TROUBLESHOOTING.md) — **Start here when something is broken.** Symptom-indexed fixes
-- [SRE & Reliability](sre-reliability.md) — SLOs, burn-rate alerts, PodDisruptionBudgets, rollback, DR failover
+- [SRE & Reliability](sre-reliability.md) — SLOs, burn-rate alerts, PodDisruptionBudgets, rollback
 - [Production Readiness](readiness-checklist.md) — Pre-production checklist
 - [AWS Install Failure Modes](aws-install-failure-modes.md) — What breaks during an EKS bootstrap, and why
 - [Docker Recovery](docker-recovery.md) — Recover Kind cluster after Docker Desktop restarts

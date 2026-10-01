@@ -21,7 +21,7 @@ timer_enable_summary
 # No SKIP_OBS here on purpose. It used to be accepted and then never read, so
 # `--skip-obs` silently installed the full observability stack anyway. Observability
 # is not optional on AWS — Backstage's cost, DORA and Tech Insights tabs all read
-# from Prometheus. bootstrap-local.sh and bootstrap-multiregion.sh do implement the
+# from Prometheus. bootstrap-local.sh does implement the
 # flag; an unknown-flag error here is more honest than pretending.
 SKIP_GITOPS="${SKIP_GITOPS:-false}"
 SKIP_POLICIES="${SKIP_POLICIES:-false}"
@@ -97,7 +97,7 @@ command -v jq &>/dev/null || err "'jq' not found in PATH"
 #
 # Deliberately only VPCs. An Elastic IP check was tried and removed: the count from
 # `ec2 describe-addresses` is not comparable to the EC2-VPC Elastic IP quota,
-# because EIPs allocated by ALB/NLB, NAT gateways and Global Accelerator do not
+# because EIPs allocated by ALB/NLB, and NAT gateways do not
 # count against it. Measured on a healthy account: 34 addresses against a reported
 # quota of 5, which would have warned on every single run.
 _vpc_used=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
@@ -585,24 +585,11 @@ else
   log "  No domain_name configured — monitoring ALB ingresses stay HTTP-only."
 fi
 
-# The Thanos sidecar block in prometheus-stack-values.yaml is V2 multi-region only
-# (it's shared with bootstrap-multiregion.sh) — its objectStorageConfig secret is
-# only ever created by terraform/global/thanos-config.tf, which this single-region
-# script never runs. Disable it here so single-region Prometheus doesn't wait
-# forever on a secret that will never exist in this deployment mode.
-
-# grafana.sidecar.datasources.defaultDatasourceEnabled=false in the shared values
-# file assumes aws/observability/grafana-multi-region-datasources.yaml replaces
-# the chart's auto-provisioned Prometheus datasource — but that file is only ever
-# applied by bootstrap-multiregion.sh. Without it, single-region Grafana ends up
-# with zero datasources. Re-enable the chart default here.
 helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
-  --set prometheus.prometheusSpec.thanos=null \
-  --set grafana.sidecar.datasources.defaultDatasourceEnabled=true \
   --wait --timeout "${HELM_WAIT_MED}"
 rm -f "${tmp_obs_values}"
 

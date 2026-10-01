@@ -79,7 +79,7 @@ Tech Insights, OpenCost and Langfuse already produce.
 The open-source platform stays useful on its own. Everything needed to run
 Engineering Intelligence for one organisation is in this repo and stays there:
 
-- the Backstage platform, golden paths and 64 scaffolder templates
+- the Backstage platform, golden paths and 60 scaffolder templates
 - the Bronze/Silver/Gold scorecard and Tech Insights facts
 - the MCP servers, KAgent agents and Langfuse tracing
 - the metrics model, the scoring engine, the collectors and the API

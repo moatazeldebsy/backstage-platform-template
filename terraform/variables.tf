@@ -4,26 +4,14 @@ variable "aws_region" {
   default     = "eu-central-1"
 }
 
-variable "secondary_region" {
-  description = "Secondary (standby) AWS region for replication and failover"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "is_primary_region" {
-  description = "Set to true for the primary region (eu-central-1). Controls whether Secrets Manager CRR replicas are created — only the primary replicates to the secondary."
-  type        = bool
-  default     = true
-}
-
 variable "enable_multi_az_nat" {
-  description = "Deploy one NAT gateway per AZ instead of a single shared one. Required for production HA; costs ~$100/month extra per region."
+  description = "Deploy one NAT gateway per AZ instead of a single shared one. With the default single NAT, an outage in its AZ cuts egress for every private subnet. Set true for production (profiles/medium + large do); costs ~$65-100/month extra. See ADR-0009."
   type        = bool
   default     = false
 }
 
 variable "domain_name" {
-  description = "Root domain name managed in Route 53 (e.g. idp.example.com). Used by the global module for health-check and failover DNS records."
+  description = "Root domain name managed in Route 53 (e.g. idp.example.com). Used for the ACM certificate and its DNS validation records."
   type        = string
   default     = ""
 }

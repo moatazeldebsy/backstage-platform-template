@@ -34,7 +34,7 @@ spec:
       2. When investigating a specific alert, call get_alert_history for that alertname to see how long
          it's been firing and how often, then call get_runbook for a matching runbook if one exists —
          guess the runbook name from the alert name/annotations (e.g. an ArgoCD alert → try
-         "dr-region-failover" or "kagent-guardrails"); if get_runbook reports found: false, use the
+         "deployment-rollback" or "kagent-guardrails"); if get_runbook reports found: false, use the
          available_runbooks list it returns instead of guessing again.
       3. Cross-reference get_service_metrics and list_deployments when the incident implicates a specific
          service, to see if a recent deployment correlates with the alert.

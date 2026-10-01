@@ -21,7 +21,6 @@ nav:
   - Getting Started: getting-started.md
   - Screenshots: screenshots.md
   - Architecture: architecture.md
-  - Multi-Region: multi-region.md
   - Golden Path: golden-path.md
   - Mobile Platform: mobile-platform.md
   - Local Setup: local-setup.md
@@ -57,6 +56,7 @@ nav:
     - "ADR-0006: Engineering Intelligence": design/adr-0006-engineering-intelligence.md
     - "ADR-0007: AI Gateway": design/adr-0007-ai-gateway.md
     - "ADR-0008: LiteLLM multi-provider gateway": design/adr-0008-litellm-multiprovider-gateway.md
+    - "ADR-0009: Single-region, multi-AZ": design/adr-0009-single-region-multi-az.md
   - Team Management: team-management.md
   - GitHub App Setup: github-app-setup.md
   - Scaling Runbook: scaling-runbook.md
@@ -84,5 +84,4 @@ nav:
     - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
     - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
     - KAgent Guardrails: runbooks/kagent-guardrails.md
-    - DR Region Failover: runbooks/dr-region-failover.md
   - Post-Mortem Template: postmortem-template.md

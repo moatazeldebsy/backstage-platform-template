@@ -10,7 +10,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
-A Backstage developer portal, golden-path Helm chart, 61 scaffold templates, an AI/ML platform and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
+A Backstage developer portal, golden-path Helm chart, 59 scaffold templates, an AI/ML platform and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
 
 ![Platform Planes](docs/assets/platform-planes.png)
 
@@ -26,14 +26,14 @@ A Backstage developer portal, golden-path Helm chart, 61 scaffold templates, an 
 
 ## What you get
 
-- **Developer portal**: Backstage with catalog, TechDocs, Tech Radar and 61 software templates (services, QA suites, mobile, AI/ML, infra). See [Golden Path](docs/golden-path.md).
+- **Developer portal**: Backstage with catalog, TechDocs, Tech Radar and 59 software templates (services, QA suites, mobile, AI/ML, infra). See [Golden Path](docs/golden-path.md).
 - **Golden-path chart**: one Helm chart for every service, with health checks, metrics, RBAC, PDBs and optional Argo Rollouts canaries.
 - **Shift-left quality**: a Bronze/Silver/Gold scorecard, PR quality gates and contract testing. See [Shift-Left Leadership](docs/shift-left-leadership.md).
 - **AI/ML platform**: KAgent agents, 8 MCP servers, MLflow and Langfuse, all behind one AI Gateway and LiteLLM. See [AI Assistant](docs/ai-assistant.md).
 - **Observability**: Prometheus, Grafana, Loki, Tempo, Sloth SLOs, DORA and FinOps. See [DORA + FinOps](docs/dora-finops.md).
 - **Engineering Intelligence**: evidence-backed health scores and a maturity model built from the platform's own telemetry. See [docs](docs/engineering-intelligence/product-vision.md).
-- **Infrastructure**: Terraform for the foundation plus Crossplane for per-service resources. See [Crossplane vs Terraform](docs/crossplane-vs-terraform.md).
-- **Opt-in extras**: [multi-region AWS](docs/multi-region.md) (active-standby) and the [Agentic Development Platform](docs/agentic-platform.md), which adds agents behind a human-approval gate.
+- **Infrastructure**: Terraform for the foundation plus Crossplane for per-service resources, in one AWS region across three AZs. See [Crossplane vs Terraform](docs/crossplane-vs-terraform.md) and [ADR-0009](docs/design/adr-0009-single-region-multi-az.md).
+- **Opt-in extra**: the [Agentic Development Platform](docs/agentic-platform.md), which adds agents behind a human-approval gate.
 
 ## Quick start
 

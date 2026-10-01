@@ -4,6 +4,9 @@ environment             = "dev"
 cluster_name            = "idp-mvp"
 cluster_version         = "1.32"
 vpc_cidr                = "10.0.0.0/16"
+# One NAT gateway per AZ. false = single shared NAT (cheaper; its AZ failing
+# cuts all private-subnet egress). Set true for production — see ADR-0009.
+enable_multi_az_nat     = false
 # Node group sizing. A single t3.medium (2 vCPU / 4 GiB) cannot run this
 # platform: rendering every chart and manifest this repo installs gives ~2.4
 # vCPU / ~5.7 GiB of declared requests before the per-node DaemonSet overhead

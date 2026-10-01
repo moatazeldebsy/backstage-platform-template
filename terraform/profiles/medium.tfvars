@@ -19,6 +19,10 @@ rds_allocated_storage = 100
 # Networking — same CIDR fits; /16 has 65k addresses, sufficient for 75 team namespaces
 vpc_cidr = "10.0.0.0/16"
 
+# One NAT gateway per AZ — without it a single AZ outage cuts all egress
+# (image pulls, AWS APIs, GitHub) even though nodes and RDS survive it.
+enable_multi_az_nat = true
+
 # Karpenter — enables smarter bin-packing and faster node provisioning at this scale
 enable_karpenter = true
 

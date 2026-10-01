@@ -6154,7 +6154,6 @@ const LEARNING_DOCS: LearningItem[] = [
   { id: 'doc:dora-finops', title: 'DORA Metrics & FinOps', description: 'How DORA metrics and team cost budgets are wired into Backstage.', level: 'intermediate', topic: 'observability', type: 'doc', href: '/docs/default/system/internal-developer-platform/dora-finops' },
   { id: 'doc:mobile-platform', title: 'Mobile Platform', description: 'Appium, Flutter, code signing, and app-store deploy templates.', level: 'intermediate', topic: 'mobile', type: 'doc', href: '/docs/default/system/internal-developer-platform/mobile-platform' },
   { id: 'doc:crossplane-vs-terraform', title: 'Crossplane vs Terraform', description: 'When to use a Terraform PR vs a Crossplane claim for AWS infra.', level: 'advanced', topic: 'infra', type: 'doc', href: '/docs/default/system/internal-developer-platform/crossplane-vs-terraform' },
-  { id: 'doc:multi-region', title: 'Multi-Region', description: 'Aurora Global, DynamoDB Global Tables, S3 multi-region access points.', level: 'advanced', topic: 'infra', type: 'doc', href: '/docs/default/system/internal-developer-platform/multi-region' },
   { id: 'doc:ai-assistant', title: 'AI Assistant Architecture', description: 'How the native chat UI talks to KAgent and MCP servers.', level: 'advanced', topic: 'ai', type: 'doc', href: '/docs/default/system/internal-developer-platform/ai-assistant' },
 ];
 

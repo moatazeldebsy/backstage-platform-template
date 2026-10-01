@@ -39,7 +39,27 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   default and can be set to `https://api.anthropic.com` to bypass it when
   running outside the cluster.
 
+### Removed
+
+- **Multi-region (active-standby) AWS topology.** `scripts/bootstrap-multiregion.sh`,
+  `terraform/global/`, the hub-spoke ArgoCD files, Thanos, the Aurora Global /
+  DynamoDB Global / S3 MRAP / MSK Replicator / Global Accelerator / Route 53
+  failover pieces, the four multi-region templates and the DR failover runbook are
+  gone. AWS is now single-region, multi-AZ — see
+  [ADR-0009](docs/design/adr-0009-single-region-multi-az.md). Crossplane claims that
+  set `crossRegionReplication`, `globalTable`, `replicaRegions`, `globalDatabase`
+  or `multiRegionAccessPoint` must drop those fields.
+
 ### Fixed
+
+- **Single-region AWS installs no longer replicate six Secrets Manager secrets to
+  us-east-1** on every `terraform apply` (and no longer fail when `aws_region` is
+  us-east-1). The next apply on an existing stack deletes those replicas.
+- **Crossplane claims no longer render cross-region replica resources** — every
+  DynamoDB table claim was getting a us-east-1 replica by default.
+- **Per-AZ NAT is on for the `medium` and `large` profiles.** It was only ever set
+  by the multi-region tfvars, so every single-region install ran one NAT gateway —
+  an AZ-level single point of failure for all private-subnet egress.
 
 - **A missing ServiceMonitor CRD took down every service deploy.** The
   golden-path chart rendered `kind: ServiceMonitor` whenever `metrics.enabled`

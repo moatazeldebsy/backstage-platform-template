@@ -650,7 +650,6 @@ The total is the platform's own AWS footprint. It is not an all-in run rate:
 | **Data transfer and NAT data processing** | Charged per GB on top of the NAT hourly rate. Image pulls and cross-AZ traffic dominate it, so it scales with your workload, not with the platform |
 | **LLM API spend** | KAgent runs Claude and GPT-4o, and AI Search needs a `VOYAGE_API_KEY`. Those are Anthropic / OpenAI / Voyage bills, not AWS — and on an agent-heavy platform they can exceed the infrastructure. This is precisely what the [Langfuse](ai-assistant.md#llm-observability-langfuse) page exists to show you |
 | **Datadog** | Third-party SaaS priced per host and per ingested GB, alongside the Prometheus/Grafana stack that is included |
-| **Multi-region V2** | A standby region is close to a second copy of the infrastructure. See [docs/multi-region.md](multi-region.md) |
 | **Your own services** | Everything above is the platform. Whatever your teams scaffold onto it is additional |
 | **Savings Plans / Reserved Instances** | List prices only. Committed-use discounts take a meaningful cut off the node line |
 
@@ -719,12 +718,6 @@ ticket and no Terraform PR. If you adopt it:
 - **Pair it with the wildcard cert or cert-manager.** DNS automation without
   matching certificate automation just moves the ticket.
 
-> **Multi-region caution:** the V2 active-standby design (see
-> [multi-region.md](multi-region.md)) manages Route 53 health checks and
-> failover records itself. external-dns with `--policy=sync` will fight
-> hand-managed records in the same zone — give them separate zones, or be strict
-> with `--txt-owner-id`.
-
 ### Further cost optimisations (proposed, not yet implemented)
 
 Measured against the real August 2026 bill, for a cluster that ran six days
@@ -755,7 +748,6 @@ Ranked by what is actually left:
 | 4 | **Force `gp3` EBS.** No `volume_type` is set anywhere in `terraform/`, so volumes land on the driver default. `gp3` is ~20% cheaper than `gp2` and decouples IOPS from size. | ~$5/mo at current usage | Low — a StorageClass change |
 | 5 | **Set retention on non-EKS log groups.** Only `eks.tf` sets `retention_in_days`; the Lambda log group had none, meaning *never expire*. | Small now, grows forever | Low |
 | 6 | **Right-size the memory-optimized node group.** It defaults to `desired_size = 0` and only scales for AI workloads — confirm it returns to zero after `bootstrap-ai.sh` runs, rather than idling. | Up to ~$60/mo if it idles | Low — verification, not code |
-| 7 | **Avoid a second EKS control plane.** At $73/mo each, the V2 multi-region active-standby design doubles this line before a single workload runs. Worth confirming the standby needs a live control plane rather than being rebuilt on failover. | $73/mo | Design decision |
 
 **Not ours, but the largest residual line in this account** once the platform is
 destroyed: a 50 GB RDS snapshot (`infra-landscape-dev-postgres-final-snapshot`,

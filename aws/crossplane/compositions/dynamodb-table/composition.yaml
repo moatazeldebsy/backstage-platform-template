@@ -70,13 +70,6 @@ spec:
                 toFieldPath: spec.forProvider.attribute[1].type
                 policy:
                   fromFieldPath: Optional
-              # Global Tables V2 — patches replica list when globalTable: true.
-              # Each entry becomes a replica shard in the target region with the
-              # same billing mode and encryption settings as the primary.
-              - fromFieldPath: spec.parameters.replicaRegions[0]
-                toFieldPath: spec.forProvider.replica[0].regionName
-                policy:
-                  fromFieldPath: Optional
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
                 toFieldPath: status.tableArn

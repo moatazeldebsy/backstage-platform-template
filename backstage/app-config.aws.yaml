@@ -471,24 +471,23 @@ catalog:
 #
 # To enable: install the permission backend plugin, then set enabled: true here.
 # See: https://backstage.io/docs/permissions/getting-started
-# ── Multi-cluster Kubernetes plugin (V2) ─────────────────────────────────────
-# Shows pods, deployments, and services from both EKS clusters on entity pages.
+# ── Kubernetes plugin ────────────────────────────────────────────────────────
+# Shows pods, deployments, and services from the EKS cluster on entity pages.
 # The `backstage.io/kubernetes-id` annotation on the entity matches against
 # the label selector on Kubernetes objects (set by the Helm chart).
 #
-# Auth: uses service account tokens stored in Secrets Manager (populated by
-# register-argocd-cluster.sh which creates argocd-manager — reuse that SA or
-# create a dedicated backstage-k8s-reader SA with read-only ClusterRole).
+# Auth: K8S_* values come from the idp-mvp/backstage Secrets Manager secret
+# (terraform/secrets.tf); bootstrap.sh fills in the service account token.
 kubernetes:
   serviceLocatorMethod:
-    type: multiTenant    # show resources from all clusters the entity label matches
+    type: multiTenant
   clusterLocatorMethods:
     - type: config
       clusters:
         # caData comes from terraform/secrets.tf (K8S_CLUSTER_CA_DATA, sourced from
         # module.eks.cluster_certificate_authority_data) — verifies the EKS API server
         # cert instead of skipping TLS validation.
-        - name: eks-us-east-1
+        - name: eks-primary
           url: ${K8S_CLUSTER_URL}
           authProvider: serviceAccount
           serviceAccountToken: ${K8S_SERVICE_ACCOUNT_TOKEN}

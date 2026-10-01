@@ -313,8 +313,8 @@ poll_until() {
   while (( elapsed < max )); do
     if "$@"; then
       # log(), not info(): info() is defined only in bootstrap-ai.sh, while this
-      # helper is shared. Called from bootstrap.sh, bootstrap-local.sh or
-      # bootstrap-multiregion.sh it emitted "lib.sh: line NNN: info: command not
+      # helper is shared. Called from bootstrap.sh or bootstrap-local.sh
+      # it emitted "lib.sh: line NNN: info: command not
       # found" and swallowed the progress line — so a long poll went silent exactly
       # when the operator most wants to see it. Not fatal only because every caller
       # invokes poll_until in a condition or `|| ` context, which suppresses set -e.
@@ -621,7 +621,7 @@ _sha256() {
 #   $1 = release name   $2 = namespace   $3 = fingerprint file path
 #   $4 = desired fingerprint (caller computes, e.g. "<version>:<sha256 of values file>")
 #   $5.. = optional extra flags forwarded to `helm status` (e.g. --kube-context
-#          standby), so the health check runs against the cluster the release
+#          <ctx>), so the health check runs against the cluster the release
 #          actually lives on rather than whatever context happens to be current.
 helm_release_unchanged() {
   local release="$1" ns="$2" fp_file="$3" desired="$4"; shift 4
@@ -659,13 +659,12 @@ helm_record_fingerprint() {
 helm_upgrade_cached() {
   local release="$1" ns="$2"; shift 2
   local a prev="" desired ctx=""
-  # Pick the target cluster out of the flags. Two reasons this matters in
-  # multi-cluster scripts (bootstrap-multiregion.sh installs the same release
-  # name+namespace on both the hub and standby clusters):
+  # Pick the target cluster out of the flags. Two reasons this matters when
+  # the same release name+namespace is installed on more than one cluster:
   #   1. the fingerprint file must not be shared between clusters, or each run
   #      would overwrite the other's and neither would ever cache; and
   #   2. the `helm status` health check must run against the right cluster, or
-  #      a healthy hub release could green-light skipping the standby install.
+  #      a healthy release on one could green-light skipping the install on another.
   for a in "$@"; do
     [[ "$prev" == "--kube-context" ]] && ctx="$a"
     prev="$a"
@@ -714,8 +713,8 @@ helm_upgrade_cached() {
 # (behind --install-argo-workflows), and bootstrap-ai.sh — which owns the whole
 # AI/ML layer on both targets — had no copy at all. So `bootstrap-ai.sh --aws`
 # brought up KAgent, MLflow and the MCP servers but never Argo Workflows, and
-# the live cluster had no argo-workflows namespace: the ML training pipeline and
-# the DR failover runbook were both unavailable there. Phase 6 of the hardening
+# the live cluster had no argo-workflows namespace: the ML training pipeline was
+# unavailable there. Phase 6 of the hardening
 # plan called for this extraction and only half landed.
 #
 # The AWS branch additionally creates the artifact bucket, resolves the IRSA
@@ -784,8 +783,8 @@ install_argo_workflows() {
     || helm_ok=false
 
   if [[ "$helm_ok" != "true" ]]; then
-    warn "Argo Workflows Helm install FAILED — the ML training pipeline, the LLM eval"
-    warn "  pipeline and the DR failover runbook will be unavailable on this cluster."
+    warn "Argo Workflows Helm install FAILED — the ML training pipeline and the LLM eval"
+    warn "  pipeline will be unavailable on this cluster."
     warn "  Bootstrap continues; re-run once the cause above is fixed."
   fi
 

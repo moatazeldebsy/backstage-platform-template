@@ -1,6 +1,4 @@
-# ArgoCD ApplicationSet — PRIMARY cluster (eu-central-1).
-# Hub-spoke model: ArgoCD hub lives in eu-central-1 and targets the primary cluster.
-# For standby cluster (us-east-1), see app-of-apps-standby.yaml.
+# ArgoCD ApplicationSet — EKS cluster (ArgoCD runs in-cluster and targets itself).
 #
 # Service discovery:
 #   services/<name>/               → legacy / platform-owned services
@@ -55,14 +53,12 @@ spec:
                 - env: dev
                   namespace: services-dev
                   valuesFile: helm-values-aws.yaml
-                  region: eu-central-1
   template:
     metadata:
       name: "{{path.basename}}-{{env}}"
       labels:
         environment: "{{env}}"
         service: "{{path.basename}}"
-        region: "{{region}}"
     spec:
       project: default
       sources:
@@ -73,8 +69,6 @@ spec:
             parameters:
               - name: backstage.kubernetesId
                 value: "{{path.basename}}"
-              - name: global.region
-                value: "{{region}}"
             # Optional per-service progressive-delivery overlay. A scaffolder
             # skeleton cannot merge into an existing file, which is why the
             # canary-deployment template used to emit a .patch nobody applied --
@@ -89,7 +83,7 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: https://kubernetes.default.svc   # primary cluster (ArgoCD hub)
+        server: https://kubernetes.default.svc
         namespace: "{{namespace}}"
       syncPolicy:
         automated:
@@ -99,7 +93,7 @@ spec:
           - CreateNamespace=true
           - ServerSideApply=true
 ---
-# ArgoCD ApplicationSet — STAGING environment (primary cluster, eu-central-1).
+# ArgoCD ApplicationSet — STAGING environment.
 #
 # Uses a `files` generator (not `directories`) so an Application is only created
 # once a service has actually been promoted to staging — i.e. once
@@ -127,7 +121,6 @@ spec:
       labels:
         environment: staging
         service: "{{path[1]}}"
-        region: eu-central-1
     spec:
       project: default
       sources:
@@ -138,8 +131,6 @@ spec:
             parameters:
               - name: backstage.kubernetesId
                 value: "{{path[1]}}"
-              - name: global.region
-                value: eu-central-1
             # Optional per-service progressive-delivery overlay. A scaffolder
             # skeleton cannot merge into an existing file, which is why the
             # canary-deployment template used to emit a .patch nobody applied --
@@ -164,7 +155,7 @@ spec:
           - CreateNamespace=true
           - ServerSideApply=true
 ---
-# ArgoCD ApplicationSet — PRODUCTION environment (primary cluster, eu-central-1).
+# ArgoCD ApplicationSet — PRODUCTION environment.
 #
 # Same file-existence gating as staging: only services with
 # `services/<name>/helm-values-prod.yaml` get a production Application. That file
@@ -192,7 +183,6 @@ spec:
       labels:
         environment: prod
         service: "{{path[1]}}"
-        region: eu-central-1
     spec:
       project: default
       sources:
@@ -203,8 +193,6 @@ spec:
             parameters:
               - name: backstage.kubernetesId
                 value: "{{path[1]}}"
-              - name: global.region
-                value: eu-central-1
             # Optional per-service progressive-delivery overlay. A scaffolder
             # skeleton cannot merge into an existing file, which is why the
             # canary-deployment template used to emit a .patch nobody applied --

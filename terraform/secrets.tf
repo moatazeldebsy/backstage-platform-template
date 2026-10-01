@@ -16,13 +16,6 @@ resource "aws_secretsmanager_secret" "backstage" {
   name                    = "idp-mvp/backstage"
   description             = "Backstage IDP platform credentials"
   recovery_window_in_days = 0
-
-  dynamic "replica" {
-    for_each = var.is_primary_region ? [var.secondary_region] : []
-    content {
-      region = replica.value
-    }
-  }
 }
 
 resource "aws_secretsmanager_secret_version" "backstage" {
@@ -57,15 +50,10 @@ resource "aws_secretsmanager_secret_version" "backstage" {
     PAGERDUTY_TOKEN = var.pagerduty_token
     JIRA_TOKEN      = var.jira_token
     JIRA_URL        = var.jira_url
-    # V2: Aurora Global endpoints — POSTGRES_HOST_READER is used by standby Backstage.
-    # After Aurora Global failover, us-east-1 cluster endpoint becomes the writer.
-    # bootstrap.sh (or the post-failover runbook) updates POSTGRES_HOST to the new writer.
-    POSTGRES_HOST_WRITER = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
-    POSTGRES_HOST_READER = "REPLACE_ME_AFTER_AURORA_GLOBAL_APPLY"
   })
 
   lifecycle {
-    # Preserve manual updates (GitHub tokens, Aurora endpoints set post-apply)
+    # Preserve manual updates (GitHub tokens etc. set post-apply)
     ignore_changes = [secret_string]
   }
 }
@@ -74,13 +62,6 @@ resource "aws_secretsmanager_secret" "dora_exporter" {
   name                    = "idp-mvp/dora-exporter"
   description             = "DORA exporter credentials — GITHUB_TOKEN for GitHub API access"
   recovery_window_in_days = 0
-
-  dynamic "replica" {
-    for_each = var.is_primary_region ? [var.secondary_region] : []
-    content {
-      region = replica.value
-    }
-  }
 }
 
 resource "aws_secretsmanager_secret_version" "dora_exporter" {
@@ -125,13 +106,6 @@ resource "aws_secretsmanager_secret" "kagent" {
   name                    = "idp-mvp/kagent"
   description             = "KAgent AI platform credentials — Anthropic API key, LiteLLM master key"
   recovery_window_in_days = 0
-
-  dynamic "replica" {
-    for_each = var.is_primary_region ? [var.secondary_region] : []
-    content {
-      region = replica.value
-    }
-  }
 }
 
 resource "aws_secretsmanager_secret_version" "kagent" {
@@ -156,13 +130,6 @@ resource "aws_secretsmanager_secret" "datadog" {
   name                    = "idp-mvp/datadog"
   description             = "Datadog API/App keys for the cluster-wide Datadog Agent"
   recovery_window_in_days = 0
-
-  dynamic "replica" {
-    for_each = var.is_primary_region ? [var.secondary_region] : []
-    content {
-      region = replica.value
-    }
-  }
 }
 
 resource "aws_secretsmanager_secret_version" "datadog" {
@@ -177,66 +144,4 @@ resource "aws_secretsmanager_secret_version" "datadog" {
 output "datadog_secret_arn" {
   description = "ARN of the Datadog Secrets Manager secret (idp-mvp/datadog)"
   value       = aws_secretsmanager_secret.datadog.arn
-}
-
-# ── ArgoCD cluster registration secrets ───────────────────────────────────────
-# Populated by the post-apply script (scripts/register-argocd-cluster.sh) after
-# the EKS cluster is up. The ExternalSecrets in aws/argocd/cluster-secrets/ read
-# from these to create the ArgoCD cluster secret objects in the hub cluster.
-resource "aws_secretsmanager_secret" "argocd_cluster" {
-  name                    = "idp-mvp/argocd/cluster-${var.aws_region}"
-  description             = "ArgoCD cluster registration credentials for ${var.aws_region} EKS cluster"
-  recovery_window_in_days = 0
-
-  dynamic "replica" {
-    for_each = var.is_primary_region ? [var.secondary_region] : []
-    content {
-      region = replica.value
-    }
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "argocd_cluster" {
-  secret_id = aws_secretsmanager_secret.argocd_cluster.id
-
-  secret_string = jsonencode({
-    server      = module.eks.cluster_endpoint
-    caData      = module.eks.cluster_certificate_authority_data
-    bearerToken = "REPLACE_ME_RUN_register-argocd-cluster.sh"
-  })
-
-  lifecycle {
-    # bearerToken is set by register-argocd-cluster.sh post-apply — don't overwrite on re-apply
-    ignore_changes = [secret_string]
-  }
-}
-
-# ── Backstage multi-cluster Kubernetes plugin secrets ─────────────────────────
-# Populated by register-argocd-cluster.sh (same SA token is reused for Backstage).
-# Referenced by app-config.aws.yaml kubernetes.clusterLocatorMethods.
-resource "aws_secretsmanager_secret" "backstage_k8s" {
-  name                    = "idp-mvp/backstage/k8s-${var.aws_region}"
-  description             = "Backstage Kubernetes plugin credentials for ${var.aws_region} EKS cluster"
-  recovery_window_in_days = 0
-
-  dynamic "replica" {
-    for_each = var.is_primary_region ? [var.secondary_region] : []
-    content {
-      region = replica.value
-    }
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "backstage_k8s" {
-  secret_id = aws_secretsmanager_secret.backstage_k8s.id
-
-  secret_string = jsonencode({
-    url    = module.eks.cluster_endpoint
-    caData = module.eks.cluster_certificate_authority_data
-    token  = "REPLACE_ME_RUN_register-argocd-cluster.sh"
-  })
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
 }

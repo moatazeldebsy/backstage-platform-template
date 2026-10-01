@@ -63,9 +63,8 @@ was already there:
   forces the fallback.
 - The fallback path silently loses the accuracy gate and the approval step. The
   action logs a warning saying so rather than pretending they ran.
-- A single-region AWS install without `--with-ai` has no Argo Workflows, so the
-  DR failover runbook is unavailable there. Acceptable — DR is a multi-region
-  feature and `bootstrap-multiregion.sh` installs it — but worth knowing.
+- The DR failover runbook this ADR originally kept on Argo Workflows was removed
+  with the multi-region topology ([ADR-0009](adr-0009-single-region-multi-az.md)).
 - The training pipeline runs 5 pods where the Job ran 1. Requests are modest and
   the Job fallback remains for constrained clusters.
 
@@ -87,5 +86,3 @@ typed parameters and per-step images.
 
 - `kubernetes/argo-workflows/workflowtemplates/`
 - `backstage/app/packages/backend/src/modules/idpRunTrainingJob.ts`
-- `aws/argo-workflows/failover-runbook.yaml`
-- `docs/multi-region.md`

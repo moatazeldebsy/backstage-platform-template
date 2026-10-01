@@ -9,8 +9,7 @@ Before running anything in `scripts/`, install the tools for the path you're tak
 | Path | Required tools | Verify |
 |---|---|---|
 | **Local (Kind)** | `git`, `docker`, `kind` ≥ 0.27, `kubectl`, `helm` ≥ 3.14 | `kind version && kubectl version --client && helm version && docker info` |
-| **AWS (single or multi-region)** | Everything above, plus `aws` CLI (configured — `aws sts get-caller-identity` must succeed), `terraform` ≥ 1.5, `jq` | `aws sts get-caller-identity && terraform version && jq --version` |
-| **Multi-region only** | Everything above, plus `argocd` CLI | `argocd version --client` |
+| **AWS** | Everything above, plus `aws` CLI (configured — `aws sts get-caller-identity` must succeed), `terraform` ≥ 1.5, `jq` | `aws sts get-caller-identity && terraform version && jq --version` |
 | Optional, auto-installed if missing | `go` ≥ 1.26 (builds the `idp` CLI), Node.js 24 LTS (Backstage) | — |
 
 `setup.sh` and `bootstrap-local.sh`/`bootstrap.sh` each run their own pre-flight check and will tell you exactly what's missing before doing anything destructive — but installing these upfront avoids a mid-run abort. Full local walkthrough: [Local Setup](local-setup.md#prerequisites). Full AWS walkthrough: [AWS Deployment Guide](DEPLOYMENT_GUIDE.md#required-tools).
@@ -26,7 +25,7 @@ They solve different problems and are **not interchangeable**:
 
 The ordering exists because bootstrapping before personalizing would point ArgoCD's ApplicationSet, catalog entries, and ingress hostnames at unresolved placeholders instead of your org/cluster name — which is why `setup.sh` owns the dispatch rather than leaving it to you.
 
-Every later invocation (recreate the cluster, add a flag, retry a failed step) goes straight to `bootstrap-local.sh` (or `bootstrap.sh`/`bootstrap-multiregion.sh` on AWS) without touching `setup.sh` again.
+Every later invocation (recreate the cluster, add a flag, retry a failed step) goes straight to `bootstrap-local.sh` (or `bootstrap.sh` on AWS) without touching `setup.sh` again.
 
 ## Quick reference
 
@@ -36,14 +35,12 @@ Every later invocation (recreate the cluster, add a flag, retry a failed step) g
 | `bootstrap-local.sh` | Day-2: re-create Kind cluster + platform. Common flags: `--start-backstage`, `--skip-obs`, `--destroy`, `--print-urls`; full list under [bootstrap-local.sh flags](#bootstrap-localsh-flags) |
 | `bootstrap-ai.sh` | Add AI/ML stack on top of a running cluster. **Local only** — on AWS, `bootstrap.sh` already runs this for you. Full flag list below under [bootstrap-ai.sh flags](#bootstrap-aish-flags); the one worth knowing up front is `--agents`, which controls how many agent pods you install. |
 | `bootstrap.sh` | AWS single-region bootstrap: Terraform → EKS → full platform **including AI/ML** (~40–70 min). Pass `--skip-ai` to opt out; full list under [bootstrap.sh flags](#bootstrapsh-flags) |
-| `bootstrap-multiregion.sh` | AWS multi-region (V2) bootstrap: active-standby eu-central-1 + us-east-1 (~30–50 min). See [Multi-Region](multi-region.md) |
 | `verify-secrets.sh` | Pre-flight: checks all required secrets/API keys are set before an AWS deployment. Run before `bootstrap.sh` |
 | `verify-engineering-intelligence.sh` | Verifies the Engineering Intelligence layer end to end without a Kind cluster — real Backstage image, real Postgres, stubbed Prometheus/OpenCost. `--screenshot` renders the dashboard, `--keep` leaves it running |
 | `validate-deployment.sh` | Post-deploy: 50+ automated checks across infra, K8s, Backstage, observability, GitOps, AI, security |
 | `cleanup.sh` | Safe AWS teardown: 9 ordered phases (0–8), removes scaffolded services from ArgoCD + Git before `terraform destroy` |
 | `recover-docker-restart.sh` | Patch Kind after Docker Desktop restarts — fixes IPs, restarts ingress, smoke-tests all URLs |
 | `run-exporters-from-host.sh` | Runs the DORA / flaky-test / tech-insights exporters from the host against the cluster's Pushgateway, for when a starved cluster is failing to fetch from GitHub and you want the numbers without waiting for it to recover. Reads every env var from the live CronJob so it cannot drift; `--list`, `--dry-run`, `--loop N` |
-| `register-argocd-cluster.sh` | Multi-region only: registers a spoke EKS cluster's credentials with the hub ArgoCD via Secrets Manager |
 
 ## Day-0 / Day-1 — Platform setup
 
@@ -55,8 +52,6 @@ Every later invocation (recreate the cluster, add a flag, retry a failed step) g
 | `verify-engineering-intelligence.sh` | Boots the real Backstage image against a real Postgres with a stub standing in for Prometheus and OpenCost, then asserts every Engineering Intelligence figure the fixtures imply — scores, evidence sums, withheld dimensions, maturity level, snapshot persistence. ~2 min warm vs ~19 for a cold `bootstrap-local.sh`. Does **not** exercise real Prometheus/OpenCost response shapes; only a cluster does that. | Manual, after changing anything under `packages/engineering-intelligence-core/` or `engineeringIntelligence/` |
 | `run-exporters-from-host.sh` | Runs an exporter from the host against the cluster's Pushgateway. Exists because a starved cluster fails to fetch from GitHub — `ConnectionError`/`SSLError` in a pod while the same call answers in ~0.6s on the host — leaving Developer Experience, Reliability and Quality unscored. The cause is resource exhaustion, not the network: once the cluster settled, the same CronJob completed in 3m20s with zero fetch errors, and a 10MB pod download succeeded 6/6 at both MTU 1500 and 1280. Reads every environment variable from the live CronJob spec and only rewrites in-cluster DNS to the ingress, probing each address first, so it cannot drift. Pushgateway is in-memory, so `--loop N` re-pushes after a restart. | Manual, when a loaded cluster is failing its exporter jobs |
 | `bootstrap.sh` | Provisions AWS EKS, ECR, IAM (Terraform), deploys all platform components — **including the AI/ML stack** (Phase 6 runs `bootstrap-ai.sh --aws` internally, unless `--skip-ai` is passed) — and pushes `hello-service` to ECR. ~40–70 min. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for full walkthrough. | `setup.sh` → AWS path, or standalone |
-| `bootstrap-multiregion.sh` | Provisions the V2 active-standby topology: `terraform/global` (KMS, Route53, TGW, Aurora Global, CloudFront) → primary EKS (full stack) → standby EKS (minimal stack) → post-wiring (IRSA, cluster registration, failover RBAC). ~30–50 min. Flags: `--skip-global`, `--skip-standby`, `--skip-obs`, `--skip-ai`. See [Multi-Region](multi-region.md). | `setup.sh` → multi path, or standalone |
-| `register-argocd-cluster.sh` | Creates an `argocd-manager` service account on a target EKS cluster and writes its token to Secrets Manager, so the hub ArgoCD can manage it as a spoke. `--cluster <name> --region <region>`. | `bootstrap-multiregion.sh` (auto, for both primary + standby), or standalone to re-register after credential rotation |
 | `validate-deployment.sh` | **Post-deploy validation.** Runs 50+ automated tests across AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage. Exit 0 = success, 1 = failure with debug suggestions. | After `bootstrap.sh` completes |
 | `cleanup.sh` | **Safe teardown.** Runs ordered phases 0–8 (plus 0b, 5b, 7b, 7c): stop ArgoCD + Loki writers → drain Karpenter nodes (if enabled) → delete orphaned ALBs and stale SGs → disable RDS protection → **remove scaffolded services from ArgoCD + Helm + git** → clean Crossplane-tagged resources → empty S3/ECR → terminate leftover Karpenter instances + delete script-created secrets → terraform destroy → delete CloudWatch log groups → **delete orphaned EBS volumes (PVC disks) owned by the cluster** → delete Karpenter launch templates + instance profiles → verify, including a **tag sweep** that flags anything still tagged for the cluster. Order matters: ALBs and Crossplane resources are created by in-cluster controllers, so `terraform destroy` alone leaves them orphaned — see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#what-terraform-owns-and-what-it-cannot-destroy). Use `--force` to skip prompts. | When tearing down AWS resources |
 | `cleanup-helm-repos.sh` | Removes stale Helm repos and ensures required repos are present before any `helm install`. | `setup.sh` (auto), or standalone |
@@ -121,7 +116,7 @@ in the docs that mentions a `bootstrap-ai.sh` flag should defer to this table.
 | `--langfuse-keys-only` | — | Re-distribute the Langfuse project keys to namespaces labelled `idp.io/langfuse=enabled` without deploying anything. |
 | `--skip-mlflow` | — | Skip the MLflow tracking server and model registry. |
 | `--skip-mcp` | — | Skip the MCP servers. |
-| `--skip-argo-workflows` | — | Skip Argo Workflows, ~5m of the install. You lose the `ml-training-pipeline` and `llm-eval-pipeline` WorkflowTemplates, and on multi-region the DR failover runbook. `idp:run-training-job` falls back to a plain Job automatically — without the accuracy gate or the human approval step, which are the two things [ADR-0001](design/adr-0001-batch-orchestration.md) accepts Argo Workflows *for*. Note a core `bootstrap-local.sh` never installs it anyway; this flag is only for the AI/ML layer. |
+| `--skip-argo-workflows` | — | Skip Argo Workflows, ~5m of the install. You lose the `ml-training-pipeline` and `llm-eval-pipeline` WorkflowTemplates. `idp:run-training-job` falls back to a plain Job automatically — without the accuracy gate or the human approval step, which are the two things [ADR-0001](design/adr-0001-batch-orchestration.md) accepts Argo Workflows *for*. Note a core `bootstrap-local.sh` never installs it anyway; this flag is only for the AI/ML layer. |
 | `--skip-kagent` | — | Skip the KAgent CRDs, runtime, and agents. |
 | `--force-build` | off | Rebuild the MCP server images and their Helm releases even when unchanged. |
 | `--aws` | off | Target the AWS cluster rather than Kind. `bootstrap.sh` passes this for you; run it standalone only to retry a failed AI phase. |
@@ -149,8 +144,7 @@ entry points, which is why they are absent from the tables above.
 
 ## Re-running the bootstrap scripts — caching and parallelism
 
-`bootstrap-local.sh`, `bootstrap.sh`, `bootstrap-ai.sh` and
-`bootstrap-multiregion.sh` are all designed to be re-run. They skip work they
+`bootstrap-local.sh`, `bootstrap.sh` and `bootstrap-ai.sh` are all designed to be re-run. They skip work they
 can prove is unchanged and overlap the work that remains, so a re-run against a
 healthy cluster costs a fraction of a cold one.
 
@@ -168,10 +162,9 @@ live cluster or registry state, so deleting `.idp-cache/` only costs time, never
 correctness — a wiped registry, a deleted ECR tag, or a release Helm no longer
 considers healthy always forces the real work to run again.
 
-Helm fingerprints are keyed by `--kube-context` where one is passed, so
-`bootstrap-multiregion.sh` installing the same release on both the hub and
-standby clusters caches them independently rather than letting one mask the
-other.
+Helm fingerprints are keyed by `--kube-context` where one is passed, so the
+same release installed on two clusters is cached independently rather than one
+masking the other.
 
 **What runs in parallel**
 
@@ -180,7 +173,6 @@ other.
 | `bootstrap-local.sh` | All image builds run in the background from just after the registry starts (Step 1) and are joined before Step 13, the first step that needs them. Step 10 (Pushgateway/DORA) joins the Step 11 exporter group. |
 | `bootstrap-ai.sh` | MCP server images build in the background, `IDP_BUILD_JOBS` at a time, overlapping the whole KAgent install. MLflow deploys in the background too. |
 | `bootstrap.sh` | Argo Workflows and Velero run alongside the AI/ML platform phase. Backstage / ArgoCD / Grafana load balancer hostnames are polled in one loop rather than two sequential ones. |
-| `bootstrap-multiregion.sh` | Gatekeeper and Kyverno install concurrently. |
 
 **Environment variables and flags**
 

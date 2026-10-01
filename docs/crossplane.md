@@ -80,18 +80,7 @@ human running `terraform apply`. No manual step between "PR merged" and
 | DynamoDB table | `XDynamoTable` | `DynamoTable` | `dynamodb-table-crossplane` | AWS resource tag |
 | SQS queue | `XSQSQueue` | `SQSQueue` | `sqs-queue-crossplane` | AWS resource tag |
 
-### Multi-region / platform resources (V2 — platform team)
-
-These XRDs are applied by the platform team (not individual service teams) and model
-account-level or global AWS resources introduced in the `feat/v2-multi-region` branch.
-
-| Resource | XRD kind | Claim kind | Key fields | Notes |
-|---|---|---|---|---|
-| ECR cross-region replication | `XECRReplicationRule` | `ECRReplicationRule` | `sourceRegion`, `destinationRegion`, `repositoryFilter` | Account-level; one claim per account |
-| Route 53 health check + failover record | `XRoute53HealthCheck` | `Route53HealthCheck` | `fqdn`, `healthCheckType`, `failureThreshold`, `hostedZoneId` (opt) | DNS failover record created only when `hostedZoneId` is set |
-| Global Accelerator endpoint group | `XGlobalAcceleratorEndpointGroup` | `GlobalAcceleratorEndpointGroup` | `listenerArn`, `endpointRegion`, `endpointArn`, `trafficDialPercentage` | One claim per region; set `trafficDialPercentage: 0` for warm standby |
-
-All eight Compositions live in `aws/crossplane/compositions/`. Adding
+All five Compositions live in `aws/crossplane/compositions/`. Adding
 a new resource type is a matter of dropping in another `xrd.yaml` +
 `composition.yaml` pair plus a matching scaffolder template.
 
@@ -196,7 +185,7 @@ broken annotation.
 # All five providers Healthy
 kubectl get providers.pkg.crossplane.io
 
-# XRDs established (5 per-service + 3 multi-region = 8 total)
+# XRDs established (5 total)
 kubectl get xrds
 
 # ProviderConfig default present
