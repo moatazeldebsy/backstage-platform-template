@@ -638,9 +638,13 @@ sed \
 # as before rather than risk an invalid empty certificate-arn breaking the ALB.
 ACM_CERT_ARN=$(tf_output monitoring_acm_certificate_arn)
 if [[ -n "${ACM_CERT_ARN}" ]]; then
-  log "  Wiring ACM cert into monitoring ALB ingresses: ${ACM_CERT_ARN}"
+  log "  Wiring ACM cert into the Grafana listener: ${ACM_CERT_ARN}"
+  # Grafana sits on the shared idp-platform ALB (scripts/lib.sh
+  # alb_ingress_url) as an HTTP listener on :3000. With a certificate it moves
+  # to that ALB's HTTPS :443 listener instead. Rewriting its listen-ports line,
+  # rather than appending a second one, keeps the annotation a single YAML key.
   sed -i.bak \
-    "s|alb.ingress.kubernetes.io/backend-protocol: HTTP|alb.ingress.kubernetes.io/backend-protocol: HTTP\n      alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}\n      alb.ingress.kubernetes.io/listen-ports: '[{\"HTTP\":80},{\"HTTPS\":443}]'\n      alb.ingress.kubernetes.io/ssl-redirect: \"443\"|g" \
+    "s|alb.ingress.kubernetes.io/listen-ports: '\[{\"HTTP\": 3000}\]'|alb.ingress.kubernetes.io/listen-ports: '[{\"HTTPS\": 443}]'\n      alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERT_ARN}|" \
     "${tmp_obs_values}"
   rm -f "${tmp_obs_values}.bak"
 else
@@ -1212,8 +1216,7 @@ log "Phase 4.7: Generating ArgoCD API token for Backstage..."
 ARGOCD_URL=""
 # ArgoCD uses ALB Ingress (not a LoadBalancer service) — read from the Ingress.
 _argocd_alb_ready() {
-  ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+  ARGOCD_URL=$(alb_ingress_url argocd-server argocd)
   [[ -n "$ARGOCD_URL" ]]
 }
 poll_until "ArgoCD ALB hostname" 300 5 _argocd_alb_ready \
@@ -1401,10 +1404,8 @@ GRAFANA_URL=""
 _albs_ready() {
   [[ -z "$BACKSTAGE_URL" ]] && BACKSTAGE_URL=$(kubectl get svc backstage -n backstage \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -z "$ARGOCD_URL" ]] && ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(kubectl get ingress prometheus-grafana -n monitoring \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+  [[ -z "$ARGOCD_URL" ]] && ARGOCD_URL=$(alb_ingress_url argocd-server argocd)
+  [[ -z "$GRAFANA_URL" ]] && GRAFANA_URL=$(alb_ingress_url prometheus-grafana monitoring)
   [[ -n "$BACKSTAGE_URL" && -n "$ARGOCD_URL" && -n "$GRAFANA_URL" ]]
 }
 poll_until "LoadBalancer hostnames" 360 10 _albs_ready || true
@@ -1592,10 +1593,8 @@ EOF
 
   # ── Done ──────────────────────────────────────────────────────────────────────
   _alb() {
-    # Usage: _alb <ingress-name> <namespace>
-    kubectl get ingress "$1" -n "$2" \
-      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null \
-      | grep -v '^$' || echo "pending..."
+    # Usage: _alb <ingress-name> <namespace> — shared-ALB host:port, or pending
+    local u; u=$(alb_ingress_url "$1" "$2"); echo "${u:-pending...}"
   }
 
   log ""
@@ -1609,7 +1608,7 @@ EOF
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  PLATFORM SERVICES"
   log "║    ArgoCD          http://$(_alb argocd-server argocd)"
-  log "║    Grafana         http://$(_alb grafana monitoring)"
+  log "║    Grafana         http://$(_alb prometheus-grafana monitoring)"
   log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  OPERATOR TOOLS — no public ALB by design (~\$82/mo saved, and they have"
@@ -1621,7 +1620,8 @@ EOF
   log "║    Argo Rollouts   kubectl port-forward -n argo-rollouts svc/argo-rollouts-dashboard 3100:3100"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  APPLICATION SERVICES"
-  log "║    hello-service   http://$(kubectl get svc hello-service -n services -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
+  # ArgoCD app hello-service-dev → Helm release of that name → chart fullname.
+  log "║    hello-service   http://$(_alb hello-service-dev-service-template services-dev)"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   if [[ "$WITH_AI" == "true" ]]; then
   log "║    AI Assistant    http://${BACKSTAGE_URL:-PENDING}/ai-assistant"

@@ -220,12 +220,24 @@ import sys,json; d=json.load(sys.stdin); print('QA series:', len(d.get('data',{}
 
 ### Expected Service URLs
 
-| Service | How to get URL |
-|---------|----------------|
-| Backstage | `kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
-| Grafana | `kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
-| ArgoCD | `kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
-| hello-service | `kubectl get ingress -n services-dev -l app.kubernetes.io/instance=hello-service-dev -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
+Backstage has its own NLB. Every other UI is a **listener port on one shared
+ALB** (IngressGroup `idp-platform`), so they share a hostname and differ by port.
+`bootstrap.sh` prints them all at the end. To read one later:
+
+```bash
+source scripts/lib.sh
+alb_ingress_url argocd-server argocd          # -> <shared-alb>:8080
+```
+
+| Service | URL | Lookup |
+|---------|-----|--------|
+| Backstage | `http://<backstage-nlb>` | `kubectl get svc backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'` |
+| ArgoCD | `http://<shared-alb>:8080` | `alb_ingress_url argocd-server argocd` |
+| Grafana | `http://<shared-alb>:3000` (`:443` HTTPS with `domain_name`) | `alb_ingress_url prometheus-grafana monitoring` |
+| hello-service | `http://<shared-alb>:8081` | `alb_ingress_url hello-service-dev-service-template services-dev` |
+| agent-event-router | `http://<shared-alb>:8082` | AI stack |
+| KAgent UI / IDP Assistant | `http://<shared-alb>:8083` / `:8084` | AI stack |
+| MLflow / Langfuse / Argo Workflows | `http://<shared-alb>:5000` / `:3001` / `:2746` | AI stack |
 
 ---
 
@@ -635,6 +647,12 @@ instances and S3 combined, and it is why the AI layer is opt-in
 
 Ways to spend less, roughly in order of effect:
 
+- **Already on by default:** spot nodes for every non-`prod` install
+  (`node_capacity_type`, ~60–70% off the node line), and one shared ALB for all
+  platform UIs instead of one each (see [Consolidating ALBs](#consolidating-albs)).
+  medium/large stay on-demand. Keep `cluster_version` in EKS *standard*
+  support too: an extended-support version bills the control plane at 6×.
+
 - **Skip the AI/ML layer.** Saves ~$195/month. `enable_ai` and `enable_langfuse`
   gate the infrastructure too, so nothing is provisioned for it.
 - **Leave `enable_cost_optimizer = true`** (the default). Scales nodes to zero
@@ -672,12 +690,23 @@ quote.
 
 ### Consolidating ALBs
 
-Eight services still publish their own internet-facing ALB at ~$16/mo each. They
-cannot share one today: every entry sets `host: ""` with `path: /`, so a shared
-`alb.ingress.kubernetes.io/group.name` produces colliding rules and the ALB
-controller rejects the group. Giving each a real hostname fixes that — the
-routing then keys on `Host`, not path, so no service has to move off `/` and no
-application code changes.
+**Done without a domain: one ALB, one listener port per service.** Every
+platform Ingress carries `alb.ingress.kubernetes.io/group.name: idp-platform`
+and its own `listen-ports` (ArgoCD `:8080`, Grafana `:3000`, hello-service
+`:8081`, the AI-stack UIs `:2746`–`:8084`; see the URL table above). Rules live
+per listener, so the `host: ""` + `path: /` entries no longer collide. That
+replaced ~9 ALBs, each ~$0.0375/h with its three public IPv4 addresses, with
+one. `validate-deployment.sh` flags any internet-facing ALB Ingress that is
+missing the group annotation. To add one, pick an unused port, set both
+annotations, and read the URL with `alb_ingress_url`.
+
+Scaffolded services' own `helm-values-aws.yaml` are not part of the group: a
+new service gets its own ALB until it is given a port here, or a hostname as
+below.
+
+The host-based setup below is the upgrade path once a domain exists. It gives
+port-free URLs and real TLS for every service. Without a domain, it would need
+the hostnames to differ, which they cannot:
 
 **One ALB is not achievable while keeping internal services private.** An
 IngressGroup maps to exactly one ALB with one scheme, so `internal` and

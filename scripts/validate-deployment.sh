@@ -11,6 +11,10 @@ DETAILED="${DETAILED:-false}"
 FAILED_TESTS=0
 PASSED_TESTS=0
 
+# For alb_ingress_url (shared-ALB host:port). Sourced before the helpers below,
+# so this script's counting log/err override lib.sh's (whose err exits).
+# shellcheck source=scripts/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 log()    { echo "✓ $*"; PASSED_TESTS=$((PASSED_TESTS+1)); }
 err()    { echo "✗ $*"; FAILED_TESTS=$((FAILED_TESTS+1)); }
 header() { echo ""; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; echo "  $*"; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; }
@@ -169,7 +173,7 @@ fi
 [[ $PROMETHEUS_TARGETS -gt 0 ]] && log "Prometheus scraping $PROMETHEUS_TARGETS targets" || err "Prometheus not scraping"
 
 # Check Grafana (via ALB Ingress)
-GRAFANA_URL=$(kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+GRAFANA_URL=$(alb_ingress_url prometheus-grafana monitoring)
 [[ -n "$GRAFANA_URL" ]] && log "Grafana URL: http://$GRAFANA_URL" || err "Grafana ingress not ready"
 
 # Check AlertManager (via ALB Ingress)
@@ -201,7 +205,7 @@ kubectl get clusteranalysistemplate http-error-rate &>/dev/null && \
 header "GitOps & CI/CD Validation"
 
 # Check ArgoCD (via ALB Ingress)
-ARGOCD_URL=$(kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+ARGOCD_URL=$(alb_ingress_url argocd-server argocd)
 [[ -n "$ARGOCD_URL" ]] && log "ArgoCD URL: http://$ARGOCD_URL" || err "ArgoCD ingress not ready"
 
 # Check ArgoCD applications
@@ -248,7 +252,7 @@ if kubectl get ns kagent &>/dev/null; then
   # Check MLflow
   # MLflow is exposed through an ALB *Ingress*; its Service is ClusterIP, so
   # reading a loadBalancer hostname off the Service always came back empty.
-  MLFLOW_URL=$(kubectl get ingress -n ml-platform mlflow -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+  MLFLOW_URL=$(alb_ingress_url mlflow ml-platform)
   [[ -n "$MLFLOW_URL" ]] && log "MLflow URL: http://$MLFLOW_URL" || err "MLflow not accessible"
 
   # Check the AI Gateway. It is deployed BY DEFAULT (disable with
@@ -319,9 +323,33 @@ header "Network & Connectivity Validation"
 INGRESS_CTRL=$(kubectl get ingressclass --no-headers 2>/dev/null | grep -c "alb\|nginx" || echo "0")
 [[ $INGRESS_CTRL -gt 0 ]] && log "Ingress controllers active" || err "No ingress controllers found"
 
-# Check load balancer service count
-ALB_COUNT=$(kubectl get services -A -o jsonpath='{.items[*].status.loadBalancer.ingress[*].hostname}' 2>/dev/null | wc -w)
-log "Active load balancers: $ALB_COUNT"
+# Check load balancer count: LoadBalancer Services (Backstage's NLB) plus
+# distinct ALB hostnames. The platform Ingresses share one internet-facing ALB
+# (group idp-platform), so an internet-facing ALB Ingress WITHOUT the group
+# annotation is paying for an ALB of its own (~$0.0375/h with its public IPs).
+# Internal-scheme ALBs cannot join that group and are not flagged.
+LB_SVC_COUNT=$(kubectl get services -A -o jsonpath='{.items[*].status.loadBalancer.ingress[*].hostname}' 2>/dev/null | wc -w | tr -d ' ')
+read -r ALB_DISTINCT UNGROUPED < <(kubectl get ingress -A -o json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    items = json.load(sys.stdin).get("items", [])
+except Exception:
+    items = []
+hosts, ungrouped = set(), []
+for i in items:
+    a = i["metadata"].get("annotations") or {}
+    for lb in (i.get("status", {}).get("loadBalancer", {}).get("ingress") or []):
+        if lb.get("hostname"): hosts.add(lb["hostname"])
+    if (i["spec"].get("ingressClassName") == "alb"
+            and a.get("alb.ingress.kubernetes.io/scheme") == "internet-facing"
+            and "alb.ingress.kubernetes.io/group.name" not in a):
+        ungrouped.append(i["metadata"]["namespace"] + "/" + i["metadata"]["name"])
+print(len(hosts), ",".join(ungrouped) or "-")
+' || echo "0 -")
+log "Active load balancers: ${LB_SVC_COUNT} LoadBalancer Service(s), ${ALB_DISTINCT} distinct ALB(s)"
+if [[ "${UNGROUPED}" != "-" ]]; then
+  err "Internet-facing ALB Ingress(es) outside the shared idp-platform group, each paying for its own ALB: ${UNGROUPED}"
+fi
 
 # Check DNS resolution from cluster
 # `wc -l | xargs || echo 0` can emit two values, giving `[[: 0\n0: syntax

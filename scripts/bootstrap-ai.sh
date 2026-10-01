@@ -2191,8 +2191,7 @@ EOF
     info "Waiting for KAgent UI LoadBalancer hostname..."
     KAGENT_URL=""
     for i in $(seq 1 36); do
-      KAGENT_URL=$(kubectl get ingress kagent-ui -n kagent \
-        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+      KAGENT_URL=$(alb_ingress_url kagent-ui kagent)
       [[ -n "$KAGENT_URL" ]] && break
       sleep 10
     done
@@ -2352,8 +2351,7 @@ if [[ "$DEPLOY_MODE" == "aws" && "$SKIP_MLFLOW" != "true" ]]; then
   info "Waiting for MLflow LoadBalancer hostname..."
   MLFLOW_URL=""
   for i in $(seq 1 36); do
-    MLFLOW_URL=$(kubectl get ingress mlflow -n ml-platform \
-      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    MLFLOW_URL=$(alb_ingress_url mlflow ml-platform)
     [[ -n "$MLFLOW_URL" ]] && break
     sleep 10
   done
@@ -2397,8 +2395,7 @@ if [[ "$DEPLOY_MODE" == "aws" && "$LANGFUSE" == "true" ]]; then
   info "Waiting for Langfuse LoadBalancer hostname..."
   LANGFUSE_URL=""
   for i in $(seq 1 36); do
-    LANGFUSE_URL=$(kubectl get ingress langfuse -n ml-platform \
-      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    LANGFUSE_URL=$(alb_ingress_url langfuse ml-platform)
     [[ -n "$LANGFUSE_URL" ]] && break
     sleep 10
   done
@@ -2799,9 +2796,7 @@ fi
 # ── Done ──────────────────────────────────────────────────────────────────────
 
 _alb_ai() {
-  kubectl get ingress "$1" -n "$2" \
-    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null \
-    | grep -v '^$' || echo "pending..."
+  local u; u=$(alb_ingress_url "$1" "$2"); echo "${u:-pending...}"
 }
 
 # The AI layer now exists, so reveal its Backstage surfaces (AI Assistant, AI

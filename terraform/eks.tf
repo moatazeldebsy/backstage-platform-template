@@ -10,6 +10,28 @@ locals {
     ? max(6, var.node_group_min_size, var.node_group_desired_size)
     : var.node_group_max_size
   )
+
+  # Spot for anything that is not prod: ~60-70% off the node line, and this
+  # platform is rebuilt from IaC anyway. medium/large set environment = "prod"
+  # and stay on-demand.
+  platform_capacity_type = coalesce(
+    var.node_capacity_type,
+    var.environment == "prod" ? "ON_DEMAND" : "SPOT",
+  )
+
+  # A spot node group limited to one instance type fails to launch whenever
+  # that one pool has no spare capacity. Same-size alternatives (vCPU and
+  # memory) widen it. On-demand keeps exactly the configured types.
+  spot_alternatives = {
+    "t3.medium" = ["t3a.medium", "c5.large", "c5a.large", "c6i.large", "c6a.large"]
+    "t3.large"  = ["t3a.large", "m5.large", "m5a.large", "m6i.large", "m6a.large"]
+    "m5.xlarge" = ["m5a.xlarge", "m6i.xlarge", "m6a.xlarge", "m7i.xlarge"]
+  }
+  platform_instance_types = (
+    local.platform_capacity_type == "SPOT"
+    ? distinct(concat(var.node_instance_types, flatten([for t in var.node_instance_types : lookup(local.spot_alternatives, t, [])])))
+    : var.node_instance_types
+  )
 }
 
 # Fails `terraform plan` instead of the EKS CreateNodegroup call.
@@ -109,7 +131,8 @@ module "eks" {
   # (labeled role=services) instead. Platform pods use a nodeSelector: {role: platform}.
   eks_managed_node_groups = {
     platform = {
-      instance_types = var.node_instance_types
+      instance_types = local.platform_instance_types
+      capacity_type  = local.platform_capacity_type
       min_size       = var.node_group_min_size
       max_size       = local.platform_node_group_max_size
       desired_size   = var.node_group_desired_size

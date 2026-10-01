@@ -445,6 +445,33 @@ tf_outputs_load() {
   return 0
 }
 
+# Public URL (host, or host:port) of an ALB Ingress, or empty while pending.
+#
+# The platform's ALB Ingresses share ONE load balancer (IngressGroup
+# `idp-platform`), each on its own listener port, because an ALB per Ingress
+# cost ~$0.0375/h each (the LB hour plus 3 public IPv4 addresses) — ~9 of them
+# on a full install. The hostname is therefore the same for all of them and
+# only the port tells them apart; it is read from the Ingress's own
+# listen-ports annotation so the port map lives in one place (the manifests).
+# Port 80/443 is omitted. Usage: alb_ingress_url <ingress> <namespace>
+alb_ingress_url() {
+  local host ports port
+  host=$(kubectl get ingress "$1" -n "$2" \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+  [[ -n "$host" ]] || return 0
+  ports=$(kubectl get ingress "$1" -n "$2" \
+    -o jsonpath="{.metadata.annotations['alb\.ingress\.kubernetes\.io/listen-ports']}" 2>/dev/null || true)
+  port=$(PORTS="$ports" python3 -c '
+import json, os
+try:
+    first = json.loads(os.environ["PORTS"] or "[]")[0]
+    p = int(next(iter(first.values())))
+except Exception:
+    p = 80
+print("" if p in (80, 443) else p)' 2>/dev/null || true)
+  echo "${host}${port:+:${port}}"
+}
+
 # Read a single output value from the JSON loaded by tf_outputs_load. Returns
 # empty string (never errors) when the key is absent, matching the existing
 # `terraform output -raw X 2>/dev/null || echo ""` fallback callers already rely on.
