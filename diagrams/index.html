@@ -2332,6 +2332,18 @@ byte for byte.</p>
 </tbody>
 </table>
 <p>To change what the diagram says, edit <code>platform-planes.html</code> and re-run both steps.</p>
+<h2 id="architecture-diagrams">Architecture diagrams<a class="headerlink" href="#architecture-diagrams" title="Permanent link">&para;</a></h2>
+<p><code>docs/assets/platform-architecture.png</code> (the eight-layer view) and
+<code>docs/assets/aws-architecture.png</code> (the single-region, three-AZ AWS deployment) are
+text-only, so they skip the logo build step and render straight from source:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app
+node<span class="w"> </span>../../docs/diagrams/render.mjs<span class="w"> </span>../../docs/diagrams/platform-architecture.html<span class="w"> </span>../../docs/assets/platform-architecture.png
+node<span class="w"> </span>../../docs/diagrams/render.mjs<span class="w"> </span>../../docs/diagrams/aws-architecture.html<span class="w"> </span>../../docs/assets/aws-architecture.png
+</code></pre></div></td></tr></table></div>
+<p>Keep them in step with the platform: template counts, MCP server count, and
+anything added to or removed from <code>terraform/</code>.</p>
 <h2 id="why-the-logos-are-not-committed">Why the logos are not committed<a class="headerlink" href="#why-the-logos-are-not-committed" title="Permanent link">&para;</a></h2>
 <p>The marks belong to their projects. They are used here nominatively — to identify
 the component each one names — which is the same use the

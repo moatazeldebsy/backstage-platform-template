@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Platform Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  :root { --page:#0d0e10; --ink:#f4f4f5; --muted:#c9c9cf; --accent:#f5a524; }
+  body { margin:0; background:var(--page); color:var(--ink);
+         font-family:Poppins, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  .canvas { padding:40px 48px 48px; width:1440px; }
+  h1 { margin:0 0 28px; text-align:center; font-size:40px; font-weight:600; }
+  .layer { display:grid; grid-template-columns:120px 1fr; align-items:center;
+           border:2px solid var(--accent); border-radius:12px; padding:20px 28px; }
+  .num { color:var(--accent); font-size:22px; font-weight:600; border-right:2px solid var(--accent);
+         margin-right:28px; }
+  .name { font-size:22px; font-weight:600; }
+  .items { font-size:18px; color:var(--muted); }
+  .items b { color:var(--ink); font-weight:500; }
+  .arrow { height:30px; display:flex; justify-content:center; }
+  .arrow::after { content:""; width:2px; height:22px; background:var(--accent); margin-top:4px;
+                  position:relative; }
+  .arrow::before { content:""; position:absolute; margin-top:20px; border:7px solid transparent;
+                   border-top-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <h1>Internal Developer Platform — Architecture</h1>
+
+  <div class="layer"><span class="num">Layer 1</span>
+    <div><span class="name">Developers, Platform Engineers &amp; Agents</span>
+      <span class="items"> — Portal · <b>idp</b> CLI · any MCP client</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 2</span>
+    <div><span class="name">Backstage Portal v1.50.4</span>
+      <span class="items"> — Catalog · TechDocs · Tech Radar · Scaffolder (59 templates)</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 3</span>
+    <div><span class="name">Golden Path</span>
+      <span class="items"> — idp CLI · Helm service chart · GitHub Actions CI/CD</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 4</span>
+    <div><span class="name">GitOps</span>
+      <span class="items"> — ArgoCD · ApplicationSet · Argo Rollouts</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 5</span>
+    <div><span class="name">AI/ML &amp; Agents</span>
+      <span class="items"> — KAgent · AI Gateway + LiteLLM · 8 MCP servers · MLflow · ADP human-in-the-loop gate</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 6</span>
+    <div><span class="name">Quality</span>
+      <span class="items"> — Playwright · k6 · Pact · Bronze/Silver/Gold scorecard</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 7</span>
+    <div><span class="name">Observability</span>
+      <span class="items"> — Prometheus · Grafana · Loki · Tempo · Datadog · DORA · OpenCost</span></div></div>
+  <div class="arrow"></div>
+
+  <div class="layer"><span class="num">Layer 8</span>
+    <div><span class="name">Infrastructure</span>
+      <span class="items"> — Terraform · Crossplane · Kind (local) · AWS EKS (one region, three AZs)</span></div></div>
+</div>
+<script>window.redrawWires = () => {};</script>
+</body>
+</html>

@@ -4299,7 +4299,7 @@ scorecard item above is satisfied by Git versioning of the CRD, not by a separat
 <span class="c1"># Search query: &quot;how to debug deployment failures&quot;</span>
 <span class="c1"># → Returns relevant runbooks, ADRs, documentation</span>
 </code></pre></div></td></tr></table></div>
-<p>Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the <code>pgvector/pgvector</code> image in <code>local/backstage/docker-compose.yml</code>, initialised by <code>local/backstage/init-pgvector.sql</code>; on AWS, the <code>vector</code> extension on the same Aurora/RDS instance.</p>
+<p>Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the <code>pgvector/pgvector</code> image in <code>local/backstage/docker-compose.yml</code>, initialised by <code>local/backstage/init-pgvector.sql</code>; on AWS, the <code>vector</code> extension on the same RDS instance.</p>
 <h3 id="ai-observability-dashboard">AI Observability Dashboard ✅<a class="headerlink" href="#ai-observability-dashboard" title="Permanent link">&para;</a></h3>
 <p>Monitor MCP servers in Grafana:</p>
 <ul>

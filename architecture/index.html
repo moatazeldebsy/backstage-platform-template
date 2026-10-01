@@ -2673,8 +2673,8 @@
   it persists its own snapshots, and why unmeasurable dimensions report no number.</li>
 </ul>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p><img alt="Platform Architecture" src="../assets/platform-architecture.jpg" /></p>
-<p>Six layers — Developer Portal (Backstage + templates + AI), Golden Paths (21 service templates + 18 QA templates + 5 Crossplane Claims), AI-Native IDP (KAgent agents + MLflow + MCP servers + Argo Workflows), Delivery &amp; Quality (GitHub Actions + ArgoCD + Helm + scorecard gates), Runtime (Kubernetes: Kind locally, EKS on AWS + Crossplane), Observability &amp; Infra (Prometheus + Grafana + DORA + Terraform).</p>
+<p><img alt="Platform Architecture" src="../assets/platform-architecture.png" /></p>
+<p>Eight layers, top to bottom: the people and agents using the platform → the Backstage portal (59 templates) → golden paths (idp CLI, Helm chart, GitHub Actions) → GitOps (ArgoCD, ApplicationSet, Argo Rollouts) → AI/ML and agents (KAgent, AI Gateway + LiteLLM, 8 MCP servers, MLflow, ADP gate) → quality gates → observability (Prometheus, Grafana, Loki, Tempo, Datadog, DORA, OpenCost) → infrastructure (Terraform, Crossplane, Kind locally, EKS on AWS). Source: <code>docs/diagrams/platform-architecture.html</code>.</p>
 <h2 id="platform-planes">Platform Planes<a class="headerlink" href="#platform-planes" title="Permanent link">&para;</a></h2>
 <p><img alt="Platform Planes" src="../assets/platform-planes.png" /></p>
 <p>The systems view: five planes, each independently installable. The core IDP runs without the AI and
@@ -3343,13 +3343,13 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </code></pre></div></td></tr></table></div>
 <hr />
 <h2 id="aws-architecture">AWS Architecture<a class="headerlink" href="#aws-architecture" title="Permanent link">&para;</a></h2>
-<p><img alt="AWS Architecture" src="../assets/aws-architecture.jpg" /></p>
-<p>Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-central-1) → ALB edge → Amazon VPC / EKS 1.32 (Backstage, ArgoCD, Prometheus, Grafana, KAgent, MLflow, MCP servers, Crossplane controllers, EC2 worker nodes) → Data &amp; Registry (ECR, RDS PostgreSQL, S3, DynamoDB, MSK Kafka, SQS) → Platform Services (Secrets Manager, IAM/OIDC, CloudWatch) → IaC (Terraform foundation + Crossplane per-service via Claims).</p>
+<p><img alt="AWS Architecture" src="../assets/aws-architecture.png" /></p>
+<p>One AWS region with VPC subnets in three AZs. Route 53 + ACM (only when <code>domain_name</code> is set) → ALB → EKS nodes spread across the AZs, running Backstage, ArgoCD, Crossplane, the observability stack and the AI layer. RDS PostgreSQL (Backstage, Langfuse, LiteLLM) with a Multi-AZ standby, and one NAT gateway per AZ, on the <code>medium</code>/<code>large</code> profiles. Regional services: S3, ECR, Secrets Manager, plus Crossplane-claimed S3 / RDS / DynamoDB / Kafka topics / SQS. Source: <code>docs/diagrams/aws-architecture.html</code>.</p>
 <h3 id="availability-model">Availability model<a class="headerlink" href="#availability-model" title="Permanent link">&para;</a></h3>
 <p>One region, resilient across Availability Zones: subnets in 3 AZs, per-AZ NAT and
 RDS Multi-AZ on the <code>medium</code>/<code>large</code> profiles. A full regional outage is recovered by
 rebuilding from IaC and restoring backups. See
-<a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a> for why multi-region was removed.</p>
+<a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a> for the reasoning.</p>
 <h3 id="network-topology">Network Topology<a class="headerlink" href="#network-topology" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>

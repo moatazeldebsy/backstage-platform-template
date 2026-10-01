@@ -2399,7 +2399,7 @@
 written rule for choosing between them. That produced a specific oddity: Argo
 Workflows was installed in every environment — opt-in locally, on by default on
 AWS, with an S3 artifact bucket and an IRSA role — to carry <strong>exactly one
-manifest</strong>, a DR failover runbook. Zero <code>WorkflowTemplate</code>s, zero <code>CronWorkflow</code>s.</p>
+manifest</strong>, an operational runbook. Zero <code>WorkflowTemplate</code>s, zero <code>CronWorkflow</code>s.</p>
 <p>Meanwhile the ML training story it had been installed for was a single bare
 <code>kind: Job</code>, submitted by the <code>idp:run-training-job</code> scaffolder action.</p>
 <p>The recurring question — "should this move to Argo Workflows?" — kept being
@@ -2466,8 +2466,8 @@ was already there:</p>
   forces the fallback.</li>
 <li>The fallback path silently loses the accuracy gate and the approval step. The
   action logs a warning saying so rather than pretending they ran.</li>
-<li>The DR failover runbook this ADR originally kept on Argo Workflows was removed
-  with the multi-region topology (<a href="../adr-0009-single-region-multi-az/">ADR-0009</a>).</li>
+<li>The one runbook manifest this ADR originally kept on Argo Workflows has since
+  been removed (<a href="../adr-0009-single-region-multi-az/">ADR-0009</a>).</li>
 <li>The training pipeline runs 5 pods where the Job ran 1. Requests are modest and
   the Job fallback remains for constrained clusters.</li>
 </ul>
