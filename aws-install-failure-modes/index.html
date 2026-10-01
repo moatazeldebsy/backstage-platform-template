@@ -2637,7 +2637,13 @@ times in a row, each on a different fault:</p>
    patches it. Nothing did. The install now disables <code>archiveLogs</code> when the ARN
    is missing (otherwise every workflow fails trying to upload its logs) and
    <em>removes</em> the annotation rather than leaving a placeholder that reads as a
-   configured role. The Terraform role is tracked in <a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/357">#357</a>.</li>
+   configured role. <strong>Fixed in <a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/357">#357</a>:</strong>
+   Terraform now owns both the artifact bucket (<code>aws_s3_bucket.argo_workflows_artifacts</code>,
+   replacing the <code>aws s3 mb</code> in the install, which also sat outside
+   <code>cleanup.sh</code>'s <code>${CLUSTER_NAME}-*</code> filter and leaked on every teardown) and
+   the IRSA role (<code>module.argo_workflows_irsa</code>), both gated on <code>enable_ai</code>. The
+   placeholder is gone from <code>rbac.yaml</code>; the archiveLogs fallback remains for a
+   state applied before the fix.</li>
 </ol>
 <p><strong>The general lesson</strong>, and it is the same one as the approval gate in
 <code>docs/agent-approvals.md</code>: an install path that has never run is not "probably
