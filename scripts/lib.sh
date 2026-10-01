@@ -472,6 +472,47 @@ tf_output_required() {
   printf '%s' "$val"
 }
 
+# Keep the repo's AWS_ROLE_ARN Actions secret in step with the GitHub OIDC role
+# Terraform owns (terraform/iam.tf). With an ARN: set it. Without one: delete it.
+#
+# build-and-deploy.yml skips the ECR push only when the secret is *empty*. Nothing
+# used to touch it, so after cleanup.sh destroyed the role the secret still held
+# its ARN, and every main push that touched a service failed at "Configure AWS
+# credentials (OIDC)" — "The web identity token provided could not be validated"
+# — until someone noticed and deleted it by hand. Observed 2026-10-01.
+#
+# Non-fatal by design: the AWS stack itself is fine either way, so a missing or
+# unauthenticated gh only warns and prints the manual command.
+#   $1 = role ARN, or empty to delete the secret
+sync_actions_role_secret() {
+  local arn="${1:-}" repo
+  if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    if [[ -n "$arn" ]]; then
+      warn "gh not available/authenticated — set the AWS_ROLE_ARN Actions secret yourself:"
+      warn "  gh secret set AWS_ROLE_ARN --body '${arn}'"
+    else
+      warn "gh not available/authenticated — delete the stale AWS_ROLE_ARN Actions secret yourself:"
+      warn "  gh secret delete AWS_ROLE_ARN"
+    fi
+    return 0
+  fi
+  repo=$(cd "${ROOT_DIR:-.}" && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || repo=""
+  if [[ -z "$repo" ]]; then
+    warn "Could not resolve the GitHub repo from the git remote — AWS_ROLE_ARN secret not synced."
+    return 0
+  fi
+  if [[ -n "$arn" ]]; then
+    gh secret set AWS_ROLE_ARN --repo "$repo" --body "$arn" >/dev/null \
+      && log "  AWS_ROLE_ARN Actions secret set on ${repo} (CI can push to ECR)." \
+      || warn "  Failed to set AWS_ROLE_ARN on ${repo} — run: gh secret set AWS_ROLE_ARN --body '${arn}'"
+  elif gh secret list --repo "$repo" 2>/dev/null | grep -q '^AWS_ROLE_ARN\b'; then
+    gh secret delete AWS_ROLE_ARN --repo "$repo" >/dev/null \
+      && log "  AWS_ROLE_ARN Actions secret deleted on ${repo} (CI skips the ECR push until the next bootstrap.sh)." \
+      || warn "  Failed to delete AWS_ROLE_ARN on ${repo} — run: gh secret delete AWS_ROLE_ARN"
+  fi
+  return 0
+}
+
 # Create the Terraform S3 state bucket and DynamoDB lock table, then write
 # terraform/backend.hcl for `terraform init -backend-config=`.
 #

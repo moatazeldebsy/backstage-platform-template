@@ -208,6 +208,7 @@ TECHDOCS_BUCKET=$(tf_output_required techdocs_bucket_name)
 BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
 
 log "Terraform apply complete."
+sync_actions_role_secret "$(tf_output github_actions_role_arn)"
 
 timer_end "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 

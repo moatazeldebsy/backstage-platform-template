@@ -597,6 +597,10 @@ for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
 done
 rm -f "$TF_DESTROY_LOG"
 
+# The GitHub OIDC role is gone now; clear the secret that points at it so CI
+# skips the ECR push instead of failing on every main push.
+sync_actions_role_secret ""
+
 # ── Phase 7: CloudWatch log groups ───────────────────────────────────────────
 # EKS creates /aws/eks/<cluster>/cluster and /aws/containerinsights/<cluster>/*
 # log groups that persist after the cluster is deleted and accumulate cost.
