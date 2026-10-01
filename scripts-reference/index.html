@@ -2703,7 +2703,7 @@
 </tr>
 <tr>
 <td><code>--profile &lt;small\|medium\|large\|none&gt;</code></td>
-<td>Apply <code>terraform/profiles/&lt;p&gt;.tfvars</code> on top of <code>terraform.tfvars</code>. <code>medium</code>/<code>large</code> give one NAT gateway per AZ and RDS Multi-AZ (<a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a>), and run the platform HA: ArgoCD with <code>aws/argocd/argocd-ha-values.yaml</code> (Redis HA, 2× server/repo-server/applicationset) and 2 zone-spread Backstage replicas. Remembered in <code>terraform/.idp-profile</code>, so later runs (and <code>cleanup.sh</code>) reuse it; <code>none</code> clears it. Without a profile you get one shared NAT gateway.</td>
+<td>Apply <code>terraform/profiles/&lt;p&gt;.tfvars</code> on top of <code>terraform.tfvars</code>. <code>medium</code>/<code>large</code> give one NAT gateway per AZ, RDS Multi-AZ for all three databases (<a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a>), interface VPC endpoints, RDS storage autoscaling + Performance Insights, and a 7-day secret recovery window. They also run the platform HA: ArgoCD with <code>aws/argocd/argocd-ha-values.yaml</code> (Redis HA, 2× server/repo-server/applicationset) and 2 zone-spread Backstage replicas. Remembered in <code>terraform/.idp-profile</code>, so later runs (and <code>cleanup.sh</code>) reuse it; <code>none</code> clears it. Without a profile you get one shared NAT gateway.</td>
 </tr>
 <tr>
 <td><code>--skip-velero</code></td>

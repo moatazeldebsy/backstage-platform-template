@@ -3101,6 +3101,10 @@ grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;moa
 <td><code>NODE_OPTIONS</code> in the deployment replaced the image's value instead of appending. It must contain both <code>--no-node-snapshot</code> and <code>--require dd-trace/init</code></td>
 </tr>
 <tr>
+<td><code>CreateSecret</code>: "You can't create this secret because a secret with this name is already scheduled for deletion"</td>
+<td>medium/large keep deleted secrets recoverable for 7 days (<code>secret_recovery_window_days</code>). <code>cleanup.sh</code> purges them after <code>terraform destroy</code>; a bare <code>terraform destroy</code> does not. Either restore it (<code>aws secretsmanager restore-secret --secret-id idp-mvp/&lt;name&gt;</code>, then <code>terraform import</code>) or, if the teardown was intended, purge it: <code>aws secretsmanager delete-secret --secret-id idp-mvp/&lt;name&gt; --force-delete-without-recovery</code></td>
+</tr>
+<tr>
 <td>Tearing down leaves resources behind</td>
 <td>Use <code>./scripts/cleanup.sh</code>, not <code>terraform destroy</code>. Orphaned ALBs hold the subnets Terraform is trying to delete, and the EBS disks behind PersistentVolumes are never in Terraform state at all</td>
 </tr>
