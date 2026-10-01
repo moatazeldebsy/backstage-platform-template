@@ -341,7 +341,7 @@ Seven layers — GitHub/ArgoCD (GitOps + OIDC) → AWS Account boundary (eu-cent
 One region, resilient across Availability Zones: subnets in 3 AZs, per-AZ NAT and
 RDS Multi-AZ on the `medium`/`large` profiles. A full regional outage is recovered by
 rebuilding from IaC and restoring backups. See
-[ADR-0009](design/adr-0009-single-region-multi-az.md) for why multi-region was removed.
+[ADR-0009](design/adr-0009-single-region-multi-az.md) for the reasoning.
 
 ### Network Topology
 
