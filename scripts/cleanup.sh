@@ -512,6 +512,11 @@ log "Phase 6: Running terraform destroy..."
 
 cd "$TF_DIR"
 
+# Destroy with the same sizing profile bootstrap.sh applied (remembered in
+# terraform/.idp-profile), so the plan sees the same variables it was built with.
+tf_profile_resolve "$TF_DIR" ""
+[[ -n "$TF_PROFILE" ]] && log "  Using sizing profile '${TF_PROFILE}' (from the last bootstrap.sh run)."
+
 # Always reinitialize — a stale .terraform/ backend cache (from a previous
 # run with different backend config) makes `terraform destroy` fail with
 # "Backend initialization required" before it even plans anything.
@@ -554,6 +559,7 @@ MAX_ATTEMPTS=3
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
   log "  terraform destroy attempt ${attempt}/${MAX_ATTEMPTS}..."
   if terraform destroy \
+    ${TF_PROFILE_ARGS[@]+"${TF_PROFILE_ARGS[@]}"} \
     -var "aws_region=${AWS_REGION}" \
     -var "cluster_name=${CLUSTER_NAME}" \
     -auto-approve 2>&1 | tee "$TF_DESTROY_LOG"; then
@@ -587,6 +593,7 @@ for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
       [[ -z "$res" ]] && continue
       log "    destroy -target=${res}"
       terraform destroy -auto-approve \
+        ${TF_PROFILE_ARGS[@]+"${TF_PROFILE_ARGS[@]}"} \
         -var "aws_region=${AWS_REGION}" \
         -var "cluster_name=${CLUSTER_NAME}" \
         -target="$res" >/dev/null 2>&1 || true
@@ -596,6 +603,8 @@ for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
   fi
 done
 rm -f "$TF_DESTROY_LOG"
+# Nothing left to size; a fresh bootstrap.sh should start from an explicit choice.
+rm -f "${TF_DIR}/.idp-profile"
 
 # The GitHub OIDC role is gone now; clear the secret that points at it so CI
 # skips the ECR push instead of failing on every main push.

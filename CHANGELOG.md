@@ -10,6 +10,12 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`bootstrap.sh --profile small|medium|large`.** Applies
+  `terraform/profiles/<p>.tfvars` on top of `terraform.tfvars` — the profiles were
+  where per-AZ NAT and RDS Multi-AZ live (ADR-0009), but nothing applied them, so
+  every scripted AWS install ran a single NAT gateway. The profile is remembered in
+  `terraform/.idp-profile` so a later plain re-run doesn't silently drop Multi-AZ;
+  `--profile none` clears it, and `cleanup.sh` destroys with it and then forgets it.
 - **One AI Gateway in front of every MCP server and every model call.**
   [agentgateway](https://agentgateway.dev/) v1.5.0 in standalone mode
   (`kubernetes/ml-platform/ai-gateway.yaml`), on by default — `--skip-gateway`
