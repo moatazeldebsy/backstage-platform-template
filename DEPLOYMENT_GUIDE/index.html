@@ -3176,29 +3176,56 @@ curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;htt
 <span class="s2">import sys,json; d=json.load(sys.stdin); print(&#39;QA series:&#39;, len(d.get(&#39;data&#39;,{}).get(&#39;result&#39;,[])))&quot;</span>
 </code></pre></div></td></tr></table></div>
 <h3 id="expected-service-urls">Expected Service URLs<a class="headerlink" href="#expected-service-urls" title="Permanent link">&para;</a></h3>
+<p>Backstage has its own NLB. Every other UI is a <strong>listener port on one shared
+ALB</strong> (IngressGroup <code>idp-platform</code>), so they share a hostname and differ by port.
+<code>bootstrap.sh</code> prints them all at the end. To read one later:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">source</span><span class="w"> </span>scripts/lib.sh
+alb_ingress_url<span class="w"> </span>argocd-server<span class="w"> </span>argocd<span class="w">          </span><span class="c1"># -&gt; &lt;shared-alb&gt;:8080</span>
+</code></pre></div></td></tr></table></div>
 <table>
 <thead>
 <tr>
 <th>Service</th>
-<th>How to get URL</th>
+<th>URL</th>
+<th>Lookup</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Backstage</td>
-<td><code>kubectl get ingress backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
-</tr>
-<tr>
-<td>Grafana</td>
-<td><code>kubectl get ingress -n monitoring -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
+<td><code>http://&lt;backstage-nlb&gt;</code></td>
+<td><code>kubectl get svc backstage -n backstage -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
 </tr>
 <tr>
 <td>ArgoCD</td>
-<td><code>kubectl get ingress argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'</code></td>
+<td><code>http://&lt;shared-alb&gt;:8080</code></td>
+<td><code>alb_ingress_url argocd-server argocd</code></td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td><code>http://&lt;shared-alb&gt;:3000</code> (<code>:443</code> HTTPS with <code>domain_name</code>)</td>
+<td><code>alb_ingress_url prometheus-grafana monitoring</code></td>
 </tr>
 <tr>
 <td>hello-service</td>
-<td><code>kubectl get ingress -n services-dev -l app.kubernetes.io/instance=hello-service-dev -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'</code></td>
+<td><code>http://&lt;shared-alb&gt;:8081</code></td>
+<td><code>alb_ingress_url hello-service-dev-service-template services-dev</code></td>
+</tr>
+<tr>
+<td>agent-event-router</td>
+<td><code>http://&lt;shared-alb&gt;:8082</code></td>
+<td>AI stack</td>
+</tr>
+<tr>
+<td>KAgent UI / IDP Assistant</td>
+<td><code>http://&lt;shared-alb&gt;:8083</code> / <code>:8084</code></td>
+<td>AI stack</td>
+</tr>
+<tr>
+<td>MLflow / Langfuse / Argo Workflows</td>
+<td><code>http://&lt;shared-alb&gt;:5000</code> / <code>:3001</code> / <code>:2746</code></td>
+<td>AI stack</td>
 </tr>
 </tbody>
 </table>
@@ -3666,6 +3693,13 @@ instances and S3 combined, and it is why the AI layer is opt-in
 (<code>./scripts/bootstrap.sh --with-ai</code>) rather than default.</p>
 <p>Ways to spend less, roughly in order of effect:</p>
 <ul>
+<li><strong>Already on by default:</strong> spot nodes for every non-<code>prod</code> install
+  (<code>node_capacity_type</code>, ~60–70% off the node line), and one shared ALB for all
+  platform UIs instead of one each (see <a href="#consolidating-albs">Consolidating ALBs</a>).
+  medium/large stay on-demand. Keep <code>cluster_version</code> in EKS <em>standard</em>
+  support too: an extended-support version bills the control plane at 6×.</li>
+</ul>
+<ul>
 <li><strong>Skip the AI/ML layer.</strong> Saves ~$195/month. <code>enable_ai</code> and <code>enable_langfuse</code>
   gate the infrastructure too, so nothing is provisioned for it.</li>
 <li><strong>Leave <code>enable_cost_optimizer = true</code></strong> (the default). Scales nodes to zero
@@ -3721,12 +3755,21 @@ instances and S3 combined, and it is why the AI layer is opt-in
 region before committing — this table is a measurement of one cluster, not a
 quote.</p>
 <h3 id="consolidating-albs">Consolidating ALBs<a class="headerlink" href="#consolidating-albs" title="Permanent link">&para;</a></h3>
-<p>Eight services still publish their own internet-facing ALB at ~$16/mo each. They
-cannot share one today: every entry sets <code>host: ""</code> with <code>path: /</code>, so a shared
-<code>alb.ingress.kubernetes.io/group.name</code> produces colliding rules and the ALB
-controller rejects the group. Giving each a real hostname fixes that — the
-routing then keys on <code>Host</code>, not path, so no service has to move off <code>/</code> and no
-application code changes.</p>
+<p><strong>Done without a domain: one ALB, one listener port per service.</strong> Every
+platform Ingress carries <code>alb.ingress.kubernetes.io/group.name: idp-platform</code>
+and its own <code>listen-ports</code> (ArgoCD <code>:8080</code>, Grafana <code>:3000</code>, hello-service
+<code>:8081</code>, the AI-stack UIs <code>:2746</code>–<code>:8084</code>; see the URL table above). Rules live
+per listener, so the <code>host: ""</code> + <code>path: /</code> entries no longer collide. That
+replaced ~9 ALBs, each ~$0.0375/h with its three public IPv4 addresses, with
+one. <code>validate-deployment.sh</code> flags any internet-facing ALB Ingress that is
+missing the group annotation. To add one, pick an unused port, set both
+annotations, and read the URL with <code>alb_ingress_url</code>.</p>
+<p>Scaffolded services' own <code>helm-values-aws.yaml</code> are not part of the group: a
+new service gets its own ALB until it is given a port here, or a hostname as
+below.</p>
+<p>The host-based setup below is the upgrade path once a domain exists. It gives
+port-free URLs and real TLS for every service. Without a domain, it would need
+the hostnames to differ, which they cannot:</p>
 <p><strong>One ALB is not achievable while keeping internal services private.</strong> An
 IngressGroup maps to exactly one ALB with one scheme, so <code>internal</code> and
 <code>internet-facing</code> Ingresses cannot share a group. The realistic floor is one
