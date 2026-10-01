@@ -52,6 +52,12 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Build and Deploy no longer fails on every `main` push after an AWS teardown.**
+  `cleanup.sh` destroyed the GitHub OIDC role but left the repo's `AWS_ROLE_ARN`
+  secret pointing at it, so the workflow's "secret is set" guard passed and the ECR
+  push failed with "web identity token could not be validated". `bootstrap.sh` now
+  sets the secret from `terraform output github_actions_role_arn` and `cleanup.sh`
+  deletes it after `terraform destroy` (`sync_actions_role_secret` in `scripts/lib.sh`).
 - **Single-region AWS installs no longer replicate six Secrets Manager secrets to
   us-east-1** on every `terraform apply` (and no longer fail when `aws_region` is
   us-east-1). The next apply on an existing stack deletes those replicas.

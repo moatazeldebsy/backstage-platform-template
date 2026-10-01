@@ -348,7 +348,8 @@ jobs:
         run: |
           if [ -z "$ROLE_ARN" ]; then
             echo "AWS_ROLE_ARN secret is not set — skipping ECR push."
-            echo "Set it from: cd terraform && terraform output github_actions_role_arn"
+            echo "bootstrap.sh sets it after terraform apply; cleanup.sh deletes it after terraform destroy."
+            echo 'Manual: gh secret set AWS_ROLE_ARN --body "<terraform output -raw github_actions_role_arn>"'
             echo "has_aws=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_aws=true" >> "$GITHUB_OUTPUT"
