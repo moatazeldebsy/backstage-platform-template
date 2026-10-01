@@ -837,26 +837,25 @@ install_argo_workflows() {
   ensure_helm_repos argo
 
   if [[ "$mode" == "aws" ]]; then
-    local argo_bucket="argo-workflows-artifacts-${CLUSTER_NAME}"
-    if ! aws s3 ls "s3://${argo_bucket}/" --region "${AWS_REGION}" &>/dev/null; then
-      log "Creating S3 bucket for Argo Workflows artifacts..."
-      aws s3 mb "s3://${argo_bucket}" --region "${AWS_REGION}" 2>/dev/null || true
-    fi
-
-    local argo_role_arn
+    # Bucket and role both come from Terraform (terraform/s3.tf, iam.tf), gated
+    # on enable_ai. The bucket used to be created right here with `aws s3 mb`,
+    # and the role output it read never existed, so S3 artifact upload never
+    # worked (#357). Either output missing — a state applied before #357, or
+    # enable_ai=false — means no usable artifact store: turn archiveLogs off
+    # rather than ship a default that fails every workflow on log upload.
+    local argo_bucket argo_role_arn
+    argo_bucket=$(tf_output argo_workflows_bucket_name)
     argo_role_arn=$(tf_output argo_workflows_role_arn)
 
-    # There is no argo_workflows_role_arn output and no Argo Workflows IAM role
-    # in terraform/ — this has always resolved to empty, so S3 artifact upload
-    # has never worked. archiveLogs is then actively harmful: every workflow
-    # tries to upload its logs and fails. Turn it off rather than ship a broken
-    # default, and say so. Tracked for the Terraform side; see the issue linked
-    # from docs/aws-install-failure-modes.md (issue #357). Observed 2026-08-16.
     local archive_logs=true
-    if [[ -z "$argo_role_arn" ]]; then
-      warn "No argo_workflows_role_arn Terraform output — S3 artifact upload is unavailable."
+    if [[ -z "$argo_bucket" || -z "$argo_role_arn" ]]; then
+      warn "No argo_workflows_bucket_name / argo_workflows_role_arn Terraform output — S3 artifact upload is unavailable."
+      warn "  Run terraform apply with enable_ai=true (./scripts/bootstrap.sh --with-ai) to create them."
       warn "  Disabling archiveLogs so workflows still run. Artifacts stay in-pod."
       archive_logs=false
+      # The chart still needs a bucket string to render; nothing can write to it
+      # without the role.
+      argo_bucket="${argo_bucket:-unset-${CLUSTER_NAME}}"
     fi
 
 
@@ -865,6 +864,7 @@ install_argo_workflows() {
     values_file="/tmp/argo-values-${CLUSTER_NAME}.yaml"
     sed "s|CLUSTER_NAME_PLACEHOLDER|${CLUSTER_NAME}|g; \
          s|REGION_PLACEHOLDER|${AWS_REGION}|g; \
+         s|ARGO_WORKFLOWS_BUCKET_PLACEHOLDER|${argo_bucket}|g; \
          s|ARGO_WORKFLOWS_ROLE_ARN_PLACEHOLDER|${argo_role_arn}|g" \
       "${root}/aws/argo-workflows/values.yaml" > "$values_file"
   else
@@ -901,10 +901,9 @@ install_argo_workflows() {
       kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
         "eks.amazonaws.com/role-arn=${argo_role_arn}" --overwrite 2>/dev/null || true
     else
-      # rbac.yaml ships the literal REPLACE_WITH_ARGO_WORKFLOWS_ROLE_ARN, whose
-      # comment claims this function patches it. When the ARN is empty that
-      # placeholder lands verbatim on a live ServiceAccount, where it reads as
-      # a configured role and is not one. Remove it instead — an absent
+      # Clusters installed before #357 carry the literal
+      # REPLACE_WITH_ARGO_WORKFLOWS_ROLE_ARN that rbac.yaml used to ship, which
+      # reads as a configured role and is not one. Remove it — an absent
       # annotation is honest, a placeholder one is not.
       kubectl annotate serviceaccount ml-pipeline-runner -n ml-platform \
         "eks.amazonaws.com/role-arn-" 2>/dev/null || true
