@@ -74,6 +74,28 @@ export function route(
 }
 
 const DEFAULT_REFRESH_MINUTES = 30;
+
+/**
+ * Whether this process's in-memory views (platform facts, samples, evaluation,
+ * cost) need a collection before they are served.
+ *
+ * The scheduled refresh is a *global* task: with more than one Backstage
+ * replica, only the one holding the scheduler lock runs it. Every other replica
+ * used to collect once on its first request and then serve that result forever,
+ * so behind a load balancer the same page alternated between current and
+ * frozen data. Treating views as stale after 1.5× the refresh interval leaves
+ * the lock holder untouched (its task keeps them younger than that) and bounds
+ * how old any other replica's views can get. The extra half-interval keeps an
+ * on-demand collection from racing a scheduled one that is merely running late.
+ */
+export function viewsAreStale(
+  lastCollectedAt: number | undefined,
+  now: number,
+  refreshMinutes: number,
+): boolean {
+  if (lastCollectedAt === undefined) return true;
+  return now - lastCollectedAt > refreshMinutes * 60_000 * 1.5;
+}
 const MAX_SNAPSHOTS = 200;
 
 function parseWeights(raw: unknown): WeightOverrides | undefined {
@@ -165,11 +187,14 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         // and the snapshot table exists for the numbers that need history.
         //
         // The consequence is that a restart which reuses an existing snapshot
-        // has no breakdown until the next collection, so `/platform` collects
-        // once on demand. `collectedThisProcess` stops that becoming a refresh
-        // on every request when the catalog source is switched off.
+        // has no breakdown until the next collection, so the view endpoints
+        // collect on demand. `lastCollectedAt` (see viewsAreStale) bounds that
+        // to once per interval — rather than on every request when the catalog
+        // source is switched off — and keeps replicas that do not hold the
+        // scheduler lock from serving their first collection forever.
         let platform: { facts?: PlatformFacts; tasks?: TaskOutcome } = {};
-        let collectedThisProcess = false;
+        let lastCollectedAt: number | undefined;
+        let inflightViewRefresh: Promise<unknown> | undefined;
 
         // The raw samples from the most recent collection. AI readiness is a
         // second scoring pass over the *same* samples rather than a second
@@ -188,7 +213,15 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         // the same catalog snapshot the platform figures came from.
         let owners: Record<string, string> = {};
 
-        async function refresh(): Promise<CollectionOutcome> {
+        /**
+         * `persist: false` is for on-demand view refreshes: the snapshot table
+         * is the trend history, written once per interval by the scheduled
+         * task, and extra rows from other replicas would show up as
+         * near-duplicate points in "what moved".
+         */
+        async function refresh(
+          { persist = true }: { persist?: boolean } = {},
+        ): Promise<CollectionOutcome> {
           const collectors = [
             enabled('prometheus') ? () => collectPrometheus(ctx) : undefined,
             enabled('opencost') ? () => collectOpenCost(ctx) : undefined,
@@ -252,8 +285,8 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
 
           const outcome = await collectAndScore(collectors, { weights });
           lastSamples = outcome.samples;
-          collectedThisProcess = true;
-          await saveSnapshot(db as any, outcome.report);
+          lastCollectedAt = Date.now();
+          if (persist) await saveSnapshot(db as any, outcome.report);
 
           const scored = Object.values(outcome.report.dimensions).filter(
             d => d.score !== null,
@@ -292,6 +325,15 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           const snapshot = await latestSnapshot(db as any);
           if (snapshot) return snapshot.report;
           return (await refresh()).report;
+        }
+
+        /** Collect for the in-memory views if they are stale; concurrent callers share one collection. */
+        async function ensureFreshViews(): Promise<void> {
+          if (!viewsAreStale(lastCollectedAt, Date.now(), refreshMinutes)) return;
+          inflightViewRefresh ??= refresh({ persist: false }).finally(() => {
+            inflightViewRefresh = undefined;
+          });
+          await inflightViewRefresh;
         }
 
         // GET /api/engineering-intelligence/health
@@ -432,9 +474,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         router.get('/ai-cost', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
-          if (!lastCost && !collectedThisProcess) {
-            await refresh();
-          }
+          await ensureFreshViews();
           if (!lastCost || lastCost.totalUsd <= 0) {
             res.json({
               generatedAt: report.generatedAt,
@@ -455,9 +495,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         router.get('/evaluation', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
-          if (!lastEvaluation && !collectedThisProcess) {
-            await refresh();
-          }
+          await ensureFreshViews();
           if (!lastEvaluation || lastEvaluation.assertions === 0) {
             res.json({
               generatedAt: report.generatedAt,
@@ -474,9 +512,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         router.get('/ai-readiness', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
-          if (lastSamples.length === 0 && !collectedThisProcess) {
-            await refresh();
-          }
+          await ensureFreshViews();
           res.json(scoreAiReadiness(lastSamples, report.generatedAt));
         }));
 
@@ -484,9 +520,7 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         router.get('/platform', route(async (req, res) => {
           await httpAuth.credentials(req, { allow: ['user'] });
           const report = await currentReport();
-          if (!platform.facts && !collectedThisProcess) {
-            await refresh();
-          }
+          await ensureFreshViews();
           const facts = platform.facts;
 
           if (!facts) {

@@ -82,6 +82,9 @@ Replaces `moatazeldebsy` and other placeholders across all template files, creat
 
 `--profile small|medium|large` applies `terraform/profiles/<p>.tfvars` on top of
 `terraform.tfvars` and is remembered for later runs (`--profile none` clears it).
+`medium` and `large` also install ArgoCD in HA mode (`aws/argocd/argocd-ha-values.yaml`:
+Redis HA, two server/repo-server/applicationset replicas with PDBs) and run two
+Backstage replicas spread across AZs; `small` and no-profile stay single-replica.
 Without `medium` or `large`, losing the AZ that hosts the single NAT gateway cuts all
 outbound traffic from the private subnets — see
 [ADR-0009](design/adr-0009-single-region-multi-az.md).
