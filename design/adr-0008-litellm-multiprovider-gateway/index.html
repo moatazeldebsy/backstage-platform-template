@@ -2535,8 +2535,12 @@ per ADR-0007's Context).</p>
 inside the existing <code>idp-mvp/kagent</code> Secrets Manager entry
 (<code>terraform/secrets.tf</code>), rather than a new secret — same reuse decision
 ADR-0007 made for the Anthropic key sync. <code>aws/ml-platform/litellm-external-secret.yaml</code>
-syncs both <code>ANTHROPIC_API_KEY</code> and <code>LITELLM_MASTER_KEY</code> from it into a
-<code>litellm-keys</code> Secret in <code>ml-platform</code>.</p>
+syncs both <code>ANTHROPIC_API_KEY</code> and <code>LITELLM_MASTER_KEY</code> from it (plus
+<code>DATABASE_URL</code> from <code>idp-mvp/litellm</code>) into a <code>litellm-keys</code> Secret in
+<code>ml-platform</code>, through its own SecretStore and <code>litellm-eso-sa</code> IRSA role that
+can read only those two entries. (It originally used the shared
+<code>aws-secretsmanager</code> ClusterSecretStore, whose Backstage role could read
+neither, so the sync never succeeded.)</p>
 <p>The old <code>ai-gateway-llm-keys</code> Secret and its ExternalSecret
 (<code>aws/ml-platform/ai-gateway-external-secret.yaml</code>) are deleted, not left as a
 one-cycle no-op: agentgateway no longer reads <code>ANTHROPIC_API_KEY</code> directly, and
