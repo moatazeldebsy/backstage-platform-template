@@ -97,6 +97,17 @@ alertmanager:
     alertmanagerConfigSelector:
       matchLabels:
         app.kubernetes.io/part-of: kube-prometheus-stack
+    # OnNamespaceExceptForAlertmanagerNamespace, not the operator default
+    # (OnNamespace). OnNamespace adds a hidden namespace="<config's namespace>"
+    # matcher to every AlertmanagerConfig, so the platform routing in
+    # observability/alertmanager/alertmanager-config.yaml (namespace: monitoring)
+    # only ever matched alerts labelled namespace="monitoring": nothing from
+    # services-*, and no SLO burn alert (those carry no namespace label) reached
+    # #platform-alerts or agent-event-router (#159). With this strategy the
+    # config in Alertmanager's own namespace sees every alert, while a team's
+    # AlertmanagerConfig in team-<name> still only sees that namespace's alerts.
+    alertmanagerConfigMatcherStrategy:
+      type: OnNamespaceExceptForAlertmanagerNamespace
     resources:
       requests:
         cpu: 10m
