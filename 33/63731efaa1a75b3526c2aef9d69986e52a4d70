@@ -1,0 +1,21 @@
+docs/scripts-reference.md
+  s_b9588aff8387c9::t_4f3141f17decc0 142-145
+README.md
+  s_b9588aff8387c9::t_4f3141f17decc0 90,96,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3363731efaa1a75b3526c2aef9d69986e52a4d70",
+  "prompts": {},
+  "sessions": {
+    "s_b9588aff8387c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fda60e5e-bac5-41e7-b057-a23f9034816b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
