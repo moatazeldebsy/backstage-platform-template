@@ -20,6 +20,17 @@ Use the Backstage scaffolder to add an SLO to any service:
 
 Example reference: `observability/slo/hello-service-slos.yaml` — 99.5% availability, p99 < 500 ms.
 
+Platform SLOs that ship with the repo:
+
+| Source | SLOs | Alerts |
+|---|---|---|
+| `observability/slo/hello-service-slos.yaml` | 99.5% availability, 99% of requests < 500 ms | page + ticket |
+| `observability/slo/mcp-servers-slos.yaml` | 99% tool-call availability for each of the 8 MCP servers (`mcp_tool_calls_total{outcome="error"}`) | ticket only: tool-call volume is too low and bursty to page on |
+
+On AWS, `bootstrap.sh` applies every file in `observability/slo/generated/`. Locally,
+`bootstrap-local.sh` still applies only hello-service's rules; apply the rest with
+`kubectl apply -f observability/slo/generated/`.
+
 ### How SLOs reach the cluster
 
 The `PrometheusServiceLevel` in `observability/slo/` is a Sloth CRD, and no Sloth operator runs
