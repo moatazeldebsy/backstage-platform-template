@@ -4284,17 +4284,20 @@ rebuilding from IaC and restoring backups. See
 <a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
 <a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>
 <a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>External Secrets Operator (ESO)
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>  ├── ClusterSecretStore: aws-secretsmanager
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  │     auth: IRSA via external-secrets-sa (annotated with idp-mvp-backstage IAM role)
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>  │     → assumes role → calls secretsmanager:GetSecretValue
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>  │
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>  └── ExternalSecret (per namespace)
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        kagent-secret (namespace: kagent)           → idp-mvp/kagent
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>              │
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>              ▼ syncs every 1h (or on force-sync annotation)
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        Kubernetes Secret → mounted as env vars into pods
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>  ├── ClusterSecretStore: aws-secretsmanager      (usable from every namespace)
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  │     auth: IRSA via external-secrets-sa (idp-mvp-external-secrets role)
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>  │     → reads only idp-mvp/dora-exporter
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>  ├── SecretStore aws-secrets-manager (namespace: backstage)
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>  │     auth: IRSA via the backstage SA (idp-mvp-backstage role)
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>  ├── SecretStore (namespace: ml-platform, litellm-eso-sa)
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>  │
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>  └── ExternalSecret (per namespace)
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage      [backstage SecretStore]
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter [ClusterSecretStore]
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        litellm secrets (namespace: ml-platform)    → idp-mvp/kagent, idp-mvp/litellm [ml-platform SecretStore]
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>              │
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>              ▼ syncs every 1h (or on force-sync annotation)
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>        Kubernetes Secret → mounted as env vars into pods
 </code></pre></div>
 <h3 id="irsa-roles-iam-roles-for-service-accounts">IRSA Roles (IAM Roles for Service Accounts)<a class="headerlink" href="#irsa-roles-iam-roles-for-service-accounts" title="Permanent link">&para;</a></h3>
 <table>
@@ -4308,8 +4311,13 @@ rebuilding from IaC and restoring backups. See
 <tbody>
 <tr>
 <td><code>idp-mvp-backstage</code></td>
-<td><code>backstage:backstage-sa</code> + <code>external-secrets:external-secrets-sa</code></td>
-<td><code>secretsmanager:GetSecretValue</code> on <code>idp-mvp/*</code></td>
+<td><code>backstage:backstage</code></td>
+<td><code>secretsmanager:GetSecretValue</code> on <code>idp-mvp/backstage</code>, <code>idp-mvp/dora-exporter*</code>, <code>idp-mvp/langfuse/project-keys*</code>; scaffolder writes (see <code>terraform/iam.tf</code>)</td>
+</tr>
+<tr>
+<td><code>idp-mvp-external-secrets</code></td>
+<td><code>external-secrets:external-secrets-sa</code></td>
+<td><code>secretsmanager:GetSecretValue</code> on <code>idp-mvp/dora-exporter*</code> only — the ClusterSecretStore serves every namespace</td>
 </tr>
 <tr>
 <td><code>idp-mvp-dora-exporter</code></td>

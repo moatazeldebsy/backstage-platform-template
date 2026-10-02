@@ -3245,7 +3245,7 @@
 <hr />
 <h2 id="using-it-from-backstage">Using it from Backstage<a class="headerlink" href="#using-it-from-backstage" title="Permanent link">&para;</a></h2>
 <p>Open <strong><a href="http://backstage.idp.local/approvals">http://backstage.idp.local/approvals</a></strong> (nav item: <strong>Agent Approvals</strong>). The page lists pending approvals by default, with an <strong>All (last 100)</strong> toggle for history, and shows each request's action, target, requesting agent, and the free-form <code>context</code> the agent supplied — its stated reason for wanting the action.</p>
-<p>Approve or deny writes <code>decided_by</code> from your Backstage identity. The agent's next <code>get_approval_status</code> call sees the decision and either retries or reports the denial.</p>
+<p>Approve or deny writes <code>decided_by</code> from your Backstage identity, resolved server-side: the page posts to <code>/api/idp-approvals/approvals/:id/decide</code> (<code>idpApprovalDecision.ts</code>), which ignores any client-supplied name, and the <code>/approval-service</code> proxy is GET-only. You cannot approve a request made on your own behalf (<code>requested_by_user</code> equal to the decider gets a 403); you can still deny it. The agent's next <code>get_approval_status</code> call sees the decision and either retries or reports the denial.</p>
 <p>The page requires <code>bootstrap-ai.sh --adp</code> to have run: it reveals the route in the generated <code>local/backstage/app-config.ai.yaml</code>, and Backstage reads config <strong>only at startup</strong>, so restart it afterwards with <code>./scripts/bootstrap-local.sh --start-backstage</code>. Without that, the route is disabled; with the route on but <code>approval-service</code> down, the page shows <code>HTTP … — is approval-service deployed?</code>. See <a href="../ai-assistant/#where-the-ai-pages-come-from-and-why-theyre-hidden">AI Assistant § Where the AI pages come from</a> for how that gating works.</p>
 <hr />
 <h2 id="api-reference">API reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h2>
@@ -3288,7 +3288,7 @@
 <td><code>POST</code></td>
 <td><code>/approvals/:id/decide</code></td>
 <td><code>{decision: approved\|denied, decided_by}</code></td>
-<td>the updated approval, or 409</td>
+<td>the updated approval; 409 if already decided; 403 if <code>decided_by</code> is the requester approving their own request</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
